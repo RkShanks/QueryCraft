@@ -194,7 +194,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-036** [test] **Auth schema validation** — cluster: US-1 | deps: T-002 | FR-001 | parallel: ✓ | effort: XS
   Done when: `backend/tests/unit/test_schemas_auth.py` validates `SignInRequest` rejects empty username, empty password, and username >64 chars; `UserProfile` round-trips all required fields.
 
-- **T-037** [backend] **Auth Pydantic schemas** — cluster: US-1 | deps: T-036 | FR-001 | parallel: ✗ | effort: S
+- [x] **T-037** [backend] **Auth Pydantic schemas** — cluster: US-1 | deps: T-036 | FR-001 | parallel: ✗ | effort: S
   Done when: `backend/src/app/schemas/auth.py` defines `SignInRequest` and `UserProfile` matching openapi.yaml `SignInRequest` and `UserProfile` schemas; all T-036 tests pass.
 
 - **T-038** [test] **Query schema validation** — cluster: US-1 | deps: T-002 | FR-007,FR-014,FR-015 | parallel: ✓ | effort: S
