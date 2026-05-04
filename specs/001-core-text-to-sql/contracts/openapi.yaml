@@ -1,4 +1,4 @@
-openapi: "3.1.0"
+openapi: "3.0.3"
 info:
   title: QueryCraft — Text-to-SQL Analytics Platform API
   version: "1.0.0"
@@ -533,7 +533,7 @@ components:
           type: object
           nullable: true
           additionalProperties: true
-          description: Key-value map for interpolated values (e.g., {"table": "orders"}).
+          description: 'Key-value map for interpolated values (e.g., {"table": "orders"}).'
 
     AcceptQueryRequest:
       type: object
@@ -673,4 +673,4 @@ components:
                 type: object
                 nullable: true
                 additionalProperties: true
-                description: Key-value map for interpolated values (e.g., {"max": 2000}).
+                description: 'Key-value map for interpolated values (e.g., {"max": 2000}).'
