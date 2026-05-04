@@ -39,45 +39,49 @@ async def lifespan(app: FastAPI):
 async def _upsert_source_db_connection(settings):
     """Upsert the source database connection row on startup."""
     from sqlalchemy import text
+    from sqlalchemy.exc import ProgrammingError
 
     # Initialize engine
     session_factory = get_async_session_factory()
 
-    async with session_factory() as session:
-        # Check if connection already exists
-        result = await session.execute(
-            text("SELECT id FROM database_connections WHERE name = :name"),
-            {"name": settings.SOURCE_DB_NAME},
-        )
-        existing = result.scalar_one_or_none()
+    try:
+        async with session_factory() as session:
+            # Check if connection already exists
+            result = await session.execute(
+                text("SELECT id FROM database_connections WHERE name = :name"),
+                {"name": settings.SOURCE_DB_NAME},
+            )
+            existing = result.scalar_one_or_none()
 
-        if existing is None:
-            # Encrypt the source DB password
-            encrypted_password = encrypt(
-                settings.SOURCE_DB_PASSWORD,
-                settings.PLATFORM_ENCRYPTION_KEY,
-            )
-            await session.execute(
-                text("""
-                    INSERT INTO database_connections (
-                        name, host, port, database_name, username, encrypted_password, ssl_mode
-                    )
-                    VALUES (:name, :host, :port, :database_name, :username, :encrypted_password, :ssl_mode)
-                """),
-                {
-                    "name": settings.SOURCE_DB_NAME,
-                    "host": settings.SOURCE_DB_HOST,
-                    "port": settings.SOURCE_DB_PORT,
-                    "database_name": settings.SOURCE_DB_NAME,
-                    "username": settings.SOURCE_DB_USER,
-                    "encrypted_password": encrypted_password,
-                    "ssl_mode": settings.SOURCE_DB_SSL_MODE,
-                },
-            )
-            await session.commit()
-            logger.info("source_db_connection_created", name=settings.SOURCE_DB_NAME)
-        else:
-            logger.info("source_db_connection_exists", name=settings.SOURCE_DB_NAME)
+            if existing is None:
+                # Encrypt the source DB password
+                encrypted_password = encrypt(
+                    settings.SOURCE_DB_PASSWORD,
+                    settings.PLATFORM_ENCRYPTION_KEY,
+                )
+                await session.execute(
+                    text("""
+                        INSERT INTO database_connections (
+                            name, host, port, database_name, username, encrypted_password, ssl_mode
+                        )
+                        VALUES (:name, :host, :port, :database_name, :username, :encrypted_password, :ssl_mode)
+                    """),
+                    {
+                        "name": settings.SOURCE_DB_NAME,
+                        "host": settings.SOURCE_DB_HOST,
+                        "port": settings.SOURCE_DB_PORT,
+                        "database_name": settings.SOURCE_DB_NAME,
+                        "username": settings.SOURCE_DB_USER,
+                        "encrypted_password": encrypted_password,
+                        "ssl_mode": settings.SOURCE_DB_SSL_MODE,
+                    },
+                )
+                await session.commit()
+                logger.info("source_db_connection_created", name=settings.SOURCE_DB_NAME)
+            else:
+                logger.info("source_db_connection_exists", name=settings.SOURCE_DB_NAME)
+    except ProgrammingError:
+        logger.warning("database_connections_table_missing", msg="Skipping seed. Run alembic upgrade head.")
 
 
 def create_app() -> FastAPI:
