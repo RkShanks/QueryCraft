@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import noInlineUserStrings from './eslint-rules/no-inline-user-strings.cjs'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'eslint-rules/__fixtures__/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
