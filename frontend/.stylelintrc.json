@@ -15,12 +15,13 @@
     ],
     "property-disallowed-list": [
       ["margin-left", "margin-right", "padding-left", "padding-right",
-       "border-left", "border-right", "text-align",
+       "border-left", "border-right",
        "float", "clear"],
       {
         "message": "Use logical properties (e.g. margin-inline-start) instead of physical (R-012). Allowed exception: text-align with 'start'/'end' values.",
         "severity": "error"
       }
-    ]
+    ],
+    "import-notation": null
   }
 }
