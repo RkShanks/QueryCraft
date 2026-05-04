@@ -796,6 +796,13 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
   **Why:** Currently `SessionMiddleware._get_redis()` creates a fresh `Redis.from_url()` per request because schemathesis's per-example event loops invalidate cached connections. This adds ~1ms/request connection-setup overhead. For KSA Phase 1 traffic (100–1000 users) this is acceptable, but it is genuine perf debt.
   **Done when:** `backend/src/app/core/security.py` uses a `redis.asyncio.ConnectionPool` scoped to the active request's event loop, or uses a per-worker pool with proper loop-attachment handling; existing event-loop safety tests still pass; benchmark shows reduced p99 session-cookie verify latency vs current implementation.
 
+- **T-191c** [backend] **Reconcile dual default on `accepted_queries.accepted_at`** — cluster: Polish | deps: — | | parallel: ✓ | effort: XS
+  **Why:** During US-1 we added `default=lambda: datetime.now(UTC)` Python-side to fix a flaky test (PostgreSQL's `now()` returns transaction start time, so multiple inserts in the same db_session got identical timestamps). The original `server_default=text("now()")` was kept as a fallback for raw SQL inserts. Two sources of truth for the same column is fragile and confusing.
+  **Done when:** `backend/src/app/db/models/accepted_query.py` uses a single authoritative default for `accepted_at`. Pick one of:
+  (a) drop `server_default` and rely on Python-side default since all inserts go through SQLAlchemy ORM, OR
+  (b) drop the Python-side default and use `default=func.now()` so SQLAlchemy emits the same `now()` call to PostgreSQL but flushes per-row, ensuring per-row precision.
+  Existing flake-resistance test still passes; no regression in coverage.
+
 ---
 
 ## Traceability
