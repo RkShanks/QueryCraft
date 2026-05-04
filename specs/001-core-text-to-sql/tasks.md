@@ -268,7 +268,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-058** [backend] **Query router** — cluster: US-1 | deps: T-057,T-052,T-039 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-028 | parallel: ✗ | effort: M
   Done when: `backend/src/app/api/v1/query.py` exposes `POST /query/submit` and `POST /query/accept` matching openapi.yaml response schemas and status codes; all T-057 tests pass.
 
-- **T-059** [test] **History router integration tests** — cluster: US-1 | deps: T-054,T-013 | FR-021,FR-023 | parallel: ✓ | effort: S
+- [x] **T-059** [test] **History router integration tests** — cluster: US-1 | deps: T-054,T-013 | FR-021,FR-023 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_api_history.py` tests GET `/history` (200 list, cursor pagination, 401 unauth), GET `/history/{id}` (200 detail, 404 not found); uses authenticated_client with pre-seeded accepted queries.
 
 - **T-060** [backend] **History router** — cluster: US-1 | deps: T-059,T-054,T-041 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
