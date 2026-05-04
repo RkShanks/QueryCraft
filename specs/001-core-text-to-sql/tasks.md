@@ -206,7 +206,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-040** [test] **History schema validation** — cluster: US-1 | deps: T-002 | FR-021,FR-023 | parallel: ✓ | effort: XS
   Done when: `backend/tests/unit/test_schemas_history.py` validates `HistoryListResponse` contains items list and nullable cursor; `AcceptedQueryDetail` includes all required fields per openapi.yaml.
 
-- **T-041** [backend] **History Pydantic schemas** — cluster: US-1 | deps: T-040 | FR-021,FR-023 | parallel: ✗ | effort: XS
+- [x] **T-041** [backend] **History Pydantic schemas** — cluster: US-1 | deps: T-040 | FR-021,FR-023 | parallel: ✗ | effort: XS
   Done when: `backend/src/app/schemas/history.py` defines `HistoryListResponse` and `AcceptedQueryDetail` matching openapi.yaml; all T-040 tests pass.
 
 ### Backend ORM models
