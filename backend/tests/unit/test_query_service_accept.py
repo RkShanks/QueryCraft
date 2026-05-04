@@ -18,7 +18,13 @@ class TestQueryServiceAccept:
     @pytest.fixture
     def mock_repo(self):
         repo = MagicMock()
-        repo.create = AsyncMock(return_value=MagicMock(id="q-1"))
+        mock_query = MagicMock()
+        mock_query.id = "q-1"
+        mock_query.question_text = "Q"
+        mock_query.generated_sql = "SELECT 1"
+        mock_query.accepted_at = MagicMock()
+        mock_query.accepted_at.isoformat.return_value = "2026-05-04T12:00:00Z"
+        repo.create = AsyncMock(return_value=mock_query)
         return repo
 
     @pytest.fixture
@@ -43,7 +49,7 @@ class TestQueryServiceAccept:
         mock_redis.get.return_value = json.dumps({
             "attempt_id": "a-1",
             "session_id": "sess-1",
-            "user_id": "u-1",
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
             "question_text": "Q",
             "generated_sql": "SELECT 1",
             "llm_provider": "ollama",
@@ -52,9 +58,9 @@ class TestQueryServiceAccept:
         })
         result = await service.accept_query(
             session_id="sess-1",
-            user_id="u-1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
             attempt_id="a-1",
-            database_connection_id="db-1",
+            database_connection_id="550e8400-e29b-41d4-a716-446655440001",
         )
         assert result.id == "q-1"
         mock_repo.create.assert_awaited_once()
@@ -66,9 +72,9 @@ class TestQueryServiceAccept:
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
                 session_id="sess-1",
-                user_id="u-1",
+                user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
-                database_connection_id="db-1",
+                database_connection_id="550e8400-e29b-41d4-a716-446655440001",
             )
         assert exc_info.value.status_code == 400
 
@@ -77,7 +83,7 @@ class TestQueryServiceAccept:
         mock_redis.get.return_value = json.dumps({
             "attempt_id": "a-1",
             "session_id": "sess-2",
-            "user_id": "u-1",
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
             "question_text": "Q",
             "generated_sql": "SELECT 1",
             "llm_provider": "ollama",
@@ -85,8 +91,8 @@ class TestQueryServiceAccept:
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
                 session_id="sess-1",
-                user_id="u-1",
+                user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
-                database_connection_id="db-1",
+                database_connection_id="550e8400-e29b-41d4-a716-446655440001",
             )
         assert exc_info.value.status_code == 400

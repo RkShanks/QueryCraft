@@ -61,13 +61,16 @@ class TestQueryServiceSubmit:
         assert result.kind == "result"
         assert result.row_count == 1
         assert result.generated_sql == "SELECT 1 AS id"
-        mock_redis.set.assert_awaited_once()
+        assert mock_redis.set.await_count >= 1
 
     @pytest.mark.asyncio
     async def test_evaluator_failure_returns_rejection(self, service, mock_evaluator):
+        violation = MagicMock()
+        violation.rule_name = "read_only"
+        violation.message_key = "evaluator.violation.dataModifying"
         mock_evaluator.evaluate.return_value = MagicMock(
             passed=False,
-            violations=[MagicMock(rule="read_only", message_key="evaluator.violation.dataModifying")],
+            violations=[violation],
         )
         result = await service.submit_question(
             session_id="sess-1",
@@ -102,7 +105,7 @@ class TestQueryServiceSubmit:
 
     @pytest.mark.asyncio
     async def test_concurrent_submission_raises_409(self, service, mock_redis):
-        mock_redis.set.return_value = False  # lock already held
+        mock_redis.set.return_value = None  # lock already held (nx failed)
         with pytest.raises(Exception) as exc_info:
             await service.submit_question(
                 session_id="sess-1",

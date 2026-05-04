@@ -245,7 +245,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-051** [test] **QueryService accept tests** — cluster: US-1 | deps: T-017 | FR-016,FR-020,SC-012 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_query_service_accept.py` tests: (1) accept persists to AcceptedQueryRepository, (2) accept deletes Redis attempt, (3) accept with expired attempt returns 400, (4) accept with wrong session returns 400.
 
-- **T-052** [backend] **QueryService** — cluster: US-1 | deps: T-050,T-051,T-047,T-014 | FR-006,FR-007,FR-008,FR-010,FR-012,FR-013,FR-014,FR-016,FR-020,FR-027,FR-030 | parallel: ✗ | effort: L
+- [x] **T-052** [backend] **QueryService** — cluster: US-1 | deps: T-050,T-051,T-047,T-014 | FR-006,FR-007,FR-008,FR-010,FR-012,FR-013,FR-014,FR-016,FR-020,FR-027,FR-030 | parallel: ✗ | effort: L
   Done when: `backend/src/app/services/query_service.py` implements `submit_question`, `accept_query` with Redis mutex (FR-030), ephemeral attempt storage, evaluator gate, source-DB execution with timeout, and accept-only persistence; all T-050 and T-051 tests pass.
 
 - **T-053** [test] **HistoryService tests** — cluster: US-1 | deps: T-017 | FR-021,FR-023 | parallel: ✓ | effort: S
