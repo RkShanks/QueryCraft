@@ -313,11 +313,11 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - **T-071** [frontend] **ResultTable + SqlDisplay + QueryActions** — cluster: US-1 | deps: T-070,T-065,T-022 | FR-014,FR-015,FR-029,SC-009 | parallel: ✗ | effort: M
   Done when: `frontend/src/components/ResultTable.tsx` renders TanStack Table with pagination, `SqlDisplay.tsx` shows syntax-highlighted SQL, `QueryActions.tsx` renders Accept/Reject/Regenerate; all T-070 tests pass.
 
-- **T-072** [test] **ChatPage integration tests** — cluster: US-1 | deps: T-025,T-069,T-071 | FR-006,FR-014,SC-001 | parallel: ✓ | effort: S
-  Done when: `frontend/tests/unit/ChatPage.test.tsx` tests ChatPage renders QueryInput, submitting a question shows ResultTable with QueryActions, accepting shows confirmation toast, and evaluator rejection shows error message; uses MSW + RTL.
+- **T-072** [test] **AskQuestionPage integration tests** — cluster: US-1 | deps: T-025,T-069,T-071 | FR-006,FR-014,SC-001 | parallel: ✓ | effort: S
+  Done when: `frontend/tests/unit/AskQuestionPage.test.tsx` tests AskQuestionPage renders QueryInput, submitting a question shows ResultTable with QueryActions, accepting shows confirmation toast, and evaluator rejection shows error message; uses MSW + RTL.
 
-- **T-073** [frontend] **ChatPage assembly** — cluster: US-1 | deps: T-072,T-069,T-071,T-023 | FR-006,FR-014,FR-015,FR-016,SC-009 | parallel: ✗ | effort: M
-  Done when: `frontend/src/pages/ChatPage.tsx` composes QueryInput, ResultTable, SqlDisplay, QueryActions into the main query interface with Radix toast for confirmations/errors; all T-072 tests pass.
+- **T-073** [frontend] **AskQuestionPage assembly** — cluster: US-1 | deps: T-072,T-069,T-071,T-023 | FR-006,FR-014,FR-015,FR-016,SC-009 | parallel: ✗ | effort: M
+  Done when: `frontend/src/pages/AskQuestionPage.tsx` composes QueryInput, ResultTable, SqlDisplay, QueryActions into the main query interface with Radix toast for confirmations/errors; all T-072 tests pass.
 
 ### Playwright e2e — US-1 independent test criterion
 

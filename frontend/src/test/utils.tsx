@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import React from 'react';
 
+import { MemoryRouter } from 'react-router-dom';
+
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {
     queries: {
@@ -14,13 +16,17 @@ const createTestQueryClient = () => new QueryClient({
 export function renderWithClient(ui: ReactElement) {
   const testQueryClient = createTestQueryClient();
   const { rerender, ...result } = render(
-    <QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>
+    <MemoryRouter>
+      <QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>
+    </MemoryRouter>
   );
   return {
     ...result,
     rerender: (rerenderUi: ReactElement) =>
       rerender(
-        <QueryClientProvider client={testQueryClient}>{rerenderUi}</QueryClientProvider>
+        <MemoryRouter>
+          <QueryClientProvider client={testQueryClient}>{rerenderUi}</QueryClientProvider>
+        </MemoryRouter>
       ),
   };
 }
@@ -28,6 +34,8 @@ export function renderWithClient(ui: ReactElement) {
 export function createWrapper() {
   const testQueryClient = createTestQueryClient();
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
+    <MemoryRouter>
+      <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
+    </MemoryRouter>
   );
 }

@@ -1,7 +1,7 @@
 import 'whatwg-fetch';
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { beforeAll, afterEach, afterAll } from 'vitest';
+import { beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { server } from './server';
 import { client } from '../api/generated/client.gen';
 
@@ -9,6 +9,22 @@ beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
   client.setConfig({ baseUrl: 'http://localhost:3000/api/v1' }); 
 });
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: any) => {
+      if (typeof options === 'string') return options;
+      return options?.defaultValue || key;
+    },
+    i18n: {
+      changeLanguage: () => Promise.resolve(),
+    },
+  }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  },
+}));
 
 afterEach(() => {
   cleanup();
