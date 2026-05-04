@@ -251,7 +251,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-053** [test] **HistoryService tests** — cluster: US-1 | deps: T-017 | FR-021,FR-023 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_history_service.py` tests `list_history` returns reverse-chronological entries with cursor, `get_detail` returns full entry or 404; uses mocked repository.
 
-- **T-054** [backend] **HistoryService** — cluster: US-1 | deps: T-053,T-047 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
+- [x] **T-054** [backend] **HistoryService** — cluster: US-1 | deps: T-053,T-047 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
   Done when: `backend/src/app/services/history_service.py` implements `list_history(user_id, cursor, limit)` and `get_detail(query_id, user_id)`; all T-053 tests pass.
 
 ### Backend routers
