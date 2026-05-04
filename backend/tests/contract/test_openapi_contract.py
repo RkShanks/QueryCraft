@@ -3,16 +3,17 @@
 Validates that FastAPI responses match the OpenAPI 3.1 contract.
 """
 
-import schemathesis
 from pathlib import Path
+
+import pytest
+import schemathesis
+
+from app.main import create_app
 
 # Load the OpenAPI schema from the running app
 # In CI, this will be run against a live test server
 schema_path = Path(__file__).resolve().parents[3] / "specs/001-core-text-to-sql/contracts/openapi.yaml"
 
-import schemathesis
-import pytest
-from app.main import create_app
 
 @pytest.fixture
 def api_schema():
