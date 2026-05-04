@@ -28,6 +28,7 @@ export const ResultTable: React.FC<ResultTableProps> = ({
     cell: (info) => <span className="text-gray-700">{String(info.getValue())}</span>,
   })), [result.columns]);
   
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table v8 + React Compiler false-positive; remove when TanStack Table v9 ships
   const table = useReactTable({
     data: result.rows as unknown[][],
     columns,
