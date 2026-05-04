@@ -301,10 +301,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-067** [frontend] **SignInForm + SignInPage** — cluster: US-1 | deps: T-066,T-063,T-022,T-023 | FR-001,FR-002,SC-009 | parallel: ✗ | effort: M
   Done when: `frontend/src/components/SignInForm.tsx` renders a RHF+Zod form with i18n strings, `frontend/src/pages/SignInPage.tsx` wraps SignInForm with layout; all T-066 tests pass and `npm run lint` shows no inline string violations.
 
-- **T-068** [test] **QueryInput component tests** — cluster: US-1 | deps: T-025,T-065 | FR-006,FR-007,SC-009 | parallel: ✓ | effort: S
+- [x] **T-068** [test] **QueryInput component tests** — cluster: US-1 | deps: T-025,T-065 | FR-006,FR-007,SC-009 | parallel: ✓ | effort: S
   Done when: `frontend/tests/unit/QueryInput.test.tsx` tests textarea renders with i18n placeholder, enforces 2000-char limit with live counter, disables submit on empty/whitespace, disables submit while processing, and calls submitQuestion on enter/click; uses RTL.
 
-- **T-069** [frontend] **QueryInput component** — cluster: US-1 | deps: T-068,T-065,T-022 | FR-006,FR-007,FR-030,SC-009 | parallel: ✗ | effort: S
+- [x] **T-069** [frontend] **QueryInput component** — cluster: US-1 | deps: T-068,T-065,T-022 | FR-006,FR-007,FR-030,SC-009 | parallel: ✗ | effort: S
   Done when: `frontend/src/components/QueryInput.tsx` renders a chat-style input with char counter, submit button, and processing lock; all i18n keys from `en.json`; all T-068 tests pass.
 
 - **T-070** [test] **ResultTable + QueryActions component tests** — cluster: US-1 | deps: T-025,T-065 | FR-014,FR-015,FR-029,SC-009 | parallel: ✓ | effort: S
