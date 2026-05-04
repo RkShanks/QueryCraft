@@ -248,7 +248,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-052** [backend] **QueryService** — cluster: US-1 | deps: T-050,T-051,T-047,T-014 | FR-006,FR-007,FR-008,FR-010,FR-012,FR-013,FR-014,FR-016,FR-020,FR-027,FR-030 | parallel: ✗ | effort: L
   Done when: `backend/src/app/services/query_service.py` implements `submit_question`, `accept_query` with Redis mutex (FR-030), ephemeral attempt storage, evaluator gate, source-DB execution with timeout, and accept-only persistence; all T-050 and T-051 tests pass.
 
-- **T-053** [test] **HistoryService tests** — cluster: US-1 | deps: T-017 | FR-021,FR-023 | parallel: ✓ | effort: S
+- [x] **T-053** [test] **HistoryService tests** — cluster: US-1 | deps: T-017 | FR-021,FR-023 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_history_service.py` tests `list_history` returns reverse-chronological entries with cursor, `get_detail` returns full entry or 404; uses mocked repository.
 
 - **T-054** [backend] **HistoryService** — cluster: US-1 | deps: T-053,T-047 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
