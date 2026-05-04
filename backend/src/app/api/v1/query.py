@@ -1,15 +1,15 @@
 """Query router — submit, accept, reject, regenerate."""
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
-from pydantic import ValidationError
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.validation import validate_body
 from app.core.dependencies import get_db, get_redis
 from app.evaluator.pipeline import Evaluator
 from app.llm.stub import StubLLM
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
-from app.schemas.query import QueryResult, SubmitQuestionRequest
+from app.schemas.query import AcceptQueryRequest, QueryResult, SubmitQuestionRequest
 from app.services.query_service import QueryService
 from app.source_db.executor import SourceDBExecutor
 
@@ -32,7 +32,7 @@ def _get_query_service(
 @router.post("/submit", response_model=QueryResult)
 async def submit_question(
     request: Request,
-    payload: dict = Body(...),  # noqa: B008
+    req: SubmitQuestionRequest = Depends(validate_body(SubmitQuestionRequest)),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
     """POST /query/submit — ask a question."""
@@ -42,13 +42,6 @@ async def submit_question(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
-    try:
-        req = SubmitQuestionRequest.model_validate(payload)
-    except ValidationError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "validation", "message_key": "error.validation.generic"},
-        ) from None
     stripped = req.question.strip()
     if not stripped:
         raise HTTPException(
@@ -70,7 +63,7 @@ async def submit_question(
 @router.post("/accept", status_code=status.HTTP_201_CREATED)
 async def accept_query(
     request: Request,
-    payload: dict = Body(...),  # noqa: B008
+    req: AcceptQueryRequest = Depends(validate_body(AcceptQueryRequest)),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
     """POST /query/accept — persist the current result."""
@@ -80,12 +73,7 @@ async def accept_query(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
-    attempt_id = payload.get("attempt_id", "")
-    if not attempt_id or not isinstance(attempt_id, str):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "validation", "message_key": "error.validation.generic"},
-        )
+    attempt_id = req.attempt_id
     # Use the first database_connection as the target (Phase 1 has exactly one)
     from sqlalchemy import text
 
