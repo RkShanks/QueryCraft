@@ -291,7 +291,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
   Done when: `frontend/tests/unit/useQuerySubmit.test.tsx` tests submit mutation returns QueryResult, accept mutation returns AcceptedQuerySummary, handles 422 evaluator rejection, handles 409 concurrent error, and disables submit while processing (FR-030); uses MSW server.
 
 - [x] **T-065** [frontend] **useQuerySubmit hook** — cluster: US-1 | deps: T-064,T-024,T-061 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-030 | parallel: ✗ | effort: M
-  Done when: `frontend/src/hooks/useQuery.ts` implements `useQuerySubmit()` returning `{ submitQuestion, acceptQuery, isSubmitting, result, error }` with submit-lock state; all T-064 tests pass.
+  Done when: `frontend/src/hooks/useQuerySubmit.ts` implements `useSubmitQuestion()`, `useAcceptQuery()`, `useHistory()` returning TanStack Query mutations/queries; all T-064 tests pass. US-2 exports (useRejectQuery, useRegenerateQuery) removed. Hook returns strict QueryResult on submit.
 
 ### Frontend components
 
@@ -308,16 +308,16 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
   Done when: `frontend/src/components/QueryInput.tsx` renders a chat-style input with char counter, submit button, and processing lock; all i18n keys from `en.json`; all T-068 tests pass.
 
 - [x] **T-070** [test] **ResultTable + QueryActions component tests** — cluster: US-1 | deps: T-025,T-065 | FR-014,FR-015,FR-029,SC-009 | parallel: ✓ | effort: S
-  Done when: `frontend/tests/unit/ResultTable.test.tsx` tests TanStack Table renders columns/rows from QueryResult, shows "no results" message on zero rows (FR-029), displays generated SQL, and renders Accept/Reject/Regenerate buttons with i18n labels; uses RTL.
+  Done when: `frontend/tests/unit/ResultTable.test.tsx` tests TanStack Table renders columns/rows from QueryResult, shows "no results" message on zero rows (FR-029), displays generated SQL, and renders Accept button with i18n label; uses RTL. US-2 assertions (Reject/Regenerate) removed.
 
 - [x] **T-071** [frontend] **ResultTable + SqlDisplay + QueryActions** — cluster: US-1 | deps: T-070,T-065,T-022 | FR-014,FR-015,FR-029,SC-009 | parallel: ✗ | effort: M
-  Done when: `frontend/src/components/ResultTable.tsx` renders TanStack Table with pagination, `SqlDisplay.tsx` shows syntax-highlighted SQL, `QueryActions.tsx` renders Accept/Reject/Regenerate; all T-070 tests pass.
+  Done when: `frontend/src/components/ResultTable.tsx` renders TanStack Table with pagination, `SqlDisplay.tsx` shows syntax-highlighted SQL, `QueryActions.tsx` renders Accept only; all T-070 tests pass.
 
 - [x] **T-072** [test] **AskQuestionPage integration tests** — cluster: US-1 | deps: T-025,T-069,T-071 | FR-006,FR-014,SC-001 | parallel: ✓ | effort: S
-  Done when: `frontend/tests/unit/AskQuestionPage.test.tsx` tests AskQuestionPage renders QueryInput, submitting a question shows ResultTable with QueryActions, accepting shows confirmation toast, and evaluator rejection shows error message; uses MSW + RTL.
+  Done when: `frontend/tests/unit/AskQuestionPage.test.tsx` tests AskQuestionPage renders QueryInput, submitting a question shows ResultTable with QueryActions, accepting shows confirmation alert, and evaluator rejection shows error message; uses MSW + RTL. US-2 tests (reject/regenerate/refine) removed.
 
 - [x] **T-073** [frontend] **AskQuestionPage assembly** — cluster: US-1 | deps: T-072,T-069,T-071,T-023 | FR-006,FR-014,FR-015,FR-016,SC-009 | parallel: ✗ | effort: M
-  Done when: `frontend/src/pages/AskQuestionPage.tsx` composes QueryInput, ResultTable, SqlDisplay, QueryActions into the main query interface with Radix toast for confirmations/errors; all T-072 tests pass.
+  Done when: `frontend/src/pages/AskQuestionPage.tsx` composes QueryInput, ResultTable, SqlDisplay, QueryActions into the main query interface with inline alert for confirmations/errors; all T-072 tests pass.
 
 ### Playwright e2e — US-1 independent test criterion
 
