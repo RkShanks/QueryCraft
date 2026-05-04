@@ -27,17 +27,17 @@
 
 ### Backend (without Docker)
 
+uv is used for backend dependency management — it's faster than pip and produces a deterministic `uv.lock` committed to the repo.
+
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync --all-extras
 
 # Run migrations
-alembic upgrade head
+uv run alembic upgrade head
 
 # Start dev server
-uvicorn src.app.main:app --reload --port 8000
+uv run uvicorn app.main:create_app --factory --reload --port 8000
 ```
 
 ### Frontend (without Docker)
@@ -57,13 +57,13 @@ npm run dev
 
 ```bash
 # Backend unit tests
-cd backend && pytest tests/unit/ -v
+cd backend && uv run pytest tests/unit/ -v
 
 # Backend integration tests (requires Docker services)
-cd backend && pytest tests/integration/ -v
+cd backend && uv run pytest tests/integration/ -v
 
 # Backend contract tests
-cd backend && pytest tests/contract/ -v
+cd backend && uv run pytest tests/contract/ -v
 
 # Frontend unit tests
 cd frontend && npm test
@@ -78,7 +78,7 @@ After modifying any FastAPI route or schema:
 
 ```bash
 # Export OpenAPI spec
-cd backend && python -c "from app.main import app; import json; print(json.dumps(app.openapi()))" > ../docs/api/openapi.json
+cd backend && uv run python -c "from app.main import app; import json; print(json.dumps(app.openapi()))" > ../docs/api/openapi.json
 
 # Regenerate frontend client
 cd frontend && npm run generate-api
