@@ -295,10 +295,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Frontend components
 
-- **T-066** [test] **SignInForm component tests** — cluster: US-1 | deps: T-025,T-063 | FR-001,FR-002 | parallel: ✓ | effort: S
+- [x] **T-066** [test] **SignInForm component tests** — cluster: US-1 | deps: T-025,T-063 | FR-001,FR-002 | parallel: ✓ | effort: S
   Done when: `frontend/tests/unit/SignInForm.test.tsx` tests form renders with i18n keys, validates empty fields, calls signIn on submit, shows error on 401, and redirects on success; uses RTL + MSW.
 
-- **T-067** [frontend] **SignInForm + SignInPage** — cluster: US-1 | deps: T-066,T-063,T-022,T-023 | FR-001,FR-002,SC-009 | parallel: ✗ | effort: M
+- [x] **T-067** [frontend] **SignInForm + SignInPage** — cluster: US-1 | deps: T-066,T-063,T-022,T-023 | FR-001,FR-002,SC-009 | parallel: ✗ | effort: M
   Done when: `frontend/src/components/SignInForm.tsx` renders a RHF+Zod form with i18n strings, `frontend/src/pages/SignInPage.tsx` wraps SignInForm with layout; all T-066 tests pass and `npm run lint` shows no inline string violations.
 
 - **T-068** [test] **QueryInput component tests** — cluster: US-1 | deps: T-025,T-065 | FR-006,FR-007,SC-009 | parallel: ✓ | effort: S
