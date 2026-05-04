@@ -225,7 +225,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-045** [backend] **UserRepository** — cluster: US-1 | deps: T-044,T-043 | FR-001 | parallel: ✗ | effort: S
   Done when: `backend/src/app/repositories/user_repository.py` implements `get_by_username(username) → User | None`; all T-044 tests pass.
 
-- **T-046** [test] **AcceptedQueryRepository tests** — cluster: US-1 | deps: T-017 | FR-016,FR-021 | parallel: ✓ | effort: S
+- [x] **T-046** [test] **AcceptedQueryRepository tests** — cluster: US-1 | deps: T-017 | FR-016,FR-021 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_accepted_query_repository.py` tests `create`, `list_by_user` (reverse-chrono, cursor pagination), and `get_by_id`; verifies FK constraints and index usage.
 
 - **T-047** [backend] **AcceptedQueryRepository** — cluster: US-1 | deps: T-046,T-043 | FR-016,FR-021,FR-023 | parallel: ✗ | effort: M
