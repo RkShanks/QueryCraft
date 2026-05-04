@@ -19,7 +19,7 @@ class TestUserRepository:
         user = await repo.get_by_username("admin")
         assert user is not None
         assert user.username == "admin"
-        assert user.display_name == "Admin"
+        assert user.display_name == "Platform Administrator"
         assert user.role == "admin"
 
     @pytest.mark.asyncio
