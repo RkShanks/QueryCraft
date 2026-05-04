@@ -65,13 +65,13 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Alembic + migrations
 
-- **T-003** [backend] **Alembic initialisation** — cluster: Foundation | deps: T-002 | | parallel: ✗ | effort: S
+- [x] **T-003** [backend] **Alembic initialisation** — cluster: Foundation | deps: T-002 | | parallel: ✗ | effort: S
   Done when: `backend/alembic.ini` points to an async-compatible `sqlalchemy.url` placeholder; `backend/alembic/env.py` uses the async engine; `alembic --help` from `backend/` succeeds.
 
-- **T-004** [backend] **Initial schema migration** — cluster: Foundation | deps: T-003 | FR-001,FR-004,FR-016,FR-021,FR-027 | parallel: ✗ | effort: M
+- [x] **T-004** [backend] **Initial schema migration** — cluster: Foundation | deps: T-003 | FR-001,FR-004,FR-016,FR-021,FR-027 | parallel: ✗ | effort: M
   Done when: migration `001_initial_schema.py` creates four tables (`users`, `database_connections`, `accepted_queries`, `app_config`) matching `data-model.md` exactly; reversible (`alembic downgrade -1`); applies against a blank PostgreSQL 16 database.
 
-- **T-005** [backend] **Seed admin user migration** — cluster: Foundation | deps: T-004 | FR-001 | parallel: ✗ | effort: S
+- [x] **T-005** [backend] **Seed admin user migration** — cluster: Foundation | deps: T-004 | FR-001 | parallel: ✗ | effort: S
   Done when: migration `002_seed_admin_user.py` reads `ADMIN_USERNAME`/`ADMIN_DISPLAY_NAME`/`ADMIN_PASSWORD` from env, hashes with Argon2id, upserts into `users` with `role='admin'`; reversible; missing env vars raise a clear error.
 
 ### Backend core modules
@@ -111,7 +111,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Infrastructure
 
-- **T-015** [P] [infra] **Backend Dockerfile** — cluster: Foundation | deps: T-002 | | parallel: ✓ | effort: S
+- [x] **T-015** [P] [infra] **Backend Dockerfile** — cluster: Foundation | deps: T-002 | | parallel: ✓ | effort: S
   Done when: `backend/Dockerfile` uses multi-stage build (builder + runtime on `python:3.12-slim`), runs as non-root `appuser`; `docker build -t querycraft-backend backend/` succeeds.
 
 ### Contract + test harness
