@@ -95,7 +95,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-010** [P] [test] **Session middleware + Origin validation tests** — cluster: Foundation | deps: T-002 | FR-003 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_security.py` tests cookie flags (HttpOnly/Secure/SameSite=Strict), expired session 401, missing Origin 403, invalid Origin 403, valid Origin pass-through, GET bypasses Origin; all fail because `core/security.py` does not yet exist.
 
-- **T-011** [backend] **Session middleware + Origin validator** — cluster: Foundation | deps: T-006,T-007,T-010 | FR-003 | parallel: ✗ | effort: M
+- [x] **T-011** [backend] **Session middleware + Origin validator** — cluster: Foundation | deps: T-006,T-007,T-010 | FR-003 | parallel: ✗ | effort: M
   Done when: `backend/src/app/core/security.py` provides `SessionMiddleware` (Redis-backed, idle timeout, cookie flags) and `OriginValidatorMiddleware` (POST/PUT/PATCH/DELETE Origin check); exports `hash_password`/`verify_password` (Argon2id); all T-010 tests pass.
 
 ### Logging + app factory + Redis
@@ -103,7 +103,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-012** [P] [backend] **Structured logging + OpenTelemetry bootstrap** — cluster: Foundation | deps: T-002 | FR-020 | parallel: ✓ | effort: S
   Done when: `backend/src/app/core/logging.py` configures structlog JSON output with request-correlated context (trace ID, user ID), log-level env var control, and no-op OTel exporter; `setup_logging()` produces structured JSON.
 
-- **T-013** [backend] **FastAPI app factory + lifespan** — cluster: Foundation | deps: T-006,T-007,T-011,T-012 | FR-004 | parallel: ✗ | effort: M
+- [x] **T-013** [backend] **FastAPI app factory + lifespan** — cluster: Foundation | deps: T-006,T-007,T-011,T-012 | FR-004 | parallel: ✗ | effort: M
   Done when: `backend/src/app/main.py` exports `create_app()` that attaches middlewares (session, Origin, CORS), registers lifespan event (upsert `database_connections` row, encrypt password), includes v1 router stubs, calls `setup_logging()`; starts with `uvicorn` when env vars are set.
 
 - [x] **T-014** [P] [backend] **Redis client wiring** — cluster: Foundation | deps: T-007 | | parallel: ✓ | effort: XS
