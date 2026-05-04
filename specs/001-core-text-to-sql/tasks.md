@@ -183,7 +183,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Architectural-invariant tests (Constitution Principles II & III)
 
-- **T-034** [test] **Evaluator gate — no bypass path** — cluster: US-1 | deps: T-017 | SC-002 | parallel: ✓ | effort: S
+- [x] **T-034** [test] **Evaluator gate — no bypass path** — cluster: US-1 | deps: T-017 | SC-002 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_evaluator_gate.py` submits a question with a mock evaluator returning FAIL and asserts the source DB executor is never called.
 
 - **T-035** [test] **Accept-only persistence — reject writes nothing** — cluster: US-1 | deps: T-017 | SC-012 | parallel: ✓ | effort: S
