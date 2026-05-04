@@ -287,10 +287,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-063** [frontend] **useAuth hook** — cluster: US-1 | deps: T-062,T-024,T-061 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: S
   Done when: `frontend/src/hooks/useAuth.ts` implements `useAuth()` returning `{ user, isLoading, signIn, signOut }` using TanStack Query mutations backed by generated API client; all T-062 tests pass.
 
-- **T-064** [test] **useQuerySubmit hook tests** — cluster: US-1 | deps: T-025,T-061 | FR-006,FR-007,FR-014,FR-016 | parallel: ✓ | effort: S
+- [x] **T-064** [test] **useQuerySubmit hook tests** — cluster: US-1 | deps: T-025,T-061 | FR-006,FR-007,FR-014,FR-016 | parallel: ✓ | effort: S
   Done when: `frontend/tests/unit/useQuerySubmit.test.tsx` tests submit mutation returns QueryResult, accept mutation returns AcceptedQuerySummary, handles 422 evaluator rejection, handles 409 concurrent error, and disables submit while processing (FR-030); uses MSW server.
 
-- **T-065** [frontend] **useQuerySubmit hook** — cluster: US-1 | deps: T-064,T-024,T-061 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-030 | parallel: ✗ | effort: M
+- [x] **T-065** [frontend] **useQuerySubmit hook** — cluster: US-1 | deps: T-064,T-024,T-061 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-030 | parallel: ✗ | effort: M
   Done when: `frontend/src/hooks/useQuery.ts` implements `useQuerySubmit()` returning `{ submitQuestion, acceptQuery, isSubmitting, result, error }` with submit-lock state; all T-064 tests pass.
 
 ### Frontend components
