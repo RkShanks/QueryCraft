@@ -175,7 +175,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-031** [test] **Session cookie security flags** — cluster: US-1 | deps: T-011 | FR-003,SC-001 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_session_cookie_flags.py` asserts sign-in response sets `HttpOnly`, `Secure`, `SameSite=Strict` on the `session_id` cookie and tests fail if any flag is missing.
 
-- **T-032** [test] **Origin header validation enforcement** — cluster: US-1 | deps: T-011 | FR-003 | parallel: ✓ | effort: S
+- [x] **T-032** [test] **Origin header validation enforcement** — cluster: US-1 | deps: T-011 | FR-003 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_origin_enforcement.py` asserts POST with missing/invalid Origin returns 403 and GET bypasses the check; tests pass against the running middleware.
 
 - **T-033** [test] **Argon2id password verification** — cluster: US-1 | deps: T-011 | FR-001 | parallel: ✓ | effort: S
