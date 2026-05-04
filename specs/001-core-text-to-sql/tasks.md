@@ -172,106 +172,106 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Architectural-invariant tests (Constitution Principle I)
 
-- **T-031** [test] **Session cookie security flags** — cluster: US-1 | deps: T-011 | FR-003,SC-001 | parallel: ✓ | effort: S
+- [x] **T-031** [test] **Session cookie security flags** — cluster: US-1 | deps: T-011 | FR-003,SC-001 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_session_cookie_flags.py` asserts sign-in response sets `HttpOnly`, `Secure`, `SameSite=Strict` on the `session_id` cookie and tests fail if any flag is missing.
 
-- **T-032** [test] **Origin header validation enforcement** — cluster: US-1 | deps: T-011 | FR-003 | parallel: ✓ | effort: S
+- [x] **T-032** [test] **Origin header validation enforcement** — cluster: US-1 | deps: T-011 | FR-003 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_origin_enforcement.py` asserts POST with missing/invalid Origin returns 403 and GET bypasses the check; tests pass against the running middleware.
 
-- **T-033** [test] **Argon2id password verification** — cluster: US-1 | deps: T-011 | FR-001 | parallel: ✓ | effort: S
+- [x] **T-033** [test] **Argon2id password verification** — cluster: US-1 | deps: T-011 | FR-001 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_argon2_verification.py` asserts `verify_password` returns True for correct password, False for wrong password, and the hash uses Argon2id variant.
 
 ### Architectural-invariant tests (Constitution Principles II & III)
 
-- **T-034** [test] **Evaluator gate — no bypass path** — cluster: US-1 | deps: T-017 | SC-002 | parallel: ✓ | effort: S
+- [x] **T-034** [test] **Evaluator gate — no bypass path** — cluster: US-1 | deps: T-017 | SC-002 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_evaluator_gate.py` submits a question with a mock evaluator returning FAIL and asserts the source DB executor is never called.
 
-- **T-035** [test] **Accept-only persistence — reject writes nothing** — cluster: US-1 | deps: T-017 | SC-012 | parallel: ✓ | effort: S
+- [x] **T-035** [test] **Accept-only persistence — reject writes nothing** — cluster: US-1 | deps: T-017 | SC-012 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_accept_only_persistence.py` calls reject and regenerate handlers and asserts zero rows exist in `accepted_queries`.
 
 ### Backend Pydantic schemas
 
-- **T-036** [test] **Auth schema validation** — cluster: US-1 | deps: T-002 | FR-001 | parallel: ✓ | effort: XS
+- [x] **T-036** [test] **Auth schema validation** — cluster: US-1 | deps: T-002 | FR-001 | parallel: ✓ | effort: XS
   Done when: `backend/tests/unit/test_schemas_auth.py` validates `SignInRequest` rejects empty username, empty password, and username >64 chars; `UserProfile` round-trips all required fields.
 
-- **T-037** [backend] **Auth Pydantic schemas** — cluster: US-1 | deps: T-036 | FR-001 | parallel: ✗ | effort: S
+- [x] **T-037** [backend] **Auth Pydantic schemas** — cluster: US-1 | deps: T-036 | FR-001 | parallel: ✗ | effort: S
   Done when: `backend/src/app/schemas/auth.py` defines `SignInRequest` and `UserProfile` matching openapi.yaml `SignInRequest` and `UserProfile` schemas; all T-036 tests pass.
 
-- **T-038** [test] **Query schema validation** — cluster: US-1 | deps: T-002 | FR-007,FR-014,FR-015 | parallel: ✓ | effort: S
+- [x] **T-038** [test] **Query schema validation** — cluster: US-1 | deps: T-002 | FR-007,FR-014,FR-015 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_schemas_query.py` validates `SubmitQuestionRequest` rejects empty/whitespace/over-2000-char questions; `QueryResult` enforces `kind="result"` discriminator and required fields; `EvaluatorRejection` and `RefinePrompt` round-trip correctly.
 
-- **T-039** [backend] **Query Pydantic schemas** — cluster: US-1 | deps: T-038 | FR-007,FR-014,FR-015,FR-028 | parallel: ✗ | effort: S
+- [x] **T-039** [backend] **Query Pydantic schemas** — cluster: US-1 | deps: T-038 | FR-007,FR-014,FR-015,FR-028 | parallel: ✗ | effort: S
   Done when: `backend/src/app/schemas/query.py` defines `SubmitQuestionRequest`, `QueryResult`, `ColumnMeta`, `EvaluatorRejection`, `Violation`, `AcceptQueryRequest`, `RejectQueryRequest`, `RefinePrompt`, `AcceptedQuerySummary` matching openapi.yaml; all T-038 tests pass.
 
-- **T-040** [test] **History schema validation** — cluster: US-1 | deps: T-002 | FR-021,FR-023 | parallel: ✓ | effort: XS
+- [x] **T-040** [test] **History schema validation** — cluster: US-1 | deps: T-002 | FR-021,FR-023 | parallel: ✓ | effort: XS
   Done when: `backend/tests/unit/test_schemas_history.py` validates `HistoryListResponse` contains items list and nullable cursor; `AcceptedQueryDetail` includes all required fields per openapi.yaml.
 
-- **T-041** [backend] **History Pydantic schemas** — cluster: US-1 | deps: T-040 | FR-021,FR-023 | parallel: ✗ | effort: XS
+- [x] **T-041** [backend] **History Pydantic schemas** — cluster: US-1 | deps: T-040 | FR-021,FR-023 | parallel: ✗ | effort: XS
   Done when: `backend/src/app/schemas/history.py` defines `HistoryListResponse` and `AcceptedQueryDetail` matching openapi.yaml; all T-040 tests pass.
 
 ### Backend ORM models
 
-- **T-042** [test] **ORM model unit tests** — cluster: US-1 | deps: T-006 | FR-001,FR-004,FR-016 | parallel: ✓ | effort: S
+- [x] **T-042** [test] **ORM model unit tests** — cluster: US-1 | deps: T-006 | FR-001,FR-004,FR-016 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_orm_models.py` asserts `User`, `AcceptedQuery`, `DatabaseConnection`, `AppConfig` models can be instantiated, have correct table names, and column types match data-model.md.
 
-- **T-043** [backend] **ORM models** — cluster: US-1 | deps: T-042,T-006 | FR-001,FR-004,FR-016,FR-027 | parallel: ✗ | effort: M
+- [x] **T-043** [backend] **ORM models** — cluster: US-1 | deps: T-042,T-006 | FR-001,FR-004,FR-016,FR-027 | parallel: ✗ | effort: M
   Done when: `backend/src/app/db/models/user.py`, `accepted_query.py`, `database_connection.py`, `app_config.py` define SQLAlchemy 2.0 mapped classes matching data-model.md exactly; all T-042 tests pass.
 
 ### Backend repositories
 
-- **T-044** [test] **UserRepository tests** — cluster: US-1 | deps: T-017 | FR-001 | parallel: ✓ | effort: S
+- [x] **T-044** [test] **UserRepository tests** — cluster: US-1 | deps: T-017 | FR-001 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_user_repository.py` tests `get_by_username` returns the seeded admin user and returns None for unknown username, using testcontainers PostgreSQL.
 
-- **T-045** [backend] **UserRepository** — cluster: US-1 | deps: T-044,T-043 | FR-001 | parallel: ✗ | effort: S
+- [x] **T-045** [backend] **UserRepository** — cluster: US-1 | deps: T-044,T-043 | FR-001 | parallel: ✗ | effort: S
   Done when: `backend/src/app/repositories/user_repository.py` implements `get_by_username(username) → User | None`; all T-044 tests pass.
 
-- **T-046** [test] **AcceptedQueryRepository tests** — cluster: US-1 | deps: T-017 | FR-016,FR-021 | parallel: ✓ | effort: S
+- [x] **T-046** [test] **AcceptedQueryRepository tests** — cluster: US-1 | deps: T-017 | FR-016,FR-021 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_accepted_query_repository.py` tests `create`, `list_by_user` (reverse-chrono, cursor pagination), and `get_by_id`; verifies FK constraints and index usage.
 
-- **T-047** [backend] **AcceptedQueryRepository** — cluster: US-1 | deps: T-046,T-043 | FR-016,FR-021,FR-023 | parallel: ✗ | effort: M
+- [x] **T-047** [backend] **AcceptedQueryRepository** — cluster: US-1 | deps: T-046,T-043 | FR-016,FR-021,FR-023 | parallel: ✗ | effort: M
   Done when: `backend/src/app/repositories/accepted_query_repository.py` implements `create`, `list_by_user(user_id, cursor, limit) → (list, next_cursor)`, `get_by_id(query_id, user_id) → AcceptedQuery | None`; all T-046 tests pass.
 
 ### Backend services
 
-- **T-048** [test] **AuthService tests** — cluster: US-1 | deps: T-017 | FR-001,FR-002,FR-003 | parallel: ✓ | effort: S
+- [x] **T-048** [test] **AuthService tests** — cluster: US-1 | deps: T-017 | FR-001,FR-002,FR-003 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_auth_service.py` tests sign-in with correct/incorrect credentials, session creation in Redis, sign-out deletes session, and `get_me` returns profile; uses mocked repository and Redis.
 
-- **T-049** [backend] **AuthService** — cluster: US-1 | deps: T-048,T-045,T-014 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: M
+- [x] **T-049** [backend] **AuthService** — cluster: US-1 | deps: T-048,T-045,T-014 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: M
   Done when: `backend/src/app/services/auth_service.py` implements `sign_in(username, password) → (UserProfile, session_id)`, `sign_out(session_id)`, `get_me(session_id) → UserProfile`; all T-048 tests pass.
 
-- **T-050** [test] **QueryService submit tests** — cluster: US-1 | deps: T-017 | FR-006,FR-007,FR-008,FR-010,FR-013,FR-014,FR-030,SC-001,SC-002 | parallel: ✓ | effort: M
+- [x] **T-050** [test] **QueryService submit tests** — cluster: US-1 | deps: T-017 | FR-006,FR-007,FR-008,FR-010,FR-013,FR-014,FR-030,SC-001,SC-002 | parallel: ✓ | effort: M
   Done when: `backend/tests/unit/test_query_service_submit.py` tests: (1) happy path returns QueryResult with columns/rows, (2) evaluator failure returns EvaluatorRejection, (3) LLM error returns 502 error, (4) source-DB timeout returns 504, (5) concurrent submission returns 409, (6) attempt stored in Redis with session ownership; uses mocked LLM, evaluator, and source-DB.
 
-- **T-051** [test] **QueryService accept tests** — cluster: US-1 | deps: T-017 | FR-016,FR-020,SC-012 | parallel: ✓ | effort: S
+- [x] **T-051** [test] **QueryService accept tests** — cluster: US-1 | deps: T-017 | FR-016,FR-020,SC-012 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_query_service_accept.py` tests: (1) accept persists to AcceptedQueryRepository, (2) accept deletes Redis attempt, (3) accept with expired attempt returns 400, (4) accept with wrong session returns 400.
 
-- **T-052** [backend] **QueryService** — cluster: US-1 | deps: T-050,T-051,T-047,T-014 | FR-006,FR-007,FR-008,FR-010,FR-012,FR-013,FR-014,FR-016,FR-020,FR-027,FR-030 | parallel: ✗ | effort: L
+- [x] **T-052** [backend] **QueryService** — cluster: US-1 | deps: T-050,T-051,T-047,T-014 | FR-006,FR-007,FR-008,FR-010,FR-012,FR-013,FR-014,FR-016,FR-020,FR-027,FR-030 | parallel: ✗ | effort: L
   Done when: `backend/src/app/services/query_service.py` implements `submit_question`, `accept_query` with Redis mutex (FR-030), ephemeral attempt storage, evaluator gate, source-DB execution with timeout, and accept-only persistence; all T-050 and T-051 tests pass.
 
-- **T-053** [test] **HistoryService tests** — cluster: US-1 | deps: T-017 | FR-021,FR-023 | parallel: ✓ | effort: S
+- [x] **T-053** [test] **HistoryService tests** — cluster: US-1 | deps: T-017 | FR-021,FR-023 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_history_service.py` tests `list_history` returns reverse-chronological entries with cursor, `get_detail` returns full entry or 404; uses mocked repository.
 
-- **T-054** [backend] **HistoryService** — cluster: US-1 | deps: T-053,T-047 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
+- [x] **T-054** [backend] **HistoryService** — cluster: US-1 | deps: T-053,T-047 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
   Done when: `backend/src/app/services/history_service.py` implements `list_history(user_id, cursor, limit)` and `get_detail(query_id, user_id)`; all T-053 tests pass.
 
 ### Backend routers
 
-- **T-055** [test] **Auth router integration tests** — cluster: US-1 | deps: T-049,T-013 | FR-001,FR-002,FR-003 | parallel: ✓ | effort: S
+- [x] **T-055** [test] **Auth router integration tests** — cluster: US-1 | deps: T-049,T-013 | FR-001,FR-002,FR-003 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_api_auth.py` tests POST `/auth/sign-in` (200 + cookie, 401 wrong creds, 422 empty fields), POST `/auth/sign-out` (204, 401 unauthenticated), GET `/auth/me` (200 profile, 401 expired); uses ASGI transport.
 
-- **T-056** [backend] **Auth router** — cluster: US-1 | deps: T-055,T-049,T-037 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: S
+- [x] **T-056** [backend] **Auth router** — cluster: US-1 | deps: T-055,T-049,T-037 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: S
   Done when: `backend/src/app/api/v1/auth.py` exposes `POST /auth/sign-in`, `POST /auth/sign-out`, `GET /auth/me` matching openapi.yaml; all T-055 tests pass.
 
-- **T-057** [test] **Query router integration tests** — cluster: US-1 | deps: T-052,T-013 | FR-006,FR-007,FR-014,FR-016,SC-001,SC-002 | parallel: ✓ | effort: M
+- [x] **T-057** [test] **Query router integration tests** — cluster: US-1 | deps: T-052,T-013 | FR-006,FR-007,FR-014,FR-016,SC-001,SC-002 | parallel: ✓ | effort: M
   Done when: `backend/tests/integration/test_api_query.py` tests POST `/query/submit` (200 QueryResult, 400 validation, 401 unauth, 409 concurrent, 422 evaluator rejection, 502 LLM down, 504 timeout), POST `/query/accept` (201 persisted, 400 expired/invalid); uses authenticated_client and mock_llm fixtures.
 
-- **T-058** [backend] **Query router** — cluster: US-1 | deps: T-057,T-052,T-039 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-028 | parallel: ✗ | effort: M
+- [x] **T-058** [backend] **Query router** — cluster: US-1 | deps: T-057,T-052,T-039 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-028 | parallel: ✗ | effort: M
   Done when: `backend/src/app/api/v1/query.py` exposes `POST /query/submit` and `POST /query/accept` matching openapi.yaml response schemas and status codes; all T-057 tests pass.
 
-- **T-059** [test] **History router integration tests** — cluster: US-1 | deps: T-054,T-013 | FR-021,FR-023 | parallel: ✓ | effort: S
+- [x] **T-059** [test] **History router integration tests** — cluster: US-1 | deps: T-054,T-013 | FR-021,FR-023 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_api_history.py` tests GET `/history` (200 list, cursor pagination, 401 unauth), GET `/history/{id}` (200 detail, 404 not found); uses authenticated_client with pre-seeded accepted queries.
 
-- **T-060** [backend] **History router** — cluster: US-1 | deps: T-059,T-054,T-041 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
+- [x] **T-060** [backend] **History router** — cluster: US-1 | deps: T-059,T-054,T-041 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
   Done when: `backend/src/app/api/v1/history.py` exposes `GET /history` and `GET /history/{id}` matching openapi.yaml; all T-059 tests pass.
 
 ### Frontend: OpenAPI client regeneration
@@ -789,6 +789,19 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 - **T-194** [test] **Security-review checklist** — cluster: Polish | deps: T-058,T-115,T-128,T-144 | | parallel: ✗ | effort: M
   Done when: `docs/security-review.md` documents and `backend/tests/security/test_security_checklist.py` verifies: (1) Argon2id params ≥ OWASP minimums, (2) session cookie flags HttpOnly+Secure+SameSite=Strict, (3) Origin allow-list enforced on POST/PATCH/DELETE, (4) AES-256-GCM encryption of source-DB credentials at rest, (5) source-DB role is read-only, (6) no credentials in log output, (7) no PII in OTel spans, (8) no stack traces in 5xx responses; all 8 assertions pass.
+
+### Performance debt
+
+- **T-191b** [backend] **Replace per-request Redis instantiation with request-scoped pool tied to event loop** — cluster: Polish | deps: — | | parallel: ✓ | effort: S
+  **Why:** Currently `SessionMiddleware._get_redis()` creates a fresh `Redis.from_url()` per request because schemathesis's per-example event loops invalidate cached connections. This adds ~1ms/request connection-setup overhead. For KSA Phase 1 traffic (100–1000 users) this is acceptable, but it is genuine perf debt.
+  **Done when:** `backend/src/app/core/security.py` uses a `redis.asyncio.ConnectionPool` scoped to the active request's event loop, or uses a per-worker pool with proper loop-attachment handling; existing event-loop safety tests still pass; benchmark shows reduced p99 session-cookie verify latency vs current implementation.
+
+- **T-191c** [backend] **Reconcile dual default on `accepted_queries.accepted_at`** — cluster: Polish | deps: — | | parallel: ✓ | effort: XS
+  **Why:** During US-1 we added `default=lambda: datetime.now(UTC)` Python-side to fix a flaky test (PostgreSQL's `now()` returns transaction start time, so multiple inserts in the same db_session got identical timestamps). The original `server_default=text("now()")` was kept as a fallback for raw SQL inserts. Two sources of truth for the same column is fragile and confusing.
+  **Done when:** `backend/src/app/db/models/accepted_query.py` uses a single authoritative default for `accepted_at`. Pick one of:
+  (a) drop `server_default` and rely on Python-side default since all inserts go through SQLAlchemy ORM, OR
+  (b) drop the Python-side default and use `default=func.now()` so SQLAlchemy emits the same `now()` call to PostgreSQL but flushes per-row, ensuring per-row precision.
+  Existing flake-resistance test still passes; no regression in coverage.
 
 ---
 
