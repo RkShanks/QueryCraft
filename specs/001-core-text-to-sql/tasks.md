@@ -76,15 +76,15 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Backend core modules
 
-- **T-006** [backend] **Async engine + session factory** — cluster: Foundation | deps: T-002 | | parallel: ✗ | effort: S
+- [x] **T-006** [backend] **Async engine + session factory** — cluster: Foundation | deps: T-002 | | parallel: ✗ | effort: S
   Done when: `backend/src/app/db/base.py` exports `async_engine`, `async_session_factory`, and `get_db` async generator for FastAPI `Depends()`; uses SQLAlchemy 2.0 async with asyncpg; pool params configurable via pydantic-settings.
 
-- **T-007** [P] [backend] **Pydantic-settings config module** — cluster: Foundation | deps: T-002 | FR-003,FR-004,FR-007,FR-009,FR-012 | parallel: ✓ | effort: M
+- [x] **T-007** [P] [backend] **Pydantic-settings config module** — cluster: Foundation | deps: T-002 | FR-003,FR-004,FR-007,FR-009,FR-012 | parallel: ✓ | effort: M
   Done when: `backend/src/app/core/config.py` defines `Settings(BaseSettings)` loading all env vars from plan.md (`DATABASE_URL`, `REDIS_URL`, `PLATFORM_ENCRYPTION_KEY`, `ALLOWED_ORIGINS`, `LLM_PROVIDER`, all `LLM_API_KEY_*`, `LLM_BASE_URL_OLLAMA`, `SOURCE_DB_*`, `ADMIN_*`, `QUERY_TIMEOUT_SECONDS`, `MAX_QUESTION_LENGTH`, `SESSION_IDLE_TIMEOUT_HOURS`, `SCHEMA_CACHE_TTL_SECONDS`, `MAX_SCHEMA_TOKENS`); validators reject missing mandatory keys; exports `get_settings()` singleton.
 
 ### Encryption helpers
 
-- **T-008** [P] [test] **AES-256-GCM encryption tests** — cluster: Foundation | deps: T-002 | | parallel: ✓ | effort: S
+- [x] **T-008** [P] [test] **AES-256-GCM encryption tests** — cluster: Foundation | deps: T-002 | | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_encryption.py` tests round-trip, ciphertext≠plaintext, wrong-key error, tampered-ciphertext integrity error, and empty-plaintext round-trip; all fail because `core/encryption.py` does not yet exist.
 
 - **T-009** [backend] **AES-256-GCM encrypt/decrypt** — cluster: Foundation | deps: T-008 | | parallel: ✗ | effort: S
@@ -92,7 +92,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Security middleware
 
-- **T-010** [P] [test] **Session middleware + Origin validation tests** — cluster: Foundation | deps: T-002 | FR-003 | parallel: ✓ | effort: S
+- [x] **T-010** [P] [test] **Session middleware + Origin validation tests** — cluster: Foundation | deps: T-002 | FR-003 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_security.py` tests cookie flags (HttpOnly/Secure/SameSite=Strict), expired session 401, missing Origin 403, invalid Origin 403, valid Origin pass-through, GET bypasses Origin; all fail because `core/security.py` does not yet exist.
 
 - **T-011** [backend] **Session middleware + Origin validator** — cluster: Foundation | deps: T-006,T-007,T-010 | FR-003 | parallel: ✗ | effort: M
@@ -100,13 +100,13 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Logging + app factory + Redis
 
-- **T-012** [P] [backend] **Structured logging + OpenTelemetry bootstrap** — cluster: Foundation | deps: T-002 | FR-020 | parallel: ✓ | effort: S
+- [x] **T-012** [P] [backend] **Structured logging + OpenTelemetry bootstrap** — cluster: Foundation | deps: T-002 | FR-020 | parallel: ✓ | effort: S
   Done when: `backend/src/app/core/logging.py` configures structlog JSON output with request-correlated context (trace ID, user ID), log-level env var control, and no-op OTel exporter; `setup_logging()` produces structured JSON.
 
 - **T-013** [backend] **FastAPI app factory + lifespan** — cluster: Foundation | deps: T-006,T-007,T-011,T-012 | FR-004 | parallel: ✗ | effort: M
   Done when: `backend/src/app/main.py` exports `create_app()` that attaches middlewares (session, Origin, CORS), registers lifespan event (upsert `database_connections` row, encrypt password), includes v1 router stubs, calls `setup_logging()`; starts with `uvicorn` when env vars are set.
 
-- **T-014** [P] [backend] **Redis client wiring** — cluster: Foundation | deps: T-007 | | parallel: ✓ | effort: XS
+- [x] **T-014** [P] [backend] **Redis client wiring** — cluster: Foundation | deps: T-007 | | parallel: ✓ | effort: XS
   Done when: `backend/src/app/core/dependencies.py` exports `get_redis` (async generator, `redis.asyncio.Redis` from `REDIS_URL`), re-exports `get_db`, and provides `get_current_user` stub (reads session from request state, returns user or raises 401); Redis verified on startup via lifespan ping.
 
 ### Infrastructure
