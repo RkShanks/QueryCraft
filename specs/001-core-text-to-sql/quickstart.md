@@ -8,84 +8,15 @@
 - Node.js 22.x LTS (for frontend development)
 - Python 3.12 (for backend development outside Docker)
 
-## Local Development Setup
+## Local Dev Bootstrap
 
-### 1. Clone and checkout
+1. `git clone <repo> && cd querycraft && git checkout 001-core-text-to-sql`
+2. `cp .env.example .env` and fill `PLATFORM_ENCRYPTION_KEY` (use the python one-liner from .env.example) and any LLM API key for your chosen provider.
+3. `docker compose -f docker-compose.dev.yml up -d`
+4. Wait for postgres-platform to be healthy, then: `docker compose exec backend alembic upgrade head` (this runs migrations 001 and 002 — admin user is seeded from the .env vars).
+5. Visit http://localhost:5173 and sign in with the admin credentials from .env.
 
-```bash
-git clone <repo-url> QueryCraft
-cd QueryCraft
-git checkout 001-core-text-to-sql
-```
-
-### 2. Configure environment
-
-```bash
-cp backend/.env.example backend/.env
-```
-
-Edit `backend/.env` with:
-
-```env
-# Platform metadata database
-PLATFORM_DB_URL=postgresql+asyncpg://querycraft:querycraft@localhost:5433/querycraft
-
-# Source database (read-only)
-SOURCE_DB_HOST=localhost
-SOURCE_DB_PORT=5434
-SOURCE_DB_NAME=source_analytics
-SOURCE_DB_USER=readonly_user
-SOURCE_DB_PASSWORD=readonly_pass
-
-# Redis
-REDIS_URL=redis://localhost:6379/0
-
-# LLM provider (one of: anthropic, openai, gemini, ollama)
-LLM_PROVIDER=anthropic
-LLM_API_KEY=sk-ant-...
-LLM_BASE_URL=  # Only needed for ollama (e.g., http://localhost:11434)
-
-# Admin account (seeded on first run)
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=changeme123
-
-# Session
-SESSION_SECRET=<random-32-byte-hex>
-SESSION_IDLE_TIMEOUT_HOURS=8
-
-# CSRF (R-007)
-ALLOWED_ORIGINS=["http://localhost:5173"]
-
-# Encryption (R-008)
-PLATFORM_ENCRYPTION_KEY=<base64-encoded-32-byte-key>
-
-# Query
-QUERY_TIMEOUT_SECONDS=30
-MAX_QUESTION_LENGTH=2000
-SCHEMA_CACHE_TTL_SECONDS=300
-MAX_SCHEMA_TOKENS=60000
-```
-
-### 3. Start all services via Docker Compose
-
-```bash
-docker-compose -f docker-compose.dev.yml up -d
-```
-
-This starts:
-- **Platform PostgreSQL** (port 5433) — metadata DB with migrations auto-applied
-- **Source PostgreSQL** (port 5434) — sample analytics DB with seed data
-- **Redis** (port 6379) — session store
-- **Backend** (port 8000) — FastAPI with hot-reload
-- **Frontend** (port 5173) — Vite dev server with HMR
-
-### 4. Access the platform
-
-Open `http://localhost:5173` in your browser. Sign in with:
-- Username: `admin`
-- Password: `changeme123`
-
-### 5. Try the happy path
+### 1. Try the happy path
 
 1. Type: "How many orders were placed last month?"
 2. View the table result and the SQL

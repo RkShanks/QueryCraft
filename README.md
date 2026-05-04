@@ -9,18 +9,10 @@ Enterprise-grade, secure, LLM-agnostic analytics platform for querying PostgreSQ
 - `shared/`: (Placeholder)
 - `specs/`: Project specifications, requirements, and design documents
 
-## Local Development Quickstart
+## Local Dev Bootstrap
 
-1. Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Start all services using Docker Compose:
-   ```bash
-   docker compose -f docker-compose.dev.yml up -d --build
-   ```
-
-3. Access the applications:
-   - Frontend: http://localhost:3000
-   - Backend API Docs: http://localhost:8000/docs
+1. `git clone <repo> && cd querycraft && git checkout 001-core-text-to-sql`
+2. `cp .env.example .env` and fill `PLATFORM_ENCRYPTION_KEY` (use the python one-liner from .env.example) and any LLM API key for your chosen provider.
+3. `docker compose -f docker-compose.dev.yml up -d`
+4. Wait for postgres-platform to be healthy, then: `docker compose exec backend alembic upgrade head` (this runs migrations 001 and 002 — admin user is seeded from the .env vars).
+5. Visit http://localhost:5173 and sign in with the admin credentials from .env.
