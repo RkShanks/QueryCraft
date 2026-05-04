@@ -228,7 +228,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-046** [test] **AcceptedQueryRepository tests** — cluster: US-1 | deps: T-017 | FR-016,FR-021 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_accepted_query_repository.py` tests `create`, `list_by_user` (reverse-chrono, cursor pagination), and `get_by_id`; verifies FK constraints and index usage.
 
-- **T-047** [backend] **AcceptedQueryRepository** — cluster: US-1 | deps: T-046,T-043 | FR-016,FR-021,FR-023 | parallel: ✗ | effort: M
+- [x] **T-047** [backend] **AcceptedQueryRepository** — cluster: US-1 | deps: T-046,T-043 | FR-016,FR-021,FR-023 | parallel: ✗ | effort: M
   Done when: `backend/src/app/repositories/accepted_query_repository.py` implements `create`, `list_by_user(user_id, cursor, limit) → (list, next_cursor)`, `get_by_id(query_id, user_id) → AcceptedQuery | None`; all T-046 tests pass.
 
 ### Backend services
