@@ -281,10 +281,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Frontend hooks
 
-- **T-062** [test] **useAuth hook tests** — cluster: US-1 | deps: T-025,T-061 | FR-001,FR-002 | parallel: ✓ | effort: S
+- [x] **T-062** [test] **useAuth hook tests** — cluster: US-1 | deps: T-025,T-061 | FR-001,FR-002 | parallel: ✓ | effort: S
   Done when: `frontend/tests/unit/useAuth.test.tsx` tests sign-in mutation calls API and sets query cache, sign-out clears cache and redirects, `useAuth` returns user profile when authenticated and null when not; uses MSW server.
 
-- **T-063** [frontend] **useAuth hook** — cluster: US-1 | deps: T-062,T-024,T-061 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: S
+- [x] **T-063** [frontend] **useAuth hook** — cluster: US-1 | deps: T-062,T-024,T-061 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: S
   Done when: `frontend/src/hooks/useAuth.ts` implements `useAuth()` returning `{ user, isLoading, signIn, signOut }` using TanStack Query mutations backed by generated API client; all T-062 tests pass.
 
 - **T-064** [test] **useQuerySubmit hook tests** — cluster: US-1 | deps: T-025,T-061 | FR-006,FR-007,FR-014,FR-016 | parallel: ✓ | effort: S

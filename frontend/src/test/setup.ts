@@ -1,8 +1,18 @@
+import 'whatwg-fetch';
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { beforeAll, afterEach, afterAll } from 'vitest';
+import { server } from './server';
+import { client } from '../api/generated/client.gen';
 
-// Automatic cleanup after each test
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'error' });
+  client.setConfig({ baseUrl: 'http://localhost:3000/api/v1' }); 
+});
+
 afterEach(() => {
   cleanup();
+  server.resetHandlers();
 });
+
+afterAll(() => server.close());
