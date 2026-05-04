@@ -321,7 +321,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Playwright e2e — US-1 independent test criterion
 
-- **T-074** [test] **E2E: sign in → ask → see table → accept → verify in history** — cluster: US-1 | deps: T-028,T-073,T-060 | FR-001,FR-006,FR-014,FR-016,FR-021,SC-001 | parallel: ✗ | effort: L
+- [x] **T-074** [test] **E2E: sign in → ask → see table → accept → verify in history** — cluster: US-1 | deps: T-028,T-073,T-060 | FR-001,FR-006,FR-014,FR-016,FR-021,SC-001 | parallel: ✗ | effort: L
   Done when: `frontend/tests/e2e/auth.spec.ts` and `frontend/tests/e2e/query-flow.spec.ts` run against docker-compose.dev.yml: (1) navigates to `/`, is redirected to `/sign-in`, (2) signs in with admin credentials, (3) types a question and submits, (4) sees a table result with generated SQL and Accept/Reject/Regenerate buttons, (5) clicks Accept and sees confirmation, (6) navigates to `/history` and sees the accepted query; all assertions pass in CI-compatible headless Chromium.
 
 ## Cluster: US-2 (backend) — Reject, Regenerate, Evaluator, LLM Adapters, Source-DB
