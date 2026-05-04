@@ -95,3 +95,6 @@ src/test.py
 .specify
 .agents
 AGENTS.md
+docs
+specs
+research.md
