@@ -211,7 +211,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Backend ORM models
 
-- **T-042** [test] **ORM model unit tests** — cluster: US-1 | deps: T-006 | FR-001,FR-004,FR-016 | parallel: ✓ | effort: S
+- [x] **T-042** [test] **ORM model unit tests** — cluster: US-1 | deps: T-006 | FR-001,FR-004,FR-016 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_orm_models.py` asserts `User`, `AcceptedQuery`, `DatabaseConnection`, `AppConfig` models can be instantiated, have correct table names, and column types match data-model.md.
 
 - **T-043** [backend] **ORM models** — cluster: US-1 | deps: T-042,T-006 | FR-001,FR-004,FR-016,FR-027 | parallel: ✗ | effort: M
