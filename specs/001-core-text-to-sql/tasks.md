@@ -116,53 +116,53 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Contract + test harness
 
-- **T-016** [test] **Schemathesis contract-test harness** — cluster: Foundation | deps: T-013 | SC-002 | parallel: ✗ | effort: S
+- [x] **T-016** [test] **Schemathesis contract-test harness** — cluster: Foundation | deps: T-013 | SC-002 | parallel: ✗ | effort: S
   Done when: `backend/tests/contract/test_openapi_contract.py` loads `contracts/openapi.yaml`, runs schemathesis smoke test against `GET /auth/me` and `POST /auth/sign-in`; passes when backend conforms to contract.
 
-- **T-017** [test] **Pytest shared fixtures** — cluster: Foundation | deps: T-006,T-007,T-013,T-014 | | parallel: ✗ | effort: M
+- [x] **T-017** [test] **Pytest shared fixtures** — cluster: Foundation | deps: T-006,T-007,T-013,T-014 | | parallel: ✗ | effort: M
   Done when: `backend/tests/conftest.py` provides `db_engine`/`db_session` (testcontainers Postgres 16 + Alembic), `redis_client` (testcontainers Redis 7), `authenticated_client` (httpx ASGI + pre-seeded session), `mock_llm` (controllable SQL mock); session-scoped where appropriate.
 
 ### Frontend project
 
-- **T-018** [P] [frontend] **Frontend package.json with pinned deps** — cluster: Foundation | deps: — | | parallel: ✓ | effort: S
+- [x] **T-018** [P] [frontend] **Frontend package.json with pinned deps** — cluster: Foundation | deps: — | | parallel: ✓ | effort: S
   Done when: `frontend/package.json` declares all pinned production deps (React 18, Vite, TypeScript 5.x, React Router, TanStack Query/Table, i18next, Tailwind v4, Radix UI, react-hook-form, zod) and dev deps (vitest, RTL, msw, playwright, eslint, stylelint, openapi-typescript-codegen); `npm install` succeeds with no peer-dep conflicts.
 
-- **T-019** [frontend] **Vite + TypeScript + ESLint config** — cluster: Foundation | deps: T-018 | FR-024,SC-009 | parallel: ✗ | effort: M
+- [x] **T-019** [frontend] **Vite + TypeScript + ESLint config** — cluster: Foundation | deps: T-018 | FR-024,SC-009 | parallel: ✗ | effort: M
   Done when: `vite.config.ts` (React plugin, dev proxy), `tsconfig.json` (ES2022, strict, `@/` alias), and `eslint.config.js` (custom no-inline-string-literals rule) are configured; lint test catches `<p>Hello</p>` and allows `<p>{t('key')}</p>`; `npm run lint` passes.
 
-- **T-020** [P] [frontend] **Stylelint logical-properties config** — cluster: Foundation | deps: T-018 | FR-025,SC-010 | parallel: ✓ | effort: S
+- [x] **T-020** [P] [frontend] **Stylelint logical-properties config** — cluster: Foundation | deps: T-018 | FR-025,SC-010 | parallel: ✓ | effort: S
   Done when: `.stylelintrc.json` errors on `left`, `right`, `margin-left`, `margin-right`, `padding-left`, `padding-right`, `text-align: left/right` and border equivalents; sample violation triggers error; `npm run lint:css` passes.
 
-- **T-021** [frontend] **Tailwind CSS v4 logical-only config** — cluster: Foundation | deps: T-018 | FR-025,SC-010 | parallel: ✗ | effort: S
+- [x] **T-021** [frontend] **Tailwind CSS v4 logical-only config** — cluster: Foundation | deps: T-018 | FR-025,SC-010 | parallel: ✗ | effort: S
   Done when: `tailwind.config.ts` enables only logical-property utilities (`ms-*`, `me-*`, `ps-*`, `pe-*`); `globals.css` imports Tailwind layers; physical-direction utilities (`ml-*`, `mr-*`) are not generated; `npm run build` succeeds.
 
-- **T-022** [frontend] **i18next setup with English locale** — cluster: Foundation | deps: T-018 | FR-024,SC-009 | parallel: ✗ | effort: S
+- [x] **T-022** [frontend] **i18next setup with English locale** — cluster: Foundation | deps: T-018 | FR-024,SC-009 | parallel: ✗ | effort: S
   Done when: `frontend/src/i18n/index.ts` initialises i18next with fallback `en`, interpolation escaping; `en.json` contains all ≈50 Phase 1 keys from plan.md (`auth.*`, `query.*`, `history.*`, `error.*`, `evaluator.*`); `t()` works in a unit test.
 
-- **T-023** [frontend] **React Router scaffolding** — cluster: Foundation | deps: T-019,T-022 | FR-002,FR-006 | parallel: ✗ | effort: S
+- [x] **T-023** [frontend] **React Router scaffolding** — cluster: Foundation | deps: T-019,T-022 | FR-002,FR-006 | parallel: ✗ | effort: S
   Done when: `App.tsx` sets up routes `/sign-in` → SignInPage, `/` → ChatPage (auth-guarded), `/history` → HistoryPage (auth-guarded), `/history/:id` → HistoryPage; each page renders placeholder heading via `t()`; unauthenticated → redirect to `/sign-in`.
 
-- **T-024** [P] [frontend] **TanStack Query provider + defaults** — cluster: Foundation | deps: T-018 | | parallel: ✓ | effort: S
+- [x] **T-024** [P] [frontend] **TanStack Query provider + defaults** — cluster: Foundation | deps: T-018 | | parallel: ✓ | effort: S
   Done when: `main.tsx` wraps app in `QueryClientProvider` (staleTime 5min, retry 1 mutations, retry 2 queries); `api-client.ts` exports fetch wrapper with `credentials: 'include'`; global error handler redirects to `/sign-in` on 401.
 
-- **T-025** [P] [frontend] **MSW setup for tests** — cluster: Foundation | deps: T-018 | | parallel: ✓ | effort: S
+- [x] **T-025** [P] [test] **MSW setup for tests** — cluster: Foundation | deps: T-018 | | parallel: ✓ | effort: S
   Done when: `frontend/src/mocks/handlers.ts` (empty array), `browser.ts` (service worker), `server.ts` (`setupServer`) are created; smoke test imports `server.ts`, starts/stops, passes.
 
-- **T-026** [frontend] **OpenAPI client generation script** — cluster: Foundation | deps: T-018 | | parallel: ✗ | effort: S
+- [x] **T-026** [frontend] **OpenAPI client generation script** — cluster: Foundation | deps: T-018 | | parallel: ✗ | effort: S
   Done when: `package.json` contains `gen:api` script reading `contracts/openapi.yaml` and emitting TypeScript into `src/api/generated/`; `npm run gen:api` produces typed interfaces; `tsc --noEmit` passes.
 
 ### Infrastructure (frontend + compose + CI + docs)
 
-- **T-027** [P] [infra] **Frontend Dockerfile** — cluster: Foundation | deps: T-018 | | parallel: ✓ | effort: S
+- [x] **T-027** [P] [infra] **Frontend Dockerfile** — cluster: Foundation | deps: T-018 | | parallel: ✓ | effort: S
   Done when: `frontend/Dockerfile` uses multi-stage build (node builder + nginx runtime); nginx serves SPA with `default.conf` routing all paths to `index.html`; `docker build -t querycraft-frontend frontend/` succeeds.
 
-- **T-028** [infra] **Docker Compose dev environment** — cluster: Foundation | deps: T-015,T-027 | | parallel: ✗ | effort: M
+- [x] **T-028** [infra] **Docker Compose dev environment** — cluster: Foundation | deps: T-015,T-027 | | parallel: ✗ | effort: M
   Done when: `docker-compose.dev.yml` defines five services (backend, frontend, platform-db Postgres 16, source-db Postgres 16 with sample init, redis 7) on shared network; env vars templated via `.env.example`; `docker compose -f docker-compose.dev.yml config` validates.
 
-- **T-029** [P] [infra] **CI pipeline skeleton** — cluster: Foundation | deps: T-002,T-018 | | parallel: ✓ | effort: M
+- [x] **T-029** [P] [infra] **CI pipeline skeleton** — cluster: Foundation | deps: T-002,T-018 | | parallel: ✓ | effort: M
   Done when: `.github/workflows/ci.yml` triggers on push/PR to `main` and `001-core-text-to-sql`; three parallel jobs (backend lint+test+cov, frontend lint+typecheck+test+build, contract schemathesis); dependency caching; YAML is valid.
 
-- **T-030** [P] [docs] **Repo-root README with quickstart** — cluster: Foundation | deps: T-028 | | parallel: ✓ | effort: S
+- [x] **T-030** [P] [docs] **Repo-root README with quickstart** — cluster: Foundation | deps: T-028 | | parallel: ✓ | effort: S
   Done when: `README.md` contains project title, architecture overview, local-dev quickstart (clone → `.env.example` → docker compose up → Alembic → seed → sign in), links to specs and CI badge; new developer zero-to-signed-in in <10 minutes.
 
 ---
