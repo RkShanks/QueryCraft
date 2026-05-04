@@ -271,7 +271,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-059** [test] **History router integration tests** — cluster: US-1 | deps: T-054,T-013 | FR-021,FR-023 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_api_history.py` tests GET `/history` (200 list, cursor pagination, 401 unauth), GET `/history/{id}` (200 detail, 404 not found); uses authenticated_client with pre-seeded accepted queries.
 
-- **T-060** [backend] **History router** — cluster: US-1 | deps: T-059,T-054,T-041 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
+- [x] **T-060** [backend] **History router** — cluster: US-1 | deps: T-059,T-054,T-041 | FR-021,FR-022,FR-023 | parallel: ✗ | effort: S
   Done when: `backend/src/app/api/v1/history.py` exposes `GET /history` and `GET /history/{id}` matching openapi.yaml; all T-059 tests pass.
 
 ### Frontend: OpenAPI client regeneration
