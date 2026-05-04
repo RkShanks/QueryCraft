@@ -57,8 +57,8 @@ class TestAcceptedQueryModel:
         assert aq.question_text == "What are sales?"
 
     def test_user_id_fk(self):
-        fk = list(AcceptedQuery.__table__.foreign_keys)[0]
-        assert fk.column.table.name == "users"
+        fk_tables = {fk.column.table.name for fk in AcceptedQuery.__table__.foreign_keys}
+        assert "users" in fk_tables
 
 
 class TestDatabaseConnectionModel:

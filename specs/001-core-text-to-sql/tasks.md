@@ -214,7 +214,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-042** [test] **ORM model unit tests** — cluster: US-1 | deps: T-006 | FR-001,FR-004,FR-016 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_orm_models.py` asserts `User`, `AcceptedQuery`, `DatabaseConnection`, `AppConfig` models can be instantiated, have correct table names, and column types match data-model.md.
 
-- **T-043** [backend] **ORM models** — cluster: US-1 | deps: T-042,T-006 | FR-001,FR-004,FR-016,FR-027 | parallel: ✗ | effort: M
+- [x] **T-043** [backend] **ORM models** — cluster: US-1 | deps: T-042,T-006 | FR-001,FR-004,FR-016,FR-027 | parallel: ✗ | effort: M
   Done when: `backend/src/app/db/models/user.py`, `accepted_query.py`, `database_connection.py`, `app_config.py` define SQLAlchemy 2.0 mapped classes matching data-model.md exactly; all T-042 tests pass.
 
 ### Backend repositories
