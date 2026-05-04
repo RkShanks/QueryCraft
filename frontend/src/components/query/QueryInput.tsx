@@ -32,7 +32,7 @@ export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting }
         onChange={(e) => setQuestion(e.target.value.slice(0, maxLength))}
         onKeyDown={handleKeyDown}
         disabled={isSubmitting}
-        placeholder={t('query.input.placeholder', { defaultValue: 'Ask a question...' })}
+        placeholder={t('query.input.placeholder', { defaultValue: 'Ask a question about your data...' })}
         className="border p-2 min-h-[100px] resize-y w-full"
       />
       <div className="flex justify-between items-center">
@@ -46,7 +46,7 @@ export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting }
         >
           {isSubmitting 
             ? t('query.input.submitting', { defaultValue: 'Submitting...' }) 
-            : t('query.input.submit', { defaultValue: 'Submit' })}
+            : t('query.input.submit', { defaultValue: 'Ask' })}
         </button>
       </div>
     </div>

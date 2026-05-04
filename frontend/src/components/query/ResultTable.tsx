@@ -41,7 +41,7 @@ export const ResultTable: React.FC<ResultTableProps> = ({
       <div className="table-wrapper bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
         {result.rows.length === 0 ? (
           <div className="no-results p-8 text-center bg-gray-50 text-gray-500 italic">
-            {t('query.result.noResults', { defaultValue: 'No results found in the database.' })}
+            {t('query.result.empty', { defaultValue: 'No results found for your query' })}
           </div>
         ) : (
           <div className="overflow-x-auto">

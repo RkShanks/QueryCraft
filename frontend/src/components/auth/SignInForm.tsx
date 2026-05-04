@@ -12,7 +12,7 @@ export const SignInForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username) {
-      setError(t('error.validation.questionEmpty', { defaultValue: 'Username is required' }));
+      setError(t('error.validation.questionEmpty', { defaultValue: 'Question cannot be empty.' }));
       return;
     }
     setError('');
@@ -27,7 +27,7 @@ export const SignInForm: React.FC = () => {
   return (
     <form onSubmit={handleSubmit} className="sign-in-form flex flex-col gap-4">
       <div>
-        <label htmlFor="username">{t('auth.signIn.usernameLabel', { defaultValue: 'Username' })}</label>
+        <label htmlFor="username">{t('auth.signIn.username.label', { defaultValue: 'Username' })}</label>
         <input
           id="username"
           type="text"
@@ -37,7 +37,7 @@ export const SignInForm: React.FC = () => {
         />
       </div>
       <div>
-        <label htmlFor="password">{t('auth.signIn.passwordLabel', { defaultValue: 'Password' })}</label>
+        <label htmlFor="password">{t('auth.signIn.password.label', { defaultValue: 'Password' })}</label>
         <input
           id="password"
           type="password"
@@ -52,7 +52,7 @@ export const SignInForm: React.FC = () => {
         disabled={signInMutation.isPending}
         className="bg-blue-500 text-white p-2"
       >
-        {signInMutation.isPending ? t('auth.signIn.loading', { defaultValue: 'Signing in...' }) : t('auth.signIn.submitButton', { defaultValue: 'Sign in' })}
+        {signInMutation.isPending ? t('auth.signIn.signingIn', { defaultValue: 'Signing in...' }) : t('auth.signIn.submit', { defaultValue: 'Sign In' })}
       </button>
     </form>
   );

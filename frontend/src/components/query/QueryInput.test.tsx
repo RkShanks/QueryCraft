@@ -23,7 +23,7 @@ describe('QueryInput', () => {
   it('should disable submit on empty or whitespace', () => {
     render(<QueryInput onSubmit={vi.fn()} isSubmitting={false} />, { wrapper: createWrapper() });
     
-    const submitBtn = screen.getByRole('button', { name: /submit/i });
+    const submitBtn = screen.getByRole('button', { name: /ask/i });
     expect(submitBtn).toBeDisabled();
     
     const textarea = screen.getByPlaceholderText(/ask a question/i);
@@ -47,7 +47,7 @@ describe('QueryInput', () => {
     render(<QueryInput onSubmit={onSubmit} isSubmitting={false} />, { wrapper: createWrapper() });
     
     const textarea = screen.getByPlaceholderText(/ask a question/i);
-    const submitBtn = screen.getByRole('button', { name: /submit/i });
+    const submitBtn = screen.getByRole('button', { name: /ask/i });
     
     fireEvent.change(textarea, { target: { value: 'How many users?' } });
     expect(submitBtn).not.toBeDisabled();

@@ -27,10 +27,9 @@ describe('AskQuestionPage Integration', () => {
     render(<AskQuestionPage />, { wrapper: createWrapper() });
     
     const textarea = screen.getByPlaceholderText(/ask a question/i);
-    const submitBtn = screen.getByRole('button', { name: /submit/i });
-    
-    fireEvent.change(textarea, { target: { value: 'How many users?' } });
-    fireEvent.click(submitBtn);
+
+    fireEvent.change(textarea, { target: { value: 'DROP TABLE users;' } });
+    fireEvent.click(screen.getByRole('button', { name: /ask/i }));
     
     // Wait for result
     await waitFor(() => {
@@ -54,10 +53,9 @@ describe('AskQuestionPage Integration', () => {
     render(<AskQuestionPage />, { wrapper: createWrapper() });
     
     const textarea = screen.getByPlaceholderText(/ask a question/i);
-    const submitBtn = screen.getByRole('button', { name: /submit/i });
     
     fireEvent.change(textarea, { target: { value: 'DROP TABLE users;' } });
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByRole('button', { name: /ask/i }));
     
     // Toast might take a moment to appear
     expect(await screen.findByText(/evaluator rejected/i)).toBeInTheDocument();
@@ -69,7 +67,7 @@ describe('AskQuestionPage Integration', () => {
     // First get a result
     const textarea = screen.getByPlaceholderText(/ask a question/i);
     fireEvent.change(textarea, { target: { value: 'How many users?' } });
-    fireEvent.click(screen.getByRole('button', { name: /submit/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ask/i }));
     
     const acceptBtn = await screen.findByRole('button', { name: /accept/i });
     fireEvent.click(acceptBtn);
