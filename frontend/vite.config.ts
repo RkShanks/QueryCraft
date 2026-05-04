@@ -22,7 +22,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    exclude: ['node_modules', 'dist', 'eslint-rules/**'],
+    exclude: ['node_modules', 'dist', 'eslint-rules/**', 'tests/e2e/**'],
     passWithNoTests: true,
     coverage: {
       provider: 'v8',

@@ -1,9 +1,24 @@
 import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { SignInForm } from '../components/auth/SignInForm';
 import { useTranslation } from 'react-i18next';
+import { useCurrentUser } from '../hooks/useAuth';
 
 export const SignInPage: React.FC = () => {
   const { t } = useTranslation();
+  const { data: user, isLoading } = useCurrentUser();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="sign-in-page min-h-screen flex items-center justify-center bg-gray-50">
