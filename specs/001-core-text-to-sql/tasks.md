@@ -233,7 +233,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Backend services
 
-- **T-048** [test] **AuthService tests** — cluster: US-1 | deps: T-017 | FR-001,FR-002,FR-003 | parallel: ✓ | effort: S
+- [x] **T-048** [test] **AuthService tests** — cluster: US-1 | deps: T-017 | FR-001,FR-002,FR-003 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_auth_service.py` tests sign-in with correct/incorrect credentials, session creation in Redis, sign-out deletes session, and `get_me` returns profile; uses mocked repository and Redis.
 
 - **T-049** [backend] **AuthService** — cluster: US-1 | deps: T-048,T-045,T-014 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: M
