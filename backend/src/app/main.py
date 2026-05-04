@@ -2,8 +2,9 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.core.dependencies import close_redis, init_redis
@@ -117,6 +118,33 @@ def create_app() -> FastAPI:
         redis_url=settings.REDIS_URL,
         idle_timeout_hours=settings.SESSION_IDLE_TIMEOUT_HOURS,
     )
+
+    from fastapi.exceptions import RequestValidationError
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request, exc):
+        if isinstance(exc.detail, dict):
+            return JSONResponse(status_code=exc.status_code, content=exc.detail)
+        return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request, exc):
+        details = []
+        for err in exc.errors():
+            field = ".".join(str(loc) for loc in err.get("loc", []))
+            details.append({
+                "field": field,
+                "message_key": err.get("type", "error.validation.generic"),
+                "message_params": {"msg": err.get("msg", "")},
+            })
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": "validation",
+                "message_key": "error.validation.generic",
+                "details": details,
+            },
+        )
 
     # Register v1 router stubs
     from app.api.v1 import admin, auth, history, query  # noqa: F401

@@ -9,14 +9,17 @@ from app.core.dependencies import get_db, get_redis
 from app.evaluator.pipeline import Evaluator
 from app.llm.stub import StubLLM
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
-from app.schemas.query import AcceptQueryRequest, QueryResult, SubmitQuestionRequest
+from app.schemas.query import QueryResult, SubmitQuestionRequest
 from app.services.query_service import QueryService
 from app.source_db.executor import SourceDBExecutor
 
 router = APIRouter(prefix="/query", tags=["Query"])
 
 
-def _get_query_service(db: AsyncSession = Depends(get_db), redis: Redis = Depends(get_redis)) -> QueryService:
+def _get_query_service(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
+) -> QueryService:
     return QueryService(
         accepted_query_repository=AcceptedQueryRepository(db),
         redis=redis,
@@ -29,8 +32,8 @@ def _get_query_service(db: AsyncSession = Depends(get_db), redis: Redis = Depend
 @router.post("/submit", response_model=QueryResult)
 async def submit_question(
     request: Request,
-    payload: dict = Body(...),
-    service: QueryService = Depends(_get_query_service),
+    payload: dict = Body(...),  # noqa: B008
+    service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
     """POST /query/submit — ask a question."""
     session = request.state.session
@@ -45,7 +48,7 @@ async def submit_question(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": "validation", "message_key": "error.validation.generic"},
-        )
+        ) from None
     stripped = req.question.strip()
     if not stripped:
         raise HTTPException(
@@ -67,20 +70,25 @@ async def submit_question(
 @router.post("/accept", status_code=status.HTTP_201_CREATED)
 async def accept_query(
     request: Request,
-    payload: AcceptQueryRequest,
-    service: QueryService = Depends(_get_query_service),
+    payload: dict = Body(...),  # noqa: B008
+    service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
     """POST /query/accept — persist the current result."""
     session = request.state.session
     if session is None:
-        from fastapi import HTTPException
-
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
+    attempt_id = payload.get("attempt_id", "")
+    if not attempt_id or not isinstance(attempt_id, str):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "validation", "message_key": "error.validation.generic"},
+        )
     # Use the first database_connection as the target (Phase 1 has exactly one)
     from sqlalchemy import text
+
     from app.db.base import get_async_session_factory
 
     factory = get_async_session_factory()
@@ -92,18 +100,38 @@ async def accept_query(
     return await service.accept_query(
         session_id=request.state.session_id,
         user_id=session["user_id"],
-        attempt_id=payload.attempt_id,
+        attempt_id=attempt_id,
         database_connection_id=db_id,
     )
 
 
 @router.post("/reject")
-async def reject_query():
-    """POST /query/reject — stub for US-2."""
-    return {"message": "stub"}
+async def reject_query(request: Request):
+    """POST /query/reject — stub for US-2 (returns RefinePrompt to satisfy contract)."""
+    session = request.state.session
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    return {
+        "kind": "refine",
+        "message_key": "query.refine.message",
+        "should_refine": True,
+    }
 
 
 @router.post("/regenerate")
-async def regenerate_query():
-    """POST /query/regenerate — stub for US-2."""
-    return {"message": "stub"}
+async def regenerate_query(request: Request):
+    """POST /query/regenerate — stub for US-2 (returns RefinePrompt to satisfy contract)."""
+    session = request.state.session
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    return {
+        "kind": "refine",
+        "message_key": "query.refine.message",
+        "should_refine": True,
+    }

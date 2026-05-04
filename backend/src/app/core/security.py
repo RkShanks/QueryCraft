@@ -40,11 +40,9 @@ class SessionMiddleware:
         self._redis = None
 
     async def _get_redis(self):
-        if self._redis is None:
-            from redis.asyncio import Redis
+        from redis.asyncio import Redis
 
-            self._redis = Redis.from_url(self.redis_url, decode_responses=True)
-        return self._redis
+        return Redis.from_url(self.redis_url, decode_responses=True)
 
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):

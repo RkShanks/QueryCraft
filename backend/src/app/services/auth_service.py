@@ -5,11 +5,11 @@ import os
 import time
 
 from fastapi import HTTPException, status
+from redis.asyncio import Redis
 
 from app.core.security import verify_password
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import UserProfile
-from redis.asyncio import Redis
 
 
 class AuthService:

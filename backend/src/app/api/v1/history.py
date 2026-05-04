@@ -11,7 +11,7 @@ from app.services.history_service import HistoryService
 router = APIRouter(prefix="/history", tags=["History"])
 
 
-def _get_history_service(db: AsyncSession = Depends(get_db)) -> HistoryService:
+def _get_history_service(db: AsyncSession = Depends(get_db)) -> HistoryService:  # noqa: B008
     return HistoryService(AcceptedQueryRepository(db))
 
 
@@ -20,7 +20,7 @@ async def list_history(
     request: Request,
     cursor: str | None = None,
     limit: int = 100,
-    service: HistoryService = Depends(_get_history_service),
+    service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """GET /history — list accepted queries."""
     session = request.state.session
@@ -40,7 +40,7 @@ async def list_history(
 async def get_history_entry(
     request: Request,
     query_id: str,
-    service: HistoryService = Depends(_get_history_service),
+    service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """GET /history/{id} — single accepted query detail."""
     session = request.state.session

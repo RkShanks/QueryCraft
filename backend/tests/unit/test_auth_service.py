@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.schemas.auth import UserProfile
 from app.services.auth_service import AuthService
 
 
@@ -63,6 +62,9 @@ class TestAuthService:
 
     @pytest.mark.asyncio
     async def test_get_me_returns_profile(self, service, mock_redis):
-        mock_redis.get.return_value = '{"user_id": "550e8400-e29b-41d4-a716-446655440000", "username": "admin", "display_name": "Admin", "role": "admin"}'
+        mock_redis.get.return_value = (
+            '{"user_id": "550e8400-e29b-41d4-a716-446655440000",'
+            ' "username": "admin", "display_name": "Admin", "role": "admin"}'
+        )
         profile = await service.get_me("session-123")
         assert profile.username == "admin"

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 class SignInRequest(BaseModel):
     """POST /auth/sign-in request body."""
 
-    username: str = Field(..., min_length=3, max_length=64)
+    username: str = Field(..., min_length=3, max_length=64, pattern=r"^[\w.-]+$")
     password: str = Field(..., min_length=1)
 
 

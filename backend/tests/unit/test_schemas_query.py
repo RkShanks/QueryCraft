@@ -13,8 +13,8 @@ from app.schemas.query import (
     ColumnMeta,
     EvaluatorRejection,
     QueryResult,
-    RejectQueryRequest,
     RefinePrompt,
+    RejectQueryRequest,
     SubmitQuestionRequest,
     Violation,
 )

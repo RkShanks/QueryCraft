@@ -4,11 +4,10 @@ Asserts User, AcceptedQuery, DatabaseConnection, AppConfig models can be instant
 have correct table names, and column types match data-model.md.
 """
 
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-import pytest
-from sqlalchemy import Integer, Text, DateTime
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from app.db.models.accepted_query import AcceptedQuery
 from app.db.models.app_config import AppConfig

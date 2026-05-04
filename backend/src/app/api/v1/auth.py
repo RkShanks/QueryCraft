@@ -13,7 +13,10 @@ from app.services.auth_service import AuthService
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-async def _get_auth_service(db: AsyncSession = Depends(get_db), redis: Redis = Depends(get_redis)) -> AuthService:
+async def _get_auth_service(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
+) -> AuthService:
     return AuthService(UserRepository(db), redis)
 
 
@@ -22,7 +25,7 @@ async def sign_in(
     request: Request,
     response: Response,
     payload: SignInRequest,
-    auth_service: AuthService = Depends(_get_auth_service),
+    auth_service: AuthService = Depends(_get_auth_service),  # noqa: B008
 ):
     """POST /auth/sign-in — authenticate and set session cookie."""
     profile, session_id = await auth_service.sign_in(payload.username, payload.password)
@@ -34,7 +37,7 @@ async def sign_in(
 async def sign_out(
     request: Request,
     response: Response,
-    auth_service: AuthService = Depends(_get_auth_service),
+    auth_service: AuthService = Depends(_get_auth_service),  # noqa: B008
 ):
     """POST /auth/sign-out — delete session and clear cookie."""
     session_id = request.cookies.get(SessionMiddleware.COOKIE_NAME)
@@ -43,6 +46,14 @@ async def sign_out(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
+    # Verify session exists
+    try:
+        await auth_service.get_me(session_id)
+    except HTTPException:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        ) from None
     await auth_service.sign_out(session_id)
     SessionMiddleware.delete_cookie(response)
     return None
@@ -51,7 +62,7 @@ async def sign_out(
 @router.get("/me", response_model=UserProfile)
 async def get_me(
     request: Request,
-    auth_service: AuthService = Depends(_get_auth_service),
+    auth_service: AuthService = Depends(_get_auth_service),  # noqa: B008
 ):
     """GET /auth/me — return current user profile."""
     session_id = request.cookies.get(SessionMiddleware.COOKIE_NAME)

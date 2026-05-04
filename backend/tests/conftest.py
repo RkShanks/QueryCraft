@@ -37,7 +37,7 @@ def event_loop():
 @pytest.fixture(scope="session")
 def test_encryption_key() -> str:
     """A valid base64-encoded 32-byte encryption key for tests."""
-    return base64.b64encode(b"test-encryption-key-32-bytes!!" + b"123").decode()
+    return base64.b64encode(b"test-encryption-key-32-bytes!" + b"123").decode()
 
 
 @pytest.fixture(scope="session")
@@ -137,8 +137,14 @@ async def ensure_db_connection(async_engine_fixture):
             await conn.execute(
                 text(
                     """
-                    INSERT INTO database_connections (name, host, port, database_name, username, encrypted_password, ssl_mode)
-                    VALUES ('test_source', 'localhost', 5434, 'source_analytics', 'source_readonly', 'enc', 'disable')
+                    INSERT INTO database_connections (
+                        name, host, port, database_name, username,
+                        encrypted_password, ssl_mode
+                    )
+                    VALUES (
+                        'test_source', 'localhost', 5434, 'source_analytics',
+                        'source_readonly', 'enc', 'disable'
+                    )
                     RETURNING id
                     """
                 )
@@ -164,7 +170,12 @@ def mock_llm():
     """Return a stub LLM provider that always generates a safe SELECT."""
 
     class StubLLM:
-        async def generate_sql(self, question: str, schema_context: str, negative_examples: list[str] | None = None) -> str:
+        async def generate_sql(
+            self,
+            question: str,
+            schema_context: str,
+            negative_examples: list[str] | None = None,
+        ) -> str:
             return "SELECT 1 AS id"
 
     return StubLLM()

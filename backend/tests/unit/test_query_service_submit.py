@@ -4,7 +4,8 @@ Tests: happy path, evaluator failure, LLM error, timeout, concurrent submission,
 Redis attempt storage; uses mocked LLM, evaluator, and source-DB.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+import builtins
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -92,9 +93,8 @@ class TestQueryServiceSubmit:
 
     @pytest.mark.asyncio
     async def test_timeout_raises_504(self, service, mock_executor):
-        from asyncio import TimeoutError
 
-        mock_executor.execute.side_effect = TimeoutError()
+        mock_executor.execute.side_effect = builtins.TimeoutError()
         with pytest.raises(Exception) as exc_info:
             await service.submit_question(
                 session_id="sess-1",

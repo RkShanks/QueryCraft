@@ -3,28 +3,18 @@
 import asyncio
 import json
 import uuid
-from datetime import datetime
 
 from fastapi import HTTPException, status
+from redis.asyncio import Redis
 
-from app.core.exceptions import (
-    AttemptExpiredError,
-    AttemptOwnershipError,
-    ConcurrentSubmissionError,
-    EvaluatorRejectionError,
-    LLMUnavailableError,
-    QueryTimeoutError,
-)
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.query import (
     AcceptedQuerySummary,
     ColumnMeta,
     EvaluatorRejection,
     QueryResult,
-    RefinePrompt,
     Violation,
 )
-from redis.asyncio import Redis
 
 
 class QueryService:
@@ -95,7 +85,7 @@ class QueryService:
                     self._executor.execute(sql),
                     timeout=30,
                 )
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},

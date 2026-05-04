@@ -30,7 +30,14 @@ class TestHistoryService:
         mock_at = MagicMock()
         mock_at.isoformat.return_value = "2026-05-04T12:00:00Z"
         mock_repo.list_by_user.return_value = (
-            [MagicMock(id="550e8400-e29b-41d4-a716-446655440000", question_text="Q1", generated_sql="S1", accepted_at=mock_at)],
+            [
+                MagicMock(
+                    id="550e8400-e29b-41d4-a716-446655440000",
+                    question_text="Q1",
+                    generated_sql="S1",
+                    accepted_at=mock_at,
+                ),
+            ],
             None,
         )
         resp = await service.list_history("550e8400-e29b-41d4-a716-446655440001", cursor=None, limit=10)
@@ -50,7 +57,10 @@ class TestHistoryService:
             accepted_at=mock_at,
             database_connection_id="550e8400-e29b-41d4-a716-446655440001",
         )
-        detail = await service.get_detail("550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001")
+        detail = await service.get_detail(
+            "550e8400-e29b-41d4-a716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440001",
+        )
         assert detail.id == "550e8400-e29b-41d4-a716-446655440000"
 
     @pytest.mark.asyncio

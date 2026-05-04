@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import String, text, DateTime
+from sqlalchemy import DateTime, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 

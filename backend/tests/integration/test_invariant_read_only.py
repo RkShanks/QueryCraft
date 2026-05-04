@@ -26,7 +26,10 @@ class TestReadOnlySourceDB:
             # Create test table
             await conn.execute("CREATE TABLE IF NOT EXISTS invariant_test_table (id INT PRIMARY KEY)")
             # Ensure read-only role exists and has only SELECT
-            await conn.execute("DO $$ BEGIN CREATE ROLE testreadonly LOGIN PASSWORD 'readonly'; EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
+            await conn.execute(
+                "DO $$ BEGIN CREATE ROLE testreadonly LOGIN PASSWORD 'readonly';"
+                " EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
+            )
             await conn.execute("GRANT CONNECT ON DATABASE source_analytics TO testreadonly")
             await conn.execute("GRANT USAGE ON SCHEMA public TO testreadonly")
             await conn.execute("GRANT SELECT ON invariant_test_table TO testreadonly")
