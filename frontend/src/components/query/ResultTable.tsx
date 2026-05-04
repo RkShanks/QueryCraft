@@ -13,13 +13,11 @@ import { QueryActions } from './QueryActions';
 export interface ResultTableProps {
   result: QueryResult;
   onAccept: (id: string) => void;
-  onReject: (id: string) => void;
-  onRegenerate: (id: string) => void;
   isAccepting?: boolean;
 }
 
 export const ResultTable: React.FC<ResultTableProps> = ({ 
-  result, onAccept, onReject, onRegenerate, isAccepting 
+  result, onAccept, isAccepting 
 }) => {
   const { t } = useTranslation();
   
@@ -81,8 +79,6 @@ export const ResultTable: React.FC<ResultTableProps> = ({
       <QueryActions 
         attemptId={result.attempt_id}
         onAccept={onAccept}
-        onReject={onReject}
-        onRegenerate={onRegenerate}
         isAccepting={isAccepting}
       />
     </div>

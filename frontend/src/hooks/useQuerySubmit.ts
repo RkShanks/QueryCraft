@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { submitQuestion, acceptQuery, listHistory, rejectQuery, regenerateQuery } from '../api/generated/sdk.gen';
-import type { SubmitQuestionData, AcceptQueryData, RejectQueryData } from '../api/generated/types.gen';
+import { submitQuestion, acceptQuery, listHistory } from '../api/generated/sdk.gen';
+import type { SubmitQuestionData, AcceptQueryData } from '../api/generated/types.gen';
 
 export const useSubmitQuestion = () => {
   return useMutation({
@@ -22,16 +22,5 @@ export const useHistory = () => {
   return useQuery({
     queryKey: ['history'],
     queryFn: () => listHistory({ throwOnError: true }).then(res => res.data),
-  });
-};
-export const useRejectQuery = () => {
-  return useMutation({
-    mutationFn: (data: RejectQueryData['body']) => rejectQuery({ body: data, throwOnError: true }).then(res => res.data),
-  });
-};
-
-export const useRegenerateQuery = () => {
-  return useMutation({
-    mutationFn: (data: RejectQueryData['body']) => regenerateQuery({ body: data, throwOnError: true }).then(res => res.data),
   });
 };

@@ -4,11 +4,9 @@ import { QueryInput } from '../components/query/QueryInput';
 import { ResultTable } from '../components/query/ResultTable';
 import { 
   useSubmitQuestion, 
-  useAcceptQuery, 
-  useRejectQuery, 
-  useRegenerateQuery 
+  useAcceptQuery 
 } from '../hooks/useQuerySubmit';
-import type { QueryResult, RefinePrompt } from '../api/generated/types.gen';
+import type { QueryResult } from '../api/generated/types.gen';
 import { 
   ToastProvider, 
   ToastViewport, 
@@ -23,7 +21,6 @@ import { Link } from 'react-router-dom';
 export const AskQuestionPage: React.FC = () => {
   const { t } = useTranslation();
   const [result, setResult] = useState<QueryResult | null>(null);
-  const [refinePrompt, setRefinePrompt] = useState<RefinePrompt | null>(null);
   const [toasts, setToasts] = useState<{ id: string; title: string; description: string; variant: 'default' | 'destructive' | 'success' }[]>([]);
 
   const addToast = (title: string, description: string, variant: 'default' | 'destructive' | 'success' = 'default') => {
@@ -36,12 +33,9 @@ export const AskQuestionPage: React.FC = () => {
 
   const submitMutation = useSubmitQuestion();
   const acceptMutation = useAcceptQuery();
-  const rejectMutation = useRejectQuery();
-  const regenMutation = useRegenerateQuery();
 
   const handleQuestionSubmit = async (question: string) => {
     setResult(null);
-    setRefinePrompt(null);
     try {
       const data = await submitMutation.mutateAsync({ question });
       setResult(data as QueryResult);
@@ -78,40 +72,6 @@ export const AskQuestionPage: React.FC = () => {
         t('error.accept.message', { defaultValue: 'Failed to accept query.' }),
         'destructive'
       );
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    try {
-      const data = await rejectMutation.mutateAsync({ attempt_id: id });
-      if (data.kind === 'result') {
-        setResult(data as QueryResult);
-        addToast(
-          t('query.reject.retry.title', { defaultValue: 'Retried' }),
-          t('query.reject.retry.message', { defaultValue: 'SQL regenerated after rejection.' }),
-          'default'
-        );
-      } else {
-        setRefinePrompt(data as RefinePrompt);
-        setResult(null);
-      }
-    } catch {
-      addToast(t('error.reject.title', { defaultValue: 'Error' }), t('error.reject.message', { defaultValue: 'Failed to reject query.' }), 'destructive');
-    }
-  };
-
-  const handleRegenerate = async (id: string) => {
-    try {
-      const data = await regenMutation.mutateAsync({ attempt_id: id });
-      if (data.kind === 'result') {
-        setResult(data as QueryResult);
-        addToast(t('query.regen.success.title', { defaultValue: 'Success' }), t('query.regen.message', { defaultValue: 'SQL regenerated.' }), 'success');
-      } else {
-        setRefinePrompt(data as RefinePrompt);
-        setResult(null);
-      }
-    } catch {
-      addToast(t('error.regen.title', { defaultValue: 'Error' }), t('error.regen.message', { defaultValue: 'Failed to regenerate query.' }), 'destructive');
     }
   };
 
@@ -159,26 +119,8 @@ export const AskQuestionPage: React.FC = () => {
               <ResultTable 
                 result={result} 
                 onAccept={handleAccept}
-                onReject={handleReject}
-                onRegenerate={handleRegenerate}
                 isAccepting={acceptMutation.isPending}
               />
-            </section>
-          )}
-
-          {refinePrompt && !submitMutation.isPending && (
-            <section className="bg-amber-50 border border-amber-200 p-6 rounded-xl animate-in fade-in zoom-in-95 duration-500">
-              <div className="flex gap-3">
-                <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
-                <div>
-                  <h3 className="font-bold text-amber-900">
-                    {t('query.refine.title', { defaultValue: 'Clarification Needed' })}
-                  </h3>
-                  <p className="text-amber-800 mt-1">
-                    {t(refinePrompt.message_key, { defaultValue: 'Please provide more details.' })}
-                  </p>
-                </div>
-              </div>
             </section>
           )}
         </main>

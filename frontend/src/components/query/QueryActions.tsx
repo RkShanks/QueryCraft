@@ -4,34 +4,18 @@ import { useTranslation } from 'react-i18next';
 export interface QueryActionsProps {
   attemptId: string;
   onAccept: (id: string) => void;
-  onReject: (id: string) => void;
-  onRegenerate: (id: string) => void;
   isAccepting?: boolean;
 }
 
 export const QueryActions: React.FC<QueryActionsProps> = ({
   attemptId,
   onAccept,
-  onReject,
-  onRegenerate,
   isAccepting
 }) => {
   const { t } = useTranslation();
 
   return (
     <div className="query-actions flex gap-3 justify-end items-center mt-4">
-      <button
-        onClick={() => onReject(attemptId)}
-        className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-      >
-        {t('query.action.reject', { defaultValue: 'Reject' })}
-      </button>
-      <button
-        onClick={() => onRegenerate(attemptId)}
-        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-      >
-        {t('query.action.regenerate', { defaultValue: 'Regenerate' })}
-      </button>
       <button
         onClick={() => onAccept(attemptId)}
         disabled={isAccepting}
