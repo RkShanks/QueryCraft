@@ -31,6 +31,7 @@ WORKDIR /app
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 COPY --from=builder --chown=app:app /app/src /app/src
 COPY --from=builder --chown=app:app /app/tests /app/tests
+COPY pyproject.toml .
 
 # Copy Alembic files (required for migrations)
 COPY --chown=app:app alembic/ ./alembic/
