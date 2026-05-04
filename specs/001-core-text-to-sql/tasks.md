@@ -172,7 +172,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Architectural-invariant tests (Constitution Principle I)
 
-- **T-031** [test] **Session cookie security flags** — cluster: US-1 | deps: T-011 | FR-003,SC-001 | parallel: ✓ | effort: S
+- [x] **T-031** [test] **Session cookie security flags** — cluster: US-1 | deps: T-011 | FR-003,SC-001 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_session_cookie_flags.py` asserts sign-in response sets `HttpOnly`, `Secure`, `SameSite=Strict` on the `session_id` cookie and tests fail if any flag is missing.
 
 - **T-032** [test] **Origin header validation enforcement** — cluster: US-1 | deps: T-011 | FR-003 | parallel: ✓ | effort: S
