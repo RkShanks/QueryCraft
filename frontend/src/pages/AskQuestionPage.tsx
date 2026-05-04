@@ -45,8 +45,9 @@ export const AskQuestionPage: React.FC = () => {
     try {
       const data = await submitMutation.mutateAsync({ question });
       setResult(data as QueryResult);
-    } catch (error: any) {
-      if (error.error === 'evaluator_rejection' || error.status === 422 || error.response?.status === 422) {
+    } catch (error: unknown) {
+      const err = error as { status?: number; error?: string; response?: { status?: number } };
+      if (err.error === 'evaluator_rejection' || err.status === 422 || err.response?.status === 422) {
         addToast(
           t('error.evaluator.title', { defaultValue: 'Evaluator Rejected' }),
           t('error.evaluator.message', { defaultValue: 'The generated SQL was rejected by safety rules.' }),
@@ -71,7 +72,7 @@ export const AskQuestionPage: React.FC = () => {
         'success'
       );
       setResult(null);
-    } catch (error) {
+    } catch {
       addToast(
         t('error.accept.title', { defaultValue: 'Error' }),
         t('error.accept.message', { defaultValue: 'Failed to accept query.' }),
@@ -94,8 +95,8 @@ export const AskQuestionPage: React.FC = () => {
         setRefinePrompt(data as RefinePrompt);
         setResult(null);
       }
-    } catch (error) {
-      addToast(t('error.reject.title', { defaultValue: 'Error' }), 'Failed to reject query.', 'destructive');
+    } catch {
+      addToast(t('error.reject.title', { defaultValue: 'Error' }), t('error.reject.message', { defaultValue: 'Failed to reject query.' }), 'destructive');
     }
   };
 
@@ -104,13 +105,13 @@ export const AskQuestionPage: React.FC = () => {
       const data = await regenMutation.mutateAsync({ attempt_id: id });
       if (data.kind === 'result') {
         setResult(data as QueryResult);
-        addToast(t('query.regen.success.title', { defaultValue: 'Success' }), 'SQL regenerated.', 'success');
+        addToast(t('query.regen.success.title', { defaultValue: 'Success' }), t('query.regen.message', { defaultValue: 'SQL regenerated.' }), 'success');
       } else {
         setRefinePrompt(data as RefinePrompt);
         setResult(null);
       }
-    } catch (error) {
-      addToast(t('error.regen.title', { defaultValue: 'Error' }), 'Failed to regenerate query.', 'destructive');
+    } catch {
+      addToast(t('error.regen.title', { defaultValue: 'Error' }), t('error.regen.message', { defaultValue: 'Failed to regenerate query.' }), 'destructive');
     }
   };
 

@@ -4,9 +4,6 @@ import type {
   QueryResult,
   AcceptedQuerySummary,
   HistoryListResponse,
-  ErrorResponse,
-  ValidationErrorResponse,
-  EvaluatorRejection
 } from '../api/generated/types.gen';
 
 /** MSW handlers for API mocking in tests. */

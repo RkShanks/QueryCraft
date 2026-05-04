@@ -6,6 +6,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { SqlDisplay } from './SqlDisplay';
 import { QueryActions } from './QueryActions';
 
@@ -22,16 +23,16 @@ export const ResultTable: React.FC<ResultTableProps> = ({
 }) => {
   const { t } = useTranslation();
   
-  const columns = React.useMemo(() => result.columns.map((col, index) => ({
+  const columns = React.useMemo<ColumnDef<unknown[]>[]>(() => result.columns.map((col, index) => ({
     header: col.name,
-    accessorFn: (row: any) => row[index],
+    accessorFn: (row) => row[index],
     id: col.name,
-    cell: (info: any) => <span className="text-gray-700">{String(info.getValue())}</span>,
+    cell: (info) => <span className="text-gray-700">{String(info.getValue())}</span>,
   })), [result.columns]);
   
   const table = useReactTable({
-    data: result.rows,
-    columns: columns as any,
+    data: result.rows as unknown[][],
+    columns,
     getCoreRowModel: getCoreRowModel(),
   });
 

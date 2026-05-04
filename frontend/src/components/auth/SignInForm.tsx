@@ -19,7 +19,7 @@ export const SignInForm: React.FC = () => {
 
     try {
       await signInMutation.mutateAsync({ username, password });
-    } catch (err: any) {
+    } catch {
       setError(t('auth.signIn.error.invalidCredentials', { defaultValue: 'Invalid credentials' }));
     }
   };

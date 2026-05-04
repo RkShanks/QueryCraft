@@ -12,9 +12,10 @@ beforeAll(() => {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: unknown) => {
       if (typeof options === 'string') return options;
-      return options?.defaultValue || key;
+      const opts = options as { defaultValue?: string } | undefined;
+      return opts?.defaultValue || key;
     },
     i18n: {
       changeLanguage: () => Promise.resolve(),
