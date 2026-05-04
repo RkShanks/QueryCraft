@@ -16,10 +16,10 @@ class TestUserRepository:
     async def test_get_by_username_returns_admin(self, db_session):
         """Should return the seeded admin user."""
         repo = UserRepository(db_session)
-        user = await repo.get_by_username("testadmin")
+        user = await repo.get_by_username("admin")
         assert user is not None
-        assert user.username == "testadmin"
-        assert user.display_name == "Test Admin"
+        assert user.username == "admin"
+        assert user.display_name == "Admin"
         assert user.role == "admin"
 
     @pytest.mark.asyncio

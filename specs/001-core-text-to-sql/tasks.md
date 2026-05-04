@@ -222,7 +222,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-044** [test] **UserRepository tests** — cluster: US-1 | deps: T-017 | FR-001 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_user_repository.py` tests `get_by_username` returns the seeded admin user and returns None for unknown username, using testcontainers PostgreSQL.
 
-- **T-045** [backend] **UserRepository** — cluster: US-1 | deps: T-044,T-043 | FR-001 | parallel: ✗ | effort: S
+- [x] **T-045** [backend] **UserRepository** — cluster: US-1 | deps: T-044,T-043 | FR-001 | parallel: ✗ | effort: S
   Done when: `backend/src/app/repositories/user_repository.py` implements `get_by_username(username) → User | None`; all T-044 tests pass.
 
 - **T-046** [test] **AcceptedQueryRepository tests** — cluster: US-1 | deps: T-017 | FR-016,FR-021 | parallel: ✓ | effort: S

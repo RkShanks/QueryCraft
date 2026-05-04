@@ -6,6 +6,8 @@ Provides:
 - redis_client: testcontainers Redis client
 - test_settings: overridden Settings for test isolation
 - app_client: httpx AsyncClient with the FastAPI test app
+- authenticated_client: pre-signed-in httpx client
+- mock_llm: controllable SQL mock
 """
 
 import asyncio
@@ -42,20 +44,21 @@ def test_encryption_key() -> str:
 def test_env_vars(test_encryption_key: str) -> dict[str, str]:
     """Environment variables for test settings."""
     return {
-        "DATABASE_URL": "postgresql+asyncpg://test:test@localhost:5433/test",
+        "DATABASE_URL": "postgresql+asyncpg://querycraft:querycraft_dev@localhost:5433/querycraft",
         "REDIS_URL": "redis://localhost:6379/1",
         "PLATFORM_ENCRYPTION_KEY": test_encryption_key,
-        "ALLOWED_ORIGINS": "http://localhost:3000",
-        "ADMIN_USERNAME": "testadmin",
-        "ADMIN_DISPLAY_NAME": "Test Admin",
-        "ADMIN_PASSWORD": "testpassword123",
+        "ALLOWED_ORIGINS": "http://localhost:3000,http://test",
+        "ADMIN_USERNAME": "admin",
+        "ADMIN_DISPLAY_NAME": "Platform Administrator",
+        "ADMIN_PASSWORD": "admin123",
         "LLM_PROVIDER": "ollama",
         "LOG_LEVEL": "DEBUG",
-        "SOURCE_DB_NAME": "test_source",
+        "SOURCE_DB_NAME": "source_analytics",
         "SOURCE_DB_HOST": "localhost",
         "SOURCE_DB_PORT": "5434",
-        "SOURCE_DB_USER": "test_readonly",
-        "SOURCE_DB_PASSWORD": "test_source_pass",
+        "SOURCE_DB_USER": "source_readonly",
+        "SOURCE_DB_PASSWORD": "source_dev",
+        "SOURCE_DB_SSL_MODE": "disable",
     }
 
 
@@ -121,3 +124,27 @@ async def app_client(set_test_env) -> AsyncGenerator[AsyncClient, None]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+
+@pytest_asyncio.fixture
+async def authenticated_client(app_client) -> AsyncGenerator[AsyncClient, None]:
+    """Provide a pre-authenticated httpx client (admin user signed in)."""
+    # Sign in with test admin credentials
+    response = await app_client.post(
+        "/api/v1/auth/sign-in",
+        json={"username": "admin", "password": "admin123"},
+        headers={"origin": "http://test"},
+    )
+    assert response.status_code == 200, f"Sign-in failed: {response.text}"
+    yield app_client
+
+
+@pytest.fixture
+def mock_llm():
+    """Return a stub LLM provider that always generates a safe SELECT."""
+
+    class StubLLM:
+        async def generate_sql(self, question: str, schema_context: str, negative_examples: list[str] | None = None) -> str:
+            return "SELECT 1 AS id"
+
+    return StubLLM()
