@@ -1,4 +1,6 @@
 {
+  "common.close": "Close",
+
   "app.title": "QueryCraft",
   "app.subtitle": "Text-to-SQL Analytics Platform",
   "nav.signIn": "Sign In",
@@ -20,10 +22,16 @@
   "query.input.submit": "Ask",
   "query.input.submitting": "Submitting...",
 
+  "query.ask.title": "What would you like to know?",
+  "query.status.processing": "Analyzing your question...",
+
   "query.result.title": "Results",
   "query.result.sqlHeading": "Generated SQL",
   "query.result.tableHeading": "Results",
   "query.result.empty": "No results found for your query",
+
+  "query.accept.success.title": "Success",
+  "query.accept.success.message": "Query accepted and saved to history.",
 
   "query.actions.accept": "Accept",
   "query.actions.accepting": "Accepting...",
@@ -41,7 +49,12 @@
 
   "error.unauthorized": "Your session has expired or you are not signed in. Please sign in again.",
   "error.network": "Network error. Please check your connection and try again.",
-  "error.unknown": "An unexpected error occurred. Please try again.",
+  "error.unknown.title": "Error",
+  "error.unknown.message": "An unexpected error occurred. Please try again.",
+  "error.evaluator.title": "Evaluator Rejected",
+  "error.evaluator.message": "The generated SQL was rejected by safety rules.",
+  "error.accept.title": "Error",
+  "error.accept.message": "Failed to accept query.",
   "error.validation.questionEmpty": "Question cannot be empty.",
   "error.validation.questionTooLong": "Question must be at most {{max}} characters.",
   "error.validation.unknown": "Validation failed. Please check your input."
