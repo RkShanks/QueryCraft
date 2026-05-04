@@ -242,7 +242,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-050** [test] **QueryService submit tests** — cluster: US-1 | deps: T-017 | FR-006,FR-007,FR-008,FR-010,FR-013,FR-014,FR-030,SC-001,SC-002 | parallel: ✓ | effort: M
   Done when: `backend/tests/unit/test_query_service_submit.py` tests: (1) happy path returns QueryResult with columns/rows, (2) evaluator failure returns EvaluatorRejection, (3) LLM error returns 502 error, (4) source-DB timeout returns 504, (5) concurrent submission returns 409, (6) attempt stored in Redis with session ownership; uses mocked LLM, evaluator, and source-DB.
 
-- **T-051** [test] **QueryService accept tests** — cluster: US-1 | deps: T-017 | FR-016,FR-020,SC-012 | parallel: ✓ | effort: S
+- [x] **T-051** [test] **QueryService accept tests** — cluster: US-1 | deps: T-017 | FR-016,FR-020,SC-012 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_query_service_accept.py` tests: (1) accept persists to AcceptedQueryRepository, (2) accept deletes Redis attempt, (3) accept with expired attempt returns 400, (4) accept with wrong session returns 400.
 
 - **T-052** [backend] **QueryService** — cluster: US-1 | deps: T-050,T-051,T-047,T-014 | FR-006,FR-007,FR-008,FR-010,FR-012,FR-013,FR-014,FR-016,FR-020,FR-027,FR-030 | parallel: ✗ | effort: L
