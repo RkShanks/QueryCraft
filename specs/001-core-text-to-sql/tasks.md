@@ -790,6 +790,12 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - **T-194** [test] **Security-review checklist** — cluster: Polish | deps: T-058,T-115,T-128,T-144 | | parallel: ✗ | effort: M
   Done when: `docs/security-review.md` documents and `backend/tests/security/test_security_checklist.py` verifies: (1) Argon2id params ≥ OWASP minimums, (2) session cookie flags HttpOnly+Secure+SameSite=Strict, (3) Origin allow-list enforced on POST/PATCH/DELETE, (4) AES-256-GCM encryption of source-DB credentials at rest, (5) source-DB role is read-only, (6) no credentials in log output, (7) no PII in OTel spans, (8) no stack traces in 5xx responses; all 8 assertions pass.
 
+### Performance debt
+
+- **T-191b** [backend] **Replace per-request Redis instantiation with request-scoped pool tied to event loop** — cluster: Polish | deps: — | | parallel: ✓ | effort: S
+  **Why:** Currently `SessionMiddleware._get_redis()` creates a fresh `Redis.from_url()` per request because schemathesis's per-example event loops invalidate cached connections. This adds ~1ms/request connection-setup overhead. For KSA Phase 1 traffic (100–1000 users) this is acceptable, but it is genuine perf debt.
+  **Done when:** `backend/src/app/core/security.py` uses a `redis.asyncio.ConnectionPool` scoped to the active request's event loop, or uses a per-worker pool with proper loop-attachment handling; existing event-loop safety tests still pass; benchmark shows reduced p99 session-cookie verify latency vs current implementation.
+
 ---
 
 ## Traceability
