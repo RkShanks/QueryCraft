@@ -276,48 +276,48 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Frontend: OpenAPI client regeneration
 
-- **T-061** [frontend] **Regenerate OpenAPI TypeScript client** — cluster: US-1 | deps: T-026,T-056,T-058,T-060 | FR-001,FR-014,FR-021 | parallel: ✗ | effort: XS
+- [x] **T-061** [frontend] **Regenerate OpenAPI TypeScript client** — cluster: US-1 | deps: T-026,T-056,T-058,T-060 | FR-001,FR-014,FR-021 | parallel: ✗ | effort: XS
   Done when: `npm run gen:api` produces updated `frontend/src/api/generated/` types matching the implemented backend endpoints; `tsc --noEmit` passes.
 
 ### Frontend hooks
 
-- **T-062** [test] **useAuth hook tests** — cluster: US-1 | deps: T-025,T-061 | FR-001,FR-002 | parallel: ✓ | effort: S
+- [x] **T-062** [test] **useAuth hook tests** — cluster: US-1 | deps: T-025,T-061 | FR-001,FR-002 | parallel: ✓ | effort: S
   Done when: `frontend/tests/unit/useAuth.test.tsx` tests sign-in mutation calls API and sets query cache, sign-out clears cache and redirects, `useAuth` returns user profile when authenticated and null when not; uses MSW server.
 
-- **T-063** [frontend] **useAuth hook** — cluster: US-1 | deps: T-062,T-024,T-061 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: S
+- [x] **T-063** [frontend] **useAuth hook** — cluster: US-1 | deps: T-062,T-024,T-061 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: S
   Done when: `frontend/src/hooks/useAuth.ts` implements `useAuth()` returning `{ user, isLoading, signIn, signOut }` using TanStack Query mutations backed by generated API client; all T-062 tests pass.
 
-- **T-064** [test] **useQuerySubmit hook tests** — cluster: US-1 | deps: T-025,T-061 | FR-006,FR-007,FR-014,FR-016 | parallel: ✓ | effort: S
+- [x] **T-064** [test] **useQuerySubmit hook tests** — cluster: US-1 | deps: T-025,T-061 | FR-006,FR-007,FR-014,FR-016 | parallel: ✓ | effort: S
   Done when: `frontend/tests/unit/useQuerySubmit.test.tsx` tests submit mutation returns QueryResult, accept mutation returns AcceptedQuerySummary, handles 422 evaluator rejection, handles 409 concurrent error, and disables submit while processing (FR-030); uses MSW server.
 
-- **T-065** [frontend] **useQuerySubmit hook** — cluster: US-1 | deps: T-064,T-024,T-061 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-030 | parallel: ✗ | effort: M
-  Done when: `frontend/src/hooks/useQuery.ts` implements `useQuerySubmit()` returning `{ submitQuestion, acceptQuery, isSubmitting, result, error }` with submit-lock state; all T-064 tests pass.
+- [x] **T-065** [frontend] **useQuerySubmit hook** — cluster: US-1 | deps: T-064,T-024,T-061 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-030 | parallel: ✗ | effort: M
+  Done when: `frontend/src/hooks/useQuerySubmit.ts` implements `useSubmitQuestion()`, `useAcceptQuery()`, `useHistory()` returning TanStack Query mutations/queries; all T-064 tests pass. US-2 exports (useRejectQuery, useRegenerateQuery) removed. Hook returns strict QueryResult on submit.
 
 ### Frontend components
 
-- **T-066** [test] **SignInForm component tests** — cluster: US-1 | deps: T-025,T-063 | FR-001,FR-002 | parallel: ✓ | effort: S
+- [x] **T-066** [test] **SignInForm component tests** — cluster: US-1 | deps: T-025,T-063 | FR-001,FR-002 | parallel: ✓ | effort: S
   Done when: `frontend/tests/unit/SignInForm.test.tsx` tests form renders with i18n keys, validates empty fields, calls signIn on submit, shows error on 401, and redirects on success; uses RTL + MSW.
 
-- **T-067** [frontend] **SignInForm + SignInPage** — cluster: US-1 | deps: T-066,T-063,T-022,T-023 | FR-001,FR-002,SC-009 | parallel: ✗ | effort: M
+- [x] **T-067** [frontend] **SignInForm + SignInPage** — cluster: US-1 | deps: T-066,T-063,T-022,T-023 | FR-001,FR-002,SC-009 | parallel: ✗ | effort: M
   Done when: `frontend/src/components/SignInForm.tsx` renders a RHF+Zod form with i18n strings, `frontend/src/pages/SignInPage.tsx` wraps SignInForm with layout; all T-066 tests pass and `npm run lint` shows no inline string violations.
 
-- **T-068** [test] **QueryInput component tests** — cluster: US-1 | deps: T-025,T-065 | FR-006,FR-007,SC-009 | parallel: ✓ | effort: S
+- [x] **T-068** [test] **QueryInput component tests** — cluster: US-1 | deps: T-025,T-065 | FR-006,FR-007,SC-009 | parallel: ✓ | effort: S
   Done when: `frontend/tests/unit/QueryInput.test.tsx` tests textarea renders with i18n placeholder, enforces 2000-char limit with live counter, disables submit on empty/whitespace, disables submit while processing, and calls submitQuestion on enter/click; uses RTL.
 
-- **T-069** [frontend] **QueryInput component** — cluster: US-1 | deps: T-068,T-065,T-022 | FR-006,FR-007,FR-030,SC-009 | parallel: ✗ | effort: S
+- [x] **T-069** [frontend] **QueryInput component** — cluster: US-1 | deps: T-068,T-065,T-022 | FR-006,FR-007,FR-030,SC-009 | parallel: ✗ | effort: S
   Done when: `frontend/src/components/QueryInput.tsx` renders a chat-style input with char counter, submit button, and processing lock; all i18n keys from `en.json`; all T-068 tests pass.
 
-- **T-070** [test] **ResultTable + QueryActions component tests** — cluster: US-1 | deps: T-025,T-065 | FR-014,FR-015,FR-029,SC-009 | parallel: ✓ | effort: S
-  Done when: `frontend/tests/unit/ResultTable.test.tsx` tests TanStack Table renders columns/rows from QueryResult, shows "no results" message on zero rows (FR-029), displays generated SQL, and renders Accept/Reject/Regenerate buttons with i18n labels; uses RTL.
+- [x] **T-070** [test] **ResultTable + QueryActions component tests** — cluster: US-1 | deps: T-025,T-065 | FR-014,FR-015,FR-029,SC-009 | parallel: ✓ | effort: S
+  Done when: `frontend/tests/unit/ResultTable.test.tsx` tests TanStack Table renders columns/rows from QueryResult, shows "no results" message on zero rows (FR-029), displays generated SQL, and renders Accept button with i18n label; uses RTL. US-2 assertions (Reject/Regenerate) removed.
 
-- **T-071** [frontend] **ResultTable + SqlDisplay + QueryActions** — cluster: US-1 | deps: T-070,T-065,T-022 | FR-014,FR-015,FR-029,SC-009 | parallel: ✗ | effort: M
-  Done when: `frontend/src/components/ResultTable.tsx` renders TanStack Table with pagination, `SqlDisplay.tsx` shows syntax-highlighted SQL, `QueryActions.tsx` renders Accept/Reject/Regenerate; all T-070 tests pass.
+- [x] **T-071** [frontend] **ResultTable + SqlDisplay + QueryActions** — cluster: US-1 | deps: T-070,T-065,T-022 | FR-014,FR-015,FR-029,SC-009 | parallel: ✗ | effort: M
+  Done when: `frontend/src/components/ResultTable.tsx` renders TanStack Table with pagination, `SqlDisplay.tsx` shows syntax-highlighted SQL, `QueryActions.tsx` renders Accept only; all T-070 tests pass.
 
-- **T-072** [test] **ChatPage integration tests** — cluster: US-1 | deps: T-025,T-069,T-071 | FR-006,FR-014,SC-001 | parallel: ✓ | effort: S
-  Done when: `frontend/tests/unit/ChatPage.test.tsx` tests ChatPage renders QueryInput, submitting a question shows ResultTable with QueryActions, accepting shows confirmation toast, and evaluator rejection shows error message; uses MSW + RTL.
+- [x] **T-072** [test] **AskQuestionPage integration tests** — cluster: US-1 | deps: T-025,T-069,T-071 | FR-006,FR-014,SC-001 | parallel: ✓ | effort: S
+  Done when: `frontend/tests/unit/AskQuestionPage.test.tsx` tests AskQuestionPage renders QueryInput, submitting a question shows ResultTable with QueryActions, accepting shows confirmation alert, and evaluator rejection shows error message; uses MSW + RTL. US-2 tests (reject/regenerate/refine) removed.
 
-- **T-073** [frontend] **ChatPage assembly** — cluster: US-1 | deps: T-072,T-069,T-071,T-023 | FR-006,FR-014,FR-015,FR-016,SC-009 | parallel: ✗ | effort: M
-  Done when: `frontend/src/pages/ChatPage.tsx` composes QueryInput, ResultTable, SqlDisplay, QueryActions into the main query interface with Radix toast for confirmations/errors; all T-072 tests pass.
+- [x] **T-073** [frontend] **AskQuestionPage assembly** — cluster: US-1 | deps: T-072,T-069,T-071,T-023 | FR-006,FR-014,FR-015,FR-016,SC-009 | parallel: ✗ | effort: M
+  Done when: `frontend/src/pages/AskQuestionPage.tsx` composes QueryInput, ResultTable, SqlDisplay, QueryActions into the main query interface with inline alert for confirmations/errors; all T-072 tests pass.
 
 ### Playwright e2e — US-1 independent test criterion
 
