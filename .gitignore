@@ -1,100 +1,60 @@
-# Byte-compiled / optimized / DLL files
+# ─── Python ───
 __pycache__/
 *.py[cod]
-
-# C extensions
 *.so
-
-# Distribution / packaging
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-/lib/
-lib64/
-parts/
-sdist/
-var/
 *.egg-info/
-.installed.cfg
 *.egg
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+dist/
+build/
+.eggs/
 *.manifest
-*.spec
+.venv/
+venv/
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# ─── Node.js ───
+node_modules/
+dist/
+*.log
 
-# Unit test / coverage reports
+# ─── Environment ───
+.env
+.env.docker
+.env.local
+.env.*.local
+
+# ─── IDE ───
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+
+# ─── Testing / Coverage ───
 htmlcov/
 .tox/
 .coverage
 .coverage.*
 .cache
-nosetests.xml
 coverage.xml
 *.cover
+.pytest_cache/
+.mypy_cache/
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# DotEnv configuration
-.env
-
-# Database
+# ─── Database ───
 *.db
 *.rdb
 
-# Pycharm
-.idea
+# ─── Docker ───
+# (volumes managed by compose)
 
-# VS Code
-.vscode/
-*.code-workspace
-
-# Spyder
-.spyproject/
-
-# Jupyter NB Checkpoints
+# ─── Jupyter ───
 .ipynb_checkpoints/
 
-# Mac OS-specific storage files
-.DS_Store
-
-# vim
-*.swp
-*.swo
-
-# Mypy cache
-.mypy_cache/
-
-# Virtual environment
-.venv/
-src/test.py
-.env.docker
-
-#SpecKit files
+# ─── SpecKit (tracked separately) ───
 .specify
 .agents
 AGENTS.md
-docs
-specs
-research.md

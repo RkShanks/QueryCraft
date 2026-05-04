@@ -1,0 +1,676 @@
+openapi: "3.1.0"
+info:
+  title: QueryCraft — Text-to-SQL Analytics Platform API
+  version: "1.0.0"
+  description: |
+    Phase 1 API contract for the core question-to-validated-answer loop.
+    This document is the single source of truth (Constitution Principle XII).
+    Frontend types are generated from this specification.
+  contact:
+    name: QueryCraft Team
+
+servers:
+  - url: /api/v1
+    description: API v1 base path
+
+tags:
+  - name: Auth
+    description: Authentication and session management
+  - name: Query
+    description: Question submission, accept/reject/regenerate
+  - name: History
+    description: Accepted query history
+  - name: Admin
+    description: Administrative operations
+
+paths:
+  # ─────────────────────────── Auth ───────────────────────────
+  /auth/sign-in:
+    post:
+      operationId: signIn
+      tags: [Auth]
+      summary: Authenticate with local credentials
+      description: |
+        Signs in the provisional administrator with username/password.
+        Returns a session cookie (HttpOnly, Secure, SameSite=Strict).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignInRequest"
+      responses:
+        "200":
+          description: Sign-in successful. Session cookie set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error (empty username or password).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+
+  /auth/sign-out:
+    post:
+      operationId: signOut
+      tags: [Auth]
+      summary: End the current session
+      description: Deletes the session from Redis and clears the cookie.
+      security:
+        - sessionCookie: []
+      responses:
+        "204":
+          description: Session ended.
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [Auth]
+      summary: Get the current user profile
+      description: Returns the authenticated user's profile. Used by the frontend to check session validity.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Authenticated user profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Not authenticated or session expired.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────── Query ───────────────────────────
+  /query/submit:
+    post:
+      operationId: submitQuestion
+      tags: [Query]
+      summary: Submit a natural-language question
+      description: |
+        Sends the question to the configured LLM provider, evaluates the
+        generated SQL, executes it against the source database (if it passes),
+        and returns the result. Enforces FR-030 (no concurrent submissions).
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitQuestionRequest"
+      responses:
+        "200":
+          description: Query generated, evaluated, and executed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResult"
+        "400":
+          description: Question validation failed (empty, too long, etc.).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: A question is already being processed for this session (FR-030).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: |
+            The evaluator rejected the generated SQL (unsafe or
+            references non-existent schema objects).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluatorRejection"
+        "502":
+          description: LLM provider unreachable or returned an error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "504":
+          description: Source database query timed out.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /query/accept:
+    post:
+      operationId: acceptQuery
+      tags: [Query]
+      summary: Accept the current query result
+      description: |
+        Persists the question, SQL, timestamp, user ID, and database ID
+        to the accepted_queries table. Returns a confirmation.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptQueryRequest"
+      responses:
+        "201":
+          description: Query accepted and persisted to history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedQuerySummary"
+        "400":
+          description: No active query result to accept.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /query/reject:
+    post:
+      operationId: rejectQuery
+      tags: [Query]
+      summary: Reject the current query result and trigger one auto-retry
+      description: |
+        Discards the current attempt, provides it as negative context to the
+        LLM, and generates a new SQL attempt. If this is the second
+        consecutive rejection (or the regenerated SQL is byte-equal),
+        returns a "refine your question" response instead of a new result.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectQueryRequest"
+      responses:
+        "200":
+          description: |
+            Either a new QueryResult (auto-retry succeeded) or a RefinePrompt
+            (max retries reached or duplicate SQL). Discriminate on the `kind` field.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/QueryResult"
+                  - $ref: "#/components/schemas/RefinePrompt"
+                discriminator:
+                  propertyName: kind
+                  mapping:
+                    result: "#/components/schemas/QueryResult"
+                    refine: "#/components/schemas/RefinePrompt"
+        "400":
+          description: No active query result to reject.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /query/regenerate:
+    post:
+      operationId: regenerateQuery
+      tags: [Query]
+      summary: Regenerate the current query (equivalent to reject + retry)
+      description: |
+        Behaves identically to reject: discards current attempt, provides
+        negative context, generates new SQL. Same one-retry limit applies.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectQueryRequest"
+      responses:
+        "200":
+          description: |
+            Either a new QueryResult (retry succeeded) or a RefinePrompt
+            (max retries reached or duplicate SQL). Discriminate on the `kind` field.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/QueryResult"
+                  - $ref: "#/components/schemas/RefinePrompt"
+                discriminator:
+                  propertyName: kind
+                  mapping:
+                    result: "#/components/schemas/QueryResult"
+                    refine: "#/components/schemas/RefinePrompt"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────── History ───────────────────────────
+  /history:
+    get:
+      operationId: listHistory
+      tags: [History]
+      summary: List accepted queries in reverse-chronological order
+      description: |
+        Returns the user's accepted query history using cursor-based pagination.
+        Pass the `next_cursor` from a previous response to fetch the next page.
+        Phase 1 frontend fetches the first page only; infinite scroll or
+        load-more can be added without API changes.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor from a previous response's `next_cursor`. Omit for the first page.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          description: Number of entries per page (default 100, max 1000).
+      responses:
+        "200":
+          description: List of accepted queries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryListResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /history/{query_id}:
+    get:
+      operationId: getHistoryEntry
+      tags: [History]
+      summary: Get a single accepted query by ID
+      description: Returns the full detail of an accepted query.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: query_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Accepted query detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedQueryDetail"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Query not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────── Admin ───────────────────────────
+  /admin/refresh-schema:
+    post:
+      operationId: refreshSchema
+      tags: [Admin]
+      summary: Force a schema introspection cache refresh
+      description: |
+        Clears the cached schema metadata for the source database and performs
+        a fresh introspection. Returns the updated schema statistics. If the
+        refreshed schema exceeds `max_schema_tokens`, returns a 422 error.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Schema refreshed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tables_count, columns_count, refreshed_at]
+                properties:
+                  tables_count:
+                    type: integer
+                  columns_count:
+                    type: integer
+                  approximate_tokens:
+                    type: integer
+                    description: Estimated token count of the schema context.
+                  refreshed_at:
+                    type: string
+                    format: date-time
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Schema exceeds configured token limit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: |
+        Server-side session backed by Redis. HttpOnly, Secure, SameSite=Strict.
+        8-hour idle expiry.
+
+  schemas:
+    # ─── Auth ───
+    SignInRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+        password:
+          type: string
+          minLength: 1
+
+    UserProfile:
+      type: object
+      required: [id, username, display_name, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        display_name:
+          type: string
+        role:
+          type: string
+
+    # ─── Query ───
+    SubmitQuestionRequest:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Natural-language question in English.
+
+    QueryResult:
+      type: object
+      required: [kind, attempt_id, question, generated_sql, columns, rows, row_count, attempt_number, is_last_auto_retry]
+      properties:
+        kind:
+          type: string
+          enum: [result]
+          description: Discriminator field. Always "result" for QueryResult.
+        attempt_id:
+          type: string
+          format: uuid
+          description: Ephemeral ID for this generation attempt (used in accept/reject).
+        question:
+          type: string
+        generated_sql:
+          type: string
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/ColumnMeta"
+        rows:
+          type: array
+          items:
+            type: array
+            items: {}
+          description: Array of row arrays. Each inner array corresponds to the column order.
+        row_count:
+          type: integer
+          description: Total number of rows returned.
+        attempt_number:
+          type: integer
+          description: "1 for first attempt, 2 for auto-retry."
+        is_last_auto_retry:
+          type: boolean
+          description: "True if this is the last automatic retry (attempt 2). UI shows indicator."
+
+    ColumnMeta:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          description: PostgreSQL column type name.
+
+    EvaluatorRejection:
+      type: object
+      required: [message_key, violations]
+      properties:
+        message_key:
+          type: string
+          description: i18n key for the user-facing message (e.g., "query.evaluator.rejected").
+        message_params:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Key-value map for interpolated values in the i18n template. Null if no params needed.
+        violations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Violation"
+
+    Violation:
+      type: object
+      required: [rule, message_key]
+      properties:
+        rule:
+          type: string
+          description: Machine-readable rule identifier (e.g., "read_only_check", "schema_validation").
+        message_key:
+          type: string
+          description: i18n key for the violation message (e.g., "evaluator.violation.dataModifying").
+        message_params:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Key-value map for interpolated values (e.g., {"table": "orders"}).
+
+    AcceptQueryRequest:
+      type: object
+      required: [attempt_id]
+      properties:
+        attempt_id:
+          type: string
+          format: uuid
+          description: The ephemeral attempt ID from QueryResult.
+
+    RejectQueryRequest:
+      type: object
+      required: [attempt_id]
+      properties:
+        attempt_id:
+          type: string
+          format: uuid
+          description: The ephemeral attempt ID from QueryResult.
+
+    AcceptedQuerySummary:
+      type: object
+      required: [id, question_text, generated_sql, accepted_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        question_text:
+          type: string
+        generated_sql:
+          type: string
+          description: The full evaluator-passed, user-accepted SQL. Included to enable client-side filtering across question text and SQL per FR-022.
+        accepted_at:
+          type: string
+          format: date-time
+
+    RefinePrompt:
+      type: object
+      required: [kind, message_key, should_refine]
+      properties:
+        kind:
+          type: string
+          enum: [refine]
+          description: Discriminator field. Always "refine" for RefinePrompt.
+        message_key:
+          type: string
+          description: i18n key for the user-facing message (e.g., "query.refine.message").
+        message_params:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Key-value map for interpolated values in the i18n template. Null if no params needed.
+        should_refine:
+          type: boolean
+          description: Always true. Signals the frontend to show the refine UI.
+
+    # ─── History ───
+    HistoryListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AcceptedQuerySummary"
+        total:
+          type: integer
+          nullable: true
+          description: Total number of accepted queries. Populated only on the first page request (when no `cursor` is supplied). Omitted on subsequent pages.
+        next_cursor:
+          type: string
+          nullable: true
+          description: Opaque cursor for the next page. Null if no more entries.
+
+    AcceptedQueryDetail:
+      type: object
+      required: [id, question_text, generated_sql, llm_provider, accepted_at, database_connection_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        question_text:
+          type: string
+        generated_sql:
+          type: string
+        llm_provider:
+          type: string
+        accepted_at:
+          type: string
+          format: date-time
+        database_connection_id:
+          type: string
+          format: uuid
+
+    # ─── Common ───
+    ErrorResponse:
+      type: object
+      required: [error, message_key]
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code.
+        message_key:
+          type: string
+          description: i18n key for the user-facing error message. The frontend translates via i18next.
+        message_params:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Key-value map for interpolated values in the i18n template.
+
+    ValidationErrorResponse:
+      type: object
+      required: [error, message_key, details]
+      properties:
+        error:
+          type: string
+        message_key:
+          type: string
+          description: i18n key for the top-level validation error message.
+        message_params:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Key-value map for interpolated values.
+        details:
+          type: array
+          items:
+            type: object
+            required: [field, message_key]
+            properties:
+              field:
+                type: string
+              message_key:
+                type: string
+                description: i18n key for the field-level validation error.
+              message_params:
+                type: object
+                nullable: true
+                additionalProperties: true
+                description: Key-value map for interpolated values (e.g., {"max": 2000}).

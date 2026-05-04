@@ -1,0 +1,89 @@
+# Development Docker Compose — QueryCraft Text-to-SQL Analytics Platform
+# See .env.example for required environment variables
+version: "3.9"
+
+services:
+  postgres-platform:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${PLATFORM_DB_NAME:-querycraft}
+      POSTGRES_USER: ${PLATFORM_DB_USER:-querycraft}
+      POSTGRES_PASSWORD: ${PLATFORM_DB_PASSWORD:-querycraft_dev}
+    ports:
+      - "${PLATFORM_DB_PORT:-5433}:5432"
+    volumes:
+      - platform-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PLATFORM_DB_USER:-querycraft}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - querycraft
+
+  postgres-source:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${SOURCE_DB_NAME:-source_analytics}
+      POSTGRES_USER: ${SOURCE_DB_USER:-source_readonly}
+      POSTGRES_PASSWORD: ${SOURCE_DB_PASSWORD:-source_dev}
+    ports:
+      - "${SOURCE_DB_PORT:-5434}:5432"
+    volumes:
+      - source-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SOURCE_DB_USER:-source_readonly}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - querycraft
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - querycraft
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - .env
+    depends_on:
+      postgres-platform:
+        condition: service_healthy
+      postgres-source:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - querycraft
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    networks:
+      - querycraft
+
+volumes:
+  platform-db-data:
+  source-db-data:
+
+networks:
+  querycraft:
+    driver: bridge
