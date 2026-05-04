@@ -46,7 +46,7 @@ class TestAES256GCMEncryption:
 
         plaintext = "my-secret-database-password"
         ciphertext = encrypt(plaintext, encryption_key)
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             decrypt(ciphertext, wrong_key)
 
     def test_tampered_ciphertext_raises_error(self, encryption_key: str) -> None:
@@ -59,7 +59,7 @@ class TestAES256GCMEncryption:
         raw = base64.b64decode(ciphertext)
         tampered = bytes([raw[0] ^ 0xFF]) + raw[1:]
         tampered_b64 = base64.b64encode(tampered).decode()
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             decrypt(tampered_b64, encryption_key)
 
     def test_empty_plaintext_round_trip(self, encryption_key: str) -> None:

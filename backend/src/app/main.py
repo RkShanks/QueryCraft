@@ -1,6 +1,5 @@
 """FastAPI application factory and lifespan event handler."""
 
-import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -11,7 +10,7 @@ from app.core.dependencies import close_redis, init_redis
 from app.core.encryption import encrypt
 from app.core.logging import get_logger, setup_logging
 from app.core.security import OriginValidatorMiddleware, SessionMiddleware
-from app.db.base import dispose_engine, get_async_engine, get_async_session_factory
+from app.db.base import dispose_engine, get_async_session_factory
 
 logger = get_logger(__name__)
 
@@ -23,7 +22,7 @@ async def lifespan(app: FastAPI):
     setup_logging(settings.LOG_LEVEL)
 
     # Verify Redis connectivity
-    redis = await init_redis()
+    await init_redis()
     logger.info("redis_connected", url=settings.REDIS_URL)
 
     # Upsert database_connections row for the source DB
@@ -41,7 +40,7 @@ async def _upsert_source_db_connection(settings):
     """Upsert the source database connection row on startup."""
     from sqlalchemy import text
 
-    engine = get_async_engine()
+    # Initialize engine
     session_factory = get_async_session_factory()
 
     async with session_factory() as session:
@@ -60,7 +59,9 @@ async def _upsert_source_db_connection(settings):
             )
             await session.execute(
                 text("""
-                    INSERT INTO database_connections (name, host, port, database_name, username, encrypted_password, ssl_mode)
+                    INSERT INTO database_connections (
+                        name, host, port, database_name, username, encrypted_password, ssl_mode
+                    )
                     VALUES (:name, :host, :port, :database_name, :username, :encrypted_password, :ssl_mode)
                 """),
                 {
@@ -114,7 +115,8 @@ def create_app() -> FastAPI:
     )
 
     # Register v1 router stubs
-    from app.api.v1 import auth, query, history, admin  # noqa: F401
+    from app.api.v1 import admin, auth, history, query  # noqa: F401
+
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(query.router, prefix="/api/v1")
     app.include_router(history.router, prefix="/api/v1")

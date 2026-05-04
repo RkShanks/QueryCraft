@@ -3,8 +3,6 @@
 These tests must FAIL before T-011 implementation exists.
 """
 
-import pytest
-
 
 class TestSessionMiddleware:
     """Test suite for session cookie flags and session lifecycle."""

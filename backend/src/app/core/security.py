@@ -42,6 +42,7 @@ class SessionMiddleware:
     async def _get_redis(self):
         if self._redis is None:
             from redis.asyncio import Redis
+
             self._redis = Redis.from_url(self.redis_url, decode_responses=True)
         return self._redis
 
@@ -51,7 +52,6 @@ class SessionMiddleware:
             return
 
         from starlette.requests import Request
-        from starlette.responses import JSONResponse
 
         request = Request(scope, receive)
         session_id = request.cookies.get(self.COOKIE_NAME)
