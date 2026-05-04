@@ -178,7 +178,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-032** [test] **Origin header validation enforcement** — cluster: US-1 | deps: T-011 | FR-003 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_origin_enforcement.py` asserts POST with missing/invalid Origin returns 403 and GET bypasses the check; tests pass against the running middleware.
 
-- **T-033** [test] **Argon2id password verification** — cluster: US-1 | deps: T-011 | FR-001 | parallel: ✓ | effort: S
+- [x] **T-033** [test] **Argon2id password verification** — cluster: US-1 | deps: T-011 | FR-001 | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_argon2_verification.py` asserts `verify_password` returns True for correct password, False for wrong password, and the hash uses Argon2id variant.
 
 ### Architectural-invariant tests (Constitution Principles II & III)
