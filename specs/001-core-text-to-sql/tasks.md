@@ -60,7 +60,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-001** [P] [infra] **Monorepo scaffold** — cluster: Foundation | deps: — | | parallel: ✓ | effort: XS
   Done when: repo root contains `backend/`, `frontend/`, `shared/` directories with `.gitkeep` or initial config, and a placeholder `docker-compose.dev.yml`; `git status` shows new directories tracked.
 
-- **T-002** [P] [backend] **Backend pyproject.toml with pinned deps** — cluster: Foundation | deps: — | | parallel: ✓ | effort: S
+- [x] **T-002** [P] [backend] **Backend pyproject.toml with pinned deps** — cluster: Foundation | deps: — | | parallel: ✓ | effort: S
   Done when: `backend/pyproject.toml` declares Python 3.12 with all pinned production deps (FastAPI, Uvicorn, SQLAlchemy 2.0 async, asyncpg, Alembic, Pydantic v2, pydantic-settings, sqlglot, httpx, argon2-cffi, redis[hiredis], structlog, opentelemetry-api, opentelemetry-sdk) and dev deps (pytest, pytest-asyncio, pytest-cov, testcontainers[postgres,redis], schemathesis, ruff); `pip install -e ".[dev]"` succeeds in a clean venv.
 
 ### Alembic + migrations
