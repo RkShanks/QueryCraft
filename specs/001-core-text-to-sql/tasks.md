@@ -87,7 +87,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-008** [P] [test] **AES-256-GCM encryption tests** — cluster: Foundation | deps: T-002 | | parallel: ✓ | effort: S
   Done when: `backend/tests/unit/test_encryption.py` tests round-trip, ciphertext≠plaintext, wrong-key error, tampered-ciphertext integrity error, and empty-plaintext round-trip; all fail because `core/encryption.py` does not yet exist.
 
-- **T-009** [backend] **AES-256-GCM encrypt/decrypt** — cluster: Foundation | deps: T-008 | | parallel: ✗ | effort: S
+- [x] **T-009** [backend] **AES-256-GCM encrypt/decrypt** — cluster: Foundation | deps: T-008 | | parallel: ✗ | effort: S
   Done when: `backend/src/app/core/encryption.py` exports `encrypt()`/`decrypt()` using AESGCM with 12-byte IV; output format `base64(iv || ciphertext || tag)`; all T-008 tests pass.
 
 ### Security middleware
