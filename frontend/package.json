@@ -10,7 +10,8 @@
     "lint:css": "stylelint \"src/**/*.{css,scss}\"",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "generate-api": "./scripts/generate-api-client.sh"
+    "gen:api": "./scripts/generate-api-client.sh",
+    "test": "vitest --passWithNoTests"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.9",

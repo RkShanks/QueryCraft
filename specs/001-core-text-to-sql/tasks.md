@@ -276,7 +276,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Frontend: OpenAPI client regeneration
 
-- **T-061** [frontend] **Regenerate OpenAPI TypeScript client** — cluster: US-1 | deps: T-026,T-056,T-058,T-060 | FR-001,FR-014,FR-021 | parallel: ✗ | effort: XS
+- [x] **T-061** [frontend] **Regenerate OpenAPI TypeScript client** — cluster: US-1 | deps: T-026,T-056,T-058,T-060 | FR-001,FR-014,FR-021 | parallel: ✗ | effort: XS
   Done when: `npm run gen:api` produces updated `frontend/src/api/generated/` types matching the implemented backend endpoints; `tsc --noEmit` passes.
 
 ### Frontend hooks
