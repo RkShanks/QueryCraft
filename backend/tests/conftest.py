@@ -127,7 +127,27 @@ async def app_client(set_test_env) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture
-async def authenticated_client(app_client) -> AsyncGenerator[AsyncClient, None]:
+async def ensure_db_connection(async_engine_fixture):
+    """Ensure at least one database_connections row exists for tests."""
+    from sqlalchemy import text
+    async with async_engine_fixture.connect() as conn:
+        result = await conn.execute(text("SELECT id FROM database_connections LIMIT 1"))
+        row = result.fetchone()
+        if row is None:
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO database_connections (name, host, port, database_name, username, encrypted_password, ssl_mode)
+                    VALUES ('test_source', 'localhost', 5434, 'source_analytics', 'source_readonly', 'enc', 'disable')
+                    RETURNING id
+                    """
+                )
+            )
+            await conn.commit()
+
+
+@pytest_asyncio.fixture
+async def authenticated_client(app_client, ensure_db_connection) -> AsyncGenerator[AsyncClient, None]:
     """Provide a pre-authenticated httpx client (admin user signed in)."""
     # Sign in with test admin credentials
     response = await app_client.post(

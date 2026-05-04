@@ -265,7 +265,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-057** [test] **Query router integration tests** — cluster: US-1 | deps: T-052,T-013 | FR-006,FR-007,FR-014,FR-016,SC-001,SC-002 | parallel: ✓ | effort: M
   Done when: `backend/tests/integration/test_api_query.py` tests POST `/query/submit` (200 QueryResult, 400 validation, 401 unauth, 409 concurrent, 422 evaluator rejection, 502 LLM down, 504 timeout), POST `/query/accept` (201 persisted, 400 expired/invalid); uses authenticated_client and mock_llm fixtures.
 
-- **T-058** [backend] **Query router** — cluster: US-1 | deps: T-057,T-052,T-039 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-028 | parallel: ✗ | effort: M
+- [x] **T-058** [backend] **Query router** — cluster: US-1 | deps: T-057,T-052,T-039 | FR-006,FR-007,FR-014,FR-015,FR-016,FR-028 | parallel: ✗ | effort: M
   Done when: `backend/src/app/api/v1/query.py` exposes `POST /query/submit` and `POST /query/accept` matching openapi.yaml response schemas and status codes; all T-057 tests pass.
 
 - **T-059** [test] **History router integration tests** — cluster: US-1 | deps: T-054,T-013 | FR-021,FR-023 | parallel: ✓ | effort: S
