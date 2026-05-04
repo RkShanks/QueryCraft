@@ -1,6 +1,5 @@
 # Development Docker Compose — QueryCraft Text-to-SQL Analytics Platform
-# See .env.example for required environment variables
-version: "3.9"
+# Usage: cp .env.example .env && docker compose -f docker-compose.dev.yml up -d
 
 services:
   postgres-platform:
@@ -10,7 +9,7 @@ services:
       POSTGRES_USER: ${PLATFORM_DB_USER:-querycraft}
       POSTGRES_PASSWORD: ${PLATFORM_DB_PASSWORD:-querycraft_dev}
     ports:
-      - "${PLATFORM_DB_PORT:-5433}:5432"
+      - "5433:5432"
     volumes:
       - platform-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -28,7 +27,7 @@ services:
       POSTGRES_USER: ${SOURCE_DB_USER:-source_readonly}
       POSTGRES_PASSWORD: ${SOURCE_DB_PASSWORD:-source_dev}
     ports:
-      - "${SOURCE_DB_PORT:-5434}:5432"
+      - "5434:5432"
     volumes:
       - source-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -42,7 +41,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -74,7 +73,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
       - backend
     networks:
