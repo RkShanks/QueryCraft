@@ -15,12 +15,6 @@ from app.repositories.accepted_query_repository import AcceptedQueryRepository
 class TestAcceptedQueryRepository:
     """AcceptedQueryRepository integration tests against real PostgreSQL."""
 
-    @pytest.fixture(autouse=True)
-    async def clean_accepted_queries(self, async_engine_fixture):
-        async with async_engine_fixture.connect() as conn:
-            await conn.execute(text("TRUNCATE accepted_queries RESTART IDENTITY CASCADE"))
-            await conn.commit()
-
     @pytest.fixture
     async def admin_user_id(self, db_session):
         """Fetch the seeded admin user's UUID."""
