@@ -58,6 +58,8 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     env_file:
       - .env
+    volumes:
+      - ./specs:/specs:ro
     depends_on:
       postgres-platform:
         condition: service_healthy
