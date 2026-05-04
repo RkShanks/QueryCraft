@@ -256,7 +256,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Backend routers
 
-- **T-055** [test] **Auth router integration tests** — cluster: US-1 | deps: T-049,T-013 | FR-001,FR-002,FR-003 | parallel: ✓ | effort: S
+- [x] **T-055** [test] **Auth router integration tests** — cluster: US-1 | deps: T-049,T-013 | FR-001,FR-002,FR-003 | parallel: ✓ | effort: S
   Done when: `backend/tests/integration/test_api_auth.py` tests POST `/auth/sign-in` (200 + cookie, 401 wrong creds, 422 empty fields), POST `/auth/sign-out` (204, 401 unauthenticated), GET `/auth/me` (200 profile, 401 expired); uses ASGI transport.
 
 - **T-056** [backend] **Auth router** — cluster: US-1 | deps: T-055,T-049,T-037 | FR-001,FR-002,FR-003 | parallel: ✗ | effort: S
