@@ -4,9 +4,9 @@ import './i18n';
 import './index.css';
 
 // Lazy-loaded page stubs
-import LoginPage from './pages/LoginPage';
-import QueryPage from './pages/QueryPage';
-import HistoryPage from './pages/HistoryPage';
+import LoginPage from './pages/LoginPage.tsx';
+import QueryPage from './pages/QueryPage.tsx';
+import HistoryPage from './pages/HistoryPage.tsx';
 
 function App() {
   return (
