@@ -379,7 +379,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [ ] **T-090** [P] [test] **ReadOnlyRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-003 | effort: M
   Done when: `backend/tests/unit/test_rule_read_only.py` tests pass cases (SELECT, CTE, subquery, DISTINCT ON, window functions) and fail cases (INSERT, UPDATE, DELETE, DROP, TRUNCATE, ALTER, CREATE — 7 data-modifying keywords); at least 15 test cases.
 
-- [ ] **T-091** [backend] **ReadOnlyRule** — cluster: US-2 | deps: T-090 | FR-010,SC-003 | effort: S
+- [x] **T-091** [backend] **ReadOnlyRule** — cluster: US-2 | deps: T-090 | FR-010,SC-003 | effort: S
   Done when: `backend/src/app/evaluator/rules/read_only_rule.py` parses SQL with `sqlglot` (postgres dialect), rejects any non-SELECT/CTE AST node, and returns violations with `evaluator.violation.dataModifying` message key; all T-090 tests pass.
 
 - [ ] **T-092** [P] [test] **SingleStatementRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
