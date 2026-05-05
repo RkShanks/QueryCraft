@@ -559,7 +559,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-140** [frontend] **RefinePromptBanner component** — cluster: US-2 | deps: T-139,T-022 | FR-018,SC-009 | effort: XS
   Done when: `frontend/src/components/RefinePromptBanner.tsx` renders a prompt with translated refine message and resets input state; all T-139 tests pass.
 
-- [ ] **T-141** [P] [test] **TimeoutBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-012,SC-009 | effort: XS
+- [x] **T-141** [P] [test] **TimeoutBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-012,SC-009 | effort: XS
   Done when: `frontend/tests/unit/TimeoutBanner.test.tsx` tests: (1) renders translated `query.error.timeout` message, (2) renders nothing when error type is not timeout; uses RTL.
 
 - [ ] **T-142** [frontend] **TimeoutBanner component** — cluster: US-2 | deps: T-141,T-022 | FR-012,SC-009 | effort: XS
