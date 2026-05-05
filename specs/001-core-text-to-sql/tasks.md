@@ -370,10 +370,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Evaluator pipeline and rules
 
-- [ ] **T-088** [P] [test] **EvaluatorRule protocol + pipeline tests** — cluster: US-2 | deps: T-002 | FR-010,FR-011 | effort: S
+- [x] **T-088** [P] [test] **EvaluatorRule protocol + pipeline tests** — cluster: US-2 | deps: T-002 | FR-010,FR-011 | effort: S
   Done when: `backend/tests/unit/test_evaluator_pipeline.py` asserts the pipeline fans out to all registered rules, collects violations, and returns `EvaluatorResult(passed=True)` when no violations and `passed=False` otherwise.
 
-- [ ] **T-089** [backend] **Evaluator base + pipeline** — cluster: US-2 | deps: T-088 | FR-010,FR-011 | effort: S
+- [x] **T-089** [backend] **Evaluator base + pipeline** — cluster: US-2 | deps: T-088 | FR-010,FR-011 | effort: S
   Done when: `backend/src/app/evaluator/base.py` defines `EvaluatorRule` protocol and `EvaluatorResult`/`EvaluatorViolation` dataclasses; `pipeline.py` implements `evaluate(sql, schema) -> EvaluatorResult` fanning out to rules; all T-088 tests pass.
 
 - [ ] **T-090** [P] [test] **ReadOnlyRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-003 | effort: M
