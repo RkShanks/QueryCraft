@@ -20,18 +20,6 @@ const FIRST_RESULT: QueryResult = {
   is_last_auto_retry: false,
 };
 
-const RETRY_RESULT: QueryResult = {
-  kind: 'result',
-  attempt_id: 'attempt-mock-2',
-  question: 'How many actors?',
-  generated_sql: 'SELECT count(*) FROM customer;', // different SQL to dodge byte-equal
-  columns: [{ name: 'count', type: 'bigint' }],
-  rows: [[599]],
-  row_count: 1,
-  attempt_number: 2,
-  is_last_auto_retry: true,
-};
-
 const REFINE_PROMPT: RefinePrompt = {
   kind: 'refine',
   message_key: 'query.refine.message',

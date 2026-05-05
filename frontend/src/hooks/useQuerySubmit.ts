@@ -41,6 +41,7 @@ export interface UseQuerySubmitReturn {
   timeout: boolean;
   error: { kind: ErrorKind } | null;
   resetError: () => void;
+  reset: () => void;
 }
 
 function isApiError(err: unknown): err is Record<string, unknown> {
