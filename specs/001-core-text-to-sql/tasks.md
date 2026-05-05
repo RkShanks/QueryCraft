@@ -405,53 +405,53 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Source-DB introspector + connector + executor
 
-- [ ] **T-099** [P] [test] **SchemaIntrospector unit tests** — cluster: US-2 | deps: T-017 | FR-008 | effort: S
+- [x] **T-099** [P] [test] **SchemaIntrospector unit tests** — cluster: US-2 | deps: T-017 | FR-008 | effort: S
   Done when: `backend/tests/integration/test_introspector.py` tests introspector against testcontainers PostgreSQL with a known schema, asserts correct table/column/FK extraction, TTL cache re-reads after expiry, and manual refresh clears cache.
 
-- [ ] **T-100** [backend] **SchemaIntrospector** — cluster: US-2 | deps: T-099,T-098 | FR-008 | effort: M
+- [x] **T-100** [backend] **SchemaIntrospector** — cluster: US-2 | deps: T-099,T-098 | FR-008 | effort: M
   Done when: `backend/src/app/source_db/introspector.py` queries `information_schema` for tables/columns/FKs, builds `SchemaContext`, caches with `SCHEMA_CACHE_TTL_SECONDS`, and exposes `refresh()` method; all T-099 tests pass.
 
-- [ ] **T-101** [test] **SchemaTokenLimitExceeded test** — cluster: US-2 | deps: T-100 | | effort: S
+- [x] **T-101** [test] **SchemaTokenLimitExceeded test** — cluster: US-2 | deps: T-100 | | effort: S
   Done when: `backend/tests/unit/test_schema_token_limit.py` asserts that when token count exceeds `MAX_SCHEMA_TOKENS`, `SchemaTokenLimitExceeded` is raised with the computed count and configured limit.
 
-- [ ] **T-102** [backend] **Schema token limit escalation** — cluster: US-2 | deps: T-101,T-100 | | effort: S
+- [x] **T-102** [backend] **Schema token limit escalation** — cluster: US-2 | deps: T-101,T-100 | | effort: S
   Done when: `backend/src/app/source_db/introspector.py` computes approximate token count after introspection and raises `SchemaTokenLimitExceeded` (defined in `core/exceptions.py`) when it exceeds `MAX_SCHEMA_TOKENS`; T-101 test passes.
 
-- [ ] **T-103** [P] [test] **SourceDBConnector read-only test** — cluster: US-2 | deps: T-017 | FR-005,FR-013 | effort: S
+- [x] **T-103** [P] [test] **SourceDBConnector read-only test** — cluster: US-2 | deps: T-017 | FR-005,FR-013 | effort: S
   Done when: `backend/tests/integration/test_source_db_connector.py` asserts the connector creates a read-only asyncpg pool using decrypted credentials and that INSERT/UPDATE statements fail at the DB level.
 
-- [ ] **T-104** [backend] **SourceDBConnector** — cluster: US-2 | deps: T-103,T-009 | FR-005,FR-013 | effort: S
+- [x] **T-104** [backend] **SourceDBConnector** — cluster: US-2 | deps: T-103,T-009 | FR-005,FR-013 | effort: S
   Done when: `backend/src/app/source_db/connector.py` creates an async connection pool with read-only role credentials decrypted via `core/encryption.py`; all T-103 tests pass.
 
-- [ ] **T-105** [test] **SourceDBExecutor timeout test** — cluster: US-2 | deps: T-104 | FR-012,FR-013,SC-011 | effort: S
+- [x] **T-105** [test] **SourceDBExecutor timeout test** — cluster: US-2 | deps: T-104 | FR-012,FR-013,SC-011 | effort: S
   Done when: `backend/tests/integration/test_source_db_executor.py` asserts that a query exceeding `QUERY_TIMEOUT_SECONDS` is cancelled and raises a timeout error, and that a normal query returns rows and column metadata.
 
-- [ ] **T-106** [backend] **SourceDBExecutor** — cluster: US-2 | deps: T-105,T-104 | FR-012,FR-013,SC-011 | effort: M
+- [x] **T-106** [backend] **SourceDBExecutor** — cluster: US-2 | deps: T-105,T-104 | FR-012,FR-013,SC-011 | effort: M
   Done when: `backend/src/app/source_db/executor.py` implements `execute(sql, timeout) -> (columns, rows)` using `statement_timeout` and `asyncio.wait_for`; all T-105 tests pass.
 
 ### Redis infrastructure: processing lock + ephemeral attempts
 
-- [ ] **T-107** [P] [test] **Redis processing lock tests** — cluster: US-2 | deps: T-014 | FR-030 | effort: S
+- [x] **T-107** [P] [test] **Redis processing lock tests** — cluster: US-2 | deps: T-014 | FR-030 | effort: S
   Done when: `backend/tests/unit/test_processing_lock.py` asserts: (1) acquiring lock returns True when free, (2) acquiring lock returns False when held by same session, (3) lock is released in finally block, (4) lock TTL matches `query_timeout + 10` capped at 60.
 
-- [ ] **T-108** [backend] **Redis processing lock** — cluster: US-2 | deps: T-107,T-014 | FR-030 | effort: S
+- [x] **T-108** [backend] **Redis processing lock** — cluster: US-2 | deps: T-107,T-014 | FR-030 | effort: S
   Done when: `backend/src/app/core/processing_lock.py` implements `acquire_lock(session_id, redis) -> bool` and `release_lock(session_id, redis)` using `SET NX EX`; all T-107 tests pass.
 
-- [ ] **T-109** [P] [test] **Ephemeral attempt storage tests** — cluster: US-2 | deps: T-014 | | effort: S
+- [x] **T-109** [P] [test] **Ephemeral attempt storage tests** — cluster: US-2 | deps: T-014 | | effort: S
   Done when: `backend/tests/unit/test_attempt_store.py` asserts: (1) store creates key `attempt:{id}` with 15-min TTL, (2) get returns attempt data, (3) get with wrong session_id raises ownership error, (4) delete removes key, (5) expired key returns None.
 
-- [ ] **T-110** [backend] **Ephemeral attempt store** — cluster: US-2 | deps: T-109,T-014 | | effort: S
+- [x] **T-110** [backend] **Ephemeral attempt store** — cluster: US-2 | deps: T-109,T-014 | | effort: S
   Done when: `backend/src/app/core/attempt_store.py` implements `store_attempt`, `get_attempt(attempt_id, session_id)`, `delete_attempt` against Redis with 15-min TTL and session ownership validation; all T-109 tests pass.
 
 ### QueryService reject/regenerate + state machine
 
-- [ ] **T-111** [P] [test] **QueryService reject tests** — cluster: US-2 | deps: T-017,T-110 | FR-017,FR-018,FR-020,SC-005,SC-012 | effort: M
+- [x] **T-111** [P] [test] **QueryService reject tests** — cluster: US-2 | deps: T-017,T-110 | FR-017,FR-018,FR-020,SC-005,SC-012 | effort: M
   Done when: `backend/tests/unit/test_query_service_reject.py` tests: (1) reject attempt #1 triggers LLM with negative context and returns new QueryResult, (2) byte-equal regenerated SQL returns RefinePrompt, (3) reject attempt #2 returns RefinePrompt, (4) rejected SQL not written to `accepted_queries`, (5) attempt ownership validated.
 
-- [ ] **T-112** [P] [test] **QueryService regenerate tests** — cluster: US-2 | deps: T-017,T-110 | FR-019,SC-005 | effort: S
+- [x] **T-112** [P] [test] **QueryService regenerate tests** — cluster: US-2 | deps: T-017,T-110 | FR-019,SC-005 | effort: S
   Done when: `backend/tests/unit/test_query_service_regenerate.py` tests that regenerate behaves identically to reject (same one-retry limit, same byte-equal detection, same RefinePrompt on second rejection).
 
-- [ ] **T-113** [backend] **QueryService reject + regenerate** — cluster: US-2 | deps: T-111,T-112,T-052,T-086,T-089,T-106,T-108,T-110 | FR-017,FR-018,FR-019,FR-020,SC-005,SC-012 | effort: L
+- [x] **T-113** [backend] **QueryService reject + regenerate** — cluster: US-2 | deps: T-111,T-112,T-052,T-086,T-089,T-106,T-108,T-110 | FR-017,FR-018,FR-019,FR-020,SC-005,SC-012 | effort: L
   Done when: `backend/src/app/services/query_service.py` adds `reject_query` and `regenerate_query` methods implementing the state machine from plan.md: negative-context LLM call, byte-equal detection, evaluator re-check, max-retry enforcement, ephemeral Redis lifecycle, and processing lock; all T-111 and T-112 tests pass.
   > **Note:** Inv 4 logic implemented here; dedicated invariant assertion test deferred to T-159 (US-4).
 
