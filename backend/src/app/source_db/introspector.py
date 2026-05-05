@@ -4,8 +4,13 @@ T-100: SchemaIntrospector queries information_schema and builds SchemaContext.
 """
 
 import asyncio
+import json
 import time
 
+import tiktoken
+
+from app.core.config import get_settings
+from app.core.exceptions import SchemaTokenLimitExceeded
 from app.evaluator.schema_context import Column, SchemaContext, Table
 from app.source_db.connector import SourceDBConnector
 
@@ -87,7 +92,23 @@ class SchemaIntrospector:
 
         # Attach foreign keys to SchemaContext (store as table metadata)
         schema = SchemaContext(tables=list(table_map.values()))
+
+        # T-102: Token limit escalation
+        token_count = self._count_tokens(schema)
+        max_tokens = getattr(get_settings(), "MAX_SCHEMA_TOKENS", 60000)
+        if token_count > max_tokens:
+            raise SchemaTokenLimitExceeded(tokens=token_count, limit=max_tokens)
+
         return schema
+
+    def _count_tokens(self, schema: SchemaContext) -> int:
+        """Approximate token count using tiktoken cl100k_base on JSON-serialised schema."""
+        try:
+            encoding = tiktoken.get_encoding("cl100k_base")
+        except Exception:
+            encoding = tiktoken.encoding_for_model("gpt-4")
+        json_text = json.dumps(schema.model_dump(), separators=(",", ":"))
+        return len(encoding.encode(json_text))
 
     async def _fetch_tables(self, conn):
         query = """
