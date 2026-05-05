@@ -5,8 +5,8 @@ import pytest
 import respx
 from httpx import Response
 
-from app.llm.openai_adapter import OpenAIAdapter
 from app.llm.exceptions import LLMTimeout, LLMUnavailable
+from app.llm.openai_adapter import OpenAIAdapter
 
 
 @pytest.fixture

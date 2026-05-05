@@ -344,7 +344,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [ ] **T-079** [P] [test] **OpenAIAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_openai.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Chat Completions payload and extracts SQL from the response.
 
-- [ ] **T-080** [backend] **OpenAIAdapter** — cluster: US-2 | deps: T-079,T-076 | FR-009 | effort: S
+- [x] **T-080** [backend] **OpenAIAdapter** — cluster: US-2 | deps: T-079,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/openai_adapter.py` implements `LLMProvider` using `httpx` against the OpenAI Chat Completions API; all T-079 tests pass.
 
 - [ ] **T-081** [P] [test] **GeminiAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
