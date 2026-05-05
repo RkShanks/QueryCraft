@@ -31,6 +31,7 @@ services:
     volumes:
       - source-db-data:/var/lib/postgresql/data
       # Pagila init scripts (run on first init only — when source-db-data is empty):
+      - ./dbTest/init/00-create-postgres-role.sql:/docker-entrypoint-initdb.d/00-create-postgres-role.sql:ro
       - ./dbTest/init/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./dbTest/init/02-data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
       - ./dbTest/init/03-grants.sql:/docker-entrypoint-initdb.d/03-grants.sql:ro
