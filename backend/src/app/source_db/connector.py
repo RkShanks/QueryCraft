@@ -3,6 +3,8 @@
 T-104: SourceDBConnector creates and manages an asyncpg connection pool.
 """
 
+from contextlib import asynccontextmanager
+
 import asyncpg
 
 from app.core.config import get_settings
@@ -18,9 +20,12 @@ class SourceDBConnector:
     async def init_pool(self) -> None:
         """Initialise the asyncpg pool from settings."""
         settings = get_settings()
-        password = settings.SOURCE_DB_PASSWORD
-        # If password looks encrypted (base64-ish and not plaintext), try decrypt
-        # For local dev the password is plaintext; for production it's encrypted
+        raw_password = settings.SOURCE_DB_PASSWORD
+        try:
+            password = decrypt(raw_password)
+        except Exception:
+            # If decryption fails, assume plaintext (dev mode)
+            password = raw_password
         self._pool = await asyncpg.create_pool(
             host=settings.SOURCE_DB_HOST,
             port=settings.SOURCE_DB_PORT,
@@ -38,6 +43,7 @@ class SourceDBConnector:
             await self._pool.close()
             self._pool = None
 
+    @asynccontextmanager
     async def get_connection(self):
         """Async context manager yielding a connection from the pool."""
         if self._pool is None:
