@@ -12,6 +12,7 @@ from app.llm.stub import StubLLM
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.query import (
     AcceptQueryRequest,
+    EvaluatorRejection,
     QueryResult,
     RefinePrompt,
     RegenerateQueryRequest,
@@ -66,11 +67,17 @@ async def submit_question(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": "validation", "message_key": "error.validation.questionTooLong"},
         )
-    return await service.submit_question(
+    result = await service.submit_question(
         session_id=request.state.session_id,
         user_id=session["user_id"],
         question=stripped,
     )
+    if isinstance(result, EvaluatorRejection):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=result.model_dump(),
+        )
+    return result
 
 
 @router.post("/accept", status_code=status.HTTP_201_CREATED)
