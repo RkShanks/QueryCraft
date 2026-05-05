@@ -516,80 +516,80 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### OpenAPI client regeneration
 
-- [ ] **T-129** [frontend] **Regenerate OpenAPI client for US-2 endpoints** — cluster: US-2 | deps: T-061,T-115,T-117,T-119 | FR-017,FR-019 | effort: XS
+- [x] **T-129** [frontend] **Regenerate OpenAPI client for US-2 endpoints** — cluster: US-2 | deps: T-061,T-115,T-117,T-119 | FR-017,FR-019 | effort: XS
   Done when: `npm run gen:api` produces updated `frontend/src/api/generated/` types including `rejectQuery`, `regenerateQuery`, `RefinePrompt` (with `kind` discriminator), and `refreshSchema`; `tsc --noEmit` passes.
 
 ### MSW handlers for /query/submit scenarios
 
-- [ ] **T-130** [P] [test] **MSW handlers for /query/submit success, evaluator rejection, timeout, 409, 502** — cluster: US-2 | deps: T-025,T-129 | FR-007,FR-014,FR-017,FR-028,FR-030 | effort: S
+- [x] **T-130** [P] [test] **MSW handlers for /query/submit success, evaluator rejection, timeout, 409, 502** — cluster: US-2 | deps: T-025,T-129 | FR-007,FR-014,FR-017,FR-028,FR-030 | effort: S
   Done when: `frontend/src/mocks/handlers-query.ts` exports named handler factories for 200 `QueryResult`, 422 `EvaluatorRejection`, 504 timeout `ErrorResponse`, 409 concurrent `ErrorResponse`, and 502 LLM-unavailable `ErrorResponse`; a smoke test in `frontend/tests/unit/msw-handlers-query.test.ts` activates each handler, fetches, and asserts the expected status code and `kind`/`message_key` fields.
 
 ### useSubmitQuestion hook
 
-- [ ] **T-131** [P] [test] **useSubmitQuestion hook RTL tests** — cluster: US-2 | deps: T-130 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
+- [x] **T-131** [P] [test] **useSubmitQuestion hook RTL tests** — cluster: US-2 | deps: T-130 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
   Done when: `frontend/tests/unit/useSubmitQuestion.test.tsx` tests: (1) submit returns `QueryResult` on 200, (2) reject returns `QueryResult` (kind=result) on first rejection, (3) reject returns `RefinePrompt` (kind=refine) on second rejection discriminated via `kind`, (4) regenerate mirrors reject behavior, (5) 409 sets `error.concurrent` state, (6) 502 sets `error.llmUnavailable` state, (7) submit-lock prevents concurrent calls; uses MSW server with T-130 handlers.
 
-- [ ] **T-132** [frontend] **useSubmitQuestion hook** — cluster: US-2 | deps: T-131,T-024,T-129 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
+- [x] **T-132** [frontend] **useSubmitQuestion hook** — cluster: US-2 | deps: T-131,T-024,T-129 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
   Done when: `frontend/src/hooks/useSubmitQuestion.ts` implements `useSubmitQuestion()` returning `{ submitQuestion, rejectQuery, regenerateQuery, acceptQuery, isSubmitting, result, refinePrompt, error }` with `kind` discriminator switch for oneOf responses and submit-lock state; all T-131 tests pass.
 
 ### QueryInput component
 
-- [ ] **T-133** [P] [test] **QueryInput RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-006,FR-007,SC-009 | effort: S
+- [x] **T-133** [P] [test] **QueryInput RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-006,FR-007,SC-009 | effort: S
   Done when: `frontend/tests/unit/QueryInput.test.tsx` tests: (1) renders textarea with i18n placeholder `query.input.placeholder`, (2) displays live character counter updating on keystrokes, (3) prevents submission and shows validation when text exceeds 2000 chars, (4) disables submit button while `isSubmitting` is true, (5) calls `submitQuestion` on button click and on Enter key; uses RTL + MSW.
 
-- [ ] **T-134** [frontend] **QueryInput component** — cluster: US-2 | deps: T-133,T-132,T-022 | FR-006,FR-007,FR-030,SC-009 | effort: S
+- [x] **T-134** [frontend] **QueryInput component** — cluster: US-2 | deps: T-133,T-132,T-022 | FR-006,FR-007,FR-030,SC-009 | effort: S
   Done when: `frontend/src/components/QueryInput.tsx` renders a textarea with `{current}/{max}` character counter, submit button disabled on empty/whitespace/over-limit/isSubmitting, all strings via `t()`; all T-133 tests pass.
 
 ### ResultTable + SqlDisplay component (TanStack Table + SQL block)
 
-- [ ] **T-135** [P] [test] **ResultTable + SqlDisplay state-machine integration RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-014,FR-015,FR-029,SC-009 | effort: S
+- [x] **T-135** [P] [test] **ResultTable + SqlDisplay state-machine integration RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-014,FR-015,FR-029,SC-009 | effort: S
   Done when: `frontend/tests/unit/ResultTable.test.tsx` and `frontend/tests/unit/SqlDisplay.test.tsx` test the existing components against US-2 state-machine inputs: (1) TanStack Table renders columns and rows from `QueryResult`, (2) displays `query.result.noRows` i18n key on zero-row result, (3) shows generated SQL in a code block, (4) renders Accept/Reject/Regenerate buttons with i18n labels, (5) shows `query.result.lastRetry` indicator when `is_last_auto_retry` is true; uses RTL.
 
-- [ ] **T-136** [frontend] **ResultTable + SqlDisplay state-machine wiring** — cluster: US-2 | deps: T-135,T-132,T-022 | FR-014,FR-015,FR-029,SC-009 | effort: M
+- [x] **T-136** [frontend] **ResultTable + SqlDisplay state-machine wiring** — cluster: US-2 | deps: T-135,T-132,T-022 | FR-014,FR-015,FR-029,SC-009 | effort: M
   Done when: `frontend/src/components/ResultTable.tsx` and `frontend/src/components/SqlDisplay.tsx` are extended with Reject/Regenerate wiring (Accept/Reject/Regenerate action buttons, `is_last_auto_retry` indicator) without creating new components; all T-135 tests pass.
 
 ### Error state components
 
-- [ ] **T-137** [P] [test] **EvaluatorRejectionBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-028,SC-009 | effort: XS
+- [x] **T-137** [P] [test] **EvaluatorRejectionBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-028,SC-009 | effort: XS
   Done when: `frontend/tests/unit/EvaluatorRejectionBanner.test.tsx` tests: (1) renders translated `query.evaluator.rejected` message, (2) displays violation list with translated `message_key` per violation, (3) renders nothing when violations array is empty; uses RTL.
 
-- [ ] **T-138** [frontend] **EvaluatorRejectionBanner component** — cluster: US-2 | deps: T-137,T-022 | FR-028,SC-009 | effort: XS
+- [x] **T-138** [frontend] **EvaluatorRejectionBanner component** — cluster: US-2 | deps: T-137,T-022 | FR-028,SC-009 | effort: XS
   Done when: `frontend/src/components/EvaluatorRejectionBanner.tsx` renders an alert with translated evaluator message and violations; all T-137 tests pass.
 
-- [ ] **T-139** [P] [test] **RefinePromptBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-018,SC-009 | effort: XS
+- [x] **T-139** [P] [test] **RefinePromptBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-018,SC-009 | effort: XS
   Done when: `frontend/tests/unit/RefinePromptBanner.test.tsx` tests: (1) renders translated `query.refine.message`, (2) shows fresh question input prompt; uses RTL.
 
-- [ ] **T-140** [frontend] **RefinePromptBanner component** — cluster: US-2 | deps: T-139,T-022 | FR-018,SC-009 | effort: XS
+- [x] **T-140** [frontend] **RefinePromptBanner component** — cluster: US-2 | deps: T-139,T-022 | FR-018,SC-009 | effort: XS
   Done when: `frontend/src/components/RefinePromptBanner.tsx` renders a prompt with translated refine message and resets input state; all T-139 tests pass.
 
-- [ ] **T-141** [P] [test] **TimeoutBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-012,SC-009 | effort: XS
+- [x] **T-141** [P] [test] **TimeoutBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-012,SC-009 | effort: XS
   Done when: `frontend/tests/unit/TimeoutBanner.test.tsx` tests: (1) renders translated `query.error.timeout` message, (2) renders nothing when error type is not timeout; uses RTL.
 
-- [ ] **T-142** [frontend] **TimeoutBanner component** — cluster: US-2 | deps: T-141,T-022 | FR-012,SC-009 | effort: XS
+- [x] **T-142** [frontend] **TimeoutBanner component** — cluster: US-2 | deps: T-141,T-022 | FR-012,SC-009 | effort: XS
   Done when: `frontend/src/components/TimeoutBanner.tsx` renders an alert with translated timeout message; all T-141 tests pass.
 
 ### AskQuestionPage assembly (US-2 extension)
 
-- [ ] **T-143** [test] **AskQuestionPage US-2 integration tests** — cluster: US-2 | deps: T-130,T-134,T-136,T-138,T-140,T-142 | FR-006,FR-014,FR-017,FR-018,FR-028,SC-001 | effort: M
+- [x] **T-143** [test] **AskQuestionPage US-2 integration tests** — cluster: US-2 | deps: T-130,T-134,T-136,T-138,T-140,T-142 | FR-006,FR-014,FR-017,FR-018,FR-028,SC-001 | effort: M
   Done when: `frontend/tests/unit/AskQuestionPage-us2.test.tsx` tests: (1) submitting shows ResultTable + SqlDisplay, (2) clicking Reject shows new ResultTable + SqlDisplay with `is_last_auto_retry=true`, (3) second rejection shows RefinePromptBanner, (4) evaluator-422 shows EvaluatorRejectionBanner, (5) 504 shows TimeoutBanner, (6) 409 shows concurrent-error toast, (7) 502 shows LLM-unavailable toast; uses MSW + RTL.
 
-- [ ] **T-144** [frontend] **AskQuestionPage US-2 wiring** — cluster: US-2 | deps: T-143,T-134,T-136,T-138,T-140,T-142,T-023 | FR-006,FR-014,FR-017,FR-018,FR-019,FR-028,FR-030,SC-009 | effort: M
+- [x] **T-144** [frontend] **AskQuestionPage US-2 wiring** — cluster: US-2 | deps: T-143,T-134,T-136,T-138,T-140,T-142,T-023 | FR-006,FR-014,FR-017,FR-018,FR-019,FR-028,FR-030,SC-009 | effort: M
   Done when: `frontend/src/pages/AskQuestionPage.tsx` integrates QueryInput, ResultTable, SqlDisplay, EvaluatorRejectionBanner, RefinePromptBanner, TimeoutBanner, and Radix toasts for 409/502; `kind` discriminator drives which component renders; all T-143 tests pass.
 
 ### Frontend i18n key verification
 
-- [ ] **T-145** [test] **i18n key verification — no inline string literals** — cluster: US-2 | deps: T-022,T-144 | SC-009 | effort: S
+- [x] **T-145** [test] **i18n key verification — no inline string literals** — cluster: US-2 | deps: T-022,T-144 | SC-009 | effort: S
   Done when: `npm run lint` passes with zero violations of the no-inline-string-literals ESLint rule across all files in `frontend/src/components/` and `frontend/src/pages/`; a CI script `frontend/scripts/verify-i18n-keys.ts` loads `en.json` and asserts every key referenced by `t()` in source files exists in the locale file and vice-versa.
 
 ### Playwright e2e — US-2 independent test criterion
 
-- [ ] **T-146** [test] **E2E: reject → auto-retry → new result → accept** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-017,FR-018,SC-005 | effort: L
+- [x] **T-146** [test] **E2E: reject → auto-retry → new result → accept** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-017,FR-018,SC-005 | effort: L
   Done when: `frontend/tests/e2e/reject-retry.spec.ts` runs against `docker-compose.dev.yml`: (1) signs in, (2) submits a question, (3) clicks Reject on first result, (4) sees a new result with different SQL and `is_last_auto_retry` indicator, (5) clicks Accept on second result, (6) navigates to `/history` and sees the accepted query; assertions pass in headless Chromium.
 
-- [ ] **T-147** [test] **E2E: double-reject → refine prompt → new question resets counter** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-018,FR-019,SC-005 | effort: M
+- [x] **T-147** [test] **E2E: double-reject → refine prompt → new question resets counter** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-018,FR-019,SC-005 | effort: M
   Done when: `frontend/tests/e2e/reject-retry.spec.ts` extends with scenario: (1) submits a question, (2) rejects first result, (3) rejects second result, (4) sees RefinePromptBanner with `query.refine.message`, (5) types a new question and submits, (6) sees a fresh result (counter reset); no rejected queries appear in `/history`.
 
-- [ ] **T-148** [test] **E2E: evaluator rejection + timeout + concurrent error rendering** — cluster: US-2 | deps: T-028,T-144 | FR-012,FR-028,FR-030 | effort: M
+- [x] **T-148** [test] **E2E: evaluator rejection + timeout + concurrent error rendering** — cluster: US-2 | deps: T-028,T-144 | FR-012,FR-028,FR-030 | effort: M
   Done when: `frontend/tests/e2e/error-states.spec.ts` runs against `docker-compose.dev.yml` with mock LLM configured to trigger each error: (1) evaluator rejection shows EvaluatorRejectionBanner, (2) timeout shows TimeoutBanner, (3) concurrent submission shows 409 toast; all assertions pass in headless Chromium.
 
 ## Cluster: US-3 — Evaluator Blocks Unsafe SQL

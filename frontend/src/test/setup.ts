@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { server } from './server';
+import { resetQueryScenarios } from './handlers';
 import { client } from '../api/generated/client.gen';
 
 beforeAll(() => {
@@ -30,6 +31,7 @@ vi.mock('react-i18next', () => ({
 afterEach(() => {
   cleanup();
   server.resetHandlers();
+  resetQueryScenarios();
 });
 
 afterAll(() => server.close());
