@@ -335,31 +335,31 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-076** [backend] **LLMProvider protocol** — cluster: US-2 | deps: T-075 | FR-009 | effort: XS
   Done when: `backend/src/app/llm/base.py` defines `LLMProvider` as a `typing.Protocol` with `async def generate_sql(self, question: str, schema_context: str, negative_examples: list[str] | None = None) -> str`; T-075 protocol check compiles.
 
-- [ ] **T-077** [P] [test] **AnthropicAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+- [x] **T-077** [P] [test] **AnthropicAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_anthropic.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Messages API payload, extracts SQL from the response, and raises on HTTP errors.
 
 - [x] **T-078** [backend] **AnthropicAdapter** — cluster: US-2 | deps: T-077,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/anthropic_adapter.py` implements `LLMProvider` using `httpx` against the Anthropic Messages API; all T-077 tests pass.
 
-- [ ] **T-079** [P] [test] **OpenAIAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+- [x] **T-079** [P] [test] **OpenAIAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_openai.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Chat Completions payload and extracts SQL from the response.
 
 - [x] **T-080** [backend] **OpenAIAdapter** — cluster: US-2 | deps: T-079,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/openai_adapter.py` implements `LLMProvider` using `httpx` against the OpenAI Chat Completions API; all T-079 tests pass.
 
-- [ ] **T-081** [P] [test] **GeminiAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+- [x] **T-081** [P] [test] **GeminiAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_gemini.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Gemini generateContent payload and extracts SQL.
 
 - [x] **T-082** [backend] **GeminiAdapter** — cluster: US-2 | deps: T-081,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/gemini_adapter.py` implements `LLMProvider` using `httpx` against the Gemini API; all T-081 tests pass.
 
-- [ ] **T-083** [P] [test] **OllamaAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+- [x] **T-083** [P] [test] **OllamaAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_ollama.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Ollama `/api/generate` payload and extracts SQL.
 
 - [x] **T-084** [backend] **OllamaAdapter** — cluster: US-2 | deps: T-083,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/ollama_adapter.py` implements `LLMProvider` using `httpx` against `LLM_BASE_URL_OLLAMA`; all T-083 tests pass.
 
-- [ ] **T-085** [test] **LLM factory selection test** — cluster: US-2 | deps: T-078,T-080,T-082,T-084 | FR-009,FR-026,SC-008 | effort: S
+- [x] **T-085** [test] **LLM factory selection test** — cluster: US-2 | deps: T-078,T-080,T-082,T-084 | FR-009,FR-026,SC-008 | effort: S
   Done when: `backend/tests/unit/test_llm_factory.py` asserts `create_llm_provider(settings)` returns the correct adapter for each `LLM_PROVIDER` enum value and raises on unsupported values.
 
 - [x] **T-086** [backend] **LLM factory** — cluster: US-2 | deps: T-085 | FR-009,FR-026 | effort: XS
@@ -376,25 +376,25 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-089** [backend] **Evaluator base + pipeline** — cluster: US-2 | deps: T-088 | FR-010,FR-011 | effort: S
   Done when: `backend/src/app/evaluator/base.py` defines `EvaluatorRule` protocol and `EvaluatorResult`/`EvaluatorViolation` dataclasses; `pipeline.py` implements `evaluate(sql, schema) -> EvaluatorResult` fanning out to rules; all T-088 tests pass.
 
-- [ ] **T-090** [P] [test] **ReadOnlyRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-003 | effort: M
+- [x] **T-090** [P] [test] **ReadOnlyRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-003 | effort: M
   Done when: `backend/tests/unit/test_rule_read_only.py` tests pass cases (SELECT, CTE, subquery, DISTINCT ON, window functions) and fail cases (INSERT, UPDATE, DELETE, DROP, TRUNCATE, ALTER, CREATE — 7 data-modifying keywords); at least 15 test cases.
 
 - [x] **T-091** [backend] **ReadOnlyRule** — cluster: US-2 | deps: T-090 | FR-010,SC-003 | effort: S
   Done when: `backend/src/app/evaluator/rules/read_only_rule.py` parses SQL with `sqlglot` (postgres dialect), rejects any non-SELECT/CTE AST node, and returns violations with `evaluator.violation.dataModifying` message key; all T-090 tests pass.
 
-- [ ] **T-092** [P] [test] **SingleStatementRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
+- [x] **T-092** [P] [test] **SingleStatementRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
   Done when: `backend/tests/unit/test_rule_single_statement.py` tests pass case (single SELECT) and fail cases (two SELECTs separated by semicolon, SELECT followed by DROP); at least 5 test cases.
 
 - [x] **T-093** [backend] **SingleStatementRule** — cluster: US-2 | deps: T-092 | FR-010 | effort: XS
   Done when: `backend/src/app/evaluator/rules/single_statement_rule.py` rejects SQL containing multiple statements; all T-092 tests pass.
 
-- [ ] **T-094** [P] [test] **SchemaValidationRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-004 | effort: M
+- [x] **T-094** [P] [test] **SchemaValidationRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-004 | effort: M
   Done when: `backend/tests/unit/test_rule_schema_validation.py` tests pass cases (references existing tables/columns) and fail cases (unknown table, unknown column, aliased table with wrong column); at least 10 test cases with a mock `SchemaContext`.
 
 - [x] **T-095** [backend] **SchemaValidationRule** — cluster: US-2 | deps: T-094 | FR-010,SC-004 | effort: M
   Done when: `backend/src/app/evaluator/rules/schema_validation_rule.py` extracts table/column refs via `sqlglot`, validates against `SchemaContext`, and returns violations with `evaluator.violation.unknownTable`/`unknownColumn` keys; all T-094 tests pass.
 
-- [ ] **T-096** [P] [test] **UnsafePatternRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
+- [x] **T-096** [P] [test] **UnsafePatternRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
   Done when: `backend/tests/unit/test_rule_unsafe_pattern.py` tests pass cases (normal SELECT) and fail cases (platform-defined patterns like `pg_sleep`, `COPY`, `SET ROLE`); at least 6 test cases.
 
 - [x] **T-097** [backend] **UnsafePatternRule** — cluster: US-2 | deps: T-096 | FR-010 | effort: S
