@@ -329,10 +329,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### LLM provider abstraction
 
-- [ ] **T-075** [P] [test] **LLMProvider protocol contract tests** — cluster: US-2 | deps: T-002 | FR-009 | effort: S
+- [x] **T-075** [P] [test] **LLMProvider protocol contract tests** — cluster: US-2 | deps: T-002 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_protocol.py` defines a test that instantiates each of the four adapters and asserts they satisfy the `LLMProvider` protocol (`generate_sql` signature with `question`, `schema_context`, `negative_examples`).
 
-- [ ] **T-076** [backend] **LLMProvider protocol** — cluster: US-2 | deps: T-075 | FR-009 | effort: XS
+- [x] **T-076** [backend] **LLMProvider protocol** — cluster: US-2 | deps: T-075 | FR-009 | effort: XS
   Done when: `backend/src/app/llm/base.py` defines `LLMProvider` as a `typing.Protocol` with `async def generate_sql(self, question: str, schema_context: str, negative_examples: list[str] | None = None) -> str`; T-075 protocol check compiles.
 
 - [ ] **T-077** [P] [test] **AnthropicAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S

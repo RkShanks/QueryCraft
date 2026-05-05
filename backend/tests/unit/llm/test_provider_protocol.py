@@ -48,12 +48,11 @@ def test_missing_generate_raises_type_error():
     assert not isinstance(adapter, LLMProvider)
 
 
-def test_wrong_signature_fails_isinstance():
-    """A non-async generate should fail isinstance against the protocol."""
+def test_sync_generate_passes_isinstance():
+    """runtime_checkable only checks name+callable, not async-ness."""
     adapter = WrongSignature()
-    # runtime_checkable checks name and callable, not exact async signature,
-    # but for completeness we document behaviour.
-    assert not isinstance(adapter, LLMProvider)
+    # Documenting Python behaviour: sync generate still passes isinstance.
+    assert isinstance(adapter, LLMProvider)
 
 
 def test_generate_signature():
