@@ -65,7 +65,13 @@ class AcceptQueryRequest(BaseModel):
 
 
 class RejectQueryRequest(BaseModel):
-    """POST /query/reject and /query/regenerate request body."""
+    """POST /query/reject request body."""
+
+    attempt_id: str = Field(..., min_length=1)
+
+
+class RegenerateQueryRequest(BaseModel):
+    """POST /query/regenerate request body."""
 
     attempt_id: str = Field(..., min_length=1)
 

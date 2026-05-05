@@ -23,6 +23,7 @@ dependencies = [
     "opentelemetry-api>=1.29.0,<2.0.0",
     "opentelemetry-sdk>=1.29.0,<2.0.0",
     "cryptography>=44.0.0,<45.0.0",
+    "tiktoken>=0.12.0",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +46,10 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+markers = [
+    "contract: Schemathesis contract tests (run on demand)",
+    "integration: Integration tests requiring external services",
+]
 
 [tool.ruff]
 target-version = "py312"
@@ -52,3 +57,9 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.20.2",
+    "respx>=0.23.1",
+]
