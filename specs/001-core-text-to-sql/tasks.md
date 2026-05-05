@@ -397,7 +397,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [ ] **T-096** [P] [test] **UnsafePatternRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
   Done when: `backend/tests/unit/test_rule_unsafe_pattern.py` tests pass cases (normal SELECT) and fail cases (platform-defined patterns like `pg_sleep`, `COPY`, `SET ROLE`); at least 6 test cases.
 
-- [ ] **T-097** [backend] **UnsafePatternRule** — cluster: US-2 | deps: T-096 | FR-010 | effort: S
+- [x] **T-097** [backend] **UnsafePatternRule** — cluster: US-2 | deps: T-096 | FR-010 | effort: S
   Done when: `backend/src/app/evaluator/rules/unsafe_pattern_rule.py` checks for platform-defined unsafe patterns and returns violations; all T-096 tests pass.
 
 - [ ] **T-098** [P] [backend] **SchemaContext model** — cluster: US-2 | deps: T-089 | FR-008,FR-010 | effort: S
