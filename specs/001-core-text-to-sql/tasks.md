@@ -562,7 +562,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-141** [P] [test] **TimeoutBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-012,SC-009 | effort: XS
   Done when: `frontend/tests/unit/TimeoutBanner.test.tsx` tests: (1) renders translated `query.error.timeout` message, (2) renders nothing when error type is not timeout; uses RTL.
 
-- [ ] **T-142** [frontend] **TimeoutBanner component** — cluster: US-2 | deps: T-141,T-022 | FR-012,SC-009 | effort: XS
+- [x] **T-142** [frontend] **TimeoutBanner component** — cluster: US-2 | deps: T-141,T-022 | FR-012,SC-009 | effort: XS
   Done when: `frontend/src/components/TimeoutBanner.tsx` renders an alert with translated timeout message; all T-141 tests pass.
 
 ### AskQuestionPage assembly (US-2 extension)

@@ -57,6 +57,10 @@
   "query.refine.body.evaluatorBlocked": "We can't safely answer this. Please rephrase.",
   "query.refine.cta": "Try refining",
 
+  "query.timeout.heading": "Query took too long",
+  "query.timeout.body": "The source database didn't respond in time. Try a narrower question.",
+  "query.timeout.cta": "Try again",
+
   "history.title": "Query History",
   "history.empty": "No accepted queries yet",
   "history.column.question": "Question",

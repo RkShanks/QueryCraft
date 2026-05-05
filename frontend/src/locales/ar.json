@@ -47,6 +47,10 @@
   "query.refine.body.evaluatorBlocked": "لا يمكننا الإجابة على هذا بأمان. يرجى إعادة الصياغة.",
   "query.refine.cta": "حاول التحسين",
 
+  "query.timeout.heading": "استغرق الاستعلام وقتاً طويلاً",
+  "query.timeout.body": "لم تستجب قاعدة البيانات المصدرية في الوقت المحدد. حاول سؤالاً أكثر تحديداً.",
+  "query.timeout.cta": "حاول مرة أخرى",
+
   "history.title": "سجل الاستعلامات",
   "history.empty": "لا توجد استعلامات مقبولة بعد",
   "history.column.question": "السؤال",
