@@ -365,7 +365,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-086** [backend] **LLM factory** — cluster: US-2 | deps: T-085 | FR-009,FR-026 | effort: XS
   Done when: `backend/src/app/llm/factory.py` implements `create_llm_provider(settings: Settings) -> LLMProvider` selecting by `settings.LLM_PROVIDER`; all T-085 tests pass.
 
-- [ ] **T-087** [P] [backend] **Prompt builder** — cluster: US-2 | deps: T-076 | FR-008 | effort: S
+- [x] **T-087** [P] [backend] **Prompt builder** — cluster: US-2 | deps: T-076 | FR-008 | effort: S
   Done when: `backend/src/app/llm/prompt.py` implements `build_prompt(question, schema_context, negative_examples) -> str` following R-001 prompt structure; a unit test in `backend/tests/unit/test_prompt_builder.py` asserts schema injection, negative-example block, and SQL-fence extraction.
 
 ### Evaluator pipeline and rules
