@@ -118,7 +118,9 @@ class QueryService:
                 "attempt_id": attempt_id,
                 "session_id": session_id,
                 "user_id": user_id,
+                "question": question,
                 "question_text": question,
+                "sql": sql,
                 "generated_sql": sql,
                 "llm_provider": "ollama",
                 "attempt_number": 1,
@@ -159,8 +161,8 @@ class QueryService:
         query = await self._repo.create(
             user_id=uuid.UUID(user_id),
             database_connection_id=uuid.UUID(database_connection_id),
-            question_text=attempt["question_text"],
-            generated_sql=attempt["generated_sql"],
+            question_text=attempt.get("question_text") or attempt.get("question", ""),
+            generated_sql=attempt.get("generated_sql") or attempt.get("sql", ""),
             llm_provider=attempt["llm_provider"],
         )
 
@@ -177,27 +179,21 @@ class QueryService:
         self,
         attempt_id: str,
         session_id: str,
-    ) -> dict[str, Any]:
-        """Reject a query result: delete attempt and return counts.
+    ) -> QueryResult | RefinePrompt:
+        """Reject a query result and trigger one auto-retry.
+
+        Behaviour is identical to regenerate_query: discards the current
+        attempt, provides it as negative context to the LLM, and generates
+        a new SQL attempt. If this is the second consecutive rejection (or
+        the regenerated SQL is byte-equal), returns a RefinePrompt instead
+        of a new result.
 
         Raises:
             SessionBusy: if a concurrent operation is in progress.
             AttemptNotFound: if the attempt does not exist.
             AttemptOwnershipViolation: if session_id doesn't match.
         """
-        if not await self._acquire_lock(session_id):
-            raise SessionBusy()
-
-        try:
-            await get_attempt(attempt_id, session_id, self._redis)
-            await delete_attempt(attempt_id, self._redis)
-            return {
-                "kind": "reject",
-                "reject_count": 1,
-                "attempt_count": 0,
-            }
-        finally:
-            await self._release_lock(session_id)
+        return await self.regenerate_query(attempt_id, session_id)
 
     async def regenerate_query(
         self,
@@ -272,6 +268,7 @@ class QueryService:
                     session_id=session_id,
                     sql=new_sql,
                     question=prior.question,
+                    attempt_number=next_attempt_number,
                     evaluator_result={
                         "passed": False,
                         "violations": [
@@ -323,6 +320,7 @@ class QueryService:
                 session_id=session_id,
                 sql=new_sql,
                 question=prior.question,
+                attempt_number=next_attempt_number,
                 executor_result={
                     "columns": columns,
                     "rows": rows,

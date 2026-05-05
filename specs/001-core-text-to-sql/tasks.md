@@ -457,10 +457,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Backend routers: reject, regenerate, admin
 
-- [ ] **T-114** [P] [test] **Reject router integration test** — cluster: US-2 | deps: T-113,T-013 | FR-017,FR-018 | effort: S
+- [x] **T-114** [P] [test] **Reject router integration test** — cluster: US-2 | deps: T-113,T-013 | FR-017,FR-018 | effort: S
   Done when: `backend/tests/integration/test_api_reject.py` tests POST `/query/reject` returns 200 with `QueryResult` (kind=result) on first rejection, 200 with `RefinePrompt` (kind=refine) on second rejection, 400 on expired attempt, 401 on unauthenticated.
 
-- [ ] **T-115** [backend] **Reject router** — cluster: US-2 | deps: T-114,T-113,T-039 | FR-017,FR-018 | effort: S
+- [x] **T-115** [backend] **Reject router** — cluster: US-2 | deps: T-114,T-113,T-039 | FR-017,FR-018 | effort: S
   Done when: `backend/src/app/api/v1/query.py` adds `POST /query/reject` matching openapi.yaml discriminated union response; all T-114 tests pass.
 
 - [ ] **T-116** [P] [test] **Regenerate router integration test** — cluster: US-2 | deps: T-113,T-013 | FR-019 | effort: S
