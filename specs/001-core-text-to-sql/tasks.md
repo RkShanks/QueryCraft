@@ -350,7 +350,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [ ] **T-081** [P] [test] **GeminiAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_gemini.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Gemini generateContent payload and extracts SQL.
 
-- [ ] **T-082** [backend] **GeminiAdapter** — cluster: US-2 | deps: T-081,T-076 | FR-009 | effort: S
+- [x] **T-082** [backend] **GeminiAdapter** — cluster: US-2 | deps: T-081,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/gemini_adapter.py` implements `LLMProvider` using `httpx` against the Gemini API; all T-081 tests pass.
 
 - [ ] **T-083** [P] [test] **OllamaAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S

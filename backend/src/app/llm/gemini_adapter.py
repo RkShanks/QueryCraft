@@ -1,0 +1,39 @@
+"""Gemini LLM adapter implementing LLMProvider."""
+
+import httpx
+
+from app.llm.exceptions import LLMTimeout, LLMUnavailable
+
+
+class GeminiAdapter:
+    """Adapter for the Google Gemini generateContent API."""
+
+    def __init__(self, api_key: str, model: str = "gemini-1.5-pro", timeout_s: int = 30):
+        self._api_key = api_key
+        self._model = model
+        self._timeout_s = timeout_s
+        self._client = httpx.AsyncClient(
+            base_url="https://generativelanguage.googleapis.com",
+            timeout=timeout_s,
+        )
+
+    async def generate(self, prompt: str) -> str:
+        """Send prompt to Gemini API and return generated SQL."""
+        url = f"/v1beta/models/{self._model}:generateContent"
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        }
+        params = {"key": self._api_key}
+        try:
+            response = await self._client.post(url, params=params, json=payload)
+        except httpx.TimeoutException as exc:
+            raise LLMTimeout(provider="gemini", timeout_s=self._timeout_s) from exc
+        except httpx.HTTPStatusError as exc:
+            raise LLMUnavailable(provider="gemini") from exc
+
+        if response.status_code >= 500 or response.status_code == 429:
+            raise LLMUnavailable(provider="gemini")
+
+        response.raise_for_status()
+        data = response.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"]
