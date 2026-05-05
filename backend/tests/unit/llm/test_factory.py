@@ -23,7 +23,6 @@ def test_selects_anthropic(factory, monkeypatch):
     get_settings.cache_clear()
     settings = get_settings()
     monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
-    monkeypatch.setattr(settings, "LLM_MODEL_NAME", "claude-3-opus")
 
     provider = factory.from_config(settings)
     assert isinstance(provider, AnthropicAdapter)
@@ -37,7 +36,6 @@ def test_selects_openai(factory, monkeypatch):
     get_settings.cache_clear()
     settings = get_settings()
     monkeypatch.setattr(settings, "LLM_PROVIDER", "openai")
-    monkeypatch.setattr(settings, "LLM_MODEL_NAME", "gpt-4o")
 
     provider = factory.from_config(settings)
     assert isinstance(provider, OpenAIAdapter)
@@ -51,7 +49,6 @@ def test_selects_gemini(factory, monkeypatch):
     get_settings.cache_clear()
     settings = get_settings()
     monkeypatch.setattr(settings, "LLM_PROVIDER", "gemini")
-    monkeypatch.setattr(settings, "LLM_MODEL_NAME", "gemini-1.5-pro")
 
     provider = factory.from_config(settings)
     assert isinstance(provider, GeminiAdapter)
@@ -65,7 +62,6 @@ def test_selects_ollama(factory, monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "LLM_PROVIDER", "ollama")
     monkeypatch.setattr(settings, "LLM_BASE_URL_OLLAMA", "http://ollama:11434")
-    monkeypatch.setattr(settings, "LLM_MODEL_NAME", "llama3.1")
 
     provider = factory.from_config(settings)
     assert isinstance(provider, OllamaAdapter)

@@ -362,7 +362,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [ ] **T-085** [test] **LLM factory selection test** — cluster: US-2 | deps: T-078,T-080,T-082,T-084 | FR-009,FR-026,SC-008 | effort: S
   Done when: `backend/tests/unit/test_llm_factory.py` asserts `create_llm_provider(settings)` returns the correct adapter for each `LLM_PROVIDER` enum value and raises on unsupported values.
 
-- [ ] **T-086** [backend] **LLM factory** — cluster: US-2 | deps: T-085 | FR-009,FR-026 | effort: XS
+- [x] **T-086** [backend] **LLM factory** — cluster: US-2 | deps: T-085 | FR-009,FR-026 | effort: XS
   Done when: `backend/src/app/llm/factory.py` implements `create_llm_provider(settings: Settings) -> LLMProvider` selecting by `settings.LLM_PROVIDER`; all T-085 tests pass.
 
 - [ ] **T-087** [P] [backend] **Prompt builder** — cluster: US-2 | deps: T-076 | FR-008 | effort: S
