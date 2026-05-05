@@ -400,7 +400,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-097** [backend] **UnsafePatternRule** — cluster: US-2 | deps: T-096 | FR-010 | effort: S
   Done when: `backend/src/app/evaluator/rules/unsafe_pattern_rule.py` checks for platform-defined unsafe patterns and returns violations; all T-096 tests pass.
 
-- [ ] **T-098** [P] [backend] **SchemaContext model** — cluster: US-2 | deps: T-089 | FR-008,FR-010 | effort: S
+- [x] **T-098** [P] [backend] **SchemaContext model** — cluster: US-2 | deps: T-089 | FR-008,FR-010 | effort: S
   Done when: `backend/src/app/evaluator/schema_context.py` defines `SchemaContext` dataclass with `tables: dict[str, list[ColumnInfo]]` and `foreign_keys` list, plus `to_prompt_string()` for LLM context and lookup methods for evaluator validation.
 
 ### Source-DB introspector + connector + executor
