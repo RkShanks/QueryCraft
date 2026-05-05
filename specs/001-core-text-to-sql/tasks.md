@@ -513,20 +513,20 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### OpenAPI client regeneration
 
-- [ ] **T-129** [frontend] **Regenerate OpenAPI client for US-2 endpoints** — cluster: US-2 | deps: T-061,T-115,T-117,T-119 | FR-017,FR-019 | effort: XS
+- [x] **T-129** [frontend] **Regenerate OpenAPI client for US-2 endpoints** — cluster: US-2 | deps: T-061,T-115,T-117,T-119 | FR-017,FR-019 | effort: XS
   Done when: `npm run gen:api` produces updated `frontend/src/api/generated/` types including `rejectQuery`, `regenerateQuery`, `RefinePrompt` (with `kind` discriminator), and `refreshSchema`; `tsc --noEmit` passes.
 
 ### MSW handlers for /query/submit scenarios
 
-- [ ] **T-130** [P] [test] **MSW handlers for /query/submit success, evaluator rejection, timeout, 409, 502** — cluster: US-2 | deps: T-025,T-129 | FR-007,FR-014,FR-017,FR-028,FR-030 | effort: S
+- [x] **T-130** [P] [test] **MSW handlers for /query/submit success, evaluator rejection, timeout, 409, 502** — cluster: US-2 | deps: T-025,T-129 | FR-007,FR-014,FR-017,FR-028,FR-030 | effort: S
   Done when: `frontend/src/mocks/handlers-query.ts` exports named handler factories for 200 `QueryResult`, 422 `EvaluatorRejection`, 504 timeout `ErrorResponse`, 409 concurrent `ErrorResponse`, and 502 LLM-unavailable `ErrorResponse`; a smoke test in `frontend/tests/unit/msw-handlers-query.test.ts` activates each handler, fetches, and asserts the expected status code and `kind`/`message_key` fields.
 
 ### useSubmitQuestion hook
 
-- [ ] **T-131** [P] [test] **useSubmitQuestion hook RTL tests** — cluster: US-2 | deps: T-130 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
+- [x] **T-131** [P] [test] **useSubmitQuestion hook RTL tests** — cluster: US-2 | deps: T-130 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
   Done when: `frontend/tests/unit/useSubmitQuestion.test.tsx` tests: (1) submit returns `QueryResult` on 200, (2) reject returns `QueryResult` (kind=result) on first rejection, (3) reject returns `RefinePrompt` (kind=refine) on second rejection discriminated via `kind`, (4) regenerate mirrors reject behavior, (5) 409 sets `error.concurrent` state, (6) 502 sets `error.llmUnavailable` state, (7) submit-lock prevents concurrent calls; uses MSW server with T-130 handlers.
 
-- [ ] **T-132** [frontend] **useSubmitQuestion hook** — cluster: US-2 | deps: T-131,T-024,T-129 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
+- [x] **T-132** [frontend] **useSubmitQuestion hook** — cluster: US-2 | deps: T-131,T-024,T-129 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
   Done when: `frontend/src/hooks/useSubmitQuestion.ts` implements `useSubmitQuestion()` returning `{ submitQuestion, rejectQuery, regenerateQuery, acceptQuery, isSubmitting, result, refinePrompt, error }` with `kind` discriminator switch for oneOf responses and submit-lock state; all T-131 tests pass.
 
 ### QueryInput component
