@@ -186,6 +186,94 @@ describe('Query Hooks', () => {
       await waitFor(() => expect(result.current.timeout).toBe(true));
     });
 
+    it('acceptQuery succeeds and clears states', async () => {
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      await result.current.submitQuestion('How many users?');
+      await waitFor(() => expect(result.current.result).not.toBeNull());
+
+      await result.current.acceptQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
+      await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+      expect(result.current.error).toBeNull();
+    });
+
+    it('regenerateQuery returns QueryResult on success', async () => {
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      await result.current.submitQuestion('How many users?');
+      await waitFor(() => expect(result.current.result).not.toBeNull());
+
+      await result.current.regenerateQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
+      await waitFor(() => expect(result.current.result?.attempt_id).toBe('b2c3d4e5-6f7a-4b5c-8d9e-0f1a2b3c4d5e'));
+      expect(result.current.result?.kind).toBe('result');
+    });
+
+    it('rejectQuery while isSubmitting rejects with submit_in_progress', async () => {
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      const first = result.current.submitQuestion('How many users?');
+      await expect(result.current.rejectQuery('test-id')).rejects.toThrow('submit_in_progress');
+      await first;
+    });
+
+    it('regenerateQuery while isSubmitting rejects with submit_in_progress', async () => {
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      const first = result.current.submitQuestion('How many users?');
+      await expect(result.current.regenerateQuery('test-id')).rejects.toThrow('submit_in_progress');
+      await first;
+    });
+
+    it('acceptQuery while isSubmitting rejects with submit_in_progress', async () => {
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      const first = result.current.submitQuestion('How many users?');
+      await expect(result.current.acceptQuery('test-id')).rejects.toThrow('submit_in_progress');
+      await first;
+    });
+
+    it('acceptQuery with error sets error state', async () => {
+      server.use(
+        http.post('/api/v1/query/accept', () => {
+          return HttpResponse.json({ error: 'attempt_invalid', message_key: 'error.attemptInvalid' }, { status: 400 });
+        })
+      );
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      await result.current.submitQuestion('How many users?');
+      await waitFor(() => expect(result.current.result).not.toBeNull());
+
+      await expect(result.current.acceptQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d')).rejects.toThrow();
+      await waitFor(() => expect(result.current.error).not.toBeNull());
+      expect(result.current.error?.kind).toBe('attemptInvalid');
+    });
+
+    it('handles unknown error code as network error', async () => {
+      server.use(
+        http.post('/api/v1/query/submit', () => {
+          return HttpResponse.json({ error: 'something_unexpected', message_key: 'error.unknown' }, { status: 500 });
+        })
+      );
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await waitFor(() => expect(result.current.error).not.toBeNull());
+      expect(result.current.error?.kind).toBe('network');
+    });
+
+    it('handles non-object error as network error', async () => {
+      server.use(
+        http.post('/api/v1/query/submit', () => {
+          return new HttpResponse('plain text error', { status: 500 });
+        })
+      );
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await waitFor(() => expect(result.current.error).not.toBeNull());
+      expect(result.current.error?.kind).toBe('network');
+    });
+
     it('resetError clears error state', async () => {
       setSubmitScenario('concurrent');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
