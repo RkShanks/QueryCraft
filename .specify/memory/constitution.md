@@ -222,6 +222,33 @@ A change MUST NOT be merged unless all of the following hold:
 - Cross-region data residency controls beyond the KSA deployment
   region.
 
+## Architectural Invariants
+
+The following invariants are enforced by code structure and tests.
+They are non-negotiable and may not be relaxed without a
+constitutional amendment.
+
+### Invariant 3 — No Concurrent Submissions
+
+A single user session MUST never have more than one query in flight.
+The QueryService acquires a per-session processing lock at the start
+of POST /query/submit and releases it on accept, reject, regenerate,
+or attempt expiry. Any submission attempted while the lock is held
+MUST return 409 Conflict with `error: "session_busy"`. Verified by
+integration tests asserting that a second submission within the same
+session returns 409.
+
+### Invariant 4 — Byte-Equal Duplicate Detection
+
+On regeneration after a rejection, if the LLM returns SQL that is
+byte-equal to the rejected attempt's SQL, the QueryService MUST treat
+it as a failed regeneration: a refine prompt is emitted, no further
+evaluator or executor work is performed, and the rejection counter
+advances toward the two-rejection cap. This protects against
+degenerate LLM behaviour and ensures the user reaches a refine prompt
+instead of an infinite identical loop. Verified by mocking an LLM
+that returns identical SQL on retry.
+
 ## Governance
 
 This constitution supersedes all other process documents. Any
