@@ -502,10 +502,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Custom exceptions module
 
-- [ ] **T-127** [P] [test] **Custom exceptions test** — cluster: US-2 | deps: T-002 | | effort: XS
+- [x] **T-127** [P] [test] **Custom exceptions test** — cluster: US-2 | deps: T-002 | | effort: XS
   Done when: `backend/tests/unit/test_exceptions.py` asserts all custom exceptions (`EvaluatorRejectionError`, `LLMUnavailableError`, `QueryTimeoutError`, `ConcurrentSubmissionError`, `AttemptExpiredError`, `AttemptOwnershipError`, `SchemaTokenLimitExceeded`) can be instantiated with expected attributes.
 
-- [ ] **T-128** [backend] **Custom exceptions module** — cluster: US-2 | deps: T-127 | | effort: XS
+- [x] **T-128** [backend] **Custom exceptions module** — cluster: US-2 | deps: T-127 | | effort: XS
   Done when: `backend/src/app/core/exceptions.py` defines all custom exception classes with message-key attributes for i18n-compatible error responses; all T-127 tests pass.
 
 ## Cluster: US-2 (frontend) — Reject, Regenerate, Error States, E2E

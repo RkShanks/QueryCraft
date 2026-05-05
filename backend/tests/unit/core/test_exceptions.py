@@ -7,14 +7,11 @@ from app.core.exceptions import (
     AttemptExpired,
     AttemptNotFound,
     AttemptOwnershipViolation,
-    EvaluatorError,
     EvaluatorRejected,
     LLMConfigurationError,
-    LLMError,
     LLMTimeout,
     LLMUnavailable,
     QueryCraftError,
-    SchemaError,
     SchemaTokenLimitExceeded,
     SessionBusy,
     SessionError,
@@ -23,7 +20,6 @@ from app.core.exceptions import (
     SourceDBPermissionDenied,
     SourceDBTimeout,
 )
-
 
 # --- Base ---
 
