@@ -453,6 +453,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 - **T-113** [backend] **QueryService reject + regenerate** — cluster: US-2 | deps: T-111,T-112,T-052,T-086,T-089,T-106,T-108,T-110 | FR-017,FR-018,FR-019,FR-020,SC-005,SC-012 | parallel: ✗ | effort: L
   Done when: `backend/src/app/services/query_service.py` adds `reject_query` and `regenerate_query` methods implementing the state machine from plan.md: negative-context LLM call, byte-equal detection, evaluator re-check, max-retry enforcement, ephemeral Redis lifecycle, and processing lock; all T-111 and T-112 tests pass.
+  > **Note:** Inv 4 logic implemented here; dedicated invariant assertion test deferred to T-159 (US-4).
 
 ### Backend routers: reject, regenerate, admin
 
