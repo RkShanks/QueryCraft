@@ -183,7 +183,7 @@ export const AskQuestionPage: React.FC = () => {
       <header className="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <Database className="w-6 h-6 text-indigo-600" />
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">QueryCraft</h1>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">{t('app.title')}</h1>
         </div>
         <nav className="flex items-center gap-4">
           <Link
