@@ -218,7 +218,7 @@ QueryCraft/
 │   │   │   └── SignInForm.tsx              # Login form (RHF + Zod)
 │   │   ├── pages/
 │   │   │   ├── SignInPage.tsx
-│   │   │   ├── ChatPage.tsx                # Main query interface
+│   │   │   ├── AskQuestionPage.tsx         # Main query interface
 │   │   │   └── HistoryPage.tsx
 │   │   ├── hooks/
 │   │   │   ├── useAuth.ts                  # Auth state + sign-in/out mutations
@@ -353,7 +353,7 @@ User decision:
 | Route | Page | Auth Required |
 |-------|------|---------------|
 | `/sign-in` | `SignInPage` | No |
-| `/` | `ChatPage` | Yes |
+| `/` | `AskQuestionPage` | Yes |
 | `/history` | `HistoryPage` | Yes |
 | `/history/:id` | `HistoryPage` (detail panel) | Yes |
 

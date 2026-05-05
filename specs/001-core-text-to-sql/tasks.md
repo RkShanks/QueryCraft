@@ -140,7 +140,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
   Done when: `frontend/src/i18n/index.ts` initialises i18next with fallback `en`, interpolation escaping; `en.json` contains all ≈50 Phase 1 keys from plan.md (`auth.*`, `query.*`, `history.*`, `error.*`, `evaluator.*`); `t()` works in a unit test.
 
 - [x] **T-023** [frontend] **React Router scaffolding** — cluster: Foundation | deps: T-019,T-022 | FR-002,FR-006 | parallel: ✗ | effort: S
-  Done when: `App.tsx` sets up routes `/sign-in` → SignInPage, `/` → ChatPage (auth-guarded), `/history` → HistoryPage (auth-guarded), `/history/:id` → HistoryPage; each page renders placeholder heading via `t()`; unauthenticated → redirect to `/sign-in`.
+  Done when: `App.tsx` sets up routes `/sign-in` → SignInPage, `/` → AskQuestionPage (auth-guarded), `/history` → HistoryPage (auth-guarded), `/history/:id` → HistoryPage; each page renders placeholder heading via `t()`; unauthenticated → redirect to `/sign-in`.
 
 - [x] **T-024** [P] [frontend] **TanStack Query provider + defaults** — cluster: Foundation | deps: T-018 | | parallel: ✓ | effort: S
   Done when: `main.tsx` wraps app in `QueryClientProvider` (staleTime 5min, retry 1 mutations, retry 2 queries); `api-client.ts` exports fetch wrapper with `credentials: 'include'`; global error handler redirects to `/sign-in` on 401.
@@ -508,7 +508,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
   Done when: `backend/src/app/core/exceptions.py` defines all custom exception classes with message-key attributes for i18n-compatible error responses; all T-127 tests pass.
 
 ## Cluster: US-2 (frontend) — Reject, Regenerate, Error States, E2E
-**Goal:** Wire the frontend to the US-2 backend: OpenAPI client regen, MSW test handlers for all /query error codes, ChatPage + QuestionInput + ResultDisplay + error-state components with RTL tests, useSubmitQuestion hook with oneOf discrimination, i18n key verification, and Playwright e2e covering all US-2 acceptance scenarios.
+**Goal:** Wire the frontend to the US-2 backend: OpenAPI client regen, MSW test handlers for all /query error codes, AskQuestionPage + QueryInput + ResultTable + SqlDisplay + error-state components with RTL tests, useSubmitQuestion hook with oneOf discrimination, i18n key verification, and Playwright e2e covering all US-2 acceptance scenarios.
 
 ### OpenAPI client regeneration
 
@@ -528,21 +528,21 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - **T-132** [frontend] **useSubmitQuestion hook** — cluster: US-2 | deps: T-131,T-024,T-129 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | parallel: ✗ | effort: M
   Done when: `frontend/src/hooks/useSubmitQuestion.ts` implements `useSubmitQuestion()` returning `{ submitQuestion, rejectQuery, regenerateQuery, acceptQuery, isSubmitting, result, refinePrompt, error }` with `kind` discriminator switch for oneOf responses and submit-lock state; all T-131 tests pass.
 
-### QuestionInput component
+### QueryInput component
 
-- **T-133** [test] **QuestionInput RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-006,FR-007,SC-009 | parallel: ✓ | effort: S
-  Done when: `frontend/tests/unit/QuestionInput.test.tsx` tests: (1) renders textarea with i18n placeholder `query.input.placeholder`, (2) displays live character counter updating on keystrokes, (3) prevents submission and shows validation when text exceeds 2000 chars, (4) disables submit button while `isSubmitting` is true, (5) calls `submitQuestion` on button click and on Enter key; uses RTL + MSW.
+- **T-133** [test] **QueryInput RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-006,FR-007,SC-009 | parallel: ✓ | effort: S
+  Done when: `frontend/tests/unit/QueryInput.test.tsx` tests: (1) renders textarea with i18n placeholder `query.input.placeholder`, (2) displays live character counter updating on keystrokes, (3) prevents submission and shows validation when text exceeds 2000 chars, (4) disables submit button while `isSubmitting` is true, (5) calls `submitQuestion` on button click and on Enter key; uses RTL + MSW.
 
-- **T-134** [frontend] **QuestionInput component** — cluster: US-2 | deps: T-133,T-132,T-022 | FR-006,FR-007,FR-030,SC-009 | parallel: ✗ | effort: S
-  Done when: `frontend/src/components/QuestionInput.tsx` renders a textarea with `{current}/{max}` character counter, submit button disabled on empty/whitespace/over-limit/isSubmitting, all strings via `t()`; all T-133 tests pass.
+- **T-134** [frontend] **QueryInput component** — cluster: US-2 | deps: T-133,T-132,T-022 | FR-006,FR-007,FR-030,SC-009 | parallel: ✗ | effort: S
+  Done when: `frontend/src/components/QueryInput.tsx` renders a textarea with `{current}/{max}` character counter, submit button disabled on empty/whitespace/over-limit/isSubmitting, all strings via `t()`; all T-133 tests pass.
 
-### ResultDisplay component (TanStack Table + SQL block)
+### ResultTable + SqlDisplay component (TanStack Table + SQL block)
 
-- **T-135** [test] **ResultDisplay RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-014,FR-015,FR-029,SC-009 | parallel: ✓ | effort: S
-  Done when: `frontend/tests/unit/ResultDisplay.test.tsx` tests: (1) TanStack Table renders columns and rows from `QueryResult`, (2) displays `query.result.noRows` i18n key on zero-row result, (3) shows generated SQL in a code block, (4) renders Accept/Reject/Regenerate buttons with i18n labels, (5) shows `query.result.lastRetry` indicator when `is_last_auto_retry` is true; uses RTL.
+- **T-135** [test] **ResultTable + SqlDisplay state-machine integration RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-014,FR-015,FR-029,SC-009 | parallel: ✓ | effort: S
+  Done when: `frontend/tests/unit/ResultTable.test.tsx` and `frontend/tests/unit/SqlDisplay.test.tsx` test the existing components against US-2 state-machine inputs: (1) TanStack Table renders columns and rows from `QueryResult`, (2) displays `query.result.noRows` i18n key on zero-row result, (3) shows generated SQL in a code block, (4) renders Accept/Reject/Regenerate buttons with i18n labels, (5) shows `query.result.lastRetry` indicator when `is_last_auto_retry` is true; uses RTL.
 
-- **T-136** [frontend] **ResultDisplay component** — cluster: US-2 | deps: T-135,T-132,T-022 | FR-014,FR-015,FR-029,SC-009 | parallel: ✗ | effort: M
-  Done when: `frontend/src/components/ResultDisplay.tsx` composes TanStack Table for rows, `SqlDisplay.tsx` for SQL block, and Accept/Reject/Regenerate action buttons; all T-135 tests pass.
+- **T-136** [frontend] **ResultTable + SqlDisplay state-machine wiring** — cluster: US-2 | deps: T-135,T-132,T-022 | FR-014,FR-015,FR-029,SC-009 | parallel: ✗ | effort: M
+  Done when: `frontend/src/components/ResultTable.tsx` and `frontend/src/components/SqlDisplay.tsx` are extended with Reject/Regenerate wiring (Accept/Reject/Regenerate action buttons, `is_last_auto_retry` indicator) without creating new components; all T-135 tests pass.
 
 ### Error state components
 
@@ -564,13 +564,13 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - **T-142** [frontend] **TimeoutBanner component** — cluster: US-2 | deps: T-141,T-022 | FR-012,SC-009 | parallel: ✗ | effort: XS
   Done when: `frontend/src/components/TimeoutBanner.tsx` renders an alert with translated timeout message; all T-141 tests pass.
 
-### ChatPage assembly (US-2 extension)
+### AskQuestionPage assembly (US-2 extension)
 
-- **T-143** [test] **ChatPage US-2 integration tests** — cluster: US-2 | deps: T-130,T-134,T-136,T-138,T-140,T-142 | FR-006,FR-014,FR-017,FR-018,FR-028,SC-001 | parallel: ✗ | effort: M
-  Done when: `frontend/tests/unit/ChatPage-us2.test.tsx` tests: (1) submitting shows ResultDisplay, (2) clicking Reject shows new ResultDisplay with `is_last_auto_retry=true`, (3) second rejection shows RefinePromptBanner, (4) evaluator-422 shows EvaluatorRejectionBanner, (5) 504 shows TimeoutBanner, (6) 409 shows concurrent-error toast, (7) 502 shows LLM-unavailable toast; uses MSW + RTL.
+- **T-143** [test] **AskQuestionPage US-2 integration tests** — cluster: US-2 | deps: T-130,T-134,T-136,T-138,T-140,T-142 | FR-006,FR-014,FR-017,FR-018,FR-028,SC-001 | parallel: ✗ | effort: M
+  Done when: `frontend/tests/unit/AskQuestionPage-us2.test.tsx` tests: (1) submitting shows ResultTable + SqlDisplay, (2) clicking Reject shows new ResultTable + SqlDisplay with `is_last_auto_retry=true`, (3) second rejection shows RefinePromptBanner, (4) evaluator-422 shows EvaluatorRejectionBanner, (5) 504 shows TimeoutBanner, (6) 409 shows concurrent-error toast, (7) 502 shows LLM-unavailable toast; uses MSW + RTL.
 
-- **T-144** [frontend] **ChatPage US-2 wiring** — cluster: US-2 | deps: T-143,T-134,T-136,T-138,T-140,T-142,T-023 | FR-006,FR-014,FR-017,FR-018,FR-019,FR-028,FR-030,SC-009 | parallel: ✗ | effort: M
-  Done when: `frontend/src/pages/ChatPage.tsx` integrates QuestionInput, ResultDisplay, EvaluatorRejectionBanner, RefinePromptBanner, TimeoutBanner, and Radix toasts for 409/502; `kind` discriminator drives which component renders; all T-143 tests pass.
+- **T-144** [frontend] **AskQuestionPage US-2 wiring** — cluster: US-2 | deps: T-143,T-134,T-136,T-138,T-140,T-142,T-023 | FR-006,FR-014,FR-017,FR-018,FR-019,FR-028,FR-030,SC-009 | parallel: ✗ | effort: M
+  Done when: `frontend/src/pages/AskQuestionPage.tsx` integrates QueryInput, ResultTable, SqlDisplay, EvaluatorRejectionBanner, RefinePromptBanner, TimeoutBanner, and Radix toasts for 409/502; `kind` discriminator drives which component renders; all T-143 tests pass.
 
 ### Frontend i18n key verification
 
@@ -736,7 +736,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
   Done when: `frontend/scripts/verify-i18n-keys.ts` (or vitest wrapper) loads `en.json`, scans all `t('...')` calls in `frontend/src/`, asserts (1) every referenced key exists in `en.json`, (2) every key in `en.json` is referenced at least once, (3) zero orphaned or missing keys.
 
 - **T-183** [test] **en.json renders without missing-key placeholders** — cluster: US-6 | deps: T-022,T-144,T-169 | FR-024,SC-009 | parallel: ✓ | effort: S
-  Done when: `frontend/tests/unit/i18n-render.test.tsx` renders every page component (SignInPage, ChatPage, HistoryPage) in a RTL test environment and asserts zero DOM nodes contain the i18next missing-key fallback pattern (default: the raw key string with no translation wrapper).
+  Done when: `frontend/tests/unit/i18n-render.test.tsx` renders every page component (SignInPage, AskQuestionPage, HistoryPage) in a RTL test environment and asserts zero DOM nodes contain the i18next missing-key fallback pattern (default: the raw key string with no translation wrapper).
 
 ### Backend i18n key consistency
 
