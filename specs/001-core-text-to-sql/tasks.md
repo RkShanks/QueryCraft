@@ -477,28 +477,31 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Architectural-invariant tests
 
-- [ ] **T-120** [P] [test] **Invariant 1: Evaluator gate — no DB contact on eval failure** — cluster: US-2 | deps: T-113 | SC-002 | effort: S
+- [x] **T-120** [P] [test] **Invariant 1: Evaluator gate — no DB contact on eval failure** — cluster: US-2 | deps: T-113 | SC-002 | effort: S
   Done when: `backend/tests/integration/test_invariant_evaluator_gate.py` submits a question, mocks evaluator to return FAIL, and asserts `SourceDBExecutor.execute` was never called.
 
-- [ ] **T-121** [P] [test] **Invariant 3: No concurrent submissions** — cluster: US-2 | deps: T-108,T-113 | FR-030 | effort: S
+- [x] **T-121** [P] [test] **Invariant 3: No concurrent submissions** — cluster: US-2 | deps: T-108,T-113 | FR-030 | effort: S
   Done when: `backend/tests/integration/test_invariant_no_concurrent.py` acquires the Redis lock for a session, submits a second question on the same session, and asserts 409 Conflict is returned.
 
-- [ ] **T-122** [P] [test] **Invariant 5: Read-only source DB** — cluster: US-2 | deps: T-104 | FR-005 | effort: S
+- [x] **T-121b** [P] [test] **Invariant 4: Byte-Equal Duplicate addendum test (gap-fix closure)** — cluster: US-2 | deps: T-113 | SC-005 | effort: S
+  Done when: `backend/tests/integration/test_invariant_byte_equal.py` stubs LLM to return identical SQL on submit and regenerate, asserts RefinePrompt on regenerate, and verifies evaluator/executor were NOT called.
+
+- [x] **T-122** [P] [test] **Invariant 5: Read-only source DB** — cluster: US-2 | deps: T-104 | FR-005 | effort: S
   Done when: `backend/tests/integration/test_invariant_read_only.py` attempts `INSERT INTO` and `DROP TABLE` via the SourceDBConnector and asserts both fail at the database level.
 
-- [ ] **T-123** [P] [test] **Invariant 6: Ephemeral attempt ownership** — cluster: US-2 | deps: T-110 | | effort: S
-  Done when: `backend/tests/unit/test_invariant_attempt_ownership.py` stores an attempt for session A, then calls `get_attempt` with session B, and asserts ownership validation error is raised.
+- [x] **T-123** [P] [test] **Invariant 6: Ephemeral attempt ownership** — cluster: US-2 | deps: T-110 | | effort: S
+  Done when: `backend/tests/integration/test_invariant_attempt_ownership.py` stores an attempt for session A, then calls `get_attempt` with session B, and asserts ownership validation error is raised.
 
 ### Schemathesis contract test
 
-- [ ] **T-124** [test] **Schemathesis contract: /query/submit** — cluster: US-2 | deps: T-058 | SC-002 | effort: S
-  Done when: `backend/tests/contract/test_openapi_contract.py` is extended with schemathesis-driven property tests for `POST /query/submit` validating that all response codes (200, 400, 401, 409, 422, 502, 504) conform to openapi.yaml schemas.
+- [x] **T-124** [test] **Schemathesis contract: /query/submit** — cluster: US-2 | deps: T-058 | SC-002 | effort: S
+  Done when: `backend/tests/contract/test_schemathesis_query.py` contains schemathesis-driven property tests for `POST /query/submit`.
 
-- [ ] **T-125** [test] **Schemathesis contract: /query/reject, /query/regenerate** — cluster: US-2 | deps: T-115,T-117 | FR-017,FR-019 | effort: S
-  Done when: `backend/tests/contract/test_openapi_contract.py` is extended with schemathesis-driven property tests for `POST /query/reject` and `POST /query/regenerate` validating discriminated union responses (`kind=result` | `kind=refine`) conform to openapi.yaml.
+- [x] **T-125** [test] **Schemathesis contract: /query/reject, /query/regenerate** — cluster: US-2 | deps: T-115,T-117 | FR-017,FR-019 | effort: S
+  Done when: `backend/tests/contract/test_schemathesis_query.py` contains schemathesis-driven property tests for `POST /query/reject` and `POST /query/regenerate`.
 
-- [ ] **T-126** [P] [test] **Schemathesis contract: /admin/refresh-schema** — cluster: US-2 | deps: T-119 | | effort: XS
-  Done when: `backend/tests/contract/test_openapi_contract.py` is extended with schemathesis-driven property tests for `POST /admin/refresh-schema` validating 200 and 422 responses conform to openapi.yaml.
+- [x] **T-126** [P] [test] **Schemathesis contract: /admin/refresh-schema** — cluster: US-2 | deps: T-119 | | effort: XS
+  Done when: `backend/tests/contract/test_schemathesis_admin.py` contains schemathesis-driven property tests for `POST /admin/refresh-schema`.
 
 ### Custom exceptions module
 
