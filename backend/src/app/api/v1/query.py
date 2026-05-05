@@ -11,9 +11,14 @@ from app.llm.stub import StubLLM
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.query import AcceptQueryRequest, QueryResult, SubmitQuestionRequest
 from app.services.query_service import QueryService
+from app.source_db.connector import SourceDBConnector
 from app.source_db.executor import SourceDBExecutor
 
 router = APIRouter(prefix="/query", tags=["Query"])
+
+# Module-level connector + executor (lives for app lifetime)
+_source_db_connector = SourceDBConnector()
+_source_db_executor = SourceDBExecutor(_source_db_connector)
 
 
 def _get_query_service(
@@ -25,7 +30,7 @@ def _get_query_service(
         redis=redis,
         llm=StubLLM(),
         evaluator=Evaluator(),
-        source_db_executor=SourceDBExecutor(),
+        source_db_executor=_source_db_executor,
     )
 
 
