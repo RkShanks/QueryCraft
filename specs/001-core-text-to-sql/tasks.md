@@ -570,7 +570,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-143** [test] **AskQuestionPage US-2 integration tests** — cluster: US-2 | deps: T-130,T-134,T-136,T-138,T-140,T-142 | FR-006,FR-014,FR-017,FR-018,FR-028,SC-001 | effort: M
   Done when: `frontend/tests/unit/AskQuestionPage-us2.test.tsx` tests: (1) submitting shows ResultTable + SqlDisplay, (2) clicking Reject shows new ResultTable + SqlDisplay with `is_last_auto_retry=true`, (3) second rejection shows RefinePromptBanner, (4) evaluator-422 shows EvaluatorRejectionBanner, (5) 504 shows TimeoutBanner, (6) 409 shows concurrent-error toast, (7) 502 shows LLM-unavailable toast; uses MSW + RTL.
 
-- [ ] **T-144** [frontend] **AskQuestionPage US-2 wiring** — cluster: US-2 | deps: T-143,T-134,T-136,T-138,T-140,T-142,T-023 | FR-006,FR-014,FR-017,FR-018,FR-019,FR-028,FR-030,SC-009 | effort: M
+- [x] **T-144** [frontend] **AskQuestionPage US-2 wiring** — cluster: US-2 | deps: T-143,T-134,T-136,T-138,T-140,T-142,T-023 | FR-006,FR-014,FR-017,FR-018,FR-019,FR-028,FR-030,SC-009 | effort: M
   Done when: `frontend/src/pages/AskQuestionPage.tsx` integrates QueryInput, ResultTable, SqlDisplay, EvaluatorRejectionBanner, RefinePromptBanner, TimeoutBanner, and Radix toasts for 409/502; `kind` discriminator drives which component renders; all T-143 tests pass.
 
 ### Frontend i18n key verification

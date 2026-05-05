@@ -1,63 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QueryInput } from '../components/query/QueryInput';
 import { ResultTable } from '../components/query/ResultTable';
-import { 
-  useSubmitQuestion, 
-  useAcceptQuery 
-} from '../hooks/useQuerySubmit';
-import type { QueryResult } from '../api/generated/types.gen';
+import { EvaluatorRejectionBanner } from '../components/query/EvaluatorRejectionBanner';
+import { RefinePromptBanner } from '../components/query/RefinePromptBanner';
+import { TimeoutBanner } from '../components/query/TimeoutBanner';
+import { useQuerySubmit } from '../hooks/useQuerySubmit';
+import type { EvaluatorRejection } from '../api/generated/types.gen';
 import { History, Database, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+const ruleNameMap: Record<string, string> = {
+  read_only: 'ReadOnlyRule',
+  single_statement: 'SingleStatementRule',
+  schema_validation: 'SchemaValidationRule',
+  unsafe_pattern: 'UnsafePatternRule',
+  UnsafePattern: 'UnsafePatternRule',
+  ReadOnly: 'ReadOnlyRule',
+  SingleStatement: 'SingleStatementRule',
+  SchemaValidation: 'SchemaValidationRule',
+};
+
+function mapEvaluatorRejection(
+  rejection: EvaluatorRejection,
+  t: (key: string, options?: Record<string, unknown>) => string
+): { failedRule: string; reason: string; violations?: string[] } {
+  const first = rejection.violations[0];
+  const failedRule = ruleNameMap[first?.rule || ''] || 'UnsafePatternRule';
+  const reason = first
+    ? t(first.message_key, (first.message_params || undefined) as Record<string, unknown>)
+    : t('error.evaluator.message');
+  const violations = rejection.violations.map((v) =>
+    t(v.message_key, (v.message_params || undefined) as Record<string, unknown>)
+  );
+  return { failedRule, reason, violations };
+}
+
 export const AskQuestionPage: React.FC = () => {
   const { t } = useTranslation();
-  const [result, setResult] = useState<QueryResult | null>(null);
-  const [alert, setAlert] = useState<{ id: string; title: string; description: string; variant: 'default' | 'destructive' | 'success' } | null>(null);
+  const [questionInput, setQuestionInput] = useState('');
+  const lastSubmittedQuestionRef = useRef('');
 
-  const showAlert = (title: string, description: string, variant: 'default' | 'destructive' | 'success' = 'default') => {
+  const [alert, setAlert] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    variant: 'default' | 'destructive' | 'success';
+  } | null>(null);
+
+  const showAlert = React.useCallback((
+    title: string,
+    description: string,
+    variant: 'default' | 'destructive' | 'success' = 'default'
+  ) => {
     const id = Math.random().toString(36).substring(2, 9);
     setAlert({ id, title, description, variant });
     setTimeout(() => {
       setAlert((prev) => (prev?.id === id ? null : prev));
     }, 5000);
-  };
+  }, []);
 
-  const submitMutation = useSubmitQuestion();
-  const acceptMutation = useAcceptQuery();
+  const {
+    submitQuestion,
+    rejectQuery,
+    regenerateQuery,
+    acceptQuery,
+    isSubmitting,
+    result,
+    refinePrompt,
+    evaluatorRejection,
+    timeout,
+    error,
+    reset,
+  } = useQuerySubmit();
 
   const handleQuestionSubmit = async (question: string) => {
-    setResult(null);
+    setQuestionInput(question);
+    lastSubmittedQuestionRef.current = question;
     try {
-      const data = await submitMutation.mutateAsync({ question });
-      setResult(data as QueryResult);
-    } catch (error: unknown) {
-      const err = error as { status?: number; error?: string; response?: { status?: number } };
-      if (err.error === 'evaluator_rejection' || err.status === 422 || err.response?.status === 422) {
-        showAlert(
-          t('error.evaluator.title', { defaultValue: 'Evaluator Rejected' }),
-          t('error.evaluator.message', { defaultValue: 'The generated SQL was rejected by safety rules.' }),
-          'destructive'
-        );
-      } else {
-        showAlert(
-          t('error.unknown.title', { defaultValue: 'Error' }),
-          t('error.unknown.message', { defaultValue: 'An unexpected error occurred.' }),
-          'destructive'
-        );
-      }
+      await submitQuestion(question);
+    } catch {
+      // Error state is already managed by useQuerySubmit
     }
   };
 
   const handleAccept = async (id: string) => {
     try {
-      await acceptMutation.mutateAsync({ attempt_id: id });
+      await acceptQuery(id);
       showAlert(
         t('query.accept.success.title', { defaultValue: 'Success' }),
         t('query.accept.success.message', { defaultValue: 'Query accepted and saved to history.' }),
         'success'
       );
-      setResult(null);
     } catch {
       showAlert(
         t('error.accept.title', { defaultValue: 'Error' }),
@@ -66,6 +100,77 @@ export const AskQuestionPage: React.FC = () => {
       );
     }
   };
+
+  const handleReject = async (id: string) => {
+    try {
+      await rejectQuery(id);
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      if (e.error === 'concurrent') {
+        showAlert(
+          t('error.concurrent', { defaultValue: 'A query is already being processed.' }),
+          '',
+          'destructive'
+        );
+      }
+    }
+  };
+
+  const handleRegenerate = async (id: string) => {
+    try {
+      await regenerateQuery(id);
+    } catch (err: unknown) {
+      const e = err as { error?: string };
+      if (e.error === 'concurrent') {
+        showAlert(
+          t('error.concurrent', { defaultValue: 'A query is already being processed.' }),
+          '',
+          'destructive'
+        );
+      }
+    }
+  };
+
+  const handleRefine = () => {
+    setQuestionInput('');
+    reset();
+  };
+
+  const handleRetry = () => {
+    const q = lastSubmittedQuestionRef.current;
+    if (q) {
+      submitQuestion(q);
+    }
+  };
+
+  const shownErrorRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!error) {
+      shownErrorRef.current = null;
+      return;
+    }
+    const errorKey = error.kind;
+    if (shownErrorRef.current === errorKey) return;
+    shownErrorRef.current = errorKey;
+
+    const timer = setTimeout(() => {
+      if (error.kind === 'concurrent') {
+        showAlert(
+          t('error.concurrent', { defaultValue: 'A query is already being processed.' }),
+          '',
+          'destructive'
+        );
+      } else if (error.kind === 'llmUnavailable') {
+        showAlert(
+          t('error.llmUnavailable', { defaultValue: 'The AI service is temporarily unavailable.' }),
+          '',
+          'destructive'
+        );
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [error, t, showAlert]);
 
   const alertStyles = {
     default: 'bg-gray-800 text-white',
@@ -81,8 +186,8 @@ export const AskQuestionPage: React.FC = () => {
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">QueryCraft</h1>
         </div>
         <nav className="flex items-center gap-4">
-          <Link 
-            to="/history" 
+          <Link
+            to="/history"
             className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
           >
             <History className="w-4 h-4" />
@@ -92,17 +197,17 @@ export const AskQuestionPage: React.FC = () => {
       </header>
 
       {alert && (
-        <div 
-          role="alert" 
+        <div
+          role="alert"
           className={`fixed top-4 inset-x-4 md:inset-x-auto md:right-4 md:w-96 z-50 p-4 rounded-md shadow-lg flex items-start gap-3 ${alertStyles[alert.variant]}`}
         >
           {alert.variant === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />}
           {alert.variant === 'destructive' && <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />}
           <div className="flex-1">
             <p className="font-semibold text-sm">{alert.title}</p>
-            <p className="text-sm opacity-90">{alert.description}</p>
+            {alert.description && <p className="text-sm opacity-90">{alert.description}</p>}
           </div>
-          <button 
+          <button
             onClick={() => setAlert(null)}
             className="text-current opacity-70 hover:opacity-100"
             aria-label={t('common.close', { defaultValue: 'Close' })}
@@ -117,13 +222,15 @@ export const AskQuestionPage: React.FC = () => {
           <h2 className="text-lg font-semibold mb-4 text-gray-800">
             {t('query.ask.title', { defaultValue: 'What would you like to know?' })}
           </h2>
-          <QueryInput 
-            onSubmit={handleQuestionSubmit} 
-            isSubmitting={submitMutation.isPending} 
+          <QueryInput
+            onSubmit={handleQuestionSubmit}
+            isSubmitting={isSubmitting}
+            value={questionInput}
+            onChange={setQuestionInput}
           />
         </section>
 
-        {submitMutation.isPending && (
+        {isSubmitting && (
           <div className="flex flex-col items-center justify-center py-12 animate-pulse">
             <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
             <p className="text-gray-500 font-medium">
@@ -132,12 +239,43 @@ export const AskQuestionPage: React.FC = () => {
           </div>
         )}
 
-        {result && !submitMutation.isPending && (
+        {evaluatorRejection && !isSubmitting && (
           <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <ResultTable 
-              result={result} 
+            <EvaluatorRejectionBanner
+              evaluatorRejection={mapEvaluatorRejection(evaluatorRejection, t)}
+            />
+          </section>
+        )}
+
+        {timeout && !isSubmitting && (
+          <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <TimeoutBanner timeout={timeout} onRetry={handleRetry} />
+          </section>
+        )}
+
+        {refinePrompt && !isSubmitting && (
+          <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <RefinePromptBanner
+              refinePrompt={{
+                reason:
+                  refinePrompt.message_key === 'query.refine.message'
+                    ? 'max_retries'
+                    : 'evaluator_blocked',
+              }}
+              onRefine={handleRefine}
+            />
+          </section>
+        )}
+
+        {result && !isSubmitting && result.kind === 'result' && (
+          <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <ResultTable
+              result={result}
               onAccept={handleAccept}
-              isAccepting={acceptMutation.isPending}
+              isAccepting={isSubmitting}
+              onReject={handleReject}
+              onRegenerate={handleRegenerate}
+              canRegenerate={!result.is_last_auto_retry}
             />
           </section>
         )}

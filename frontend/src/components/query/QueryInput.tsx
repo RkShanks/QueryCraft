@@ -5,11 +5,20 @@ export interface QueryInputProps {
   onSubmit: (question: string) => void;
   isSubmitting: boolean;
   maxLength?: number;
+  value?: string;
+  onChange?: (value: string) => void;
 }
 
-export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting, maxLength = 2000 }) => {
+export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting, maxLength = 2000, value: controlledValue, onChange }) => {
   const { t } = useTranslation();
-  const [question, setQuestion] = useState('');
+  const [internalQuestion, setInternalQuestion] = useState('');
+  const question = controlledValue !== undefined ? controlledValue : internalQuestion;
+  const setQuestion = (val: string) => {
+    if (controlledValue === undefined) {
+      setInternalQuestion(val);
+    }
+    onChange?.(val);
+  };
 
   const handleSubmit = () => {
     if (question.trim() && !isSubmitting && question.length <= maxLength) {

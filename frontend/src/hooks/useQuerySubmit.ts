@@ -208,5 +208,6 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
     timeout,
     error,
     resetError,
+    reset: clearStates,
   };
 };

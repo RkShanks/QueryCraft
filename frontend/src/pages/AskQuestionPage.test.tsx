@@ -63,8 +63,8 @@ describe('AskQuestionPage Integration', () => {
     fireEvent.change(textarea, { target: { value: 'DROP TABLE users;' } });
     fireEvent.click(screen.getByRole('button', { name: /ask/i }));
     
-    // Toast might take a moment to appear
-    expect(await screen.findByText(/evaluator rejected/i)).toBeInTheDocument();
+    // Banner should appear
+    expect(await screen.findByText('query.evaluatorRejection.heading')).toBeInTheDocument();
   });
 
   it('should handle successful acceptance', async () => {
@@ -137,7 +137,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
     fireEvent.click(screen.getByRole('button', { name: /ask/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/concurrent/i)).toBeInTheDocument();
+      expect(screen.getByText(/already being processed/i)).toBeInTheDocument();
     });
   });
 
@@ -150,7 +150,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
     fireEvent.click(screen.getByRole('button', { name: /ask/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/unavailable/i)).toBeInTheDocument();
+      expect(screen.getByText(/temporarily unavailable/i)).toBeInTheDocument();
     });
   });
 
@@ -258,7 +258,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
       expect(screen.getByText('query.refine.heading')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /try refining/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'query.refine.cta' }));
 
     await waitFor(() => {
       expect(screen.queryByText('query.refine.heading')).not.toBeInTheDocument();
@@ -279,7 +279,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
     });
 
     setSubmitScenario('result');
-    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'query.timeout.cta' }));
 
     await waitFor(() => {
       expect(screen.queryByText('query.timeout.heading')).not.toBeInTheDocument();
