@@ -550,7 +550,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-137** [P] [test] **EvaluatorRejectionBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-028,SC-009 | effort: XS
   Done when: `frontend/tests/unit/EvaluatorRejectionBanner.test.tsx` tests: (1) renders translated `query.evaluator.rejected` message, (2) displays violation list with translated `message_key` per violation, (3) renders nothing when violations array is empty; uses RTL.
 
-- [ ] **T-138** [frontend] **EvaluatorRejectionBanner component** — cluster: US-2 | deps: T-137,T-022 | FR-028,SC-009 | effort: XS
+- [x] **T-138** [frontend] **EvaluatorRejectionBanner component** — cluster: US-2 | deps: T-137,T-022 | FR-028,SC-009 | effort: XS
   Done when: `frontend/src/components/EvaluatorRejectionBanner.tsx` renders an alert with translated evaluator message and violations; all T-137 tests pass.
 
 - [ ] **T-139** [P] [test] **RefinePromptBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-018,SC-009 | effort: XS

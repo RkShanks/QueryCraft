@@ -42,6 +42,14 @@
   "query.result.lastRetry": "Last auto retry",
 
   "query.evaluator.rejected": "We couldn't generate a safe query for your question. Please try rephrasing it in a different way.",
+
+  "query.evaluatorRejection.heading": "Generated SQL was rejected for safety",
+  "query.evaluatorRejection.body": "The system blocked this query because: {reason}",
+  "query.evaluatorRejection.rule.ReadOnlyRule": "Read-only rule violation",
+  "query.evaluatorRejection.rule.SingleStatementRule": "Multiple statements not allowed",
+  "query.evaluatorRejection.rule.SchemaValidationRule": "Unknown table or column",
+  "query.evaluatorRejection.rule.UnsafePatternRule": "Unsafe SQL pattern",
+
   "query.refine.message": "We couldn't refine this query automatically. Please rephrase your question.",
 
   "history.title": "Query History",

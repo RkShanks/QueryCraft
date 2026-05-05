@@ -31,16 +31,15 @@
   "query.result.empty": "لم يُعثر على نتائج لاستعلامك",
   "query.result.lastRetry": "آخر محاولة تلقائية",
 
-  "query.accept.success.title": "نجاح",
-  "query.accept.success.message": "تم قبول الاستعلام وحفظه في السجل.",
-
-  "query.actions.accept": "قبول",
-  "query.actions.accepting": "جارٍ القبول...",
-  "query.actions.accepted": "تم حفظ الاستعلام في السجل",
-  "query.actions.reject": "رفض",
-  "query.actions.regenerate": "إعادة إنشاء",
-
   "query.evaluator.rejected": "تعذر إنشاء استعلام آمن لسؤالك. يرجى إعادة صياغته بطريقة مختلفة.",
+
+  "query.evaluatorRejection.heading": "تم رفض SQL المُنشأ لأسباب أمنية",
+  "query.evaluatorRejection.body": "قام النظام بحظر هذا الاستعلام للسبب التالي: {reason}",
+  "query.evaluatorRejection.rule.ReadOnlyRule": "انتهاك قاعدة القراءة فقط",
+  "query.evaluatorRejection.rule.SingleStatementRule": "غير مسموح بعبارات متعددة",
+  "query.evaluatorRejection.rule.SchemaValidationRule": "جدول أو عمود غير معروف",
+  "query.evaluatorRejection.rule.UnsafePatternRule": "نمط SQL غير آمن",
+
   "query.refine.message": "تعذر تحسين هذا الاستعلام تلقائياً. يرجى إعادة صياغة سؤالك.",
 
   "history.title": "سجل الاستعلامات",

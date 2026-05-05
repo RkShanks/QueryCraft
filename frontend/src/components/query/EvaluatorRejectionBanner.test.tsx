@@ -5,7 +5,8 @@ import { createWrapper } from '../../test/utils';
 
 const mockT = vi.fn((key: string, options?: unknown) => {
   if (typeof options === 'string') return options;
-  const opts = options as { defaultValue?: string } | undefined;
+  const opts = options as { defaultValue?: string; reason?: string } | undefined;
+  if (opts?.reason) return `${key} (reason: ${opts.reason})`;
   return opts?.defaultValue || key;
 });
 
@@ -38,7 +39,7 @@ describe('EvaluatorRejectionBanner', () => {
     expect(alert).toBeInTheDocument();
 
     expect(screen.getByText('query.evaluatorRejection.heading')).toBeInTheDocument();
-    expect(screen.getByText(/SQL contains UPDATE statement/i)).toBeInTheDocument();
+    expect(screen.getByText(/reason: SQL contains UPDATE statement/i)).toBeInTheDocument();
     expect(screen.getByText('query.evaluatorRejection.rule.ReadOnlyRule')).toBeInTheDocument();
 
     expect(screen.getByText('Data modifying statement detected')).toBeInTheDocument();
