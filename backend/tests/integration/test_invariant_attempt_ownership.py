@@ -7,9 +7,8 @@ attempt_id and assert HTTP 400 (AttemptOwnershipViolation).
 GET /attempts/{id} is not defined in openapi.yaml so we skip that path.
 """
 
-from httpx import ASGITransport, AsyncClient
-
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 from app.main import create_app
 

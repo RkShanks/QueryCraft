@@ -46,6 +46,10 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+markers = [
+    "contract: Schemathesis contract tests (run on demand)",
+    "integration: Integration tests requiring external services",
+]
 
 [tool.ruff]
 target-version = "py312"

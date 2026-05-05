@@ -57,9 +57,15 @@ async def refresh_schema(
 ):
     """POST /admin/refresh-schema — force a schema introspection cache refresh.
 
+    Requires either a valid session (sessionCookie auth per OpenAPI) or
+    the X-Admin-Key header (Phase 1 fallback).
+
     Returns tables_count, columns_count, approximate_tokens, refreshed_at.
     """
-    _require_admin_key(x_admin_key)
+    session = getattr(request.state, "session", None)
+    if session is None:
+        # No valid session — fall back to admin API key
+        _require_admin_key(x_admin_key)
 
     introspector = _get_introspector()
     schema = await introspector.refresh()

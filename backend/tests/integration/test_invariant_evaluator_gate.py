@@ -4,7 +4,7 @@ Mocks the evaluator to return FAIL for each of the 4 rules in isolation
 and asserts SourceDBExecutor.execute is never called.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 

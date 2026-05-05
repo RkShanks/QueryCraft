@@ -8,7 +8,6 @@ path.
 import asyncpg
 import pytest
 
-from app.core.exceptions import SourceDBPermissionDenied
 from app.source_db.connector import SourceDBConnector
 
 
