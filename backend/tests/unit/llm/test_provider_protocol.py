@@ -1,9 +1,7 @@
 """T-075 — LLMProvider protocol contract tests."""
 
 import inspect
-from typing import Protocol, runtime_checkable
-
-import pytest
+from typing import Protocol
 
 from app.llm.provider import LLMProvider
 

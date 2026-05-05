@@ -338,7 +338,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [ ] **T-077** [P] [test] **AnthropicAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_anthropic.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Messages API payload, extracts SQL from the response, and raises on HTTP errors.
 
-- [ ] **T-078** [backend] **AnthropicAdapter** — cluster: US-2 | deps: T-077,T-076 | FR-009 | effort: S
+- [x] **T-078** [backend] **AnthropicAdapter** — cluster: US-2 | deps: T-077,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/anthropic_adapter.py` implements `LLMProvider` using `httpx` against the Anthropic Messages API; all T-077 tests pass.
 
 - [ ] **T-079** [P] [test] **OpenAIAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
