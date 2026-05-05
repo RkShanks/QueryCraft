@@ -356,7 +356,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [ ] **T-083** [P] [test] **OllamaAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_ollama.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Ollama `/api/generate` payload and extracts SQL.
 
-- [ ] **T-084** [backend] **OllamaAdapter** — cluster: US-2 | deps: T-083,T-076 | FR-009 | effort: S
+- [x] **T-084** [backend] **OllamaAdapter** — cluster: US-2 | deps: T-083,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/ollama_adapter.py` implements `LLMProvider` using `httpx` against `LLM_BASE_URL_OLLAMA`; all T-083 tests pass.
 
 - [ ] **T-085** [test] **LLM factory selection test** — cluster: US-2 | deps: T-078,T-080,T-082,T-084 | FR-009,FR-026,SC-008 | effort: S
