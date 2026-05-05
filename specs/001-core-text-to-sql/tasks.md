@@ -385,7 +385,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [ ] **T-092** [P] [test] **SingleStatementRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
   Done when: `backend/tests/unit/test_rule_single_statement.py` tests pass case (single SELECT) and fail cases (two SELECTs separated by semicolon, SELECT followed by DROP); at least 5 test cases.
 
-- [ ] **T-093** [backend] **SingleStatementRule** — cluster: US-2 | deps: T-092 | FR-010 | effort: XS
+- [x] **T-093** [backend] **SingleStatementRule** — cluster: US-2 | deps: T-092 | FR-010 | effort: XS
   Done when: `backend/src/app/evaluator/rules/single_statement_rule.py` rejects SQL containing multiple statements; all T-092 tests pass.
 
 - [ ] **T-094** [P] [test] **SchemaValidationRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-004 | effort: M
