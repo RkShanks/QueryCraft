@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import BaseModel
 from redis.asyncio import Redis
 
-from app.core.exceptions import AttemptExpired, AttemptNotFound, AttemptOwnershipViolation
+from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation
 
 
 class EphemeralAttempt(BaseModel):

@@ -8,10 +8,9 @@ T-106: Full rewrite of SourceDBExecutor.
 """
 
 import asyncio
+from typing import Any
 
 import asyncpg
-
-from typing import Any
 
 from app.core.exceptions import (
     SourceDBConnectionFailed,
