@@ -4,6 +4,8 @@ Tests that acquire_lock returns True on first call, False on concurrent,
 that release_lock deletes the key, and that the key format is correct.
 """
 
+from unittest.mock import AsyncMock
+
 import pytest
 from redis.asyncio import Redis
 
@@ -15,56 +17,35 @@ class TestProcessingLockUnit:
 
     async def test_acquire_lock_returns_true_when_free(self):
         """Acquiring lock when free returns True."""
-        redis = Redis.from_url("redis://localhost:6379/1", decode_responses=True)
-        await redis.flushdb()
-        try:
-            result = await acquire_lock("session-123", redis, ttl=60)
-            assert result is True
-        finally:
-            await redis.flushdb()
-            await redis.aclose()
+        redis = AsyncMock(spec=Redis)
+        redis.set = AsyncMock(return_value=True)
+        result = await acquire_lock("session-123", redis, ttl=60)
+        assert result is True
+        redis.set.assert_awaited_once_with("processing_lock:session-123", "1", nx=True, ex=60)
 
     async def test_acquire_lock_returns_false_when_held(self):
         """Acquiring lock when already held returns False."""
-        redis = Redis.from_url("redis://localhost:6379/1", decode_responses=True)
-        await redis.flushdb()
-        try:
-            first = await acquire_lock("session-123", redis, ttl=60)
-            assert first is True
-            second = await acquire_lock("session-123", redis, ttl=60)
-            assert second is False
-        finally:
-            await redis.flushdb()
-            await redis.aclose()
+        redis = AsyncMock(spec=Redis)
+        redis.set = AsyncMock(return_value=None)
+        result = await acquire_lock("session-123", redis, ttl=60)
+        assert result is False
 
     async def test_release_lock_deletes_key(self):
         """release_lock deletes the lock key."""
-        redis = Redis.from_url("redis://localhost:6379/1", decode_responses=True)
-        await redis.flushdb()
-        try:
-            await acquire_lock("session-123", redis, ttl=60)
-            await release_lock("session-123", redis)
-            # After release, lock should be acquirable again
-            result = await acquire_lock("session-123", redis, ttl=60)
-            assert result is True
-        finally:
-            await redis.flushdb()
-            await redis.aclose()
+        redis = AsyncMock(spec=Redis)
+        redis.delete = AsyncMock()
+        await release_lock("session-123", redis)
+        redis.delete.assert_awaited_once_with("processing_lock:session-123")
 
     async def test_lock_key_format(self):
         """Lock key follows expected format."""
-        redis = Redis.from_url("redis://localhost:6379/1", decode_responses=True)
-        await redis.flushdb()
-        try:
-            await acquire_lock("session-abc", redis, ttl=60)
-            keys = await redis.keys("processing_lock:*")
-            assert len(keys) == 1
-            assert keys[0] == "processing_lock:session-abc"
-            ttl = await redis.ttl("processing_lock:session-abc")
-            assert ttl > 0
-        finally:
-            await redis.flushdb()
-            await redis.aclose()
+        redis = AsyncMock(spec=Redis)
+        redis.set = AsyncMock(return_value=True)
+        await acquire_lock("session-abc", redis, ttl=60)
+        call_args = redis.set.call_args
+        assert call_args.kwargs["nx"] is True
+        assert call_args.kwargs["ex"] == 60
+        assert call_args.args[0] == "processing_lock:session-abc"
 
 
 @pytest.mark.integration
