@@ -531,10 +531,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### QueryInput component
 
-- [ ] **T-133** [P] [test] **QueryInput RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-006,FR-007,SC-009 | effort: S
+- [x] **T-133** [P] [test] **QueryInput RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-006,FR-007,SC-009 | effort: S
   Done when: `frontend/tests/unit/QueryInput.test.tsx` tests: (1) renders textarea with i18n placeholder `query.input.placeholder`, (2) displays live character counter updating on keystrokes, (3) prevents submission and shows validation when text exceeds 2000 chars, (4) disables submit button while `isSubmitting` is true, (5) calls `submitQuestion` on button click and on Enter key; uses RTL + MSW.
 
-- [ ] **T-134** [frontend] **QueryInput component** — cluster: US-2 | deps: T-133,T-132,T-022 | FR-006,FR-007,FR-030,SC-009 | effort: S
+- [x] **T-134** [frontend] **QueryInput component** — cluster: US-2 | deps: T-133,T-132,T-022 | FR-006,FR-007,FR-030,SC-009 | effort: S
   Done when: `frontend/src/components/QueryInput.tsx` renders a textarea with `{current}/{max}` character counter, submit button disabled on empty/whitespace/over-limit/isSubmitting, all strings via `t()`; all T-133 tests pass.
 
 ### ResultTable + SqlDisplay component (TanStack Table + SQL block)
