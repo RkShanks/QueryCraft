@@ -56,8 +56,8 @@ def test_env_vars(test_encryption_key: str) -> dict[str, str]:
         "SOURCE_DB_NAME": "source_analytics",
         "SOURCE_DB_HOST": "localhost",
         "SOURCE_DB_PORT": "5434",
-        "SOURCE_DB_USER": "source_readonly",
-        "SOURCE_DB_PASSWORD": "source_dev",
+        "SOURCE_DB_USER": "pagila_user",
+        "SOURCE_DB_PASSWORD": "pagila_dev_pwd",
         "SOURCE_DB_SSL_MODE": "disable",
     }
 

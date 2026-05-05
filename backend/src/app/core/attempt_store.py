@@ -5,7 +5,7 @@ validation (Inv 6) and 15-minute TTL.
 """
 
 import json
-from datetime import datetime, timezone
+from typing import Any
 
 from pydantic import BaseModel
 from redis.asyncio import Redis
@@ -20,8 +20,9 @@ class EphemeralAttempt(BaseModel):
     session_id: str
     sql: str
     question: str = ""
-    evaluator_result: dict | None = None
-    executor_result: dict | None = None
+    attempt_number: int = 1
+    evaluator_result: dict[str, Any] | None = None
+    executor_result: dict[str, Any] | None = None
     created_at: str = ""
     expires_at: str = ""
 

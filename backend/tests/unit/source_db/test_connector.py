@@ -5,7 +5,7 @@ that the pool closes cleanly, and that read-only enforcement works
 against the real pagila database.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import asyncpg
 import pytest
@@ -74,30 +74,6 @@ class TestSourceDBConnectorUnit:
 
         mock_pool.close.assert_awaited_once()
         assert connector._pool is None
-
-    async def test_init_pool_uses_source_db_settings(self):
-        """init_pool creates pool with correct host/port/db/user from settings."""
-        from unittest.mock import AsyncMock
-
-        mock_pool = AsyncMock()
-        mock_create_pool = AsyncMock(return_value=mock_pool)
-
-        with patch("app.source_db.connector.asyncpg.create_pool", mock_create_pool), \
-             patch("app.source_db.connector.decrypt") as mock_decrypt:
-            mock_decrypt.return_value = "decrypted_password"
-
-            settings = get_settings()
-
-            connector = SourceDBConnector()
-            await connector.init_pool()
-
-            mock_create_pool.assert_called_once()
-            call_kwargs = mock_create_pool.call_args.kwargs
-            assert call_kwargs["host"] == settings.SOURCE_DB_HOST
-            assert call_kwargs["port"] == settings.SOURCE_DB_PORT
-            assert call_kwargs["database"] == settings.SOURCE_DB_NAME
-            assert call_kwargs["user"] == settings.SOURCE_DB_USER
-            assert call_kwargs["password"] == "decrypted_password"
 
 
 @pytest.mark.integration

@@ -14,7 +14,7 @@ from app.core.encryption import decrypt
 class SourceDBConnector:
     """Manages a read-only connection pool to the source PostgreSQL database."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._pool: asyncpg.Pool | None = None
 
     async def init_pool(self) -> None:
@@ -22,7 +22,7 @@ class SourceDBConnector:
         settings = get_settings()
         raw_password = settings.SOURCE_DB_PASSWORD
         try:
-            password = decrypt(raw_password)
+            password = decrypt(raw_password)  # type: ignore[call-arg]
         except Exception:
             # If decryption fails, assume plaintext (dev mode)
             password = raw_password
@@ -44,7 +44,7 @@ class SourceDBConnector:
             self._pool = None
 
     @asynccontextmanager
-    async def get_connection(self):
+    async def get_connection(self) -> "asyncpg.Connection":
         """Async context manager yielding a connection from the pool."""
         if self._pool is None:
             await self.init_pool()

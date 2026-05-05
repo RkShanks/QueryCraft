@@ -4,7 +4,6 @@ Tests store_attempt, get_attempt, delete_attempt with session ownership,
 TTL expiry, and missing-key handling.
 """
 
-from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -12,7 +11,7 @@ from pydantic import BaseModel
 from redis.asyncio import Redis
 
 from app.core.attempt_store import delete_attempt, get_attempt, store_attempt
-from app.core.exceptions import AttemptExpired, AttemptNotFound, AttemptOwnershipViolation
+from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation
 
 
 class FakeAttempt(BaseModel):

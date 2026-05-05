@@ -6,6 +6,7 @@ T-100: SchemaIntrospector queries information_schema and builds SchemaContext.
 import asyncio
 import json
 import time
+from typing import Any
 
 import tiktoken
 
@@ -59,7 +60,8 @@ class SchemaIntrospector:
             tables = await self._fetch_tables(conn)
             columns = await self._fetch_columns(conn)
             pks = await self._fetch_primary_keys(conn)
-            fks = await self._fetch_foreign_keys(conn)
+            # FKs fetched for future use (schema enrichment)
+            await self._fetch_foreign_keys(conn)
 
         table_map: dict[str, Table] = {}
         for t in tables:
@@ -110,7 +112,7 @@ class SchemaIntrospector:
         json_text = json.dumps(schema.model_dump(), separators=(",", ":"))
         return len(encoding.encode(json_text))
 
-    async def _fetch_tables(self, conn):
+    async def _fetch_tables(self, conn: Any) -> Any:
         query = """
             SELECT table_name, table_schema
             FROM information_schema.tables
@@ -120,7 +122,7 @@ class SchemaIntrospector:
         """
         return await conn.fetch(query)
 
-    async def _fetch_columns(self, conn):
+    async def _fetch_columns(self, conn: Any) -> Any:
         query = """
             SELECT table_name, column_name, data_type, is_nullable
             FROM information_schema.columns
@@ -129,7 +131,7 @@ class SchemaIntrospector:
         """
         return await conn.fetch(query)
 
-    async def _fetch_primary_keys(self, conn):
+    async def _fetch_primary_keys(self, conn: Any) -> Any:
         query = """
             SELECT
                 kcu.table_name,
@@ -145,7 +147,7 @@ class SchemaIntrospector:
         """
         return await conn.fetch(query)
 
-    async def _fetch_foreign_keys(self, conn):
+    async def _fetch_foreign_keys(self, conn: Any) -> Any:
         query = """
             SELECT
                 kcu.table_name,

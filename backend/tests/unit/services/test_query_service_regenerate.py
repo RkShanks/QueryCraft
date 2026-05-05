@@ -12,9 +12,7 @@ from app.core.attempt_store import EphemeralAttempt
 from app.core.exceptions import (
     AttemptNotFound,
     AttemptOwnershipViolation,
-    SessionBusy,
 )
-from app.schemas.query import QueryResult
 from app.services.query_service import QueryService
 
 
@@ -55,11 +53,13 @@ class TestQueryServiceRegenerate:
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
         mock_deps["executor"].execute = AsyncMock(return_value=(["col"], [(1,)]))
 
-        with patch("app.core.attempt_store.get_attempt", return_value=prior):
-            with patch("app.core.attempt_store.store_attempt"):
-                with patch("app.core.processing_lock.acquire_lock", return_value=True):
-                    with patch("app.core.processing_lock.release_lock"):
-                        result = await service.regenerate_query("a1", "s1")
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            patch("app.services.query_service.store_attempt"),
+            patch("app.services.query_service.acquire_lock", return_value=True),
+            patch("app.services.query_service.release_lock"),
+        ):
+            await service.regenerate_query("a1", "s1")
 
         mock_deps["llm"].generate_sql.assert_awaited_once()
         call_args = mock_deps["llm"].generate_sql.call_args
@@ -75,10 +75,12 @@ class TestQueryServiceRegenerate:
         )
         mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 1")
 
-        with patch("app.core.attempt_store.get_attempt", return_value=prior):
-            with patch("app.core.processing_lock.acquire_lock", return_value=True):
-                with patch("app.core.processing_lock.release_lock"):
-                    result = await service.regenerate_query("a1", "s1")
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            patch("app.services.query_service.acquire_lock", return_value=True),
+            patch("app.services.query_service.release_lock"),
+        ):
+            result = await service.regenerate_query("a1", "s1")
 
         # Byte-equal -> RefinePrompt
         assert result.kind == "refine"
@@ -98,11 +100,13 @@ class TestQueryServiceRegenerate:
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
         mock_deps["executor"].execute = AsyncMock(return_value=(["col"], [(1,)]))
 
-        with patch("app.core.attempt_store.get_attempt", return_value=prior):
-            with patch("app.core.attempt_store.store_attempt"):
-                with patch("app.core.processing_lock.acquire_lock", return_value=True):
-                    with patch("app.core.processing_lock.release_lock"):
-                        result = await service.regenerate_query("a1", "s1")
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            patch("app.services.query_service.store_attempt"),
+            patch("app.services.query_service.acquire_lock", return_value=True),
+            patch("app.services.query_service.release_lock"),
+        ):
+            result = await service.regenerate_query("a1", "s1")
 
         assert result.kind == "refine"
 
@@ -124,11 +128,13 @@ class TestQueryServiceRegenerate:
         ]
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=eval_result)
 
-        with patch("app.core.attempt_store.get_attempt", return_value=prior):
-            with patch("app.core.attempt_store.store_attempt"):
-                with patch("app.core.processing_lock.acquire_lock", return_value=True):
-                    with patch("app.core.processing_lock.release_lock"):
-                        result = await service.regenerate_query("a1", "s1")
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            patch("app.services.query_service.store_attempt"),
+            patch("app.services.query_service.acquire_lock", return_value=True),
+            patch("app.services.query_service.release_lock"),
+        ):
+            result = await service.regenerate_query("a1", "s1")
 
         # Evaluator fail should return response, not raise
         assert result.kind == "refine"
@@ -147,36 +153,43 @@ class TestQueryServiceRegenerate:
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
         mock_deps["executor"].execute = AsyncMock(return_value=(["col"], [(1,)]))
 
-        with patch("app.core.attempt_store.get_attempt", return_value=prior):
-            with patch("app.core.attempt_store.store_attempt"):
-                with patch("app.core.processing_lock.acquire_lock", return_value=True):
-                    with patch("app.core.processing_lock.release_lock"):
-                        result = await service.regenerate_query("a1", "s1")
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            patch("app.services.query_service.store_attempt"),
+            patch("app.services.query_service.acquire_lock", return_value=True),
+            patch("app.services.query_service.release_lock"),
+        ):
+            result = await service.regenerate_query("a1", "s1")
 
         mock_deps["evaluator"].evaluate.assert_awaited_once()
         mock_deps["executor"].execute.assert_awaited_once()
+        assert result.kind == "result"
 
     async def test_regenerate_raises_on_cross_session(self, service, mock_deps):
         """regenerate_query with wrong session raises AttemptOwnershipViolation."""
         async def _get_attempt(aid, sid, redis):
             raise AttemptOwnershipViolation()
 
-        with patch("app.core.processing_lock.acquire_lock", return_value=True):
-            with patch("app.core.processing_lock.release_lock"):
-                with patch("app.core.attempt_store.get_attempt", side_effect=_get_attempt):
-                    with pytest.raises(AttemptOwnershipViolation):
-                        await service.regenerate_query("a1", "s2")
+        with (
+            patch("app.services.query_service.acquire_lock", return_value=True),
+            patch("app.services.query_service.release_lock"),
+            patch("app.services.query_service.get_attempt", side_effect=_get_attempt),
+            pytest.raises(AttemptOwnershipViolation),
+        ):
+            await service.regenerate_query("a1", "s2")
 
     async def test_regenerate_raises_on_missing_attempt(self, service, mock_deps):
         """regenerate_query with nonexistent attempt raises AttemptNotFound."""
         async def _get_attempt(aid, sid, redis):
             raise AttemptNotFound()
 
-        with patch("app.core.processing_lock.acquire_lock", return_value=True):
-            with patch("app.core.processing_lock.release_lock"):
-                with patch("app.core.attempt_store.get_attempt", side_effect=_get_attempt):
-                    with pytest.raises(AttemptNotFound):
-                        await service.regenerate_query("missing", "s1")
+        with (
+            patch("app.services.query_service.acquire_lock", return_value=True),
+            patch("app.services.query_service.release_lock"),
+            patch("app.services.query_service.get_attempt", side_effect=_get_attempt),
+            pytest.raises(AttemptNotFound),
+        ):
+            await service.regenerate_query("missing", "s1")
 
     async def test_regenerate_acquires_and_releases_lock(self, service, mock_deps):
         """Processing lock is acquired and released around regenerate."""
@@ -199,10 +212,12 @@ class TestQueryServiceRegenerate:
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
         mock_deps["executor"].execute = AsyncMock(return_value=(["col"], [(1,)]))
 
-        with patch("app.core.attempt_store.get_attempt", return_value=prior):
-            with patch("app.core.attempt_store.store_attempt"):
-                with patch("app.core.processing_lock.acquire_lock", side_effect=_acquire):
-                    with patch("app.core.processing_lock.release_lock", side_effect=_release):
-                        await service.regenerate_query("a1", "s1")
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            patch("app.services.query_service.store_attempt"),
+            patch("app.services.query_service.acquire_lock", side_effect=_acquire),
+            patch("app.services.query_service.release_lock", side_effect=_release),
+        ):
+            await service.regenerate_query("a1", "s1")
 
         assert lock_calls == ["acquire", "release"]

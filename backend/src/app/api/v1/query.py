@@ -6,10 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.validation import validate_body
 from app.core.dependencies import get_db, get_redis
+from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
 from app.evaluator.pipeline import Evaluator
 from app.llm.stub import StubLLM
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
-from app.schemas.query import AcceptQueryRequest, QueryResult, SubmitQuestionRequest
+from app.schemas.query import AcceptQueryRequest, QueryResult, RejectQueryRequest, SubmitQuestionRequest
 from app.services.query_service import QueryService
 from app.source_db.connector import SourceDBConnector
 from app.source_db.executor import SourceDBExecutor
@@ -99,32 +100,60 @@ async def accept_query(
 
 
 @router.post("/reject")
-async def reject_query(request: Request):
-    """POST /query/reject — stub for US-2 (returns RefinePrompt to satisfy contract)."""
+async def reject_query(
+    request: Request,
+    req: RejectQueryRequest = Depends(validate_body(RejectQueryRequest)),  # noqa: B008
+    service: QueryService = Depends(_get_query_service),  # noqa: B008
+):
+    """POST /query/reject — reject current result."""
     session = request.state.session
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
-    return {
-        "kind": "refine",
-        "message_key": "query.refine.message",
-        "should_refine": True,
-    }
+    try:
+        return await service.reject_query(
+            attempt_id=req.attempt_id,
+            session_id=request.state.session_id,
+        )
+    except (AttemptNotFound, AttemptOwnershipViolation) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "attempt_invalid", "message_key": exc.message_key},
+        ) from exc
+    except SessionBusy as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "concurrent", "message_key": exc.message_key},
+        ) from exc
 
 
 @router.post("/regenerate")
-async def regenerate_query(request: Request):
-    """POST /query/regenerate — stub for US-2 (returns RefinePrompt to satisfy contract)."""
+async def regenerate_query(
+    request: Request,
+    req: RejectQueryRequest = Depends(validate_body(RejectQueryRequest)),  # noqa: B008
+    service: QueryService = Depends(_get_query_service),  # noqa: B008
+):
+    """POST /query/regenerate — regenerate SQL with negative context."""
     session = request.state.session
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
-    return {
-        "kind": "refine",
-        "message_key": "query.refine.message",
-        "should_refine": True,
-    }
+    try:
+        return await service.regenerate_query(
+            attempt_id=req.attempt_id,
+            session_id=request.state.session_id,
+        )
+    except (AttemptNotFound, AttemptOwnershipViolation) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "attempt_invalid", "message_key": exc.message_key},
+        ) from exc
+    except SessionBusy as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "concurrent", "message_key": exc.message_key},
+        ) from exc

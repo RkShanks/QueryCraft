@@ -11,6 +11,8 @@ import asyncio
 
 import asyncpg
 
+from typing import Any
+
 from app.core.exceptions import (
     SourceDBConnectionFailed,
     SourceDBPermissionDenied,
@@ -29,7 +31,7 @@ class SourceDBExecutor:
         self,
         sql: str,
         timeout: float = 30.0,
-    ) -> tuple[list[str], list[tuple]]:
+    ) -> tuple[list[str], list[tuple[Any, ...]]]:
         """Execute *sql* and return (column_names, rows).
 
         Raises:
@@ -45,7 +47,7 @@ class SourceDBExecutor:
 
                 try:
                     rows = await asyncio.wait_for(conn.fetch(sql), timeout=timeout)
-                except asyncio.TimeoutError as exc:
+                except TimeoutError as exc:
                     raise SourceDBTimeout(timeout_seconds=int(timeout)) from exc
                 except asyncpg.exceptions.QueryCanceledError as exc:
                     raise SourceDBTimeout(timeout_seconds=int(timeout)) from exc
@@ -65,6 +67,6 @@ class SourceDBExecutor:
             raise SourceDBConnectionFailed() from exc
         except asyncpg.exceptions.InterfaceError as exc:
             raise SourceDBConnectionFailed() from exc
-        except Exception as exc:
+        except Exception:
             # Re-raise unknown exceptions for now; can be refined later
             raise

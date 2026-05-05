@@ -4,7 +4,7 @@ Tests that execute(sql, timeout) returns (columns, rows) for successful SELECTs,
 that timeouts raise SourceDBTimeout, and that various errors are wrapped correctly.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest

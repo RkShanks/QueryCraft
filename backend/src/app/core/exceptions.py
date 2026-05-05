@@ -99,14 +99,14 @@ class SourceDBTimeout(SourceDBError):
 class SourceDBPermissionDenied(SourceDBError):
     """Raised when the source-DB role lacks permission."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Source DB permission denied", message_key="error.forbidden")
 
 
 class SourceDBConnectionFailed(SourceDBError):
     """Raised when the source-DB connection fails."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Source DB connection failed", message_key="error.llmUnavailable")
 
 
@@ -119,21 +119,21 @@ class AttemptError(QueryCraftError):
 class AttemptNotFound(AttemptError):
     """Raised when an attempt_id is not found in Redis."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("No active query result to act on", message_key="error.attemptInvalid")
 
 
 class AttemptExpired(AttemptError):
     """Raised when an attempt_id references an expired Redis key."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("This query attempt has expired", message_key="error.attemptExpired")
 
 
 class AttemptOwnershipViolation(AttemptError):
     """Raised when session_id doesn't match the attempt's owner."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("No active query result to act on", message_key="error.attemptInvalid")
 
 
@@ -146,7 +146,7 @@ class SessionError(QueryCraftError):
 class SessionBusy(SessionError):
     """Raised when a concurrent submission is detected (Inv 3)."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("A question is already being processed", message_key="error.concurrent")
 
 

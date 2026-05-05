@@ -4,12 +4,11 @@ Tests that introspection queries build a correct SchemaContext,
 that caching works, and that refresh bypasses cache.
 """
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.evaluator.schema_context import Column, SchemaContext, Table
+from app.evaluator.schema_context import SchemaContext
 from app.source_db.introspector import SchemaIntrospector
 
 
@@ -60,7 +59,12 @@ def pk_rows():
 def fk_rows():
     """Fixture rows for foreign key info."""
     return [
-        {"table_name": "film_actor", "column_name": "actor_id", "foreign_table_name": "actor", "foreign_column_name": "actor_id"},
+        {
+            "table_name": "film_actor",
+            "column_name": "actor_id",
+            "foreign_table_name": "actor",
+            "foreign_column_name": "actor_id",
+        },
     ]
 
 

@@ -42,7 +42,7 @@ class TestSchemaTokenLimit:
             )
             for i in range(50)
         ]
-        huge_schema = SchemaContext(tables=huge_tables)
+        SchemaContext(tables=huge_tables)
 
         async def _fetch(query, *args):
             if "information_schema.tables" in query:
@@ -83,7 +83,7 @@ class TestSchemaTokenLimit:
         """When token count <= MAX_SCHEMA_TOKENS, return SchemaContext normally."""
         connector, conn = mock_connector
 
-        small_tables = [
+        [
             Table(
                 name="actor",
                 schema_name="public",
@@ -99,8 +99,18 @@ class TestSchemaTokenLimit:
                 return [{"table_name": "actor", "table_schema": "public"}]
             if "information_schema.columns" in query:
                 return [
-                    {"table_name": "actor", "column_name": "actor_id", "data_type": "integer", "is_nullable": "NO"},
-                    {"table_name": "actor", "column_name": "first_name", "data_type": "character varying", "is_nullable": "NO"},
+                    {
+                        "table_name": "actor",
+                        "column_name": "actor_id",
+                        "data_type": "integer",
+                        "is_nullable": "NO",
+                    },
+                    {
+                        "table_name": "actor",
+                        "column_name": "first_name",
+                        "data_type": "character varying",
+                        "is_nullable": "NO",
+                    },
                 ]
             if "key_column_usage" in query:
                 return []
