@@ -575,18 +575,18 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Frontend i18n key verification
 
-- [ ] **T-145** [test] **i18n key verification — no inline string literals** — cluster: US-2 | deps: T-022,T-144 | SC-009 | effort: S
+- [x] **T-145** [test] **i18n key verification — no inline string literals** — cluster: US-2 | deps: T-022,T-144 | SC-009 | effort: S
   Done when: `npm run lint` passes with zero violations of the no-inline-string-literals ESLint rule across all files in `frontend/src/components/` and `frontend/src/pages/`; a CI script `frontend/scripts/verify-i18n-keys.ts` loads `en.json` and asserts every key referenced by `t()` in source files exists in the locale file and vice-versa.
 
 ### Playwright e2e — US-2 independent test criterion
 
-- [ ] **T-146** [test] **E2E: reject → auto-retry → new result → accept** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-017,FR-018,SC-005 | effort: L
+- [x] **T-146** [test] **E2E: reject → auto-retry → new result → accept** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-017,FR-018,SC-005 | effort: L
   Done when: `frontend/tests/e2e/reject-retry.spec.ts` runs against `docker-compose.dev.yml`: (1) signs in, (2) submits a question, (3) clicks Reject on first result, (4) sees a new result with different SQL and `is_last_auto_retry` indicator, (5) clicks Accept on second result, (6) navigates to `/history` and sees the accepted query; assertions pass in headless Chromium.
 
-- [ ] **T-147** [test] **E2E: double-reject → refine prompt → new question resets counter** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-018,FR-019,SC-005 | effort: M
+- [x] **T-147** [test] **E2E: double-reject → refine prompt → new question resets counter** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-018,FR-019,SC-005 | effort: M
   Done when: `frontend/tests/e2e/reject-retry.spec.ts` extends with scenario: (1) submits a question, (2) rejects first result, (3) rejects second result, (4) sees RefinePromptBanner with `query.refine.message`, (5) types a new question and submits, (6) sees a fresh result (counter reset); no rejected queries appear in `/history`.
 
-- [ ] **T-148** [test] **E2E: evaluator rejection + timeout + concurrent error rendering** — cluster: US-2 | deps: T-028,T-144 | FR-012,FR-028,FR-030 | effort: M
+- [x] **T-148** [test] **E2E: evaluator rejection + timeout + concurrent error rendering** — cluster: US-2 | deps: T-028,T-144 | FR-012,FR-028,FR-030 | effort: M
   Done when: `frontend/tests/e2e/error-states.spec.ts` runs against `docker-compose.dev.yml` with mock LLM configured to trigger each error: (1) evaluator rejection shows EvaluatorRejectionBanner, (2) timeout shows TimeoutBanner, (3) concurrent submission shows 409 toast; all assertions pass in headless Chromium.
 
 ## Cluster: US-3 — Evaluator Blocks Unsafe SQL
