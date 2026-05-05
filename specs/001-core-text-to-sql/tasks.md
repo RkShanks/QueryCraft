@@ -391,7 +391,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [ ] **T-094** [P] [test] **SchemaValidationRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-004 | effort: M
   Done when: `backend/tests/unit/test_rule_schema_validation.py` tests pass cases (references existing tables/columns) and fail cases (unknown table, unknown column, aliased table with wrong column); at least 10 test cases with a mock `SchemaContext`.
 
-- [ ] **T-095** [backend] **SchemaValidationRule** — cluster: US-2 | deps: T-094 | FR-010,SC-004 | effort: M
+- [x] **T-095** [backend] **SchemaValidationRule** — cluster: US-2 | deps: T-094 | FR-010,SC-004 | effort: M
   Done when: `backend/src/app/evaluator/rules/schema_validation_rule.py` extracts table/column refs via `sqlglot`, validates against `SchemaContext`, and returns violations with `evaluator.violation.unknownTable`/`unknownColumn` keys; all T-094 tests pass.
 
 - [ ] **T-096** [P] [test] **UnsafePatternRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
