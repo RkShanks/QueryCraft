@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { submitQuestion, acceptQuery, listHistory, rejectQuery, regenerateQuery } from '../api/generated/sdk.gen';
-import type { SubmitQuestionData, AcceptQueryData, RejectQueryData, RegenerateQueryData } from '../api/generated/types.gen';
+import type { SubmitQuestionData, AcceptQueryData } from '../api/generated/types.gen';
 import type { QueryResult, RefinePrompt, EvaluatorRejection } from '../api/generated/types.gen';
 
 export const useSubmitQuestion = () => {

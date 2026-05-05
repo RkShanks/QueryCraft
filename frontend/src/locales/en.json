@@ -36,8 +36,13 @@
   "query.actions.accept": "Accept",
   "query.actions.accepting": "Accepting...",
   "query.actions.accepted": "Query saved to history",
+  "query.actions.reject": "Reject",
+  "query.actions.regenerate": "Regenerate",
+
+  "query.result.lastRetry": "Last auto retry",
 
   "query.evaluator.rejected": "We couldn't generate a safe query for your question. Please try rephrasing it in a different way.",
+  "query.refine.message": "We couldn't refine this query automatically. Please rephrase your question.",
 
   "history.title": "Query History",
   "history.empty": "No accepted queries yet",
@@ -49,6 +54,10 @@
 
   "error.unauthorized": "Your session has expired or you are not signed in. Please sign in again.",
   "error.network": "Network error. Please check your connection and try again.",
+  "error.concurrent": "A query is already being processed. Please wait.",
+  "error.llmUnavailable": "The AI service is temporarily unavailable. Please try again in a moment.",
+  "error.attemptInvalid": "This query attempt has expired or is invalid. Please submit a new question.",
+  "error.timeout": "The query timed out. Please try a simpler question.",
   "error.unknown.title": "Error",
   "error.unknown.message": "An unexpected error occurred. Please try again.",
   "error.evaluator.title": "Evaluator Rejected",

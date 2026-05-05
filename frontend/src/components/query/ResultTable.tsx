@@ -14,10 +14,13 @@ export interface ResultTableProps {
   result: QueryResult;
   onAccept: (id: string) => void;
   isAccepting?: boolean;
+  onReject?: (id: string) => void;
+  onRegenerate?: (id: string) => void;
+  canRegenerate?: boolean;
 }
 
 export const ResultTable: React.FC<ResultTableProps> = ({ 
-  result, onAccept, isAccepting 
+  result, onAccept, isAccepting, onReject, onRegenerate, canRegenerate
 }) => {
   const { t } = useTranslation();
   
@@ -38,6 +41,12 @@ export const ResultTable: React.FC<ResultTableProps> = ({
   return (
     <div className="result-container flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <SqlDisplay sql={result.generated_sql} />
+      
+      {result.is_last_auto_retry && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-md text-sm font-medium">
+          {t('query.result.lastRetry', { defaultValue: 'Last auto retry' })}
+        </div>
+      )}
       
       <div className="table-wrapper bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
         {result.rows.length === 0 ? (
@@ -81,6 +90,9 @@ export const ResultTable: React.FC<ResultTableProps> = ({
         attemptId={result.attempt_id}
         onAccept={onAccept}
         isAccepting={isAccepting}
+        onReject={onReject}
+        onRegenerate={onRegenerate}
+        canRegenerate={canRegenerate}
       />
     </div>
   );

@@ -539,10 +539,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### ResultTable + SqlDisplay component (TanStack Table + SQL block)
 
-- [ ] **T-135** [P] [test] **ResultTable + SqlDisplay state-machine integration RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-014,FR-015,FR-029,SC-009 | effort: S
+- [x] **T-135** [P] [test] **ResultTable + SqlDisplay state-machine integration RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-014,FR-015,FR-029,SC-009 | effort: S
   Done when: `frontend/tests/unit/ResultTable.test.tsx` and `frontend/tests/unit/SqlDisplay.test.tsx` test the existing components against US-2 state-machine inputs: (1) TanStack Table renders columns and rows from `QueryResult`, (2) displays `query.result.noRows` i18n key on zero-row result, (3) shows generated SQL in a code block, (4) renders Accept/Reject/Regenerate buttons with i18n labels, (5) shows `query.result.lastRetry` indicator when `is_last_auto_retry` is true; uses RTL.
 
-- [ ] **T-136** [frontend] **ResultTable + SqlDisplay state-machine wiring** — cluster: US-2 | deps: T-135,T-132,T-022 | FR-014,FR-015,FR-029,SC-009 | effort: M
+- [x] **T-136** [frontend] **ResultTable + SqlDisplay state-machine wiring** — cluster: US-2 | deps: T-135,T-132,T-022 | FR-014,FR-015,FR-029,SC-009 | effort: M
   Done when: `frontend/src/components/ResultTable.tsx` and `frontend/src/components/SqlDisplay.tsx` are extended with Reject/Regenerate wiring (Accept/Reject/Regenerate action buttons, `is_last_auto_retry` indicator) without creating new components; all T-135 tests pass.
 
 ### Error state components
