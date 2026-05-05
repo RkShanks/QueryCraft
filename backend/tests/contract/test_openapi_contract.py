@@ -27,5 +27,5 @@ schema = schemathesis.from_pytest_fixture("api_schema")
 @schema.parametrize()
 def test_api_contract(case, set_test_env, async_engine_fixture, redis_client):
     """Every endpoint must return a response matching the OpenAPI contract."""
-    response = case.call_asgi()
+    response = case.call_asgi(headers={"origin": "http://test"})
     case.validate_response(response)

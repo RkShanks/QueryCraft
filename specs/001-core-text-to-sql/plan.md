@@ -218,7 +218,7 @@ QueryCraft/
 │   │   │   └── SignInForm.tsx              # Login form (RHF + Zod)
 │   │   ├── pages/
 │   │   │   ├── SignInPage.tsx
-│   │   │   ├── ChatPage.tsx                # Main query interface
+│   │   │   ├── AskQuestionPage.tsx         # Main query interface
 │   │   │   └── HistoryPage.tsx
 │   │   ├── hooks/
 │   │   │   ├── useAuth.ts                  # Auth state + sign-in/out mutations
@@ -272,6 +272,10 @@ These invariants are non-negotiable and must be enforced by code structure and t
 5. **Read-Only Source DB (FR-005, Principle VIII)**: The `SourceDBConnector` connects with a read-only PostgreSQL role. The evaluator also rejects non-SELECT SQL as a defense-in-depth measure.
 
 6. **Ephemeral Attempt Ownership (Redis)**: Ephemeral attempts are stored in Redis under `attempt:{attempt_id}` with a 15-minute TTL. `QueryService` MUST validate `attempt_id` ownership against the current session before any accept/reject/regenerate operation. If `session_id` in the stored attempt does not match the current session, the handler returns `400 Bad Request`. This prevents cross-session attempt hijacking.
+
+### Deferred-Test Risk
+
+Invariant 4 (byte-equal duplicate detection) is implemented in US-2 (T-113) but its dedicated integration test (T-159) is scheduled in US-4. Until US-4 completes, the byte-equal path is covered only by unit tests (T-111, T-112) and not by a full end-to-end invariant assertion. This is an accepted risk: the logic ships with the backend in US-2, but the invariant gate is not fully closed until US-4.
 
 ---
 
@@ -353,7 +357,7 @@ User decision:
 | Route | Page | Auth Required |
 |-------|------|---------------|
 | `/sign-in` | `SignInPage` | No |
-| `/` | `ChatPage` | Yes |
+| `/` | `AskQuestionPage` | Yes |
 | `/history` | `HistoryPage` | Yes |
 | `/history/:id` | `HistoryPage` (detail panel) | Yes |
 

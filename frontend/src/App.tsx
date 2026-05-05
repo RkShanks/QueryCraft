@@ -1,23 +1,66 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryProvider } from './providers/QueryProvider';
+import { useCurrentUser } from './hooks/useAuth';
 import './i18n';
 import './index.css';
 
-// Lazy-loaded page stubs
-import LoginPage from './pages/LoginPage.tsx';
-import QueryPage from './pages/QueryPage.tsx';
-import HistoryPage from './pages/HistoryPage.tsx';
+import { SignInPage } from './pages/SignInPage';
+import { AskQuestionPage } from './pages/AskQuestionPage';
+import HistoryPage from './pages/HistoryPage';
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { data: user, isLoading } = useCurrentUser();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/sign-in" replace />;
+  }
+  return <>{children}</>;
+}
+
+function RootRedirect() {
+  const { data: user, isLoading } = useCurrentUser();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+  return <Navigate to="/sign-in" replace />;
+}
 
 function App() {
   return (
     <QueryProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/query" element={<QueryPage />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/sign-in" element={<SignInPage />} />
+          <Route
+            path="/"
+            element={
+              <AuthGuard>
+                <AskQuestionPage />
+              </AuthGuard>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <AuthGuard>
+                <HistoryPage />
+              </AuthGuard>
+            }
+          />
+          <Route path="*" element={<RootRedirect />} />
         </Routes>
       </BrowserRouter>
     </QueryProvider>

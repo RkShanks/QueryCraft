@@ -245,6 +245,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: LLM provider unreachable or returned an error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "504":
+          description: Source database query timed out.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /query/regenerate:
     post:
@@ -278,8 +290,26 @@ paths:
                   mapping:
                     result: "#/components/schemas/QueryResult"
                     refine: "#/components/schemas/RefinePrompt"
+        "400":
+          description: No active query result to regenerate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: LLM provider unreachable or returned an error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "504":
+          description: Source database query timed out.
           content:
             application/json:
               schema:
@@ -427,6 +457,7 @@ components:
           type: string
           minLength: 3
           maxLength: 64
+          pattern: '^[\w.-]+$'
         password:
           type: string
           minLength: 1

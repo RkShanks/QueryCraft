@@ -58,3 +58,7 @@ coverage.xml
 .specify
 .agents
 AGENTS.md
+.opencode/
+.specify.bak
+dbTest
+s.md
