@@ -2,7 +2,7 @@
 -- Creates a true read-only role `pagila_readonly` with SELECT-only grants on all public tables.
 -- Creates a login user `pagila_user` (the app connects as this user when stronger Inv 5 enforcement is desired).
 
-DO $
+DO $$
 BEGIN
    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'pagila_readonly') THEN
       CREATE ROLE pagila_readonly NOLOGIN;
@@ -11,7 +11,7 @@ BEGIN
       CREATE USER pagila_user WITH LOGIN PASSWORD 'pagila_dev_pwd';
    END IF;
 END
-$;
+$$;
 
 -- Database-level connect grant
 GRANT CONNECT ON DATABASE source_analytics TO pagila_readonly;
