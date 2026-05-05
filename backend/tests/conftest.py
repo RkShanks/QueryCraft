@@ -51,6 +51,7 @@ def test_env_vars(test_encryption_key: str) -> dict[str, str]:
         "ADMIN_USERNAME": "admin",
         "ADMIN_DISPLAY_NAME": "Platform Administrator",
         "ADMIN_PASSWORD": "admin123",
+        "ADMIN_API_KEY": "test-admin-key-123",
         "LLM_PROVIDER": "ollama",
         "LOG_LEVEL": "DEBUG",
         "SOURCE_DB_NAME": "source_analytics",

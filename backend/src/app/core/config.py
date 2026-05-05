@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = "admin"
     ADMIN_DISPLAY_NAME: str = "Administrator"
     ADMIN_PASSWORD: str = ""
+    ADMIN_API_KEY: str = ""  # Simple admin auth for Phase 1
 
     # ─── LLM Provider ───
     LLM_PROVIDER: str = "ollama"  # anthropic | openai | gemini | ollama

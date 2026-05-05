@@ -463,16 +463,16 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-115** [backend] **Reject router** — cluster: US-2 | deps: T-114,T-113,T-039 | FR-017,FR-018 | effort: S
   Done when: `backend/src/app/api/v1/query.py` adds `POST /query/reject` matching openapi.yaml discriminated union response; all T-114 tests pass.
 
-- [ ] **T-116** [P] [test] **Regenerate router integration test** — cluster: US-2 | deps: T-113,T-013 | FR-019 | effort: S
+- [x] **T-116** [P] [test] **Regenerate router integration test** — cluster: US-2 | deps: T-113,T-013 | FR-019 | effort: S
   Done when: `backend/tests/integration/test_api_regenerate.py` tests POST `/query/regenerate` returns 200 with `QueryResult` or `RefinePrompt` using the `kind` discriminator; same edge cases as reject.
 
-- [ ] **T-117** [backend] **Regenerate router** — cluster: US-2 | deps: T-116,T-113,T-039 | FR-019 | effort: XS
+- [x] **T-117** [backend] **Regenerate router** — cluster: US-2 | deps: T-116,T-113,T-039 | FR-019 | effort: XS
   Done when: `backend/src/app/api/v1/query.py` adds `POST /query/regenerate` delegating to `QueryService.regenerate_query`; all T-116 tests pass.
 
-- [ ] **T-118** [P] [test] **Admin refresh-schema router integration test** — cluster: US-2 | deps: T-100,T-013 | | effort: S
+- [x] **T-118** [P] [test] **Admin refresh-schema router integration test** — cluster: US-2 | deps: T-100,T-013 | | effort: S
   Done when: `backend/tests/integration/test_api_admin.py` tests POST `/admin/refresh-schema` returns 200 with `tables_count`, `columns_count`, `approximate_tokens`, `refreshed_at`; returns 422 when schema exceeds token limit; returns 401 unauthenticated.
 
-- [ ] **T-119** [backend] **Admin refresh-schema router** — cluster: US-2 | deps: T-118,T-100 | | effort: S
+- [x] **T-119** [backend] **Admin refresh-schema router** — cluster: US-2 | deps: T-118,T-100 | | effort: S
   Done when: `backend/src/app/api/v1/admin.py` exposes `POST /admin/refresh-schema` matching openapi.yaml; all T-118 tests pass.
 
 ### Architectural-invariant tests
