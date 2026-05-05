@@ -41,6 +41,11 @@
   "query.evaluatorRejection.rule.UnsafePatternRule": "نمط SQL غير آمن",
 
   "query.refine.message": "تعذر تحسين هذا الاستعلام تلقائياً. يرجى إعادة صياغة سؤالك.",
+  "query.refine.heading": "يرجى تحسين سؤالك",
+  "query.refine.body.maxRetries": "لقد حاولنا مرتين وكانت النتيجة متطابقة. حاول إعادة الصياغة أو تحديد السؤال.",
+  "query.refine.body.byteEqual": "كان SQL المُنشأ متطابقاً. حاول صياغة مختلفة.",
+  "query.refine.body.evaluatorBlocked": "لا يمكننا الإجابة على هذا بأمان. يرجى إعادة الصياغة.",
+  "query.refine.cta": "حاول التحسين",
 
   "history.title": "سجل الاستعلامات",
   "history.empty": "لا توجد استعلامات مقبولة بعد",

@@ -51,6 +51,11 @@
   "query.evaluatorRejection.rule.UnsafePatternRule": "Unsafe SQL pattern",
 
   "query.refine.message": "We couldn't refine this query automatically. Please rephrase your question.",
+  "query.refine.heading": "Please refine your question",
+  "query.refine.body.maxRetries": "We tried twice and the result was the same. Try rephrasing or narrowing the question.",
+  "query.refine.body.byteEqual": "The regenerated SQL was identical. Try a different phrasing.",
+  "query.refine.body.evaluatorBlocked": "We can't safely answer this. Please rephrase.",
+  "query.refine.cta": "Try refining",
 
   "history.title": "Query History",
   "history.empty": "No accepted queries yet",
