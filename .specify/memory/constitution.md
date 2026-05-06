@@ -284,7 +284,7 @@ definition, a defect.
 
 ## §11 Phased Rollout
 
-Principles IV (Hostile Input), VI (Arabic+RTL), IX (Tamper-evident Audit Log), and X (Quotas) MUST be in place before public production launch. Pre-production phases MAY ship without these principles fully active when:
+Principles IV (Hostile Input), VI (Arabic+RTL), VII (Role-Appropriate Authentication), IX (Tamper-evident Audit Log), and X (Quotas) MUST be in place before public production launch. Pre-production phases MAY ship without these principles fully active when:
 
 1. The deferral is explicitly recorded in `plan.md` with a target phase, and
 2. The deferral does not affect the integrity of data already in scope (e.g., Audit Log absence in Phase 1 is acceptable because Phase 1 has no PII / no auth boundary; it would NOT be acceptable in Phase 5 once multi-user lands).
@@ -295,6 +295,7 @@ Principles IV (Hostile Input), VI (Arabic+RTL), IX (Tamper-evident Audit Log), a
 |---|---|---|
 | IV — Hostile Input detection | Phase 6 | Public beta or first external user |
 | VI — Arabic + RTL | Phase 4 | First non-English user persona |
+| VII — Role-Appropriate Authentication (SSO + RBAC) | Phase 5 | First multi-user feature OR first SSO requirement |
 | IX — Tamper-evident Audit Log (24-month) | Phase 5 | First multi-user feature OR first persisted PII |
 | X — Token/Query/Cost quotas | Phase 5 | First multi-tenant boundary OR first paid user |
 
@@ -304,7 +305,8 @@ Operating in production WITHOUT a principle past its trigger is a constitutional
 
 ## Changelog
 
+- **v1.1.1** (2026-05-06) — Added Principle VII to §11 phased commitment table; resolves /speckit.analyze A3 (deferral was previously unauthorized).
 - **v1.1.0** (2026-05-06) — Added §11 Phased Rollout; permits Principles IV, VI, IX, X to defer per the phased plan in plan.md, with explicit trigger conditions for each phase.
 - **v1.0.0** (initial) — Original ten principles.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-02 | **Last Amended**: 2026-05-06
+**Version**: 1.1.1 | **Ratified**: 2026-05-02 | **Last Amended**: 2026-05-06

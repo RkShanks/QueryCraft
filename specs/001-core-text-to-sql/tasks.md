@@ -594,6 +594,17 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ## Wave 3 post-audit fixes (Chunks 3.10/3.11)
 
+<!--
+Task ID ranges in this file:
+- T-001..T-148: Original Phase 1 task list (Foundation, US-1, US-2, US-3, US-4 acceptance tests).
+- T-149..T-157: US-3 acceptance pipeline tests (cluster: US-3).
+- T-200..T-207: Wave 3 post-audit fixes (cluster: US-2; renamed from temp T-149..T-156 in Chunk 3.11.1 due to collision with US-3 tests above).
+- T-208..T-215: Wave 3 deferred Mediums (cluster: US-3 / Polish).
+- T-216..T-223: /speckit.analyze pass 1 remediation tasks (Polish).
+- T-224..T-225: /speckit.analyze pass 2 remediation tasks (Polish, registered in Chunk 4.1.5b).
+No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
+-->
+
 ### Critical + High fixes (T-149..T-156) — all closed
 
 - [x] **T-200** [backend] **OP-001 — Wire Evaluator pipeline into QueryService** — cluster: US-2 | deps: T-089 | FR-010,SC-002,SC-003 | effort: S
@@ -901,6 +912,12 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 - [ ] **T-223** [docs] **Specify schema-context-overflow threshold + operator error message** — cluster: Polish | deps: | | effort: S
   > /speckit.analyze M7: edge case lacks threshold; M8 (T-191b/T-191c traceability) folded in here.
+
+- [ ] **T-224** [docs] **Add FR for execution-phase database error handling** — cluster: Polish | deps: T-106 | | effort: S
+  > /speckit.analyze A9: spec.md edge case L155 describes DB execution errors for evaluator-passed SQL but no FR mandates the behavior. Add FR-012b (or extend FR-028) covering runtime DB errors with required user-facing message and history entry behavior.
+
+- [ ] **T-225** [docs] **Add FR/SC for "last automatic try" UI indicator** — cluster: Polish | deps: T-138 | | effort: XS
+  > /speckit.analyze A12: spec.md L255 assumption mentions UI cue on the second attempt with no FR/SC backing. Either add an FR mandating the indicator, or remove the assumption.
 
 ---
 

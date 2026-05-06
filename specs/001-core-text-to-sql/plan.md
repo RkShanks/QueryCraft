@@ -276,7 +276,7 @@ These invariants are non-negotiable and must be enforced by code structure and t
 
 ### Deferred-Test Risk
 
-Invariant 4 (byte-equal duplicate detection) is implemented in US-2 (T-113) but its dedicated integration test (T-159) is scheduled in US-4. Until US-4 completes, the byte-equal path is covered only by unit tests (T-111, T-112) and not by a full end-to-end invariant assertion. This is an accepted risk: the logic ships with the backend in US-2, but the invariant gate is not fully closed until US-4.
+Invariant 4 (byte-equal duplicate detection) is implemented in US-2 (T-113) and its dedicated integration test is **T-121b** (US-2). The invariant is therefore fully gated within US-2.
 
 ---
 
@@ -429,7 +429,13 @@ User decision:
 | IX — Audit Log | ⏸ Deferred | ⏸ Deferred | Phase 6. structlog operational logs are not tamper-evident audit. |
 | X — Quotas | ⏸ Deferred | ⏸ Deferred | Phase 6. Single user, no quotas needed. |
 
-**All gates pass. No violations to justify.**
+**Gate Status**: Pass with documented exceptions per §11.
+
+- Quality Gate 1 (OpenAPI contract): ✅ Pass
+- Quality Gate 2 (Evaluator validation): ✅ Pass
+- Quality Gate 3 (Audit-log entry for security actions): ⏸ **Deferred** — Principle IX (tamper-evident audit log) is deferred to Phase 5 per §11. Phase 1 emits short-term diagnostic logs only (FR-020). Quality Gate 3 will be enforced once Phase 5 triggers (first multi-user feature OR first persisted PII).
+- Quality Gate 4 (RBAC/RLS/column masking): ⏸ **Partial** — Phase 1 uses a single provisional administrator (no RBAC, no RLS, no column masking). Principle VIII (Least Privilege) is satisfied for Phase 1 scope via centrally brokered read-only credentials to the source database. Full RBAC, RLS, and column masking will be enforced when multi-user features arrive in Phase 5 (alongside Principle VII).
+- Quality Gate 5 (i18n/RTL verification): ✅ Foundations in place (i18n keys, logical CSS). Arabic activation deferred to Phase 4 per §11.
 
 ---
 
