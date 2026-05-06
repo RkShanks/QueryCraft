@@ -1,7 +1,7 @@
 # Data Model: Core Text-to-SQL Vertical Slice
 
 **Branch**: `001-core-text-to-sql` | **Date**: 2026-05-03  
-**Spec**: [spec.md](file:///home/avril/QueryCraft/specs/001-core-text-to-sql/spec.md)
+**Spec**: [spec.md](file:///home/avril/querycraft/specs/001-core-text-to-sql/spec.md)
 
 ## Overview
 

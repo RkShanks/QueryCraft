@@ -3,7 +3,7 @@
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-05-03  
 **Last Updated**: 2026-05-03 (post-clarification)  
-**Feature**: [spec.md](file:///home/avril/QueryCraft/specs/001-core-text-to-sql/spec.md)
+**Feature**: [spec.md](file:///home/avril/querycraft/specs/001-core-text-to-sql/spec.md)
 
 ## Content Quality
 

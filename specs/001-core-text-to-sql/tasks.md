@@ -453,7 +453,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 - [x] **T-113** [backend] **QueryService reject + regenerate** — cluster: US-2 | deps: T-111,T-112,T-052,T-086,T-089,T-106,T-108,T-110 | FR-017,FR-018,FR-019,FR-020,SC-005,SC-012 | effort: L
   Done when: `backend/src/app/services/query_service.py` adds `reject_query` and `regenerate_query` methods implementing the state machine from plan.md: negative-context LLM call, byte-equal detection, evaluator re-check, max-retry enforcement, ephemeral Redis lifecycle, and processing lock; all T-111 and T-112 tests pass.
-  > **Note:** Inv 4 logic implemented here; dedicated invariant assertion test deferred to T-159 (US-4).
+  > **Note:** Inv 4 logic implemented here; dedicated invariant assertion test in T-121b (US-2).
 
 ### Backend routers: reject, regenerate, admin
 
@@ -469,10 +469,10 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-117** [backend] **Regenerate router** — cluster: US-2 | deps: T-116,T-113,T-039 | FR-019 | effort: XS
   Done when: `backend/src/app/api/v1/query.py` adds `POST /query/regenerate` delegating to `QueryService.regenerate_query`; all T-116 tests pass.
 
-- [x] **T-118** [P] [test] **Admin refresh-schema router integration test** — cluster: US-2 | deps: T-100,T-013 | | effort: S
+- [x] **T-118** [P] [test] **Admin refresh-schema router integration test** — cluster: US-2 | deps: T-100,T-013 | FR-008 | effort: S
   Done when: `backend/tests/integration/test_api_admin.py` tests POST `/admin/refresh-schema` returns 200 with `tables_count`, `columns_count`, `approximate_tokens`, `refreshed_at`; returns 422 when schema exceeds token limit; returns 401 unauthenticated.
 
-- [x] **T-119** [backend] **Admin refresh-schema router** — cluster: US-2 | deps: T-118,T-100 | | effort: S
+- [x] **T-119** [backend] **Admin refresh-schema router** — cluster: US-2 | deps: T-118,T-100 | FR-008 | effort: S
   Done when: `backend/src/app/api/v1/admin.py` exposes `POST /admin/refresh-schema` matching openapi.yaml; all T-118 tests pass.
 
 ### Architectural-invariant tests
@@ -632,7 +632,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 - [ ] **T-208** [backend] **F-G04 CTE handling in SchemaValidationRule** — cluster: US-3 | deps: T-095 | FR-010 | effort: M
   > Renamed from T-157 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
-  Done when: SchemaValidationRule extracts CTE aliases from AST and skips validating them against SchemaContext. [Wave 4]
+  Done when: SchemaValidationRule extracts CTE aliases from AST and skips validating them against SchemaContext.
 
 - [ ] **T-209** [frontend] **F-G05 QueryInput truncation UX** — cluster: US-3 | deps: T-134 | FR-007 | effort: S
   > Renamed from T-158 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
@@ -640,7 +640,7 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 - [ ] **T-210** [frontend] **F-G06 @playwright/test devDep** — cluster: Polish | deps: T-074 | | effort: XS
   > Renamed from T-159 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
-  Done when: `@playwright/test` is added to `devDependencies` and `test:e2e` script works. [Polish]
+  Done when: `@playwright/test` is added to `devDependencies` and `test:e2e` script works.
 
 - [ ] **T-211** [docs] **F-G07/OP-009 X-Admin-Key in openapi.yaml + .env.example** — cluster: Polish | deps: T-119 | | effort: S
   > Renamed from T-160 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
@@ -703,14 +703,11 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Architectural invariant tests
 
-- [ ] **T-158** [P] [test] **Invariant 2: accept-only persistence — reject/regenerate write nothing** — cluster: US-4 | deps: T-113,T-047 | SC-012 | effort: S
-  Done when: `backend/tests/integration/test_invariant_accept_only.py` calls `reject_query` and `regenerate_query` through the full service layer, then asserts `accepted_queries` table has zero new rows; only `accept_query` produces a row.
+- ~~T-158~~ (consolidated into T-035 in Chunk 4.1.5)
 
-- [ ] **T-159** [P] [test] **Invariant 4: byte-equal duplicate detection emits RefinePrompt** — cluster: US-4 | deps: T-113 | SC-005 | effort: S
-  Done when: `backend/tests/integration/test_invariant_byte_equal.py` mocks the LLM to return identical SQL on retry, calls `reject_query`, and asserts the response is a `RefinePrompt` (kind=refine) with `query.refine.message` key — no second execution occurs.
+- ~~T-159~~ (consolidated into T-121b in Chunk 4.1.5)
 
-- [ ] **T-160** [P] [test] **Invariant 6: cross-session ephemeral attempt ownership** — cluster: US-4 | deps: T-110 | | effort: S
-  Done when: `backend/tests/integration/test_invariant_attempt_ownership.py` stores an attempt for session A, calls `accept_query` / `reject_query` with session B's credentials, and asserts both return 400 with `error.attemptInvalid` message key.
+- ~~T-160~~ (consolidated into T-123 in Chunk 4.1.5)
 
 ### Backend contract test
 
@@ -879,6 +876,34 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ---
 
+## /speckit.analyze Medium remediation (Wave 4 / Polish)
+
+- [ ] **T-216** [docs] **Migrate i18n source-code references from `error.*` to `query.error.*`** — cluster: Polish | deps: T-024 | | effort: S
+  > Resolves /speckit.analyze H1 source-code part. plan.md namespace consolidated in Chunk 4.1.5; remaining source code may still reference legacy keys.
+
+- [ ] **T-217** [backend] **Define diagnostic log retention, access control, PII handling for FR-020** — cluster: Polish | deps: T-051 | FR-020 | effort: S
+  > /speckit.analyze M1: specify max retention (e.g., 7 days), access restrictions, PII handling.
+
+- [ ] **T-218** [docs] **SC-001 measurement boundary spec** — cluster: Polish | deps: | SC-001 | effort: XS
+  > /speckit.analyze M2: define exact start/stop timestamps for end-to-end loop time.
+
+- [ ] **T-219** [docs] **Map plan.md p95 backend latency goal to a Success Criterion** — cluster: Polish | deps: | | effort: XS
+  > /speckit.analyze M3: orphan metric in plan.md; either add SC or remove.
+
+- [ ] **T-220** [docs] **Map T-101/T-102 (schema token limit) to FR or SC** — cluster: Polish | deps: T-101 | FR-008 | effort: XS
+  > /speckit.analyze M4: traceability gap.
+
+- [ ] **T-221** [docs] **Document HistoryListResponse.total field in API contract** — cluster: Polish | deps: T-060 | FR-021 | effort: XS
+  > /speckit.analyze M5: T-161b introduces total without spec coverage.
+
+- [ ] **T-222** [docs] **Inline glossary or hyperlink for R-007/R-008 references** — cluster: Polish | deps: | | effort: XS
+  > /speckit.analyze M6: Constitution Check references undefined IDs.
+
+- [ ] **T-223** [docs] **Specify schema-context-overflow threshold + operator error message** — cluster: Polish | deps: | | effort: S
+  > /speckit.analyze M7: edge case lacks threshold; M8 (T-191b/T-191c traceability) folded in here.
+
+---
+
 ## Traceability
 
 ### Table 1 — Functional Requirements
@@ -924,14 +949,14 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 | SC-002 | T-034,T-050,T-057,T-120,T-124,T-149,T-156 | Integration test with evaluator spy (T-120,T-124,T-149); E2E sweep (T-156) |
 | SC-003 | T-090,T-091,T-149,T-156 | Unit tests per keyword (T-090); integration via submit pipeline (T-149); E2E (T-156) |
 | SC-004 | T-094,T-095,T-150,T-156 | Unit tests per schema violation (T-094); integration via submit pipeline (T-150); E2E (T-156) |
-| SC-005 | T-111,T-112,T-113,T-146,T-147,T-159 | Integration test with identical-SQL mock (T-159); E2E reject flows (T-146,T-147) |
+| SC-005 | T-111,T-112,T-113,T-121b,T-146,T-147 | Integration test with identical-SQL mock (T-121b); E2E reject flows (T-146,T-147) |
 | SC-006 | T-164,T-165,T-171,T-191 | RTL render timing (T-164); Playwright timing assertion with 1000 entries (T-191) |
 | SC-007 | T-164,T-165,T-171,T-191 | RTL filter latency (T-164); Playwright keystop timing (T-191) |
 | SC-008 | T-085,T-174,T-175,T-178 | Integration test config swap (T-174); invalid config failure (T-175); E2E full workflow (T-178) |
 | SC-009 | T-019,T-066,T-067,T-133,T-134,T-137,T-138,T-145,T-155,T-164,T-165,T-179,T-182,T-183,T-185 | ESLint no-inline-strings (T-179); key completeness script (T-182); render audit (T-183,T-185) |
 | SC-010 | T-020,T-021,T-180,T-181,T-186 | Stylelint logical-properties (T-180); Tailwind output grep (T-181); E2E computed-style audit (T-186) |
 | SC-011 | T-105,T-106,T-153,T-157,T-191 | Integration test timeout cancellation (T-153); E2E timeout (T-157); perf budget (T-191) |
-| SC-012 | T-035,T-051,T-111,T-113,T-158,T-173 | Invariant: accept-only persistence (T-158); E2E rejected absent from history (T-173) |
+| SC-012 | T-035,T-051,T-111,T-113,T-173 | Invariant: accept-only persistence (T-035); E2E rejected absent from history (T-173) |
 
 ### Gaps identified
 

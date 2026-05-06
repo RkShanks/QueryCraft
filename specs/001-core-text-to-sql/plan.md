@@ -1,6 +1,6 @@
 # Implementation Plan: Core Text-to-SQL Vertical Slice
 
-**Branch**: `001-core-text-to-sql` | **Date**: 2026-05-03 | **Spec**: [spec.md](file:///home/avril/QueryCraft/specs/001-core-text-to-sql/spec.md)  
+**Branch**: `001-core-text-to-sql` | **Date**: 2026-05-03 | **Spec**: [spec.md](file:///home/avril/querycraft/specs/001-core-text-to-sql/spec.md)  
 **Input**: Feature specification from `specs/001-core-text-to-sql/spec.md`
 
 ## Summary
@@ -74,6 +74,7 @@ Build Phase 1 of the Text-to-SQL Analytics Platform: a complete vertical slice w
 | **VIII — Centrally Brokered DB Access** | Source-DB credentials configured at platform level in `database_connections` table. API endpoints never accept DB credentials. `SourceDBConnector` reads credentials from config, not from request payloads. | Code review: no route accepts DB credentials. |
 | **XI — Modularity** | Backend and frontend are sibling directories, independently buildable and deployable. Backend layers (routers, services, repositories, evaluator, LLM) have clean dependency boundaries. | Build test: `docker build backend/` and `docker build frontend/` independently. |
 | **XII — API Contract** | OpenAPI 3.1 generated from FastAPI at build time. Frontend types generated from it via `openapi-typescript-codegen`. Contract tests via `schemathesis` on every CI run. | Contract test pass. No hand-written request/response types in frontend. |
+| **§11 — Phased Rollout** (v1.1.0) | Pre-Wave 4 amendment — permits Principles IV, VI, IX, X to defer per the phased commitment table in `constitution.md`. Phase 1 defers IV, VI, IX, X as they have not yet triggered. | Constitution version verified in PR #6 (`phase1-spec-cleanup`). Commitment table reviewed. |
 
 ### Principles Deferred to Later Phases
 
@@ -106,7 +107,7 @@ specs/001-core-text-to-sql/
 ### Source Code (repository root)
 
 ```text
-QueryCraft/
+querycraft/
 ├── backend/
 │   ├── pyproject.toml
 │   ├── alembic.ini
@@ -391,9 +392,6 @@ User decision:
   "error.notFound": "The requested resource was not found.",
   "error.attemptExpired": "This query attempt has expired. Please submit a new question.",
   "error.attemptInvalid": "No active query result to act on.",
-  "error.timeout": "The query took too long to execute. Please try a simpler question.",
-  "error.llmUnavailable": "The query service is temporarily unavailable. Please try again later.",
-  "error.concurrent": "A question is already being processed. Please wait.",
   "error.schemaTokenLimit": "The database schema is too large ({{tokens}} tokens, limit {{limit}}). Please contact your administrator.",
   "error.validation.questionTooLong": "Question must be at most {{max}} characters.",
   "error.validation.questionEmpty": "Question cannot be empty.",
@@ -443,7 +441,7 @@ No complexity violations. All design decisions align with spec and constitution 
 
 ## Research Artifacts
 
-All research items from the technical context have been resolved in [research.md](file:///home/avril/QueryCraft/specs/001-core-text-to-sql/research.md):
+All research items from the technical context have been resolved in [research.md](file:///home/avril/querycraft/specs/001-core-text-to-sql/research.md):
 
 | Research Item | Decision | Reference |
 |---------------|----------|-----------|
@@ -462,7 +460,7 @@ All research items from the technical context have been resolved in [research.md
 
 | Artifact | Path | Description |
 |----------|------|-------------|
-| Research | [research.md](file:///home/avril/QueryCraft/specs/001-core-text-to-sql/research.md) | All research decisions and rationale |
-| Data Model | [data-model.md](file:///home/avril/QueryCraft/specs/001-core-text-to-sql/data-model.md) | 4 tables + ephemeral entities + Redis sessions + schema token escalation |
-| API Contract | [openapi.yaml](file:///home/avril/QueryCraft/specs/001-core-text-to-sql/contracts/openapi.yaml) | OpenAPI 3.1 — 9 endpoints (incl. admin) |
-| Quickstart | [quickstart.md](file:///home/avril/QueryCraft/specs/001-core-text-to-sql/quickstart.md) | Developer setup guide |
+| Research | [research.md](file:///home/avril/querycraft/specs/001-core-text-to-sql/research.md) | All research decisions and rationale |
+| Data Model | [data-model.md](file:///home/avril/querycraft/specs/001-core-text-to-sql/data-model.md) | 4 tables + ephemeral entities + Redis sessions + schema token escalation |
+| API Contract | [openapi.yaml](file:///home/avril/querycraft/specs/001-core-text-to-sql/contracts/openapi.yaml) | OpenAPI 3.1 — 9 endpoints (incl. admin) |
+| Quickstart | [quickstart.md](file:///home/avril/querycraft/specs/001-core-text-to-sql/quickstart.md) | Developer setup guide |

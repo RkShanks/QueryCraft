@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-core-text-to-sql`  
 **Created**: 2026-05-03  
-**Status**: Draft  
+**Status**: In Progress (Phase 1, Wave 3 shipped — Wave 4 in planning)  
 **Input**: User description: "Build the foundational core of an enterprise Text-to-SQL Analytics Platform — a vertical slice that proves the entire question-to-validated-answer loop works end-to-end before any of the enterprise features are added in later phases."
 
 ## Clarifications
@@ -177,7 +177,17 @@ As the team building the Arabic/RTL phase in a later release, when I inspect the
   - (c) contains multiple statements separated by semicolons,
   - (d) references table names not present in the connected PostgreSQL schema,
   - (e) references column names not present in the referenced tables,
-  - (f) matches additional platform-defined unsafe patterns.
+  - (f) Reject SQL containing platform-defined unsafe patterns. The initial unsafe-pattern catalog (extensible via `UnsafePatternRule.add_pattern()`):
+    - `pg_sleep`, `pg_advisory_lock`, `pg_advisory_unlock` — long-blocking calls
+    - `pg_read_file`, `pg_read_binary_file`, `pg_ls_dir`, `pg_stat_file` — filesystem access
+    - `pg_terminate_backend`, `pg_cancel_backend`, `pg_reload_conf` — server control
+    - `lo_*` (large object functions) — bypasses normal grants
+    - `COPY ... FROM PROGRAM`, `COPY ... TO PROGRAM` — shell execution via COPY
+    - `dblink`, `dblink_*` — outbound network from inside DB
+    - `current_setting('is_superuser')`, role-changing statements
+    - `LISTEN`, `NOTIFY`, `UNLISTEN` — pub/sub channels
+
+The catalog is enforced by `app/evaluator/rules/unsafe_pattern.py::UnsafePatternRule`. Adding a pattern requires a code change + new test in `backend/tests/unit/evaluator/test_unsafe_pattern.py`.
 - **FR-011**: The evaluator MUST be designed with an extensible contract so that additional validation strategies (e.g., an LLM-based semantic judge) can be added in later phases without changing the code that calls the evaluator.
 - **FR-012**: The system MUST enforce a configurable per-query execution timeout. When a query exceeds the timeout, the query MUST be cancelled, the user MUST see a clear timeout message, and no partial result MUST be written to history.
 - **FR-013**: The system MUST execute evaluator-passed SQL against the source database using a read-only connection.
