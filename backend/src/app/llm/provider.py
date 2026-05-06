@@ -11,8 +11,21 @@ class LLMProvider(Protocol):
     string and returns the generated SQL string.
     """
 
-    async def generate(self, prompt: str) -> str:
-        """Generate SQL from a normalised prompt.
+    async def generate_sql(
+        self,
+        question: str,
+        schema_context: str,
+        negative_examples: list[str] | None = None,
+    ) -> str:
+        """Generate SQL from a user question and schema context.
+
+        Args:
+            question: The user's natural-language question.
+            schema_context: YAML/plain-text schema description.
+            negative_examples: Previously rejected SQL variants to avoid.
+
+        Returns:
+            The generated SQL string.
 
         Raises:
             LLMUnavailable: on 5xx or 429 responses from the provider.
