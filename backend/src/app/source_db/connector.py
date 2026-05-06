@@ -22,7 +22,7 @@ class SourceDBConnector:
         settings = get_settings()
         raw_password = settings.SOURCE_DB_PASSWORD
         try:
-            password = decrypt(raw_password)  # type: ignore[call-arg]
+            password = decrypt(raw_password, settings.PLATFORM_ENCRYPTION_KEY)
         except Exception:
             # If decryption fails, assume plaintext (dev mode)
             password = raw_password

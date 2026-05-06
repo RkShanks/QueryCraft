@@ -34,8 +34,8 @@ class TestSourceDBConnectorUnit:
             connector = SourceDBConnector()
             await connector.init_pool()
 
-            # decrypt should be called with the raw password from settings
-            mock_decrypt.assert_called_once_with(original_password)
+            # decrypt should be called with the raw password and encryption key
+            mock_decrypt.assert_called_once_with(original_password, settings.PLATFORM_ENCRYPTION_KEY)
             # create_pool should receive the decrypted password
             call_kwargs = mock_create_pool.call_args.kwargs
             assert call_kwargs["password"] == "decrypted_password"
