@@ -8,6 +8,10 @@ from app.api.dependencies.validation import validate_body
 from app.core.dependencies import get_db, get_redis
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
 from app.evaluator.pipeline import Evaluator
+from app.evaluator.rules.read_only import ReadOnlyRule
+from app.evaluator.rules.schema_validation import SchemaValidationRule
+from app.evaluator.rules.single_statement import SingleStatementRule
+from app.evaluator.rules.unsafe_pattern import UnsafePatternRule
 from app.llm.stub import StubLLM
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.query import (
@@ -22,23 +26,33 @@ from app.schemas.query import (
 from app.services.query_service import QueryService
 from app.source_db.connector import SourceDBConnector
 from app.source_db.executor import SourceDBExecutor
+from app.source_db.introspector import SchemaIntrospector
 
 router = APIRouter(prefix="/query", tags=["Query"])
 
-# Module-level connector + executor (lives for app lifetime)
+# Module-level connector + executor + introspector (lives for app lifetime)
 _source_db_connector = SourceDBConnector()
 _source_db_executor = SourceDBExecutor(_source_db_connector)
+_source_introspector = SchemaIntrospector(_source_db_connector)
 
 
-def _get_query_service(
+async def _get_query_service(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
 ) -> QueryService:
+    schema_context = await _source_introspector.introspect()
     return QueryService(
         accepted_query_repository=AcceptedQueryRepository(db),
         redis=redis,
         llm=StubLLM(),
-        evaluator=Evaluator(),
+        evaluator=Evaluator(
+            rules=[
+                ReadOnlyRule(),
+                SingleStatementRule(),
+                SchemaValidationRule(schema_context),
+                UnsafePatternRule(),
+            ]
+        ),
         source_db_executor=_source_db_executor,
     )
 

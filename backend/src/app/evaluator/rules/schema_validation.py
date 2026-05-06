@@ -11,9 +11,13 @@ class SchemaValidationRule:
 
     name = "schema_validation"
 
-    async def evaluate(self, sql: str, schema: SchemaContext | None) -> tuple[bool, str | None]:
+    def __init__(self, schema: SchemaContext | None = None):
+        self._schema = schema
+
+    async def evaluate(self, sql: str, schema: SchemaContext | None = None) -> tuple[bool, str | None]:
         """Reject SQL referencing unknown tables or columns."""
-        if schema is None or not schema.tables:
+        effective_schema = schema or self._schema
+        if effective_schema is None or not effective_schema.tables:
             return True, None
 
         try:
@@ -37,7 +41,7 @@ class SchemaValidationRule:
         for table in statement.find_all(exp.Table):
             table_name = table.name
             is_quoted = hasattr(table.this, "quoted") and table.this.quoted
-            found = self._find_table(schema, table_name, is_quoted)
+            found = self._find_table(effective_schema, table_name, is_quoted)
             if not found:
                 return False, f"Unknown table: {table_name}"
 
@@ -47,7 +51,7 @@ class SchemaValidationRule:
             table_ref = col.table
             if not table_ref:
                 # Unqualified column — check against all tables (allow if found anywhere)
-                found = self._find_column_anywhere(schema, col_name)
+                found = self._find_column_anywhere(effective_schema, col_name)
                 if not found:
                     return False, f"Unknown column: {col_name}"
                 continue
@@ -56,7 +60,7 @@ class SchemaValidationRule:
             col_table_quoted = (
                 hasattr(col.args.get("table"), "quoted") and col.args["table"].quoted
             )
-            table_obj = self._find_table(schema, actual_table, col_table_quoted)
+            table_obj = self._find_table(effective_schema, actual_table, col_table_quoted)
             if table_obj is None:
                 return False, f"Unknown table for column: {actual_table}"
 

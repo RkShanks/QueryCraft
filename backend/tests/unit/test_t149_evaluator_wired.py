@@ -10,6 +10,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.evaluator.pipeline import Evaluator
+from app.evaluator.rules.read_only import ReadOnlyRule
+from app.evaluator.rules.schema_validation import SchemaValidationRule
+from app.evaluator.rules.single_statement import SingleStatementRule
+from app.evaluator.rules.unsafe_pattern import UnsafePatternRule
 from app.schemas.query import EvaluatorRejection
 from app.services.query_service import QueryService
 
@@ -36,7 +40,14 @@ def service_with_real_evaluator(mock_deps):
         mock_deps["repo"],
         mock_deps["redis"],
         mock_deps["llm"],
-        Evaluator(),
+        Evaluator(
+            rules=[
+                ReadOnlyRule(),
+                SingleStatementRule(),
+                SchemaValidationRule(),
+                UnsafePatternRule(),
+            ]
+        ),
         mock_deps["executor"],
     )
 
@@ -52,4 +63,4 @@ async def test_pg_sleep_rejected_by_evaluator(service_with_real_evaluator):
         question="test",
     )
     assert isinstance(result, EvaluatorRejection)
-    assert result.violations[0].rule_name == "unsafe_pattern"
+    assert result.violations[0].rule == "unsafe_pattern"
