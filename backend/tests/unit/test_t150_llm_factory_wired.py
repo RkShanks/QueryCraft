@@ -48,8 +48,8 @@ async def test_factory_resolves_anthropic_adapter(monkeypatch):
 
     get_settings.cache_clear()
 
-    from app.llm.factory import LLMProviderFactory
     from app.llm.anthropic_adapter import AnthropicAdapter
+    from app.llm.factory import LLMProviderFactory
 
     settings = get_settings()
     llm = LLMProviderFactory.from_config(settings)

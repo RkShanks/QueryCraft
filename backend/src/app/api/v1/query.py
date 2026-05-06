@@ -5,6 +5,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.validation import validate_body
+from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
 from app.evaluator.pipeline import Evaluator
@@ -12,7 +13,6 @@ from app.evaluator.rules.read_only import ReadOnlyRule
 from app.evaluator.rules.schema_validation import SchemaValidationRule
 from app.evaluator.rules.single_statement import SingleStatementRule
 from app.evaluator.rules.unsafe_pattern import UnsafePatternRule
-from app.core.config import get_settings
 from app.llm.factory import LLMProviderFactory
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.query import (

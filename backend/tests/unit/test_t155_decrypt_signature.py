@@ -18,7 +18,7 @@ async def test_decrypt_called_with_key():
     connector = SourceDBConnector()
     with patch("app.source_db.connector.decrypt") as mock_decrypt:
         mock_decrypt.return_value = "decrypted_pwd"
-        with patch("app.source_db.connector.asyncpg.create_pool", new_callable=AsyncMock) as mock_pool:
+        with patch("app.source_db.connector.asyncpg.create_pool", new_callable=AsyncMock):
             await connector.init_pool()
 
     mock_decrypt.assert_called_once()

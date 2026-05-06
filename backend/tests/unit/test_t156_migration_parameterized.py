@@ -8,9 +8,6 @@ single quotes (e.g. "O'Brien").
 import re
 from pathlib import Path
 
-import pytest
-
-
 MIGRATION_PATH = Path(__file__).parents[3] / "backend" / "alembic" / "versions" / "002_seed_admin_user.py"
 
 
