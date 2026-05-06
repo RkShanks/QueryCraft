@@ -70,19 +70,16 @@ class TestReadOnlySourceDB:
 
     @pytest.mark.asyncio
     async def test_create_fails_with_app_connector(self):
-        """CREATE: pagila_user may have CREATE privilege in dev; verify evaluator catches it instead.
+        """CREATE must fail at the database level for the app connector role.
 
-        This test documents that the DB-level CREATE privilege exists for pagila_user
-        in the dev environment. The ReadOnlyRule evaluator (tested in unit tests) is
-        the defense-in-depth layer that rejects CREATE statements before they reach
-        the executor.
+        The container bootstrap superuser (source_readonly) must NOT match the
+        app's SOURCE_DB_USER (pagila_user). With correct separation, pagila_user
+        has no CREATE privilege.
         """
         connector = SourceDBConnector()
-        async with connector.get_connection() as conn:
-            # This may succeed in dev (pagila_user has CREATE); we clean up afterward
-            await conn.execute("DROP TABLE IF EXISTS test_table_inv5")
-            await conn.execute("CREATE TABLE test_table_inv5 (id INT)")
-            await conn.execute("DROP TABLE test_table_inv5")
+        with pytest.raises(asyncpg.exceptions.InsufficientPrivilegeError):
+            async with connector.get_connection() as conn:
+                await conn.execute("CREATE TABLE test_table_inv5 (id INT)")
         await connector.aclose()
 
     @pytest.mark.asyncio
