@@ -8,6 +8,7 @@ Create Date: 2026-05-04
 import os
 from typing import Sequence, Union
 
+import sqlalchemy as sa
 from alembic import op
 
 revision: str = "002"
@@ -34,20 +35,28 @@ def upgrade() -> None:
     ph = PasswordHasher()
     password_hash = ph.hash(password)
 
-    # Upsert admin user
+    # Upsert admin user using parameterized query
     op.execute(
-        f"""
-        INSERT INTO users (username, display_name, password_hash, role)
-        VALUES ('{username}', '{display_name}', '{password_hash}', 'admin')
-        ON CONFLICT (username)
-        DO UPDATE SET
-            display_name = EXCLUDED.display_name,
-            password_hash = EXCLUDED.password_hash,
-            updated_at = now()
-        """
+        sa.text(
+            """
+            INSERT INTO users (username, display_name, password_hash, role)
+            VALUES (:username, :display_name, :password_hash, 'admin')
+            ON CONFLICT (username)
+            DO UPDATE SET
+                display_name = EXCLUDED.display_name,
+                password_hash = EXCLUDED.password_hash,
+                updated_at = now()
+            """
+        ).bindparams(
+            username=username,
+            display_name=display_name,
+            password_hash=password_hash,
+        )
     )
 
 
 def downgrade() -> None:
     username = os.environ.get("ADMIN_USERNAME", "admin")
-    op.execute(f"DELETE FROM users WHERE username = '{username}'")
+    op.execute(
+        sa.text("DELETE FROM users WHERE username = :username").bindparams(username=username)
+    )

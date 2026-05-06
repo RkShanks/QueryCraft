@@ -13,7 +13,7 @@ const USER_FACING_ATTRS = new Set([
 const TECHNICAL_ONLY = /^[\d\s\p{P}\p{S}]+$/u;
 
 // Allow short ASCII-only strings that look like CSS classes, ids, hex colors, urls.
-const TECHNICAL_LIKE = /^(#[0-9a-fA-F]{3,8}|https?:\/\/|\/[\w/-]+|[\w-]+)$/;
+const TECHNICAL_LIKE = /^(#[0-9a-fA-F]{3,8}|https?:\/\/|\/[\w/-]+)$/;
 
 function isInsideTCall(node) {
   let parent = node.parent;

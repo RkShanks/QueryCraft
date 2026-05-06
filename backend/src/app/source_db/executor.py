@@ -1,39 +1,71 @@
-"""Source DB executor — executes read-only SQL against the source database."""
+"""Source DB executor — executes read-only SQL against the source database.
+
+T-106: Full rewrite of SourceDBExecutor.
+- Accepts SourceDBConnector via constructor.
+- Sets postgres statement_timeout for defence-in-depth.
+- Uses asyncio.wait_for for client-side timeout.
+- Wraps errors in typed exceptions.
+"""
 
 import asyncio
+from typing import Any
 
 import asyncpg
 
-from app.core.config import get_settings
+from app.core.exceptions import (
+    SourceDBConnectionFailed,
+    SourceDBPermissionDenied,
+    SourceDBTimeout,
+)
+from app.source_db.connector import SourceDBConnector
 
 
 class SourceDBExecutor:
     """Execute SQL against the source PostgreSQL database."""
 
-    def __init__(self):
-        self._pool = None
+    def __init__(self, connector: SourceDBConnector):
+        self._connector = connector
 
-    async def _get_pool(self):
-        if self._pool is None:
-            settings = get_settings()
-            self._pool = await asyncpg.create_pool(
-                host=settings.SOURCE_DB_HOST,
-                port=settings.SOURCE_DB_PORT,
-                database=settings.SOURCE_DB_NAME,
-                user=settings.SOURCE_DB_USER,
-                password=settings.SOURCE_DB_PASSWORD,
-                ssl="disable" if settings.SOURCE_DB_SSL_MODE == "disable" else "require",
-                min_size=1,
-                max_size=5,
-            )
-        return self._pool
+    async def execute(
+        self,
+        sql: str,
+        timeout: float = 30.0,
+    ) -> tuple[list[str], list[tuple[Any, ...]]]:
+        """Execute *sql* and return (column_names, rows).
 
-    async def execute(self, sql: str, timeout: int = 30):
-        """Execute SQL and return (columns, rows)."""
-        pool = await self._get_pool()
-        async with pool.acquire() as conn:
-            rows = await asyncio.wait_for(conn.fetch(sql), timeout=timeout)
-            if not rows:
-                return [], []
-            columns = [{"name": k, "type": str(type(v).__name__)} for k, v in rows[0].items()]
-            return columns, [list(r.values()) for r in rows]
+        Raises:
+            SourceDBTimeout: on client- or server-side timeout.
+            SourceDBPermissionDenied: on insufficient privileges.
+            SourceDBConnectionFailed: on connection errors.
+        """
+        try:
+            async with self._connector.get_connection() as conn:
+                # Defence-in-depth: set postgres-side statement timeout
+                timeout_ms = int(timeout * 1000)
+                await conn.execute(f"SET LOCAL statement_timeout = '{timeout_ms}ms'")
+
+                try:
+                    rows = await asyncio.wait_for(conn.fetch(sql), timeout=timeout)
+                except TimeoutError as exc:
+                    raise SourceDBTimeout(timeout_seconds=int(timeout)) from exc
+                except asyncpg.exceptions.QueryCanceledError as exc:
+                    raise SourceDBTimeout(timeout_seconds=int(timeout)) from exc
+                except asyncpg.exceptions.InsufficientPrivilegeError as exc:
+                    raise SourceDBPermissionDenied() from exc
+
+                if not rows:
+                    return [], []
+
+                columns = list(rows[0].keys())
+                row_tuples = [tuple(r.values()) for r in rows]
+                return columns, row_tuples
+
+        except (SourceDBTimeout, SourceDBPermissionDenied):
+            raise
+        except asyncpg.exceptions.ConnectionDoesNotExistError as exc:
+            raise SourceDBConnectionFailed() from exc
+        except asyncpg.exceptions.InterfaceError as exc:
+            raise SourceDBConnectionFailed() from exc
+        except Exception:
+            # Re-raise unknown exceptions for now; can be refined later
+            raise

@@ -4,15 +4,24 @@ import { useTranslation } from 'react-i18next';
 export interface QueryInputProps {
   onSubmit: (question: string) => void;
   isSubmitting: boolean;
+  maxLength?: number;
+  value?: string;
+  onChange?: (value: string) => void;
 }
 
-export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting }) => {
+export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting, maxLength = 2000, value: controlledValue, onChange }) => {
   const { t } = useTranslation();
-  const [question, setQuestion] = useState('');
-  const maxLength = 2000;
+  const [internalQuestion, setInternalQuestion] = useState('');
+  const question = controlledValue !== undefined ? controlledValue : internalQuestion;
+  const setQuestion = (val: string) => {
+    if (controlledValue === undefined) {
+      setInternalQuestion(val);
+    }
+    onChange?.(val);
+  };
 
   const handleSubmit = () => {
-    if (question.trim() && !isSubmitting) {
+    if (question.trim() && !isSubmitting && question.length <= maxLength) {
       onSubmit(question.trim());
       setQuestion('');
     }
@@ -24,6 +33,8 @@ export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting }
       handleSubmit();
     }
   };
+
+  const isOverLimit = question.length > maxLength;
 
   return (
     <div className="query-input flex flex-col gap-2">
@@ -41,7 +52,7 @@ export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting }
         </span>
         <button
           onClick={handleSubmit}
-          disabled={!question.trim() || isSubmitting}
+          disabled={!question.trim() || isOverLimit || isSubmitting}
           className="bg-blue-500 text-white p-2 rounded disabled:opacity-50"
         >
           {isSubmitting 

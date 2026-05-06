@@ -329,183 +329,186 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### LLM provider abstraction
 
-- [ ] **T-075** [P] [test] **LLMProvider protocol contract tests** — cluster: US-2 | deps: T-002 | FR-009 | effort: S
+- [x] **T-075** [P] [test] **LLMProvider protocol contract tests** — cluster: US-2 | deps: T-002 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_protocol.py` defines a test that instantiates each of the four adapters and asserts they satisfy the `LLMProvider` protocol (`generate_sql` signature with `question`, `schema_context`, `negative_examples`).
 
-- [ ] **T-076** [backend] **LLMProvider protocol** — cluster: US-2 | deps: T-075 | FR-009 | effort: XS
+- [x] **T-076** [backend] **LLMProvider protocol** — cluster: US-2 | deps: T-075 | FR-009 | effort: XS
   Done when: `backend/src/app/llm/base.py` defines `LLMProvider` as a `typing.Protocol` with `async def generate_sql(self, question: str, schema_context: str, negative_examples: list[str] | None = None) -> str`; T-075 protocol check compiles.
 
-- [ ] **T-077** [P] [test] **AnthropicAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+- [x] **T-077** [P] [test] **AnthropicAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_anthropic.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Messages API payload, extracts SQL from the response, and raises on HTTP errors.
 
-- [ ] **T-078** [backend] **AnthropicAdapter** — cluster: US-2 | deps: T-077,T-076 | FR-009 | effort: S
+- [x] **T-078** [backend] **AnthropicAdapter** — cluster: US-2 | deps: T-077,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/anthropic_adapter.py` implements `LLMProvider` using `httpx` against the Anthropic Messages API; all T-077 tests pass.
 
-- [ ] **T-079** [P] [test] **OpenAIAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+- [x] **T-079** [P] [test] **OpenAIAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_openai.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Chat Completions payload and extracts SQL from the response.
 
-- [ ] **T-080** [backend] **OpenAIAdapter** — cluster: US-2 | deps: T-079,T-076 | FR-009 | effort: S
+- [x] **T-080** [backend] **OpenAIAdapter** — cluster: US-2 | deps: T-079,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/openai_adapter.py` implements `LLMProvider` using `httpx` against the OpenAI Chat Completions API; all T-079 tests pass.
 
-- [ ] **T-081** [P] [test] **GeminiAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+- [x] **T-081** [P] [test] **GeminiAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_gemini.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Gemini generateContent payload and extracts SQL.
 
-- [ ] **T-082** [backend] **GeminiAdapter** — cluster: US-2 | deps: T-081,T-076 | FR-009 | effort: S
+- [x] **T-082** [backend] **GeminiAdapter** — cluster: US-2 | deps: T-081,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/gemini_adapter.py` implements `LLMProvider` using `httpx` against the Gemini API; all T-081 tests pass.
 
-- [ ] **T-083** [P] [test] **OllamaAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+- [x] **T-083** [P] [test] **OllamaAdapter unit test** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
   Done when: `backend/tests/unit/test_llm_ollama.py` mocks `httpx.AsyncClient.post` and asserts `generate_sql` sends the correct Ollama `/api/generate` payload and extracts SQL.
 
-- [ ] **T-084** [backend] **OllamaAdapter** — cluster: US-2 | deps: T-083,T-076 | FR-009 | effort: S
+- [x] **T-084** [backend] **OllamaAdapter** — cluster: US-2 | deps: T-083,T-076 | FR-009 | effort: S
   Done when: `backend/src/app/llm/ollama_adapter.py` implements `LLMProvider` using `httpx` against `LLM_BASE_URL_OLLAMA`; all T-083 tests pass.
 
-- [ ] **T-085** [test] **LLM factory selection test** — cluster: US-2 | deps: T-078,T-080,T-082,T-084 | FR-009,FR-026,SC-008 | effort: S
+- [x] **T-085** [test] **LLM factory selection test** — cluster: US-2 | deps: T-078,T-080,T-082,T-084 | FR-009,FR-026,SC-008 | effort: S
   Done when: `backend/tests/unit/test_llm_factory.py` asserts `create_llm_provider(settings)` returns the correct adapter for each `LLM_PROVIDER` enum value and raises on unsupported values.
 
-- [ ] **T-086** [backend] **LLM factory** — cluster: US-2 | deps: T-085 | FR-009,FR-026 | effort: XS
+- [x] **T-086** [backend] **LLM factory** — cluster: US-2 | deps: T-085 | FR-009,FR-026 | effort: XS
   Done when: `backend/src/app/llm/factory.py` implements `create_llm_provider(settings: Settings) -> LLMProvider` selecting by `settings.LLM_PROVIDER`; all T-085 tests pass.
 
-- [ ] **T-087** [P] [backend] **Prompt builder** — cluster: US-2 | deps: T-076 | FR-008 | effort: S
+- [x] **T-087** [P] [backend] **Prompt builder** — cluster: US-2 | deps: T-076 | FR-008 | effort: S
   Done when: `backend/src/app/llm/prompt.py` implements `build_prompt(question, schema_context, negative_examples) -> str` following R-001 prompt structure; a unit test in `backend/tests/unit/test_prompt_builder.py` asserts schema injection, negative-example block, and SQL-fence extraction.
 
 ### Evaluator pipeline and rules
 
-- [ ] **T-088** [P] [test] **EvaluatorRule protocol + pipeline tests** — cluster: US-2 | deps: T-002 | FR-010,FR-011 | effort: S
+- [x] **T-088** [P] [test] **EvaluatorRule protocol + pipeline tests** — cluster: US-2 | deps: T-002 | FR-010,FR-011 | effort: S
   Done when: `backend/tests/unit/test_evaluator_pipeline.py` asserts the pipeline fans out to all registered rules, collects violations, and returns `EvaluatorResult(passed=True)` when no violations and `passed=False` otherwise.
 
-- [ ] **T-089** [backend] **Evaluator base + pipeline** — cluster: US-2 | deps: T-088 | FR-010,FR-011 | effort: S
+- [x] **T-089** [backend] **Evaluator base + pipeline** — cluster: US-2 | deps: T-088 | FR-010,FR-011 | effort: S
   Done when: `backend/src/app/evaluator/base.py` defines `EvaluatorRule` protocol and `EvaluatorResult`/`EvaluatorViolation` dataclasses; `pipeline.py` implements `evaluate(sql, schema) -> EvaluatorResult` fanning out to rules; all T-088 tests pass.
 
-- [ ] **T-090** [P] [test] **ReadOnlyRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-003 | effort: M
+- [x] **T-090** [P] [test] **ReadOnlyRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-003 | effort: M
   Done when: `backend/tests/unit/test_rule_read_only.py` tests pass cases (SELECT, CTE, subquery, DISTINCT ON, window functions) and fail cases (INSERT, UPDATE, DELETE, DROP, TRUNCATE, ALTER, CREATE — 7 data-modifying keywords); at least 15 test cases.
 
-- [ ] **T-091** [backend] **ReadOnlyRule** — cluster: US-2 | deps: T-090 | FR-010,SC-003 | effort: S
+- [x] **T-091** [backend] **ReadOnlyRule** — cluster: US-2 | deps: T-090 | FR-010,SC-003 | effort: S
   Done when: `backend/src/app/evaluator/rules/read_only_rule.py` parses SQL with `sqlglot` (postgres dialect), rejects any non-SELECT/CTE AST node, and returns violations with `evaluator.violation.dataModifying` message key; all T-090 tests pass.
 
-- [ ] **T-092** [P] [test] **SingleStatementRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
+- [x] **T-092** [P] [test] **SingleStatementRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
   Done when: `backend/tests/unit/test_rule_single_statement.py` tests pass case (single SELECT) and fail cases (two SELECTs separated by semicolon, SELECT followed by DROP); at least 5 test cases.
 
-- [ ] **T-093** [backend] **SingleStatementRule** — cluster: US-2 | deps: T-092 | FR-010 | effort: XS
+- [x] **T-093** [backend] **SingleStatementRule** — cluster: US-2 | deps: T-092 | FR-010 | effort: XS
   Done when: `backend/src/app/evaluator/rules/single_statement_rule.py` rejects SQL containing multiple statements; all T-092 tests pass.
 
-- [ ] **T-094** [P] [test] **SchemaValidationRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-004 | effort: M
+- [x] **T-094** [P] [test] **SchemaValidationRule unit tests** — cluster: US-2 | deps: T-089 | FR-010,SC-004 | effort: M
   Done when: `backend/tests/unit/test_rule_schema_validation.py` tests pass cases (references existing tables/columns) and fail cases (unknown table, unknown column, aliased table with wrong column); at least 10 test cases with a mock `SchemaContext`.
 
-- [ ] **T-095** [backend] **SchemaValidationRule** — cluster: US-2 | deps: T-094 | FR-010,SC-004 | effort: M
+- [x] **T-095** [backend] **SchemaValidationRule** — cluster: US-2 | deps: T-094 | FR-010,SC-004 | effort: M
   Done when: `backend/src/app/evaluator/rules/schema_validation_rule.py` extracts table/column refs via `sqlglot`, validates against `SchemaContext`, and returns violations with `evaluator.violation.unknownTable`/`unknownColumn` keys; all T-094 tests pass.
 
-- [ ] **T-096** [P] [test] **UnsafePatternRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
+- [x] **T-096** [P] [test] **UnsafePatternRule unit tests** — cluster: US-2 | deps: T-089 | FR-010 | effort: S
   Done when: `backend/tests/unit/test_rule_unsafe_pattern.py` tests pass cases (normal SELECT) and fail cases (platform-defined patterns like `pg_sleep`, `COPY`, `SET ROLE`); at least 6 test cases.
 
-- [ ] **T-097** [backend] **UnsafePatternRule** — cluster: US-2 | deps: T-096 | FR-010 | effort: S
+- [x] **T-097** [backend] **UnsafePatternRule** — cluster: US-2 | deps: T-096 | FR-010 | effort: S
   Done when: `backend/src/app/evaluator/rules/unsafe_pattern_rule.py` checks for platform-defined unsafe patterns and returns violations; all T-096 tests pass.
 
-- [ ] **T-098** [P] [backend] **SchemaContext model** — cluster: US-2 | deps: T-089 | FR-008,FR-010 | effort: S
+- [x] **T-098** [P] [backend] **SchemaContext model** — cluster: US-2 | deps: T-089 | FR-008,FR-010 | effort: S
   Done when: `backend/src/app/evaluator/schema_context.py` defines `SchemaContext` dataclass with `tables: dict[str, list[ColumnInfo]]` and `foreign_keys` list, plus `to_prompt_string()` for LLM context and lookup methods for evaluator validation.
 
 ### Source-DB introspector + connector + executor
 
-- [ ] **T-099** [P] [test] **SchemaIntrospector unit tests** — cluster: US-2 | deps: T-017 | FR-008 | effort: S
+- [x] **T-099** [P] [test] **SchemaIntrospector unit tests** — cluster: US-2 | deps: T-017 | FR-008 | effort: S
   Done when: `backend/tests/integration/test_introspector.py` tests introspector against testcontainers PostgreSQL with a known schema, asserts correct table/column/FK extraction, TTL cache re-reads after expiry, and manual refresh clears cache.
 
-- [ ] **T-100** [backend] **SchemaIntrospector** — cluster: US-2 | deps: T-099,T-098 | FR-008 | effort: M
+- [x] **T-100** [backend] **SchemaIntrospector** — cluster: US-2 | deps: T-099,T-098 | FR-008 | effort: M
   Done when: `backend/src/app/source_db/introspector.py` queries `information_schema` for tables/columns/FKs, builds `SchemaContext`, caches with `SCHEMA_CACHE_TTL_SECONDS`, and exposes `refresh()` method; all T-099 tests pass.
 
-- [ ] **T-101** [test] **SchemaTokenLimitExceeded test** — cluster: US-2 | deps: T-100 | | effort: S
+- [x] **T-101** [test] **SchemaTokenLimitExceeded test** — cluster: US-2 | deps: T-100 | | effort: S
   Done when: `backend/tests/unit/test_schema_token_limit.py` asserts that when token count exceeds `MAX_SCHEMA_TOKENS`, `SchemaTokenLimitExceeded` is raised with the computed count and configured limit.
 
-- [ ] **T-102** [backend] **Schema token limit escalation** — cluster: US-2 | deps: T-101,T-100 | | effort: S
+- [x] **T-102** [backend] **Schema token limit escalation** — cluster: US-2 | deps: T-101,T-100 | | effort: S
   Done when: `backend/src/app/source_db/introspector.py` computes approximate token count after introspection and raises `SchemaTokenLimitExceeded` (defined in `core/exceptions.py`) when it exceeds `MAX_SCHEMA_TOKENS`; T-101 test passes.
 
-- [ ] **T-103** [P] [test] **SourceDBConnector read-only test** — cluster: US-2 | deps: T-017 | FR-005,FR-013 | effort: S
+- [x] **T-103** [P] [test] **SourceDBConnector read-only test** — cluster: US-2 | deps: T-017 | FR-005,FR-013 | effort: S
   Done when: `backend/tests/integration/test_source_db_connector.py` asserts the connector creates a read-only asyncpg pool using decrypted credentials and that INSERT/UPDATE statements fail at the DB level.
 
-- [ ] **T-104** [backend] **SourceDBConnector** — cluster: US-2 | deps: T-103,T-009 | FR-005,FR-013 | effort: S
+- [x] **T-104** [backend] **SourceDBConnector** — cluster: US-2 | deps: T-103,T-009 | FR-005,FR-013 | effort: S
   Done when: `backend/src/app/source_db/connector.py` creates an async connection pool with read-only role credentials decrypted via `core/encryption.py`; all T-103 tests pass.
 
-- [ ] **T-105** [test] **SourceDBExecutor timeout test** — cluster: US-2 | deps: T-104 | FR-012,FR-013,SC-011 | effort: S
+- [x] **T-105** [test] **SourceDBExecutor timeout test** — cluster: US-2 | deps: T-104 | FR-012,FR-013,SC-011 | effort: S
   Done when: `backend/tests/integration/test_source_db_executor.py` asserts that a query exceeding `QUERY_TIMEOUT_SECONDS` is cancelled and raises a timeout error, and that a normal query returns rows and column metadata.
 
-- [ ] **T-106** [backend] **SourceDBExecutor** — cluster: US-2 | deps: T-105,T-104 | FR-012,FR-013,SC-011 | effort: M
+- [x] **T-106** [backend] **SourceDBExecutor** — cluster: US-2 | deps: T-105,T-104 | FR-012,FR-013,SC-011 | effort: M
   Done when: `backend/src/app/source_db/executor.py` implements `execute(sql, timeout) -> (columns, rows)` using `statement_timeout` and `asyncio.wait_for`; all T-105 tests pass.
 
 ### Redis infrastructure: processing lock + ephemeral attempts
 
-- [ ] **T-107** [P] [test] **Redis processing lock tests** — cluster: US-2 | deps: T-014 | FR-030 | effort: S
+- [x] **T-107** [P] [test] **Redis processing lock tests** — cluster: US-2 | deps: T-014 | FR-030 | effort: S
   Done when: `backend/tests/unit/test_processing_lock.py` asserts: (1) acquiring lock returns True when free, (2) acquiring lock returns False when held by same session, (3) lock is released in finally block, (4) lock TTL matches `query_timeout + 10` capped at 60.
 
-- [ ] **T-108** [backend] **Redis processing lock** — cluster: US-2 | deps: T-107,T-014 | FR-030 | effort: S
+- [x] **T-108** [backend] **Redis processing lock** — cluster: US-2 | deps: T-107,T-014 | FR-030 | effort: S
   Done when: `backend/src/app/core/processing_lock.py` implements `acquire_lock(session_id, redis) -> bool` and `release_lock(session_id, redis)` using `SET NX EX`; all T-107 tests pass.
 
-- [ ] **T-109** [P] [test] **Ephemeral attempt storage tests** — cluster: US-2 | deps: T-014 | | effort: S
+- [x] **T-109** [P] [test] **Ephemeral attempt storage tests** — cluster: US-2 | deps: T-014 | | effort: S
   Done when: `backend/tests/unit/test_attempt_store.py` asserts: (1) store creates key `attempt:{id}` with 15-min TTL, (2) get returns attempt data, (3) get with wrong session_id raises ownership error, (4) delete removes key, (5) expired key returns None.
 
-- [ ] **T-110** [backend] **Ephemeral attempt store** — cluster: US-2 | deps: T-109,T-014 | | effort: S
+- [x] **T-110** [backend] **Ephemeral attempt store** — cluster: US-2 | deps: T-109,T-014 | | effort: S
   Done when: `backend/src/app/core/attempt_store.py` implements `store_attempt`, `get_attempt(attempt_id, session_id)`, `delete_attempt` against Redis with 15-min TTL and session ownership validation; all T-109 tests pass.
 
 ### QueryService reject/regenerate + state machine
 
-- [ ] **T-111** [P] [test] **QueryService reject tests** — cluster: US-2 | deps: T-017,T-110 | FR-017,FR-018,FR-020,SC-005,SC-012 | effort: M
+- [x] **T-111** [P] [test] **QueryService reject tests** — cluster: US-2 | deps: T-017,T-110 | FR-017,FR-018,FR-020,SC-005,SC-012 | effort: M
   Done when: `backend/tests/unit/test_query_service_reject.py` tests: (1) reject attempt #1 triggers LLM with negative context and returns new QueryResult, (2) byte-equal regenerated SQL returns RefinePrompt, (3) reject attempt #2 returns RefinePrompt, (4) rejected SQL not written to `accepted_queries`, (5) attempt ownership validated.
 
-- [ ] **T-112** [P] [test] **QueryService regenerate tests** — cluster: US-2 | deps: T-017,T-110 | FR-019,SC-005 | effort: S
+- [x] **T-112** [P] [test] **QueryService regenerate tests** — cluster: US-2 | deps: T-017,T-110 | FR-019,SC-005 | effort: S
   Done when: `backend/tests/unit/test_query_service_regenerate.py` tests that regenerate behaves identically to reject (same one-retry limit, same byte-equal detection, same RefinePrompt on second rejection).
 
-- [ ] **T-113** [backend] **QueryService reject + regenerate** — cluster: US-2 | deps: T-111,T-112,T-052,T-086,T-089,T-106,T-108,T-110 | FR-017,FR-018,FR-019,FR-020,SC-005,SC-012 | effort: L
+- [x] **T-113** [backend] **QueryService reject + regenerate** — cluster: US-2 | deps: T-111,T-112,T-052,T-086,T-089,T-106,T-108,T-110 | FR-017,FR-018,FR-019,FR-020,SC-005,SC-012 | effort: L
   Done when: `backend/src/app/services/query_service.py` adds `reject_query` and `regenerate_query` methods implementing the state machine from plan.md: negative-context LLM call, byte-equal detection, evaluator re-check, max-retry enforcement, ephemeral Redis lifecycle, and processing lock; all T-111 and T-112 tests pass.
   > **Note:** Inv 4 logic implemented here; dedicated invariant assertion test deferred to T-159 (US-4).
 
 ### Backend routers: reject, regenerate, admin
 
-- [ ] **T-114** [P] [test] **Reject router integration test** — cluster: US-2 | deps: T-113,T-013 | FR-017,FR-018 | effort: S
+- [x] **T-114** [P] [test] **Reject router integration test** — cluster: US-2 | deps: T-113,T-013 | FR-017,FR-018 | effort: S
   Done when: `backend/tests/integration/test_api_reject.py` tests POST `/query/reject` returns 200 with `QueryResult` (kind=result) on first rejection, 200 with `RefinePrompt` (kind=refine) on second rejection, 400 on expired attempt, 401 on unauthenticated.
 
-- [ ] **T-115** [backend] **Reject router** — cluster: US-2 | deps: T-114,T-113,T-039 | FR-017,FR-018 | effort: S
+- [x] **T-115** [backend] **Reject router** — cluster: US-2 | deps: T-114,T-113,T-039 | FR-017,FR-018 | effort: S
   Done when: `backend/src/app/api/v1/query.py` adds `POST /query/reject` matching openapi.yaml discriminated union response; all T-114 tests pass.
 
-- [ ] **T-116** [P] [test] **Regenerate router integration test** — cluster: US-2 | deps: T-113,T-013 | FR-019 | effort: S
+- [x] **T-116** [P] [test] **Regenerate router integration test** — cluster: US-2 | deps: T-113,T-013 | FR-019 | effort: S
   Done when: `backend/tests/integration/test_api_regenerate.py` tests POST `/query/regenerate` returns 200 with `QueryResult` or `RefinePrompt` using the `kind` discriminator; same edge cases as reject.
 
-- [ ] **T-117** [backend] **Regenerate router** — cluster: US-2 | deps: T-116,T-113,T-039 | FR-019 | effort: XS
+- [x] **T-117** [backend] **Regenerate router** — cluster: US-2 | deps: T-116,T-113,T-039 | FR-019 | effort: XS
   Done when: `backend/src/app/api/v1/query.py` adds `POST /query/regenerate` delegating to `QueryService.regenerate_query`; all T-116 tests pass.
 
-- [ ] **T-118** [P] [test] **Admin refresh-schema router integration test** — cluster: US-2 | deps: T-100,T-013 | | effort: S
+- [x] **T-118** [P] [test] **Admin refresh-schema router integration test** — cluster: US-2 | deps: T-100,T-013 | | effort: S
   Done when: `backend/tests/integration/test_api_admin.py` tests POST `/admin/refresh-schema` returns 200 with `tables_count`, `columns_count`, `approximate_tokens`, `refreshed_at`; returns 422 when schema exceeds token limit; returns 401 unauthenticated.
 
-- [ ] **T-119** [backend] **Admin refresh-schema router** — cluster: US-2 | deps: T-118,T-100 | | effort: S
+- [x] **T-119** [backend] **Admin refresh-schema router** — cluster: US-2 | deps: T-118,T-100 | | effort: S
   Done when: `backend/src/app/api/v1/admin.py` exposes `POST /admin/refresh-schema` matching openapi.yaml; all T-118 tests pass.
 
 ### Architectural-invariant tests
 
-- [ ] **T-120** [P] [test] **Invariant 1: Evaluator gate — no DB contact on eval failure** — cluster: US-2 | deps: T-113 | SC-002 | effort: S
+- [x] **T-120** [P] [test] **Invariant 1: Evaluator gate — no DB contact on eval failure** — cluster: US-2 | deps: T-113 | SC-002 | effort: S
   Done when: `backend/tests/integration/test_invariant_evaluator_gate.py` submits a question, mocks evaluator to return FAIL, and asserts `SourceDBExecutor.execute` was never called.
 
-- [ ] **T-121** [P] [test] **Invariant 3: No concurrent submissions** — cluster: US-2 | deps: T-108,T-113 | FR-030 | effort: S
+- [x] **T-121** [P] [test] **Invariant 3: No concurrent submissions** — cluster: US-2 | deps: T-108,T-113 | FR-030 | effort: S
   Done when: `backend/tests/integration/test_invariant_no_concurrent.py` acquires the Redis lock for a session, submits a second question on the same session, and asserts 409 Conflict is returned.
 
-- [ ] **T-122** [P] [test] **Invariant 5: Read-only source DB** — cluster: US-2 | deps: T-104 | FR-005 | effort: S
+- [x] **T-121b** [P] [test] **Invariant 4: Byte-Equal Duplicate addendum test (gap-fix closure)** — cluster: US-2 | deps: T-113 | SC-005 | effort: S
+  Done when: `backend/tests/integration/test_invariant_byte_equal.py` stubs LLM to return identical SQL on submit and regenerate, asserts RefinePrompt on regenerate, and verifies evaluator/executor were NOT called.
+
+- [x] **T-122** [P] [test] **Invariant 5: Read-only source DB** — cluster: US-2 | deps: T-104 | FR-005 | effort: S
   Done when: `backend/tests/integration/test_invariant_read_only.py` attempts `INSERT INTO` and `DROP TABLE` via the SourceDBConnector and asserts both fail at the database level.
 
-- [ ] **T-123** [P] [test] **Invariant 6: Ephemeral attempt ownership** — cluster: US-2 | deps: T-110 | | effort: S
-  Done when: `backend/tests/unit/test_invariant_attempt_ownership.py` stores an attempt for session A, then calls `get_attempt` with session B, and asserts ownership validation error is raised.
+- [x] **T-123** [P] [test] **Invariant 6: Ephemeral attempt ownership** — cluster: US-2 | deps: T-110 | | effort: S
+  Done when: `backend/tests/integration/test_invariant_attempt_ownership.py` stores an attempt for session A, then calls `get_attempt` with session B, and asserts ownership validation error is raised.
 
 ### Schemathesis contract test
 
-- [ ] **T-124** [test] **Schemathesis contract: /query/submit** — cluster: US-2 | deps: T-058 | SC-002 | effort: S
-  Done when: `backend/tests/contract/test_openapi_contract.py` is extended with schemathesis-driven property tests for `POST /query/submit` validating that all response codes (200, 400, 401, 409, 422, 502, 504) conform to openapi.yaml schemas.
+- [x] **T-124** [test] **Schemathesis contract: /query/submit** — cluster: US-2 | deps: T-058 | SC-002 | effort: S
+  Done when: `backend/tests/contract/test_schemathesis_query.py` contains schemathesis-driven property tests for `POST /query/submit`.
 
-- [ ] **T-125** [test] **Schemathesis contract: /query/reject, /query/regenerate** — cluster: US-2 | deps: T-115,T-117 | FR-017,FR-019 | effort: S
-  Done when: `backend/tests/contract/test_openapi_contract.py` is extended with schemathesis-driven property tests for `POST /query/reject` and `POST /query/regenerate` validating discriminated union responses (`kind=result` | `kind=refine`) conform to openapi.yaml.
+- [x] **T-125** [test] **Schemathesis contract: /query/reject, /query/regenerate** — cluster: US-2 | deps: T-115,T-117 | FR-017,FR-019 | effort: S
+  Done when: `backend/tests/contract/test_schemathesis_query.py` contains schemathesis-driven property tests for `POST /query/reject` and `POST /query/regenerate`.
 
-- [ ] **T-126** [P] [test] **Schemathesis contract: /admin/refresh-schema** — cluster: US-2 | deps: T-119 | | effort: XS
-  Done when: `backend/tests/contract/test_openapi_contract.py` is extended with schemathesis-driven property tests for `POST /admin/refresh-schema` validating 200 and 422 responses conform to openapi.yaml.
+- [x] **T-126** [P] [test] **Schemathesis contract: /admin/refresh-schema** — cluster: US-2 | deps: T-119 | | effort: XS
+  Done when: `backend/tests/contract/test_schemathesis_admin.py` contains schemathesis-driven property tests for `POST /admin/refresh-schema`.
 
 ### Custom exceptions module
 
-- [ ] **T-127** [P] [test] **Custom exceptions test** — cluster: US-2 | deps: T-002 | | effort: XS
+- [x] **T-127** [P] [test] **Custom exceptions test** — cluster: US-2 | deps: T-002 | | effort: XS
   Done when: `backend/tests/unit/test_exceptions.py` asserts all custom exceptions (`EvaluatorRejectionError`, `LLMUnavailableError`, `QueryTimeoutError`, `ConcurrentSubmissionError`, `AttemptExpiredError`, `AttemptOwnershipError`, `SchemaTokenLimitExceeded`) can be instantiated with expected attributes.
 
-- [ ] **T-128** [backend] **Custom exceptions module** — cluster: US-2 | deps: T-127 | | effort: XS
+- [x] **T-128** [backend] **Custom exceptions module** — cluster: US-2 | deps: T-127 | | effort: XS
   Done when: `backend/src/app/core/exceptions.py` defines all custom exception classes with message-key attributes for i18n-compatible error responses; all T-127 tests pass.
 
 ## Cluster: US-2 (frontend) — Reject, Regenerate, Error States, E2E
@@ -513,81 +516,151 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### OpenAPI client regeneration
 
-- [ ] **T-129** [frontend] **Regenerate OpenAPI client for US-2 endpoints** — cluster: US-2 | deps: T-061,T-115,T-117,T-119 | FR-017,FR-019 | effort: XS
+- [x] **T-129** [frontend] **Regenerate OpenAPI client for US-2 endpoints** — cluster: US-2 | deps: T-061,T-115,T-117,T-119 | FR-017,FR-019 | effort: XS
   Done when: `npm run gen:api` produces updated `frontend/src/api/generated/` types including `rejectQuery`, `regenerateQuery`, `RefinePrompt` (with `kind` discriminator), and `refreshSchema`; `tsc --noEmit` passes.
 
 ### MSW handlers for /query/submit scenarios
 
-- [ ] **T-130** [P] [test] **MSW handlers for /query/submit success, evaluator rejection, timeout, 409, 502** — cluster: US-2 | deps: T-025,T-129 | FR-007,FR-014,FR-017,FR-028,FR-030 | effort: S
+- [x] **T-130** [P] [test] **MSW handlers for /query/submit success, evaluator rejection, timeout, 409, 502** — cluster: US-2 | deps: T-025,T-129 | FR-007,FR-014,FR-017,FR-028,FR-030 | effort: S
   Done when: `frontend/src/mocks/handlers-query.ts` exports named handler factories for 200 `QueryResult`, 422 `EvaluatorRejection`, 504 timeout `ErrorResponse`, 409 concurrent `ErrorResponse`, and 502 LLM-unavailable `ErrorResponse`; a smoke test in `frontend/tests/unit/msw-handlers-query.test.ts` activates each handler, fetches, and asserts the expected status code and `kind`/`message_key` fields.
 
 ### useSubmitQuestion hook
 
-- [ ] **T-131** [P] [test] **useSubmitQuestion hook RTL tests** — cluster: US-2 | deps: T-130 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
+- [x] **T-131** [P] [test] **useSubmitQuestion hook RTL tests** — cluster: US-2 | deps: T-130 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
   Done when: `frontend/tests/unit/useSubmitQuestion.test.tsx` tests: (1) submit returns `QueryResult` on 200, (2) reject returns `QueryResult` (kind=result) on first rejection, (3) reject returns `RefinePrompt` (kind=refine) on second rejection discriminated via `kind`, (4) regenerate mirrors reject behavior, (5) 409 sets `error.concurrent` state, (6) 502 sets `error.llmUnavailable` state, (7) submit-lock prevents concurrent calls; uses MSW server with T-130 handlers.
 
-- [ ] **T-132** [frontend] **useSubmitQuestion hook** — cluster: US-2 | deps: T-131,T-024,T-129 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
+- [x] **T-132** [frontend] **useSubmitQuestion hook** — cluster: US-2 | deps: T-131,T-024,T-129 | FR-006,FR-007,FR-014,FR-017,FR-019,FR-030 | effort: M
   Done when: `frontend/src/hooks/useSubmitQuestion.ts` implements `useSubmitQuestion()` returning `{ submitQuestion, rejectQuery, regenerateQuery, acceptQuery, isSubmitting, result, refinePrompt, error }` with `kind` discriminator switch for oneOf responses and submit-lock state; all T-131 tests pass.
 
 ### QueryInput component
 
-- [ ] **T-133** [P] [test] **QueryInput RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-006,FR-007,SC-009 | effort: S
+- [x] **T-133** [P] [test] **QueryInput RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-006,FR-007,SC-009 | effort: S
   Done when: `frontend/tests/unit/QueryInput.test.tsx` tests: (1) renders textarea with i18n placeholder `query.input.placeholder`, (2) displays live character counter updating on keystrokes, (3) prevents submission and shows validation when text exceeds 2000 chars, (4) disables submit button while `isSubmitting` is true, (5) calls `submitQuestion` on button click and on Enter key; uses RTL + MSW.
 
-- [ ] **T-134** [frontend] **QueryInput component** — cluster: US-2 | deps: T-133,T-132,T-022 | FR-006,FR-007,FR-030,SC-009 | effort: S
+- [x] **T-134** [frontend] **QueryInput component** — cluster: US-2 | deps: T-133,T-132,T-022 | FR-006,FR-007,FR-030,SC-009 | effort: S
   Done when: `frontend/src/components/QueryInput.tsx` renders a textarea with `{current}/{max}` character counter, submit button disabled on empty/whitespace/over-limit/isSubmitting, all strings via `t()`; all T-133 tests pass.
 
 ### ResultTable + SqlDisplay component (TanStack Table + SQL block)
 
-- [ ] **T-135** [P] [test] **ResultTable + SqlDisplay state-machine integration RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-014,FR-015,FR-029,SC-009 | effort: S
+- [x] **T-135** [P] [test] **ResultTable + SqlDisplay state-machine integration RTL tests** — cluster: US-2 | deps: T-025,T-132 | FR-014,FR-015,FR-029,SC-009 | effort: S
   Done when: `frontend/tests/unit/ResultTable.test.tsx` and `frontend/tests/unit/SqlDisplay.test.tsx` test the existing components against US-2 state-machine inputs: (1) TanStack Table renders columns and rows from `QueryResult`, (2) displays `query.result.noRows` i18n key on zero-row result, (3) shows generated SQL in a code block, (4) renders Accept/Reject/Regenerate buttons with i18n labels, (5) shows `query.result.lastRetry` indicator when `is_last_auto_retry` is true; uses RTL.
 
-- [ ] **T-136** [frontend] **ResultTable + SqlDisplay state-machine wiring** — cluster: US-2 | deps: T-135,T-132,T-022 | FR-014,FR-015,FR-029,SC-009 | effort: M
+- [x] **T-136** [frontend] **ResultTable + SqlDisplay state-machine wiring** — cluster: US-2 | deps: T-135,T-132,T-022 | FR-014,FR-015,FR-029,SC-009 | effort: M
   Done when: `frontend/src/components/ResultTable.tsx` and `frontend/src/components/SqlDisplay.tsx` are extended with Reject/Regenerate wiring (Accept/Reject/Regenerate action buttons, `is_last_auto_retry` indicator) without creating new components; all T-135 tests pass.
 
 ### Error state components
 
-- [ ] **T-137** [P] [test] **EvaluatorRejectionBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-028,SC-009 | effort: XS
+- [x] **T-137** [P] [test] **EvaluatorRejectionBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-028,SC-009 | effort: XS
   Done when: `frontend/tests/unit/EvaluatorRejectionBanner.test.tsx` tests: (1) renders translated `query.evaluator.rejected` message, (2) displays violation list with translated `message_key` per violation, (3) renders nothing when violations array is empty; uses RTL.
 
-- [ ] **T-138** [frontend] **EvaluatorRejectionBanner component** — cluster: US-2 | deps: T-137,T-022 | FR-028,SC-009 | effort: XS
+- [x] **T-138** [frontend] **EvaluatorRejectionBanner component** — cluster: US-2 | deps: T-137,T-022 | FR-028,SC-009 | effort: XS
   Done when: `frontend/src/components/EvaluatorRejectionBanner.tsx` renders an alert with translated evaluator message and violations; all T-137 tests pass.
 
-- [ ] **T-139** [P] [test] **RefinePromptBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-018,SC-009 | effort: XS
+- [x] **T-139** [P] [test] **RefinePromptBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-018,SC-009 | effort: XS
   Done when: `frontend/tests/unit/RefinePromptBanner.test.tsx` tests: (1) renders translated `query.refine.message`, (2) shows fresh question input prompt; uses RTL.
 
-- [ ] **T-140** [frontend] **RefinePromptBanner component** — cluster: US-2 | deps: T-139,T-022 | FR-018,SC-009 | effort: XS
+- [x] **T-140** [frontend] **RefinePromptBanner component** — cluster: US-2 | deps: T-139,T-022 | FR-018,SC-009 | effort: XS
   Done when: `frontend/src/components/RefinePromptBanner.tsx` renders a prompt with translated refine message and resets input state; all T-139 tests pass.
 
-- [ ] **T-141** [P] [test] **TimeoutBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-012,SC-009 | effort: XS
+- [x] **T-141** [P] [test] **TimeoutBanner RTL tests** — cluster: US-2 | deps: T-025 | FR-012,SC-009 | effort: XS
   Done when: `frontend/tests/unit/TimeoutBanner.test.tsx` tests: (1) renders translated `query.error.timeout` message, (2) renders nothing when error type is not timeout; uses RTL.
 
-- [ ] **T-142** [frontend] **TimeoutBanner component** — cluster: US-2 | deps: T-141,T-022 | FR-012,SC-009 | effort: XS
+- [x] **T-142** [frontend] **TimeoutBanner component** — cluster: US-2 | deps: T-141,T-022 | FR-012,SC-009 | effort: XS
   Done when: `frontend/src/components/TimeoutBanner.tsx` renders an alert with translated timeout message; all T-141 tests pass.
 
 ### AskQuestionPage assembly (US-2 extension)
 
-- [ ] **T-143** [test] **AskQuestionPage US-2 integration tests** — cluster: US-2 | deps: T-130,T-134,T-136,T-138,T-140,T-142 | FR-006,FR-014,FR-017,FR-018,FR-028,SC-001 | effort: M
+- [x] **T-143** [test] **AskQuestionPage US-2 integration tests** — cluster: US-2 | deps: T-130,T-134,T-136,T-138,T-140,T-142 | FR-006,FR-014,FR-017,FR-018,FR-028,SC-001 | effort: M
   Done when: `frontend/tests/unit/AskQuestionPage-us2.test.tsx` tests: (1) submitting shows ResultTable + SqlDisplay, (2) clicking Reject shows new ResultTable + SqlDisplay with `is_last_auto_retry=true`, (3) second rejection shows RefinePromptBanner, (4) evaluator-422 shows EvaluatorRejectionBanner, (5) 504 shows TimeoutBanner, (6) 409 shows concurrent-error toast, (7) 502 shows LLM-unavailable toast; uses MSW + RTL.
 
-- [ ] **T-144** [frontend] **AskQuestionPage US-2 wiring** — cluster: US-2 | deps: T-143,T-134,T-136,T-138,T-140,T-142,T-023 | FR-006,FR-014,FR-017,FR-018,FR-019,FR-028,FR-030,SC-009 | effort: M
+- [x] **T-144** [frontend] **AskQuestionPage US-2 wiring** — cluster: US-2 | deps: T-143,T-134,T-136,T-138,T-140,T-142,T-023 | FR-006,FR-014,FR-017,FR-018,FR-019,FR-028,FR-030,SC-009 | effort: M
   Done when: `frontend/src/pages/AskQuestionPage.tsx` integrates QueryInput, ResultTable, SqlDisplay, EvaluatorRejectionBanner, RefinePromptBanner, TimeoutBanner, and Radix toasts for 409/502; `kind` discriminator drives which component renders; all T-143 tests pass.
 
 ### Frontend i18n key verification
 
-- [ ] **T-145** [test] **i18n key verification — no inline string literals** — cluster: US-2 | deps: T-022,T-144 | SC-009 | effort: S
+- [x] **T-145** [test] **i18n key verification — no inline string literals** — cluster: US-2 | deps: T-022,T-144 | SC-009 | effort: S
   Done when: `npm run lint` passes with zero violations of the no-inline-string-literals ESLint rule across all files in `frontend/src/components/` and `frontend/src/pages/`; a CI script `frontend/scripts/verify-i18n-keys.ts` loads `en.json` and asserts every key referenced by `t()` in source files exists in the locale file and vice-versa.
 
 ### Playwright e2e — US-2 independent test criterion
 
-- [ ] **T-146** [test] **E2E: reject → auto-retry → new result → accept** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-017,FR-018,SC-005 | effort: L
+- [x] **T-146** [test] **E2E: reject → auto-retry → new result → accept** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-017,FR-018,SC-005 | effort: L
   Done when: `frontend/tests/e2e/reject-retry.spec.ts` runs against `docker-compose.dev.yml`: (1) signs in, (2) submits a question, (3) clicks Reject on first result, (4) sees a new result with different SQL and `is_last_auto_retry` indicator, (5) clicks Accept on second result, (6) navigates to `/history` and sees the accepted query; assertions pass in headless Chromium.
 
-- [ ] **T-147** [test] **E2E: double-reject → refine prompt → new question resets counter** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-018,FR-019,SC-005 | effort: M
+- [x] **T-147** [test] **E2E: double-reject → refine prompt → new question resets counter** — cluster: US-2 | deps: T-028,T-144,T-115 | FR-018,FR-019,SC-005 | effort: M
   Done when: `frontend/tests/e2e/reject-retry.spec.ts` extends with scenario: (1) submits a question, (2) rejects first result, (3) rejects second result, (4) sees RefinePromptBanner with `query.refine.message`, (5) types a new question and submits, (6) sees a fresh result (counter reset); no rejected queries appear in `/history`.
 
-- [ ] **T-148** [test] **E2E: evaluator rejection + timeout + concurrent error rendering** — cluster: US-2 | deps: T-028,T-144 | FR-012,FR-028,FR-030 | effort: M
+- [x] **T-148** [test] **E2E: evaluator rejection + timeout + concurrent error rendering** — cluster: US-2 | deps: T-028,T-144 | FR-012,FR-028,FR-030 | effort: M
   Done when: `frontend/tests/e2e/error-states.spec.ts` runs against `docker-compose.dev.yml` with mock LLM configured to trigger each error: (1) evaluator rejection shows EvaluatorRejectionBanner, (2) timeout shows TimeoutBanner, (3) concurrent submission shows 409 toast; all assertions pass in headless Chromium.
+
+## Wave 3 post-audit fixes (Chunks 3.10/3.11)
+
+### Critical + High fixes (T-149..T-156) — all closed
+
+- [x] **T-200** [backend] **OP-001 — Wire Evaluator pipeline into QueryService** — cluster: US-2 | deps: T-089 | FR-010,SC-002,SC-003 | effort: S
+  > Renamed from T-149 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: Evaluator accepts `rules=[...]` and delegates to EvaluatorPipeline; QueryService no longer uses naive `startswith("select")` check; pg_sleep regression test passes.
+
+- [x] **T-201** [backend] **F-G01/OP-002 — Wire LLMProviderFactory into router** — cluster: US-2 | deps: T-086 | FR-009,FR-011 | effort: S
+  > Renamed from T-150 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `_get_query_service` calls `LLMProviderFactory.from_config(get_settings())` instead of hardcoding `StubLLM()`; factory resolves correct adapter per `LLM_PROVIDER`; stub provider added for test compatibility.
+
+- [x] **T-202** [backend] **OP-003 — Validate attempt_id exists in /reject + /regenerate** — cluster: US-2 | deps: T-110 | SC-005 | effort: XS
+  > Renamed from T-151 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `regenerate_query` (and `reject_query` via delegation) raises `AttemptNotFound` before processing; router maps to HTTP 400.
+
+- [x] **T-203** [infra] **F-G02 — App connects as pagila_user, source role grants** — cluster: US-2 | deps: T-104 | FR-005,SC-003 | effort: S
+  > Renamed from T-152 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `docker-compose.dev.yml` uses `SOURCE_DB_SUPERUSER` for container bootstrap (distinct from `SOURCE_DB_USER=pagila_user`); `.env.example` documents both; integration test asserts CREATE fails with permission denied.
+
+- [x] **T-204** [backend] **F-G03/OP-005 — Session cookie secure=True** — cluster: US-2 | deps: T-056 | FR-003,SC-001 | effort: XS
+  > Renamed from T-153 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `auth.py` passes `secure=True` to `set_cookie`; test hits actual endpoint and asserts Secure flag present in Set-Cookie header.
+
+- [x] **T-205** [backend] **OP-004 — Reconcile LLMProvider.generate vs QueryService.generate_sql** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+  > Renamed from T-154 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `LLMProvider` protocol declares `generate_sql(question, schema_context, negative_examples)`; all four real adapters implement the method; `generate(prompt)` preserved as internal helper.
+
+- [x] **T-206** [backend] **OP-006 — Fix decrypt() signature in SourceDBConnector** — cluster: US-2 | deps: T-009 | FR-013 | effort: XS
+  > Renamed from T-155 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `decrypt(raw_password, settings.PLATFORM_ENCRYPTION_KEY)` is called with two arguments; `# type: ignore[call-arg]` removed; test asserts two-arg call.
+
+- [x] **T-207** [backend] **OP-007 — Parameterize Alembic migration SQL** — cluster: US-2 | deps: T-005 | | effort: XS
+  > Renamed from T-156 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `002_seed_admin_user.py` uses `sa.text(...).bindparams(...)` instead of f-string interpolation; regression test asserts no f-strings and presence of named parameters.
+
+### Deferred Mediums (T-157..T-164) — Wave 4 / Polish
+
+- [ ] **T-208** [backend] **F-G04 CTE handling in SchemaValidationRule** — cluster: US-3 | deps: T-095 | FR-010 | effort: M
+  > Renamed from T-157 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: SchemaValidationRule extracts CTE aliases from AST and skips validating them against SchemaContext. [Wave 4]
+
+- [ ] **T-209** [frontend] **F-G05 QueryInput truncation UX** — cluster: US-3 | deps: T-134 | FR-007 | effort: S
+  > Renamed from T-158 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: QueryInput removes `.slice(0, maxLength)` and shows live validation error when text exceeds 2000 chars instead of silently truncating. [Wave 4]
+
+- [ ] **T-210** [frontend] **F-G06 @playwright/test devDep** — cluster: Polish | deps: T-074 | | effort: XS
+  > Renamed from T-159 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `@playwright/test` is added to `devDependencies` and `test:e2e` script works. [Polish]
+
+- [ ] **T-211** [docs] **F-G07/OP-009 X-Admin-Key in openapi.yaml + .env.example** — cluster: Polish | deps: T-119 | | effort: S
+  > Renamed from T-160 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `.env.example` contains `ADMIN_API_KEY` (done inline in T-153) and `openapi.yaml` documents the `X-Admin-Key` security scheme. [Polish — openapi.yaml part deferred]
+
+- [ ] **T-212** [backend] **OP-008 submit_question + attempt_store integration** — cluster: US-3 | deps: T-052,T-110 | | effort: M
+  > Renamed from T-161 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `submit_question` constructs an `EphemeralAttempt` and uses `store_attempt()` instead of direct `redis.set`. [Wave 4]
+
+- [ ] **T-213** [backend] **OP-010 Session timeout config** — cluster: Polish | deps: T-049 | FR-003 | effort: XS
+  > Renamed from T-162 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `AuthService.sign_in()` reads `settings.SESSION_IDLE_TIMEOUT_HOURS` instead of hardcoding `ex=8*3600`. [Polish]
+
+- [ ] **T-214** [backend] **OP-011 Rate limiting** — cluster: Polish | deps: T-013 | | effort: M
+  > Renamed from T-163 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: rate limiting middleware (e.g. slowapi or custom Redis-based) is applied to `/auth/sign-in`, `/query/submit`, and `/admin/refresh-schema`. [Polish]
+
+- [ ] **T-215** [backend] **OP-012 response_model accuracy** — cluster: Polish | deps: T-058 | | effort: XS
+  > Renamed from T-164 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+  Done when: `/query/submit` response_model declaration accurately reflects the discriminated union of QueryResult and EvaluatorRejection, or is documented as accepted minor divergence. [Polish]
 
 ## Cluster: US-3 — Evaluator Blocks Unsafe SQL
 **Goal:** Prove end-to-end that every generated SQL passes through the evaluator gate before database contact, covering all seven acceptance scenarios (data-modifying, schema-invalid, multi-statement, valid pass-through, timeout), evaluator extensibility (FR-011), frontend violation-type display, and Playwright e2e for the independent-test criterion.

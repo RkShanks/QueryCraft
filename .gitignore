@@ -60,5 +60,11 @@ coverage.xml
 AGENTS.md
 .opencode/
 .specify.bak
-dbTest
+# dbTest SQL files are ignored via dbTest/.gitignore
+# (dbTest/README.md and dbTest/init/03-grants.sql are tracked)
 s.md
+
+# Local curl/test session jars (must never be committed)
+cookies.txt
+*.cookies.txt
+.cookies/

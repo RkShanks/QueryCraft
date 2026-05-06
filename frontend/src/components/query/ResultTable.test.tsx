@@ -49,4 +49,92 @@ describe('ResultTable', () => {
     fireEvent.click(acceptBtn);
     expect(onAccept).toHaveBeenCalledWith('test-id');
   });
+
+  it('should render Reject and Regenerate buttons', () => {
+    render(
+      <ResultTable
+        result={mockResult}
+        onAccept={vi.fn()}
+        onReject={vi.fn()}
+        onRegenerate={vi.fn()}
+        canRegenerate
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    expect(screen.getByRole('button', { name: /reject/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /regenerate/i })).toBeInTheDocument();
+  });
+
+  it('should call onReject when Reject clicked', () => {
+    const onReject = vi.fn();
+    render(
+      <ResultTable
+        result={mockResult}
+        onAccept={vi.fn()}
+        onReject={onReject}
+        onRegenerate={vi.fn()}
+        canRegenerate
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /reject/i }));
+    expect(onReject).toHaveBeenCalledWith('test-id');
+  });
+
+  it('should call onRegenerate when Regenerate clicked', () => {
+    const onRegenerate = vi.fn();
+    render(
+      <ResultTable
+        result={mockResult}
+        onAccept={vi.fn()}
+        onReject={vi.fn()}
+        onRegenerate={onRegenerate}
+        canRegenerate
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /regenerate/i }));
+    expect(onRegenerate).toHaveBeenCalledWith('test-id');
+  });
+
+  it('should hide Regenerate button when canRegenerate is false', () => {
+    render(
+      <ResultTable
+        result={mockResult}
+        onAccept={vi.fn()}
+        onReject={vi.fn()}
+        onRegenerate={vi.fn()}
+        canRegenerate={false}
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    expect(screen.queryByRole('button', { name: /regenerate/i })).not.toBeInTheDocument();
+  });
+
+  it('should show last auto retry indicator when is_last_auto_retry is true', () => {
+    const lastRetryResult = { ...mockResult, is_last_auto_retry: true };
+    render(
+      <ResultTable
+        result={lastRetryResult}
+        onAccept={vi.fn()}
+        onReject={vi.fn()}
+        onRegenerate={vi.fn()}
+        canRegenerate={false}
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    expect(screen.getByText(/last auto retry/i)).toBeInTheDocument();
+  });
+
+  it('should use i18n for all visible strings', () => {
+    render(<ResultTable result={mockResult} onAccept={vi.fn()} />, { wrapper: createWrapper() });
+
+    expect(screen.getByText(/generated sql/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /accept/i })).toBeInTheDocument();
+  });
 });

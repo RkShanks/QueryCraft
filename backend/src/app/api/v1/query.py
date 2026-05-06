@@ -5,27 +5,56 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.validation import validate_body
+from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis
+from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
 from app.evaluator.pipeline import Evaluator
-from app.llm.stub import StubLLM
+from app.evaluator.rules.read_only import ReadOnlyRule
+from app.evaluator.rules.schema_validation import SchemaValidationRule
+from app.evaluator.rules.single_statement import SingleStatementRule
+from app.evaluator.rules.unsafe_pattern import UnsafePatternRule
+from app.llm.factory import LLMProviderFactory
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
-from app.schemas.query import AcceptQueryRequest, QueryResult, SubmitQuestionRequest
+from app.schemas.query import (
+    AcceptQueryRequest,
+    EvaluatorRejection,
+    QueryResult,
+    RefinePrompt,
+    RegenerateQueryRequest,
+    RejectQueryRequest,
+    SubmitQuestionRequest,
+)
 from app.services.query_service import QueryService
+from app.source_db.connector import SourceDBConnector
 from app.source_db.executor import SourceDBExecutor
+from app.source_db.introspector import SchemaIntrospector
 
 router = APIRouter(prefix="/query", tags=["Query"])
 
+# Module-level connector + executor + introspector (lives for app lifetime)
+_source_db_connector = SourceDBConnector()
+_source_db_executor = SourceDBExecutor(_source_db_connector)
+_source_introspector = SchemaIntrospector(_source_db_connector)
 
-def _get_query_service(
+
+async def _get_query_service(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
 ) -> QueryService:
+    schema_context = await _source_introspector.introspect()
     return QueryService(
         accepted_query_repository=AcceptedQueryRepository(db),
         redis=redis,
-        llm=StubLLM(),
-        evaluator=Evaluator(),
-        source_db_executor=SourceDBExecutor(),
+        llm=LLMProviderFactory.from_config(get_settings()),
+        evaluator=Evaluator(
+            rules=[
+                ReadOnlyRule(),
+                SingleStatementRule(),
+                SchemaValidationRule(schema_context),
+                UnsafePatternRule(),
+            ]
+        ),
+        source_db_executor=_source_db_executor,
     )
 
 
@@ -53,11 +82,17 @@ async def submit_question(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": "validation", "message_key": "error.validation.questionTooLong"},
         )
-    return await service.submit_question(
+    result = await service.submit_question(
         session_id=request.state.session_id,
         user_id=session["user_id"],
         question=stripped,
     )
+    if isinstance(result, EvaluatorRejection):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=result.model_dump(),
+        )
+    return result
 
 
 @router.post("/accept", status_code=status.HTTP_201_CREATED)
@@ -93,33 +128,61 @@ async def accept_query(
     )
 
 
-@router.post("/reject")
-async def reject_query(request: Request):
-    """POST /query/reject — stub for US-2 (returns RefinePrompt to satisfy contract)."""
+@router.post("/reject", response_model=QueryResult | RefinePrompt)
+async def reject_query(
+    request: Request,
+    req: RejectQueryRequest = Depends(validate_body(RejectQueryRequest)),  # noqa: B008
+    service: QueryService = Depends(_get_query_service),  # noqa: B008
+):
+    """POST /query/reject — reject current result and trigger auto-retry."""
     session = request.state.session
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
-    return {
-        "kind": "refine",
-        "message_key": "query.refine.message",
-        "should_refine": True,
-    }
+    try:
+        return await service.reject_query(
+            attempt_id=req.attempt_id,
+            session_id=request.state.session_id,
+        )
+    except (AttemptNotFound, AttemptOwnershipViolation) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "attempt_invalid", "message_key": exc.message_key},
+        ) from exc
+    except SessionBusy as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "concurrent", "message_key": exc.message_key},
+        ) from exc
 
 
-@router.post("/regenerate")
-async def regenerate_query(request: Request):
-    """POST /query/regenerate — stub for US-2 (returns RefinePrompt to satisfy contract)."""
+@router.post("/regenerate", response_model=QueryResult | RefinePrompt)
+async def regenerate_query(
+    request: Request,
+    req: RegenerateQueryRequest = Depends(validate_body(RegenerateQueryRequest)),  # noqa: B008
+    service: QueryService = Depends(_get_query_service),  # noqa: B008
+):
+    """POST /query/regenerate — regenerate SQL with negative context."""
     session = request.state.session
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
-    return {
-        "kind": "refine",
-        "message_key": "query.refine.message",
-        "should_refine": True,
-    }
+    try:
+        return await service.regenerate_query(
+            attempt_id=req.attempt_id,
+            session_id=request.state.session_id,
+        )
+    except (AttemptNotFound, AttemptOwnershipViolation) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "attempt_invalid", "message_key": exc.message_key},
+        ) from exc
+    except SessionBusy as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "concurrent", "message_key": exc.message_key},
+        ) from exc

@@ -1,0 +1,82 @@
+{
+  "common.close": "إغلاق",
+
+  "app.title": "QueryCraft",
+  "app.subtitle": "منصة تحليلات النص إلى SQL",
+  "nav.signIn": "تسجيل الدخول",
+  "nav.signOut": "تسجيل الخروج",
+  "nav.history": "السجل",
+  "nav.settings": "الإعدادات",
+
+  "auth.signIn.title": "تسجيل الدخول",
+  "auth.signIn.username.label": "اسم المستخدم",
+  "auth.signIn.password.label": "كلمة المرور",
+  "auth.signIn.submit": "تسجيل الدخول",
+  "auth.signIn.signingIn": "جارٍ تسجيل الدخول...",
+  "auth.signIn.error.invalidCredentials": "اسم المستخدم أو كلمة المرور غير صحيحة",
+  "auth.signIn.error.network": "خطأ في الشبكة. يرجى المحاولة مرة أخرى.",
+
+  "auth.signOut.label": "تسجيل الخروج",
+
+  "query.input.placeholder": "اطرح سؤالاً حول بياناتك...",
+  "query.input.submit": "اسأل",
+  "query.input.submitting": "جارٍ الإرسال...",
+
+  "query.ask.title": "ماذا تريد أن تعرف؟",
+  "query.status.processing": "جارٍ تحليل سؤالك...",
+
+  "query.result.title": "النتائج",
+  "query.result.sqlHeading": "SQL المُنشأ",
+  "query.result.tableHeading": "النتائج",
+  "query.result.empty": "لم يُعثر على نتائج لاستعلامك",
+  "query.result.lastRetry": "آخر محاولة تلقائية",
+
+  "query.evaluator.rejected": "تعذر إنشاء استعلام آمن لسؤالك. يرجى إعادة صياغته بطريقة مختلفة.",
+
+  "query.evaluatorRejection.heading": "تم رفض SQL المُنشأ لأسباب أمنية",
+  "query.evaluatorRejection.body": "قام النظام بحظر هذا الاستعلام للسبب التالي: {reason}",
+  "query.evaluatorRejection.rule.ReadOnlyRule": "انتهاك قاعدة القراءة فقط",
+  "query.evaluatorRejection.rule.SingleStatementRule": "غير مسموح بعبارات متعددة",
+  "query.evaluatorRejection.rule.SchemaValidationRule": "جدول أو عمود غير معروف",
+  "query.evaluatorRejection.rule.UnsafePatternRule": "نمط SQL غير آمن",
+
+  "query.refine.message": "تعذر تحسين هذا الاستعلام تلقائياً. يرجى إعادة صياغة سؤالك.",
+  "query.refine.heading": "يرجى تحسين سؤالك",
+  "query.refine.body.maxRetries": "لقد حاولنا مرتين وكانت النتيجة متطابقة. حاول إعادة الصياغة أو تحديد السؤال.",
+  "query.refine.body.byteEqual": "كان SQL المُنشأ متطابقاً. حاول صياغة مختلفة.",
+  "query.refine.body.evaluatorBlocked": "لا يمكننا الإجابة على هذا بأمان. يرجى إعادة الصياغة.",
+  "query.refine.cta": "حاول التحسين",
+
+  "query.timeout.heading": "استغرق الاستعلام وقتاً طويلاً",
+  "query.timeout.body": "لم تستجب قاعدة البيانات المصدرية في الوقت المحدد. حاول سؤالاً أكثر تحديداً.",
+  "query.timeout.cta": "حاول مرة أخرى",
+
+  "history.title": "سجل الاستعلامات",
+  "history.empty": "لا توجد استعلامات مقبولة بعد",
+  "history.column.question": "السؤال",
+  "history.column.sql": "SQL",
+  "history.column.acceptedAt": "تم القبول",
+  "history.loadMore": "تحميل المزيد",
+  "history.loadingMore": "جارٍ تحميل المزيد...",
+
+  "error.unauthorized": "انتهت صلاحية جلستك أو لم تقم بتسجيل الدخول. يرجى تسجيل الدخول مرة أخرى.",
+  "error.network": "خطأ في الشبكة. يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
+  "error.concurrent": "يوجد استعلام قيد المعالجة بالفعل. يرجى الانتظار.",
+  "error.llmUnavailable": "خدمة الذكاء الاصطناعي غير متاحة مؤقتاً. يرجى المحاولة بعد قليل.",
+  "error.attemptInvalid": "انتهت صلاحية هذه المحاولة أو أنها غير صالحة. يرجى إرسال سؤال جديد.",
+  "error.timeout": "انتهت مهلة الاستعلام. يرجى تجربة سؤال أبسط.",
+  "error.unknown.title": "خطأ",
+  "error.unknown.message": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
+  "error.evaluator.title": "تم رفض التقييم",
+  "error.evaluator.message": "تم رفض SQL المُنشأ من قبل قواعد الأمان.",
+  "evaluator.violation.dataModifying": "يحتوي SQL المُنشأ على عبارات تعديل البيانات ({{statement}}) وهي غير مسموح بها.",
+  "evaluator.violation.multiStatement": "يحتوي SQL المُنشأ على عبارات متعددة. يُسمح باستعلام واحد فقط.",
+  "evaluator.violation.unknownTable": "يشير SQL المُنشأ إلى جدول '{{table}}' غير موجود في قاعدة البيانات.",
+  "evaluator.violation.unknownColumn": "يشير SQL المُنشأ إلى عمود '{{column}}' غير موجود في الجدول '{{table}}'.",
+  "evaluator.violation.unsafePattern": "يحتوي SQL المُنشأ على نمط غير آمن وغير مسموح به.",
+  "error.accept.title": "خطأ",
+  "error.accept.message": "فشل قبول الاستعلام.",
+  "error.validation.questionEmpty": "لا يمكن أن يكون السؤال فارغاً.",
+  "error.validation.questionTooLong": "يجب ألا يتجاوز السؤال {{max}} حرفاً.",
+  "error.validation.unknown": "فشل التحقق. يرجى التحقق من إدخالك."
+}

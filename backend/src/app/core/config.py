@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = "admin"
     ADMIN_DISPLAY_NAME: str = "Administrator"
     ADMIN_PASSWORD: str = ""
+    ADMIN_API_KEY: str = ""  # Simple admin auth for Phase 1
 
     # ─── LLM Provider ───
     LLM_PROVIDER: str = "ollama"  # anthropic | openai | gemini | ollama
@@ -45,8 +46,8 @@ class Settings(BaseSettings):
     SOURCE_DB_NAME: str = "source_analytics"
     SOURCE_DB_HOST: str = "localhost"
     SOURCE_DB_PORT: int = 5434
-    SOURCE_DB_USER: str = "source_readonly"
-    SOURCE_DB_PASSWORD: str = "source_dev"
+    SOURCE_DB_USER: str = "pagila_user"
+    SOURCE_DB_PASSWORD: str = "pagila_dev_pwd"
     SOURCE_DB_SSL_MODE: str = "disable"
 
     # ─── Application ───

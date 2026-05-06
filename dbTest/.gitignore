@@ -1,0 +1,8 @@
+# Pagila SQL files are public-domain; do not commit (size, license clarity).
+# Download fresh via dbTest/README.md instructions.
+init/01-schema.sql
+init/02-data.sql
+
+# Local artefacts
+*.tmp
+*.bak
