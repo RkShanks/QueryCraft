@@ -5,7 +5,7 @@ secure=True, which conceals the fact that the auth router passes secure=False.
 This test hits the actual /auth/sign-in endpoint and inspects the response.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
