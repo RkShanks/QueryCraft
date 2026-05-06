@@ -29,7 +29,7 @@ async def sign_in(
 ):
     """POST /auth/sign-in — authenticate and set session cookie."""
     profile, session_id = await auth_service.sign_in(payload.username, payload.password)
-    SessionMiddleware.set_cookie(response, session_id, secure=False)
+    SessionMiddleware.set_cookie(response, session_id, secure=True)
     return profile
 
 
