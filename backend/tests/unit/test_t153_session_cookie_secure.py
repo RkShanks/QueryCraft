@@ -5,27 +5,32 @@ secure=True, which conceals the fact that the auth router passes secure=False.
 This test hits the actual /auth/sign-in endpoint and inspects the response.
 """
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.main import create_app
-
 
 @pytest.fixture
-async def client_no_lifespan_db(monkeypatch):
+async def client_no_lifespan_db():
     """Provide an httpx client with the auth router but no external DB deps."""
-    # Mock lifespan DB / Redis calls so CI doesn't need real services
-    monkeypatch.setattr("app.main._upsert_source_db_connection", AsyncMock())
-    monkeypatch.setattr("app.main.init_redis", AsyncMock())
-    monkeypatch.setattr("app.main.close_redis", AsyncMock())
-    monkeypatch.setattr("app.main.dispose_engine", AsyncMock())
+    # Patch lifespan DB / Redis calls BEFORE importing create_app so the
+    # mocked reference is captured by the lifespan decorator.
+    with (
+        patch("app.main._upsert_source_db_connection", new_callable=AsyncMock),
+        patch("app.main.init_redis", new_callable=AsyncMock),
+        patch("app.main.close_redis", new_callable=AsyncMock),
+        patch("app.main.dispose_engine", new_callable=AsyncMock),
+    ):
+        # Import inside patch context
+        from app.main import create_app
 
-    app = create_app()
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
+        app = create_app()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
+            yield client
 
 
 @pytest.mark.asyncio
