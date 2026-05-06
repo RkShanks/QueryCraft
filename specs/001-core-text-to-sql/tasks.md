@@ -602,6 +602,7 @@ Task ID ranges in this file:
 - T-208..T-215: Wave 3 deferred Mediums (cluster: US-3 / Polish).
 - T-216..T-223: /speckit.analyze pass 1 remediation tasks (Polish).
 - T-224..T-225: /speckit.analyze pass 2 remediation tasks (Polish, registered in Chunk 4.1.5b).
+- T-226..T-229: /speckit.analyze pass 3 remediation tasks (Polish, registered in Chunk 4.1 cont).
 No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 -->
 
@@ -918,6 +919,18 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 - [ ] **T-225** [docs] **Add FR/SC for "last automatic try" UI indicator** — cluster: Polish | deps: T-138 | | effort: XS
   > /speckit.analyze A12: spec.md L255 assumption mentions UI cue on the second attempt with no FR/SC backing. Either add an FR mandating the indicator, or remove the assumption.
+
+- [ ] **T-226** [docs] **Reconcile OpenAPI version (plan.md says 3.1, openapi.yaml says 3.0.3)** — cluster: Polish | deps: T-001 | | effort: XS
+  > /speckit.analyze pass-3 A1: align both artifacts. Recommend openapi.yaml → 3.1 to match plan.md (or downgrade plan to 3.0.3 if no 3.1-specific syntax used).
+
+- [ ] **T-227** [docs] **Align EvaluatorResult entity definition (spec.md + data-model.md)** — cluster: Polish | deps: T-088 | FR-010 | effort: XS
+  > /speckit.analyze pass-3 A8: spec.md describes "reason(s) for failure" attribute; data-model.md uses "violations" list. Pick one canonical name and update both.
+
+- [ ] **T-228** [docs] **Clarify FR-014 result pagination (client-side via TanStack Table)** — cluster: Polish | deps: T-058 | FR-014 | effort: XS
+  > /speckit.analyze pass-3 A9: FR-014 mentions paginated table but API returns all rows. Add explicit note that pagination is client-side rendering, not server-side query pagination.
+
+- [ ] **T-229** [docs] **Replace subjective qualifiers in FR-014/FR-016 with measurable criteria** — cluster: Polish | deps: | FR-014,FR-016 | effort: XS
+  > /speckit.analyze pass-3 A12: "brief confirmation message" and "user-friendly message" lack measurable criteria. Replace with specific i18n key names + minimum visibility duration (e.g., 2s).
 
 ---
 
