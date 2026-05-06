@@ -592,6 +592,60 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 - [x] **T-148** [test] **E2E: evaluator rejection + timeout + concurrent error rendering** — cluster: US-2 | deps: T-028,T-144 | FR-012,FR-028,FR-030 | effort: M
   Done when: `frontend/tests/e2e/error-states.spec.ts` runs against `docker-compose.dev.yml` with mock LLM configured to trigger each error: (1) evaluator rejection shows EvaluatorRejectionBanner, (2) timeout shows TimeoutBanner, (3) concurrent submission shows 409 toast; all assertions pass in headless Chromium.
 
+## Wave 3 post-audit fixes (Chunks 3.10/3.11)
+
+### Critical + High fixes (T-149..T-156) — all closed
+
+- [x] **T-149** [backend] **OP-001 — Wire Evaluator pipeline into QueryService** — cluster: US-2 | deps: T-089 | FR-010,SC-002,SC-003 | effort: S
+  Done when: Evaluator accepts `rules=[...]` and delegates to EvaluatorPipeline; QueryService no longer uses naive `startswith("select")` check; pg_sleep regression test passes.
+
+- [x] **T-150** [backend] **F-G01/OP-002 — Wire LLMProviderFactory into router** — cluster: US-2 | deps: T-086 | FR-009,FR-011 | effort: S
+  Done when: `_get_query_service` calls `LLMProviderFactory.from_config(get_settings())` instead of hardcoding `StubLLM()`; factory resolves correct adapter per `LLM_PROVIDER`; stub provider added for test compatibility.
+
+- [x] **T-151** [backend] **OP-003 — Validate attempt_id exists in /reject + /regenerate** — cluster: US-2 | deps: T-110 | SC-005 | effort: XS
+  Done when: `regenerate_query` (and `reject_query` via delegation) raises `AttemptNotFound` before processing; router maps to HTTP 400.
+
+- [x] **T-152** [infra] **F-G02 — App connects as pagila_user, source role grants** — cluster: US-2 | deps: T-104 | FR-005,SC-003 | effort: S
+  Done when: `docker-compose.dev.yml` uses `SOURCE_DB_SUPERUSER` for container bootstrap (distinct from `SOURCE_DB_USER=pagila_user`); `.env.example` documents both; integration test asserts CREATE fails with permission denied.
+
+- [x] **T-153** [backend] **F-G03/OP-005 — Session cookie secure=True** — cluster: US-2 | deps: T-056 | FR-003,SC-001 | effort: XS
+  Done when: `auth.py` passes `secure=True` to `set_cookie`; test hits actual endpoint and asserts Secure flag present in Set-Cookie header.
+
+- [x] **T-154** [backend] **OP-004 — Reconcile LLMProvider.generate vs QueryService.generate_sql** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+  Done when: `LLMProvider` protocol declares `generate_sql(question, schema_context, negative_examples)`; all four real adapters implement the method; `generate(prompt)` preserved as internal helper.
+
+- [x] **T-155** [backend] **OP-006 — Fix decrypt() signature in SourceDBConnector** — cluster: US-2 | deps: T-009 | FR-013 | effort: XS
+  Done when: `decrypt(raw_password, settings.PLATFORM_ENCRYPTION_KEY)` is called with two arguments; `# type: ignore[call-arg]` removed; test asserts two-arg call.
+
+- [x] **T-156** [backend] **OP-007 — Parameterize Alembic migration SQL** — cluster: US-2 | deps: T-005 | | effort: XS
+  Done when: `002_seed_admin_user.py` uses `sa.text(...).bindparams(...)` instead of f-string interpolation; regression test asserts no f-strings and presence of named parameters.
+
+### Deferred Mediums (T-157..T-164) — Wave 4 / Polish
+
+- [ ] **T-157** [backend] **F-G04 CTE handling in SchemaValidationRule** — cluster: US-3 | deps: T-095 | FR-010 | effort: M
+  Done when: SchemaValidationRule extracts CTE aliases from AST and skips validating them against SchemaContext. [Wave 4]
+
+- [ ] **T-158** [frontend] **F-G05 QueryInput truncation UX** — cluster: US-3 | deps: T-134 | FR-007 | effort: S
+  Done when: QueryInput removes `.slice(0, maxLength)` and shows live validation error when text exceeds 2000 chars instead of silently truncating. [Wave 4]
+
+- [ ] **T-159** [frontend] **F-G06 @playwright/test devDep** — cluster: Polish | deps: T-074 | | effort: XS
+  Done when: `@playwright/test` is added to `devDependencies` and `test:e2e` script works. [Polish]
+
+- [ ] **T-160** [docs] **F-G07/OP-009 X-Admin-Key in openapi.yaml + .env.example** — cluster: Polish | deps: T-119 | | effort: S
+  Done when: `.env.example` contains `ADMIN_API_KEY` (done inline in T-153) and `openapi.yaml` documents the `X-Admin-Key` security scheme. [Polish — openapi.yaml part deferred]
+
+- [ ] **T-161** [backend] **OP-008 submit_question + attempt_store integration** — cluster: US-3 | deps: T-052,T-110 | | effort: M
+  Done when: `submit_question` constructs an `EphemeralAttempt` and uses `store_attempt()` instead of direct `redis.set`. [Wave 4]
+
+- [ ] **T-162** [backend] **OP-010 Session timeout config** — cluster: Polish | deps: T-049 | FR-003 | effort: XS
+  Done when: `AuthService.sign_in()` reads `settings.SESSION_IDLE_TIMEOUT_HOURS` instead of hardcoding `ex=8*3600`. [Polish]
+
+- [ ] **T-163** [backend] **OP-011 Rate limiting** — cluster: Polish | deps: T-013 | | effort: M
+  Done when: rate limiting middleware (e.g. slowapi or custom Redis-based) is applied to `/auth/sign-in`, `/query/submit`, and `/admin/refresh-schema`. [Polish]
+
+- [ ] **T-164** [backend] **OP-012 response_model accuracy** — cluster: Polish | deps: T-058 | | effort: XS
+  Done when: `/query/submit` response_model declaration accurately reflects the discriminated union of QueryResult and EvaluatorRejection, or is documented as accepted minor divergence. [Polish]
+
 ## Cluster: US-3 — Evaluator Blocks Unsafe SQL
 **Goal:** Prove end-to-end that every generated SQL passes through the evaluator gate before database contact, covering all seven acceptance scenarios (data-modifying, schema-invalid, multi-statement, valid pass-through, timeout), evaluator extensibility (FR-011), frontend violation-type display, and Playwright e2e for the independent-test criterion.
 
