@@ -596,54 +596,70 @@ _No blocking ambiguities were surfaced during artifact review. All design decisi
 
 ### Critical + High fixes (T-149..T-156) — all closed
 
-- [x] **T-149** [backend] **OP-001 — Wire Evaluator pipeline into QueryService** — cluster: US-2 | deps: T-089 | FR-010,SC-002,SC-003 | effort: S
+- [x] **T-200** [backend] **OP-001 — Wire Evaluator pipeline into QueryService** — cluster: US-2 | deps: T-089 | FR-010,SC-002,SC-003 | effort: S
+  > Renamed from T-149 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: Evaluator accepts `rules=[...]` and delegates to EvaluatorPipeline; QueryService no longer uses naive `startswith("select")` check; pg_sleep regression test passes.
 
-- [x] **T-150** [backend] **F-G01/OP-002 — Wire LLMProviderFactory into router** — cluster: US-2 | deps: T-086 | FR-009,FR-011 | effort: S
+- [x] **T-201** [backend] **F-G01/OP-002 — Wire LLMProviderFactory into router** — cluster: US-2 | deps: T-086 | FR-009,FR-011 | effort: S
+  > Renamed from T-150 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `_get_query_service` calls `LLMProviderFactory.from_config(get_settings())` instead of hardcoding `StubLLM()`; factory resolves correct adapter per `LLM_PROVIDER`; stub provider added for test compatibility.
 
-- [x] **T-151** [backend] **OP-003 — Validate attempt_id exists in /reject + /regenerate** — cluster: US-2 | deps: T-110 | SC-005 | effort: XS
+- [x] **T-202** [backend] **OP-003 — Validate attempt_id exists in /reject + /regenerate** — cluster: US-2 | deps: T-110 | SC-005 | effort: XS
+  > Renamed from T-151 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `regenerate_query` (and `reject_query` via delegation) raises `AttemptNotFound` before processing; router maps to HTTP 400.
 
-- [x] **T-152** [infra] **F-G02 — App connects as pagila_user, source role grants** — cluster: US-2 | deps: T-104 | FR-005,SC-003 | effort: S
+- [x] **T-203** [infra] **F-G02 — App connects as pagila_user, source role grants** — cluster: US-2 | deps: T-104 | FR-005,SC-003 | effort: S
+  > Renamed from T-152 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `docker-compose.dev.yml` uses `SOURCE_DB_SUPERUSER` for container bootstrap (distinct from `SOURCE_DB_USER=pagila_user`); `.env.example` documents both; integration test asserts CREATE fails with permission denied.
 
-- [x] **T-153** [backend] **F-G03/OP-005 — Session cookie secure=True** — cluster: US-2 | deps: T-056 | FR-003,SC-001 | effort: XS
+- [x] **T-204** [backend] **F-G03/OP-005 — Session cookie secure=True** — cluster: US-2 | deps: T-056 | FR-003,SC-001 | effort: XS
+  > Renamed from T-153 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `auth.py` passes `secure=True` to `set_cookie`; test hits actual endpoint and asserts Secure flag present in Set-Cookie header.
 
-- [x] **T-154** [backend] **OP-004 — Reconcile LLMProvider.generate vs QueryService.generate_sql** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+- [x] **T-205** [backend] **OP-004 — Reconcile LLMProvider.generate vs QueryService.generate_sql** — cluster: US-2 | deps: T-076 | FR-009 | effort: S
+  > Renamed from T-154 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `LLMProvider` protocol declares `generate_sql(question, schema_context, negative_examples)`; all four real adapters implement the method; `generate(prompt)` preserved as internal helper.
 
-- [x] **T-155** [backend] **OP-006 — Fix decrypt() signature in SourceDBConnector** — cluster: US-2 | deps: T-009 | FR-013 | effort: XS
+- [x] **T-206** [backend] **OP-006 — Fix decrypt() signature in SourceDBConnector** — cluster: US-2 | deps: T-009 | FR-013 | effort: XS
+  > Renamed from T-155 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `decrypt(raw_password, settings.PLATFORM_ENCRYPTION_KEY)` is called with two arguments; `# type: ignore[call-arg]` removed; test asserts two-arg call.
 
-- [x] **T-156** [backend] **OP-007 — Parameterize Alembic migration SQL** — cluster: US-2 | deps: T-005 | | effort: XS
+- [x] **T-207** [backend] **OP-007 — Parameterize Alembic migration SQL** — cluster: US-2 | deps: T-005 | | effort: XS
+  > Renamed from T-156 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `002_seed_admin_user.py` uses `sa.text(...).bindparams(...)` instead of f-string interpolation; regression test asserts no f-strings and presence of named parameters.
 
 ### Deferred Mediums (T-157..T-164) — Wave 4 / Polish
 
-- [ ] **T-157** [backend] **F-G04 CTE handling in SchemaValidationRule** — cluster: US-3 | deps: T-095 | FR-010 | effort: M
+- [ ] **T-208** [backend] **F-G04 CTE handling in SchemaValidationRule** — cluster: US-3 | deps: T-095 | FR-010 | effort: M
+  > Renamed from T-157 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: SchemaValidationRule extracts CTE aliases from AST and skips validating them against SchemaContext. [Wave 4]
 
-- [ ] **T-158** [frontend] **F-G05 QueryInput truncation UX** — cluster: US-3 | deps: T-134 | FR-007 | effort: S
+- [ ] **T-209** [frontend] **F-G05 QueryInput truncation UX** — cluster: US-3 | deps: T-134 | FR-007 | effort: S
+  > Renamed from T-158 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: QueryInput removes `.slice(0, maxLength)` and shows live validation error when text exceeds 2000 chars instead of silently truncating. [Wave 4]
 
-- [ ] **T-159** [frontend] **F-G06 @playwright/test devDep** — cluster: Polish | deps: T-074 | | effort: XS
+- [ ] **T-210** [frontend] **F-G06 @playwright/test devDep** — cluster: Polish | deps: T-074 | | effort: XS
+  > Renamed from T-159 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `@playwright/test` is added to `devDependencies` and `test:e2e` script works. [Polish]
 
-- [ ] **T-160** [docs] **F-G07/OP-009 X-Admin-Key in openapi.yaml + .env.example** — cluster: Polish | deps: T-119 | | effort: S
+- [ ] **T-211** [docs] **F-G07/OP-009 X-Admin-Key in openapi.yaml + .env.example** — cluster: Polish | deps: T-119 | | effort: S
+  > Renamed from T-160 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `.env.example` contains `ADMIN_API_KEY` (done inline in T-153) and `openapi.yaml` documents the `X-Admin-Key` security scheme. [Polish — openapi.yaml part deferred]
 
-- [ ] **T-161** [backend] **OP-008 submit_question + attempt_store integration** — cluster: US-3 | deps: T-052,T-110 | | effort: M
+- [ ] **T-212** [backend] **OP-008 submit_question + attempt_store integration** — cluster: US-3 | deps: T-052,T-110 | | effort: M
+  > Renamed from T-161 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `submit_question` constructs an `EphemeralAttempt` and uses `store_attempt()` instead of direct `redis.set`. [Wave 4]
 
-- [ ] **T-162** [backend] **OP-010 Session timeout config** — cluster: Polish | deps: T-049 | FR-003 | effort: XS
+- [ ] **T-213** [backend] **OP-010 Session timeout config** — cluster: Polish | deps: T-049 | FR-003 | effort: XS
+  > Renamed from T-162 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `AuthService.sign_in()` reads `settings.SESSION_IDLE_TIMEOUT_HOURS` instead of hardcoding `ex=8*3600`. [Polish]
 
-- [ ] **T-163** [backend] **OP-011 Rate limiting** — cluster: Polish | deps: T-013 | | effort: M
+- [ ] **T-214** [backend] **OP-011 Rate limiting** — cluster: Polish | deps: T-013 | | effort: M
+  > Renamed from T-163 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: rate limiting middleware (e.g. slowapi or custom Redis-based) is applied to `/auth/sign-in`, `/query/submit`, and `/admin/refresh-schema`. [Polish]
 
-- [ ] **T-164** [backend] **OP-012 response_model accuracy** — cluster: Polish | deps: T-058 | | effort: XS
+- [ ] **T-215** [backend] **OP-012 response_model accuracy** — cluster: Polish | deps: T-058 | | effort: XS
+  > Renamed from T-164 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `/query/submit` response_model declaration accurately reflects the discriminated union of QueryResult and EvaluatorRejection, or is documented as accepted minor divergence. [Polish]
 
 ## Cluster: US-3 — Evaluator Blocks Unsafe SQL
