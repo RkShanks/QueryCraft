@@ -12,7 +12,8 @@ from app.evaluator.rules.read_only import ReadOnlyRule
 from app.evaluator.rules.schema_validation import SchemaValidationRule
 from app.evaluator.rules.single_statement import SingleStatementRule
 from app.evaluator.rules.unsafe_pattern import UnsafePatternRule
-from app.llm.stub import StubLLM
+from app.core.config import get_settings
+from app.llm.factory import LLMProviderFactory
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.query import (
     AcceptQueryRequest,
@@ -44,7 +45,7 @@ async def _get_query_service(
     return QueryService(
         accepted_query_repository=AcceptedQueryRepository(db),
         redis=redis,
-        llm=StubLLM(),
+        llm=LLMProviderFactory.from_config(get_settings()),
         evaluator=Evaluator(
             rules=[
                 ReadOnlyRule(),

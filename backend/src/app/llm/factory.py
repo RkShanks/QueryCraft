@@ -8,6 +8,7 @@ from app.llm.gemini_adapter import GeminiAdapter
 from app.llm.ollama_adapter import OllamaAdapter
 from app.llm.openai_adapter import OpenAIAdapter
 from app.llm.provider import LLMProvider
+from app.llm.stub import StubLLM
 
 
 class LLMProviderFactory:
@@ -22,6 +23,9 @@ class LLMProviderFactory:
         """
         provider_name = (getattr(settings, "LLM_PROVIDER", "ollama") or "ollama").lower()
         model_name = getattr(settings, "LLM_MODEL_NAME", None)
+
+        if provider_name == "stub":
+            return StubLLM()
 
         if provider_name == "anthropic":
             api_key = getattr(settings, "LLM_API_KEY_ANTHROPIC", "") or os.getenv("ANTHROPIC_API_KEY", "")
