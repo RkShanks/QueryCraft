@@ -603,6 +603,7 @@ Task ID ranges in this file:
 - T-216..T-223: /speckit.analyze pass 1 remediation tasks (Polish).
 - T-224..T-225: /speckit.analyze pass 2 remediation tasks (Polish, registered in Chunk 4.1.5b).
 - T-226..T-229: /speckit.analyze pass 3 remediation tasks (Polish, registered in Chunk 4.1 cont).
+- T-230: Wave 4 Chunk 4.2 orchestrator-approved gap — unsafe-pattern backend integration test (FR-010f).
 No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 -->
 
@@ -642,7 +643,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Deferred Mediums (T-157..T-164) — Wave 4 / Polish
 
-- [ ] **T-208** [backend] **F-G04 CTE handling in SchemaValidationRule** — cluster: US-3 | deps: T-095 | FR-010 | effort: M
+- [x] **T-208** [backend] **F-G04 CTE handling in SchemaValidationRule** — cluster: US-3 | deps: T-095 | FR-010 | effort: M
   > Renamed from T-157 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: SchemaValidationRule extracts CTE aliases from AST and skips validating them against SchemaContext.
 
@@ -679,16 +680,16 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Backend acceptance integration tests
 
-- [ ] **T-149** [P] [test] **Acceptance: data-modifying SQL blocked via submit pipeline** — cluster: US-3 | deps: T-058,T-091 | FR-010,SC-002,SC-003 | effort: M
+- [x] **T-149** [P] [test] **Acceptance: data-modifying SQL blocked via submit pipeline** — cluster: US-3 | deps: T-058,T-091 | FR-010,SC-002,SC-003 | effort: M
   Done when: `backend/tests/integration/test_us3_data_modifying.py` submits questions via `POST /query/submit` with mock LLM returning SQL containing each of INSERT, UPDATE, DELETE, DROP, TRUNCATE, ALTER, CREATE (7 cases); asserts each returns 422 `EvaluatorRejection` with `evaluator.violation.dataModifying` message key, source-DB executor spy confirms zero calls, and `accepted_queries` has zero new rows.
 
-- [ ] **T-150** [P] [test] **Acceptance: schema-invalid SQL blocked via submit pipeline** — cluster: US-3 | deps: T-058,T-095 | FR-010,SC-004 | effort: S
+- [x] **T-150** [P] [test] **Acceptance: schema-invalid SQL blocked via submit pipeline** — cluster: US-3 | deps: T-058,T-095 | FR-010,SC-004 | effort: S
   Done when: `backend/tests/integration/test_us3_schema_validation.py` submits questions with mock LLM returning SQL referencing a non-existent table and a non-existent column; asserts 422 with violations containing `evaluator.violation.unknownTable` and `evaluator.violation.unknownColumn` respectively, and source-DB executor is never called.
 
-- [ ] **T-151** [P] [test] **Acceptance: multi-statement SQL blocked via submit pipeline** — cluster: US-3 | deps: T-058,T-093 | FR-010 | effort: XS
+- [x] **T-151** [P] [test] **Acceptance: multi-statement SQL blocked via submit pipeline** — cluster: US-3 | deps: T-058,T-093 | FR-010 | effort: XS
   Done when: `backend/tests/integration/test_us3_multi_statement.py` submits a question with mock LLM returning two SELECT statements separated by semicolon; asserts 422 with `evaluator.violation.multiStatement` and source-DB executor is never called.
 
-- [ ] **T-152** [P] [test] **Acceptance: valid read-only SELECT and CTE pass evaluator** — cluster: US-3 | deps: T-058,T-089,T-106 | FR-010,FR-013 | effort: S
+- [x] **T-152** [P] [test] **Acceptance: valid read-only SELECT and CTE pass evaluator** — cluster: US-3 | deps: T-058,T-089,T-106 | FR-010,FR-013 | effort: S
   Done when: `backend/tests/integration/test_us3_valid_passthrough.py` submits two questions — one with mock LLM returning a plain SELECT referencing existing tables, one returning a read-only CTE; asserts both return 200 `QueryResult` with columns and rows from the source DB.
 
 - [ ] **T-153** [P] [test] **Acceptance: query timeout cancellation and cleanup** — cluster: US-3 | deps: T-058,T-106 | FR-012,SC-011 | effort: S
@@ -696,6 +697,10 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 - [ ] **T-154** [P] [test] **Evaluator extensibility: custom rule registration** — cluster: US-3 | deps: T-089 | FR-011 | effort: S
   Done when: `backend/tests/integration/test_evaluator_extensibility.py` defines a custom `EvaluatorRule` implementation that rejects SQL containing `LIMIT 0`, registers it in the pipeline, submits SQL with `LIMIT 0`; asserts the pipeline returns the custom violation without modifying or removing any existing built-in rules.
+
+- [x] **T-230** [P] [test] **Backend integration test for unsafe-pattern rule** — cluster: US-3 | deps: T-058,T-096 | FR-010f,SC-002,SC-003 | effort: S
+  > Orchestrator-approved gap from Chunk 4.1 cont. Covers full unsafe-pattern catalog: pg_sleep, pg_read_file, pg_ls_dir, pg_terminate_backend, lo_*, COPY ... FROM PROGRAM, dblink, LISTEN, SET ROLE.
+  Done when: `backend/tests/acceptance/test_unsafe_pattern_blocked.py` submits questions with mock LLM returning each unsafe pattern; asserts 422 with `unsafe_pattern` violation and offending pattern in message.
 
 ### Frontend violation-type display verification
 
