@@ -647,7 +647,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
   > Renamed from T-157 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: SchemaValidationRule extracts CTE aliases from AST and skips validating them against SchemaContext.
 
-- [ ] **T-209** [frontend] **F-G05 QueryInput truncation UX** — cluster: US-3 | deps: T-134 | FR-007 | effort: S
+- [x] **T-209** [frontend] **F-G05 QueryInput truncation UX** — cluster: US-3 | deps: T-134 | FR-007 | effort: S
   > Renamed from T-158 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: QueryInput removes `.slice(0, maxLength)` and shows live validation error when text exceeds 2000 chars instead of silently truncating. [Wave 4]
 
@@ -704,7 +704,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Frontend violation-type display verification
 
-- [ ] **T-155** [P] [test] **EvaluatorRejectionBanner violation-type differentiation** — cluster: US-3 | deps: T-130,T-138 | FR-028,SC-009 | effort: S
+- [x] **T-155** [P] [test] **EvaluatorRejectionBanner violation-type differentiation** — cluster: US-3 | deps: T-130,T-138 | FR-028,SC-009 | effort: S
   Done when: `frontend/tests/unit/EvaluatorViolationTypes.test.tsx` renders `EvaluatorRejectionBanner` with five distinct violation payloads (`dataModifying`, `unknownTable`, `unknownColumn`, `multiStatement`, `unsafePattern`); asserts each renders its unique translated message with correct interpolation params (`{{statement}}`, `{{table}}`, `{{column}}`).
 
 ### Playwright e2e — US-3 independent test criterion

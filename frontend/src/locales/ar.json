@@ -21,6 +21,8 @@
   "query.input.placeholder": "اطرح سؤالاً حول بياناتك...",
   "query.input.submit": "اسأل",
   "query.input.submitting": "جارٍ الإرسال...",
+  "query.input.charCount": "{{current}} / {{max}}",
+  "query.input.truncation.warning": "{{current}} / {{max}} — تم اقتطاع الإدخال، {{dropped}} أحرف تم حذفها",
 
   "query.ask.title": "ماذا تريد أن تعرف؟",
   "query.status.processing": "جارٍ تحليل سؤالك...",
@@ -32,6 +34,12 @@
   "query.result.lastRetry": "آخر محاولة تلقائية",
 
   "query.evaluator.rejected": "تعذر إنشاء استعلام آمن لسؤالك. يرجى إعادة صياغته بطريقة مختلفة.",
+  "query.evaluator.read_only": "عمليات الكتابة محظورة. جرب استخدام SELECT.",
+  "query.evaluator.schema_validation": "عدم تطابق المخطط: {{identifier}}. تحقق من أسماء الجداول/الأعمدة.",
+  "query.evaluator.single_statement": "يُسمح بعبارة واحدة فقط لكل استعلام.",
+  "query.evaluator.unsafe_pattern": "تم اكتشاف نمط غير آمن: {{pattern}}. استخدم بديلاً أكثر أماناً.",
+  "query.evaluator.syntax": "خطأ في بناء جملة SQL: {{details}}.",
+  "query.evaluator.unknown": "تم رفض SQL المُنشأ من قبل قواعد الأمان.",
 
   "query.evaluatorRejection.heading": "تم رفض SQL المُنشأ لأسباب أمنية",
   "query.evaluatorRejection.body": "قام النظام بحظر هذا الاستعلام للسبب التالي: {reason}",

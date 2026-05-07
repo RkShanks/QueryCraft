@@ -21,6 +21,8 @@
   "query.input.placeholder": "Ask a question about your data...",
   "query.input.submit": "Ask",
   "query.input.submitting": "Submitting...",
+  "query.input.charCount": "{{current}} / {{max}}",
+  "query.input.truncation.warning": "{{current}} / {{max}} — input truncated, {{dropped}} characters dropped",
 
   "query.ask.title": "What would you like to know?",
   "query.status.processing": "Analyzing your question...",
@@ -42,6 +44,12 @@
   "query.result.lastRetry": "Last auto retry",
 
   "query.evaluator.rejected": "We couldn't generate a safe query for your question. Please try rephrasing it in a different way.",
+  "query.evaluator.read_only": "Write operations are blocked. Try a SELECT.",
+  "query.evaluator.schema_validation": "Schema mismatch: {{identifier}}. Check table/column names.",
+  "query.evaluator.single_statement": "Only one statement per query is allowed.",
+  "query.evaluator.unsafe_pattern": "Unsafe pattern detected: {{pattern}}. Use a safer alternative.",
+  "query.evaluator.syntax": "SQL syntax error: {{details}}.",
+  "query.evaluator.unknown": "The generated SQL was rejected by safety rules.",
 
   "query.evaluatorRejection.heading": "Generated SQL was rejected for safety",
   "query.evaluatorRejection.body": "The system blocked this query because: {reason}",
