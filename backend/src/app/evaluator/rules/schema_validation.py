@@ -29,8 +29,32 @@ class SchemaValidationRule:
             return False, "Empty SQL"
 
         statement = parsed[0]
+        return self._validate_statement(statement, effective_schema)
 
-        # Build alias map: alias -> actual table name
+    def _validate_statement(
+        self,
+        statement: exp.Expression,
+        schema: SchemaContext,
+        cte_aliases: dict[str, list[str]] | None = None,
+    ) -> tuple[bool, str | None]:
+        """Validate a single statement against the schema and known CTE aliases."""
+        cte_aliases = cte_aliases or {}
+
+        # Discover CTEs defined in this statement and merge with inherited ones
+        local_ctes: dict[str, list[str]] = dict(cte_aliases)
+        if hasattr(statement, "ctes") and statement.ctes:
+            for cte in statement.ctes:
+                alias = cte.alias
+                cols = self._extract_cte_columns(cte, schema)
+                local_ctes[alias] = cols
+
+            # Validate each CTE body recursively (with CTE aliases visible)
+            for cte in statement.ctes:
+                result = self._validate_statement(cte.this, schema, local_ctes)
+                if not result[0]:
+                    return result
+
+        # Build alias map for real tables: alias -> actual table name
         alias_map: dict[str, str] = {}
         for table in statement.find_all(exp.Table):
             alias_map[table.name] = table.name
@@ -40,8 +64,10 @@ class SchemaValidationRule:
         # Validate tables
         for table in statement.find_all(exp.Table):
             table_name = table.name
+            if table_name in local_ctes:
+                continue
             is_quoted = hasattr(table.this, "quoted") and table.this.quoted
-            found = self._find_table(effective_schema, table_name, is_quoted)
+            found = self._find_table(schema, table_name, is_quoted)
             if not found:
                 return False, f"Unknown table: {table_name}"
 
@@ -50,17 +76,31 @@ class SchemaValidationRule:
             col_name = col.name
             table_ref = col.table
             if not table_ref:
-                # Unqualified column — check against all tables (allow if found anywhere)
-                found = self._find_column_anywhere(effective_schema, col_name)
+                # Unqualified column — check schema tables and CTE columns
+                found = self._find_column_anywhere(schema, col_name)
+                if not found:
+                    found = any(
+                        col_name.lower() == c.lower()
+                        for cte_cols in local_ctes.values()
+                        for c in cte_cols
+                    )
                 if not found:
                     return False, f"Unknown column: {col_name}"
+                continue
+
+            # Qualified column
+            if table_ref in local_ctes:
+                cte_cols = local_ctes[table_ref]
+                # If we know CTE columns, validate; otherwise be lenient
+                if cte_cols and col_name.lower() not in (c.lower() for c in cte_cols):
+                    return False, f"Unknown column '{col_name}' in CTE '{table_ref}'"
                 continue
 
             actual_table = alias_map.get(table_ref, table_ref)
             col_table_quoted = (
                 hasattr(col.args.get("table"), "quoted") and col.args["table"].quoted
             )
-            table_obj = self._find_table(effective_schema, actual_table, col_table_quoted)
+            table_obj = self._find_table(schema, actual_table, col_table_quoted)
             if table_obj is None:
                 return False, f"Unknown table for column: {actual_table}"
 
@@ -69,6 +109,53 @@ class SchemaValidationRule:
                 return False, f"Unknown column '{col_name}' in table '{actual_table}'"
 
         return True, None
+
+    @staticmethod
+    def _extract_cte_columns(cte: exp.CTE, schema: SchemaContext) -> list[str]:
+        """Extract output column names from a CTE definition."""
+        # Explicit column list: WITH cte(a, b) AS ...
+        alias = cte.args.get("alias")
+        if alias and hasattr(alias, "columns") and alias.columns:
+            return [str(c.name) for c in alias.columns]
+
+        body = cte.this
+        # For Union, inspect the left side
+        if isinstance(body, exp.Union):
+            body = body.this
+
+        if not isinstance(body, exp.Select):
+            return []
+
+        columns: list[str] = []
+        has_star = False
+        for expr in body.expressions:
+            if isinstance(expr, exp.Alias):
+                columns.append(expr.alias)
+            elif isinstance(expr, exp.Column):
+                columns.append(expr.name)
+            elif isinstance(expr, exp.Star):
+                has_star = True
+            elif isinstance(expr, exp.Literal):
+                # Literals without alias don't contribute named columns
+                pass
+            else:
+                # For other expressions, try to get an alias if present
+                if hasattr(expr, "alias") and expr.alias:
+                    columns.append(expr.alias)
+
+        if has_star:
+            # Resolve SELECT * against tables in the CTE body
+            from_tables = list(body.find_all(exp.Table))
+            if len(from_tables) == 1:
+                tname = from_tables[0].name
+                table_obj = SchemaValidationRule._find_table(schema, tname, False)
+                if table_obj:
+                    star_cols = [c.name for c in table_obj.columns]
+                    # Merge: star columns plus any explicitly named expressions
+                    # that come after the star (typically star is first)
+                    # We return all known columns from the table
+                    return star_cols
+        return columns
 
     @staticmethod
     def _find_table(schema: SchemaContext, name: str, exact_case: bool = False):
