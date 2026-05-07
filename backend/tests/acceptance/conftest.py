@@ -44,6 +44,9 @@ def mock_llm_sql(monkeypatch):
     """
 
     def _make_context_manager(sql: str):
-        return patch("app.api.v1.query.LLMProviderFactory.from_config", return_value=AsyncMock(generate_sql=AsyncMock(return_value=sql)))
+        return patch(
+            "app.api.v1.query.LLMProviderFactory.from_config",
+            return_value=AsyncMock(generate_sql=AsyncMock(return_value=sql)),
+        )
 
     return _make_context_manager
