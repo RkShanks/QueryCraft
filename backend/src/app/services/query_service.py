@@ -60,7 +60,18 @@ class QueryService:
                 detail={"error": "concurrent", "message_key": "error.concurrent"},
             )
 
+        attempt_id = str(uuid.uuid4())
+        attempt = EphemeralAttempt(
+            attempt_id=attempt_id,
+            session_id=session_id,
+            user_id=user_id,
+            question=question,
+            state="PENDING",
+        )
+
         try:
+            await store_attempt(attempt, session_id, self._redis)
+
             # 1. LLM generation
             try:
                 sql = await self._llm.generate_sql(question, "")
@@ -70,9 +81,22 @@ class QueryService:
                     detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
                 ) from exc
 
+            attempt.sql = sql
+            attempt.state = "GENERATED"
+            await store_attempt(attempt, session_id, self._redis)
+
             # 2. Evaluator gate
             eval_result = await self._evaluator.evaluate(sql, None)
             if not eval_result.passed:
+                attempt.state = "REJECTED"
+                attempt.evaluator_result = {
+                    "passed": False,
+                    "violations": [
+                        {"rule": v.rule_name, "message_key": v.message_key}
+                        for v in eval_result.violations
+                    ],
+                }
+                await store_attempt(attempt, session_id, self._redis)
                 violations = [
                     Violation(rule=v.rule_name, message_key=v.message_key)
                     for v in eval_result.violations
@@ -82,20 +106,32 @@ class QueryService:
                     violations=violations,
                 )
 
+            attempt.state = "EVALUATED"
+            await store_attempt(attempt, session_id, self._redis)
+
             # 3. Execute against source DB
             try:
                 columns, rows = await asyncio.wait_for(
                     self._executor.execute(sql),
                     timeout=30,
                 )
-            except TimeoutError as exc:
+            except (TimeoutError, SourceDBTimeout) as exc:
+                attempt.state = "TIMEOUT"
+                await store_attempt(attempt, session_id, self._redis)
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
                 ) from exc
 
-            # 4. Build result and store ephemeral attempt
-            attempt_id = str(uuid.uuid4())
+            attempt.state = "EXECUTED"
+            attempt.executor_result = {
+                "columns": columns,
+                "rows": rows,
+                "row_count": len(rows),
+            }
+            await store_attempt(attempt, session_id, self._redis)
+
+            # 4. Build result
             column_metas = []
             for c in columns:
                 if isinstance(c, dict):
@@ -112,24 +148,6 @@ class QueryService:
                 row_count=len(rows),
                 attempt_number=1,
                 is_last_auto_retry=False,
-            )
-
-            attempt_data = {
-                "attempt_id": attempt_id,
-                "session_id": session_id,
-                "user_id": user_id,
-                "question": question,
-                "question_text": question,
-                "sql": sql,
-                "generated_sql": sql,
-                "llm_provider": "ollama",
-                "attempt_number": 1,
-                "rejected_sqls": [],
-            }
-            await self._redis.set(
-                f"attempt:{attempt_id}",
-                json.dumps(attempt_data),
-                ex=15 * 60,
             )
 
             return result
@@ -163,7 +181,8 @@ class QueryService:
             database_connection_id=uuid.UUID(database_connection_id),
             question_text=attempt.get("question_text") or attempt.get("question", ""),
             generated_sql=attempt.get("generated_sql") or attempt.get("sql", ""),
-            llm_provider=attempt["llm_provider"],
+            llm_provider=attempt.get("llm_provider", "ollama"),
+            attempt_id=attempt_id,
         )
 
         await self._redis.delete(f"attempt:{attempt_id}")

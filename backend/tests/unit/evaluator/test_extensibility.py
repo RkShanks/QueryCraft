@@ -7,7 +7,6 @@ rules to be registered without modifying built-in rules (FR-011).
 import pytest
 
 from app.evaluator.pipeline import EvaluatorPipeline
-from app.evaluator.protocol import EvaluatorRule
 from app.evaluator.result import EvaluatorResult
 
 

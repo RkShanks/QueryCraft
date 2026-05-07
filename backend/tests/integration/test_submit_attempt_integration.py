@@ -109,19 +109,21 @@ class TestSubmitAttemptIntegration:
             await asyncio.sleep(60)
             return [], []
 
-        with patch(
-            "app.api.v1.query.LLMProviderFactory.from_config",
-            return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 1")),
-        ):
-            with patch(
+        with (
+            patch(
+                "app.api.v1.query.LLMProviderFactory.from_config",
+                return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 1")),
+            ),
+            patch(
                 "app.api.v1.query._source_db_executor.execute",
                 side_effect=slow_execute,
-            ):
-                response = await authenticated_client.post(
-                    "/api/v1/query/submit",
-                    json={"question": "Slow query"},
-                    headers={"origin": "http://test"},
-                )
+            ),
+        ):
+            response = await authenticated_client.post(
+                "/api/v1/query/submit",
+                json={"question": "Slow query"},
+                headers={"origin": "http://test"},
+            )
 
         assert response.status_code == 504
         data = response.json()

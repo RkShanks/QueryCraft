@@ -18,9 +18,12 @@ class EphemeralAttempt(BaseModel):
 
     attempt_id: str
     session_id: str
-    sql: str
+    user_id: str = ""
+    sql: str = ""
     question: str = ""
     attempt_number: int = 1
+    state: str = "PENDING"  # PENDING | GENERATED | EVALUATED | EXECUTED | REJECTED | TIMEOUT
+    llm_provider: str = "ollama"
     evaluator_result: dict[str, Any] | None = None
     executor_result: dict[str, Any] | None = None
     created_at: str = ""

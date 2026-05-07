@@ -21,6 +21,7 @@ class AcceptedQueryRepository:
         question_text: str,
         generated_sql: str,
         llm_provider: str,
+        attempt_id: str | None = None,
     ) -> AcceptedQuery:
         """Persist a new accepted query."""
         query = AcceptedQuery(
@@ -29,6 +30,7 @@ class AcceptedQueryRepository:
             question_text=question_text,
             generated_sql=generated_sql,
             llm_provider=llm_provider,
+            attempt_id=attempt_id,
         )
         self._session.add(query)
         await self._session.flush()

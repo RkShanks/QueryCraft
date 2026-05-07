@@ -29,6 +29,7 @@ class AcceptedQuery(Base):
     question_text: Mapped[str] = mapped_column(String, nullable=False)
     generated_sql: Mapped[str] = mapped_column(String, nullable=False)
     llm_provider: Mapped[str] = mapped_column(String, nullable=False)
+    attempt_id: Mapped[str] = mapped_column(String, nullable=True)
     accepted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
