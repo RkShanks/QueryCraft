@@ -1,5 +1,8 @@
 """Evaluator pipeline — minimal US-1 stub + new fail-fast pipeline."""
 
+import inspect
+from typing import Any
+
 from app.evaluator.base import EvaluatorResult, EvaluatorViolation
 from app.evaluator.protocol import EvaluatorRule
 from app.evaluator.result import EvaluatorResult as NewEvaluatorResult
@@ -65,10 +68,26 @@ class EvaluatorPipeline:
     """Fail-fast evaluator pipeline.
 
     Iterates over rules in order; on the first failure returns immediately.
+    Custom rules can be registered at runtime via :meth:`add_rule`.
     """
 
     def __init__(self, rules: list[EvaluatorRule] | None = None):
-        self._rules = rules or []
+        self._rules = list(rules) if rules is not None else []
+
+    def add_rule(self, rule: Any) -> None:
+        """Register a custom *rule* after validating it conforms to ``EvaluatorRule``.
+
+        Raises:
+            TypeError: if *rule* does not implement the protocol or its
+                ``evaluate`` method is not an async coroutine function.
+        """
+        if not isinstance(rule, EvaluatorRule):
+            raise TypeError(
+                f"Rule must conform to EvaluatorRule protocol, got {type(rule).__name__}"
+            )
+        if not hasattr(rule, "evaluate") or not inspect.iscoroutinefunction(rule.evaluate):
+            raise TypeError("Rule.evaluate must be an async coroutine function")
+        self._rules.append(rule)
 
     async def run(self, sql: str, schema: SchemaContext | None = None) -> NewEvaluatorResult:
         """Run all rules against *sql* and return the aggregate result."""
