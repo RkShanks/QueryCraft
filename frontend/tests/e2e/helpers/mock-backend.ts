@@ -169,3 +169,40 @@ export const mockSubmitCustom = (page: Page, result: QueryResult) =>
   page.route('**/query/submit', async (route: Route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(result) });
   });
+
+/**
+ * Intercept /query/submit and return a 422 EvaluatorRejection with specific violations.
+ * Each violation should have `rule` (machine-readable identifier) and optional `message_params`.
+ */
+export const mockSubmitEvaluatorRejectedWithViolations = (
+  page: Page,
+  violations: Array<{
+    rule: string;
+    message_key: string;
+    message_params?: Record<string, unknown>;
+  }>
+) =>
+  page.route('**/query/submit', async (route: Route) => {
+    const body: EvaluatorRejection = {
+      message_key: 'query.evaluator.rejected',
+      violations: violations.map((v) => ({
+        rule: v.rule,
+        message_key: v.message_key,
+        message_params: v.message_params ?? null,
+      })),
+    };
+    await route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify(body) });
+  });
+
+/**
+ * Intercept GET /history and return an empty list (useful for asserting no rows were written).
+ */
+export const mockHistoryEmpty = (page: Page) =>
+  page.route('**/history', async (route: Route) => {
+    const body: HistoryListResponse = {
+      items: [],
+      total: 0,
+      next_cursor: null,
+    };
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  });
