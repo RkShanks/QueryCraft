@@ -15,8 +15,10 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: unknown) => {
       if (typeof options === 'string') return options;
-      const opts = options as { defaultValue?: string } | undefined;
-      return opts?.defaultValue || key;
+      const opts = options as Record<string, unknown> | undefined;
+      const defaultValue = opts?.defaultValue as string | undefined;
+      const value = defaultValue || key;
+      return value.replace(/\{\{(\w+)\}\}/g, (_, match) => String(opts?.[match] ?? `{{${match}}}`));
     },
     i18n: {
       changeLanguage: () => Promise.resolve(),

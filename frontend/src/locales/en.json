@@ -21,6 +21,8 @@
   "query.input.placeholder": "Ask a question about your data...",
   "query.input.submit": "Ask",
   "query.input.submitting": "Submitting...",
+  "query.input.charCount": "{{current}} / {{max}}",
+  "query.input.truncation.warning": "{{current}} / {{max}} — input truncated, {{dropped}} characters dropped",
 
   "query.ask.title": "What would you like to know?",
   "query.status.processing": "Analyzing your question...",

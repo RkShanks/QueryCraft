@@ -21,6 +21,8 @@
   "query.input.placeholder": "اطرح سؤالاً حول بياناتك...",
   "query.input.submit": "اسأل",
   "query.input.submitting": "جارٍ الإرسال...",
+  "query.input.charCount": "{{current}} / {{max}}",
+  "query.input.truncation.warning": "{{current}} / {{max}} — تم اقتطاع الإدخال، {{dropped}} أحرف تم حذفها",
 
   "query.ask.title": "ماذا تريد أن تعرف؟",
   "query.status.processing": "جارٍ تحليل سؤالك...",

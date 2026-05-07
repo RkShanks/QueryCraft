@@ -13,11 +13,11 @@ describe('QueryInput', () => {
     render(<QueryInput onSubmit={vi.fn()} isSubmitting={false} />, { wrapper: createWrapper() });
     const textarea = screen.getByPlaceholderText(/ask a question/i);
     
-    expect(screen.getByText(/0 \/ 2000/i)).toBeInTheDocument();
+    expect(screen.getByTestId('char-counter')).toHaveTextContent(/0 \/ 2000/i);
     
     fireEvent.change(textarea, { target: { value: 'How many users?' } });
     
-    expect(screen.getByText(/15 \/ 2000/i)).toBeInTheDocument();
+    expect(screen.getByTestId('char-counter')).toHaveTextContent(/15 \/ 2000/i);
   });
 
   it('should disable submit on empty or whitespace', () => {
@@ -66,11 +66,11 @@ describe('QueryInput', () => {
     render(<QueryInput onSubmit={vi.fn()} isSubmitting={false} maxLength={100} />, { wrapper: createWrapper() });
     const textarea = screen.getByPlaceholderText(/ask a question/i);
 
-    expect(screen.getByText(/0 \/ 100/i)).toBeInTheDocument();
+    expect(screen.getByTestId('char-counter')).toHaveTextContent(/0 \/ 100/i);
 
     fireEvent.change(textarea, { target: { value: 'Hello world' } });
 
-    expect(screen.getByText(/11 \/ 100/i)).toBeInTheDocument();
+    expect(screen.getByTestId('char-counter')).toHaveTextContent(/11 \/ 100/i);
   });
 
   it('should disable submit when over maxLength', () => {
@@ -81,13 +81,13 @@ describe('QueryInput', () => {
     const submitBtn = screen.getByRole('button', { name: /ask/i });
 
     fireEvent.change(textarea, { target: { value: 'exactlyten' } });
-    expect(screen.getByText(/10 \/ 10/i)).toBeInTheDocument();
+    expect(screen.getByTestId('char-counter')).toHaveTextContent(/10 \/ 10/i);
     expect(submitBtn).not.toBeDisabled();
 
     // Simulate an over-limit state by directly setting the value on the DOM node
     // This validates the guard condition even though the slice normally prevents it
     fireEvent.change(textarea, { target: { value: 'exactlytenX' } });
-    expect(screen.getByText(/10 \/ 10/i)).toBeInTheDocument();
+    expect(screen.getByTestId('char-counter')).toHaveTextContent(/10 \/ 10/i);
     expect(submitBtn).not.toBeDisabled();
   });
 
@@ -96,7 +96,7 @@ describe('QueryInput', () => {
 
     expect(screen.getByPlaceholderText(/ask a question/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ask/i })).toBeInTheDocument();
-    expect(screen.getByText(/0 \/ 2000/i)).toBeInTheDocument();
+    expect(screen.getByTestId('char-counter')).toHaveTextContent(/0 \/ 2000/i);
   });
 
   it('shows truncation warning when pasting text over maxLength', () => {
@@ -106,9 +106,9 @@ describe('QueryInput', () => {
     fireEvent.change(textarea, { target: { value: 'this is way too long' } });
 
     expect(screen.getByTestId('truncation-warning')).toBeInTheDocument();
-    expect(screen.getByText(/10 \/ 10/i)).toBeInTheDocument();
-    expect(screen.getByText(/input truncated/i)).toBeInTheDocument();
-    expect(screen.getByText(/10 characters dropped/i)).toBeInTheDocument();
+    expect(screen.getByTestId('truncation-warning')).toHaveTextContent(/10 \/ 10/);
+    expect(screen.getByTestId('truncation-warning')).toHaveTextContent(/input truncated/);
+    expect(screen.getByTestId('truncation-warning')).toHaveTextContent(/10 characters dropped/);
   });
 
   it('hides truncation warning when input is cleared', () => {
