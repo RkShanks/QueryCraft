@@ -937,6 +937,12 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 - [ ] **T-229** [docs] **Replace subjective qualifiers in FR-014/FR-016 with measurable criteria** — cluster: Polish | deps: | FR-014,FR-016 | effort: XS
   > /speckit.analyze pass-3 A12: "brief confirmation message" and "user-friendly message" lack measurable criteria. Replace with specific i18n key names + minimum visibility duration (e.g., 2s).
 
+- [ ] **T-231** [test] **Upgrade T-156/T-157 E2E specs to full-stack (remove Playwright route mocks)** — cluster: Polish | deps: T-210 | FR-010,FR-012,FR-028 | effort: M
+  > Wave 4 Chunk 4.5 used `page.route()` mocking because backend StubLLM and docker-compose CI infra weren't ready. After T-210 lands AND CI runs the docker stack, remove `frontend/tests/e2e/helpers/mock-backend.ts` mocks and rewrite specs to drive real backend. Increases coverage value: currently FE-only, target full-stack.
+
+- [ ] **T-232** [backend] **Replace hardcoded `llm_provider="ollama"` default in EphemeralAttempt** — cluster: Polish | deps: T-212 | | effort: XS
+  > Wave 4 Chunk 4.3 introduced `llm_provider: str = "ollama"` as a default in `backend/src/app/core/attempt_store.py:EphemeralAttempt`. Hardcoded provider name is a smell — should default to `""` (set by QueryService at attempt creation from active config) or removed if always overwritten before use. Audit may also catch this.
+
 ---
 
 ## Traceability
