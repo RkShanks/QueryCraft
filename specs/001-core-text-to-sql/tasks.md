@@ -659,9 +659,9 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
   > Renamed from T-160 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `.env.example` contains `ADMIN_API_KEY` (done inline in T-153) and `openapi.yaml` documents the `X-Admin-Key` security scheme. [Polish — openapi.yaml part deferred]
 
-- [ ] **T-212** [backend] **OP-008 submit_question + attempt_store integration** — cluster: US-3 | deps: T-052,T-110 | | effort: M
-  > Renamed from T-161 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
-  Done when: `submit_question` constructs an `EphemeralAttempt` and uses `store_attempt()` instead of direct `redis.set`. [Wave 4]
+- [x] **T-212** [backend] **OP-008 submit_question + attempt_store integration** — cluster: US-3 | deps: T-052,T-110 | | effort: M
+   > Renamed from T-161 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
+   Done when: `submit_question` constructs an `EphemeralAttempt` and uses `store_attempt()` instead of direct `redis.set`, transitions state PENDING→GENERATED→EVALUATED→EXECUTED|REJECTED|TIMEOUT, and persists `attempt_id` on `accepted_queries`. [Wave 4]
 
 - [ ] **T-213** [backend] **OP-010 Session timeout config** — cluster: Polish | deps: T-049 | FR-003 | effort: XS
   > Renamed from T-162 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
@@ -692,11 +692,11 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 - [x] **T-152** [P] [test] **Acceptance: valid read-only SELECT and CTE pass evaluator** — cluster: US-3 | deps: T-058,T-089,T-106 | FR-010,FR-013 | effort: S
   Done when: `backend/tests/integration/test_us3_valid_passthrough.py` submits two questions — one with mock LLM returning a plain SELECT referencing existing tables, one returning a read-only CTE; asserts both return 200 `QueryResult` with columns and rows from the source DB.
 
-- [ ] **T-153** [P] [test] **Acceptance: query timeout cancellation and cleanup** — cluster: US-3 | deps: T-058,T-106 | FR-012,SC-011 | effort: S
-  Done when: `backend/tests/integration/test_us3_timeout.py` submits a question with mock LLM returning `SELECT pg_sleep(120)` (passes evaluator); asserts 504 with `error.timeout` message key within `QUERY_TIMEOUT_SECONDS + 5s`, source-DB connection is released, and no row is written to `accepted_queries`.
+- [x] **T-153** [P] [test] **Acceptance: query timeout cancellation and cleanup** — cluster: US-3 | deps: T-058,T-106 | FR-012,SC-011 | effort: S
+   Done when: `backend/tests/acceptance/test_query_timeout.py` submits a question with patched executor sleeping longer than timeout; asserts 504 with `error.timeout` message key, source-DB connection is released, and no row is written to `accepted_queries`.
 
-- [ ] **T-154** [P] [test] **Evaluator extensibility: custom rule registration** — cluster: US-3 | deps: T-089 | FR-011 | effort: S
-  Done when: `backend/tests/integration/test_evaluator_extensibility.py` defines a custom `EvaluatorRule` implementation that rejects SQL containing `LIMIT 0`, registers it in the pipeline, submits SQL with `LIMIT 0`; asserts the pipeline returns the custom violation without modifying or removing any existing built-in rules.
+- [x] **T-154** [P] [test] **Evaluator extensibility: custom rule registration** — cluster: US-3 | deps: T-089 | FR-011 | effort: S
+   Done when: `backend/tests/unit/evaluator/test_extensibility.py` defines a custom `EvaluatorRule` implementation that rejects SQL containing `secret`, registers it via `pipeline.add_rule()`, submits SQL with `secret`; asserts the pipeline returns the custom violation without modifying or removing any existing built-in rules.
 
 - [x] **T-230** [P] [test] **Backend integration test for unsafe-pattern rule** — cluster: US-3 | deps: T-058,T-096 | FR-010f,SC-002,SC-003 | effort: S
   > Orchestrator-approved gap from Chunk 4.1 cont. Covers full unsafe-pattern catalog: pg_sleep, pg_read_file, pg_ls_dir, pg_terminate_backend, lo_*, COPY ... FROM PROGRAM, dblink, LISTEN, SET ROLE.
