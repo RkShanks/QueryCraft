@@ -709,10 +709,10 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Playwright e2e — US-3 independent test criterion
 
-- [ ] **T-156** [test] **E2E: evaluator blocks unsafe SQL — full acceptance sweep** — cluster: US-3 | deps: T-028,T-144,T-058 | FR-010,FR-028,SC-002,SC-003,SC-004 | effort: L
+- [x] **T-156** [test] **E2E: evaluator blocks unsafe SQL — full acceptance sweep** — cluster: US-3 | deps: T-028,T-144,T-058 | FR-010,FR-028,SC-002,SC-003,SC-004 | effort: L
   Done when: `frontend/tests/e2e/evaluator-blocks.spec.ts` runs against `docker-compose.dev.yml` with controllable mock LLM: (1) submits with LLM returning `UPDATE` SQL → sees evaluator rejection banner, (2) submits with LLM returning unknown-table SQL → sees schema-mismatch message, (3) submits with valid SELECT → sees table result with rows, (4) verifies `/history` contains only the accepted valid query and zero rejected entries; all assertions pass in headless Chromium.
 
-- [ ] **T-157** [test] **E2E: timeout displays message and writes no history** — cluster: US-3 | deps: T-028,T-144,T-058 | FR-012,SC-011 | effort: S
+- [x] **T-157** [test] **E2E: timeout displays message and writes no history** — cluster: US-3 | deps: T-028,T-144,T-058 | FR-012,SC-011 | effort: S
   Done when: `frontend/tests/e2e/evaluator-blocks.spec.ts` extends with timeout scenario: submits a question triggering a long-running query, sees timeout banner within configured timeout + 5 seconds, navigates to `/history` and confirms no entry from the timed-out question exists.
 
 ## Cluster: US-4 — Browse and Search History
