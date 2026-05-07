@@ -10,12 +10,27 @@ _FORBIDDEN_FUNCTIONS = {
     "pg_sleep",
     "lo_export",
     "lo_import",
+    "lo_read",
+    "lo_write",
+    "lo_create",
+    "lo_unlink",
     "pg_read_file",
     "pg_read_binary_file",
     "pg_ls_dir",
     "pg_logdir_ls",
     "pg_read_file_all",
     "pg_stat_file",
+    "pg_terminate_backend",
+    "pg_cancel_backend",
+    "pg_reload_conf",
+    "dblink",
+    "dblink_connect",
+    "dblink_disconnect",
+    "dblink_exec",
+    "dblink_get_result",
+    "dblink_get_connections",
+    "dblink_is_busy",
+    "dblink_send_query",
 }
 
 # Forbidden table / schema names (system catalogs)
@@ -52,6 +67,20 @@ class UnsafePatternRule:
             return False, "COPY statement is not allowed"
         if isinstance(statement, exp.Set):
             return False, "SET statement is not allowed"
+
+        # Reject LISTEN / NOTIFY / UNLISTEN and raw SET commands
+        if isinstance(statement, exp.Command):
+            cmd = (statement.this or "").strip().upper()
+            if cmd == "SET":
+                return False, "SET statement is not allowed"
+
+        # sqlglot parses LISTEN / NOTIFY / UNLISTEN as Alias(Column(...), ...)
+        if isinstance(statement, exp.Alias):
+            inner = statement.this
+            if isinstance(inner, exp.Column):
+                inner_name = inner.name.upper()
+                if inner_name in {"LISTEN", "NOTIFY", "UNLISTEN"}:
+                    return False, f"{inner_name} statement is not allowed"
 
         # Check for forbidden functions
         for func in statement.find_all(exp.Anonymous):
