@@ -10,30 +10,34 @@ import type { EvaluatorRejection } from '../api/generated/types.gen';
 import { History, Database, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const ruleNameMap: Record<string, string> = {
-  read_only: 'ReadOnlyRule',
-  single_statement: 'SingleStatementRule',
-  schema_validation: 'SchemaValidationRule',
-  unsafe_pattern: 'UnsafePatternRule',
-  UnsafePattern: 'UnsafePatternRule',
-  ReadOnly: 'ReadOnlyRule',
-  SingleStatement: 'SingleStatementRule',
-  SchemaValidation: 'SchemaValidationRule',
-};
-
 function mapEvaluatorRejection(
-  rejection: EvaluatorRejection,
-  t: (key: string, options?: Record<string, unknown>) => string
-): { failedRule: string; reason: string; violations?: string[] } {
-  const first = rejection.violations[0];
-  const failedRule = ruleNameMap[first?.rule || ''] || 'UnsafePatternRule';
-  const reason = first
-    ? t(first.message_key, (first.message_params || undefined) as Record<string, unknown>)
-    : t('error.evaluator.message');
-  const violations = rejection.violations.map((v) =>
-    t(v.message_key, (v.message_params || undefined) as Record<string, unknown>)
-  );
-  return { failedRule, reason, violations };
+  rejection: EvaluatorRejection
+): { violations: Array<{ type: string; detail?: string }> } {
+  const typeMap: Record<string, string> = {
+    read_only: 'read_only',
+    ReadOnly: 'read_only',
+    single_statement: 'single_statement',
+    SingleStatement: 'single_statement',
+    schema_validation: 'schema_validation',
+    SchemaValidation: 'schema_validation',
+    unsafe_pattern: 'unsafe_pattern',
+    UnsafePattern: 'unsafe_pattern',
+  };
+
+  return {
+    violations: rejection.violations.map((v) => {
+      const type = typeMap[v.rule] || v.rule;
+      let detail: string | undefined;
+      if (type === 'schema_validation') {
+        detail = (v.message_params?.table || v.message_params?.column || v.message_params?.identifier) as string | undefined;
+      } else if (type === 'unsafe_pattern') {
+        detail = (v.message_params?.pattern || v.message_params?.name) as string | undefined;
+      } else if (type === 'syntax') {
+        detail = (v.message_params?.details || v.message_params?.error) as string | undefined;
+      }
+      return { type, detail };
+    }),
+  };
 }
 
 export const AskQuestionPage: React.FC = () => {
@@ -242,7 +246,7 @@ export const AskQuestionPage: React.FC = () => {
         {evaluatorRejection && !isSubmitting && (
           <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
             <EvaluatorRejectionBanner
-              evaluatorRejection={mapEvaluatorRejection(evaluatorRejection, t)}
+              {...mapEvaluatorRejection(evaluatorRejection)}
             />
           </section>
         )}
