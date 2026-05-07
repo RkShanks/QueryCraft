@@ -98,4 +98,44 @@ describe('QueryInput', () => {
     expect(screen.getByRole('button', { name: /ask/i })).toBeInTheDocument();
     expect(screen.getByText(/0 \/ 2000/i)).toBeInTheDocument();
   });
+
+  it('shows truncation warning when pasting text over maxLength', () => {
+    render(<QueryInput onSubmit={vi.fn()} isSubmitting={false} maxLength={10} />, { wrapper: createWrapper() });
+    const textarea = screen.getByPlaceholderText(/ask a question/i);
+
+    fireEvent.change(textarea, { target: { value: 'this is way too long' } });
+
+    expect(screen.getByTestId('truncation-warning')).toBeInTheDocument();
+    expect(screen.getByText(/10 \/ 10/i)).toBeInTheDocument();
+    expect(screen.getByText(/input truncated/i)).toBeInTheDocument();
+    expect(screen.getByText(/10 characters dropped/i)).toBeInTheDocument();
+  });
+
+  it('hides truncation warning when input is cleared', () => {
+    render(<QueryInput onSubmit={vi.fn()} isSubmitting={false} maxLength={10} />, { wrapper: createWrapper() });
+    const textarea = screen.getByPlaceholderText(/ask a question/i);
+
+    fireEvent.change(textarea, { target: { value: 'this is way too long' } });
+    expect(screen.getByTestId('truncation-warning')).toBeInTheDocument();
+
+    fireEvent.change(textarea, { target: { value: '' } });
+    expect(screen.queryByTestId('truncation-warning')).not.toBeInTheDocument();
+  });
+
+  it('does not show truncation warning when within limit', () => {
+    render(<QueryInput onSubmit={vi.fn()} isSubmitting={false} maxLength={10} />, { wrapper: createWrapper() });
+    const textarea = screen.getByPlaceholderText(/ask a question/i);
+
+    fireEvent.change(textarea, { target: { value: 'short' } });
+    expect(screen.queryByTestId('truncation-warning')).not.toBeInTheDocument();
+  });
+
+  it('caps input and persists warning when typing past maxLength', () => {
+    render(<QueryInput onSubmit={vi.fn()} isSubmitting={false} maxLength={10} />, { wrapper: createWrapper() });
+    const textarea = screen.getByPlaceholderText(/ask a question/i);
+
+    fireEvent.change(textarea, { target: { value: 'exactlytenX' } });
+    expect(textarea).toHaveValue('exactlyten');
+    expect(screen.getByTestId('truncation-warning')).toBeInTheDocument();
+  });
 });
