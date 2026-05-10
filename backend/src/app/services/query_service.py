@@ -1,7 +1,6 @@
 """QueryService — submit, accept, reject, regenerate logic."""
 
 import asyncio
-import json
 import uuid
 from typing import Any
 
@@ -9,7 +8,7 @@ from fastapi import HTTPException, status
 from redis.asyncio import Redis
 
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
-from app.core.exceptions import SessionBusy, SourceDBTimeout
+from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy, SourceDBTimeout
 from app.core.processing_lock import acquire_lock, release_lock
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.query import (
@@ -32,12 +31,14 @@ class QueryService:
         llm: Any,
         evaluator: Any,
         source_db_executor: Any,
+        llm_provider: str = "",
     ) -> None:
         self._repo = accepted_query_repository
         self._redis = redis
         self._llm = llm
         self._evaluator = evaluator
         self._executor = source_db_executor
+        self._llm_provider = llm_provider
 
     async def _acquire_lock(self, session_id: str) -> bool:
         """Try to acquire a per-session processing lock."""
@@ -67,6 +68,7 @@ class QueryService:
             user_id=user_id,
             question=question,
             state="PENDING",
+            llm_provider=self._llm_provider,
         )
 
         try:
@@ -171,19 +173,20 @@ class QueryService:
             )
 
         try:
-            raw = await self._redis.get(f"attempt:{attempt_id}")
-            if raw is None:
+            try:
+                attempt_obj = await get_attempt(attempt_id, session_id, self._redis)
+            except AttemptNotFound:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={"error": "attempt_expired", "message_key": "error.attemptExpired"},
-                )
-
-            attempt = json.loads(raw)
-            if attempt.get("session_id") != session_id:
+                ) from None
+            except AttemptOwnershipViolation:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
-                )
+                ) from None
+
+            attempt = attempt_obj.model_dump()
 
             if attempt.get("state") != "EXECUTED":
                 raise HTTPException(
@@ -194,13 +197,13 @@ class QueryService:
             query = await self._repo.create(
                 user_id=uuid.UUID(user_id),
                 database_connection_id=uuid.UUID(database_connection_id),
-                question_text=attempt.get("question_text") or attempt.get("question", ""),
-                generated_sql=attempt.get("generated_sql") or attempt.get("sql", ""),
-                llm_provider=attempt.get("llm_provider", "ollama"),
+                question_text=attempt.get("question", ""),
+                generated_sql=attempt.get("sql", ""),
+                llm_provider=attempt.get("llm_provider", ""),
                 attempt_id=attempt_id,
             )
 
-            await self._redis.delete(f"attempt:{attempt_id}")
+            await delete_attempt(attempt_id, self._redis)
 
             return AcceptedQuerySummary(
                 id=str(query.id),
@@ -305,6 +308,7 @@ class QueryService:
                     sql=new_sql,
                     question=prior.question,
                     attempt_number=next_attempt_number,
+                    llm_provider=self._llm_provider,
                     evaluator_result={
                         "passed": False,
                         "violations": [
@@ -357,6 +361,7 @@ class QueryService:
                 sql=new_sql,
                 question=prior.question,
                 attempt_number=next_attempt_number,
+                llm_provider=self._llm_provider,
                 state="PENDING",
                 executor_result={
                     "columns": columns,

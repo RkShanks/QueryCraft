@@ -1,7 +1,7 @@
 """AcceptedQuery ORM model."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import UUID
@@ -33,6 +33,5 @@ class AcceptedQuery(Base):
     accepted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(UTC),
         server_default=text("now()"),
     )

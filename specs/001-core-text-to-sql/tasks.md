@@ -655,7 +655,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
   > Renamed from T-159 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `@playwright/test` is added to `devDependencies` and `test:e2e` script works.
 
-- [ ] **T-211** [docs] **F-G07/OP-009 X-Admin-Key in openapi.yaml + .env.example** [rolled into Wave 5] — cluster: Polish | deps: T-119 | | effort: S
+- [x] **T-211** [docs] **F-G07/OP-009 X-Admin-Key in openapi.yaml + .env.example** [rolled into Wave 5] — cluster: Polish | deps: T-119 | | effort: S
   > Renamed from T-160 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `.env.example` contains `ADMIN_API_KEY` (done inline in T-153) and `openapi.yaml` documents the `X-Admin-Key` security scheme. [Polish — openapi.yaml part deferred]
 
@@ -731,10 +731,10 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Backend contract test
 
-- [ ] **T-161** [P] [test] **Schemathesis contract: /history, /history/{id}** — cluster: US-4 | deps: T-060 | FR-021,FR-023 | effort: S
+- [x] **T-161** [P] [test] **Schemathesis contract: /history, /history/{id}** — cluster: US-4 | deps: T-060 | FR-021,FR-023 | effort: S
   Done when: `backend/tests/contract/test_openapi_contract.py` is extended with schemathesis-driven property tests for `GET /history` (200 list, cursor pagination) and `GET /history/{id}` (200 detail, 404 not found) validating responses conform to openapi.yaml.
 
-- [ ] **T-161b** [P] [test] **HistoryListResponse.total first-page-only contract** — cluster: US-4 | deps: T-060 | FR-021 | effort: XS
+- [x] **T-161b** [P] [test] **HistoryListResponse.total first-page-only contract** — cluster: US-4 | deps: T-060 | FR-021 | effort: XS
   Done when: `backend/tests/integration/test_history_total_field.py` asserts `GET /history` with no cursor returns `total` in the response body, and `GET /history?cursor=<token>` omits `total` entirely.
 
 ### Frontend: useHistory hook
@@ -887,7 +887,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
   **Why:** Currently `SessionMiddleware._get_redis()` creates a fresh `Redis.from_url()` per request because schemathesis's per-example event loops invalidate cached connections. This adds ~1ms/request connection-setup overhead. For KSA Phase 1 traffic (100–1000 users) this is acceptable, but it is genuine perf debt.
   **Done when:** `backend/src/app/core/security.py` uses a `redis.asyncio.ConnectionPool` scoped to the active request's event loop, or uses a per-worker pool with proper loop-attachment handling; existing event-loop safety tests still pass; benchmark shows reduced p99 session-cookie verify latency vs current implementation.
 
-- [ ] **T-191c** [P] [backend] **Reconcile dual default on `accepted_queries.accepted_at`** [rolled into Wave 5] — cluster: Polish | deps: — | effort: XS
+- [x] **T-191c** [P] [backend] **Reconcile dual default on `accepted_queries.accepted_at`** [rolled into Wave 5] — cluster: Polish | deps: — | effort: XS
   **Why:** During US-1 we added `default=lambda: datetime.now(UTC)` Python-side to fix a flaky test (PostgreSQL's `now()` returns transaction start time, so multiple inserts in the same db_session got identical timestamps). The original `server_default=text("now()")` was kept as a fallback for raw SQL inserts. Two sources of truth for the same column is fragile and confusing.
   **Done when:** `backend/src/app/db/models/accepted_query.py` uses a single authoritative default for `accepted_at`. Pick one of:
   (a) drop `server_default` and rely on Python-side default since all inserts go through SQLAlchemy ORM, OR
@@ -913,7 +913,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 - [ ] **T-220** [docs] **Map T-101/T-102 (schema token limit) to FR or SC** [DEFERRED to final polish] — cluster: Polish | deps: T-101 | FR-008 | effort: XS
   > /speckit.analyze M4: traceability gap.
 
-- [ ] **T-221** [docs] **Document HistoryListResponse.total field in API contract** [rolled into Wave 5] — cluster: Polish | deps: T-060 | FR-021 | effort: XS
+- [x] **T-221** [docs] **Document HistoryListResponse.total field in API contract** [rolled into Wave 5] — cluster: Polish | deps: T-060 | FR-021 | effort: XS
   > /speckit.analyze M5: T-161b introduces total without spec coverage.
 
 - [ ] **T-222** [docs] **Inline glossary or hyperlink for R-007/R-008 references** [DEFERRED to final polish] — cluster: Polish | deps: | | effort: XS
@@ -943,19 +943,19 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 - [ ] **T-231** [test] **Upgrade T-156/T-157 E2E specs to full-stack (remove Playwright route mocks)** [DEFERRED to final polish] — cluster: Polish | deps: T-210 | FR-010,FR-012,FR-028 | effort: M
   > Wave 4 Chunk 4.5 used `page.route()` mocking because backend StubLLM and docker-compose CI infra weren't ready. After T-210 lands AND CI runs the docker stack, remove `frontend/tests/e2e/helpers/mock-backend.ts` mocks and rewrite specs to drive real backend. Increases coverage value: currently FE-only, target full-stack.
 
-- [ ] **T-232** [backend] **Replace hardcoded `llm_provider="ollama"` default in EphemeralAttempt** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
+- [x] **T-232** [backend] **Replace hardcoded `llm_provider="ollama"` default in EphemeralAttempt** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
   > Wave 4 Chunk 4.3 introduced `llm_provider: str = "ollama"` as a default in `backend/src/app/core/attempt_store.py:EphemeralAttempt`. Hardcoded provider name is a smell — should default to `""` (set by QueryService at attempt creation from active config) or removed if always overwritten before use. Audit may also catch this.
 
 - [ ] **T-233** [docs] **Re-evaluate Inv 4 byte-equal duplicate detection vs structural-equal** [DEFERRED to final polish] — cluster: Polish | deps: | | effort: S
   > Gemini audit G-002 (High): byte-equal check rejects only literally-identical SQL. LLMs trivially produce semantically-identical-but-byte-different output (whitespace, case). Either amend constitution Inv 4 to use structural equality (sqlglot parsed-tree compare), or accept brittleness as Phase 1 trade-off and document. Needs constitutional amendment before code change.
 
-- [ ] **T-234** [backend] **accept_query consistency: replace raw redis.get with get_attempt()** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
+- [x] **T-234** [backend] **accept_query consistency: replace raw redis.get with get_attempt()** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
   > Opus audit O-007 (Medium): accept_query uses raw redis.get instead of the attempt_store.get_attempt() helper. Functionally correct but inconsistent and harder to reason about ownership.
 
-- [ ] **T-235** [backend] **Block server-metadata info-disclosure functions in UnsafePatternRule** [rolled into Wave 5] — cluster: Polish | deps: | FR-010f | effort: XS
+- [x] **T-235** [backend] **Block server-metadata info-disclosure functions in UnsafePatternRule** [rolled into Wave 5] — cluster: Polish | deps: | FR-010f | effort: XS
   > Opus audit O-013 (Low): version(), pg_version_num(), inet_server_addr(), pg_postmaster_start_time() etc. leak server metadata. Add to forbidden catalog as defense-in-depth.
 
-- [ ] **T-236** [backend] **Remove accept_query dead-code field name fallback** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
+- [x] **T-236** [backend] **Remove accept_query dead-code field name fallback** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
   > Opus audit O-014 (Low): accept_query has fallback for legacy field names that masks data-model inconsistency. Pick canonical field names, remove fallback.
 
 - [ ] **T-240** [docs] **Re-evaluate HistoryList table vs list/card layout** — cluster: Polish | deps: T-165 | | effort: S
@@ -970,7 +970,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 - [ ] **T-238** [frontend] [docs] **Add missing history i18n keys to `en.json`** [rolled into Wave 5] — cluster: Polish | deps: T-022 | FR-024,SC-009 | effort: XS
   > Current `en.json` lacks `history.filter.placeholder`, `history.detail.question`, `history.detail.sql`, `history.detail.acceptedAt` required by T-165/T-167.
 
-- [ ] **T-239** [backend] **Populate `HistoryListResponse.total` on first-page requests** [rolled into Wave 5] — cluster: Polish | deps: T-054 | FR-021 | effort: XS
+- [x] **T-239** [backend] **Populate `HistoryListResponse.total` on first-page requests** [rolled into Wave 5] — cluster: Polish | deps: T-054 | FR-021 | effort: XS
   > Backend schema already declares `total` but `HistoryService.list_history` never populates it. Required for T-161b contract test.
 
 ## Traceability

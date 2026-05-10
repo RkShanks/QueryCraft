@@ -405,6 +405,7 @@ paths:
         refreshed schema exceeds `max_schema_tokens`, returns a 422 error.
       security:
         - sessionCookie: []
+        - AdminKey: []
       responses:
         "200":
           description: Schema refreshed successfully.
@@ -446,6 +447,11 @@ components:
       description: |
         Server-side session backed by Redis. HttpOnly, Secure, SameSite=Strict.
         8-hour idle expiry.
+    AdminKey:
+      type: apiKey
+      in: header
+      name: X-Admin-Key
+      description: Admin endpoint authentication; configured via ADMIN_API_KEY env var.
 
   schemas:
     # ─── Auth ───
@@ -632,7 +638,7 @@ components:
         total:
           type: integer
           nullable: true
-          description: Total number of accepted queries. Populated only on the first page request (when no `cursor` is supplied). Omitted on subsequent pages.
+          description: Total count of items matching filter; populated only on first-page requests (no cursor) for performance.
         next_cursor:
           type: string
           nullable: true

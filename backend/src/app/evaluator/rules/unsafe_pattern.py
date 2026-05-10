@@ -43,6 +43,21 @@ _FORBIDDEN_FUNCTIONS = {
     "pg_switch_wal",
     "pg_backup_start",
     "pg_backup_stop",
+    "version",
+    "pg_version_num",
+    "inet_server_addr",
+    "inet_server_port",
+    "inet_client_addr",
+    "inet_client_port",
+    "pg_postmaster_start_time",
+    "pg_conf_load_time",
+    "pg_my_temp_schema",
+    "pg_listening_channels",
+    "current_database",
+    "current_user",
+    "session_user",
+    "current_schema",
+    "current_schemas",
 }
 
 # Forbidden table / schema names (system catalogs)
@@ -111,6 +126,12 @@ class UnsafePatternRule:
                 name = func_name.this
             if name and name.lower() in self._forbidden_functions:
                 return False, f"Forbidden function: {name}"
+
+        # Block metadata disclosure functions parsed as special AST nodes
+        if list(statement.find_all(exp.CurrentUser)):
+            return False, "Forbidden function: current_user"
+        if list(statement.find_all(exp.CurrentSchema)):
+            return False, "Forbidden function: current_schema"
 
         # Check for forbidden system tables
         for table in statement.find_all(exp.Table):

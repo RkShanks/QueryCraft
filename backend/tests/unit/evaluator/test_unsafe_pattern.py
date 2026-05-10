@@ -110,3 +110,13 @@ async def test_unsafe_pattern_add_pattern_extends_catalog(rule):
     rule.add_pattern("custom_unsafe_fn")
     ok, _ = await rule.evaluate("SELECT custom_unsafe_fn(1)", SchemaContext())
     assert not ok
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("func", [
+    "version", "pg_version_num", "inet_server_addr", "pg_postmaster_start_time",
+    "current_database", "current_user", "session_user",
+])
+async def test_metadata_disclosure_blocked(rule, func):
+    ok, _ = await rule.evaluate(f"SELECT {func}()", SchemaContext())
+    assert not ok
