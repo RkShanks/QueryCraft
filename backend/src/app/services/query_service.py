@@ -1,7 +1,6 @@
 """QueryService — submit, accept, reject, regenerate logic."""
 
 import asyncio
-import json
 import uuid
 from typing import Any
 
@@ -180,12 +179,12 @@ class QueryService:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={"error": "attempt_expired", "message_key": "error.attemptExpired"},
-                )
+                ) from None
             except AttemptOwnershipViolation:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
-                )
+                ) from None
 
             attempt = attempt_obj.model_dump()
 

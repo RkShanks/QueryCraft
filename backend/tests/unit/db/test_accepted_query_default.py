@@ -1,9 +1,5 @@
 """T-191c: accepted_queries.accepted_at must have exactly one default mechanism."""
 
-import pytest
-from sqlalchemy import inspect
-
-from app.db.base import Base
 from app.db.models.accepted_query import AcceptedQuery
 
 
