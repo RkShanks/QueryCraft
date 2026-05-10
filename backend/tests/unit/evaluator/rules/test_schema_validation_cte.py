@@ -38,6 +38,28 @@ def schema_with_customer() -> SchemaContext:
 
 
 @pytest.fixture
+def schema_with_customer_address() -> SchemaContext:
+    return SchemaContext(
+        tables=[
+            Table(
+                name="customer",
+                columns=[
+                    Column(name="customer_id", type="integer", primary_key=True),
+                    Column(name="first_name", type="text"),
+                ],
+            ),
+            Table(
+                name="address",
+                columns=[
+                    Column(name="address_id", type="integer", primary_key=True),
+                    Column(name="city", type="text"),
+                ],
+            ),
+        ]
+    )
+
+
+@pytest.fixture
 def rule() -> SchemaValidationRule:
     return SchemaValidationRule()
 
@@ -85,3 +107,11 @@ async def test_cte_referencing_nonexistent_table_fails(rule, schema_with_custome
     passed, reason = await rule.evaluate(sql, schema_with_customer)
     assert passed is False, "Expected failure for CTE referencing nonexistent table"
     assert "nonexistent" in (reason or "")
+
+
+@pytest.mark.asyncio
+async def test_cte_select_star_multitable_fails_closed(rule, schema_with_customer_address):
+    """WITH c AS (SELECT * FROM customer, address) SELECT c.fake_col FROM c — fake_col must be rejected."""
+    sql = "WITH c AS (SELECT * FROM customer, address) SELECT c.fake_col FROM c"
+    ok, msg = await rule.evaluate(sql, schema_with_customer_address)
+    assert not ok, "fake_col not in customer or address — must fail closed"
