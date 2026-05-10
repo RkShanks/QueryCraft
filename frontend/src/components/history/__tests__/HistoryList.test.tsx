@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { HistoryList } from '../HistoryList';
+import { HistoryList, type HistoryItem } from '../HistoryList';
 
-function setup(items: any[], extraProps: Partial<React.ComponentProps<typeof HistoryList>> = {}) {
+function setup(items: HistoryItem[], extraProps: Partial<React.ComponentProps<typeof HistoryList>> = {}) {
   return render(
     <HistoryList items={items} total={items.length} isLoading={false} {...extraProps} />
   );

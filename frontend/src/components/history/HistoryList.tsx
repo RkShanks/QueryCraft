@@ -1,25 +1,75 @@
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AcceptedQuerySummary } from '../../api/generated/types.gen';
 
+export type HistoryItem = AcceptedQuerySummary & { schema?: string };
+
 export interface HistoryListProps {
-  items: AcceptedQuerySummary[];
+  items: HistoryItem[];
+  total?: number;
+  isLoading?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
+  onSelect?: (id: string) => void;
 }
 
-export const HistoryList: React.FC<HistoryListProps> = ({ items, hasMore, onLoadMore }) => {
+export const HistoryList: React.FC<HistoryListProps> = ({
+  items,
+  isLoading,
+  hasMore,
+  onLoadMore,
+  onSelect,
+}) => {
   const { t } = useTranslation();
+  const [filter, setFilter] = useState('');
+
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const aTime = a.accepted_at ? new Date(a.accepted_at).getTime() : 0;
+      const bTime = b.accepted_at ? new Date(b.accepted_at).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    if (!filter.trim()) return sortedItems;
+    const lower = filter.toLowerCase();
+    return sortedItems.filter((item) =>
+      (item.question_text ?? '').toLowerCase().includes(lower) ||
+      (item.generated_sql ?? '').toLowerCase().includes(lower) ||
+      (item.schema ?? '').toLowerCase().includes(lower)
+    );
+  }, [sortedItems, filter]);
+
+  if (isLoading && items.length === 0) {
+    return (
+      <div className="history-loading p-8 text-center text-gray-500">
+        {t('history.loading', { defaultValue: 'Loading history...' })}
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
       <div className="history-empty p-8 text-center text-gray-500">
-        {t('history.empty', { defaultValue: 'No accepted queries yet' })}
+        {t('history.empty', { defaultValue: 'No history yet — submit a question to get started.' })}
       </div>
     );
   }
 
   return (
     <div className="history-list flex flex-col gap-4">
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder={t('history.filter.placeholder', { defaultValue: 'Filter by question or schema...' })}
+          className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          aria-label={t('history.filter.placeholder', { defaultValue: 'Filter by question or schema...' })}
+        />
+      </div>
+
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -31,13 +81,20 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, hasMore, onLoad
                 {t('history.column.sql', { defaultValue: 'SQL' })}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {t('history.column.acceptedAt', { defaultValue: 'Accepted' })}
+                {t('history.detail.acceptedAt', { defaultValue: 'Accepted at' })}
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {t('history.column.schema', { defaultValue: 'Schema' })}
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {items.map((item) => (
-              <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+            {filteredItems.map((item) => (
+              <tr
+                key={item.id}
+                className="hover:bg-gray-50 transition-colors cursor-pointer"
+                onClick={() => onSelect?.(item.id)}
+              >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {item.question_text}
                 </td>
@@ -46,6 +103,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({ items, hasMore, onLoad
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {item.schema ?? '-'}
                 </td>
               </tr>
             ))}

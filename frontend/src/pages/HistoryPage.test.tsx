@@ -26,7 +26,7 @@ describe('HistoryPage', () => {
     render(<HistoryPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText(/no accepted queries yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/no history yet/i)).toBeInTheDocument();
     });
   });
 });

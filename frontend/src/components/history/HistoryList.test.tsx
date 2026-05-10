@@ -38,7 +38,7 @@ describe('HistoryList', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByText(/no accepted queries yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no history yet/i)).toBeInTheDocument();
   });
 
   it('should render load more button when hasMore is true', () => {

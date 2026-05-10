@@ -40,7 +40,7 @@ describe('useHistory', () => {
     const { result } = renderHook(() => useHistory(), { wrapper });
     await waitFor(() => expect(result.current.hasNextPage).toBe(true));
     await act(async () => { await result.current.fetchNextPage(); });
-    expect(result.current.items).toHaveLength(2);
+    await waitFor(() => expect(result.current.items).toHaveLength(2));
     expect(result.current.hasNextPage).toBe(false);
   });
 
