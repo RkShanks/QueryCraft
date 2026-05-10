@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { useSubmitQuestion, useAcceptQuery, useHistory, useQuerySubmit } from './useQuerySubmit';
+import { useSubmitQuestion, useAcceptQuery, useQuerySubmit } from './useQuerySubmit';
 import { createWrapper } from '../test/utils';
 import { server } from '../test/server';
 import { http, HttpResponse } from 'msw';
@@ -44,15 +44,6 @@ describe('Query Hooks', () => {
       
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data?.id).toBe('f9e8d7c6-b5a4-4c3b-2a1d-0e9f8d7c6b5a');
-    });
-  });
-
-  describe('useHistory', () => {
-    it('should fetch history successfully', async () => {
-      const { result } = renderHook(() => useHistory(), { wrapper: createWrapper() });
-      
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.items).toHaveLength(1);
     });
   });
 

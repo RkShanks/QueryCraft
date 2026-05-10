@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { submitQuestion, acceptQuery, listHistory, rejectQuery, regenerateQuery } from '../api/generated/sdk.gen';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { submitQuestion, acceptQuery, rejectQuery, regenerateQuery } from '../api/generated/sdk.gen';
 import type { SubmitQuestionData, AcceptQueryData } from '../api/generated/types.gen';
 import type { QueryResult, RefinePrompt, EvaluatorRejection } from '../api/generated/types.gen';
 
@@ -17,13 +17,6 @@ export const useAcceptQuery = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['history'] });
     },
-  });
-};
-
-export const useHistory = () => {
-  return useQuery({
-    queryKey: ['history'],
-    queryFn: () => listHistory({ throwOnError: true }).then(res => res.data),
   });
 };
 
