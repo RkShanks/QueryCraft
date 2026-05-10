@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 from redis.asyncio import Redis
 
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
-from app.core.exceptions import SessionBusy, SourceDBTimeout
+from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy, SourceDBTimeout
 from app.core.processing_lock import acquire_lock, release_lock
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.query import (
@@ -174,19 +174,20 @@ class QueryService:
             )
 
         try:
-            raw = await self._redis.get(f"attempt:{attempt_id}")
-            if raw is None:
+            try:
+                attempt_obj = await get_attempt(attempt_id, session_id, self._redis)
+            except AttemptNotFound:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={"error": "attempt_expired", "message_key": "error.attemptExpired"},
                 )
-
-            attempt = json.loads(raw)
-            if attempt.get("session_id") != session_id:
+            except AttemptOwnershipViolation:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
                 )
+
+            attempt = attempt_obj.model_dump()
 
             if attempt.get("state") != "EXECUTED":
                 raise HTTPException(
@@ -203,7 +204,7 @@ class QueryService:
                 attempt_id=attempt_id,
             )
 
-            await self._redis.delete(f"attempt:{attempt_id}")
+            await delete_attempt(attempt_id, self._redis)
 
             return AcceptedQuerySummary(
                 id=str(query.id),
