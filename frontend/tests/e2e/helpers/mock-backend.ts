@@ -208,7 +208,7 @@ export const mockHistoryEmpty = (page: Page) =>
   });
 
 /** Intercept GET /history/{id} and return a single detail item. */
-export const mockHistoryDetail = (page: Page, detail: any) =>
+export const mockHistoryDetail = (page: Page, detail: Record<string, unknown>) =>
   page.route('**/history/*', async (route: Route) => {
     const url = new URL(route.request().url());
     if (url.pathname.match(/\/history\/[^/]+$/)) {
