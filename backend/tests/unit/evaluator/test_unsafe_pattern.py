@@ -77,3 +77,36 @@ async def test_literal_with_pg_allowed(rule):
     passed, reason = await rule.evaluate("SELECT * FROM users WHERE name LIKE '%pg_%'", SchemaContext())
     assert passed is True
     assert reason is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sql", [
+    'SELECT "dblink"(\'dbname=postgres\', \'DROP TABLE users;\')',
+    'SELECT "pg_sleep"(10)',
+    'SELECT "pg_read_file"(\'/etc/passwd\')',
+    'SELECT "PG_SLEEP"(10)',  # mixed case quoted
+])
+async def test_quoted_identifier_bypass_blocked(rule, sql):
+    ok, msg = await rule.evaluate(sql, SchemaContext())
+    assert not ok
+    assert msg is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("func", [
+    "pg_advisory_lock", "pg_advisory_unlock", "pg_advisory_lock_shared",
+    "pg_advisory_xact_lock", "pg_try_advisory_lock", "pg_try_advisory_xact_lock",
+    "set_config", "current_setting",
+    "pg_promote", "pg_switch_wal",
+    "pg_backup_start", "pg_backup_stop",
+])
+async def test_extended_unsafe_catalog(rule, func):
+    ok, msg = await rule.evaluate(f"SELECT {func}(1)", SchemaContext())
+    assert not ok
+
+
+@pytest.mark.asyncio
+async def test_unsafe_pattern_add_pattern_extends_catalog(rule):
+    rule.add_pattern("custom_unsafe_fn")
+    ok, _ = await rule.evaluate("SELECT custom_unsafe_fn(1)", SchemaContext())
+    assert not ok

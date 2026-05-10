@@ -4,7 +4,6 @@ Tests that regenerate_query behaves like reject (negative context LLM call,
 byte-equal detection, max retry, evaluator gate, lock acquire/release).
 """
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -234,7 +233,7 @@ class TestQueryServiceRegenerate:
         )
         mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 2")
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
-        mock_deps["executor"].execute = AsyncMock(side_effect=asyncio.TimeoutError())
+        mock_deps["executor"].execute = AsyncMock(side_effect=TimeoutError)
 
         lock_calls = []
 
@@ -250,9 +249,9 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.store_attempt"),
             patch("app.services.query_service.acquire_lock", side_effect=_acquire),
             patch("app.services.query_service.release_lock", side_effect=_release),
+            pytest.raises(Exception) as exc_info,
         ):
-            with pytest.raises(Exception) as exc_info:
-                await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1")
 
         assert exc_info.value.status_code == 504
         assert lock_calls == ["acquire", "release"]

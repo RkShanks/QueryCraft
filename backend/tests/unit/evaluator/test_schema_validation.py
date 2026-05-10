@@ -89,3 +89,22 @@ async def test_column_from_quoted_table_fails(rule, schema):
     # If we want strict quoted handling, this test should be updated.
     assert passed is True
     assert reason is None
+
+
+@pytest.mark.asyncio
+async def test_cross_schema_access_blocked(rule):
+    """SELECT * FROM secret_schema.users must be rejected even if 'users' exists in allowed schema."""
+    schema = SchemaContext(
+        tables=[
+            Table(
+                name="users",
+                columns=[
+                    Column(name="id", type="integer", primary_key=True),
+                    Column(name="name", type="text"),
+                ],
+            ),
+        ]
+    )
+    ok, msg = await rule.evaluate("SELECT * FROM secret_schema.users", schema)
+    assert not ok
+    assert "secret_schema" in (msg or "").lower() or "schema" in (msg or "").lower()
