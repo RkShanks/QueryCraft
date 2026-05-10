@@ -62,6 +62,13 @@ class UnsafePatternRule:
 
     name = "unsafe_pattern"
 
+    def __init__(self):
+        self._forbidden_functions = set(_FORBIDDEN_FUNCTIONS)
+
+    def add_pattern(self, pattern: str) -> None:
+        """Add a forbidden function name at runtime (FR-010f extensibility)."""
+        self._forbidden_functions.add(pattern.lower())
+
     async def evaluate(self, sql: str, schema: SchemaContext | None) -> tuple[bool, str | None]:
         """Reject SQL containing forbidden functions, system tables, or statements."""
         try:
@@ -102,7 +109,7 @@ class UnsafePatternRule:
                 name = func_name
             elif isinstance(func_name, exp.Identifier):
                 name = func_name.this
-            if name and name.lower() in _FORBIDDEN_FUNCTIONS:
+            if name and name.lower() in self._forbidden_functions:
                 return False, f"Forbidden function: {name}"
 
         # Check for forbidden system tables
