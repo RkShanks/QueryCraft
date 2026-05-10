@@ -66,6 +66,9 @@ class SchemaValidationRule:
             table_name = table.name
             if table_name in local_ctes:
                 continue
+            # Reject cross-schema access (Phase 1 only supports default schema)
+            if table.db:
+                return False, f"Cross-schema access not allowed: {table.db}.{table_name}"
             is_quoted = hasattr(table.this, "quoted") and table.this.quoted
             found = self._find_table(schema, table_name, is_quoted)
             if not found:
