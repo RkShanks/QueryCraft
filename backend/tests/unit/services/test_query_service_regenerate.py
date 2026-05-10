@@ -221,3 +221,69 @@ class TestQueryServiceRegenerate:
             await service.regenerate_query("a1", "s1")
 
         assert lock_calls == ["acquire", "release"]
+
+    async def test_regenerate_timeout_error_raises_504_and_releases_lock(self, service, mock_deps):
+        """O-003: asyncio.TimeoutError from executor must be caught and return 504, releasing lock."""
+        prior = EphemeralAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            sql="SELECT 1",
+            question="q1",
+            attempt_number=1,
+        )
+        mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 2")
+        mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
+        mock_deps["executor"].execute = AsyncMock(side_effect=TimeoutError)
+
+        lock_calls = []
+
+        async def _acquire(sid, redis, ttl=60):
+            lock_calls.append("acquire")
+            return True
+
+        async def _release(sid, redis):
+            lock_calls.append("release")
+
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            patch("app.services.query_service.store_attempt"),
+            patch("app.services.query_service.acquire_lock", side_effect=_acquire),
+            patch("app.services.query_service.release_lock", side_effect=_release),
+            pytest.raises(Exception) as exc_info,
+        ):
+            await service.regenerate_query("a1", "s1")
+
+        assert exc_info.value.status_code == 504
+        assert lock_calls == ["acquire", "release"]
+
+    async def test_regenerated_attempt_has_explicit_state(self, service, mock_deps):
+        """O-010: new EphemeralAttempt created by regenerate_query must have explicit state=PENDING."""
+        prior = EphemeralAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            sql="SELECT 1",
+            question="q1",
+            attempt_number=1,
+        )
+        mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 2")
+        mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
+        mock_deps["executor"].execute = AsyncMock(return_value=(["col"], [(1,)]))
+
+        created_kwargs = []
+        original_init = EphemeralAttempt.__init__
+
+        def _capture_init(self, **kwargs):
+            created_kwargs.append(kwargs)
+            return original_init(self, **kwargs)
+
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            patch("app.services.query_service.store_attempt"),
+            patch("app.services.query_service.acquire_lock", return_value=True),
+            patch("app.services.query_service.release_lock"),
+            patch.object(EphemeralAttempt, "__init__", _capture_init),
+        ):
+            await service.regenerate_query("a1", "s1")
+
+        assert len(created_kwargs) == 1
+        assert created_kwargs[0].get("state") == "PENDING"

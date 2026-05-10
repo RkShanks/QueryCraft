@@ -22,11 +22,32 @@ class ReadOnlyRule:
             return False, "Empty SQL"
 
         for statement in parsed:
-            if not isinstance(statement, exp.Select):
-                return False, f"Non-SELECT statement: {statement.__class__.__name__}"
+            result = self._validate_read_only(statement)
+            if not result[0]:
+                return result
 
-            for cte in statement.find_all(exp.CTE):
-                if not isinstance(cte.this, exp.Select):
-                    return False, f"Non-SELECT CTE: {cte.this.__class__.__name__}"
+        return True, None
+
+    def _validate_read_only(self, node: exp.Expression) -> tuple[bool, str | None]:
+        """Recursively validate that a node and its descendants are read-only."""
+        if isinstance(node, (exp.Union, exp.Intersect, exp.Except)):
+            left = self._validate_read_only(node.this)
+            if not left[0]:
+                return left
+            right = self._validate_read_only(node.expression)
+            if not right[0]:
+                return right
+            return True, None
+
+        if not isinstance(node, exp.Select):
+            return False, f"Non-SELECT statement: {node.__class__.__name__}"
+
+        if node.find(exp.Lock):
+            return False, "SELECT with row-level locking is not allowed"
+
+        for cte in node.find_all(exp.CTE):
+            cte_result = self._validate_read_only(cte.this)
+            if not cte_result[0]:
+                return cte_result
 
         return True, None

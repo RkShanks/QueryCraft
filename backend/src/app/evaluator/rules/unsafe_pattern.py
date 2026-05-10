@@ -31,6 +31,18 @@ _FORBIDDEN_FUNCTIONS = {
     "dblink_get_connections",
     "dblink_is_busy",
     "dblink_send_query",
+    "pg_advisory_lock",
+    "pg_advisory_unlock",
+    "pg_advisory_lock_shared",
+    "pg_advisory_xact_lock",
+    "pg_try_advisory_lock",
+    "pg_try_advisory_xact_lock",
+    "set_config",
+    "current_setting",
+    "pg_promote",
+    "pg_switch_wal",
+    "pg_backup_start",
+    "pg_backup_stop",
 }
 
 # Forbidden table / schema names (system catalogs)
@@ -49,6 +61,13 @@ class UnsafePatternRule:
     """Evaluator rule that rejects known unsafe SQL patterns."""
 
     name = "unsafe_pattern"
+
+    def __init__(self):
+        self._forbidden_functions = set(_FORBIDDEN_FUNCTIONS)
+
+    def add_pattern(self, pattern: str) -> None:
+        """Add a forbidden function name at runtime (FR-010f extensibility)."""
+        self._forbidden_functions.add(pattern.lower())
 
     async def evaluate(self, sql: str, schema: SchemaContext | None) -> tuple[bool, str | None]:
         """Reject SQL containing forbidden functions, system tables, or statements."""
@@ -82,11 +101,16 @@ class UnsafePatternRule:
                 if inner_name in {"LISTEN", "NOTIFY", "UNLISTEN"}:
                     return False, f"{inner_name} statement is not allowed"
 
-        # Check for forbidden functions
+        # Check for forbidden functions (handles both plain str and quoted Identifier)
         for func in statement.find_all(exp.Anonymous):
             func_name = getattr(func, "this", None)
-            if isinstance(func_name, str) and func_name.lower() in _FORBIDDEN_FUNCTIONS:
-                return False, f"Forbidden function: {func_name}"
+            name = None
+            if isinstance(func_name, str):
+                name = func_name
+            elif isinstance(func_name, exp.Identifier):
+                name = func_name.this
+            if name and name.lower() in self._forbidden_functions:
+                return False, f"Forbidden function: {name}"
 
         # Check for forbidden system tables
         for table in statement.find_all(exp.Table):

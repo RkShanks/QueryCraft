@@ -40,6 +40,16 @@ class SchemaValidationRule:
         """Validate a single statement against the schema and known CTE aliases."""
         cte_aliases = cte_aliases or {}
 
+        # Recursively validate set operations (Union/Intersect/Except)
+        if isinstance(statement, (exp.Union, exp.Intersect, exp.Except)):
+            left = self._validate_statement(statement.this, schema, cte_aliases)
+            if not left[0]:
+                return left
+            right = self._validate_statement(statement.expression, schema, cte_aliases)
+            if not right[0]:
+                return right
+            return True, None
+
         # Discover CTEs defined in this statement and merge with inherited ones
         local_ctes: dict[str, list[str]] = dict(cte_aliases)
         if hasattr(statement, "ctes") and statement.ctes:
@@ -66,6 +76,9 @@ class SchemaValidationRule:
             table_name = table.name
             if table_name in local_ctes:
                 continue
+            # Reject cross-schema access (Phase 1 only supports default schema)
+            if table.db:
+                return False, f"Cross-schema access not allowed: {table.db}.{table_name}"
             is_quoted = hasattr(table.this, "quoted") and table.this.quoted
             found = self._find_table(schema, table_name, is_quoted)
             if not found:
@@ -91,7 +104,9 @@ class SchemaValidationRule:
             # Qualified column
             if table_ref in local_ctes:
                 cte_cols = local_ctes[table_ref]
-                # If we know CTE columns, validate; otherwise be lenient
+                # Fail closed when CTE columns cannot be statically resolved
+                if cte_cols is None:
+                    return False, f"Unknown column '{col_name}' in CTE '{table_ref}'"
                 if cte_cols and col_name.lower() not in (c.lower() for c in cte_cols):
                     return False, f"Unknown column '{col_name}' in CTE '{table_ref}'"
                 continue
@@ -111,8 +126,11 @@ class SchemaValidationRule:
         return True, None
 
     @staticmethod
-    def _extract_cte_columns(cte: exp.CTE, schema: SchemaContext) -> list[str]:
-        """Extract output column names from a CTE definition."""
+    def _extract_cte_columns(cte: exp.CTE, schema: SchemaContext) -> list[str] | None:
+        """Extract output column names from a CTE definition.
+
+        Returns None when columns cannot be statically resolved (fail closed).
+        """
         # Explicit column list: WITH cte(a, b) AS ...
         alias = cte.args.get("alias")
         if alias and hasattr(alias, "columns") and alias.columns:
@@ -124,7 +142,7 @@ class SchemaValidationRule:
             body = body.this
 
         if not isinstance(body, exp.Select):
-            return []
+            return None
 
         columns: list[str] = []
         has_star = False
@@ -155,6 +173,8 @@ class SchemaValidationRule:
                     # that come after the star (typically star is first)
                     # We return all known columns from the table
                     return star_cols
+            # Multi-table SELECT * or no schema info — cannot resolve statically
+            return None
         return columns
 
     @staticmethod

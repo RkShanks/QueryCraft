@@ -55,6 +55,7 @@ class TestQueryServiceAccept:
             "llm_provider": "ollama",
             "attempt_number": 1,
             "rejected_sqls": [],
+            "state": "EXECUTED",
         })
         result = await service.accept_query(
             session_id="sess-1",
@@ -64,7 +65,8 @@ class TestQueryServiceAccept:
         )
         assert result.id == "q-1"
         mock_repo.create.assert_awaited_once()
-        mock_redis.delete.assert_awaited_once_with("attempt:a-1")
+        mock_redis.delete.assert_awaited()
+        assert any(call.args == ("attempt:a-1",) for call in mock_redis.delete.await_args_list)
 
     @pytest.mark.asyncio
     async def test_accept_expired_attempt_raises_400(self, service, mock_redis):
@@ -96,3 +98,55 @@ class TestQueryServiceAccept:
                 database_connection_id="550e8400-e29b-41d4-a716-446655440001",
             )
         assert exc_info.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_accept_double_accept_race_returns_409(self, service, mock_repo, mock_redis):
+        """O-004: second concurrent accept with same attempt_id must return 409."""
+        mock_redis.get.return_value = json.dumps({
+            "attempt_id": "a-1",
+            "session_id": "sess-1",
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "question_text": "Q",
+            "generated_sql": "SELECT 1",
+            "llm_provider": "ollama",
+            "attempt_number": 1,
+            "rejected_sqls": [],
+            "state": "EXECUTED",
+        })
+        # Simulate lock already held (second caller)
+        mock_redis.set.return_value = None
+
+        with pytest.raises(Exception) as exc_info:
+            await service.accept_query(
+                session_id="sess-1",
+                user_id="550e8400-e29b-41d4-a716-446655440000",
+                attempt_id="a-1",
+                database_connection_id="550e8400-e29b-41d4-a716-446655440001",
+            )
+        assert exc_info.value.status_code == 409
+        mock_repo.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("bad_state", ["PENDING", "GENERATED", "EVALUATED", "REJECTED", "TIMEOUT"])
+    async def test_accept_invalid_attempt_state_returns_422(self, service, mock_repo, mock_redis, bad_state):
+        """O-005: accept_query must only allow EXECUTED attempts."""
+        mock_redis.get.return_value = json.dumps({
+            "attempt_id": "a-1",
+            "session_id": "sess-1",
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "question_text": "Q",
+            "generated_sql": "SELECT 1",
+            "llm_provider": "ollama",
+            "attempt_number": 1,
+            "state": bad_state,
+        })
+
+        with pytest.raises(Exception) as exc_info:
+            await service.accept_query(
+                session_id="sess-1",
+                user_id="550e8400-e29b-41d4-a716-446655440000",
+                attempt_id="a-1",
+                database_connection_id="550e8400-e29b-41d4-a716-446655440001",
+            )
+        assert exc_info.value.status_code == 422
+        mock_repo.create.assert_not_called()
