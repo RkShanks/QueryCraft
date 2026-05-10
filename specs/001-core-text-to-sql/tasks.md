@@ -739,18 +739,18 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Frontend: useHistory hook
 
-- [ ] **T-162** [P] [test] **useHistory hook RTL tests** — cluster: US-4 | deps: T-025,T-061 | FR-021,FR-023 | effort: S
+- [x] **T-162** [P] [test] **useHistory hook RTL tests** — cluster: US-4 | deps: T-025,T-061 | FR-021,FR-023 | effort: S
   Done when: `frontend/tests/unit/useHistory.test.tsx` tests: (1) `useHistoryList` returns items in reverse-chronological order, (2) returns empty array when no accepted queries, (3) `useHistoryDetail` returns full entry by ID, (4) returns 404 error for unknown ID; uses MSW server.
 
-- [ ] **T-163** [frontend] **useHistory hook** — cluster: US-4 | deps: T-162,T-024,T-061 | FR-021,FR-022,FR-023 | effort: S
+- [x] **T-163** [frontend] **useHistory hook** — cluster: US-4 | deps: T-162,T-024,T-061 | FR-021,FR-022,FR-023 | effort: S
   Done when: `frontend/src/hooks/useHistory.ts` implements `useHistoryList()` and `useHistoryDetail(id)` using TanStack Query backed by generated API client; all T-162 tests pass.
 
 ### Frontend: HistoryList component
 
-- [ ] **T-164** [P] [test] **HistoryList component RTL tests** — cluster: US-4 | deps: T-025,T-163 | FR-021,FR-022,SC-006,SC-007,SC-009 | effort: M
+- [x] **T-164** [P] [test] **HistoryList component RTL tests** — cluster: US-4 | deps: T-025,T-163 | FR-021,FR-022,SC-006,SC-007,SC-009 | effort: M
   Done when: `frontend/tests/unit/HistoryList.test.tsx` tests: (1) renders entries reverse-chronologically showing question, SQL snippet, and timestamp, (2) empty state renders `history.empty` i18n key, (3) filter input narrows list to entries matching typed word in question or SQL, (4) filter returns within 1 second for 1000 mock entries, (5) all strings use `t()`; uses RTL.
 
-- [ ] **T-165** [frontend] **HistoryList component** — cluster: US-4 | deps: T-164,T-163,T-022 | FR-021,FR-022,SC-006,SC-007,SC-009 | effort: M
+- [x] **T-165** [frontend] **HistoryList component** — cluster: US-4 | deps: T-164,T-163,T-022 | FR-021,FR-022,SC-006,SC-007,SC-009 | effort: M
   Done when: `frontend/src/components/HistoryList.tsx` renders a scrollable list of `AcceptedQuerySummary` entries with a free-text filter input (`history.filter.placeholder`), empty-state message, and click handler to select an entry; all T-164 tests pass.
 
 ### Frontend: HistoryDetail component
@@ -898,7 +898,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ## /speckit.analyze Medium remediation (Wave 4 / Polish)
 
-- [ ] **T-216** [docs] **Migrate i18n source-code references from `error.*` to `query.error.*`** [rolled into Wave 5] — cluster: Polish | deps: T-024 | | effort: S
+- [x] **T-216** [docs] **Migrate i18n source-code references from `error.*` to `query.error.*`** [rolled into Wave 5] — cluster: Polish | deps: T-024 | | effort: S
   > Resolves /speckit.analyze H1 source-code part. plan.md namespace consolidated in Chunk 4.1.5; remaining source code may still reference legacy keys.
 
 - [ ] **T-217** [backend] **Define diagnostic log retention, access control, PII handling for FR-020** [DEFERRED to final polish] — cluster: Polish | deps: T-051 | FR-020 | effort: S
@@ -967,7 +967,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 - [ ] **T-237** [P] [backend] [test] **Add server-side filter repository methods (date range, schema, state)** [DEFERRED to Phase 4+] — cluster: Polish | deps: T-047 | FR-022 | effort: M
   > Server-side filtering deferred per FR-022 Phase 1 assumption (client-side only). Registered to track the gap for later phases.
 
-- [ ] **T-238** [frontend] [docs] **Add missing history i18n keys to `en.json`** [rolled into Wave 5] — cluster: Polish | deps: T-022 | FR-024,SC-009 | effort: XS
+- [x] **T-238** [frontend] [docs] **Add missing history i18n keys to `en.json`** [rolled into Wave 5] — cluster: Polish | deps: T-022 | FR-024,SC-009 | effort: XS
   > Current `en.json` lacks `history.filter.placeholder`, `history.detail.question`, `history.detail.sql`, `history.detail.acceptedAt` required by T-165/T-167.
 
 - [x] **T-239** [backend] **Populate `HistoryListResponse.total` on first-page requests** [rolled into Wave 5] — cluster: Polish | deps: T-054 | FR-021 | effort: XS

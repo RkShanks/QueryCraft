@@ -98,8 +98,8 @@ export const AskQuestionPage: React.FC = () => {
       );
     } catch {
       showAlert(
-        t('error.accept.title', { defaultValue: 'Error' }),
-        t('error.accept.message', { defaultValue: 'Failed to accept query.' }),
+        t('query.error.accept.title', { defaultValue: 'Error' }),
+        t('query.error.accept.message', { defaultValue: 'Failed to accept query.' }),
         'destructive'
       );
     }
@@ -112,7 +112,7 @@ export const AskQuestionPage: React.FC = () => {
       const e = err as { error?: string };
       if (e.error === 'concurrent') {
         showAlert(
-          t('error.concurrent', { defaultValue: 'A query is already being processed.' }),
+          t('query.error.concurrent', { defaultValue: 'A query is already being processed.' }),
           '',
           'destructive'
         );
@@ -127,7 +127,7 @@ export const AskQuestionPage: React.FC = () => {
       const e = err as { error?: string };
       if (e.error === 'concurrent') {
         showAlert(
-          t('error.concurrent', { defaultValue: 'A query is already being processed.' }),
+          t('query.error.concurrent', { defaultValue: 'A query is already being processed.' }),
           '',
           'destructive'
         );
@@ -161,13 +161,13 @@ export const AskQuestionPage: React.FC = () => {
     const timer = setTimeout(() => {
       if (error.kind === 'concurrent') {
         showAlert(
-          t('error.concurrent', { defaultValue: 'A query is already being processed.' }),
+          t('query.error.concurrent', { defaultValue: 'A query is already being processed.' }),
           '',
           'destructive'
         );
       } else if (error.kind === 'llmUnavailable') {
         showAlert(
-          t('error.llmUnavailable', { defaultValue: 'The AI service is temporarily unavailable.' }),
+          t('query.error.llmUnavailable', { defaultValue: 'The AI service is temporarily unavailable.' }),
           '',
           'destructive'
         );

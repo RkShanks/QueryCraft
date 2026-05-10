@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import { useHistory } from '../hooks/useQuerySubmit';
+import { useHistory } from '../hooks/useHistory';
 import { HistoryList } from '../components/history/HistoryList';
 
 export default function HistoryPage() {
   const { t } = useTranslation();
-  const { data, isLoading } = useHistory();
+  const { items, isLoading } = useHistory();
 
   return (
     <div id="history-page" className="min-h-screen bg-gray-50">
@@ -19,7 +19,7 @@ export default function HistoryPage() {
             <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
           </div>
         ) : (
-          <HistoryList items={data?.items ?? []} />
+          <HistoryList items={items} isLoading={isLoading} />
         )}
       </main>
     </div>
