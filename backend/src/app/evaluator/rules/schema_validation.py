@@ -40,6 +40,16 @@ class SchemaValidationRule:
         """Validate a single statement against the schema and known CTE aliases."""
         cte_aliases = cte_aliases or {}
 
+        # Recursively validate set operations (Union/Intersect/Except)
+        if isinstance(statement, (exp.Union, exp.Intersect, exp.Except)):
+            left = self._validate_statement(statement.this, schema, cte_aliases)
+            if not left[0]:
+                return left
+            right = self._validate_statement(statement.expression, schema, cte_aliases)
+            if not right[0]:
+                return right
+            return True, None
+
         # Discover CTEs defined in this statement and merge with inherited ones
         local_ctes: dict[str, list[str]] = dict(cte_aliases)
         if hasattr(statement, "ctes") and statement.ctes:
