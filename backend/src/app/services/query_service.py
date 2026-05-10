@@ -162,37 +162,48 @@ class QueryService:
         database_connection_id: str,
     ) -> AcceptedQuerySummary:
         """Accept a query result: persist to DB and delete Redis attempt."""
-        raw = await self._redis.get(f"attempt:{attempt_id}")
-        if raw is None:
+        lock_key = f"accept:{attempt_id}"
+        lock_acquired = await self._redis.set(lock_key, "1", nx=True, ex=5)
+        if not lock_acquired:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"error": "attempt_expired", "message_key": "error.attemptExpired"},
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": "accept_conflict", "message_key": "error.acceptConflict"},
             )
 
-        attempt = json.loads(raw)
-        if attempt.get("session_id") != session_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
+        try:
+            raw = await self._redis.get(f"attempt:{attempt_id}")
+            if raw is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"error": "attempt_expired", "message_key": "error.attemptExpired"},
+                )
+
+            attempt = json.loads(raw)
+            if attempt.get("session_id") != session_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
+                )
+
+            query = await self._repo.create(
+                user_id=uuid.UUID(user_id),
+                database_connection_id=uuid.UUID(database_connection_id),
+                question_text=attempt.get("question_text") or attempt.get("question", ""),
+                generated_sql=attempt.get("generated_sql") or attempt.get("sql", ""),
+                llm_provider=attempt.get("llm_provider", "ollama"),
+                attempt_id=attempt_id,
             )
 
-        query = await self._repo.create(
-            user_id=uuid.UUID(user_id),
-            database_connection_id=uuid.UUID(database_connection_id),
-            question_text=attempt.get("question_text") or attempt.get("question", ""),
-            generated_sql=attempt.get("generated_sql") or attempt.get("sql", ""),
-            llm_provider=attempt.get("llm_provider", "ollama"),
-            attempt_id=attempt_id,
-        )
+            await self._redis.delete(f"attempt:{attempt_id}")
 
-        await self._redis.delete(f"attempt:{attempt_id}")
-
-        return AcceptedQuerySummary(
-            id=str(query.id),
-            question_text=query.question_text,
-            generated_sql=query.generated_sql,
-            accepted_at=query.accepted_at.isoformat(),
-        )
+            return AcceptedQuerySummary(
+                id=str(query.id),
+                question_text=query.question_text,
+                generated_sql=query.generated_sql,
+                accepted_at=query.accepted_at.isoformat(),
+            )
+        finally:
+            await self._redis.delete(lock_key)
 
     async def reject_query(
         self,

@@ -64,7 +64,8 @@ class TestQueryServiceAccept:
         )
         assert result.id == "q-1"
         mock_repo.create.assert_awaited_once()
-        mock_redis.delete.assert_awaited_once_with("attempt:a-1")
+        mock_redis.delete.assert_awaited()
+        assert any(call.args == ("attempt:a-1",) for call in mock_redis.delete.await_args_list)
 
     @pytest.mark.asyncio
     async def test_accept_expired_attempt_raises_400(self, service, mock_redis):
