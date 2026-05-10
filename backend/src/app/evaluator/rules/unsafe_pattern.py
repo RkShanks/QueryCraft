@@ -31,6 +31,18 @@ _FORBIDDEN_FUNCTIONS = {
     "dblink_get_connections",
     "dblink_is_busy",
     "dblink_send_query",
+    "pg_advisory_lock",
+    "pg_advisory_unlock",
+    "pg_advisory_lock_shared",
+    "pg_advisory_xact_lock",
+    "pg_try_advisory_lock",
+    "pg_try_advisory_xact_lock",
+    "set_config",
+    "current_setting",
+    "pg_promote",
+    "pg_switch_wal",
+    "pg_backup_start",
+    "pg_backup_stop",
 }
 
 # Forbidden table / schema names (system catalogs)
