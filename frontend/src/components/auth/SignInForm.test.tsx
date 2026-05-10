@@ -18,7 +18,7 @@ describe('SignInForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
     
     await waitFor(() => {
-      expect(screen.getByText(/question cannot be empty/i)).toBeInTheDocument();
+      expect(screen.getByText(/username cannot be empty/i)).toBeInTheDocument();
     });
   });
 
