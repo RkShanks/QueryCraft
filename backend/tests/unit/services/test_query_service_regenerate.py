@@ -4,6 +4,7 @@ Tests that regenerate_query behaves like reject (negative context LLM call,
 byte-equal detection, max retry, evaluator gate, lock acquire/release).
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -220,4 +221,38 @@ class TestQueryServiceRegenerate:
         ):
             await service.regenerate_query("a1", "s1")
 
+        assert lock_calls == ["acquire", "release"]
+
+    async def test_regenerate_timeout_error_raises_504_and_releases_lock(self, service, mock_deps):
+        """O-003: asyncio.TimeoutError from executor must be caught and return 504, releasing lock."""
+        prior = EphemeralAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            sql="SELECT 1",
+            question="q1",
+            attempt_number=1,
+        )
+        mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 2")
+        mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
+        mock_deps["executor"].execute = AsyncMock(side_effect=asyncio.TimeoutError())
+
+        lock_calls = []
+
+        async def _acquire(sid, redis, ttl=60):
+            lock_calls.append("acquire")
+            return True
+
+        async def _release(sid, redis):
+            lock_calls.append("release")
+
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            patch("app.services.query_service.store_attempt"),
+            patch("app.services.query_service.acquire_lock", side_effect=_acquire),
+            patch("app.services.query_service.release_lock", side_effect=_release),
+        ):
+            with pytest.raises(Exception) as exc_info:
+                await service.regenerate_query("a1", "s1")
+
+        assert exc_info.value.status_code == 504
         assert lock_calls == ["acquire", "release"]
