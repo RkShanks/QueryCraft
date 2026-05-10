@@ -651,7 +651,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
   > Renamed from T-158 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: QueryInput removes `.slice(0, maxLength)` and shows live validation error when text exceeds 2000 chars instead of silently truncating. [Wave 4]
 
-- [ ] **T-210** [frontend] **F-G06 @playwright/test devDep** [WAVE-5-PRE-REQ] — cluster: Polish | deps: T-074 | | effort: XS
+- [x] **T-210** [frontend] **F-G06 @playwright/test devDep** [WAVE-5-PRE-REQ] — cluster: Polish | deps: T-074 | | effort: XS
   > Renamed from T-159 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `@playwright/test` is added to `devDependencies` and `test:e2e` script works.
 
@@ -957,6 +957,9 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 - [ ] **T-236** [backend] **Remove accept_query dead-code field name fallback** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
   > Opus audit O-014 (Low): accept_query has fallback for legacy field names that masks data-model inconsistency. Pick canonical field names, remove fallback.
+
+- [ ] **T-240** [docs] **Re-evaluate HistoryList table vs list/card layout** — cluster: Polish | deps: T-165 | | effort: S
+  > Wave 5 Chunk 5.1 left HistoryList as a table for Phase 1 (acceptable per FR-021/SC-006/SC-007 which don't dictate UI pattern). Re-evaluate if user feedback or UX research demands a list/card layout.
 
 ---
 
