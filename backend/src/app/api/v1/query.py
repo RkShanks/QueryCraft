@@ -42,10 +42,11 @@ async def _get_query_service(
     redis: Redis = Depends(get_redis),  # noqa: B008
 ) -> QueryService:
     schema_context = await _source_introspector.introspect()
+    settings = get_settings()
     return QueryService(
         accepted_query_repository=AcceptedQueryRepository(db),
         redis=redis,
-        llm=LLMProviderFactory.from_config(get_settings()),
+        llm=LLMProviderFactory.from_config(settings),
         evaluator=Evaluator(
             rules=[
                 ReadOnlyRule(),
@@ -55,6 +56,7 @@ async def _get_query_service(
             ]
         ),
         source_db_executor=_source_db_executor,
+        llm_provider=settings.LLM_PROVIDER,
     )
 
 

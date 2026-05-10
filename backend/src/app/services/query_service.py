@@ -32,12 +32,14 @@ class QueryService:
         llm: Any,
         evaluator: Any,
         source_db_executor: Any,
+        llm_provider: str = "",
     ) -> None:
         self._repo = accepted_query_repository
         self._redis = redis
         self._llm = llm
         self._evaluator = evaluator
         self._executor = source_db_executor
+        self._llm_provider = llm_provider
 
     async def _acquire_lock(self, session_id: str) -> bool:
         """Try to acquire a per-session processing lock."""
@@ -67,6 +69,7 @@ class QueryService:
             user_id=user_id,
             question=question,
             state="PENDING",
+            llm_provider=self._llm_provider,
         )
 
         try:
@@ -305,6 +308,7 @@ class QueryService:
                     sql=new_sql,
                     question=prior.question,
                     attempt_number=next_attempt_number,
+                    llm_provider=self._llm_provider,
                     evaluator_result={
                         "passed": False,
                         "violations": [
@@ -357,6 +361,7 @@ class QueryService:
                 sql=new_sql,
                 question=prior.question,
                 attempt_number=next_attempt_number,
+                llm_provider=self._llm_provider,
                 state="PENDING",
                 executor_result={
                     "columns": columns,

@@ -23,7 +23,7 @@ class EphemeralAttempt(BaseModel):
     question: str = ""
     attempt_number: int = 1
     state: str = "PENDING"  # PENDING | GENERATED | EVALUATED | EXECUTED | REJECTED | TIMEOUT
-    llm_provider: str = "ollama"
+    llm_provider: str = ""
     evaluator_result: dict[str, Any] | None = None
     executor_result: dict[str, Any] | None = None
     created_at: str = ""
