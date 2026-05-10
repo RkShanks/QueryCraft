@@ -357,6 +357,7 @@ class QueryService:
                 sql=new_sql,
                 question=prior.question,
                 attempt_number=next_attempt_number,
+                state="PENDING",
                 executor_result={
                     "columns": columns,
                     "rows": rows,
