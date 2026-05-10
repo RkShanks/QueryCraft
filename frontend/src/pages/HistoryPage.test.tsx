@@ -1,32 +1,70 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
-import HistoryPage from './HistoryPage';
-import { createWrapper } from '../test/utils';
-import { server } from '../test/server';
-import { http, HttpResponse } from 'msw';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import HistoryPage from "./HistoryPage";
+import { createWrapper } from "../test/utils";
 
-describe('HistoryPage', () => {
-  it('should render history title and list', async () => {
-    render(<HistoryPage />, { wrapper: createWrapper() });
+vi.mock("../api/historyApi", () => ({
+  listHistory: vi.fn(),
+  getHistoryItem: vi.fn(),
+}));
+import * as historyApi from "../api/historyApi";
 
-    expect(screen.getByText(/query history/i)).toBeInTheDocument();
+function renderPage() {
+  return render(<HistoryPage />, { wrapper: createWrapper() });
+}
 
+describe("HistoryPage (FR-021,FR-022,FR-023,SC-009)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("loads history and renders the list", async () => {
+    vi.mocked(historyApi.listHistory).mockResolvedValueOnce({
+      items: [
+        { id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z", schema: "public" },
+      ],
+      total: 1,
+      next_cursor: null,
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Q1")).toBeInTheDocument());
+  });
+
+  it("clicking a list row shows its detail (FR-023)", async () => {
+    vi.mocked(historyApi.listHistory).mockResolvedValueOnce({
+      items: [{ id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z", schema: "public" }],
+      total: 1,
+      next_cursor: null,
+    });
+    vi.mocked(historyApi.getHistoryItem).mockResolvedValueOnce({
+      id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z", schema: "public",
+    });
+    renderPage();
+    await waitFor(() => screen.getByText("Q1"));
+    fireEvent.click(screen.getByText("Q1"));
     await waitFor(() => {
-      expect(screen.getByText('How many users?')).toBeInTheDocument();
+      const detail = screen.getByTestId("history-detail");
+      expect(detail).toHaveTextContent("SELECT 1");
     });
   });
 
-  it('should render empty state when no history', async () => {
-    server.use(
-      http.get('/api/v1/history', () => {
-        return HttpResponse.json({ items: [], total: 0, next_cursor: null });
-      })
-    );
+  it("shows empty state when no items (FR-021)", async () => {
+    vi.mocked(historyApi.listHistory).mockResolvedValueOnce({ items: [], total: 0, next_cursor: null });
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/no history yet/i)).toBeInTheDocument());
+  });
 
-    render(<HistoryPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByText(/no history yet/i)).toBeInTheDocument();
+  it("filter input narrows the visible rows (FR-022)", async () => {
+    vi.mocked(historyApi.listHistory).mockResolvedValueOnce({
+      items: [
+        { id: "1", question_text: "Customer count", generated_sql: "SELECT COUNT(*) FROM customer", accepted_at: "2026-05-11T00:00:00Z", schema: "public" },
+        { id: "2", question_text: "Revenue top", generated_sql: "SELECT ... FROM payment", accepted_at: "2026-05-10T00:00:00Z", schema: "public" },
+      ],
+      total: 2,
+      next_cursor: null,
     });
+    renderPage();
+    await waitFor(() => screen.getByText("Customer count"));
+    fireEvent.change(screen.getByPlaceholderText(/filter/i), { target: { value: "revenue" } });
+    expect(screen.queryByText("Customer count")).not.toBeInTheDocument();
+    expect(screen.getByText("Revenue top")).toBeInTheDocument();
   });
 });
