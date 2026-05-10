@@ -198,9 +198,9 @@ class QueryService:
             query = await self._repo.create(
                 user_id=uuid.UUID(user_id),
                 database_connection_id=uuid.UUID(database_connection_id),
-                question_text=attempt.get("question_text") or attempt.get("question", ""),
-                generated_sql=attempt.get("generated_sql") or attempt.get("sql", ""),
-                llm_provider=attempt.get("llm_provider", "ollama"),
+                question_text=attempt.get("question", ""),
+                generated_sql=attempt.get("sql", ""),
+                llm_provider=attempt.get("llm_provider", ""),
                 attempt_id=attempt_id,
             )
 
