@@ -308,7 +308,7 @@ class QueryService:
                     self._executor.execute(new_sql),
                     timeout=30,
                 )
-            except SourceDBTimeout as exc:
+            except (TimeoutError, asyncio.TimeoutError, SourceDBTimeout) as exc:
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
