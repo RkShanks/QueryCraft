@@ -651,11 +651,11 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
   > Renamed from T-158 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: QueryInput removes `.slice(0, maxLength)` and shows live validation error when text exceeds 2000 chars instead of silently truncating. [Wave 4]
 
-- [ ] **T-210** [frontend] **F-G06 @playwright/test devDep** — cluster: Polish | deps: T-074 | | effort: XS
+- [ ] **T-210** [frontend] **F-G06 @playwright/test devDep** [WAVE-5-PRE-REQ] — cluster: Polish | deps: T-074 | | effort: XS
   > Renamed from T-159 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `@playwright/test` is added to `devDependencies` and `test:e2e` script works.
 
-- [ ] **T-211** [docs] **F-G07/OP-009 X-Admin-Key in openapi.yaml + .env.example** — cluster: Polish | deps: T-119 | | effort: S
+- [ ] **T-211** [docs] **F-G07/OP-009 X-Admin-Key in openapi.yaml + .env.example** [rolled into Wave 5] — cluster: Polish | deps: T-119 | | effort: S
   > Renamed from T-160 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `.env.example` contains `ADMIN_API_KEY` (done inline in T-153) and `openapi.yaml` documents the `X-Admin-Key` security scheme. [Polish — openapi.yaml part deferred]
 
@@ -663,15 +663,15 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
    > Renamed from T-161 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
    Done when: `submit_question` constructs an `EphemeralAttempt` and uses `store_attempt()` instead of direct `redis.set`, transitions state PENDING→GENERATED→EVALUATED→EXECUTED|REJECTED|TIMEOUT, and persists `attempt_id` on `accepted_queries`. [Wave 4]
 
-- [ ] **T-213** [backend] **OP-010 Session timeout config** — cluster: Polish | deps: T-049 | FR-003 | effort: XS
+- [ ] **T-213** [backend] **OP-010 Session timeout config** [DEFERRED to final polish] — cluster: Polish | deps: T-049 | FR-003 | effort: XS
   > Renamed from T-162 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `AuthService.sign_in()` reads `settings.SESSION_IDLE_TIMEOUT_HOURS` instead of hardcoding `ex=8*3600`. [Polish]
 
-- [ ] **T-214** [backend] **OP-011 Rate limiting** — cluster: Polish | deps: T-013 | | effort: M
+- [ ] **T-214** [backend] **OP-011 Rate limiting** [DEFERRED to final polish] — cluster: Polish | deps: T-013 | | effort: M
   > Renamed from T-163 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: rate limiting middleware (e.g. slowapi or custom Redis-based) is applied to `/auth/sign-in`, `/query/submit`, and `/admin/refresh-schema`. [Polish]
 
-- [ ] **T-215** [backend] **OP-012 response_model accuracy** — cluster: Polish | deps: T-058 | | effort: XS
+- [ ] **T-215** [backend] **OP-012 response_model accuracy** [DEFERRED to final polish] — cluster: Polish | deps: T-058 | | effort: XS
   > Renamed from T-164 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `/query/submit` response_model declaration accurately reflects the discriminated union of QueryResult and EvaluatorRejection, or is documented as accepted minor divergence. [Polish]
 
@@ -720,11 +720,14 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Architectural invariant tests
 
-- ~~T-158~~ (consolidated into T-035 in Chunk 4.1.5)
+- [x] **T-158** [P] [test] **Architectural invariant: accept-only persistence** — cluster: US-4 | deps: T-035 | SC-012 | effort: S
+  > Covered by T-035 (Chunk 4.1.5). Closed in PR #16 (`566c93d`).
 
-- ~~T-159~~ (consolidated into T-121b in Chunk 4.1.5)
+- [x] **T-159** [P] [test] **Architectural invariant: byte-equal duplicate detection** — cluster: US-4 | deps: T-121b | SC-005 | effort: S
+  > Covered by T-121b (Chunk 4.1.5). Closed in PR #16 (`566c93d`).
 
-- ~~T-160~~ (consolidated into T-123 in Chunk 4.1.5)
+- [x] **T-160** [P] [test] **Architectural invariant: ephemeral attempt ownership** — cluster: US-4 | deps: T-123 | | effort: S
+  > Covered by T-123 (Chunk 4.1.5). Closed in PR #16 (`566c93d`).
 
 ### Backend contract test
 
@@ -768,8 +771,8 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Frontend: kind discriminator for reject/regenerate responses
 
-- [ ] **T-170** [P] [test] **useSubmitQuestion kind discriminator integration test** — cluster: US-4 | deps: T-130,T-132 | FR-017,FR-019 | effort: S
-  Done when: `frontend/tests/unit/useSubmitQuestion-discriminator.test.tsx` tests: (1) reject returning `{kind:"result",...}` sets `result` state, (2) reject returning `{kind:"refine",...}` sets `refinePrompt` state, (3) regenerate mirrors the same discrimination; uses MSW with T-130 handler factories.
+- [x] **T-170** [P] [test] **useSubmitQuestion kind discriminator integration test** [REDUNDANT — superseded by T-131] — cluster: US-4 | deps: T-130,T-132 | FR-017,FR-019 | effort: S
+  > T-131 already tests kind discrimination for reject/regenerate; no additional coverage value.
 
 ### Playwright e2e — US-4 independent test criterion
 
@@ -844,47 +847,47 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Coverage gates
 
-- [ ] **T-187** [P] [infra] **Backend coverage gate: pytest-cov + CI threshold** — cluster: Polish | deps: T-058,T-115,T-128 | | effort: S
+- [ ] **T-187** [P] [infra] **Backend coverage gate: pytest-cov + CI threshold** [DEFERRED to final polish] — cluster: Polish | deps: T-058,T-115,T-128 | | effort: S
   Done when: `pyproject.toml` adds `[tool.pytest.ini_options]` with `--cov` flags; CI step fails if services/evaluator coverage < 80% or routers coverage < 60%.
 
-- [ ] **T-188** [P] [infra] **Frontend coverage gate: Vitest coverage + CI threshold** — cluster: Polish | deps: T-145,T-169,T-186 | | effort: S
+- [ ] **T-188** [P] [infra] **Frontend coverage gate: Vitest coverage + CI threshold** [DEFERRED to final polish] — cluster: Polish | deps: T-145,T-169,T-186 | | effort: S
   Done when: `vitest.config.ts` enables `coverage` provider with `thresholds: { statements: 70 }` for `hooks/`, `services/`, `utils/`; CI step fails below threshold.
 
 ### CI workflow
 
-- [ ] **T-189** [infra] **Unified CI workflow: lint → typecheck → test → build → contract → e2e** — cluster: Polish | deps: T-187,T-188 | | effort: M
+- [ ] **T-189** [infra] **Unified CI workflow: lint → typecheck → test → build → contract → e2e** [DEFERRED to final polish] — cluster: Polish | deps: T-187,T-188 | | effort: M
   Done when: `.github/workflows/ci.yml` defines a single pipeline: `lint` (ESLint + Stylelint + Ruff), `typecheck` (tsc + mypy), `test` (pytest + vitest with coverage), `build` (vite build), `contract` (schemathesis), `e2e` (Playwright against docker-compose); pipeline passes on a clean checkout.
 
 ### Success criteria coverage suite
 
-- [ ] **T-190** [test] **SC coverage suite: SC-001..SC-012 mapped to assertions** — cluster: Polish | deps: T-074,T-148,T-156,T-157,T-171,T-173,T-178,T-185,T-186 | SC-001,SC-002,SC-003,SC-004,SC-005,SC-006,SC-007,SC-008,SC-009,SC-010,SC-011,SC-012 | effort: M
+- [ ] **T-190** [test] **SC coverage suite: SC-001..SC-012 mapped to assertions** [DEFERRED to final polish] — cluster: Polish | deps: T-074,T-148,T-156,T-157,T-171,T-173,T-178,T-185,T-186 | SC-001,SC-002,SC-003,SC-004,SC-005,SC-006,SC-007,SC-008,SC-009,SC-010,SC-011,SC-012 | effort: M
   Done when: `tests/sc-coverage.test.ts` (or equivalent) imports and re-exports the specific test that covers each SC-NNN, annotated with `@sc:NNN`; running `npm run test:sc` executes all 12 and reports pass/fail per criterion.
 
 ### Performance budget verification
 
-- [ ] **T-191** [test] **Performance-budget verification** — cluster: Polish | deps: T-074,T-171 | SC-001,SC-006,SC-007,SC-011 | effort: M
+- [ ] **T-191** [test] **Performance-budget verification** [DEFERRED to final polish] — cluster: Polish | deps: T-074,T-171 | SC-001,SC-006,SC-007,SC-011 | effort: M
   Done when: `frontend/tests/e2e/performance.spec.ts` asserts: (1) full question-to-result loop completes in < 60s excluding LLM time (SC-001), (2) source-DB timeout fires within config + 5s (SC-011), (3) history view renders ≤ 1000 entries in < 3s (SC-006), (4) filter returns results within 1s of keystop (SC-007); all pass in headless Chromium against docker-compose.
 
 ### Documentation
 
-- [ ] **T-192** [P] [docs] **quickstart.md verified on a fresh machine** — cluster: Polish | deps: T-189 | | effort: S
+- [ ] **T-192** [P] [docs] **quickstart.md verified on a fresh machine** [DEFERRED to final polish] — cluster: Polish | deps: T-189 | | effort: S
   Done when: `specs/001-core-text-to-sql/quickstart.md` is updated and a clean `git clone` + `docker compose -f docker-compose.dev.yml up` + documented steps successfully brings up the full platform with a working sign-in → ask → accept → history flow.
 
-- [ ] **T-193** [P] [docs] **Operator runbook** — cluster: Polish | deps: T-189 | | effort: M
+- [ ] **T-193** [P] [docs] **Operator runbook** [DEFERRED to final polish] — cluster: Polish | deps: T-189 | | effort: M
   Done when: `docs/runbook.md` documents: env-var reference table, PLATFORM_ENCRYPTION_KEY rotation procedure, SchemaTokenLimitExceeded resolution steps, Redis session-lock cleanup, admin-password reset procedure, and LLM provider switch checklist.
 
 ### Security review
 
-- [ ] **T-194** [test] **Security-review checklist** — cluster: Polish | deps: T-058,T-115,T-128,T-144 | | effort: M
+- [ ] **T-194** [test] **Security-review checklist** [DEFERRED to final polish] — cluster: Polish | deps: T-058,T-115,T-128,T-144 | | effort: M
   Done when: `docs/security-review.md` documents and `backend/tests/security/test_security_checklist.py` verifies: (1) Argon2id params ≥ OWASP minimums, (2) session cookie flags HttpOnly+Secure+SameSite=Strict, (3) Origin allow-list enforced on POST/PATCH/DELETE, (4) AES-256-GCM encryption of source-DB credentials at rest, (5) source-DB role is read-only, (6) no credentials in log output, (7) no PII in OTel spans, (8) no stack traces in 5xx responses; all 8 assertions pass.
 
 ### Performance debt
 
-- [ ] **T-191b** [P] [backend] **Replace per-request Redis instantiation with request-scoped pool tied to event loop** — cluster: Polish | deps: — | effort: S
+- [ ] **T-191b** [P] [backend] **Replace per-request Redis instantiation with request-scoped pool tied to event loop** [DEFERRED to final polish] — cluster: Polish | deps: — | effort: S
   **Why:** Currently `SessionMiddleware._get_redis()` creates a fresh `Redis.from_url()` per request because schemathesis's per-example event loops invalidate cached connections. This adds ~1ms/request connection-setup overhead. For KSA Phase 1 traffic (100–1000 users) this is acceptable, but it is genuine perf debt.
   **Done when:** `backend/src/app/core/security.py` uses a `redis.asyncio.ConnectionPool` scoped to the active request's event loop, or uses a per-worker pool with proper loop-attachment handling; existing event-loop safety tests still pass; benchmark shows reduced p99 session-cookie verify latency vs current implementation.
 
-- [ ] **T-191c** [P] [backend] **Reconcile dual default on `accepted_queries.accepted_at`** — cluster: Polish | deps: — | effort: XS
+- [ ] **T-191c** [P] [backend] **Reconcile dual default on `accepted_queries.accepted_at`** [rolled into Wave 5] — cluster: Polish | deps: — | effort: XS
   **Why:** During US-1 we added `default=lambda: datetime.now(UTC)` Python-side to fix a flaky test (PostgreSQL's `now()` returns transaction start time, so multiple inserts in the same db_session got identical timestamps). The original `server_default=text("now()")` was kept as a fallback for raw SQL inserts. Two sources of truth for the same column is fragile and confusing.
   **Done when:** `backend/src/app/db/models/accepted_query.py` uses a single authoritative default for `accepted_at`. Pick one of:
   (a) drop `server_default` and rely on Python-side default since all inserts go through SQLAlchemy ORM, OR
@@ -895,67 +898,77 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ## /speckit.analyze Medium remediation (Wave 4 / Polish)
 
-- [ ] **T-216** [docs] **Migrate i18n source-code references from `error.*` to `query.error.*`** — cluster: Polish | deps: T-024 | | effort: S
+- [ ] **T-216** [docs] **Migrate i18n source-code references from `error.*` to `query.error.*`** [rolled into Wave 5] — cluster: Polish | deps: T-024 | | effort: S
   > Resolves /speckit.analyze H1 source-code part. plan.md namespace consolidated in Chunk 4.1.5; remaining source code may still reference legacy keys.
 
-- [ ] **T-217** [backend] **Define diagnostic log retention, access control, PII handling for FR-020** — cluster: Polish | deps: T-051 | FR-020 | effort: S
+- [ ] **T-217** [backend] **Define diagnostic log retention, access control, PII handling for FR-020** [DEFERRED to final polish] — cluster: Polish | deps: T-051 | FR-020 | effort: S
   > /speckit.analyze M1: specify max retention (e.g., 7 days), access restrictions, PII handling.
 
-- [ ] **T-218** [docs] **SC-001 measurement boundary spec** — cluster: Polish | deps: | SC-001 | effort: XS
+- [ ] **T-218** [docs] **SC-001 measurement boundary spec** [DEFERRED to final polish] — cluster: Polish | deps: | SC-001 | effort: XS
   > /speckit.analyze M2: define exact start/stop timestamps for end-to-end loop time.
 
-- [ ] **T-219** [docs] **Map plan.md p95 backend latency goal to a Success Criterion** — cluster: Polish | deps: | | effort: XS
+- [ ] **T-219** [docs] **Map plan.md p95 backend latency goal to a Success Criterion** [DEFERRED to final polish] — cluster: Polish | deps: | | effort: XS
   > /speckit.analyze M3: orphan metric in plan.md; either add SC or remove.
 
-- [ ] **T-220** [docs] **Map T-101/T-102 (schema token limit) to FR or SC** — cluster: Polish | deps: T-101 | FR-008 | effort: XS
+- [ ] **T-220** [docs] **Map T-101/T-102 (schema token limit) to FR or SC** [DEFERRED to final polish] — cluster: Polish | deps: T-101 | FR-008 | effort: XS
   > /speckit.analyze M4: traceability gap.
 
-- [ ] **T-221** [docs] **Document HistoryListResponse.total field in API contract** — cluster: Polish | deps: T-060 | FR-021 | effort: XS
+- [ ] **T-221** [docs] **Document HistoryListResponse.total field in API contract** [rolled into Wave 5] — cluster: Polish | deps: T-060 | FR-021 | effort: XS
   > /speckit.analyze M5: T-161b introduces total without spec coverage.
 
-- [ ] **T-222** [docs] **Inline glossary or hyperlink for R-007/R-008 references** — cluster: Polish | deps: | | effort: XS
+- [ ] **T-222** [docs] **Inline glossary or hyperlink for R-007/R-008 references** [DEFERRED to final polish] — cluster: Polish | deps: | | effort: XS
   > /speckit.analyze M6: Constitution Check references undefined IDs.
 
-- [ ] **T-223** [docs] **Specify schema-context-overflow threshold + operator error message** — cluster: Polish | deps: | | effort: S
+- [ ] **T-223** [docs] **Specify schema-context-overflow threshold + operator error message** [DEFERRED to final polish] — cluster: Polish | deps: | | effort: S
   > /speckit.analyze M7: edge case lacks threshold; M8 (T-191b/T-191c traceability) folded in here.
 
-- [ ] **T-224** [docs] **Add FR for execution-phase database error handling** — cluster: Polish | deps: T-106 | | effort: S
+- [ ] **T-224** [docs] **Add FR for execution-phase database error handling** [DEFERRED to final polish] — cluster: Polish | deps: T-106 | | effort: S
   > /speckit.analyze A9: spec.md edge case L155 describes DB execution errors for evaluator-passed SQL but no FR mandates the behavior. Add FR-012b (or extend FR-028) covering runtime DB errors with required user-facing message and history entry behavior.
 
-- [ ] **T-225** [docs] **Add FR/SC for "last automatic try" UI indicator** — cluster: Polish | deps: T-138 | | effort: XS
+- [ ] **T-225** [docs] **Add FR/SC for "last automatic try" UI indicator** [DEFERRED to final polish] — cluster: Polish | deps: T-138 | | effort: XS
   > /speckit.analyze A12: spec.md L255 assumption mentions UI cue on the second attempt with no FR/SC backing. Either add an FR mandating the indicator, or remove the assumption.
 
-- [ ] **T-226** [docs] **Reconcile OpenAPI version (plan.md says 3.1, openapi.yaml says 3.0.3)** — cluster: Polish | deps: T-001 | | effort: XS
+- [ ] **T-226** [docs] **Reconcile OpenAPI version (plan.md says 3.1, openapi.yaml says 3.0.3)** [DEFERRED to final polish] — cluster: Polish | deps: T-001 | | effort: XS
   > /speckit.analyze pass-3 A1: align both artifacts. Recommend openapi.yaml → 3.1 to match plan.md (or downgrade plan to 3.0.3 if no 3.1-specific syntax used).
 
-- [ ] **T-227** [docs] **Align EvaluatorResult entity definition (spec.md + data-model.md)** — cluster: Polish | deps: T-088 | FR-010 | effort: XS
+- [ ] **T-227** [docs] **Align EvaluatorResult entity definition (spec.md + data-model.md)** [DEFERRED to final polish] — cluster: Polish | deps: T-088 | FR-010 | effort: XS
   > /speckit.analyze pass-3 A8: spec.md describes "reason(s) for failure" attribute; data-model.md uses "violations" list. Pick one canonical name and update both.
 
-- [ ] **T-228** [docs] **Clarify FR-014 result pagination (client-side via TanStack Table)** — cluster: Polish | deps: T-058 | FR-014 | effort: XS
+- [ ] **T-228** [docs] **Clarify FR-014 result pagination (client-side via TanStack Table)** [DEFERRED to final polish] — cluster: Polish | deps: T-058 | FR-014 | effort: XS
   > /speckit.analyze pass-3 A9: FR-014 mentions paginated table but API returns all rows. Add explicit note that pagination is client-side rendering, not server-side query pagination.
 
-- [ ] **T-229** [docs] **Replace subjective qualifiers in FR-014/FR-016 with measurable criteria** — cluster: Polish | deps: | FR-014,FR-016 | effort: XS
+- [ ] **T-229** [docs] **Replace subjective qualifiers in FR-014/FR-016 with measurable criteria** [DEFERRED to final polish] — cluster: Polish | deps: | FR-014,FR-016 | effort: XS
   > /speckit.analyze pass-3 A12: "brief confirmation message" and "user-friendly message" lack measurable criteria. Replace with specific i18n key names + minimum visibility duration (e.g., 2s).
 
-- [ ] **T-231** [test] **Upgrade T-156/T-157 E2E specs to full-stack (remove Playwright route mocks)** — cluster: Polish | deps: T-210 | FR-010,FR-012,FR-028 | effort: M
+- [ ] **T-231** [test] **Upgrade T-156/T-157 E2E specs to full-stack (remove Playwright route mocks)** [DEFERRED to final polish] — cluster: Polish | deps: T-210 | FR-010,FR-012,FR-028 | effort: M
   > Wave 4 Chunk 4.5 used `page.route()` mocking because backend StubLLM and docker-compose CI infra weren't ready. After T-210 lands AND CI runs the docker stack, remove `frontend/tests/e2e/helpers/mock-backend.ts` mocks and rewrite specs to drive real backend. Increases coverage value: currently FE-only, target full-stack.
 
-- [ ] **T-232** [backend] **Replace hardcoded `llm_provider="ollama"` default in EphemeralAttempt** — cluster: Polish | deps: T-212 | | effort: XS
+- [ ] **T-232** [backend] **Replace hardcoded `llm_provider="ollama"` default in EphemeralAttempt** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
   > Wave 4 Chunk 4.3 introduced `llm_provider: str = "ollama"` as a default in `backend/src/app/core/attempt_store.py:EphemeralAttempt`. Hardcoded provider name is a smell — should default to `""` (set by QueryService at attempt creation from active config) or removed if always overwritten before use. Audit may also catch this.
 
-- [ ] **T-233** [docs] **Re-evaluate Inv 4 byte-equal duplicate detection vs structural-equal** — cluster: Polish | deps: | | effort: S
+- [ ] **T-233** [docs] **Re-evaluate Inv 4 byte-equal duplicate detection vs structural-equal** [DEFERRED to final polish] — cluster: Polish | deps: | | effort: S
   > Gemini audit G-002 (High): byte-equal check rejects only literally-identical SQL. LLMs trivially produce semantically-identical-but-byte-different output (whitespace, case). Either amend constitution Inv 4 to use structural equality (sqlglot parsed-tree compare), or accept brittleness as Phase 1 trade-off and document. Needs constitutional amendment before code change.
 
-- [ ] **T-234** [backend] **accept_query consistency: replace raw redis.get with get_attempt()** — cluster: Polish | deps: T-212 | | effort: XS
+- [ ] **T-234** [backend] **accept_query consistency: replace raw redis.get with get_attempt()** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
   > Opus audit O-007 (Medium): accept_query uses raw redis.get instead of the attempt_store.get_attempt() helper. Functionally correct but inconsistent and harder to reason about ownership.
 
-- [ ] **T-235** [backend] **Block server-metadata info-disclosure functions in UnsafePatternRule** — cluster: Polish | deps: | FR-010f | effort: XS
+- [ ] **T-235** [backend] **Block server-metadata info-disclosure functions in UnsafePatternRule** [rolled into Wave 5] — cluster: Polish | deps: | FR-010f | effort: XS
   > Opus audit O-013 (Low): version(), pg_version_num(), inet_server_addr(), pg_postmaster_start_time() etc. leak server metadata. Add to forbidden catalog as defense-in-depth.
 
-- [ ] **T-236** [backend] **Remove accept_query dead-code field name fallback** — cluster: Polish | deps: T-212 | | effort: XS
+- [ ] **T-236** [backend] **Remove accept_query dead-code field name fallback** [rolled into Wave 5] — cluster: Polish | deps: T-212 | | effort: XS
   > Opus audit O-014 (Low): accept_query has fallback for legacy field names that masks data-model inconsistency. Pick canonical field names, remove fallback.
 
 ---
+
+
+- [ ] **T-237** [P] [backend] [test] **Add server-side filter repository methods (date range, schema, state)** [DEFERRED to Phase 4+] — cluster: Polish | deps: T-047 | FR-022 | effort: M
+  > Server-side filtering deferred per FR-022 Phase 1 assumption (client-side only). Registered to track the gap for later phases.
+
+- [ ] **T-238** [frontend] [docs] **Add missing history i18n keys to `en.json`** [rolled into Wave 5] — cluster: Polish | deps: T-022 | FR-024,SC-009 | effort: XS
+  > Current `en.json` lacks `history.filter.placeholder`, `history.detail.question`, `history.detail.sql`, `history.detail.acceptedAt` required by T-165/T-167.
+
+- [ ] **T-239** [backend] **Populate `HistoryListResponse.total` on first-page requests** [rolled into Wave 5] — cluster: Polish | deps: T-054 | FR-021 | effort: XS
+  > Backend schema already declares `total` but `HistoryService.list_history` never populates it. Required for T-161b contract test.
 
 ## Traceability
 
