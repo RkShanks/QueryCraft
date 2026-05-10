@@ -943,6 +943,18 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 - [ ] **T-232** [backend] **Replace hardcoded `llm_provider="ollama"` default in EphemeralAttempt** — cluster: Polish | deps: T-212 | | effort: XS
   > Wave 4 Chunk 4.3 introduced `llm_provider: str = "ollama"` as a default in `backend/src/app/core/attempt_store.py:EphemeralAttempt`. Hardcoded provider name is a smell — should default to `""` (set by QueryService at attempt creation from active config) or removed if always overwritten before use. Audit may also catch this.
 
+- [ ] **T-233** [docs] **Re-evaluate Inv 4 byte-equal duplicate detection vs structural-equal** — cluster: Polish | deps: | | effort: S
+  > Gemini audit G-002 (High): byte-equal check rejects only literally-identical SQL. LLMs trivially produce semantically-identical-but-byte-different output (whitespace, case). Either amend constitution Inv 4 to use structural equality (sqlglot parsed-tree compare), or accept brittleness as Phase 1 trade-off and document. Needs constitutional amendment before code change.
+
+- [ ] **T-234** [backend] **accept_query consistency: replace raw redis.get with get_attempt()** — cluster: Polish | deps: T-212 | | effort: XS
+  > Opus audit O-007 (Medium): accept_query uses raw redis.get instead of the attempt_store.get_attempt() helper. Functionally correct but inconsistent and harder to reason about ownership.
+
+- [ ] **T-235** [backend] **Block server-metadata info-disclosure functions in UnsafePatternRule** — cluster: Polish | deps: | FR-010f | effort: XS
+  > Opus audit O-013 (Low): version(), pg_version_num(), inet_server_addr(), pg_postmaster_start_time() etc. leak server metadata. Add to forbidden catalog as defense-in-depth.
+
+- [ ] **T-236** [backend] **Remove accept_query dead-code field name fallback** — cluster: Polish | deps: T-212 | | effort: XS
+  > Opus audit O-014 (Low): accept_query has fallback for legacy field names that masks data-model inconsistency. Pick canonical field names, remove fallback.
+
 ---
 
 ## Traceability
