@@ -55,6 +55,7 @@ class TestQueryServiceAccept:
             "llm_provider": "ollama",
             "attempt_number": 1,
             "rejected_sqls": [],
+            "state": "EXECUTED",
         })
         result = await service.accept_query(
             session_id="sess-1",

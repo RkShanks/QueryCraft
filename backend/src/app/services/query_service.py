@@ -185,6 +185,12 @@ class QueryService:
                     detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
                 )
 
+            if attempt.get("state") != "EXECUTED":
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": "attempt_state_invalid", "message_key": "error.attemptStateInvalid"},
+                )
+
             query = await self._repo.create(
                 user_id=uuid.UUID(user_id),
                 database_connection_id=uuid.UUID(database_connection_id),
