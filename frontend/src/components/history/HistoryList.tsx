@@ -92,6 +92,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             {filteredItems.map((item) => (
               <tr
                 key={item.id}
+                data-testid="history-row"
                 className="hover:bg-gray-50 transition-colors cursor-pointer"
                 onClick={() => onSelect?.(item.id)}
               >
