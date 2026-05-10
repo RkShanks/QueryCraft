@@ -28,3 +28,11 @@ async def test_extended_unsafe_catalog(func):
     rule = UnsafePatternRule()
     ok, msg = await rule.evaluate(f"SELECT {func}(1)", None)
     assert not ok
+
+
+@pytest.mark.asyncio
+async def test_unsafe_pattern_add_pattern_extends_catalog():
+    rule = UnsafePatternRule()
+    rule.add_pattern("custom_unsafe_fn")
+    ok, _ = await rule.evaluate("SELECT custom_unsafe_fn(1)", None)
+    assert not ok
