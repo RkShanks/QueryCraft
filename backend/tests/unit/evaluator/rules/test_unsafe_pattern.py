@@ -14,3 +14,17 @@ async def test_quoted_identifier_bypass_blocked(sql):
     ok, msg = await rule.evaluate(sql, None)
     assert not ok
     assert msg is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("func", [
+    "pg_advisory_lock", "pg_advisory_unlock", "pg_advisory_lock_shared",
+    "pg_advisory_xact_lock", "pg_try_advisory_lock", "pg_try_advisory_xact_lock",
+    "set_config", "current_setting",
+    "pg_promote", "pg_switch_wal",
+    "pg_backup_start", "pg_backup_stop",
+])
+async def test_extended_unsafe_catalog(func):
+    rule = UnsafePatternRule()
+    ok, msg = await rule.evaluate(f"SELECT {func}(1)", None)
+    assert not ok
