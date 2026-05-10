@@ -1,5 +1,5 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { listHistory } from '../api/historyApi';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { listHistory, getHistoryItem } from '../api/historyApi';
 
 export interface UseHistoryOptions {
   pageSize?: number;
@@ -27,5 +27,19 @@ export function useHistory(opts: UseHistoryOptions = {}) {
     hasNextPage: query.hasNextPage ?? false,
     fetchNextPage: query.fetchNextPage,
     refetch: query.refetch,
+  };
+}
+
+export function useHistoryDetail(id: string | null) {
+  const query = useQuery({
+    queryKey: ['history', 'detail', id],
+    queryFn: () => getHistoryItem(id!),
+    enabled: !!id,
+  });
+
+  return {
+    item: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error as Error | null,
   };
 }
