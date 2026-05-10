@@ -27,7 +27,10 @@ class HistoryService:
             )
             for q in items
         ]
-        return HistoryListResponse(items=summaries, next_cursor=next_cursor)
+        total = None
+        if cursor is None:
+            total = await self._repo.count_by_user(UUID(user_id))
+        return HistoryListResponse(items=summaries, total=total, next_cursor=next_cursor)
 
     async def get_detail(self, query_id: str, user_id: str) -> AcceptedQueryDetail:
         """Return a single accepted query detail."""

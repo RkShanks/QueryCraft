@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.accepted_query import AcceptedQuery
@@ -66,6 +66,13 @@ class AcceptedQueryRepository:
             next_cursor = items[-1].accepted_at.isoformat()
 
         return items, next_cursor
+
+    async def count_by_user(self, user_id: uuid.UUID) -> int:
+        """Return total number of accepted queries for a user."""
+        result = await self._session.execute(
+            select(func.count()).select_from(AcceptedQuery).where(AcceptedQuery.user_id == user_id)
+        )
+        return result.scalar_one() or 0
 
     async def get_by_id(self, query_id: uuid.UUID, user_id: uuid.UUID) -> AcceptedQuery | None:
         """Fetch a single accepted query by ID and user."""

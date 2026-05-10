@@ -18,6 +18,7 @@ class TestHistoryService:
     def mock_repo(self):
         repo = MagicMock()
         repo.list_by_user = AsyncMock(return_value=([], None))
+        repo.count_by_user = AsyncMock(return_value=0)
         repo.get_by_id = AsyncMock(return_value=None)
         return repo
 
@@ -44,6 +45,7 @@ class TestHistoryService:
         assert len(resp.items) == 1
         assert resp.items[0].id == "550e8400-e29b-41d4-a716-446655440000"
         assert resp.next_cursor is None
+        assert resp.total == 0
 
     @pytest.mark.asyncio
     async def test_get_detail_returns_entry(self, service, mock_repo):
