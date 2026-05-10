@@ -755,18 +755,18 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Frontend: HistoryDetail component
 
-- [ ] **T-166** [P] [test] **HistoryDetail component RTL tests** — cluster: US-4 | deps: T-025,T-163 | FR-023,SC-009 | effort: S
+- [x] **T-166** [P] [test] **HistoryDetail component RTL tests** — cluster: US-4 | deps: T-025,T-163 | FR-023,SC-009 | effort: S
   Done when: `frontend/tests/unit/HistoryDetail.test.tsx` tests: (1) renders full question text, full SQL, and formatted acceptance timestamp, (2) all labels use i18n keys `history.detail.question`, `history.detail.sql`, `history.detail.acceptedAt`, (3) renders 404 message for unknown ID; uses RTL.
 
-- [ ] **T-167** [frontend] **HistoryDetail component** — cluster: US-4 | deps: T-166,T-163,T-022 | FR-023,SC-009 | effort: S
+- [x] **T-167** [frontend] **HistoryDetail component** — cluster: US-4 | deps: T-166,T-163,T-022 | FR-023,SC-009 | effort: S
   Done when: `frontend/src/components/HistoryDetail.tsx` renders the detail view with question, SQL (via `SqlDisplay`), and timestamp; all T-166 tests pass.
 
 ### Frontend: HistoryPage assembly
 
-- [ ] **T-168** [test] **HistoryPage integration tests** — cluster: US-4 | deps: T-025,T-165,T-167 | FR-021,FR-022,FR-023,SC-009 | effort: M
+- [x] **T-168** [test] **HistoryPage integration tests** — cluster: US-4 | deps: T-025,T-165,T-167 | FR-021,FR-022,FR-023,SC-009 | effort: M
   Done when: `frontend/tests/unit/HistoryPage.test.tsx` tests: (1) renders HistoryList on `/history`, (2) clicking an entry navigates to `/history/:id` and shows HistoryDetail, (3) filter narrows displayed entries, (4) empty state shown when no entries, (5) all strings via `t()`; uses MSW + RTL.
 
-- [ ] **T-169** [frontend] **HistoryPage assembly** — cluster: US-4 | deps: T-168,T-165,T-167,T-023 | FR-021,FR-022,FR-023,SC-009 | effort: M
+- [x] **T-169** [frontend] **HistoryPage assembly** — cluster: US-4 | deps: T-168,T-165,T-167,T-023 | FR-021,FR-022,FR-023,SC-009 | effort: M
   Done when: `frontend/src/pages/HistoryPage.tsx` composes HistoryList and HistoryDetail with React Router nested routing for `/history` and `/history/:id`; all T-168 tests pass.
 
 ### Frontend: kind discriminator for reject/regenerate responses
