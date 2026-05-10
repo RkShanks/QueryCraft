@@ -82,11 +82,16 @@ class UnsafePatternRule:
                 if inner_name in {"LISTEN", "NOTIFY", "UNLISTEN"}:
                     return False, f"{inner_name} statement is not allowed"
 
-        # Check for forbidden functions
+        # Check for forbidden functions (handles both plain str and quoted Identifier)
         for func in statement.find_all(exp.Anonymous):
             func_name = getattr(func, "this", None)
-            if isinstance(func_name, str) and func_name.lower() in _FORBIDDEN_FUNCTIONS:
-                return False, f"Forbidden function: {func_name}"
+            name = None
+            if isinstance(func_name, str):
+                name = func_name
+            elif isinstance(func_name, exp.Identifier):
+                name = func_name.this
+            if name and name.lower() in _FORBIDDEN_FUNCTIONS:
+                return False, f"Forbidden function: {name}"
 
         # Check for forbidden system tables
         for table in statement.find_all(exp.Table):
