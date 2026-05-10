@@ -776,13 +776,13 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Playwright e2e — US-4 independent test criterion
 
-- [ ] **T-171** [test] **E2E: history list, reverse-chrono order, filter, detail** — cluster: US-4 | deps: T-028,T-169,T-060 | FR-021,FR-022,FR-023,SC-006,SC-007 | effort: L
+- [x] **T-171** [test] **E2E: history list, reverse-chrono order, filter, detail** — cluster: US-4 | deps: T-028,T-169,T-060 | FR-021,FR-022,FR-023,SC-006,SC-007 | effort: L
   Done when: `frontend/tests/e2e/history.spec.ts` runs against `docker-compose.dev.yml`: (1) accepts three queries, (2) navigates to `/history`, (3) sees three entries in reverse-chronological order, (4) types a filter word and sees only matching entries, (5) clicks an entry and sees full question, SQL, and timestamp; all assertions pass in headless Chromium.
 
-- [ ] **T-172** [test] **E2E: empty history state** — cluster: US-4 | deps: T-028,T-169 | FR-021 | effort: S
+- [x] **T-172** [test] **E2E: empty history state** — cluster: US-4 | deps: T-028,T-169 | FR-021 | effort: S
   Done when: `frontend/tests/e2e/history.spec.ts` extends with scenario: signs in with a fresh session (no accepted queries), navigates to `/history`, sees the empty-state message with `history.empty` text.
 
-- [ ] **T-173** [test] **E2E: rejected queries absent from history** — cluster: US-4 | deps: T-028,T-169,T-115 | FR-020,SC-012 | effort: M
+- [x] **T-173** [test] **E2E: rejected queries absent from history** — cluster: US-4 | deps: T-028,T-169,T-115 | FR-020,SC-012 | effort: M
   Done when: `frontend/tests/e2e/history.spec.ts` extends with scenario: (1) submits and rejects a query, (2) submits and accepts a different query, (3) navigates to `/history`, (4) sees only the accepted query — the rejected question text does not appear anywhere in the list.
 
 ## Cluster: US-5 — Configurable LLM Provider
@@ -972,6 +972,17 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 - [x] **T-239** [backend] **Populate `HistoryListResponse.total` on first-page requests** [rolled into Wave 5] — cluster: Polish | deps: T-054 | FR-021 | effort: XS
   > Backend schema already declares `total` but `HistoryService.list_history` never populates it. Required for T-161b contract test.
+
+### Polish residuals discovered during Wave 5
+
+- [ ] **T-242** [backend] **Add `schema` field to `AcceptedQuerySummary` in OpenAPI schema** — cluster: Polish | deps: | FR-021 | effort: XS
+  > Wave 5 Chunk 5.4 noted: HistoryList renders a `schema` column but generated `AcceptedQuerySummary` type doesn't include `schema`. Add the field to openapi.yaml + ResponseSchema; regenerate types.gen.ts via `gen:api`.
+
+- [ ] **T-243** [test] **Upgrade Wave 5 E2E to full-stack once docker-in-CI lands** — cluster: Polish | deps: T-231 | | effort: M
+  > Current E2E specs (T-171–T-173) use Playwright `page.route()` mocks. Once CI brings up the full docker-compose stack, remove mocks and drive real backend. Extends T-231 scope.
+
+- [ ] **T-244** [docs] **Document co-located test-file convention in style guide** — cluster: Polish | deps: | | effort: XS
+  > Wave 5 Chunk 5.4 consolidated duplicate HistoryList test files into co-located pattern. No other `__tests__/` directories exist in `components/`. Document the convention to prevent regressions.
 
 ## Traceability
 
