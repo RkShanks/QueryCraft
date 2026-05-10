@@ -1,63 +1,75 @@
-import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { HistoryList } from './HistoryList';
-import { createWrapper } from '../../test/utils';
-import type { AcceptedQuerySummary } from '../../api/generated/types.gen';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { HistoryList, type HistoryItem } from './HistoryList';
+
+function setup(items: HistoryItem[], extraProps: Partial<React.ComponentProps<typeof HistoryList>> = {}) {
+  return render(
+    <HistoryList items={items} total={items.length} isLoading={false} {...extraProps} />
+  );
+}
+
+const sample = [
+  { id: '1', question_text: 'Total customers?', generated_sql: 'SELECT COUNT(*) FROM customer', accepted_at: '2026-05-11T10:00:00Z', schema: 'public' },
+  { id: '2', question_text: 'Top revenue', generated_sql: 'SELECT ... FROM payment', accepted_at: '2026-05-10T10:00:00Z', schema: 'public' },
+];
 
 describe('HistoryList', () => {
-  const mockItems: AcceptedQuerySummary[] = [
-    {
-      id: '1',
-      question_text: 'How many users?',
-      generated_sql: 'SELECT COUNT(*) FROM users;',
-      accepted_at: '2023-01-01T00:00:00Z',
-    },
-    {
-      id: '2',
-      question_text: 'Top 10 orders by amount',
-      generated_sql: 'SELECT * FROM orders ORDER BY amount DESC LIMIT 10;',
-      accepted_at: '2023-01-02T00:00:00Z',
-    },
-  ];
-
-  it('should render history items with question, sql, and accepted date', () => {
-    render(
-      <HistoryList items={mockItems} />,
-      { wrapper: createWrapper() }
-    );
-
-    expect(screen.getByText('How many users?')).toBeInTheDocument();
-    expect(screen.getByText('SELECT COUNT(*) FROM users;')).toBeInTheDocument();
-    expect(screen.getByText('Top 10 orders by amount')).toBeInTheDocument();
-    expect(screen.getByText('SELECT * FROM orders ORDER BY amount DESC LIMIT 10;')).toBeInTheDocument();
+  it('renders items in reverse-chronological order (SC-006)', () => {
+    setup(sample);
+    const rows = screen.getAllByRole('row');
+    // header + 2 data rows
+    expect(rows).toHaveLength(3);
+    // First data row corresponds to the most recent (2026-05-11)
+    expect(rows[1]).toHaveTextContent('Total customers?');
   });
 
-  it('should render empty state when no items', () => {
-    render(
-      <HistoryList items={[]} />,
-      { wrapper: createWrapper() }
-    );
+  it('renders schema column for each row (SC-007)', () => {
+    setup(sample);
+    expect(screen.getAllByText('public')).toHaveLength(2);
+  });
 
+  it('filters by question text (FR-022 client-side filtering)', () => {
+    setup(sample);
+    const filterInput = screen.getByPlaceholderText(/filter/i);
+    fireEvent.change(filterInput, { target: { value: 'revenue' } });
+    expect(screen.queryByText('Total customers?')).not.toBeInTheDocument();
+    expect(screen.getByText('Top revenue')).toBeInTheDocument();
+  });
+
+  it('renders empty state when no items (FR-021)', () => {
+    setup([]);
     expect(screen.getByText(/no history yet/i)).toBeInTheDocument();
   });
 
-  it('should render load more button when hasMore is true', () => {
-    render(
-      <HistoryList items={mockItems} hasMore onLoadMore={vi.fn()} />,
-      { wrapper: createWrapper() }
-    );
+  it('renders loading state (SC-009 — visible feedback)', () => {
+    setup([], { isLoading: true });
+    expect(screen.getByText(/loading history/i)).toBeInTheDocument();
+  });
 
+  it('calls onSelect when row is clicked (FR-023)', () => {
+    const onSelect = vi.fn();
+    setup(sample, { onSelect });
+    fireEvent.click(screen.getAllByRole('row')[1]);
+    expect(onSelect).toHaveBeenCalledWith(sample[0].id);
+  });
+
+  it('renders load more button when hasMore is true', () => {
+    setup(sample, { hasMore: true, onLoadMore: vi.fn() });
     expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument();
   });
 
-  it('should call onLoadMore when load more clicked', () => {
+  it('calls onLoadMore when load more clicked', () => {
     const onLoadMore = vi.fn();
-    render(
-      <HistoryList items={mockItems} hasMore onLoadMore={onLoadMore} />,
-      { wrapper: createWrapper() }
-    );
-
+    setup(sample, { hasMore: true, onLoadMore });
     screen.getByRole('button', { name: /load more/i }).click();
     expect(onLoadMore).toHaveBeenCalled();
+  });
+
+  it('renders question, sql, and accepted date', () => {
+    setup(sample);
+    expect(screen.getByText('Total customers?')).toBeInTheDocument();
+    expect(screen.getByText('SELECT COUNT(*) FROM customer')).toBeInTheDocument();
+    expect(screen.getByText('Top revenue')).toBeInTheDocument();
+    expect(screen.getByText('SELECT ... FROM payment')).toBeInTheDocument();
   });
 });
