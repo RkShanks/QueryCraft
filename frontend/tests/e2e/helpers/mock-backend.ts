@@ -206,3 +206,14 @@ export const mockHistoryEmpty = (page: Page) =>
     };
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
+
+/** Intercept GET /history/{id} and return a single detail item. */
+export const mockHistoryDetail = (page: Page, detail: any) =>
+  page.route('**/history/*', async (route: Route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.match(/\/history\/[^/]+$/)) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detail) });
+      return;
+    }
+    await route.fallback();
+  });
