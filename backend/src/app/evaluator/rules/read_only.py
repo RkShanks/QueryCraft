@@ -25,6 +25,9 @@ class ReadOnlyRule:
             if not isinstance(statement, exp.Select):
                 return False, f"Non-SELECT statement: {statement.__class__.__name__}"
 
+            if statement.find(exp.Lock):
+                return False, "SELECT with row-level locking is not allowed"
+
             for cte in statement.find_all(exp.CTE):
                 if not isinstance(cte.this, exp.Select):
                     return False, f"Non-SELECT CTE: {cte.this.__class__.__name__}"
