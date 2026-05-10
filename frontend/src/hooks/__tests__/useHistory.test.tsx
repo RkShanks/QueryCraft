@@ -35,8 +35,8 @@ describe('useHistory', () => {
 
   it('supports pagination via fetchNextPage and exposes hasNextPage', async () => {
     vi.mocked(historyApi.listHistory)
-      .mockResolvedValueOnce({ items: [{ id: '1' }], total: 2, next_cursor: 'c2' })
-      .mockResolvedValueOnce({ items: [{ id: '2' }], total: 2, next_cursor: null });
+      .mockResolvedValueOnce({ items: [{ id: '1', question_text: 'Q1', generated_sql: 'SELECT 1', accepted_at: '2026-05-11T00:00:00Z' }], total: 2, next_cursor: 'c2' })
+      .mockResolvedValueOnce({ items: [{ id: '2', question_text: 'Q2', generated_sql: 'SELECT 2', accepted_at: '2026-05-10T00:00:00Z' }], total: 2, next_cursor: null });
     const { result } = renderHook(() => useHistory(), { wrapper });
     await waitFor(() => expect(result.current.hasNextPage).toBe(true));
     await act(async () => { await result.current.fetchNextPage(); });

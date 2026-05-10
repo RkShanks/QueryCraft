@@ -19,7 +19,7 @@ describe("HistoryPage (FR-021,FR-022,FR-023,SC-009)", () => {
   it("loads history and renders the list", async () => {
     vi.mocked(historyApi.listHistory).mockResolvedValueOnce({
       items: [
-        { id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z", schema: "public" },
+        { id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z" },
       ],
       total: 1,
       next_cursor: null,
@@ -30,12 +30,12 @@ describe("HistoryPage (FR-021,FR-022,FR-023,SC-009)", () => {
 
   it("clicking a list row shows its detail (FR-023)", async () => {
     vi.mocked(historyApi.listHistory).mockResolvedValueOnce({
-      items: [{ id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z", schema: "public" }],
+      items: [{ id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z" }],
       total: 1,
       next_cursor: null,
     });
     vi.mocked(historyApi.getHistoryItem).mockResolvedValueOnce({
-      id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z", schema: "public",
+      id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z", llm_provider: "openai", database_connection_id: "conn-1",
     });
     renderPage();
     await waitFor(() => screen.getByText("Q1"));
@@ -55,8 +55,8 @@ describe("HistoryPage (FR-021,FR-022,FR-023,SC-009)", () => {
   it("filter input narrows the visible rows (FR-022)", async () => {
     vi.mocked(historyApi.listHistory).mockResolvedValueOnce({
       items: [
-        { id: "1", question_text: "Customer count", generated_sql: "SELECT COUNT(*) FROM customer", accepted_at: "2026-05-11T00:00:00Z", schema: "public" },
-        { id: "2", question_text: "Revenue top", generated_sql: "SELECT ... FROM payment", accepted_at: "2026-05-10T00:00:00Z", schema: "public" },
+        { id: "1", question_text: "Customer count", generated_sql: "SELECT COUNT(*) FROM customer", accepted_at: "2026-05-11T00:00:00Z" },
+        { id: "2", question_text: "Revenue top", generated_sql: "SELECT ... FROM payment", accepted_at: "2026-05-10T00:00:00Z" },
       ],
       total: 2,
       next_cursor: null,
