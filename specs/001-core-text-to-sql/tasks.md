@@ -812,21 +812,21 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Frontend lint + audit verification
 
-- [ ] **T-179** [P] [test] **ESLint no-inline-strings: full codebase sweep** — cluster: US-6 | deps: T-019,T-144,T-169 | FR-024,SC-009 | effort: S
+- [x] **T-179** [P] [test] **ESLint no-inline-strings: full codebase sweep** — cluster: US-6 | deps: T-019,T-144,T-169 | FR-024,SC-009 | effort: S
   Done when: `npm run lint` passes with zero violations of the no-inline-string-literals rule across every file in `frontend/src/components/`, `frontend/src/pages/`, and `frontend/src/hooks/`; any new violation added as a regression test in `frontend/tests/lint/no-inline-strings.test.ts` is caught.
 
-- [ ] **T-180** [P] [test] **Stylelint logical-properties: full codebase sweep** — cluster: US-6 | deps: T-020,T-144,T-169 | FR-025,SC-010 | effort: S
+- [x] **T-180** [P] [test] **Stylelint logical-properties: full codebase sweep** — cluster: US-6 | deps: T-020,T-144,T-169 | FR-025,SC-010 | effort: S
   Done when: `npm run lint:css` passes with zero violations across every CSS and TSX file; a grep for `margin-left`, `margin-right`, `padding-left`, `padding-right`, `text-align: left`, `text-align: right` in `frontend/src/` returns zero matches.
 
-- [ ] **T-181** [P] [test] **Tailwind output contains no physical-direction utilities** — cluster: US-6 | deps: T-021 | FR-025,SC-010 | effort: XS
+- [x] **T-181** [P] [test] **Tailwind output contains no physical-direction utilities** — cluster: US-6 | deps: T-021 | FR-025,SC-010 | effort: XS
   Done when: `npm run build` succeeds and a grep of the production CSS bundle for `ml-`, `mr-`, `pl-`, `pr-` class names returns zero matches; only `ms-`, `me-`, `ps-`, `pe-` logical equivalents are present.
 
 ### i18n key completeness
 
-- [ ] **T-182** [P] [test] **en.json key completeness: every t() call has a key, every key is used** — cluster: US-6 | deps: T-022,T-144,T-169 | FR-024,SC-009 | effort: S
+- [x] **T-182** [P] [test] **en.json key completeness: every t() call has a key, every key is used** — cluster: US-6 | deps: T-022,T-144,T-169 | FR-024,SC-009 | effort: S
   Done when: `frontend/scripts/verify-i18n-keys.ts` (or vitest wrapper) loads `en.json`, scans all `t('...')` calls in `frontend/src/`, asserts (1) every referenced key exists in `en.json`, (2) every key in `en.json` is referenced at least once, (3) zero orphaned or missing keys.
 
-- [ ] **T-183** [P] [test] **en.json renders without missing-key placeholders** — cluster: US-6 | deps: T-022,T-144,T-169 | FR-024,SC-009 | effort: S
+- [x] **T-183** [P] [test] **en.json renders without missing-key placeholders** — cluster: US-6 | deps: T-022,T-144,T-169 | FR-024,SC-009 | effort: S
   Done when: `frontend/tests/unit/i18n-render.test.tsx` renders every page component (SignInPage, AskQuestionPage, HistoryPage) in a RTL test environment and asserts zero DOM nodes contain the i18next missing-key fallback pattern (default: the raw key string with no translation wrapper).
 
 ### Backend i18n key consistency
