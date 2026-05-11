@@ -7,6 +7,7 @@ import time
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
 
+from app.core.config import Settings, get_settings
 from app.core.security import verify_password
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import UserProfile
@@ -15,9 +16,15 @@ from app.schemas.auth import UserProfile
 class AuthService:
     """Handles authentication and session lifecycle."""
 
-    def __init__(self, user_repository: UserRepository, redis: Redis):
+    def __init__(
+        self,
+        user_repository: UserRepository,
+        redis: Redis,
+        settings: Settings | None = None,
+    ):
         self._repo = user_repository
         self._redis = redis
+        self._settings = settings or get_settings()
 
     async def sign_in(self, username: str, password: str) -> tuple[UserProfile, str]:
         """Authenticate user and create a Redis-backed session."""
@@ -37,10 +44,11 @@ class AuthService:
             "created_at": time.time(),
             "last_activity": time.time(),
         }
+        ttl_seconds = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
         await self._redis.set(
             f"session:{session_id}",
             json.dumps(session_data),
-            ex=8 * 3600,
+            ex=ttl_seconds,
         )
 
         profile = UserProfile(
