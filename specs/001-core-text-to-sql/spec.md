@@ -178,6 +178,7 @@ As the team building the Arabic/RTL phase in a later release, when I inspect the
   - (d) references table names not present in the connected PostgreSQL schema,
   - (e) references column names not present in the referenced tables,
   - (f) Reject SQL containing platform-defined unsafe patterns. The initial unsafe-pattern catalog (extensible via `UnsafePatternRule.add_pattern()`):
+  - (g) is `null`, empty, or whitespace-only (treated as an evaluator rejection with violation `empty_sql` and does not execute).
     - `pg_sleep`, `pg_advisory_lock`, `pg_advisory_unlock` — long-blocking calls
     - `pg_read_file`, `pg_read_binary_file`, `pg_ls_dir`, `pg_stat_file` — filesystem access
     - `pg_terminate_backend`, `pg_cancel_backend`, `pg_reload_conf` — server control
@@ -239,6 +240,7 @@ The catalog is enforced by `app/evaluator/rules/unsafe_pattern.py::UnsafePattern
 - **SC-010**: 0 instances of hardcoded directional CSS properties exist in user-facing components — all directional styling uses logical equivalents.
 - **SC-011**: Query execution that exceeds the configured timeout is cancelled and the user sees a timeout message within 5 seconds of the timeout threshold.
 - **SC-012**: No rejected, regenerated-and-discarded, or evaluator-rejected SQL is present in durable storage after a session that includes both accepted and rejected queries.
+- **SC-013**: The evaluator correctly rejects `null`, empty, or whitespace-only SQL from the LLM with a 100% detection rate; no database execution is attempted.
 
 ## Assumptions
 

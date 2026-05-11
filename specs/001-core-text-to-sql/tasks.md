@@ -924,6 +924,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 - [ ] **T-224** [docs] **Add FR for execution-phase database error handling** [DEFERRED to final polish] — cluster: Polish | deps: T-106 | | effort: S
   > /speckit.analyze A9: spec.md edge case L155 describes DB execution errors for evaluator-passed SQL but no FR mandates the behavior. Add FR-012b (or extend FR-028) covering runtime DB errors with required user-facing message and history entry behavior.
+  > **Note:** null/empty SQL from LLM is now covered by T-252 (SC-013 added to spec.md).
 
 - [ ] **T-225** [docs] **Add FR/SC for "last automatic try" UI indicator** [DEFERRED to final polish] — cluster: Polish | deps: T-138 | | effort: XS
   > /speckit.analyze A12: spec.md L255 assumption mentions UI cue on the second attempt with no FR/SC backing. Either add an FR mandating the indicator, or remove the assumption.
