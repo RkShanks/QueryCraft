@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.exceptions import InvalidCursorError
 from app.services.history_service import HistoryService
 
 
@@ -71,3 +72,11 @@ class TestHistoryService:
         with pytest.raises(Exception) as exc_info:
             await service.get_detail("550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001")
         assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_list_history_invalid_cursor_raises_400(self, service, mock_repo):
+        """F-9 O-004: invalid cursor propagated as 400."""
+        mock_repo.list_by_user.side_effect = InvalidCursorError()
+        with pytest.raises(Exception) as exc_info:
+            await service.list_history("550e8400-e29b-41d4-a716-446655440001", cursor="bad-cursor", limit=10)
+        assert exc_info.value.status_code == 400

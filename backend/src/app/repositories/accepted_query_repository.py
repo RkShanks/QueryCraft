@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import InvalidCursorError
 from app.db.models.accepted_query import AcceptedQuery
 
 
@@ -55,7 +56,7 @@ class AcceptedQueryRepository:
                 cursor_dt = datetime.fromisoformat(cursor)
                 stmt = stmt.where(AcceptedQuery.accepted_at < cursor_dt)
             except ValueError:
-                pass
+                raise InvalidCursorError()
 
         result = await self._session.execute(stmt)
         items = list(result.scalars().all())

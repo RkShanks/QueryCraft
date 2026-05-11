@@ -150,6 +150,13 @@ class SessionBusy(SessionError):
         super().__init__("A question is already being processed", message_key="error.concurrent")
 
 
+class InvalidCursorError(QueryCraftError):
+    """Raised when a pagination cursor cannot be parsed."""
+
+    def __init__(self) -> None:
+        super().__init__("Invalid cursor", message_key="error.invalidCursor")
+
+
 # ─── Schema ───
 
 class SchemaError(QueryCraftError):

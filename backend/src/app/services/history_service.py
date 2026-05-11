@@ -2,6 +2,7 @@
 
 from fastapi import HTTPException, status
 
+from app.core.exceptions import InvalidCursorError
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.history import AcceptedQueryDetail, HistoryListResponse
 from app.schemas.query import AcceptedQuerySummary
@@ -17,7 +18,13 @@ class HistoryService:
         """Return paginated accepted queries."""
         from uuid import UUID
 
-        items, next_cursor = await self._repo.list_by_user(UUID(user_id), cursor=cursor, limit=limit)
+        try:
+            items, next_cursor = await self._repo.list_by_user(UUID(user_id), cursor=cursor, limit=limit)
+        except InvalidCursorError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": "invalid_cursor", "message_key": "error.invalidCursor"},
+            )
         summaries = [
             AcceptedQuerySummary(
                 id=str(q.id),
