@@ -66,45 +66,84 @@ test.describe('T-185: no missing-key placeholders', () => {
 });
 
 test.describe('T-186: no physical-direction CSS regression', () => {
-  test('switching to RTL does not crash or error on /sign-in', async ({ page }) => {
-    const errors: string[] = [];
-    page.on('pageerror', (err) => errors.push(err.message));
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') errors.push(msg.text());
-    });
-
+  test('RTL mirrors layout on /sign-in', async ({ page }) => {
     await page.goto('/sign-in');
     await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
 
-    // Switch to RTL
+    const getStyles = () =>
+      page.evaluate(() => {
+        const heading = document.querySelector('h1');
+        const input = document.querySelector('input');
+        const btn = document.querySelector('button');
+        const targets = [heading, input, btn].filter(Boolean) as HTMLElement[];
+        return targets.map((el) => ({
+          tag: el.tagName,
+          textAlign: getComputedStyle(el).textAlign,
+          marginLeft: getComputedStyle(el).marginLeft,
+          marginRight: getComputedStyle(el).marginRight,
+        }));
+      });
+
+    const ltrStyles = await getStyles();
     await page.evaluate(() => { document.documentElement.dir = 'rtl'; });
-    await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
+    const rtlStyles = await getStyles();
 
-    // Switch back to LTR
+    // At least one element should have text-align flip to 'right' in RTL
+    const hasFlippedTextAlign = rtlStyles.some(
+      (s) => s.textAlign === 'right' || s.textAlign === 'end'
+    );
+    expect(hasFlippedTextAlign).toBe(true);
+
+    // Zero elements should have non-zero margin-left paired with zero margin-right
+    // (this would indicate physical-direction CSS instead of logical properties)
+    const physicalDirectionLeak = rtlStyles.some((s) => {
+      const ml = parseFloat(s.marginLeft);
+      const mr = parseFloat(s.marginRight);
+      return ml > 0 && mr === 0;
+    });
+    expect(physicalDirectionLeak).toBe(false);
+
     await page.evaluate(() => { document.documentElement.dir = 'ltr'; });
-    await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
-
-    expect(errors).toHaveLength(0);
   });
 
-  test('switching to RTL does not crash or error on /history', async ({ page }) => {
-    const errors: string[] = [];
-    page.on('pageerror', (err) => errors.push(err.message));
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') errors.push(msg.text());
-    });
-
+  test('RTL mirrors layout on /history', async ({ page }) => {
     await signIn(page);
     await page.goto('/history');
     await expect(page.getByRole('heading', { name: /history/i })).toBeVisible();
 
+    const getStyles = () =>
+      page.evaluate(() => {
+        const heading = document.querySelector('h1');
+        const filterInput = document.querySelector('input[type="text"]');
+        const items = Array.from(document.querySelectorAll('li, tr'));
+        const targets = [heading, filterInput, ...items.slice(0, 3)].filter(
+          Boolean
+        ) as HTMLElement[];
+        return targets.map((el) => ({
+          tag: el.tagName,
+          textAlign: getComputedStyle(el).textAlign,
+          marginLeft: getComputedStyle(el).marginLeft,
+          marginRight: getComputedStyle(el).marginRight,
+        }));
+      });
+
+    const ltrStyles = await getStyles();
     await page.evaluate(() => { document.documentElement.dir = 'rtl'; });
-    await expect(page.getByRole('heading', { name: /history/i })).toBeVisible();
+    const rtlStyles = await getStyles();
+
+    const hasFlippedTextAlign = rtlStyles.some(
+      (s) => s.textAlign === 'right' || s.textAlign === 'end'
+    );
+    expect(hasFlippedTextAlign).toBe(true);
+
+    const physicalDirectionLeak = rtlStyles.some((s) => {
+      const ml = parseFloat(s.marginLeft);
+      const mr = parseFloat(s.marginRight);
+      return ml > 0 && mr === 0;
+    });
+    expect(physicalDirectionLeak).toBe(false);
 
     await page.evaluate(() => { document.documentElement.dir = 'ltr'; });
-    await expect(page.getByRole('heading', { name: /history/i })).toBeVisible();
-
-    expect(errors).toHaveLength(0);
   });
 });
 
