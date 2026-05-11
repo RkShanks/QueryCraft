@@ -9,8 +9,8 @@ function setup(items: HistoryItem[], extraProps: Partial<React.ComponentProps<ty
 }
 
 const sample = [
-  { id: '1', question_text: 'Total customers?', generated_sql: 'SELECT COUNT(*) FROM customer', accepted_at: '2026-05-11T10:00:00Z', schema: 'public' },
-  { id: '2', question_text: 'Top revenue', generated_sql: 'SELECT ... FROM payment', accepted_at: '2026-05-10T10:00:00Z', schema: 'public' },
+  { id: '1', question_text: 'Total customers?', generated_sql: 'SELECT COUNT(*) FROM customer', accepted_at: '2026-05-11T10:00:00Z' },
+  { id: '2', question_text: 'Top revenue', generated_sql: 'SELECT ... FROM payment', accepted_at: '2026-05-10T10:00:00Z' },
 ];
 
 describe('HistoryList', () => {
@@ -22,17 +22,17 @@ describe('HistoryList', () => {
     expect(rows[0]).toHaveTextContent('Total customers?');
   });
 
-  it('renders schema column for each row (SC-007)', () => {
-    setup(sample);
-    expect(screen.getAllByText('public')).toHaveLength(2);
-  });
-
   it('filters by question text (FR-022 client-side filtering)', () => {
     setup(sample);
     const filterInput = screen.getByPlaceholderText(/filter/i);
     fireEvent.change(filterInput, { target: { value: 'revenue' } });
     expect(screen.queryByText('Total customers?')).not.toBeInTheDocument();
     expect(screen.getByText('Top revenue')).toBeInTheDocument();
+  });
+
+  it('does not render phantom schema column (G-007/O-009)', () => {
+    setup(sample);
+    expect(screen.queryByText('Schema')).not.toBeInTheDocument();
   });
 
   it('renders empty state when no items (FR-021)', () => {

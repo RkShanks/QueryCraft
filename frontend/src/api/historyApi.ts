@@ -4,7 +4,6 @@ import type { HistoryListResponse } from './generated/types.gen';
 export interface ListHistoryParams {
   cursor?: string;
   page_size?: number;
-  schema?: string;
 }
 
 export async function listHistory(params: ListHistoryParams = {}): Promise<HistoryListResponse> {

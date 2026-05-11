@@ -1,10 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import type { AcceptedQuerySummary } from '../../api/generated/types.gen';
-
-export type HistoryItem = AcceptedQuerySummary & { schema?: string };
+import type { AcceptedQueryDetail } from '../../api/generated/types.gen';
 
 export interface HistoryDetailProps {
-  item: HistoryItem | null;
+  item: AcceptedQueryDetail | null;
   isLoading?: boolean;
   error?: Error | null;
 }
@@ -52,8 +50,8 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
       </section>
       <section className="flex gap-6 text-sm text-gray-600">
         <div>
-          <span className="font-medium">{t('history.detail.schema', { defaultValue: 'Schema' })}:</span>{' '}
-          {item.schema ?? '—'}
+          <span className="font-medium">{t('history.detail.llmProvider', { defaultValue: 'LLM Provider' })}:</span>{' '}
+          {item.llm_provider ?? '—'}
         </div>
         <div>
           <span className="font-medium">{t('history.detail.acceptedAt', { defaultValue: 'Accepted at' })}:</span>{' '}
