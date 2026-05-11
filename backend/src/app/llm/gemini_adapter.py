@@ -38,6 +38,10 @@ class GeminiAdapter:
         data = response.json()
         return data["candidates"][0]["content"]["parts"][0]["text"]
 
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client."""
+        await self._client.aclose()
+
     async def generate_sql(
         self,
         question: str,

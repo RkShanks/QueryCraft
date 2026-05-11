@@ -38,6 +38,10 @@ class OpenAIAdapter:
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client."""
+        await self._client.aclose()
+
     async def generate_sql(
         self,
         question: str,
