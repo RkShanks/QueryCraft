@@ -57,6 +57,7 @@ async def _get_query_service(
         ),
         source_db_executor=_source_db_executor,
         llm_provider=settings.LLM_PROVIDER,
+        schema_context=schema_context,
     )
 
 
