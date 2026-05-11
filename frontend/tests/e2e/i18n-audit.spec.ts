@@ -84,7 +84,7 @@ test.describe('T-186: no physical-direction CSS regression', () => {
         }));
       });
 
-    const ltrStyles = await getStyles();
+    await getStyles();
     await page.evaluate(() => { document.documentElement.dir = 'rtl'; });
     const rtlStyles = await getStyles();
 
@@ -127,7 +127,7 @@ test.describe('T-186: no physical-direction CSS regression', () => {
         }));
       });
 
-    const ltrStyles = await getStyles();
+    await getStyles();
     await page.evaluate(() => { document.documentElement.dir = 'rtl'; });
     const rtlStyles = await getStyles();
 
@@ -163,8 +163,8 @@ test.describe('F-004 regression: 2-segment key leak detection', () => {
     let leaked = false;
     try {
       await assertNoMissingKeys(page, '/sign-in');
-    } catch (e: any) {
-      if (e.message.includes('error.unauthorized')) {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message.includes('error.unauthorized')) {
         leaked = true;
       }
     }
