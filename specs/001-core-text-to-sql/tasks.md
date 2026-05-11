@@ -804,7 +804,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Playwright e2e — US-5 independent test criterion
 
-- [ ] **T-178** [test] **E2E: deploy with provider A → accept queries → switch to provider B → old history + new query** — cluster: US-5 | deps: T-028,T-169,T-086 | FR-009,FR-026,SC-008 | effort: L
+- [x] **T-178** [test] **E2E: deploy with provider A → accept queries → switch to provider B → old history + new query** — cluster: US-5 | deps: T-028,T-169,T-086 | FR-009,FR-026,SC-008 | effort: L
   Done when: `frontend/tests/e2e/provider-switch.spec.ts` runs against `docker-compose.dev.yml`: (1) deploys with `LLM_PROVIDER=ollama`, (2) submits and accepts a query, (3) restarts backend with `LLM_PROVIDER=openai` (via env override), (4) navigates to `/history` and sees the previously accepted query, (5) submits a new question and sees a result; all assertions pass in headless Chromium.
 
 ## Cluster: US-6 — i18n and RTL-Ready Foundation
@@ -836,10 +836,10 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Playwright e2e — US-6 independent test criterion
 
-- [ ] **T-185** [test] **E2E: no missing-key placeholders across all pages** — cluster: US-6 | deps: T-028,T-144,T-169 | FR-024,SC-009 | effort: M
+- [x] **T-185** [test] **E2E: no missing-key placeholders across all pages** — cluster: US-6 | deps: T-028,T-144,T-169 | FR-024,SC-009 | effort: M
   Done when: `frontend/tests/e2e/i18n-audit.spec.ts` runs against `docker-compose.dev.yml`: navigates to `/sign-in`, `/` (after sign-in), `/history`, and asserts zero DOM elements contain raw i18n key strings (pattern: `key.with.dots` not wrapped in translation); all assertions pass in headless Chromium.
 
-- [ ] **T-186** [test] **E2E: no physical-direction CSS in rendered pages** — cluster: US-6 | deps: T-028,T-144,T-169 | FR-025,SC-010 | effort: S
+- [x] **T-186** [test] **E2E: no physical-direction CSS in rendered pages** — cluster: US-6 | deps: T-028,T-144,T-169 | FR-025,SC-010 | effort: S
   Done when: `frontend/tests/e2e/i18n-audit.spec.ts` extends with scenario: for each page, inspects computed styles of all elements and asserts zero `margin-left`, `margin-right`, `padding-left`, `padding-right` declarations originating from project stylesheets (excludes browser defaults and third-party resets).
 
 ## Cluster: Polish
@@ -988,16 +988,16 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 - [ ] **T-245** [docs] **Translate 11 Arabic history i18n keys (currently English placeholders)** — cluster: Polish (Phase 5) | deps: | constitution §11 | effort: S
   > Wave 5 Opus audit O-007 noted: 11 of 16 ar.json history keys are English copies. Per constitution §11 Phase 1 placeholder policy. Fix in Phase 5 i18n pass.
 
-- [ ] **T-246** [test] **Tighten E2E mock route ordering — mockHistoryList should not intercept /history/{id} detail requests** — cluster: Polish | deps: | | effort: XS
+- [x] **T-246** [test] **Tighten E2E mock route ordering — mockHistoryList should not intercept /history/{id} detail requests** — cluster: Polish | deps: | | effort: XS
   > Wave 5 Opus audit O-008. Both mocks coexist today and tests pass, but route ordering is fragile. Fix the mockHistoryList URL pattern to match exact `/history` only.
 
-- [ ] **T-247** [frontend] **Add debounce to HistoryList filter input (SC-007 — within 1 second of user stopping typing)** — cluster: Polish | deps: | SC-007 | effort: XS
+- [x] **T-247** [frontend] **Add debounce to HistoryList filter input (SC-007 — within 1 second of user stopping typing)** — cluster: Polish | deps: | SC-007 | effort: XS
   > Wave 5 Opus audit O-010. SC-007 implies debounced filter; current implementation filters on every keystroke. Add 300ms debounce.
 
 - [ ] **T-248** [backend] **Defer or eliminate COUNT(*) on first-page history requests** — cluster: Polish | deps: | SC-006 | effort: S
   > Wave 5 Gemini G-008 + Opus O-012 (overlap). COUNT(*) runs on every first-page load. For Phase 1 dataset sizes this is fine, but for larger users it will be slow. Consider limit+1 fetch pattern or making total optional.
 
-- [ ] **T-249** [frontend] **Display `llm_provider` and `database_connection_id` in HistoryDetail** — cluster: Polish | deps: | FR-023 | effort: XS
+- [x] **T-249** [frontend] **Display `llm_provider` and `database_connection_id` in HistoryDetail** — cluster: Polish | deps: | FR-023 | effort: XS
   > Wave 5 Opus O-014. API returns AcceptedQueryDetail with these fields; UI doesn't render them. UX enhancement, not bug.
 
 ## Traceability
