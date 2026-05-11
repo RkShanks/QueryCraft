@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import en from '../../src/locales/en.json';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
@@ -12,19 +13,39 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/(ask)?\/?$/);
 }
 
-/**
- * Pattern that matches raw i18n keys like "history.column.timestamp"
- * — at least two dot-separated segments after the first segment.
- */
-const MISSING_KEY_PATTERN = /(?<![a-zA-Z0-9])[a-z][a-zA-Z0-9_]+(?:\.[a-z][a-zA-Z0-9_]+){2,}(?![a-zA-Z0-9])/g;
+function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
+  return Object.entries(obj).flatMap(([k, v]) => {
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      return flattenKeys(v as Record<string, unknown>, key);
+    }
+    return [key];
+  });
+}
 
+const allKeys = flattenKeys(en);
+const keySet = new Set(allKeys);
+
+/**
+ * Scan page text for tokens that match an i18n key exactly.
+ * A "leak" is a DOM text node that contains a raw key string
+ * (e.g. "error.unauthorized") instead of its translated value.
+ */
 async function assertNoMissingKeys(page: Page, url: string) {
   await page.goto(url);
   await page.waitForLoadState('networkidle');
   const bodyText = await page.locator('body').textContent() ?? '';
-  const matches = bodyText.match(MISSING_KEY_PATTERN);
-  if (matches && matches.length > 0) {
-    throw new Error(`Missing i18n key: ${matches[0]}`);
+  const tokens = bodyText.split(/[\s\p{P}]+/u);
+  const leaks: string[] = [];
+  for (const token of tokens) {
+    const trimmed = token.trim();
+    if (!trimmed) continue;
+    if (/^[a-z][a-zA-Z0-9_]*(?:\.[a-z][a-zA-Z0-9_]*)+$/.test(trimmed) && keySet.has(trimmed)) {
+      leaks.push(trimmed);
+    }
+  }
+  if (leaks.length > 0) {
+    throw new Error(`Missing i18n key leaks: ${leaks.join(', ')}`);
   }
 }
 
@@ -84,5 +105,37 @@ test.describe('T-186: no physical-direction CSS regression', () => {
     await expect(page.getByRole('heading', { name: /history/i })).toBeVisible();
 
     expect(errors).toHaveLength(0);
+  });
+});
+
+test.describe('F-004 regression: 2-segment key leak detection', () => {
+  test('injected 2-segment raw key is flagged by audit', async ({ page }) => {
+    await page.goto('/sign-in');
+    await page.waitForLoadState('networkidle');
+
+    // Inject a known 2-segment key that exists in en.json
+    await page.evaluate(() => {
+      const div = document.createElement('div');
+      div.id = 'leak-injection';
+      div.textContent = 'error.unauthorized';
+      document.body.appendChild(div);
+    });
+
+    let leaked = false;
+    try {
+      await assertNoMissingKeys(page, '/sign-in');
+    } catch (e: any) {
+      if (e.message.includes('error.unauthorized')) {
+        leaked = true;
+      }
+    }
+    expect(leaked).toBe(true);
+
+    // Clean up injection and verify audit passes
+    await page.evaluate(() => {
+      const div = document.getElementById('leak-injection');
+      if (div) div.remove();
+    });
+    await assertNoMissingKeys(page, '/sign-in');
   });
 });
