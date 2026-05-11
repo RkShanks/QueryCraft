@@ -203,7 +203,7 @@ export const AskQuestionPage: React.FC = () => {
       {alert && (
         <div
           role="alert"
-          className={`fixed top-4 inset-x-4 md:inset-x-auto md:right-4 md:w-96 z-50 p-4 rounded-md shadow-lg flex items-start gap-3 ${alertStyles[alert.variant]}`}
+          className={`fixed top-4 inset-x-4 md:inset-x-auto md:end-4 md:w-96 z-50 p-4 rounded-md shadow-lg flex items-start gap-3 ${alertStyles[alert.variant]}`}
         >
           {alert.variant === 'success' && <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />}
           {alert.variant === 'destructive' && <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />}
