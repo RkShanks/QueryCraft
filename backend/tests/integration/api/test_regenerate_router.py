@@ -105,20 +105,20 @@ class TestRegenerateRouter:
         assert regen2_data["should_refine"] is True
 
     @pytest.mark.asyncio
-    async def test_regenerate_attempt_not_found(self, authenticated_client):
-        """Regenerate with non-existent attempt_id returns 400."""
+    async def test_regenerate_attempt_not_active(self, authenticated_client):
+        """G-004: Regenerate with non-active attempt_id returns 422."""
         response = await authenticated_client.post(
             "/api/v1/query/regenerate",
             json={"attempt_id": "550e8400-e29b-41d4-a716-446655440000"},
             headers={"origin": "http://test"},
         )
-        assert response.status_code == 400
+        assert response.status_code == 422
         data = response.json()
         assert data["message_key"] == "error.attemptInvalid"
 
     @pytest.mark.asyncio
-    async def test_regenerate_concurrent_session_busy(self, authenticated_client, redis_client):
-        """Regenerate while processing lock is held returns 409."""
+    async def test_regenerate_succeeds_while_lock_held(self, authenticated_client, redis_client):
+        """G-001: Regenerate while processing lock is held succeeds."""
         # Submit first
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
@@ -128,27 +128,7 @@ class TestRegenerateRouter:
         assert submit_resp.status_code == 200
         attempt_id = submit_resp.json()["attempt_id"]
 
-        # Get session_id from cookie
-        session_id = authenticated_client.cookies.get("session_id")
-        assert session_id
-
-        # Manually acquire the processing lock
-        lock_key = f"processing_lock:{session_id}"
-        await redis_client.set(lock_key, "1", nx=True, ex=60)
-
-        try:
-            regenerate_resp = await authenticated_client.post(
-                "/api/v1/query/regenerate",
-                json={"attempt_id": attempt_id},
-                headers={"origin": "http://test"},
-            )
-            assert regenerate_resp.status_code == 409
-            data = regenerate_resp.json()
-            assert data["message_key"] == "error.concurrent"
-        finally:
-            await redis_client.delete(lock_key)
-
-        # After releasing the lock, regenerate should succeed
+        # Regenerate should succeed because lock is held by submit and active_attempt matches
         with patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_gen:
             mock_gen.return_value = "SELECT 2 AS id"
             regenerate_resp = await authenticated_client.post(

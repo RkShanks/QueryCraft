@@ -40,9 +40,9 @@ class QueryService:
         self._executor = source_db_executor
         self._llm_provider = llm_provider
 
-    async def _acquire_lock(self, session_id: str) -> bool:
+    async def _acquire_lock(self, session_id: str, ttl: int = 60) -> bool:
         """Try to acquire a per-session processing lock."""
-        return await acquire_lock(session_id, self._redis)
+        return await acquire_lock(session_id, self._redis, ttl=ttl)
 
     async def _release_lock(self, session_id: str) -> None:
         """Release the per-session processing lock."""
@@ -55,7 +55,7 @@ class QueryService:
         question: str,
     ) -> QueryResult | EvaluatorRejection:
         """Submit a question: LLM -> evaluate -> execute -> result."""
-        if not await self._acquire_lock(session_id):
+        if not await self._acquire_lock(session_id, ttl=300):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"error": "concurrent", "message_key": "error.concurrent"},
@@ -71,90 +71,90 @@ class QueryService:
             llm_provider=self._llm_provider,
         )
 
+        await store_attempt(attempt, session_id, self._redis)
+
+        # 1. LLM generation
         try:
-            await store_attempt(attempt, session_id, self._redis)
+            sql = await self._llm.generate_sql(question, "")
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
+            ) from exc
 
-            # 1. LLM generation
-            try:
-                sql = await self._llm.generate_sql(question, "")
-            except Exception as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
-                ) from exc
+        attempt.sql = sql
+        attempt.state = "GENERATED"
+        await store_attempt(attempt, session_id, self._redis)
 
-            attempt.sql = sql
-            attempt.state = "GENERATED"
-            await store_attempt(attempt, session_id, self._redis)
-
-            # 2. Evaluator gate
-            eval_result = await self._evaluator.evaluate(sql, None)
-            if not eval_result.passed:
-                attempt.state = "REJECTED"
-                attempt.evaluator_result = {
-                    "passed": False,
-                    "violations": [
-                        {"rule": v.rule_name, "message_key": v.message_key}
-                        for v in eval_result.violations
-                    ],
-                }
-                await store_attempt(attempt, session_id, self._redis)
-                violations = [
-                    Violation(rule=v.rule_name, message_key=v.message_key)
+        # 2. Evaluator gate
+        eval_result = await self._evaluator.evaluate(sql, None)
+        if not eval_result.passed:
+            attempt.state = "REJECTED"
+            attempt.evaluator_result = {
+                "passed": False,
+                "violations": [
+                    {"rule": v.rule_name, "message_key": v.message_key}
                     for v in eval_result.violations
-                ]
-                return EvaluatorRejection(
-                    message_key="query.evaluator.rejected",
-                    violations=violations,
-                )
-
-            attempt.state = "EVALUATED"
-            await store_attempt(attempt, session_id, self._redis)
-
-            # 3. Execute against source DB
-            try:
-                columns, rows = await asyncio.wait_for(
-                    self._executor.execute(sql),
-                    timeout=30,
-                )
-            except (TimeoutError, SourceDBTimeout) as exc:
-                attempt.state = "TIMEOUT"
-                await store_attempt(attempt, session_id, self._redis)
-                raise HTTPException(
-                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                    detail={"error": "timeout", "message_key": "error.timeout"},
-                ) from exc
-
-            attempt.state = "EXECUTED"
-            attempt.executor_result = {
-                "columns": columns,
-                "rows": rows,
-                "row_count": len(rows),
+                ],
             }
             await store_attempt(attempt, session_id, self._redis)
-
-            # 4. Build result
-            column_metas = []
-            for c in columns:
-                if isinstance(c, dict):
-                    column_metas.append(ColumnMeta(name=c["name"], type=c["type"]))
-                else:
-                    column_metas.append(ColumnMeta(name=c, type="text"))
-            result = QueryResult(
-                kind="result",
-                attempt_id=attempt_id,
-                question=question,
-                generated_sql=sql,
-                columns=column_metas,
-                rows=rows,
-                row_count=len(rows),
-                attempt_number=1,
-                is_last_auto_retry=False,
+            violations = [
+                Violation(rule=v.rule_name, message_key=v.message_key)
+                for v in eval_result.violations
+            ]
+            return EvaluatorRejection(
+                message_key="query.evaluator.rejected",
+                violations=violations,
             )
 
-            return result
-        finally:
-            await self._release_lock(session_id)
+        attempt.state = "EVALUATED"
+        await store_attempt(attempt, session_id, self._redis)
+
+        # 3. Execute against source DB
+        try:
+            columns, rows = await asyncio.wait_for(
+                self._executor.execute(sql),
+                timeout=30,
+            )
+        except (TimeoutError, SourceDBTimeout) as exc:
+            attempt.state = "TIMEOUT"
+            await store_attempt(attempt, session_id, self._redis)
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail={"error": "timeout", "message_key": "error.timeout"},
+            ) from exc
+
+        attempt.state = "EXECUTED"
+        attempt.executor_result = {
+            "columns": columns,
+            "rows": rows,
+            "row_count": len(rows),
+        }
+        await store_attempt(attempt, session_id, self._redis)
+
+        # 4. Build result
+        column_metas = []
+        for c in columns:
+            if isinstance(c, dict):
+                column_metas.append(ColumnMeta(name=c["name"], type=c["type"]))
+            else:
+                column_metas.append(ColumnMeta(name=c, type="text"))
+        result = QueryResult(
+            kind="result",
+            attempt_id=attempt_id,
+            question=question,
+            generated_sql=sql,
+            columns=column_metas,
+            rows=rows,
+            row_count=len(rows),
+            attempt_number=1,
+            is_last_auto_retry=False,
+        )
+
+        # Track active attempt for session (G-001+G-004)
+        await self._redis.set(f"active_attempt:{session_id}", attempt_id)
+
+        return result
 
     async def accept_query(
         self,
@@ -173,6 +173,14 @@ class QueryService:
             )
 
         try:
+            # G-004: verify this is the current active attempt for the session
+            active_attempt_id = await self._redis.get(f"active_attempt:{session_id}")
+            if active_attempt_id != attempt_id:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": "attempt_not_active", "message_key": "error.attemptInvalid"},
+                )
+
             try:
                 attempt_obj = await get_attempt(attempt_id, session_id, self._redis)
             except AttemptNotFound:
@@ -204,6 +212,8 @@ class QueryService:
             )
 
             await delete_attempt(attempt_id, self._redis)
+            await self._redis.delete(f"active_attempt:{session_id}")
+            await self._release_lock(session_id)
 
             return AcceptedQuerySummary(
                 id=str(query.id),
@@ -259,8 +269,13 @@ class QueryService:
             AttemptNotFound: if the attempt does not exist.
             AttemptOwnershipViolation: if session_id doesn't match.
         """
-        if not await self._acquire_lock(session_id):
-            raise SessionBusy()
+        # G-001+G-004: verify active attempt instead of acquiring new lock
+        active_attempt_id = await self._redis.get(f"active_attempt:{session_id}")
+        if active_attempt_id != attempt_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"error": "attempt_not_active", "message_key": "error.attemptInvalid"},
+            )
 
         try:
             prior = await get_attempt(attempt_id, session_id, self._redis)
@@ -269,6 +284,7 @@ class QueryService:
             # Max retries: original (attempt_number=1) + 1 regenerate = 2 total
             next_attempt_number = (prior.attempt_number or 1) + 1
             if next_attempt_number > 2:
+                await self._redis.delete(f"active_attempt:{session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
                     should_refine=True,
@@ -285,6 +301,7 @@ class QueryService:
                     negative_examples=negative_examples,
                 )
             except Exception as exc:
+                await self._redis.delete(f"active_attempt:{session_id}")
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
@@ -292,6 +309,7 @@ class QueryService:
 
             # Inv 4: byte-equal duplicate detection
             if new_sql == prior.sql:
+                await self._redis.delete(f"active_attempt:{session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
                     should_refine=True,
@@ -318,6 +336,7 @@ class QueryService:
                     },
                 )
                 await store_attempt(failed_attempt, session_id, self._redis)
+                await self._redis.delete(f"active_attempt:{session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
                     should_refine=True,
@@ -330,6 +349,7 @@ class QueryService:
                     timeout=30,
                 )
             except (TimeoutError, SourceDBTimeout) as exc:
+                await self._redis.delete(f"active_attempt:{session_id}")
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
@@ -370,6 +390,7 @@ class QueryService:
                 },
             )
             await store_attempt(new_attempt, session_id, self._redis)
+            await self._redis.set(f"active_attempt:{session_id}", new_attempt_id)
 
             return result
         finally:
