@@ -790,16 +790,16 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Backend acceptance integration tests
 
-- [ ] **T-174** [P] [test] **Acceptance: provider switch preserves accepted_queries** — cluster: US-5 | deps: T-086,T-047,T-052 | FR-026,SC-008 | effort: M
+- [x] **T-174** [P] [test] **Acceptance: provider switch preserves accepted_queries** — cluster: US-5 | deps: T-086,T-047,T-052 | FR-026,SC-008 | effort: M
   Done when: `backend/tests/integration/test_us5_provider_switch.py` starts the app with `LLM_PROVIDER=ollama`, submits and accepts a query, restarts the app with `LLM_PROVIDER=openai`, asserts all previously accepted queries are intact via `GET /history`, and a new submission routes to the OpenAI adapter (verified by httpx mock).
 
 - [x] **T-175** [P] [test] **Acceptance: invalid LLM_PROVIDER fails at startup** — cluster: US-5 | deps: T-007,T-086 | FR-009,SC-008 | effort: XS
   > **False negative — already covered by T-085.** `backend/tests/unit/llm/test_factory.py::test_unknown_provider_raises` (shipped in Wave 2) asserts that an unknown provider raises `LLMConfigurationError` with a human-readable message. No dedicated `test_us5_invalid_provider.py` file is required. Marked [x] during Wave 6 plan (Chunk 6.1).
 
-- [ ] **T-176** [P] [test] **Acceptance: Ollama-exclusive routing — no cloud API contact** — cluster: US-5 | deps: T-084,T-086,T-052 | FR-009 | effort: S
+- [x] **T-176** [P] [test] **Acceptance: Ollama-exclusive routing — no cloud API contact** — cluster: US-5 | deps: T-084,T-086,T-052 | FR-009 | effort: S
   Done when: `backend/tests/integration/test_us5_ollama_routing.py` configures `LLM_PROVIDER=ollama` and `LLM_BASE_URL_OLLAMA=http://mock-ollama:11434`, submits a question, asserts httpx call targets `http://mock-ollama:11434/api/generate` and zero calls are made to any Anthropic/OpenAI/Gemini endpoint.
 
-- [ ] **T-177** [P] [test] **Acceptance: reconfigured provider handles new questions** — cluster: US-5 | deps: T-086,T-052 | FR-009,FR-026 | effort: S
+- [x] **T-177** [P] [test] **Acceptance: reconfigured provider handles new questions** — cluster: US-5 | deps: T-086,T-052 | FR-009,FR-026 | effort: S
   Done when: `backend/tests/integration/test_us5_provider_switch.py` extends with scenario: after switching from Ollama to Gemini, submits a new question and asserts the Gemini adapter's httpx call targets the Gemini `generateContent` URL pattern; the Ollama adapter receives zero calls.
 
 ### Playwright e2e — US-5 independent test criterion
@@ -1066,7 +1066,7 @@ Registered in Chunk 6.1 during Wave 6 planning.
 - [ ] **T-250** [test] **Verify user identifier attribution in session events and diagnostic logs** — cluster: Polish | deps: T-051 | FR-027 | effort: S
   > Resolves /speckit.analyze A3. FR-027 mandates user identifier on "session events, diagnostic log entries" in addition to accepted queries. Current tasks T-042/T-050 verify accepted queries only. Add test asserting that session middleware and diagnostic log entries include the owning `user_id`.
 
-- [ ] **T-251** [test] **Add operator-effort assertion for LLM provider switch under 5 minutes** — cluster: US-5 | deps: T-174 | SC-008 | effort: XS
+- [x] **T-251** [test] **Add operator-effort assertion for LLM provider switch under 5 minutes** — cluster: US-5 | deps: T-174 | SC-008 | effort: XS
   > Resolves /speckit.analyze A4. SC-008 requires "under 5 minutes of operator effort" to switch providers. No task currently measures or bounds this. Add a lightweight timed assertion in CI (or runbook step) documenting the measured restart time.
 
 - [ ] **T-252** [docs] **Add FR/SC for null/empty SQL from LLM** — cluster: Polish | deps: T-224 | FR-010 | effort: XS
