@@ -33,6 +33,15 @@
   "query.result.empty": "لم يُعثر على نتائج لاستعلامك",
   "query.result.lastRetry": "آخر محاولة تلقائية",
 
+  "query.accept.success.title": "Success",
+  "query.accept.success.message": "Query accepted and saved to history.",
+
+  "query.actions.accept": "Accept",
+  "query.actions.accepting": "Accepting...",
+  "query.actions.accepted": "Query saved to history",
+  "query.actions.reject": "Reject",
+  "query.actions.regenerate": "Regenerate",
+
   "query.evaluator.rejected": "تعذر إنشاء استعلام آمن لسؤالك. يرجى إعادة صياغته بطريقة مختلفة.",
   "query.evaluator.read_only": "عمليات الكتابة محظورة. جرب استخدام SELECT.",
   "query.evaluator.schema_validation": "عدم تطابق المخطط: {{identifier}}. تحقق من أسماء الجداول/الأعمدة.",
