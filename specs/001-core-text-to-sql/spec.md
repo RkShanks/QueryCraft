@@ -221,7 +221,7 @@ The catalog is enforced by `app/evaluator/rules/unsafe_pattern.py::UnsafePattern
 
 - **AcceptedQuery**: A Question combined with its accepted GenerationAttempt, persisted to the user's history. Attributes: question text, generated SQL, acceptance timestamp, owning user identifier, target database identifier.
 
-- **EvaluatorResult**: The verdict produced by the evaluator for a given GenerationAttempt. Attributes: pass/fail verdict, reason(s) for failure (if applicable), list of specific violations detected.
+- **EvaluatorResult**: The verdict produced by the evaluator for a given GenerationAttempt. Attributes: pass/fail verdict, `violations: list[EvaluatorViolation]` (empty if passed).
 
 ## Success Criteria *(mandatory)*
 
