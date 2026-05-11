@@ -1,7 +1,5 @@
 """F-008: LLM_MODEL_NAME bound from environment variable."""
 
-import os
-
 from app.core.config import get_settings
 
 

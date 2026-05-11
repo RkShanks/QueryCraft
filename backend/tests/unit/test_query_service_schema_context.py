@@ -62,7 +62,7 @@ async def test_submit_question_passes_schema_context():
     service._acquire_lock = _true
     service._release_lock = _none
 
-    result = await service.submit_question("session-1", "user-1", "How many customers?")
+    await service.submit_question("session-1", "user-1", "How many customers?")
     assert len(llm.calls) == 1
     assert llm.calls[0]["schema_context"] == "TABLE customers (id INT, name TEXT)"
 
@@ -111,10 +111,9 @@ async def test_regenerate_query_passes_schema_context():
     qs.get_attempt = fake_get
     qs.delete_attempt = fake_delete
 
-    try:
+    import contextlib
+    with contextlib.suppress(Exception):
         await service.regenerate_query("attempt-1", "session-1")
-    except Exception:
-        pass  # we only care about the LLM call
 
     qs.get_attempt = orig_get
     qs.delete_attempt = orig_delete
