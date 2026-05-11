@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import en from '../../src/locales/en.json';
+import { mockSubmitEvaluatorRejected, mockSubmitTimeout, mockHistoryEmpty } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
@@ -144,6 +145,36 @@ test.describe('T-186: no physical-direction CSS regression', () => {
     expect(physicalDirectionLeak).toBe(false);
 
     await page.evaluate(() => { document.documentElement.dir = 'ltr'; });
+  });
+});
+
+test.describe('F-010: error/modal/empty states have no key leaks', () => {
+  test('evaluator-rejected /query/submit shows no raw keys', async ({ page }) => {
+    await signIn(page);
+    await mockSubmitEvaluatorRejected(page);
+    await page.goto('/');
+    await page.fill('textarea', 'unsafe query');
+    await page.getByRole('button', { name: /ask/i }).click();
+    await page.waitForSelector('[role="alert"]', { timeout: 5_000 });
+    await assertNoMissingKeys(page, '/');
+  });
+
+  test('timeout /query/submit shows no raw keys', async ({ page }) => {
+    await signIn(page);
+    await mockSubmitTimeout(page);
+    await page.goto('/');
+    await page.fill('textarea', 'slow query');
+    await page.getByRole('button', { name: /ask/i }).click();
+    await page.waitForSelector('[role="alert"]', { timeout: 5_000 });
+    await assertNoMissingKeys(page, '/');
+  });
+
+  test('empty /history shows no raw keys', async ({ page }) => {
+    await signIn(page);
+    await mockHistoryEmpty(page);
+    await page.goto('/history');
+    await page.waitForLoadState('networkidle');
+    await assertNoMissingKeys(page, '/history');
   });
 });
 
