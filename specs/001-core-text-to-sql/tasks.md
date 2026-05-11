@@ -1072,3 +1072,31 @@ Registered in Chunk 6.1 during Wave 6 planning.
 
 - [x] **T-252** [docs] **Add FR/SC for null/empty SQL from LLM** — cluster: Polish | deps: T-224 | FR-010 | effort: XS
   > Resolves /speckit.analyze A7. Spec edge case (L153) describes null/empty SQL rejected by evaluator, but no FR/SC mandates this behavior. Add explicit traceability or fold into T-224 scope.
+
+## Wave 6 Audit Deferred Polish backlog
+
+- [ ] **T-253** [polish] Replace 300ms debounce magic number with FILTER_DEBOUNCE_MS constant — O-009
+- [ ] **T-254** [polish] T-180 physical-direction lint includes left:/right:/float/border-* — O-014
+- [ ] **T-255** [polish] T-181 physical-tailwind test requires dist/ presence or scans source directly — O-015
+- [ ] **T-256** [polish] T-182 i18n key completeness uses beforeAll() to remove sequential test dep — O-016
+- [ ] **T-257** [polish] OpenAPI admin endpoint security uses AND (not OR) for session+admin-key — G-007
+- [ ] **T-258** [polish] HistoryList sets aria-busy during debounce wait — G-008 / O-013
+- [ ] **T-259** [polish] accept_query database_connections lookup moves to repository method — O-010
+- [ ] **T-260** [polish] Remove defaultValue fallbacks from t() calls; configure saveMissing handler — O-012
+
+## Wave 6 Audit Closure
+
+| Fix | Status | Audit cross-reference | One-line summary |
+|-----|--------|----------------------|------------------|
+| F-001 | closed | Gemini G-001 + Opus O-001 | Factory caches adapters; lifespan closes httpx clients |
+| F-002 | closed | Opus O-002 | SessionMiddleware caches Redis client + closes on shutdown |
+| F-003 | closed | Opus O-008 | QueryService threads schema_context through to LLM |
+| F-004 | closed | Gemini G-002 + Opus O-006 | i18n missing-key audit uses known keyset / lower threshold |
+| F-005 | closed | Gemini G-003 + Opus O-007 | T-186 verifies RTL layout mirroring |
+| F-006 | closed | Gemini G-004 + Opus O-005 | ESLint rule extended for template literals + JSXExpressionContainer Literals |
+| F-007 | closed | Gemini G-005 | empty SQL maps to empty_sql violation identity per FR-010(g) |
+| F-008 | closed | Opus O-003 | LLM_MODEL_NAME declared in Settings |
+| F-009 | closed | Opus O-004 | ar.json key set aligned with en.json |
+| F-010 | closed | Gemini G-006 + Opus O-011 | i18n audit covers error/modal/empty states |
+
+**Fix count**: 10 closed. **Deferred Polish count**: 8 registered (T-253..T-260).
