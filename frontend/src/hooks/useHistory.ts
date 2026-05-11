@@ -3,16 +3,14 @@ import { listHistory, getHistoryItem } from '../api/historyApi';
 
 export interface UseHistoryOptions {
   pageSize?: number;
-  schema?: string;
 }
 
 export function useHistory(opts: UseHistoryOptions = {}) {
   const query = useInfiniteQuery({
-    queryKey: ['history', opts.schema, opts.pageSize ?? 20],
+    queryKey: ['history', opts.pageSize ?? 20],
     queryFn: ({ pageParam }) => listHistory({
       cursor: pageParam as string | undefined,
       page_size: opts.pageSize ?? 20,
-      schema: opts.schema,
     }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,

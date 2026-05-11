@@ -2,7 +2,7 @@
 
 Tests that reject_query triggers auto-retry (same behaviour as regenerate):
 negative-context LLM call, byte-equal detection, max retry, evaluator gate,
-lock acquire/release, and never writes to accepted_queries.
+lock release, and never writes to accepted_queries.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -17,15 +17,27 @@ from app.core.exceptions import (
 from app.services.query_service import QueryService
 
 
+def _active_attempt_get(active_attempt="a1"):
+    async def _get(key):
+        if key == "active_attempt:s1":
+            return active_attempt
+        return None
+    return _get
+
+
 class TestQueryServiceReject:
     """QueryService.reject_query tests."""
 
     @pytest.fixture
     def mock_deps(self):
         """Return mocked dependencies for QueryService."""
+        redis = AsyncMock()
+        redis.get = AsyncMock(side_effect=_active_attempt_get())
+        redis.set = AsyncMock()
+        redis.delete = AsyncMock()
         return {
             "repo": MagicMock(),
-            "redis": AsyncMock(),
+            "redis": redis,
             "llm": MagicMock(),
             "evaluator": AsyncMock(),
             "executor": AsyncMock(),
@@ -57,7 +69,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.acquire_lock", return_value=True),
             patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
@@ -79,7 +90,6 @@ class TestQueryServiceReject:
 
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
-            patch("app.services.query_service.acquire_lock", return_value=True),
             patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
@@ -105,7 +115,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.acquire_lock", return_value=True),
             patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
@@ -133,7 +142,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.acquire_lock", return_value=True),
             patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
@@ -157,7 +165,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.acquire_lock", return_value=True),
             patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
@@ -171,8 +178,8 @@ class TestQueryServiceReject:
         async def _get_attempt(aid, sid, redis):
             raise AttemptOwnershipViolation()
 
+        mock_deps["redis"].get = AsyncMock(return_value="a1")
         with (
-            patch("app.services.query_service.acquire_lock", return_value=True),
             patch("app.services.query_service.release_lock"),
             patch("app.services.query_service.get_attempt", side_effect=_get_attempt),
             pytest.raises(AttemptOwnershipViolation),
@@ -184,21 +191,17 @@ class TestQueryServiceReject:
         async def _get_attempt(aid, sid, redis):
             raise AttemptNotFound()
 
+        mock_deps["redis"].get = AsyncMock(return_value="missing")
         with (
-            patch("app.services.query_service.acquire_lock", return_value=True),
             patch("app.services.query_service.release_lock"),
             patch("app.services.query_service.get_attempt", side_effect=_get_attempt),
             pytest.raises(AttemptNotFound),
         ):
             await service.reject_query("missing", "s1")
 
-    async def test_reject_acquires_and_releases_lock(self, service, mock_deps):
-        """Processing lock is acquired and released around reject."""
+    async def test_reject_releases_lock(self, service, mock_deps):
+        """Processing lock is released around reject."""
         lock_calls = []
-
-        async def _acquire(sid, redis, ttl=60):
-            lock_calls.append("acquire")
-            return True
 
         async def _release(sid, redis):
             lock_calls.append("release")
@@ -216,12 +219,11 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.acquire_lock", side_effect=_acquire),
             patch("app.services.query_service.release_lock", side_effect=_release),
         ):
             await service.reject_query("a1", "s1")
 
-        assert lock_calls == ["acquire", "release"]
+        assert lock_calls == ["release"]
 
     async def test_reject_never_writes_to_repository(self, service, mock_deps):
         """Reject must never call AcceptedQueryRepository.create."""
@@ -238,7 +240,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.acquire_lock", return_value=True),
             patch("app.services.query_service.release_lock"),
         ):
             await service.reject_query("a1", "s1")

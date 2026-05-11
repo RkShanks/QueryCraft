@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AcceptedQuerySummary } from '../../api/generated/types.gen';
 
-export type HistoryItem = AcceptedQuerySummary & { schema?: string };
+export type HistoryItem = AcceptedQuerySummary;
 
 export interface HistoryListProps {
   items: HistoryItem[];
@@ -36,8 +36,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
     const lower = filter.toLowerCase();
     return sortedItems.filter((item) =>
       (item.question_text ?? '').toLowerCase().includes(lower) ||
-      (item.generated_sql ?? '').toLowerCase().includes(lower) ||
-      (item.schema ?? '').toLowerCase().includes(lower)
+      (item.generated_sql ?? '').toLowerCase().includes(lower)
     );
   }, [sortedItems, filter]);
 
@@ -64,9 +63,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder={t('history.filter.placeholder', { defaultValue: 'Filter by question or schema...' })}
+          placeholder={t('history.filter.placeholder', { defaultValue: 'Filter by question or SQL...' })}
           className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          aria-label={t('history.filter.placeholder', { defaultValue: 'Filter by question or schema...' })}
+          aria-label={t('history.filter.placeholder', { defaultValue: 'Filter by question or SQL...' })}
         />
       </div>
 
@@ -74,17 +73,14 @@ export const HistoryList: React.FC<HistoryListProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {t('history.column.question', { defaultValue: 'Question' })}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {t('history.column.sql', { defaultValue: 'SQL' })}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {t('history.detail.acceptedAt', { defaultValue: 'Accepted at' })}
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {t('history.column.schema', { defaultValue: 'Schema' })}
               </th>
             </tr>
           </thead>
@@ -93,8 +89,16 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               <tr
                 key={item.id}
                 data-testid="history-row"
+                tabIndex={0}
                 className="hover:bg-gray-50 transition-colors cursor-pointer"
                 onClick={() => onSelect?.(item.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelect?.(item.id);
+                  }
+                }}
+                aria-label={item.question_text}
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {item.question_text}
@@ -104,9 +108,6 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '-'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {item.schema ?? '-'}
                 </td>
               </tr>
             ))}

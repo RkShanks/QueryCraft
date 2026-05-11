@@ -2,9 +2,10 @@
 
 import uuid
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import InvalidCursorError
 from app.db.models.accepted_query import AcceptedQuery
 
 
@@ -48,14 +49,20 @@ class AcceptedQueryRepository:
             .limit(limit + 1)
         )
         if cursor:
-            # Decode cursor as ISO timestamp string and filter
+            # Decode composite cursor as "accepted_at|id"
             from datetime import datetime
 
             try:
-                cursor_dt = datetime.fromisoformat(cursor)
-                stmt = stmt.where(AcceptedQuery.accepted_at < cursor_dt)
+                parts = cursor.split("|")
+                if len(parts) != 2:
+                    raise ValueError("Invalid cursor format")
+                cursor_dt = datetime.fromisoformat(parts[0])
+                cursor_id = uuid.UUID(parts[1])
+                stmt = stmt.where(
+                    tuple_(AcceptedQuery.accepted_at, AcceptedQuery.id) < tuple_(cursor_dt, cursor_id)
+                )
             except ValueError:
-                pass
+                raise InvalidCursorError() from None
 
         result = await self._session.execute(stmt)
         items = list(result.scalars().all())
@@ -63,7 +70,7 @@ class AcceptedQueryRepository:
         next_cursor = None
         if len(items) > limit:
             items = items[:limit]
-            next_cursor = items[-1].accepted_at.isoformat()
+            next_cursor = f"{items[-1].accepted_at.isoformat()}|{items[-1].id}"
 
         return items, next_cursor
 

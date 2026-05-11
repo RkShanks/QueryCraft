@@ -67,4 +67,24 @@ describe("HistoryPage (FR-021,FR-022,FR-023,SC-009)", () => {
     expect(screen.queryByText("Customer count")).not.toBeInTheDocument();
     expect(screen.getByText("Revenue top")).toBeInTheDocument();
   });
+
+  it("wires pagination props to HistoryList (O-016)", async () => {
+    vi.mocked(historyApi.listHistory)
+      .mockResolvedValueOnce({
+        items: [{ id: "1", question_text: "Q1", generated_sql: "SELECT 1", accepted_at: "2026-05-11T00:00:00Z" }],
+        total: 1,
+        next_cursor: "cursor-1",
+      })
+      .mockResolvedValueOnce({
+        items: [{ id: "2", question_text: "Q2", generated_sql: "SELECT 2", accepted_at: "2026-05-10T00:00:00Z" }],
+        total: 1,
+        next_cursor: null,
+      });
+    renderPage();
+    await waitFor(() => screen.getByText("Q1"));
+    const loadMore = screen.getByRole("button", { name: /load more/i });
+    expect(loadMore).toBeInTheDocument();
+    fireEvent.click(loadMore);
+    await waitFor(() => expect(screen.getByText("Q2")).toBeInTheDocument());
+  });
 });

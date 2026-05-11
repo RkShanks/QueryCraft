@@ -7,7 +7,8 @@ const sample = {
   question_text: "Total customers?",
   generated_sql: "SELECT COUNT(*) FROM customer",
   accepted_at: "2026-05-11T10:00:00Z",
-  schema: "public",
+  llm_provider: "openai",
+  database_connection_id: "conn-1",
 };
 
 function setup(item: typeof sample | null, opts: { isLoading?: boolean; error?: Error | null } = {}) {
@@ -17,11 +18,11 @@ function setup(item: typeof sample | null, opts: { isLoading?: boolean; error?: 
 }
 
 describe("HistoryDetail (FR-023, SC-009)", () => {
-  it("renders question, sql, schema, accepted_at when item is provided", () => {
+  it("renders question, sql, llm_provider, accepted_at when item is provided", () => {
     setup(sample);
     expect(screen.getByText(/total customers/i)).toBeInTheDocument();
     expect(screen.getByText(/SELECT COUNT/)).toBeInTheDocument();
-    expect(screen.getByText("public")).toBeInTheDocument();
+    expect(screen.getByText("openai")).toBeInTheDocument();
     // accepted_at is rendered in a human-readable format; just check the date portion appears
     expect(screen.getByText(/2026/)).toBeInTheDocument();
   });

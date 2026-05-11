@@ -9,23 +9,17 @@ function setup(items: HistoryItem[], extraProps: Partial<React.ComponentProps<ty
 }
 
 const sample = [
-  { id: '1', question_text: 'Total customers?', generated_sql: 'SELECT COUNT(*) FROM customer', accepted_at: '2026-05-11T10:00:00Z', schema: 'public' },
-  { id: '2', question_text: 'Top revenue', generated_sql: 'SELECT ... FROM payment', accepted_at: '2026-05-10T10:00:00Z', schema: 'public' },
+  { id: '1', question_text: 'Total customers?', generated_sql: 'SELECT COUNT(*) FROM customer', accepted_at: '2026-05-11T10:00:00Z' },
+  { id: '2', question_text: 'Top revenue', generated_sql: 'SELECT ... FROM payment', accepted_at: '2026-05-10T10:00:00Z' },
 ];
 
 describe('HistoryList', () => {
   it('renders items in reverse-chronological order (SC-006)', () => {
     setup(sample);
-    const rows = screen.getAllByRole('row');
-    // header + 2 data rows
-    expect(rows).toHaveLength(3);
+    const rows = screen.getAllByTestId('history-row');
+    expect(rows).toHaveLength(2);
     // First data row corresponds to the most recent (2026-05-11)
-    expect(rows[1]).toHaveTextContent('Total customers?');
-  });
-
-  it('renders schema column for each row (SC-007)', () => {
-    setup(sample);
-    expect(screen.getAllByText('public')).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent('Total customers?');
   });
 
   it('filters by question text (FR-022 client-side filtering)', () => {
@@ -34,6 +28,11 @@ describe('HistoryList', () => {
     fireEvent.change(filterInput, { target: { value: 'revenue' } });
     expect(screen.queryByText('Total customers?')).not.toBeInTheDocument();
     expect(screen.getByText('Top revenue')).toBeInTheDocument();
+  });
+
+  it('does not render phantom schema column (G-007/O-009)', () => {
+    setup(sample);
+    expect(screen.queryByText('Schema')).not.toBeInTheDocument();
   });
 
   it('renders empty state when no items (FR-021)', () => {
@@ -49,7 +48,7 @@ describe('HistoryList', () => {
   it('calls onSelect when row is clicked (FR-023)', () => {
     const onSelect = vi.fn();
     setup(sample, { onSelect });
-    fireEvent.click(screen.getAllByRole('row')[1]);
+    fireEvent.click(screen.getAllByTestId('history-row')[0]);
     expect(onSelect).toHaveBeenCalledWith(sample[0].id);
   });
 
@@ -71,5 +70,26 @@ describe('HistoryList', () => {
     expect(screen.getByText('SELECT COUNT(*) FROM customer')).toBeInTheDocument();
     expect(screen.getByText('Top revenue')).toBeInTheDocument();
     expect(screen.getByText('SELECT ... FROM payment')).toBeInTheDocument();
+  });
+
+  it('row is keyboard accessible (tabIndex + Enter/Space)', () => {
+    const onSelect = vi.fn();
+    setup(sample, { onSelect });
+    const row = screen.getAllByTestId('history-row')[0];
+    expect(row).toHaveAttribute('tabIndex', '0');
+    fireEvent.keyDown(row, { key: 'Enter' });
+    expect(onSelect).toHaveBeenCalledWith(sample[0].id);
+    onSelect.mockClear();
+    fireEvent.keyDown(row, { key: ' ' });
+    expect(onSelect).toHaveBeenCalledWith(sample[0].id);
+  });
+
+  it('uses logical text-start instead of text-left (O-006)', () => {
+    setup(sample);
+    const headers = screen.getAllByRole('columnheader');
+    headers.forEach((th) => {
+      expect(th.className).toContain('text-start');
+      expect(th.className).not.toContain('text-left');
+    });
   });
 });

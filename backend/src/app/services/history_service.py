@@ -1,7 +1,10 @@
 """HistoryService — list and detail queries for accepted_queries."""
 
+import uuid
+
 from fastapi import HTTPException, status
 
+from app.core.exceptions import InvalidCursorError
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.history import AcceptedQueryDetail, HistoryListResponse
 from app.schemas.query import AcceptedQuerySummary
@@ -17,7 +20,13 @@ class HistoryService:
         """Return paginated accepted queries."""
         from uuid import UUID
 
-        items, next_cursor = await self._repo.list_by_user(UUID(user_id), cursor=cursor, limit=limit)
+        try:
+            items, next_cursor = await self._repo.list_by_user(UUID(user_id), cursor=cursor, limit=limit)
+        except InvalidCursorError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": "invalid_cursor", "message_key": "error.invalidCursor"},
+            ) from None
         summaries = [
             AcceptedQuerySummary(
                 id=str(q.id),
@@ -32,11 +41,11 @@ class HistoryService:
             total = await self._repo.count_by_user(UUID(user_id))
         return HistoryListResponse(items=summaries, total=total, next_cursor=next_cursor)
 
-    async def get_detail(self, query_id: str, user_id: str) -> AcceptedQueryDetail:
+    async def get_detail(self, query_id: uuid.UUID, user_id: str) -> AcceptedQueryDetail:
         """Return a single accepted query detail."""
         from uuid import UUID
 
-        query = await self._repo.get_by_id(UUID(query_id), UUID(user_id))
+        query = await self._repo.get_by_id(query_id, UUID(user_id))
         if query is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

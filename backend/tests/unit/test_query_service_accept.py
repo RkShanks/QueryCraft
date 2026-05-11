@@ -12,6 +12,20 @@ import pytest
 from app.services.query_service import QueryService
 
 
+def _attempt_json():
+    return json.dumps({
+        "attempt_id": "a-1",
+        "session_id": "sess-1",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "question_text": "Q",
+        "generated_sql": "SELECT 1",
+        "llm_provider": "ollama",
+        "attempt_number": 1,
+        "rejected_sqls": [],
+        "state": "EXECUTED",
+    })
+
+
 class TestQueryServiceAccept:
     """QueryService.accept_query unit tests."""
 
@@ -44,19 +58,18 @@ class TestQueryServiceAccept:
             source_db_executor=None,
         )
 
+    def _make_get(self, active_attempt="a-1", attempt_data=None):
+        async def _get(key):
+            if key == "active_attempt:sess-1":
+                return active_attempt
+            if key == "attempt:a-1":
+                return attempt_data or _attempt_json()
+            return None
+        return _get
+
     @pytest.mark.asyncio
     async def test_accept_persists_and_deletes_redis(self, service, mock_repo, mock_redis):
-        mock_redis.get.return_value = json.dumps({
-            "attempt_id": "a-1",
-            "session_id": "sess-1",
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "question_text": "Q",
-            "generated_sql": "SELECT 1",
-            "llm_provider": "ollama",
-            "attempt_number": 1,
-            "rejected_sqls": [],
-            "state": "EXECUTED",
-        })
+        mock_redis.get.side_effect = self._make_get()
         result = await service.accept_query(
             session_id="sess-1",
             user_id="550e8400-e29b-41d4-a716-446655440000",
@@ -70,7 +83,8 @@ class TestQueryServiceAccept:
 
     @pytest.mark.asyncio
     async def test_accept_expired_attempt_raises_400(self, service, mock_redis):
-        mock_redis.get.return_value = None
+        # active_attempt missing means attempt is no longer active
+        mock_redis.get.side_effect = self._make_get(active_attempt=None)
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
                 session_id="sess-1",
@@ -78,18 +92,21 @@ class TestQueryServiceAccept:
                 attempt_id="a-1",
                 database_connection_id="550e8400-e29b-41d4-a716-446655440001",
             )
-        assert exc_info.value.status_code == 400
+        assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
     async def test_accept_wrong_session_raises_400(self, service, mock_redis):
-        mock_redis.get.return_value = json.dumps({
-            "attempt_id": "a-1",
-            "session_id": "sess-2",
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "question_text": "Q",
-            "generated_sql": "SELECT 1",
-            "llm_provider": "ollama",
-        })
+        mock_redis.get.side_effect = self._make_get(
+            active_attempt="a-1",
+            attempt_data=json.dumps({
+                "attempt_id": "a-1",
+                "session_id": "sess-2",
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "question_text": "Q",
+                "generated_sql": "SELECT 1",
+                "llm_provider": "ollama",
+            }),
+        )
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
                 session_id="sess-1",
@@ -102,17 +119,7 @@ class TestQueryServiceAccept:
     @pytest.mark.asyncio
     async def test_accept_double_accept_race_returns_409(self, service, mock_repo, mock_redis):
         """O-004: second concurrent accept with same attempt_id must return 409."""
-        mock_redis.get.return_value = json.dumps({
-            "attempt_id": "a-1",
-            "session_id": "sess-1",
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "question_text": "Q",
-            "generated_sql": "SELECT 1",
-            "llm_provider": "ollama",
-            "attempt_number": 1,
-            "rejected_sqls": [],
-            "state": "EXECUTED",
-        })
+        mock_redis.get.side_effect = self._make_get()
         # Simulate lock already held (second caller)
         mock_redis.set.return_value = None
 
@@ -130,16 +137,19 @@ class TestQueryServiceAccept:
     @pytest.mark.parametrize("bad_state", ["PENDING", "GENERATED", "EVALUATED", "REJECTED", "TIMEOUT"])
     async def test_accept_invalid_attempt_state_returns_422(self, service, mock_repo, mock_redis, bad_state):
         """O-005: accept_query must only allow EXECUTED attempts."""
-        mock_redis.get.return_value = json.dumps({
-            "attempt_id": "a-1",
-            "session_id": "sess-1",
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "question_text": "Q",
-            "generated_sql": "SELECT 1",
-            "llm_provider": "ollama",
-            "attempt_number": 1,
-            "state": bad_state,
-        })
+        mock_redis.get.side_effect = self._make_get(
+            active_attempt="a-1",
+            attempt_data=json.dumps({
+                "attempt_id": "a-1",
+                "session_id": "sess-1",
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "question_text": "Q",
+                "generated_sql": "SELECT 1",
+                "llm_provider": "ollama",
+                "attempt_number": 1,
+                "state": bad_state,
+            }),
+        )
 
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
