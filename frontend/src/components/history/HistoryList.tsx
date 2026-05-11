@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDebounce } from '../../hooks/useDebounce';
 import type { AcceptedQuerySummary } from '../../api/generated/types.gen';
 
 export type HistoryItem = AcceptedQuerySummary;
@@ -21,7 +22,8 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation();
-  const [filter, setFilter] = useState('');
+  const [rawFilter, setRawFilter] = useState('');
+  const filter = useDebounce(rawFilter, 300);
 
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -61,8 +63,8 @@ export const HistoryList: React.FC<HistoryListProps> = ({
       <div className="flex items-center gap-2">
         <input
           type="text"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          value={rawFilter}
+          onChange={(e) => setRawFilter(e.target.value)}
           placeholder={t('history.filter.placeholder', { defaultValue: 'Filter by question or SQL...' })}
           className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           aria-label={t('history.filter.placeholder', { defaultValue: 'Filter by question or SQL...' })}

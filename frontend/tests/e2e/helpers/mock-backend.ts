@@ -146,9 +146,9 @@ export const mockAccept = (page: Page, summary?: AcceptedQuerySummary) =>
     await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(body) });
   });
 
-/** Intercept GET /history and return a canned list. */
+/** Intercept GET /history exactly (not /history/{id}) and return a canned list. */
 export const mockHistoryList = (page: Page, history?: HistoryListResponse) =>
-  page.route('**/history', async (route: Route) => {
+  page.route(/\/history(?:\?.*)?$/, async (route: Route) => {
     const body: HistoryListResponse = history ?? {
       items: [
         {
@@ -195,10 +195,10 @@ export const mockSubmitEvaluatorRejectedWithViolations = (
   });
 
 /**
- * Intercept GET /history and return an empty list (useful for asserting no rows were written).
+ * Intercept GET /history exactly (not /history/{id}) and return an empty list.
  */
 export const mockHistoryEmpty = (page: Page) =>
-  page.route('**/history', async (route: Route) => {
+  page.route(/\/history(?:\?.*)?$/, async (route: Route) => {
     const body: HistoryListResponse = {
       items: [],
       total: 0,
