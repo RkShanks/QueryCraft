@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from redis.asyncio import Redis
 
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
-from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy, SourceDBTimeout
+from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SourceDBTimeout
 from app.core.processing_lock import acquire_lock, release_lock
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.query import (

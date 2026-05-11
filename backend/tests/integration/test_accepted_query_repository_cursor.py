@@ -6,8 +6,6 @@ Before fix: page 2 skips row 2 because cursor is only accepted_at.
 After fix: composite cursor (accepted_at, id) correctly pages through all 3.
 """
 
-import uuid
-
 import pytest
 from sqlalchemy import text
 

@@ -62,7 +62,7 @@ class AcceptedQueryRepository:
                     tuple_(AcceptedQuery.accepted_at, AcceptedQuery.id) < tuple_(cursor_dt, cursor_id)
                 )
             except ValueError:
-                raise InvalidCursorError()
+                raise InvalidCursorError() from None
 
         result = await self._session.execute(stmt)
         items = list(result.scalars().all())

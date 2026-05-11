@@ -984,6 +984,21 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 - [ ] **T-244** [docs] **Document co-located test-file convention in style guide** — cluster: Polish | deps: | | effort: XS
   > Wave 5 Chunk 5.4 consolidated duplicate HistoryList test files into co-located pattern. No other `__tests__/` directories exist in `components/`. Document the convention to prevent regressions.
 
+- [ ] **T-245** [docs] **Translate 11 Arabic history i18n keys (currently English placeholders)** — cluster: Polish (Phase 5) | deps: | constitution §11 | effort: S
+  > Wave 5 Opus audit O-007 noted: 11 of 16 ar.json history keys are English copies. Per constitution §11 Phase 1 placeholder policy. Fix in Phase 5 i18n pass.
+
+- [ ] **T-246** [test] **Tighten E2E mock route ordering — mockHistoryList should not intercept /history/{id} detail requests** — cluster: Polish | deps: | | effort: XS
+  > Wave 5 Opus audit O-008. Both mocks coexist today and tests pass, but route ordering is fragile. Fix the mockHistoryList URL pattern to match exact `/history` only.
+
+- [ ] **T-247** [frontend] **Add debounce to HistoryList filter input (SC-007 — within 1 second of user stopping typing)** — cluster: Polish | deps: | SC-007 | effort: XS
+  > Wave 5 Opus audit O-010. SC-007 implies debounced filter; current implementation filters on every keystroke. Add 300ms debounce.
+
+- [ ] **T-248** [backend] **Defer or eliminate COUNT(*) on first-page history requests** — cluster: Polish | deps: | SC-006 | effort: S
+  > Wave 5 Gemini G-008 + Opus O-012 (overlap). COUNT(*) runs on every first-page load. For Phase 1 dataset sizes this is fine, but for larger users it will be slow. Consider limit+1 fetch pattern or making total optional.
+
+- [ ] **T-249** [frontend] **Display `llm_provider` and `database_connection_id` in HistoryDetail** — cluster: Polish | deps: | FR-023 | effort: XS
+  > Wave 5 Opus O-014. API returns AcceptedQueryDetail with these fields; UI doesn't render them. UX enhancement, not bug.
+
 ## Traceability
 
 ### Table 1 — Functional Requirements
