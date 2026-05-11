@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
 from app.evaluator.pipeline import Evaluator
+from app.evaluator.rules.empty_sql import EmptySqlRule
 from app.evaluator.rules.read_only import ReadOnlyRule
 from app.evaluator.rules.schema_validation import SchemaValidationRule
 from app.evaluator.rules.single_statement import SingleStatementRule
@@ -49,6 +50,7 @@ async def _get_query_service(
         llm=LLMProviderFactory.from_config(settings),
         evaluator=Evaluator(
             rules=[
+                EmptySqlRule(),
                 ReadOnlyRule(),
                 SingleStatementRule(),
                 SchemaValidationRule(schema_context),

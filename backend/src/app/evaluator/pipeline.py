@@ -10,6 +10,7 @@ from app.evaluator.schema_context import SchemaContext
 
 # Map pipeline failed_rule names to i18n message keys.
 _MESSAGE_KEY_MAP = {
+    "empty_sql": "evaluator.violation.emptySql",
     "read_only": "evaluator.violation.dataModifying",
     "single_statement": "evaluator.violation.multiStatement",
     "schema_validation": "evaluator.violation.unknownTable",

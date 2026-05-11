@@ -113,6 +113,7 @@
   "evaluator.violation.multiStatement": "يحتوي SQL المُنشأ على عبارات متعددة. يُسمح باستعلام واحد فقط.",
   "evaluator.violation.unknownTable": "يشير SQL المُنشأ إلى جدول '{{table}}' غير موجود في قاعدة البيانات.",
   "evaluator.violation.unknownColumn": "يشير SQL المُنشأ إلى عمود '{{column}}' غير موجود في الجدول '{{table}}'.",
+  "evaluator.violation.emptySql": "The generated SQL is empty. Please rephrase your question.",
   "evaluator.violation.unsafePattern": "يحتوي SQL المُنشأ على نمط غير آمن وغير مسموح به.",
   "error.accept.title": "خطأ",
   "error.accept.message": "فشل قبول الاستعلام.",
