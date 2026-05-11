@@ -6,7 +6,7 @@ import { HistoryDetail } from '../components/history/HistoryDetail';
 
 export default function HistoryPage() {
   const { t } = useTranslation();
-  const { items, isLoading, error } = useHistory();
+  const { items, isLoading, error, hasNextPage, fetchNextPage } = useHistory();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { item: selectedItem, isLoading: detailLoading, error: detailError } = useHistoryDetail(selectedId);
 
@@ -23,6 +23,8 @@ export default function HistoryPage() {
             <HistoryList
               items={items}
               isLoading={isLoading}
+              hasMore={hasNextPage}
+              onLoadMore={fetchNextPage}
               onSelect={setSelectedId}
             />
           </div>
