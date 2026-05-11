@@ -83,4 +83,13 @@ describe('HistoryList', () => {
     fireEvent.keyDown(row, { key: ' ' });
     expect(onSelect).toHaveBeenCalledWith(sample[0].id);
   });
+
+  it('uses logical text-start instead of text-left (O-006)', () => {
+    setup(sample);
+    const headers = screen.getAllByRole('columnheader');
+    headers.forEach((th) => {
+      expect(th.className).toContain('text-start');
+      expect(th.className).not.toContain('text-left');
+    });
+  });
 });
