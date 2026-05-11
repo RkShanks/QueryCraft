@@ -16,11 +16,10 @@ const sample = [
 describe('HistoryList', () => {
   it('renders items in reverse-chronological order (SC-006)', () => {
     setup(sample);
-    const rows = screen.getAllByRole('row');
-    // header + 2 data rows
-    expect(rows).toHaveLength(3);
+    const rows = screen.getAllByTestId('history-row');
+    expect(rows).toHaveLength(2);
     // First data row corresponds to the most recent (2026-05-11)
-    expect(rows[1]).toHaveTextContent('Total customers?');
+    expect(rows[0]).toHaveTextContent('Total customers?');
   });
 
   it('renders schema column for each row (SC-007)', () => {
@@ -49,7 +48,7 @@ describe('HistoryList', () => {
   it('calls onSelect when row is clicked (FR-023)', () => {
     const onSelect = vi.fn();
     setup(sample, { onSelect });
-    fireEvent.click(screen.getAllByRole('row')[1]);
+    fireEvent.click(screen.getAllByTestId('history-row')[0]);
     expect(onSelect).toHaveBeenCalledWith(sample[0].id);
   });
 
@@ -71,5 +70,17 @@ describe('HistoryList', () => {
     expect(screen.getByText('SELECT COUNT(*) FROM customer')).toBeInTheDocument();
     expect(screen.getByText('Top revenue')).toBeInTheDocument();
     expect(screen.getByText('SELECT ... FROM payment')).toBeInTheDocument();
+  });
+
+  it('row is keyboard accessible (tabIndex + Enter/Space)', () => {
+    const onSelect = vi.fn();
+    setup(sample, { onSelect });
+    const row = screen.getAllByTestId('history-row')[0];
+    expect(row).toHaveAttribute('tabIndex', '0');
+    fireEvent.keyDown(row, { key: 'Enter' });
+    expect(onSelect).toHaveBeenCalledWith(sample[0].id);
+    onSelect.mockClear();
+    fireEvent.keyDown(row, { key: ' ' });
+    expect(onSelect).toHaveBeenCalledWith(sample[0].id);
   });
 });

@@ -93,8 +93,16 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               <tr
                 key={item.id}
                 data-testid="history-row"
+                tabIndex={0}
                 className="hover:bg-gray-50 transition-colors cursor-pointer"
                 onClick={() => onSelect?.(item.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelect?.(item.id);
+                  }
+                }}
+                aria-label={item.question_text}
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {item.question_text}
