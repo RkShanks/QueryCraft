@@ -81,3 +81,17 @@ The orchestrator rolls these into this SKILL.md so future sessions don't re-disc
 - Wave plans: `specs/001-core-text-to-sql/plans/wave-N.md` and `wave-N-snapshot.md`
 - OpenAPI contract: `specs/001-core-text-to-sql/contracts/openapi.yaml`
 - Audit findings (DRAFT branches never merged): `audit/wave-N/{gemini,opus}-findings.md`
+
+## Docker / local-stack quirks
+
+### Quirk #9 — Docker image staleness after `git pull`
+
+`docker compose restart backend` and `docker compose up -d` do NOT rebuild the backend image; they reuse the cached image. Python source changes from `git pull` are silently ignored. Symptom: operator sees behaviour from an older code revision (e.g. `AttributeError: 'Settings' object has no attribute 'LLM_MODEL_NAME'`). Fix: always run `./scripts/dev-up.sh --rebuild` after a `git pull`. Foundation pytest doesn't catch this because tests run against the live source tree, not the built image.
+
+### Quirk #10 — `.env` staleness after edits
+
+`docker compose restart backend` does NOT re-read `env_file`; the running container retains its env vars from creation time. After editing `.env`, you must `docker compose -f docker-compose.dev.yml up -d --force-recreate backend`. The `dev-up.sh` helper does this automatically.
+
+### Quirk #11 — Alembic migration drift after `git pull`
+
+`git pull` may add new migrations (e.g. wave-6 added migration 003 for `attempt_id`). The Docker image contains the new migration files but **does not auto-run them**. Symptom: opaque 500 errors with `UndefinedColumnError: column "X" does not exist`. As of F-013, the backend now refuses to start when `alembic current < head` and emits a structured `migration_drift_detected` log event. Fix: `docker compose -f docker-compose.dev.yml exec backend alembic upgrade head`, or use `./scripts/dev-up.sh` which runs migrations automatically.
