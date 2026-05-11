@@ -7,8 +7,12 @@ from pathlib import Path
 
 import pytest
 import schemathesis
+from schemathesis.experimental import OPEN_API_3_1
 
 from app.main import create_app
+
+# Enable experimental OpenAPI 3.1 support (T-226)
+OPEN_API_3_1.enable()
 
 # Load the OpenAPI schema from the running app
 # In CI, this will be run against a live test server
