@@ -362,7 +362,7 @@ class QueryService:
                 question=prior.question,
                 attempt_number=next_attempt_number,
                 llm_provider=self._llm_provider,
-                state="PENDING",
+                state="EXECUTED",
                 executor_result={
                     "columns": columns,
                     "rows": rows,

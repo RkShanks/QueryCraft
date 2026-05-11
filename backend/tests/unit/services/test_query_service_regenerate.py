@@ -256,8 +256,8 @@ class TestQueryServiceRegenerate:
         assert exc_info.value.status_code == 504
         assert lock_calls == ["acquire", "release"]
 
-    async def test_regenerated_attempt_has_explicit_state(self, service, mock_deps):
-        """O-010: new EphemeralAttempt created by regenerate_query must have explicit state=PENDING."""
+    async def test_regenerated_attempt_has_executed_state(self, service, mock_deps):
+        """F-2 O-001: new EphemeralAttempt created by regenerate_query must have state=EXECUTED."""
         prior = EphemeralAttempt(
             attempt_id="a1",
             session_id="s1",
@@ -286,4 +286,4 @@ class TestQueryServiceRegenerate:
             await service.regenerate_query("a1", "s1")
 
         assert len(created_kwargs) == 1
-        assert created_kwargs[0].get("state") == "PENDING"
+        assert created_kwargs[0].get("state") == "EXECUTED"
