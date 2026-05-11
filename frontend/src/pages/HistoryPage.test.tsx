@@ -64,6 +64,8 @@ describe("HistoryPage (FR-021,FR-022,FR-023,SC-009)", () => {
     renderPage();
     await waitFor(() => screen.getByText("Customer count"));
     fireEvent.change(screen.getByPlaceholderText(/filter/i), { target: { value: "revenue" } });
+    // Debounce delay is 300ms; wait for it with real timers
+    await new Promise((resolve) => setTimeout(resolve, 350));
     expect(screen.queryByText("Customer count")).not.toBeInTheDocument();
     expect(screen.getByText("Revenue top")).toBeInTheDocument();
   });
