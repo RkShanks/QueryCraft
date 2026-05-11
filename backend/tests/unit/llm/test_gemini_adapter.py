@@ -41,7 +41,8 @@ async def test_generate_success(adapter: GeminiAdapter):
     assert sql == "SELECT 1 AS id"
 
     request = route.calls.last.request
-    assert "key=fake-gemini-key" in str(request.url)
+    assert request.headers.get("x-goog-api-key") == "fake-gemini-key"
+    assert "key=" not in str(request.url)
     body = request.content.decode()
     assert "prompt text" in body
 

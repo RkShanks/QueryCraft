@@ -63,100 +63,103 @@ class QueryService:
                 detail={"error": "concurrent", "message_key": "error.concurrent"},
             )
 
-        attempt_id = str(uuid.uuid4())
-        attempt = EphemeralAttempt(
-            attempt_id=attempt_id,
-            session_id=session_id,
-            user_id=user_id,
-            question=question,
-            state="PENDING",
-            llm_provider=self._llm_provider,
-        )
-
-        await store_attempt(attempt, session_id, self._redis)
-
-        # 1. LLM generation
         try:
-            sql = await self._llm.generate_sql(question, self._schema_context)
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
-            ) from exc
+            attempt_id = str(uuid.uuid4())
+            attempt = EphemeralAttempt(
+                attempt_id=attempt_id,
+                session_id=session_id,
+                user_id=user_id,
+                question=question,
+                state="PENDING",
+                llm_provider=self._llm_provider,
+            )
 
-        attempt.sql = sql
-        attempt.state = "GENERATED"
-        await store_attempt(attempt, session_id, self._redis)
+            await store_attempt(attempt, session_id, self._redis)
 
-        # 2. Evaluator gate
-        eval_result = await self._evaluator.evaluate(sql, None)
-        if not eval_result.passed:
-            attempt.state = "REJECTED"
-            attempt.evaluator_result = {
-                "passed": False,
-                "violations": [
-                    {"rule": v.rule_name, "message_key": v.message_key}
+            # 1. LLM generation
+            try:
+                sql = await self._llm.generate_sql(question, self._schema_context)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
+                ) from exc
+
+            attempt.sql = sql
+            attempt.state = "GENERATED"
+            await store_attempt(attempt, session_id, self._redis)
+
+            # 2. Evaluator gate
+            eval_result = await self._evaluator.evaluate(sql, None)
+            if not eval_result.passed:
+                attempt.state = "REJECTED"
+                attempt.evaluator_result = {
+                    "passed": False,
+                    "violations": [
+                        {"rule": v.rule_name, "message_key": v.message_key}
+                        for v in eval_result.violations
+                    ],
+                }
+                await store_attempt(attempt, session_id, self._redis)
+                violations = [
+                    Violation(rule=v.rule_name, message_key=v.message_key)
                     for v in eval_result.violations
-                ],
+                ]
+                return EvaluatorRejection(
+                    message_key="query.evaluator.rejected",
+                    violations=violations,
+                )
+
+            attempt.state = "EVALUATED"
+            await store_attempt(attempt, session_id, self._redis)
+
+            # 3. Execute against source DB
+            try:
+                columns, rows = await asyncio.wait_for(
+                    self._executor.execute(sql),
+                    timeout=30,
+                )
+            except (TimeoutError, SourceDBTimeout) as exc:
+                attempt.state = "TIMEOUT"
+                await store_attempt(attempt, session_id, self._redis)
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                    detail={"error": "timeout", "message_key": "error.timeout"},
+                ) from exc
+
+            attempt.state = "EXECUTED"
+            attempt.executor_result = {
+                "columns": columns,
+                "rows": rows,
+                "row_count": len(rows),
             }
             await store_attempt(attempt, session_id, self._redis)
-            violations = [
-                Violation(rule=v.rule_name, message_key=v.message_key)
-                for v in eval_result.violations
-            ]
-            return EvaluatorRejection(
-                message_key="query.evaluator.rejected",
-                violations=violations,
+
+            # 4. Build result
+            column_metas = []
+            for c in columns:
+                if isinstance(c, dict):
+                    column_metas.append(ColumnMeta(name=c["name"], type=c["type"]))
+                else:
+                    column_metas.append(ColumnMeta(name=c, type="text"))
+            result = QueryResult(
+                kind="result",
+                attempt_id=attempt_id,
+                question=question,
+                generated_sql=sql,
+                columns=column_metas,
+                rows=rows,
+                row_count=len(rows),
+                attempt_number=1,
+                is_last_auto_retry=False,
             )
 
-        attempt.state = "EVALUATED"
-        await store_attempt(attempt, session_id, self._redis)
+            # Track active attempt for session (G-001+G-004)
+            await self._redis.set(f"active_attempt:{session_id}", attempt_id)
 
-        # 3. Execute against source DB
-        try:
-            columns, rows = await asyncio.wait_for(
-                self._executor.execute(sql),
-                timeout=30,
-            )
-        except (TimeoutError, SourceDBTimeout) as exc:
-            attempt.state = "TIMEOUT"
-            await store_attempt(attempt, session_id, self._redis)
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail={"error": "timeout", "message_key": "error.timeout"},
-            ) from exc
-
-        attempt.state = "EXECUTED"
-        attempt.executor_result = {
-            "columns": columns,
-            "rows": rows,
-            "row_count": len(rows),
-        }
-        await store_attempt(attempt, session_id, self._redis)
-
-        # 4. Build result
-        column_metas = []
-        for c in columns:
-            if isinstance(c, dict):
-                column_metas.append(ColumnMeta(name=c["name"], type=c["type"]))
-            else:
-                column_metas.append(ColumnMeta(name=c, type="text"))
-        result = QueryResult(
-            kind="result",
-            attempt_id=attempt_id,
-            question=question,
-            generated_sql=sql,
-            columns=column_metas,
-            rows=rows,
-            row_count=len(rows),
-            attempt_number=1,
-            is_last_auto_retry=False,
-        )
-
-        # Track active attempt for session (G-001+G-004)
-        await self._redis.set(f"active_attempt:{session_id}", attempt_id)
-
-        return result
+            return result
+        finally:
+            await self._release_lock(session_id)
 
     async def accept_query(
         self,

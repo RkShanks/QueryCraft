@@ -15,6 +15,7 @@ class GeminiAdapter:
         self._client = httpx.AsyncClient(
             base_url="https://generativelanguage.googleapis.com",
             timeout=timeout_s,
+            headers={"x-goog-api-key": api_key},
         )
 
     async def generate(self, prompt: str) -> str:
@@ -23,9 +24,8 @@ class GeminiAdapter:
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         }
-        params = {"key": self._api_key}
         try:
-            response = await self._client.post(url, params=params, json=payload)
+            response = await self._client.post(url, json=payload)
         except httpx.TimeoutException as exc:
             raise LLMTimeout(provider="gemini", timeout_s=self._timeout_s) from exc
         except httpx.HTTPStatusError as exc:
