@@ -34,6 +34,8 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     await LLMProviderFactory.shutdown_all()
+    for sm in SessionMiddleware._instances:
+        await sm.aclose()
     await close_redis()
     await dispose_engine()
     logger.info("application_shutdown")

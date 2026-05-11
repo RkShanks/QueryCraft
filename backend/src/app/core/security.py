@@ -32,6 +32,7 @@ class SessionMiddleware:
     """
 
     COOKIE_NAME = "session_id"
+    _instances: list["SessionMiddleware"] = []
 
     def __init__(self, app, redis_url: str, idle_timeout_hours: int = 8, secure: bool = True):
         self.app = app
@@ -39,11 +40,20 @@ class SessionMiddleware:
         self.idle_timeout_hours = idle_timeout_hours
         self.secure = secure
         self._redis = None
+        SessionMiddleware._instances.append(self)
 
     async def _get_redis(self):
         from redis.asyncio import Redis
 
-        return Redis.from_url(self.redis_url, decode_responses=True)
+        if self._redis is None:
+            self._redis = Redis.from_url(self.redis_url, decode_responses=True)
+        return self._redis
+
+    async def aclose(self) -> None:
+        """Close the cached Redis client and reset the cache."""
+        if self._redis is not None:
+            await self._redis.aclose()
+            self._redis = None
 
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
