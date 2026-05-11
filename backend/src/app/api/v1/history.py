@@ -1,5 +1,7 @@
 """History router — list and detail."""
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,7 +41,7 @@ async def list_history(
 @router.get("/{query_id}")
 async def get_history_entry(
     request: Request,
-    query_id: str,
+    query_id: uuid.UUID,
     service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """GET /history/{id} — single accepted query detail."""
