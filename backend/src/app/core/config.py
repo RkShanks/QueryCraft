@@ -37,6 +37,7 @@ class Settings(BaseSettings):
 
     # ─── LLM Provider ───
     LLM_PROVIDER: str = "ollama"  # anthropic | openai | gemini | ollama
+    LLM_MODEL_NAME: str = ""  # overrides default model per provider
     LLM_API_KEY_ANTHROPIC: str = ""
     LLM_API_KEY_OPENAI: str = ""
     LLM_API_KEY_GEMINI: str = ""
