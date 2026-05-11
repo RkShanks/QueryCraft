@@ -54,6 +54,10 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
           {item.llm_provider ?? '—'}
         </div>
         <div>
+          <span className="font-medium">{t('history.detail.databaseConnection', { defaultValue: 'Database Connection' })}:</span>{' '}
+          {item.database_connection_id ?? '—'}
+        </div>
+        <div>
           <span className="font-medium">{t('history.detail.acceptedAt', { defaultValue: 'Accepted at' })}:</span>{' '}
           {item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '—'}
         </div>

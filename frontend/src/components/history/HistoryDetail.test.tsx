@@ -18,11 +18,12 @@ function setup(item: typeof sample | null, opts: { isLoading?: boolean; error?: 
 }
 
 describe("HistoryDetail (FR-023, SC-009)", () => {
-  it("renders question, sql, llm_provider, accepted_at when item is provided", () => {
+  it("renders question, sql, llm_provider, database_connection_id, accepted_at when item is provided", () => {
     setup(sample);
     expect(screen.getByText(/total customers/i)).toBeInTheDocument();
     expect(screen.getByText(/SELECT COUNT/)).toBeInTheDocument();
     expect(screen.getByText("openai")).toBeInTheDocument();
+    expect(screen.getByText("conn-1")).toBeInTheDocument();
     // accepted_at is rendered in a human-readable format; just check the date portion appears
     expect(screen.getByText(/2026/)).toBeInTheDocument();
   });
