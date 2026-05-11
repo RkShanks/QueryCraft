@@ -975,8 +975,8 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Polish residuals discovered during Wave 5
 
-- [ ] **T-242** [backend] **Add `schema` field to `AcceptedQuerySummary` in OpenAPI schema** — cluster: Polish | deps: | FR-021 | effort: XS
-  > Wave 5 Chunk 5.4 noted: HistoryList renders a `schema` column but generated `AcceptedQuerySummary` type doesn't include `schema`. Add the field to openapi.yaml + ResponseSchema; regenerate types.gen.ts via `gen:api`.
+- [x] **T-242** [backend] **Add `schema` field to `AcceptedQuerySummary` in OpenAPI schema** — cluster: Polish | deps: | FR-021 | effort: XS
+  > Obsoleted by Wave 5 Chunk 5.9 F-11 (PR #25) which removed schema from frontend as phantom field. FR-021 reviewed in Chunk 6.4 — does not require schema attribute.
 
 - [ ] **T-243** [test] **Upgrade Wave 5 E2E to full-stack once docker-in-CI lands** — cluster: Polish | deps: T-231 | | effort: M
   > Current E2E specs (T-171–T-173) use Playwright `page.route()` mocks. Once CI brings up the full docker-compose stack, remove mocks and drive real backend. Extends T-231 scope.
