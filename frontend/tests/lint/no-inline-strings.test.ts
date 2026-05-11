@@ -65,4 +65,28 @@ describe('T-179: no-inline-strings ESLint regression', () => {
     const violation = messages.find((m) => m.ruleId === 'local/no-inline-user-strings');
     expect(violation).toBeUndefined();
   });
+
+  it('catches Literal inside JSXExpressionContainer', async () => {
+    const source = `export const Fixture = () => <div>{"Hardcoded literal"}</div>;`;
+    const messages = await lintSource(source);
+    const violation = messages.find((m) => m.ruleId === 'local/no-inline-user-strings');
+    expect(violation).toBeDefined();
+    expect(violation?.messageId).toBe('jsxText');
+  });
+
+  it('catches TemplateLiteral in JSXAttribute', async () => {
+    const source = `export const Fixture = () => <input placeholder={\`Search \${count}\`} />;`;
+    const messages = await lintSource(source);
+    const violation = messages.find((m) => m.ruleId === 'local/no-inline-user-strings');
+    expect(violation).toBeDefined();
+    expect(violation?.messageId).toBe('jsxAttr');
+  });
+
+  it('catches Literal in conditional inside JSXExpressionContainer', async () => {
+    const source = `export const Fixture = () => <button>{loading ? "Wait" : t('done')}</button>;`;
+    const messages = await lintSource(source);
+    const violation = messages.find((m) => m.ruleId === 'local/no-inline-user-strings');
+    expect(violation).toBeDefined();
+    expect(violation?.messageId).toBe('jsxText');
+  });
 });

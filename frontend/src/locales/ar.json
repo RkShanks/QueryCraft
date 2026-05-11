@@ -33,6 +33,15 @@
   "query.result.empty": "لم يُعثر على نتائج لاستعلامك",
   "query.result.lastRetry": "آخر محاولة تلقائية",
 
+  "query.accept.success.title": "Success",
+  "query.accept.success.message": "Query accepted and saved to history.",
+
+  "query.actions.accept": "Accept",
+  "query.actions.accepting": "Accepting...",
+  "query.actions.accepted": "Query saved to history",
+  "query.actions.reject": "Reject",
+  "query.actions.regenerate": "Regenerate",
+
   "query.evaluator.rejected": "تعذر إنشاء استعلام آمن لسؤالك. يرجى إعادة صياغته بطريقة مختلفة.",
   "query.evaluator.read_only": "عمليات الكتابة محظورة. جرب استخدام SELECT.",
   "query.evaluator.schema_validation": "عدم تطابق المخطط: {{identifier}}. تحقق من أسماء الجداول/الأعمدة.",
@@ -113,6 +122,7 @@
   "evaluator.violation.multiStatement": "يحتوي SQL المُنشأ على عبارات متعددة. يُسمح باستعلام واحد فقط.",
   "evaluator.violation.unknownTable": "يشير SQL المُنشأ إلى جدول '{{table}}' غير موجود في قاعدة البيانات.",
   "evaluator.violation.unknownColumn": "يشير SQL المُنشأ إلى عمود '{{column}}' غير موجود في الجدول '{{table}}'.",
+  "evaluator.violation.emptySql": "The generated SQL is empty. Please rephrase your question.",
   "evaluator.violation.unsafePattern": "يحتوي SQL المُنشأ على نمط غير آمن وغير مسموح به.",
   "error.accept.title": "خطأ",
   "error.accept.message": "فشل قبول الاستعلام.",

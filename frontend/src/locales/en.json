@@ -123,6 +123,7 @@
   "evaluator.violation.multiStatement": "The generated SQL contains multiple statements. Only a single query is allowed.",
   "evaluator.violation.unknownTable": "The generated SQL references a table '{{table}}' that does not exist in the database.",
   "evaluator.violation.unknownColumn": "The generated SQL references a column '{{column}}' that does not exist in table '{{table}}'.",
+  "evaluator.violation.emptySql": "The generated SQL is empty. Please rephrase your question.",
   "evaluator.violation.unsafePattern": "The generated SQL contains an unsafe pattern that is not allowed.",
   "error.accept.title": "Error",
   "error.accept.message": "Failed to accept query.",

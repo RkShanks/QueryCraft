@@ -91,3 +91,50 @@ describe('T-183: en.json renders without missing-key placeholders', () => {
     expect(rawKeys).toEqual([]);
   });
 });
+
+describe('F-010: error/modal/empty states render without missing keys', () => {
+  it('EvaluatorRejectionBanner renders with all keys present', async () => {
+    const { EvaluatorRejectionBanner } = await import('../../src/components/query/EvaluatorRejectionBanner');
+    const { container } = render(
+      <EvaluatorRejectionBanner
+        violations={[
+          { type: 'read_only' },
+          { type: 'schema_validation', detail: 'users' },
+          { type: 'unsafe_pattern', detail: 'pg_sleep' },
+          { type: 'syntax', detail: 'unexpected' },
+          { type: 'single_statement' },
+          { type: 'unknown_type' },
+        ]}
+      />,
+      { wrapper: createWrapper() }
+    );
+    expect(findRawKeys(container)).toEqual([]);
+  });
+
+  it('TimeoutBanner renders with all keys present', async () => {
+    const { TimeoutBanner } = await import('../../src/components/query/TimeoutBanner');
+    const { container } = render(
+      <TimeoutBanner timeout={true} onRetry={() => {}} />,
+      { wrapper: createWrapper() }
+    );
+    expect(findRawKeys(container)).toEqual([]);
+  });
+
+  it('RefinePromptBanner renders with all keys present', async () => {
+    const { RefinePromptBanner } = await import('../../src/components/query/RefinePromptBanner');
+    const { container } = render(
+      <RefinePromptBanner refinePrompt={{ reason: 'max_retries' }} onRefine={() => {}} />,
+      { wrapper: createWrapper() }
+    );
+    expect(findRawKeys(container)).toEqual([]);
+  });
+
+  it('HistoryList empty state renders with all keys present', async () => {
+    const { HistoryList } = await import('../../src/components/history/HistoryList');
+    const { container } = render(
+      <HistoryList items={[]} onSelect={() => {}} />,
+      { wrapper: createWrapper() }
+    );
+    expect(findRawKeys(container)).toEqual([]);
+  });
+});

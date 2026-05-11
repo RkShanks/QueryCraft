@@ -39,6 +39,10 @@ class AnthropicAdapter:
         data = response.json()
         return data["content"][0]["text"]
 
+    async def aclose(self) -> None:
+        """Close the underlying HTTP client."""
+        await self._client.aclose()
+
     async def generate_sql(
         self,
         question: str,

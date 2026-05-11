@@ -12,6 +12,7 @@ from app.core.encryption import encrypt
 from app.core.logging import get_logger, setup_logging
 from app.core.security import OriginValidatorMiddleware, SessionMiddleware
 from app.db.base import dispose_engine, get_async_session_factory
+from app.llm.factory import LLMProviderFactory
 
 logger = get_logger(__name__)
 
@@ -32,6 +33,9 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    await LLMProviderFactory.shutdown_all()
+    for sm in SessionMiddleware._instances:
+        await sm.aclose()
     await close_redis()
     await dispose_engine()
     logger.info("application_shutdown")

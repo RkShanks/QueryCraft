@@ -32,6 +32,7 @@ class QueryService:
         evaluator: Any,
         source_db_executor: Any,
         llm_provider: str = "",
+        schema_context: str = "",
     ) -> None:
         self._repo = accepted_query_repository
         self._redis = redis
@@ -39,6 +40,7 @@ class QueryService:
         self._evaluator = evaluator
         self._executor = source_db_executor
         self._llm_provider = llm_provider
+        self._schema_context = schema_context
 
     async def _acquire_lock(self, session_id: str, ttl: int = 60) -> bool:
         """Try to acquire a per-session processing lock."""
@@ -75,7 +77,7 @@ class QueryService:
 
         # 1. LLM generation
         try:
-            sql = await self._llm.generate_sql(question, "")
+            sql = await self._llm.generate_sql(question, self._schema_context)
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -297,7 +299,7 @@ class QueryService:
             try:
                 new_sql = await self._llm.generate_sql(
                     prior.question,
-                    "",
+                    self._schema_context,
                     negative_examples=negative_examples,
                 )
             except Exception as exc:
