@@ -9,7 +9,6 @@ Reproduction test (EXPECTED TO FAIL on current main — RED).
 import logging
 
 import pytest
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 
 
@@ -38,14 +37,15 @@ async def test_f013_startup_refuses_or_warns_on_alembic_drift(
     caplog.set_level(logging.WARNING)
 
     # 3. Create fresh app and trigger lifespan (startup)
+    # NOTE: httpx.ASGITransport does not send lifespan events; we drive the
+    # lifespan context manager directly so the startup hook runs.
     from app.main import create_app
 
     app = create_app()
-    transport = ASGITransport(app=app)
 
     runtime_error_raised = False
     try:
-        async with AsyncClient(transport=transport, base_url="http://test"):
+        async with app.router.lifespan_context(app):
             pass
     except RuntimeError:
         runtime_error_raised = True
