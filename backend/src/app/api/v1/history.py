@@ -1,6 +1,6 @@
 """History router — list and detail."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db
@@ -19,7 +19,7 @@ def _get_history_service(db: AsyncSession = Depends(get_db)) -> HistoryService: 
 async def list_history(
     request: Request,
     cursor: str | None = None,
-    limit: int = 100,
+    limit: int = Query(default=100, ge=1, le=1000),
     service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """GET /history — list accepted queries."""
