@@ -96,7 +96,14 @@
   "error.concurrent": "يوجد استعلام قيد المعالجة بالفعل. يرجى الانتظار.",
   "error.llmUnavailable": "خدمة الذكاء الاصطناعي غير متاحة مؤقتاً. يرجى المحاولة بعد قليل.",
   "error.attemptInvalid": "انتهت صلاحية هذه المحاولة أو أنها غير صالحة. يرجى إرسال سؤال جديد.",
+  "error.attemptExpired": "This query attempt has expired. Please submit a new question.",
   "error.timeout": "انتهت مهلة الاستعلام. يرجى تجربة سؤال أبسط.",
+  "error.forbidden": "This request was blocked for security reasons.",
+  "error.notFound": "The requested resource was not found.",
+  "error.invalidCursor": "Invalid pagination cursor.",
+  "error.schemaTokenLimit": "The database schema is too large ({{tokens}} tokens, limit {{limit}}). Please contact your administrator.",
+  "error.acceptConflict": "This query is already being accepted.",
+  "error.attemptStateInvalid": "This query attempt is not in a valid state to accept.",
   "error.unknown.title": "خطأ",
   "error.unknown.message": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
   "error.evaluator.title": "تم رفض التقييم",
@@ -110,5 +117,6 @@
   "error.accept.message": "فشل قبول الاستعلام.",
   "error.validation.questionEmpty": "لا يمكن أن يكون السؤال فارغاً.",
   "error.validation.questionTooLong": "يجب ألا يتجاوز السؤال {{max}} حرفاً.",
-  "error.validation.unknown": "فشل التحقق. يرجى التحقق من إدخالك."
+  "error.validation.unknown": "فشل التحقق. يرجى التحقق من إدخالك.",
+  "error.validation.generic": "Validation failed. Please check your input."
 }

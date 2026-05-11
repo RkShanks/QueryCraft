@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis
 from app.core.security import SessionMiddleware
 from app.repositories.user_repository import UserRepository
@@ -17,7 +18,7 @@ async def _get_auth_service(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
 ) -> AuthService:
-    return AuthService(UserRepository(db), redis)
+    return AuthService(UserRepository(db), redis, settings=get_settings())
 
 
 @router.post("/sign-in", response_model=UserProfile)

@@ -663,7 +663,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
    > Renamed from T-161 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
    Done when: `submit_question` constructs an `EphemeralAttempt` and uses `store_attempt()` instead of direct `redis.set`, transitions state PENDING→GENERATED→EVALUATED→EXECUTED|REJECTED|TIMEOUT, and persists `attempt_id` on `accepted_queries`. [Wave 4]
 
-- [ ] **T-213** [backend] **OP-010 Session timeout config** [DEFERRED to final polish] — cluster: Polish | deps: T-049 | FR-003 | effort: XS
+- [x] **T-213** [backend] **OP-010 Session timeout config** [DEFERRED to final polish] — cluster: Polish | deps: T-049 | FR-003 | effort: XS
   > Renamed from T-162 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `AuthService.sign_in()` reads `settings.SESSION_IDLE_TIMEOUT_HOURS` instead of hardcoding `ex=8*3600`. [Polish]
 
@@ -671,7 +671,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
   > Renamed from T-163 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: rate limiting middleware (e.g. slowapi or custom Redis-based) is applied to `/auth/sign-in`, `/query/submit`, and `/admin/refresh-schema`. [Polish]
 
-- [ ] **T-215** [backend] **OP-012 response_model accuracy** [DEFERRED to final polish] — cluster: Polish | deps: T-058 | | effort: XS
+- [x] **T-215** [backend] **OP-012 response_model accuracy** [DEFERRED to final polish] — cluster: Polish | deps: T-058 | | effort: XS
   > Renamed from T-164 (Chunk 3.11.1 — collision with pre-existing US-3 ID).
   Done when: `/query/submit` response_model declaration accurately reflects the discriminated union of QueryResult and EvaluatorRejection, or is documented as accepted minor divergence. [Polish]
 
@@ -831,7 +831,7 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Backend i18n key consistency
 
-- [ ] **T-184** [P] [test] **Backend error responses use message_key from en.json** — cluster: US-6 | deps: T-128,T-022 | FR-024 | effort: S
+- [x] **T-184** [P] [test] **Backend error responses use message_key from en.json** — cluster: US-6 | deps: T-128,T-022 | FR-024 | effort: S
   Done when: `backend/tests/unit/test_message_keys.py` collects all `message_key` values returned by custom exceptions and error handlers, asserts each key exists in `frontend/src/i18n/locales/en.json`; zero orphaned backend keys.
 
 ### Playwright e2e — US-6 independent test criterion
@@ -924,20 +924,21 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 - [ ] **T-224** [docs] **Add FR for execution-phase database error handling** [DEFERRED to final polish] — cluster: Polish | deps: T-106 | | effort: S
   > /speckit.analyze A9: spec.md edge case L155 describes DB execution errors for evaluator-passed SQL but no FR mandates the behavior. Add FR-012b (or extend FR-028) covering runtime DB errors with required user-facing message and history entry behavior.
+  > **Note:** null/empty SQL from LLM is now covered by T-252 (SC-013 added to spec.md).
 
 - [ ] **T-225** [docs] **Add FR/SC for "last automatic try" UI indicator** [DEFERRED to final polish] — cluster: Polish | deps: T-138 | | effort: XS
   > /speckit.analyze A12: spec.md L255 assumption mentions UI cue on the second attempt with no FR/SC backing. Either add an FR mandating the indicator, or remove the assumption.
 
-- [ ] **T-226** [docs] **Reconcile OpenAPI version (plan.md says 3.1, openapi.yaml says 3.0.3)** [DEFERRED to final polish] — cluster: Polish | deps: T-001 | | effort: XS
+- [x] **T-226** [docs] **Reconcile OpenAPI version (plan.md says 3.1, openapi.yaml says 3.0.3)** [DEFERRED to final polish] — cluster: Polish | deps: T-001 | | effort: XS
   > /speckit.analyze pass-3 A1: align both artifacts. Recommend openapi.yaml → 3.1 to match plan.md (or downgrade plan to 3.0.3 if no 3.1-specific syntax used).
 
-- [ ] **T-227** [docs] **Align EvaluatorResult entity definition (spec.md + data-model.md)** [DEFERRED to final polish] — cluster: Polish | deps: T-088 | FR-010 | effort: XS
+- [x] **T-227** [docs] **Align EvaluatorResult entity definition (spec.md + data-model.md)** [DEFERRED to final polish] — cluster: Polish | deps: T-088 | FR-010 | effort: XS
   > /speckit.analyze pass-3 A8: spec.md describes "reason(s) for failure" attribute; data-model.md uses "violations" list. Pick one canonical name and update both.
 
 - [ ] **T-228** [docs] **Clarify FR-014 result pagination (client-side via TanStack Table)** [DEFERRED to final polish] — cluster: Polish | deps: T-058 | FR-014 | effort: XS
   > /speckit.analyze pass-3 A9: FR-014 mentions paginated table but API returns all rows. Add explicit note that pagination is client-side rendering, not server-side query pagination.
 
-- [ ] **T-229** [docs] **Replace subjective qualifiers in FR-014/FR-016 with measurable criteria** [DEFERRED to final polish] — cluster: Polish | deps: | FR-014,FR-016 | effort: XS
+- [x] **T-229** [docs] **Replace subjective qualifiers in FR-014/FR-016 with measurable criteria** [DEFERRED to final polish] — cluster: Polish | deps: | FR-014,FR-016 | effort: XS
   > /speckit.analyze pass-3 A12: "brief confirmation message" and "user-friendly message" lack measurable criteria. Replace with specific i18n key names + minimum visibility duration (e.g., 2s).
 
 - [ ] **T-231** [test] **Upgrade T-156/T-157 E2E specs to full-stack (remove Playwright route mocks)** [DEFERRED to final polish] — cluster: Polish | deps: T-210 | FR-010,FR-012,FR-028 | effort: M
@@ -975,13 +976,13 @@ No actual ID collisions — T-149..T-157 and T-200..T-207 are distinct ranges.
 
 ### Polish residuals discovered during Wave 5
 
-- [ ] **T-242** [backend] **Add `schema` field to `AcceptedQuerySummary` in OpenAPI schema** — cluster: Polish | deps: | FR-021 | effort: XS
-  > Wave 5 Chunk 5.4 noted: HistoryList renders a `schema` column but generated `AcceptedQuerySummary` type doesn't include `schema`. Add the field to openapi.yaml + ResponseSchema; regenerate types.gen.ts via `gen:api`.
+- [x] **T-242** [backend] **Add `schema` field to `AcceptedQuerySummary` in OpenAPI schema** — cluster: Polish | deps: | FR-021 | effort: XS
+  > Obsoleted by Wave 5 Chunk 5.9 F-11 (PR #25) which removed schema from frontend as phantom field. FR-021 reviewed in Chunk 6.4 — does not require schema attribute.
 
 - [ ] **T-243** [test] **Upgrade Wave 5 E2E to full-stack once docker-in-CI lands** — cluster: Polish | deps: T-231 | | effort: M
   > Current E2E specs (T-171–T-173) use Playwright `page.route()` mocks. Once CI brings up the full docker-compose stack, remove mocks and drive real backend. Extends T-231 scope.
 
-- [ ] **T-244** [docs] **Document co-located test-file convention in style guide** — cluster: Polish | deps: | | effort: XS
+- [x] **T-244** [docs] **Document co-located test-file convention in style guide** — cluster: Polish | deps: | | effort: XS
   > Wave 5 Chunk 5.4 consolidated duplicate HistoryList test files into co-located pattern. No other `__tests__/` directories exist in `components/`. Document the convention to prevent regressions.
 
 - [ ] **T-245** [docs] **Translate 11 Arabic history i18n keys (currently English placeholders)** — cluster: Polish (Phase 5) | deps: | constitution §11 | effort: S
@@ -1063,11 +1064,11 @@ No coverage gaps identified — all 30 functional requirements and 12 success cr
 
 Registered in Chunk 6.1 during Wave 6 planning.
 
-- [ ] **T-250** [test] **Verify user identifier attribution in session events and diagnostic logs** — cluster: Polish | deps: T-051 | FR-027 | effort: S
+- [x] **T-250** [test] **Verify user identifier attribution in session events and diagnostic logs** — cluster: Polish | deps: T-051 | FR-027 | effort: S
   > Resolves /speckit.analyze A3. FR-027 mandates user identifier on "session events, diagnostic log entries" in addition to accepted queries. Current tasks T-042/T-050 verify accepted queries only. Add test asserting that session middleware and diagnostic log entries include the owning `user_id`.
 
 - [x] **T-251** [test] **Add operator-effort assertion for LLM provider switch under 5 minutes** — cluster: US-5 | deps: T-174 | SC-008 | effort: XS
   > Resolves /speckit.analyze A4. SC-008 requires "under 5 minutes of operator effort" to switch providers. No task currently measures or bounds this. Add a lightweight timed assertion in CI (or runbook step) documenting the measured restart time.
 
-- [ ] **T-252** [docs] **Add FR/SC for null/empty SQL from LLM** — cluster: Polish | deps: T-224 | FR-010 | effort: XS
+- [x] **T-252** [docs] **Add FR/SC for null/empty SQL from LLM** — cluster: Polish | deps: T-224 | FR-010 | effort: XS
   > Resolves /speckit.analyze A7. Spec edge case (L153) describes null/empty SQL rejected by evaluator, but no FR/SC mandates this behavior. Add explicit traceability or fold into T-224 scope.

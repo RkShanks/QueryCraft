@@ -4,6 +4,7 @@ import json
 import os
 import time
 
+import structlog
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
@@ -80,6 +81,7 @@ class SessionMiddleware:
                     )
                     request.state.session = session
                     request.state.session_id = session_id
+                    structlog.contextvars.bind_contextvars(user_id=session.get("user_id"))
 
         await self.app(scope, receive, send)
 

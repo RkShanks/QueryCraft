@@ -32,7 +32,7 @@ This is the irreducible core of Phase 1. Every subsequent phase builds on this q
 
 1. **Given** the user is signed in and a database is connected, **When** they type "How many orders were placed last month?" and submit, **Then** the platform sends the question plus schema context to the configured LLM provider, the returned SQL passes the evaluator, the SQL is executed with a read-only connection, and the user sees a paginated table result alongside the SQL that produced it, with Accept / Reject / Regenerate actions visible below the result.
 
-2. **Given** the user is viewing a valid table result, **When** they click Accept, **Then** the question text, the generated SQL, a timestamp, the user's identifier, and the target database identifier are written to durable storage, a brief confirmation message is shown, and the accepted query becomes visible in the user's History view.
+2. **Given** the user is viewing a valid table result, **When** they click Accept, **Then** the question text, the generated SQL, a timestamp, the user's identifier, and the target database identifier are written to durable storage, the i18n key `query.accept.success.message` is displayed for a minimum of 2 seconds, and the accepted query becomes visible in the user's History view.
 
 3. **Given** the user is not signed in, **When** they attempt to access the question input or any platform feature, **Then** they are redirected to the sign-in screen and cannot proceed until they authenticate with valid local credentials.
 
@@ -178,6 +178,7 @@ As the team building the Arabic/RTL phase in a later release, when I inspect the
   - (d) references table names not present in the connected PostgreSQL schema,
   - (e) references column names not present in the referenced tables,
   - (f) Reject SQL containing platform-defined unsafe patterns. The initial unsafe-pattern catalog (extensible via `UnsafePatternRule.add_pattern()`):
+  - (g) is `null`, empty, or whitespace-only (treated as an evaluator rejection with violation `empty_sql` and does not execute).
     - `pg_sleep`, `pg_advisory_lock`, `pg_advisory_unlock` — long-blocking calls
     - `pg_read_file`, `pg_read_binary_file`, `pg_ls_dir`, `pg_stat_file` — filesystem access
     - `pg_terminate_backend`, `pg_cancel_backend`, `pg_reload_conf` — server control
@@ -193,7 +194,7 @@ The catalog is enforced by `app/evaluator/rules/unsafe_pattern.py::UnsafePattern
 - **FR-013**: The system MUST execute evaluator-passed SQL against the source database using a read-only connection.
 - **FR-014**: The system MUST present query results as a paginated table. The originating SQL MUST be visible to the user alongside the results.
 - **FR-015**: Below each result, the system MUST present three actions: Accept, Reject, and Regenerate.
-- **FR-016**: When the user clicks Accept, the system MUST persist the question text, the generated SQL, an acceptance timestamp, the owning user identifier, and the target database identifier to durable storage. A brief confirmation MUST be shown to the user.
+- **FR-016**: When the user clicks Accept, the system MUST persist the question text, the generated SQL, an acceptance timestamp, the owning user identifier, and the target database identifier to durable storage. The system MUST display the i18n key `query.accept.success.message` for a minimum of 2 seconds.
 - **FR-017**: When the user clicks Reject, the system MUST discard the current attempt and automatically trigger one new SQL generation for the same question. The prior rejected SQL MUST be provided to the LLM as negative context. The new attempt MUST pass through the evaluator before execution. If the regenerated SQL is byte-equal to the rejected SQL, the system MUST treat it as a failed regeneration, discard the duplicate, and ask the user to refine or rephrase their question (the same behavior as two consecutive rejections).
 - **FR-018**: If the user rejects the second consecutive attempt for the same question, the system MUST stop auto-regenerating, display a message asking the user to refine or rephrase their question, and present a fresh input.
 - **FR-019**: The Regenerate action MUST behave identically to a single Reject followed by a new attempt, subject to the same one-automatic-retry limit. FR-019 (Regenerate) MUST behave identically to FR-017 (Reject) in terms of state transitions and invariant enforcement; the distinction is solely user intent (Reject = explicit dissatisfaction; Regenerate = ask for another attempt). See FR-017 for the canonical state machine.
@@ -205,7 +206,7 @@ The catalog is enforced by `app/evaluator/rules/unsafe_pattern.py::UnsafePattern
 - **FR-025**: The system MUST NOT use hardcoded directional CSS properties (`left`, `right`, `margin-left`, `margin-right`, `padding-left`, `padding-right`) in user-facing components. All directional styling MUST use logical CSS equivalents (`inline-start`, `inline-end`, `block-start`, `block-end`).
 - **FR-026**: The system MUST allow the active LLM provider to be switched by configuration only, without code changes and without invalidating existing accepted-query history.
 - **FR-027**: The system MUST attribute every persisted record (accepted queries, session events, diagnostic log entries) to a user identifier, even in this single-user phase.
-- **FR-028**: When the evaluator rejects a SQL statement, the system MUST display a user-friendly message explaining that the question could not be answered safely and inviting the user to rephrase. The rejected SQL MUST NOT be executed against the database.
+- **FR-028**: When the evaluator rejects a SQL statement, the system MUST display the i18n key `query.evaluator.rejected` and MUST NOT execute the rejected SQL against the database.
 - **FR-029**: When a zero-row result is returned from the database, the system MUST display an empty table with a "No results found" message. This is a valid result and the user may Accept, Reject, or Regenerate.
 - **FR-030**: The system MUST prevent concurrent question submissions within a single user session. The submit action MUST be disabled while a question is being processed.
 
@@ -221,7 +222,7 @@ The catalog is enforced by `app/evaluator/rules/unsafe_pattern.py::UnsafePattern
 
 - **AcceptedQuery**: A Question combined with its accepted GenerationAttempt, persisted to the user's history. Attributes: question text, generated SQL, acceptance timestamp, owning user identifier, target database identifier.
 
-- **EvaluatorResult**: The verdict produced by the evaluator for a given GenerationAttempt. Attributes: pass/fail verdict, reason(s) for failure (if applicable), list of specific violations detected.
+- **EvaluatorResult**: The verdict produced by the evaluator for a given GenerationAttempt. Attributes: pass/fail verdict, `violations: list[EvaluatorViolation]` (empty if passed).
 
 ## Success Criteria *(mandatory)*
 
@@ -239,6 +240,7 @@ The catalog is enforced by `app/evaluator/rules/unsafe_pattern.py::UnsafePattern
 - **SC-010**: 0 instances of hardcoded directional CSS properties exist in user-facing components — all directional styling uses logical equivalents.
 - **SC-011**: Query execution that exceeds the configured timeout is cancelled and the user sees a timeout message within 5 seconds of the timeout threshold.
 - **SC-012**: No rejected, regenerated-and-discarded, or evaluator-rejected SQL is present in durable storage after a session that includes both accepted and rejected queries.
+- **SC-013**: The evaluator correctly rejects `null`, empty, or whitespace-only SQL from the LLM with a 100% detection rate; no database execution is attempted.
 
 ## Assumptions
 

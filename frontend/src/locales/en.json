@@ -106,7 +106,14 @@
   "error.concurrent": "A query is already being processed. Please wait.",
   "error.llmUnavailable": "The AI service is temporarily unavailable. Please try again in a moment.",
   "error.attemptInvalid": "This query attempt has expired or is invalid. Please submit a new question.",
+  "error.attemptExpired": "This query attempt has expired. Please submit a new question.",
   "error.timeout": "The query timed out. Please try a simpler question.",
+  "error.forbidden": "This request was blocked for security reasons.",
+  "error.notFound": "The requested resource was not found.",
+  "error.invalidCursor": "Invalid pagination cursor.",
+  "error.schemaTokenLimit": "The database schema is too large ({{tokens}} tokens, limit {{limit}}). Please contact your administrator.",
+  "error.acceptConflict": "This query is already being accepted.",
+  "error.attemptStateInvalid": "This query attempt is not in a valid state to accept.",
   "error.unknown.title": "Error",
   "error.unknown.message": "An unexpected error occurred. Please try again.",
   "error.evaluator.title": "Evaluator Rejected",
@@ -120,5 +127,6 @@
   "error.accept.message": "Failed to accept query.",
   "error.validation.questionEmpty": "Question cannot be empty.",
   "error.validation.questionTooLong": "Question must be at most {{max}} characters.",
-  "error.validation.unknown": "Validation failed. Please check your input."
+  "error.validation.unknown": "Validation failed. Please check your input.",
+  "error.validation.generic": "Validation failed. Please check your input."
 }
