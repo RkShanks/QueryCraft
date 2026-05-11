@@ -60,7 +60,7 @@ export const ResultTable: React.FC<ResultTableProps> = ({
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
-                      <th key={header.id} className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th key={header.id} className="px-6 py-4 text-start text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         {flexRender(
                           header.column.columnDef.header,
                           header.getContext()
