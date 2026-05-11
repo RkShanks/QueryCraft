@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { HistoryList, type HistoryItem } from './HistoryList';
 
 function setup(items: HistoryItem[], extraProps: Partial<React.ComponentProps<typeof HistoryList>> = {}) {
@@ -23,11 +23,14 @@ describe('HistoryList', () => {
   });
 
   it('filters by question text (FR-022 client-side filtering)', () => {
+    vi.useFakeTimers();
     setup(sample);
     const filterInput = screen.getByPlaceholderText(/filter/i);
     fireEvent.change(filterInput, { target: { value: 'revenue' } });
+    act(() => { vi.advanceTimersByTime(300); });
     expect(screen.queryByText('Total customers?')).not.toBeInTheDocument();
     expect(screen.getByText('Top revenue')).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it('does not render phantom schema column (G-007/O-009)', () => {
@@ -91,5 +94,23 @@ describe('HistoryList', () => {
       expect(th.className).toContain('text-start');
       expect(th.className).not.toContain('text-left');
     });
+  });
+
+  it('debounces filter input by 300ms (T-247)', () => {
+    vi.useFakeTimers();
+    setup(sample);
+    const filterInput = screen.getByPlaceholderText(/filter/i);
+
+    // Type "revenue" — filtering should not happen immediately
+    fireEvent.change(filterInput, { target: { value: 'revenue' } });
+    expect(screen.queryByText('Total customers?')).toBeInTheDocument();
+    expect(screen.getByText('Top revenue')).toBeInTheDocument();
+
+    // Advance timers by 300ms — debounce fires
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(screen.queryByText('Total customers?')).not.toBeInTheDocument();
+    expect(screen.getByText('Top revenue')).toBeInTheDocument();
+
+    vi.useRealTimers();
   });
 });
