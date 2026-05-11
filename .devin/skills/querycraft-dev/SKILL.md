@@ -37,6 +37,20 @@ When writing/extending `unsafe_pattern.py` rules:
 - After fetching, always `git pull --ff-only` to surface any merge needs explicitly.
 - Write scratch files to `<repo>/tmp/` (gitignored), NEVER `~/`.
 
+## Backend tooling / test quirks
+
+- **respx.mock context-manager pattern** (Chunk 6.2). `respx.mock(...)` as a decorator silently fails to register routes when combined with async fixtures. Use `async with respx.mock() as router:`, register routes on the router inside the block, and call the function under test inside the block. Rule of thumb: prefer the context-manager form for httpx mocking; the decorator form has gotchas with async fixtures.
+- **get_settings.cache_clear() after env monkeypatch** (Chunk 6.2). Monkeypatching env vars in tests has no effect on the `@lru_cache`'d `get_settings()`. Call `get_settings.cache_clear()` immediately after `monkeypatch.setenv`, before reading settings. Rule of thumb: `get_settings()` is cached; bust the cache or your env mutation is invisible.
+- **@hey-api/openapi-ts v0.95.0 silent failure** (Chunk 6.4). `npm run gen:api` returns exit 0 but writes no files. Generated `types.gen.ts` is checked in; only regenerate when OpenAPI schema semantics change, and verify file mtimes after running. Rule of thumb: treat the generator as advisory; verify checked-in types by hand when in doubt.
+- **Schemathesis requires OPEN_API_3_1.enable()** (Chunk 6.4). Schemathesis fails with "Open API 3.1.0 is currently not fully supported" after bumping the spec to 3.1.0. In contract test setup, add `schemathesis.experimental.OPEN_API_3_1.enable()` at module top. Rule of thumb: the experimental flag is mandatory when the OpenAPI version moves to 3.1.
+- **ruff SIM105 / contextlib.suppress in test files** (Chunk 6.9). ruff fails tests with `SIM105: Use contextlib.suppress(Exception) instead of try-except-pass`. Replace `try: ... except Exception: pass` with `with contextlib.suppress(Exception): ...`. Rule of thumb: never use bare `try/except/pass` in this repo; always use `contextlib.suppress`.
+
+## Frontend tooling / test quirks
+
+- **Tailwind v4 `@source not` for test/fixture exclusion** (Chunk 6.3). Built CSS still contains physical-direction utilities even after fixing source files because Tailwind v4 JIT picks up class-name-shaped strings from test assertion literals. Add `@source not` directives in `frontend/src/index.css` to exclude `tests/**`, `coverage/**`, `eslint-rules/**`, and `stylelint-fixtures/**`. Rule of thumb: when a Tailwind v4 build leaks unexpected utilities, suspect test-file scans first.
+- **ESLint flat config (v10) temp-file project-base constraint** (Chunk 6.3). ESLint Node API refuses to lint temp files outside the project base, and flat config globally ignores files under custom directories like `eslint-rules/__fixtures__/`. Write programmatic lint fixtures to `frontend/tmp/` (gitignored but inside the project base). Rule of thumb: in the flat-config era, all programmatic lint must use in-project paths.
+- **`vi.useFakeTimers()` conflicts with TanStack Query** (Chunk 6.5). Page-level integration tests that mount TanStack-Query-backed components flake or hang after switching to fake timers. Limit `vi.useFakeTimers()` to pure component unit tests (where TQ is not in the tree). For page/integration tests, use real timer delays: `await new Promise(r => setTimeout(r, 350))`. Rule of thumb: fake timers + TQ = pick one; if TQ is in the tree, use real delays.
+
 ## Chunk report — "Self-discovered environment quirks" section
 
 When completing any chunk prompt, include this block in the final report between **Problems encountered** and **BLOCKED markers**:
