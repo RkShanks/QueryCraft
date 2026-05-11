@@ -60,13 +60,20 @@ async def _get_query_service(
     )
 
 
-@router.post("/submit", response_model=QueryResult)
+@router.post("/submit")
 async def submit_question(
     request: Request,
     req: SubmitQuestionRequest = Depends(validate_body(SubmitQuestionRequest)),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
-    """POST /query/submit — ask a question."""
+    """POST /query/submit — ask a question.
+
+    Response shapes:
+    - 200 → QueryResult (returned directly)
+    - 422 → EvaluatorRejection (raised as HTTPException, unwrapped by global handler)
+    response_model is intentionally omitted because the endpoint returns
+    discriminated union shapes; openapi.yaml remains the source of truth.
+    """
     session = request.state.session
     if session is None:
         raise HTTPException(
