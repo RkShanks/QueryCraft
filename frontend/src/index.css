@@ -1,1 +1,8 @@
 @import "tailwindcss";
+@source not "**/*.test.ts";
+@source not "**/*.test.tsx";
+@source not "../tests/**/*.ts";
+@source not "../tests/**/*.tsx";
+@source not "../coverage/**/*";
+@source not "../stylelint-fixtures/**/*";
+@source not "../eslint-rules/**/*";
