@@ -209,3 +209,82 @@ Same PR initializes this orchestration log + backfills Phase 1 log skeleton + cr
 ---
 
 <!-- Append new entries below this line. Most recent at the bottom. -->
+
+## 2026-05-12 — Wave 8.0 dispatched + recovery + fix
+
+**Type**: dispatch + review + hardening
+**Actor**: user (dispatch via opencode/Antigravity) + implementer (Kimi K2.6) + orchestrator (Devin session 93bfbc2d)
+**Artifacts**: PR #45 (open, CI green after fix); branch `phase-2/wave-8.0-foundation` HEAD `a39e3b7`; 10 commits
+
+### Initial dispatch
+
+`/speckit.implement T-300..T-333` (Wave 8.0 Foundation, 34 tasks). All 34 tasks implemented locally by Kimi but **not pushed and no PR opened**. Kimi reported "Wave 8.0 ready for merge" via local report only.
+
+### Recovery dispatch
+
+Orchestrator detected no branch on origin via `git ls-remote`. User dispatched a recovery prompt to Kimi specifying: `git fetch + checkout main + pull --ff-only + checkout -b phase-2/wave-8.0-foundation`, 7 logical-chunk commits with conventional-commits format and T-ID references, foundation gates verbatim output, PR creation with required body sections, and explicit report including PR URL.
+
+Recovery delivered: 8 commits + 1 fix-up commit, PR #45 opened at `phase-2/wave-8.0-foundation` → main.
+
+### Orchestrator review
+
+CI failed on initial push (310 passed + 1 failed in backend-test). Findings posted to PR #45:
+
+- **Critical**: `backend/src/app/api/v1/query.py:_get_query_service` was not updated for new `QueryService.__init__` signature (missing `session_repository` + `db_session`). Real `POST /query/submit` would crash at runtime with `TypeError`.
+- **High (workflow)**: Wave Final Report claimed `Backend pytest 311 passed`, but CI showed `310 passed + 1 failed`. Gates were not run against the committed tree.
+- **Mid**: `backend/tests/integration/test_f011_lock_leak.py` and `backend/tests/integration/test_evaluator_gate.py` still used the old `QueryService` signature (deselected from CI, so didn't break it, but would break when integration suite runs).
+- **Low**: `frontend/src/hooks/__tests__/useSessionsHooks.test.tsx` and `frontend/src/stores/__tests__/uiStore.test.ts` use the `__tests__/` subdir pattern; SKILL.md says co-located. Deferred to follow-up.
+
+### Fix dispatch + result
+
+Orchestrator drafted a targeted fix prompt covering: update `_get_query_service` (Critical), `test_f011_lock_leak.py` (Mid), `test_evaluator_gate.py` (Mid), run gates against committed tree, two clean commits, push, wait for CI green.
+
+Kimi pushed 2 fix commits (`6ee0343` production factory, `a39e3b7` integration tests). HEAD now `a39e3b7c33f783438f60a176fb1efb8d8a4c58b5`. CI green on PR #45 (backend-test PASS, frontend-test PASS).
+
+### Remaining open items (not blocking merge)
+
+- 3 `submit_question(session_id=...)` calls in `test_f011_lock_leak.py` (lines 86, 125, 134) still use the old kwarg name. The kwarg was renamed to `http_session_id` in this wave. These tests are deselected — they won't run until integration suite is wired up (Wave 9). Flagging for cleanup in Wave 9 or via a follow-up commit before then.
+- `__tests__/` subdir layout in frontend (2 files) — defer to Wave 8.4 polish or end-of-Wave-8 cleanup.
+
+### SKILL.md hardening (PR #46, merged)
+
+Wave 8.0 surfaced 7 workflow gaps. Orchestrator patched SKILL.md in parallel with the Wave 8.0 fix:
+
+- Pre-flight resume scan (Step 0)
+- Commit-per-task triple (Step 2) — test then impl then mark-complete
+- Signature-change caller sweep (Step 3, CRITICAL) — cites the Wave 8.0 `_get_query_service` miss explicitly
+- Per-sub-wave regression sweep on dependents (Step 4)
+- Foundation gate integrity (Step 5) — paste verbatim, never fabricate
+- Push after every sub-wave (Step 6)
+- PR-before-report rule (Step 7) — "complete" is not a local state
+- `tasks.md` checkbox exception to governance-docs-read-only rule
+
+PR #46 merged before Wave 8.0 finalized; Wave 8.1 onward will read the new rules from the start.
+
+### Green-light
+
+Wave 8.0 cleared for merge. CI green, Critical fixed, Mid integration tests updated. Remaining items tracked above for follow-up.
+
+---
+
+## Status snapshot — 2026-05-12 (post-Wave-8.0-recovery)
+
+**Phase 2 speckit artifacts**: COMPLETE
+**Implementation status**: Wave 8.0 PR #45 cleared for merge; awaiting user merge
+**Active branch on origin**: `phase-2/wave-8.0-foundation` (HEAD `a39e3b7`)
+**Open PRs**: PR #45 (Wave 8.0) — cleared for merge
+
+**Wave 8.0 deliverables on disk** (will land on main when #45 merges):
+- Migration 004 (sessions table + `accepted_queries` extensions + `llm_context_cap=3` seed)
+- Session model + SessionRepository CRUD + AcceptedQueryRepository extensions
+- `/sessions`, `/feedback`, `/admin/settings` routers + Pydantic schemas
+- `prompt_builder` conversation_history support + `submit_question` lazy session creation + implicit feedback on follow-up
+- 6 new backend test files + updates to all existing `QueryService` callers
+- Frontend scaffold: zustand, design tokens, TanStack hooks (`useSessions`, `useFeedback`, `useAdminSettings`), 13-icon barrel, ~25 i18n keys (en + ar)
+- 2 new frontend test files + MSW handlers
+
+**Next dispatch after #45 merges**: `/speckit.implement T-334..T-342` (Wave 8.1 Shell) — Kimi will follow the new SKILL.md workflow rules (per-task commits, caller sweep, regression sweep, push after sub-wave, PR before reporting complete).
+
+---
+
+<!-- Append new entries below this line. Most recent at the bottom. -->
