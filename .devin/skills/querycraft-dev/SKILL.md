@@ -51,11 +51,69 @@ When writing/extending `unsafe_pattern.py` rules:
 - **ESLint flat config (v10) temp-file project-base constraint** (Chunk 6.3). ESLint Node API refuses to lint temp files outside the project base, and flat config globally ignores files under custom directories like `eslint-rules/__fixtures__/`. Write programmatic lint fixtures to `frontend/tmp/` (gitignored but inside the project base). Rule of thumb: in the flat-config era, all programmatic lint must use in-project paths.
 - **`vi.useFakeTimers()` conflicts with TanStack Query** (Chunk 6.5). Page-level integration tests that mount TanStack-Query-backed components flake or hang after switching to fake timers. Limit `vi.useFakeTimers()` to pure component unit tests (where TQ is not in the tree). For page/integration tests, use real timer delays: `await new Promise(r => setTimeout(r, 350))`. Rule of thumb: fake timers + TQ = pick one; if TQ is in the tree, use real delays.
 
-## Chunk report — "Self-discovered environment quirks" section
+## Universal `/speckit.implement` constraints (applies to every wave)
 
-When completing any chunk prompt, include this block in the final report between **Problems encountered** and **BLOCKED markers**:
+These constraints apply to EVERY `/speckit.implement T-IDs` dispatch unless explicitly overridden in the dispatch message. Treat them as binding.
+
+- **Single PR per wave.** Do NOT open a separate PR per T-ID. All T-IDs in the dispatched range land in one PR.
+- **Branch name**: `phase-<N>/wave-<W.X>-<short-name>` (e.g. `phase-2/wave-8.0-foundation`, `phase-2/wave-8.1-shell`, `phase-2/wave-9-llm-contract`).
+- **Commit messages**: every commit references the T-IDs it implements in the body (`Implements T-300, T-301, T-303 — sessions table + Session model + AcceptedQuery extensions`).
+- **PR description**: references the T-IDs implemented AND the FR/SC numbers verified by the wave. Pull these from the wave header in `tasks.md` (the `> Verifies:` line).
+- **Foundation gates MUST pass before opening the PR**:
+  ```bash
+  cd backend && uv run pytest -q -m "not integration" && uv run ruff check src tests && uv run ruff format --check
+  cd ../frontend && npm run test -- --run && npm run lint && npm run typecheck && npm run build
+  ```
+- **Governance docs are READ-ONLY.** Do NOT modify `spec.md`, `plan.md`, `tasks.md`, `data-model.md`, `research.md`, or any file under `contracts/`. These are the speckit audit trail. If you believe one is wrong, STOP and report — do not edit.
+- **If a `[NEEDS DECISION]` arises mid-implementation, STOP and report** in the final report's BLOCKED markers section. Never invent a product decision. The orchestrator will run `/speckit.clarify` to lock it.
+- **Apply locked Design Decisions verbatim** from `tasks.md` (top of file). For Phase 2 those are: lazy session creation, client-side undo timer, Wave 8.2 boundary for `useQuerySubmit`, lifecycle migration in Wave 10.
+- **Use logical Tailwind directions** in any new component (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `text-start`, `rounded-ee-`). Physical directions are caught by lint in T-180/T-181 (Phase 1) — extended further by T-365/T-366 in Wave 8.4.
+
+## Security non-negotiables (Constitution I)
+
+- **NEVER put API keys, tokens, or credentials in URL query parameters.** httpx and similar libraries log full URLs at INFO. Always use HTTP headers. (Phase 1 finding F-014 — Gemini API key leaked via `?key=...`.)
+- **NEVER log raw request/response bodies that may contain user input or LLM output** without redaction.
+- **Long-running services that acquire locks** (Redis `processing_lock:*`, DB row locks) MUST release them in a `try/finally` block on every exit path — success, evaluator rejection, executor timeout, LLM failure. (Phase 1 finding F-011 — lock leak.)
+- **Alembic startup drift guard.** The backend refuses to start when `alembic current < head` and emits `migration_drift_detected`. If you add a new migration, ensure `alembic upgrade head` is part of any setup/dev script. (Phase 1 finding F-013.)
+
+## DRAFT audit PR pattern
+
+When dispatched an **audit** task (reproduce a finding without fixing it), open a DRAFT PR titled `DRAFT: Wave <N> audit findings — DO NOT MERGE`. The DRAFT preserves the reproduction tests + findings document as a permanent audit record. The follow-up **fix** dispatch lands on a separate branch, closes the findings, and merges. Phase 1 examples: PR #33 (Wave 6 audit DRAFT), PR #40 (Wave 7 audit DRAFT).
+
+## Wave Final Report Template
+
+At the end of every `/speckit.implement` dispatch, produce a final report in this exact format. The orchestrator parses this; deviating breaks downstream automation.
 
 ```
+Final report — Wave <N.X> <Short Name>
+- Branch: <branch-name>
+- HEAD sha: <full 40-char sha>
+- PR URL: https://github.com/<owner>/<repo>/pull/<N>
+
+T-IDs implemented
+- T-XXX: <one-line summary>
+- T-XXX: <one-line summary>
+- ... (list every T-ID in the dispatched range; mark any as "deferred" with reason)
+
+FRs / SCs verified
+- FR-XXX, FR-XXX, ...
+- SC-XXX, SC-XXX, ...
+
+Foundation gates
+Backend
+  <paste pytest output line: "N passed, M deselected in Xs">
+  <paste ruff check output: "All checks passed!" or error count>
+  <paste ruff format --check output>
+Frontend
+  <paste vitest output: "Test Files N passed (N); Tests M passed (M)">
+  <paste lint output: "✓" or error count>
+  <paste typecheck output: "✓" or error count>
+  <paste build output: "built in Xs">
+
+Problems encountered
+- <each problem encountered + how it was resolved>
+- (or "None")
+
 == Self-discovered environment quirks (durable knowledge candidates) ==
 List anything you had to figure out on the fly that wasn't in the prompt and
 that a future session would also hit. Format:
@@ -63,9 +121,13 @@ that a future session would also hit. Format:
      <command/fix that worked>
      <suggested SKILL doc location, if obvious>
 (or "None")
+
+BLOCKED markers
+- <any [NEEDS DECISION] surfaced, or test you couldn't make pass, or external dependency missing>
+- (or "None")
 ```
 
-The orchestrator rolls these into this SKILL.md so future sessions don't re-discover them. Zero tax on tokens; major payoff on velocity.
+The orchestrator rolls "self-discovered quirks" into this SKILL.md so future sessions don't re-discover them. Zero tax on tokens; major payoff on velocity.
 
 ## Spec-kit commands available
 
