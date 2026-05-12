@@ -64,10 +64,158 @@ These constraints apply to EVERY `/speckit.implement T-IDs` dispatch unless expl
   cd backend && uv run pytest -q -m "not integration" && uv run ruff check src tests && uv run ruff format --check
   cd ../frontend && npm run test -- --run && npm run lint && npm run typecheck && npm run build
   ```
-- **Governance docs are READ-ONLY.** Do NOT modify `spec.md`, `plan.md`, `tasks.md`, `data-model.md`, `research.md`, or any file under `contracts/`. These are the speckit audit trail. If you believe one is wrong, STOP and report — do not edit.
+- **Governance docs are READ-ONLY** with ONE exception. Do NOT modify `spec.md`, `plan.md`, `data-model.md`, `research.md`, or any file under `contracts/`. These are the speckit audit trail. If you believe one is wrong, STOP and report — do not edit. **Exception:** `tasks.md` may be edited ONLY to toggle `- [ ] T-XXX` → `- [X] T-XXX` on tasks you have just completed. No other changes to `tasks.md` are allowed (no task renames, no description edits, no wave reordering, no new tasks).
 - **If a `[NEEDS DECISION]` arises mid-implementation, STOP and report** in the final report's BLOCKED markers section. Never invent a product decision. The orchestrator will run `/speckit.clarify` to lock it.
 - **Apply locked Design Decisions verbatim** from `tasks.md` (top of file). For Phase 2 those are: lazy session creation, client-side undo timer, Wave 8.2 boundary for `useQuerySubmit`, lifecycle migration in Wave 10.
 - **Use logical Tailwind directions** in any new component (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `text-start`, `rounded-ee-`). Physical directions are caught by lint in T-180/T-181 (Phase 1) — extended further by T-365/T-366 in Wave 8.4.
+
+## Wave implementation workflow (per-dispatch lifecycle)
+
+This section is binding for every `/speckit.implement` dispatch. Wave 8.0 surfaced gaps that these rules close. Follow the steps in order.
+
+### Step 0 — Pre-flight: discover resume point
+
+Before touching any code, run these commands and read the output:
+
+```bash
+git fetch origin
+git checkout main && git pull --ff-only
+git branch --show-current
+git log --oneline -20
+```
+
+Then open `tasks.md` and scan for `[X]` markers within the dispatched T-ID range:
+
+```bash
+grep -nE "^- \[[X ]\] T-(3[0-9]{2}|2[0-9]{2})" specs/00*/tasks.md | head -50
+```
+
+- If **all** dispatched T-IDs are already `[X]`, STOP and report — work is already done. Confirm the branch + PR exists on origin before reporting.
+- If **some** are `[X]` and others `[ ]`, resume from the first `[ ]` task in the range. Never re-implement a task that is already `[X]`.
+- If **none** are `[X]`, you are starting fresh.
+
+### Step 1 — Create or check out the wave branch
+
+```bash
+git checkout -b phase-<N>/wave-<W.X>-<short-name>   # if first time
+# OR
+git fetch origin phase-<N>/wave-<W.X>-<short-name>:phase-<N>/wave-<W.X>-<short-name>
+git checkout phase-<N>/wave-<W.X>-<short-name>
+```
+
+### Step 2 — Implement one task at a time
+
+For each T-ID in the dispatched range, in tasks.md dependency order:
+
+1. **Write failing test(s) first**, then commit:
+   ```bash
+   git add <test files>
+   git commit -m "test(T-XXX): <short description>" -m "<body referencing FR/SC if applicable>"
+   ```
+2. **Implement the task** so the new tests pass:
+   ```bash
+   git add <impl files>
+   git commit -m "feat(T-XXX): <short description>" -m "Implements T-XXX. <body>."
+   ```
+   (Use `fix`, `chore`, `docs` as appropriate instead of `feat`.)
+3. **Mark the task complete in `tasks.md`** and commit:
+   ```bash
+   # toggle `- [ ] T-XXX ...` to `- [X] T-XXX ...` in tasks.md (no other edits)
+   git add specs/00*/tasks.md
+   git commit -m "docs(T-XXX): mark task complete in tasks.md"
+   ```
+
+Do NOT batch multiple T-IDs into one commit unless they are truly inseparable (rare — e.g. a single Alembic migration that creates two tables referenced as one logical unit). The default is one task per commit triple (test, impl, mark).
+
+### Step 3 — Signature-change caller sweep (CRITICAL)
+
+When any task changes a public function signature, constructor, protocol, or shared schema, before moving to the next task:
+
+```bash
+git grep -n "<symbol_name>(" backend/ frontend/ tests/   # find every caller
+```
+
+Update **every** caller (including those you did not edit in the current task) to match the new signature. Run the tests for each updated file. Then commit:
+
+```bash
+git commit -m "refactor(T-XXX): update all <symbol> callers for new signature"
+```
+
+Wave 8.0 missed this step: `QueryService.__init__` gained two required args but `_get_query_service` in `backend/src/app/api/v1/query.py` was not updated, causing CI failure + runtime crash on `/query/submit`. Run the sweep every signature change without exception.
+
+### Step 4 — Per-sub-wave regression sweep
+
+At the end of each sub-wave (8.0, 8.1, 8.2, 8.3, 8.4), before moving to the next sub-wave OR pushing:
+
+1. Run full foundation gates (see Step 5).
+2. Identify every module that imports, references, or extends what you changed (even modules you did not edit). For example, if you changed `QueryService` constructor, identify every test file that imports `QueryService` and every router/factory that constructs one. Run their test files explicitly:
+   ```bash
+   cd backend && uv run pytest tests/path/test_X.py -v
+   ```
+3. If any dependent test fails, fix it before pushing. Failure in a dependent module is a silent regression — finding it post-merge is much more expensive.
+
+### Step 5 — Foundation gates (run against the committed tree, paste real output)
+
+Run these commands. The output MUST be pasted verbatim in the Wave Final Report. Do NOT summarize, paraphrase, or fabricate. If you skip a step, the gates report is invalid and the orchestrator will reject the PR.
+
+```bash
+cd backend && uv run pytest -q -m "not integration"
+cd backend && uv run ruff check src tests
+cd backend && uv run ruff format --check src tests
+cd ../frontend && npm run test -- --run
+cd ../frontend && npm run lint
+cd ../frontend && npm run typecheck
+cd ../frontend && npm run build
+```
+
+If any gate fails, STOP. Fix the code (NOT the test, unless the test is genuinely wrong). Do not push broken code. Do not report "complete" with a failing gate.
+
+### Step 6 — Push after every sub-wave (do not hoard locally)
+
+At the end of every sub-wave:
+
+```bash
+git push -u origin phase-<N>/wave-<W.X>-<short-name>
+```
+
+Do not wait until the full wave is done — pushing per-sub-wave gives the orchestrator visibility and acts as a remote backup. Wave 8.0 violated this rule (work was completed locally but never pushed; required a recovery dispatch).
+
+### Step 7 — Open the PR before reporting complete
+
+"Complete" is not a local state. Until the PR is open on origin AND CI is green, the work is not done. After step 6:
+
+```bash
+gh pr create \
+  --title "Phase <N> — Wave <W.X>: <Short Name> (T-XXX..T-YYY)" \
+  --base main \
+  --head phase-<N>/wave-<W.X>-<short-name> \
+  --body "$(cat <<'EOF'
+## Summary
+...
+
+## T-IDs implemented
+...
+
+## FRs / SCs verified
+...
+
+## Foundation gates (verbatim)
+...
+
+## Self-discovered environment quirks
+...
+
+## BLOCKED markers
+...
+EOF
+)"
+```
+
+Then wait for CI. If CI fails, fix on the same branch (new commits, never amend) and push again. Only once CI is green is the wave "complete".
+
+### Step 8 — Wave Final Report (after PR is open AND CI is green)
+
+Produce the Wave Final Report (template below). Include the PR URL, the HEAD sha as it appears on origin, the actual gate output (not summarized), and any blockers. Reply to the orchestrator with this report. The orchestrator parses it; deviating breaks downstream automation.
 
 ## Security non-negotiables (Constitution I)
 
