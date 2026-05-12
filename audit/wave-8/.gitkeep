@@ -1,0 +1,7 @@
+This directory will hold per-model findings files for the end-of-full-wave audit.
+
+Expected files (created during the audit, not before):
+  - gemini-findings.md  — produced by Gemini independently (must NOT see opus-findings.md)
+  - opus-findings.md    — produced by Opus independently (must NOT see gemini-findings.md)
+
+See AGENTS.md section 6 for the multi-model audit pattern.
