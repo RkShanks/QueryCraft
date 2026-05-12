@@ -7,6 +7,11 @@ import type {
   EvaluatorRejection,
   RefinePrompt,
   ErrorResponse,
+  SessionListResponse,
+  SessionDetail,
+  FeedbackResponse,
+  AdminSettingsResponse,
+  UpdateAdminSettingsResponse,
 } from '../api/generated/types.gen';
 
 /** Scenario for /query/submit responses. */
@@ -227,5 +232,78 @@ export const handlers = [
       next_cursor: null,
     };
     return HttpResponse.json(history, { status: 200 });
+  }),
+
+  // ─────────────────────────── Sessions ───────────────────────────
+  http.post('/api/v1/sessions', async () => {
+    await delay(10);
+    const session = {
+      id: '550e8400-e29b-41d4-a716-446655440001',
+      preview_text: 'New session',
+      created_at: new Date().toISOString(),
+    };
+    return HttpResponse.json(session, { status: 201 });
+  }),
+
+  http.get('/api/v1/sessions', async () => {
+    await delay(10);
+    const sessions: SessionListResponse = {
+      items: [
+        {
+          id: '550e8400-e29b-41d4-a716-446655440001',
+          preview_text: 'New session',
+          created_at: new Date().toISOString(),
+          last_activity_at: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+    };
+    return HttpResponse.json(sessions, { status: 200 });
+  }),
+
+  http.get('/api/v1/sessions/:sessionId', async ({ params }) => {
+    await delay(10);
+    const detail: SessionDetail = {
+      id: params.sessionId as string,
+      preview_text: 'Session detail',
+      created_at: new Date().toISOString(),
+      last_activity_at: new Date().toISOString(),
+      attempts: [],
+    };
+    return HttpResponse.json(detail, { status: 200 });
+  }),
+
+  http.delete('/api/v1/sessions/:sessionId', async () => {
+    await delay(10);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // ─────────────────────────── Feedback ───────────────────────────
+  http.patch('/api/v1/feedback/:attemptId', async () => {
+    await delay(10);
+    const feedback: FeedbackResponse = {
+      id: '550e8400-e29b-41d4-a716-446655440002',
+      feedback: 1,
+      saved: true,
+    };
+    return HttpResponse.json(feedback, { status: 200 });
+  }),
+
+  // ─────────────────────────── Admin Settings ───────────────────────────
+  http.get('/api/v1/admin/settings', async () => {
+    await delay(10);
+    const settings: AdminSettingsResponse = {
+      llm_context_cap: 3,
+    };
+    return HttpResponse.json(settings, { status: 200 });
+  }),
+
+  http.patch('/api/v1/admin/settings', async () => {
+    await delay(10);
+    const response: UpdateAdminSettingsResponse = {
+      llm_context_cap: 5,
+      updated_at: new Date().toISOString(),
+    };
+    return HttpResponse.json(response, { status: 200 });
   }),
 ];
