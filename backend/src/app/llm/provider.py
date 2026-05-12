@@ -16,6 +16,7 @@ class LLMProvider(Protocol):
         question: str,
         schema_context: str,
         negative_examples: list[str] | None = None,
+        conversation_history: list[dict] | None = None,
     ) -> str:
         """Generate SQL from a user question and schema context.
 
@@ -23,6 +24,7 @@ class LLMProvider(Protocol):
             question: The user's natural-language question.
             schema_context: YAML/plain-text schema description.
             negative_examples: Previously rejected SQL variants to avoid.
+            conversation_history: Optional list of prior Q&A dicts for context.
 
         Returns:
             The generated SQL string.
