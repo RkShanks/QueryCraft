@@ -25,7 +25,7 @@
 }
 
 /* Responsive: collapse sidebar on small screens */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .app-shell-sidebar {
     position: fixed;
     inset-block: 0;

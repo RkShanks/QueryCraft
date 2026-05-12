@@ -45,8 +45,6 @@
   font-weight: 700;
   background: linear-gradient(90deg, var(--color-neon-cyan), var(--color-neon-purple));
   background-size: 200% 200%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: var(--animate-gradient-shift);
 }
