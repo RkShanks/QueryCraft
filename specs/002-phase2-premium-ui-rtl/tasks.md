@@ -88,21 +88,21 @@
 
 ### Components
 
-- [ ] T-334 Create AppShell: 2-column layout (collapsible sidebar + workspace), dir attribute bound to i18n, responsive breakpoints — `frontend/src/components/shell/AppShell.tsx` + `AppShell.css` (FR-049)
-- [ ] T-335 Create Sidebar: gradient logo, collapse toggle, "New Chat" CTA (clears workspace + resets activeSessionId=null, NO server call), chronological session groups — `frontend/src/components/sidebar/Sidebar.tsx` + `Sidebar.css` (FR-031, FR-034, FR-051; depends: T-334)
-- [ ] T-336 Create SessionItem: preview text, hover trash icon, click sets active session, active state styling — `frontend/src/components/sidebar/SessionItem.tsx` + `SessionItem.css` (FR-043; depends: T-335)
-- [ ] T-337 Create UndoToast: client-side 5s timer holds DELETE call, Undo cancels timer (API never fires), expiry fires DELETE then cascade-deletes server-side, multiple toasts stack — `frontend/src/components/sidebar/UndoToast.tsx` + `UndoToast.css` (FR-033, SC-023)
-- [ ] T-338 Create WorkspacePage: reads activeSessionId from Zustand, empty state ("Start a new conversation"), active session shows placeholder (chat UI ships in Wave 8.2) — `frontend/src/pages/WorkspacePage.tsx` (depends: T-334)
+- [X] T-334 Create AppShell: 2-column layout (collapsible sidebar + workspace), dir attribute bound to i18n, responsive breakpoints — `frontend/src/components/shell/AppShell.tsx` + `AppShell.css` (FR-049)
+- [X] T-335 Create Sidebar: gradient logo, collapse toggle, "New Chat" CTA (clears workspace + resets activeSessionId=null, NO server call), chronological session groups — `frontend/src/components/sidebar/Sidebar.tsx` + `Sidebar.css` (FR-031, FR-034, FR-051; depends: T-334)
+- [X] T-336 Create SessionItem: preview text, hover trash icon, click sets active session, active state styling — `frontend/src/components/sidebar/SessionItem.tsx` + `SessionItem.css` (FR-043; depends: T-335)
+- [X] T-337 Create UndoToast: client-side 5s timer holds DELETE call, Undo cancels timer (API never fires), expiry fires DELETE then cascade-deletes server-side, multiple toasts stack — `frontend/src/components/sidebar/UndoToast.tsx` + `UndoToast.css` (FR-033, SC-023)
+- [X] T-338 Create WorkspacePage: reads activeSessionId from Zustand, empty state ("Start a new conversation"), active session shows placeholder (chat UI ships in Wave 8.2) — `frontend/src/pages/WorkspacePage.tsx` (depends: T-334)
 
 ### Routing
 
-- [ ] T-339 Update App.tsx: wrap authenticated routes in AppShell, WorkspacePage as default route, preserve SignInPage — `frontend/src/App.tsx` (depends: T-334, T-338)
+- [X] T-339 Update App.tsx: wrap authenticated routes in AppShell, WorkspacePage as default route, preserve SignInPage — `frontend/src/App.tsx` (depends: T-334, T-338)
 
 ### Tests
 
-- [ ] T-340 [P] Unit test: Sidebar renders chronological session groups correctly (Today / Previous 7 Days / Older) — `frontend/src/components/sidebar/__tests__/Sidebar.test.tsx` (depends: T-335)
-- [ ] T-341 [P] Unit test: UndoToast timer behavior (fires DELETE after 5s, cancels on Undo) — `frontend/src/components/sidebar/__tests__/UndoToast.test.tsx` (depends: T-337)
-- [ ] T-342 Integration test: New Chat clears workspace, session delete→undo→restore flow — `frontend/src/components/sidebar/__tests__/SidebarIntegration.test.tsx` (depends: T-335, T-337)
+- [X] T-340 [P] Unit test: Sidebar renders chronological session groups correctly (Today / Previous 7 Days / Older) — `frontend/src/components/sidebar/__tests__/Sidebar.test.tsx` (depends: T-335)
+- [X] T-341 [P] Unit test: UndoToast timer behavior (fires DELETE after 5s, cancels on Undo) — `frontend/src/components/sidebar/__tests__/UndoToast.test.tsx` (depends: T-337)
+- [X] T-342 Integration test: New Chat clears workspace, session delete→undo→restore flow — `frontend/src/components/sidebar/__tests__/SidebarIntegration.test.tsx` (depends: T-335, T-337)
 
 ---
 
