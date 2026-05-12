@@ -287,4 +287,37 @@ Wave 8.0 cleared for merge. CI green, Critical fixed, Mid integration tests upda
 
 ---
 
+### 2026-05-12 21:42 — review — Wave 8.1 Shell merged
+
+**Type**: review
+**Actor**: orchestrator (Devin session 99ac2127)
+**Artifacts**: PR #48 (`phase-2/wave-8.1-shell` → `main`), HEAD `0fec408d982601474169f62edf95fc9822536c4d`
+
+Wave 8.1 recovery completed and PR #48 was merged. GitHub now shows PR #48 closed/merged; CI reported backend-test PASS and frontend-test PASS. Deliverables matched T-334..T-342:
+
+- AppShell 2-column layout, i18n `dir` binding, responsive shell.
+- Sidebar with gradient logo, collapse toggle, New Chat CTA, chronological session groups.
+- SessionItem active/hover/delete affordances and preview truncation.
+- UndoToast 5-second client-side delete timer with stacked toasts and undo.
+- WorkspacePage placeholder wired through authenticated AppShell routing.
+- Sidebar, UndoToast, and Sidebar integration tests.
+
+Foundation gates from Kimi final report:
+
+- Backend pytest: 311 passed
+- Backend ruff check: pass
+- Backend ruff format: 47 pre-existing formatting issues from Wave 8.0 main
+- Frontend test: 161 passed
+- Frontend lint: pass
+- Frontend typecheck: pass
+- Frontend build: pass
+
+Self-discovered quirk rolled into `.devin/skills/querycraft-dev/SKILL.md`: the global `react-i18next` test mock now resolves real English strings from `frontend/src/locales/en.json`; future component tests should assert translated English copy instead of raw i18n keys unless they pass an explicit `defaultValue`.
+
+Separate AGENTS.md inline-protocol patch merged as PR #49 (`chore/agents-inline-implementer-protocol`). This corrected the earlier assumption that opencode auto-loads `.devin/skills/`; the implementer workflow now lives directly in AGENTS.md too.
+
+**Next dispatch**: `/speckit.implement T-343..T-352` (Wave 8.2 Workspace Chat UI). Dependencies are satisfied because Wave 8.1 is merged into `main`.
+
+---
+
 <!-- Append new entries below this line. Most recent at the bottom. -->
