@@ -17,7 +17,10 @@ class TestQueryServiceSubmit:
 
     @pytest.fixture
     def mock_repo(self):
-        return MagicMock()
+        repo = MagicMock()
+        repo.list_by_session = AsyncMock(return_value=[])
+        repo.get_latest_by_session = AsyncMock(return_value=None)
+        return repo
 
     @pytest.fixture
     def mock_redis(self):
@@ -49,19 +52,46 @@ class TestQueryServiceSubmit:
         return executor
 
     @pytest.fixture
-    def service(self, mock_repo, mock_redis, mock_llm, mock_evaluator, mock_executor):
-        return QueryService(mock_repo, mock_redis, mock_llm, mock_evaluator, mock_executor)
+    def mock_session_repo(self):
+        repo = MagicMock()
+        repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
+        repo.get_by_id = AsyncMock(return_value=None)
+        repo.update_last_activity = AsyncMock(return_value=True)
+        repo.update_preview_text = AsyncMock(return_value=True)
+        return repo
+
+    @pytest.fixture
+    def mock_db_session(self):
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=MagicMock(fetchone=MagicMock(return_value=(3,))))
+        db.flush = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def service(
+        self, mock_repo, mock_session_repo, mock_db_session, mock_redis, mock_llm, mock_evaluator, mock_executor
+    ):
+        return QueryService(
+            accepted_query_repository=mock_repo,
+            session_repository=mock_session_repo,
+            db_session=mock_db_session,
+            redis=mock_redis,
+            llm=mock_llm,
+            evaluator=mock_evaluator,
+            source_db_executor=mock_executor,
+        )
 
     @pytest.mark.asyncio
     async def test_happy_path_returns_query_result(self, service, mock_redis):
         result = await service.submit_question(
-            session_id="sess-1",
+            http_session_id="http-sess-1",
             user_id="550e8400-e29b-41d4-a716-446655440000",
             question="Show me something",
         )
         assert result.kind == "result"
         assert result.row_count == 1
         assert result.generated_sql == "SELECT 1 AS id"
+        assert result.session_id == "550e8400-e29b-41d4-a716-446655440001"
         assert mock_redis.set.await_count >= 1
 
     @pytest.mark.asyncio
@@ -74,7 +104,7 @@ class TestQueryServiceSubmit:
             violations=[violation],
         )
         result = await service.submit_question(
-            session_id="sess-1",
+            http_session_id="http-sess-1",
             user_id="550e8400-e29b-41d4-a716-446655440000",
             question="Bad question",
         )
@@ -85,7 +115,7 @@ class TestQueryServiceSubmit:
         mock_llm.generate_sql.side_effect = Exception("LLM down")
         with pytest.raises(Exception) as exc_info:
             await service.submit_question(
-                session_id="sess-1",
+                http_session_id="http-sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 question="Anything",
             )
@@ -97,7 +127,7 @@ class TestQueryServiceSubmit:
         mock_executor.execute.side_effect = builtins.TimeoutError()
         with pytest.raises(Exception) as exc_info:
             await service.submit_question(
-                session_id="sess-1",
+                http_session_id="http-sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 question="Slow query",
             )
@@ -108,7 +138,7 @@ class TestQueryServiceSubmit:
         mock_redis.set.return_value = None  # lock already held (nx failed)
         with pytest.raises(Exception) as exc_info:
             await service.submit_question(
-                session_id="sess-1",
+                http_session_id="http-sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 question="Another",
             )

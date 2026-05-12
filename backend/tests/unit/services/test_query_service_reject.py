@@ -22,6 +22,7 @@ def _active_attempt_get(active_attempt="a1"):
         if key == "active_attempt:s1":
             return active_attempt
         return None
+
     return _get
 
 
@@ -35,8 +36,18 @@ class TestQueryServiceReject:
         redis.get = AsyncMock(side_effect=_active_attempt_get())
         redis.set = AsyncMock()
         redis.delete = AsyncMock()
+        session_repo = MagicMock()
+        session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
+        session_repo.get_by_id = AsyncMock(return_value=None)
+        session_repo.update_last_activity = AsyncMock(return_value=True)
+        session_repo.update_preview_text = AsyncMock(return_value=True)
+        db_session = AsyncMock()
+        db_session.execute = AsyncMock(return_value=MagicMock(fetchone=MagicMock(return_value=(3,))))
+        db_session.flush = AsyncMock()
         return {
             "repo": MagicMock(),
+            "session_repo": session_repo,
+            "db_session": db_session,
             "redis": redis,
             "llm": MagicMock(),
             "evaluator": AsyncMock(),
@@ -46,8 +57,12 @@ class TestQueryServiceReject:
     @pytest.fixture
     def service(self, mock_deps):
         """Return a QueryService with mocked dependencies."""
+        mock_deps["repo"].list_by_session = AsyncMock(return_value=[])
+        mock_deps["repo"].get_latest_by_session = AsyncMock(return_value=None)
         return QueryService(
             accepted_query_repository=mock_deps["repo"],
+            session_repository=mock_deps["session_repo"],
+            db_session=mock_deps["db_session"],
             redis=mock_deps["redis"],
             llm=mock_deps["llm"],
             evaluator=mock_deps["evaluator"],
@@ -175,6 +190,7 @@ class TestQueryServiceReject:
 
     async def test_reject_raises_on_cross_session(self, service, mock_deps):
         """reject_query with wrong session raises AttemptOwnershipViolation."""
+
         async def _get_attempt(aid, sid, redis):
             raise AttemptOwnershipViolation()
 
@@ -188,6 +204,7 @@ class TestQueryServiceReject:
 
     async def test_reject_raises_on_missing_attempt(self, service, mock_deps):
         """reject_query with nonexistent attempt raises AttemptNotFound."""
+
         async def _get_attempt(aid, sid, redis):
             raise AttemptNotFound()
 

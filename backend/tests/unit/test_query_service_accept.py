@@ -13,17 +13,19 @@ from app.services.query_service import QueryService
 
 
 def _attempt_json():
-    return json.dumps({
-        "attempt_id": "a-1",
-        "session_id": "sess-1",
-        "user_id": "550e8400-e29b-41d4-a716-446655440000",
-        "question_text": "Q",
-        "generated_sql": "SELECT 1",
-        "llm_provider": "ollama",
-        "attempt_number": 1,
-        "rejected_sqls": [],
-        "state": "EXECUTED",
-    })
+    return json.dumps(
+        {
+            "attempt_id": "a-1",
+            "session_id": "sess-1",
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "question_text": "Q",
+            "generated_sql": "SELECT 1",
+            "llm_provider": "ollama",
+            "attempt_number": 1,
+            "rejected_sqls": [],
+            "state": "EXECUTED",
+        }
+    )
 
 
 class TestQueryServiceAccept:
@@ -50,8 +52,20 @@ class TestQueryServiceAccept:
 
     @pytest.fixture
     def service(self, mock_repo, mock_redis):
+        mock_repo.list_by_session = AsyncMock(return_value=[])
+        mock_repo.get_latest_by_session = AsyncMock(return_value=None)
+        session_repo = MagicMock()
+        session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
+        session_repo.get_by_id = AsyncMock(return_value=None)
+        session_repo.update_last_activity = AsyncMock(return_value=True)
+        session_repo.update_preview_text = AsyncMock(return_value=True)
+        db_session = AsyncMock()
+        db_session.execute = AsyncMock(return_value=MagicMock(fetchone=MagicMock(return_value=(3,))))
+        db_session.flush = AsyncMock()
         return QueryService(
             accepted_query_repository=mock_repo,
+            session_repository=session_repo,
+            db_session=db_session,
             redis=mock_redis,
             llm=None,
             evaluator=None,
@@ -65,13 +79,14 @@ class TestQueryServiceAccept:
             if key == "attempt:a-1":
                 return attempt_data or _attempt_json()
             return None
+
         return _get
 
     @pytest.mark.asyncio
     async def test_accept_persists_and_deletes_redis(self, service, mock_repo, mock_redis):
         mock_redis.get.side_effect = self._make_get()
         result = await service.accept_query(
-            session_id="sess-1",
+            http_session_id="sess-1",
             user_id="550e8400-e29b-41d4-a716-446655440000",
             attempt_id="a-1",
             database_connection_id="550e8400-e29b-41d4-a716-446655440001",
@@ -87,7 +102,7 @@ class TestQueryServiceAccept:
         mock_redis.get.side_effect = self._make_get(active_attempt=None)
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
-                session_id="sess-1",
+                http_session_id="sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
                 database_connection_id="550e8400-e29b-41d4-a716-446655440001",
@@ -98,18 +113,20 @@ class TestQueryServiceAccept:
     async def test_accept_wrong_session_raises_400(self, service, mock_redis):
         mock_redis.get.side_effect = self._make_get(
             active_attempt="a-1",
-            attempt_data=json.dumps({
-                "attempt_id": "a-1",
-                "session_id": "sess-2",
-                "user_id": "550e8400-e29b-41d4-a716-446655440000",
-                "question_text": "Q",
-                "generated_sql": "SELECT 1",
-                "llm_provider": "ollama",
-            }),
+            attempt_data=json.dumps(
+                {
+                    "attempt_id": "a-1",
+                    "session_id": "sess-2",
+                    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "question_text": "Q",
+                    "generated_sql": "SELECT 1",
+                    "llm_provider": "ollama",
+                }
+            ),
         )
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
-                session_id="sess-1",
+                http_session_id="sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
                 database_connection_id="550e8400-e29b-41d4-a716-446655440001",
@@ -125,7 +142,7 @@ class TestQueryServiceAccept:
 
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
-                session_id="sess-1",
+                http_session_id="sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
                 database_connection_id="550e8400-e29b-41d4-a716-446655440001",
@@ -139,21 +156,23 @@ class TestQueryServiceAccept:
         """O-005: accept_query must only allow EXECUTED attempts."""
         mock_redis.get.side_effect = self._make_get(
             active_attempt="a-1",
-            attempt_data=json.dumps({
-                "attempt_id": "a-1",
-                "session_id": "sess-1",
-                "user_id": "550e8400-e29b-41d4-a716-446655440000",
-                "question_text": "Q",
-                "generated_sql": "SELECT 1",
-                "llm_provider": "ollama",
-                "attempt_number": 1,
-                "state": bad_state,
-            }),
+            attempt_data=json.dumps(
+                {
+                    "attempt_id": "a-1",
+                    "session_id": "sess-1",
+                    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "question_text": "Q",
+                    "generated_sql": "SELECT 1",
+                    "llm_provider": "ollama",
+                    "attempt_number": 1,
+                    "state": bad_state,
+                }
+            ),
         )
 
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
-                session_id="sess-1",
+                http_session_id="sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
                 database_connection_id="550e8400-e29b-41d4-a716-446655440001",
