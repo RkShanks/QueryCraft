@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { submitQuestion, acceptQuery, rejectQuery, regenerateQuery } from '../api/generated/sdk.gen';
 import type { SubmitQuestionData, AcceptQueryData } from '../api/generated/types.gen';
 import type { QueryResult, RefinePrompt, EvaluatorRejection } from '../api/generated/types.gen';
+import { useUIStore } from '../stores/uiStore';
 
 export const useSubmitQuestion = () => {
   return useMutation({
@@ -23,7 +24,7 @@ export const useAcceptQuery = () => {
 type ErrorKind = 'concurrent' | 'llmUnavailable' | 'attemptInvalid' | 'network';
 
 export interface UseQuerySubmitReturn {
-  submitQuestion: (q: string) => Promise<void>;
+  submitQuestion: (q: string, sessionId?: string | null) => Promise<unknown>;
   rejectQuery: (attemptId: string) => Promise<void>;
   regenerateQuery: (attemptId: string) => Promise<void>;
   acceptQuery: (attemptId: string) => Promise<void>;
@@ -42,6 +43,8 @@ function isApiError(err: unknown): err is Record<string, unknown> {
 }
 
 export const useQuerySubmit = (): UseQuerySubmitReturn => {
+  const queryClient = useQueryClient();
+  const setActiveSessionId = useUIStore((state) => state.setActiveSessionId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [refinePrompt, setRefinePrompt] = useState<RefinePrompt | null>(null);
@@ -94,7 +97,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
     }
   }, []);
 
-  const submitQuestionFn = useCallback(async (q: string) => {
+  const submitQuestionFn = useCallback(async (q: string, sessionId?: string | null) => {
     if (submittingRef.current) {
       throw new Error('submit_in_progress');
     }
@@ -103,11 +106,20 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
     clearStates();
 
     try {
-      const res = await submitQuestion({ body: { question: q }, throwOnError: true });
+      const res = await submitQuestion({
+        body: { question: q, session_id: sessionId ?? undefined },
+        throwOnError: true,
+      });
       const data = res.data;
       if (data && typeof data === 'object' && 'kind' in data && data.kind === 'result') {
-        setResult(data as QueryResult);
+        const queryResult = data as QueryResult;
+        setResult(queryResult);
+        if (queryResult.session_id && queryResult.session_id !== sessionId) {
+          setActiveSessionId(queryResult.session_id);
+          queryClient.invalidateQueries({ queryKey: ['sessions'] });
+        }
       }
+      return data;
     } catch (err: unknown) {
       handleError(err);
       throw err;
@@ -115,7 +127,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
       submittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [clearStates, handleError]);
+  }, [clearStates, handleError, setActiveSessionId, queryClient]);
 
   const rejectQueryFn = useCallback(async (attemptId: string) => {
     if (submittingRef.current) {

@@ -1,0 +1,27 @@
+.sql-code-block {
+  background-color: var(--color-obsidian-900);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.sql-code-block-skeleton {
+  height: 6rem;
+  background: linear-gradient(90deg, var(--color-obsidian-800) 25%, var(--color-obsidian-700) 50%, var(--color-obsidian-800) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0.5rem;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.shiki-highlighter pre {
+  margin: 0;
+  padding: 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+}

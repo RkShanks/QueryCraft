@@ -114,22 +114,22 @@
 
 ### Components
 
-- [ ] T-343 [P] Create UserBubble: end-aligned, RTL-aware, dark-styled, logical directional properties only — `frontend/src/components/chat/UserBubble.tsx` + `UserBubble.css` (FR-053, SC-021)
-- [ ] T-344 [P] Create AssistantResponseCard: cyber-purple gradient border (p-px wrapper), contains SqlCodeBlock + placeholder action bar + ResultTable + placeholder feedback bar — `frontend/src/components/chat/AssistantResponseCard.tsx` + `AssistantResponseCard.css` (FR-050)
-- [ ] T-345 [P] Create SqlCodeBlock: Shiki lazy-loaded via React.lazy + Suspense, custom QueryCraft dark theme, loading skeleton — `frontend/src/components/chat/SqlCodeBlock.tsx` + `SqlCodeBlock.css` (FR-042)
-- [ ] T-346 [P] Create ResultTable: horizontal scroll, alternating purple-tinted rows, column headers from QueryResult — `frontend/src/components/chat/ResultTable.tsx` + `ResultTable.css` (FR-050)
-- [ ] T-347 Create PromptInput: sticky bottom, rounded textarea, Send icon on logical end side, cyan focus glow, RTL-aware — `frontend/src/components/chat/PromptInput.tsx` + `PromptInput.css` (FR-052)
+- [X] T-343 [P] Create UserBubble: end-aligned, RTL-aware, dark-styled, logical directional properties only — `frontend/src/components/chat/UserBubble.tsx` + `UserBubble.css` (FR-053, SC-021)
+- [X] T-344 [P] Create AssistantResponseCard: cyber-purple gradient border (p-px wrapper), contains SqlCodeBlock + placeholder action bar + ResultTable + placeholder feedback bar — `frontend/src/components/chat/AssistantResponseCard.tsx` + `AssistantResponseCard.css` (FR-050)
+- [X] T-345 [P] Create SqlCodeBlock: Shiki lazy-loaded via React.lazy + Suspense, custom QueryCraft dark theme, loading skeleton — `frontend/src/components/chat/SqlCodeBlock.tsx` + `SqlCodeBlock.css` (FR-042)
+- [X] T-346 [P] Create ResultTable: horizontal scroll, alternating purple-tinted rows, column headers from QueryResult — `frontend/src/components/chat/ResultTable.tsx` + `ResultTable.css` (FR-050)
+- [X] T-347 Create PromptInput: sticky bottom, rounded textarea, Send icon on logical end side, cyan focus glow, RTL-aware — `frontend/src/components/chat/PromptInput.tsx` + `PromptInput.css` (FR-052)
 
 ### Workspace Wiring
 
-- [ ] T-348 Extend useQuerySubmit: accept session_id, lazy session creation (null → server creates + returns session_id → update Zustand activeSessionId + invalidate sessions query), pass session_id on follow-up — `frontend/src/hooks/useQuerySubmit.ts` (FR-035; depends: T-315)
-- [ ] T-349 Wire WorkspacePage: replace placeholder with chat conversation (UserBubble + AssistantResponseCard pairs), PromptInput at bottom, connect to extended useQuerySubmit — `frontend/src/pages/WorkspacePage.tsx` (depends: T-343, T-344, T-345, T-346, T-347, T-348)
+- [X] T-348 Extend useQuerySubmit: accept session_id, lazy session creation (null → server creates + returns session_id → update Zustand activeSessionId + invalidate sessions query), pass session_id on follow-up — `frontend/src/hooks/useQuerySubmit.ts` (FR-035; depends: T-315)
+- [X] T-349 Wire WorkspacePage: replace placeholder with chat conversation (UserBubble + AssistantResponseCard pairs), PromptInput at bottom, connect to extended useQuerySubmit — `frontend/src/pages/WorkspacePage.tsx` (depends: T-343, T-344, T-345, T-346, T-347, T-348)
 
 ### Tests
 
-- [ ] T-350 [P] Unit tests: UserBubble, AssistantResponseCard, ResultTable render with mock data — `frontend/src/components/chat/__tests__/ChatComponents.test.tsx` (depends: T-343, T-344, T-346)
-- [ ] T-351 [P] Unit test: SqlCodeBlock renders highlighted SQL with Shiki — `frontend/src/components/chat/__tests__/SqlCodeBlock.test.tsx` (depends: T-345)
-- [ ] T-352 [P] Unit test: PromptInput focus glow, Send button position, RTL alignment — `frontend/src/components/chat/__tests__/PromptInput.test.tsx` (depends: T-347)
+- [X] T-350 [P] Unit tests: UserBubble, AssistantResponseCard, ResultTable render with mock data — `frontend/src/components/chat/__tests__/ChatComponents.test.tsx` (depends: T-343, T-344, T-346)
+- [X] T-351 [P] Unit test: SqlCodeBlock renders highlighted SQL with Shiki — `frontend/src/components/chat/__tests__/SqlCodeBlock.test.tsx` (depends: T-345)
+- [X] T-352 [P] Unit test: PromptInput focus glow, Send button position, RTL alignment — `frontend/src/components/chat/__tests__/PromptInput.test.tsx` (depends: T-347)
 
 ---
 

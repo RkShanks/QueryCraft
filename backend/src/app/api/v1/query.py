@@ -98,9 +98,10 @@ async def submit_question(
             detail={"error": "validation", "message_key": "error.validation.questionTooLong"},
         )
     result = await service.submit_question(
-        session_id=request.state.session_id,
+        http_session_id=request.state.session_id,
         user_id=session["user_id"],
         question=stripped,
+        chat_session_id=req.session_id,
     )
     if isinstance(result, EvaluatorRejection):
         raise HTTPException(

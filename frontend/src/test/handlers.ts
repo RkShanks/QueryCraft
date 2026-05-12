@@ -54,6 +54,7 @@ export function resetQueryScenarios() {
 const defaultResult: QueryResult = {
   kind: 'result',
   attempt_id: 'a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d',
+  session_id: '550e8400-e29b-41d4-a716-446655440003',
   question: 'How many users?',
   generated_sql: 'SELECT COUNT(*) FROM users;',
   columns: [{ name: 'count', type: 'bigint' }],
@@ -112,11 +113,17 @@ export const handlers = [
   }),
 
   // ─────────────────────────── Query ───────────────────────────
-  http.post('/api/v1/query/submit', async () => {
+  http.post('/api/v1/query/submit', async ({ request }) => {
     await delay(10);
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const sessionId = body.session_id as string | undefined | null;
+    const result: QueryResult = {
+      ...defaultResult,
+      session_id: sessionId ?? defaultResult.session_id,
+    };
     switch (submitScenario) {
       case 'evaluator_rejected': {
-        const body: EvaluatorRejection = {
+        const rejectBody: EvaluatorRejection = {
           message_key: 'query.evaluator.rejected',
           violations: [
             {
@@ -126,32 +133,32 @@ export const handlers = [
             },
           ],
         };
-        return HttpResponse.json(body, { status: 422 });
+        return HttpResponse.json(rejectBody, { status: 422 });
       }
       case 'timeout': {
-        const body: ErrorResponse = {
+        const errorBody: ErrorResponse = {
           error: 'timeout',
           message_key: 'error.timeout',
         };
-        return HttpResponse.json(body, { status: 504 });
+        return HttpResponse.json(errorBody, { status: 504 });
       }
       case 'concurrent': {
-        const body: ErrorResponse = {
+        const errorBody: ErrorResponse = {
           error: 'concurrent',
           message_key: 'error.concurrent',
         };
-        return HttpResponse.json(body, { status: 409 });
+        return HttpResponse.json(errorBody, { status: 409 });
       }
       case 'llm_unavailable': {
-        const body: ErrorResponse = {
+        const errorBody: ErrorResponse = {
           error: 'llm_unavailable',
           message_key: 'error.llmUnavailable',
         };
-        return HttpResponse.json(body, { status: 502 });
+        return HttpResponse.json(errorBody, { status: 502 });
       }
       case 'result':
       default:
-        return HttpResponse.json(defaultResult, { status: 200 });
+        return HttpResponse.json(result, { status: 200 });
     }
   }),
 
