@@ -17,6 +17,8 @@ def service_with_mocked_deps():
     redis.get.return_value = None  # simulates no active attempt
     return QueryService(
         accepted_query_repository=MagicMock(),
+        session_repository=MagicMock(),
+        db_session=AsyncMock(),
         redis=redis,
         llm=AsyncMock(),
         evaluator=AsyncMock(),
@@ -30,7 +32,7 @@ async def test_reject_nonexistent_attempt_returns_422(service_with_mocked_deps):
     with pytest.raises(Exception) as exc_info:
         await service_with_mocked_deps.reject_query(
             attempt_id="ffffffff-ffff-ffff-ffff-ffffffffffff",
-            session_id="sess-1",
+            http_session_id="sess-1",
         )
     assert exc_info.value.status_code == 422
 
@@ -41,6 +43,6 @@ async def test_regenerate_nonexistent_attempt_returns_422(service_with_mocked_de
     with pytest.raises(Exception) as exc_info:
         await service_with_mocked_deps.regenerate_query(
             attempt_id="ffffffff-ffff-ffff-ffff-ffffffffffff",
-            session_id="sess-1",
+            http_session_id="sess-1",
         )
     assert exc_info.value.status_code == 422

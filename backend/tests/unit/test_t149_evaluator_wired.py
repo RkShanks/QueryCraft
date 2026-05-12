@@ -36,11 +36,20 @@ def service_with_real_evaluator(mock_deps):
         [{"name": "id", "type": "integer"}],
         [[1]],
     )
+    session_repo = MagicMock()
+    session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
+    db_session = AsyncMock()
+    db_session.execute = AsyncMock(return_value=MagicMock(fetchone=MagicMock(return_value=(3,))))
+    db_session.flush = AsyncMock()
+    mock_deps["repo"].list_by_session = AsyncMock(return_value=[])
+    mock_deps["repo"].get_latest_by_session = AsyncMock(return_value=None)
     return QueryService(
-        mock_deps["repo"],
-        mock_deps["redis"],
-        mock_deps["llm"],
-        Evaluator(
+        accepted_query_repository=mock_deps["repo"],
+        session_repository=session_repo,
+        db_session=db_session,
+        redis=mock_deps["redis"],
+        llm=mock_deps["llm"],
+        evaluator=Evaluator(
             rules=[
                 ReadOnlyRule(),
                 SingleStatementRule(),
@@ -48,7 +57,7 @@ def service_with_real_evaluator(mock_deps):
                 UnsafePatternRule(),
             ]
         ),
-        mock_deps["executor"],
+        source_db_executor=mock_deps["executor"],
     )
 
 
@@ -58,8 +67,8 @@ async def test_pg_sleep_rejected_by_evaluator(service_with_real_evaluator):
     Wired pipeline must reject it.
     """
     result = await service_with_real_evaluator.submit_question(
-        session_id="sess-1",
-        user_id="user-1",
+        http_session_id="sess-1",
+        user_id="550e8400-e29b-41d4-a716-446655440000",
         question="test",
     )
     assert isinstance(result, EvaluatorRejection)

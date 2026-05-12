@@ -66,7 +66,8 @@ def test_sync_generate_sql_passes_isinstance():
 
 
 def test_generate_sql_signature():
-    """The protocol declares async def generate_sql(self, question, schema_context, negative_examples, conversation_history) -> str."""
+    """Protocol declares generate_sql(self, question, schema_context,
+    negative_examples, conversation_history) -> str."""
     method = getattr(LLMProvider, "generate_sql", None)
     assert method is not None
     sig = inspect.signature(method)
