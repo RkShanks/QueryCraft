@@ -10,7 +10,11 @@ class ValidAdapter:
     """A class that correctly implements LLMProvider."""
 
     async def generate_sql(
-        self, question: str, schema_context: str, negative_examples: list[str] | None = None
+        self,
+        question: str,
+        schema_context: str,
+        negative_examples: list[str] | None = None,
+        conversation_history: list[dict] | None = None,
     ) -> str:
         return "SELECT 1"
 
@@ -26,7 +30,11 @@ class WrongSignature:
     """A class with a wrong generate_sql signature."""
 
     def generate_sql(
-        self, question: str, schema_context: str, negative_examples: list[str] | None = None
+        self,
+        question: str,
+        schema_context: str,
+        negative_examples: list[str] | None = None,
+        conversation_history: list[dict] | None = None,
     ) -> str:  # not async
         return "SELECT 1"
 
@@ -58,12 +66,13 @@ def test_sync_generate_sql_passes_isinstance():
 
 
 def test_generate_sql_signature():
-    """The protocol declares async def generate_sql(self, question, schema_context, negative_examples) -> str."""
+    """Protocol declares generate_sql(self, question, schema_context,
+    negative_examples, conversation_history) -> str."""
     method = getattr(LLMProvider, "generate_sql", None)
     assert method is not None
     sig = inspect.signature(method)
     params = list(sig.parameters.keys())
-    assert params == ["self", "question", "schema_context", "negative_examples"]
+    assert params == ["self", "question", "schema_context", "negative_examples", "conversation_history"]
     assert sig.parameters["question"].annotation is str
     assert sig.parameters["schema_context"].annotation is str
     assert sig.return_annotation is str

@@ -25,58 +25,58 @@
 
 ### Backend — Data Layer
 
-- [ ] T-300 [P] Create Alembic migration 004: sessions table, accepted_queries extensions (session_id, saved, feedback), seed llm_context_cap in app_config — `backend/alembic/versions/004_add_sessions_and_extend_accepted_queries.py` (FR-044, FR-045, ADR-1)
-- [ ] T-301 [P] Create Session SQLAlchemy model with relationship to AcceptedQuery — `backend/src/app/db/models/session.py` (FR-031)
-- [ ] T-302 Export Session model — `backend/src/app/db/models/__init__.py` (depends: T-301)
-- [ ] T-303 Add session_id FK, saved boolean, feedback smallint columns to AcceptedQuery model — `backend/src/app/db/models/accepted_query.py` (FR-045)
-- [ ] T-304 [P] Create SessionRepository with create(), list_by_user(), get_by_id(), delete(), update_last_activity(), update_preview_text() — `backend/src/app/repositories/session_repository.py` (FR-031, FR-032, FR-033, FR-043, FR-058)
-- [ ] T-305 [T-259] Refactor AcceptedQueryRepository: add list_by_session(), update_feedback(), get_latest_by_session() — `backend/src/app/repositories/accepted_query_repository.py` (FR-035, FR-036, FR-039)
+- [X] T-300 [P] Create Alembic migration 004: sessions table, accepted_queries extensions (session_id, saved, feedback), seed llm_context_cap in app_config — `backend/alembic/versions/004_add_sessions_and_extend_accepted_queries.py` (FR-044, FR-045, ADR-1)
+- [X] T-301 [P] Create Session SQLAlchemy model with relationship to AcceptedQuery — `backend/src/app/db/models/session.py` (FR-031)
+- [X] T-302 Export Session model — `backend/src/app/db/models/__init__.py` (depends: T-301)
+- [X] T-303 Add session_id FK, saved boolean, feedback smallint columns to AcceptedQuery model — `backend/src/app/db/models/accepted_query.py` (FR-045)
+- [X] T-304 [P] Create SessionRepository with create(), list_by_user(), get_by_id(), delete(), update_last_activity(), update_preview_text() — `backend/src/app/repositories/session_repository.py` (FR-031, FR-032, FR-033, FR-043, FR-058)
+- [X] T-305 [T-259] Refactor AcceptedQueryRepository: add list_by_session(), update_feedback(), get_latest_by_session() — `backend/src/app/repositories/accepted_query_repository.py` (FR-035, FR-036, FR-039)
 
 ### Backend — Schemas
 
-- [ ] T-306 [P] Create session Pydantic schemas: CreateSessionResponse, SessionSummary, SessionDetail, AttemptSummary, SessionListResponse — `backend/src/app/schemas/session.py`
-- [ ] T-307 [P] Create feedback Pydantic schemas: UpdateFeedbackRequest, FeedbackResponse — `backend/src/app/schemas/feedback.py` (FR-039)
-- [ ] T-308 [P] Create admin settings Pydantic schemas: AdminSettingsResponse, UpdateAdminSettingsRequest, UpdateAdminSettingsResponse — `backend/src/app/schemas/admin_settings.py` (FR-040, FR-046)
-- [ ] T-309 Add optional session_id field to SubmitQuestionRequest — `backend/src/app/schemas/query.py` (FR-035)
+- [X] T-306 [P] Create session Pydantic schemas: CreateSessionResponse, SessionSummary, SessionDetail, AttemptSummary, SessionListResponse — `backend/src/app/schemas/session.py`
+- [X] T-307 [P] Create feedback Pydantic schemas: UpdateFeedbackRequest, FeedbackResponse — `backend/src/app/schemas/feedback.py` (FR-039)
+- [X] T-308 [P] Create admin settings Pydantic schemas: AdminSettingsResponse, UpdateAdminSettingsRequest, UpdateAdminSettingsResponse — `backend/src/app/schemas/admin_settings.py` (FR-040, FR-046)
+- [X] T-309 Add optional session_id field to SubmitQuestionRequest — `backend/src/app/schemas/query.py` (FR-035)
 
 ### Backend — API Endpoints
 
-- [ ] T-310 Create sessions router: POST/GET/GET:id/DELETE endpoints with auth — `backend/src/app/api/v1/sessions.py` (FR-031, FR-032, FR-033, FR-058; depends: T-304, T-306)
-- [ ] T-311 Create feedback router: PATCH /feedback/:attempt_id — `backend/src/app/api/v1/feedback.py` (FR-036, FR-039; depends: T-305, T-307)
-- [ ] T-312 [T-257] Add GET/PATCH /admin/settings endpoints for llm_context_cap — `backend/src/app/api/v1/admin.py` (FR-040, FR-046; depends: T-308)
-- [ ] T-313 Register sessions and feedback routers in app — `backend/src/app/main.py` (depends: T-310, T-311)
+- [X] T-310 Create sessions router: POST/GET/GET:id/DELETE endpoints with auth — `backend/src/app/api/v1/sessions.py` (FR-031, FR-032, FR-033, FR-058; depends: T-304, T-306)
+- [X] T-311 Create feedback router: PATCH /feedback/:attempt_id — `backend/src/app/api/v1/feedback.py` (FR-036, FR-039; depends: T-305, T-307)
+- [X] T-312 [T-257] Add GET/PATCH /admin/settings endpoints for llm_context_cap — `backend/src/app/api/v1/admin.py` (FR-040, FR-046; depends: T-308)
+- [X] T-313 Register sessions and feedback routers in app — `backend/src/app/main.py` (depends: T-310, T-311)
 
 ### Backend — Service Layer
 
-- [ ] T-314 Extend prompt_builder: accept optional conversation_history parameter — `backend/src/app/llm/prompt_builder.py` (FR-035)
-- [ ] T-315 Extend submit_question: lazy session creation (session_id=null → create server-side), load last N completed attempts (skip pending per FR-035 clarification), pass to prompt builder, update session.last_activity_at + preview_text on first message, apply implicit feedback on follow-up (FR-036a) — `backend/src/app/services/query_service.py` (FR-035, FR-036, FR-043, FR-058; depends: T-304, T-305, T-309, T-314)
+- [X] T-314 Extend prompt_builder: accept optional conversation_history parameter — `backend/src/app/llm/prompt_builder.py` (FR-035)
+- [X] T-315 Extend submit_question: lazy session creation (session_id=null → create server-side), load last N completed attempts (skip pending per FR-035 clarification), pass to prompt builder, update session.last_activity_at + preview_text on first message, apply implicit feedback on follow-up (FR-036a) — `backend/src/app/services/query_service.py` (FR-035, FR-036, FR-043, FR-058; depends: T-304, T-305, T-309, T-314)
 
 ### Backend — Tests
 
-- [ ] T-316 [P] Unit tests: SessionRepository CRUD — `backend/tests/unit/test_session_repository.py` (depends: T-304)
-- [ ] T-317 [P] Unit tests: AcceptedQueryRepository new methods (list_by_session, update_feedback, get_latest_by_session) — `backend/tests/unit/test_accepted_query_repository.py` (depends: T-305)
-- [ ] T-318 [P] Integration tests: session creation, listing, deletion cascade, in-flight cancellation on delete — `backend/tests/integration/test_sessions.py` (depends: T-310)
-- [ ] T-319 [P] Integration tests: feedback PATCH endpoint — `backend/tests/integration/test_feedback.py` (depends: T-311)
-- [ ] T-320 [P] Integration tests: admin settings GET/PATCH with validation — `backend/tests/integration/test_admin_settings.py` (depends: T-312)
-- [ ] T-321 Acceptance test: submit-with-session-context flow (lazy creation, context loading, implicit feedback on follow-up) — `backend/tests/acceptance/test_session_conversation.py` (depends: T-315)
+- [X] T-316 [P] Unit tests: SessionRepository CRUD — `backend/tests/unit/test_session_repository.py` (depends: T-304)
+- [X] T-317 [P] Unit tests: AcceptedQueryRepository new methods (list_by_session, update_feedback, get_latest_by_session) — `backend/tests/unit/test_accepted_query_repository_extended.py` (depends: T-305)
+- [X] T-318 [P] Integration tests: session creation, listing, deletion cascade, in-flight cancellation on delete — `backend/tests/integration/test_sessions.py` (depends: T-310)
+- [X] T-319 [P] Integration tests: feedback PATCH endpoint — `backend/tests/integration/test_feedback.py` (depends: T-311)
+- [X] T-320 [P] Integration tests: admin settings GET/PATCH with validation — `backend/tests/integration/test_admin_settings.py` (depends: T-312)
+- [X] T-321 Acceptance test: submit-with-session-context flow (lazy creation, context loading, implicit feedback on follow-up) — `backend/tests/acceptance/test_session_conversation.py` (depends: T-315)
 
 ### Frontend — Scaffold
 
-- [ ] T-322 Install npm deps: zustand, @fontsource-variable/inter, @fontsource/jetbrains-mono, shiki — `frontend/package.json`
-- [ ] T-323 Add @theme block with QueryCraft design tokens (obsidian palette, neon accents, gradient keyframes, font families) + import fontsource — `frontend/src/index.css` (depends: T-322)
-- [ ] T-324 [P] Create Zustand UI store: sidebarCollapsed (persisted), activeSessionId, hoveredSessionId, promptDraft — `frontend/src/stores/uiStore.ts`
-- [ ] T-325 [P] Create TanStack Query hooks for sessions: useSessionsList, useSessionDetail, useCreateSession, useDeleteSession — `frontend/src/hooks/useSessions.ts`
-- [ ] T-326 [P] Create TanStack Query hooks for feedback: useUpdateFeedback — `frontend/src/hooks/useFeedback.ts`
-- [ ] T-327 [P] Create TanStack Query hooks for admin settings: useAdminSettings, useUpdateAdminSettings — `frontend/src/hooks/useAdminSettings.ts`
-- [ ] T-328 [P] Create icon barrel export (~13 icons: Plus, Sparkles, Copy, RefreshCw, ThumbsUp, ThumbsDown, Trash2, PanelLeftClose, PanelLeftOpen, Send, Download, Settings, X) — `frontend/src/components/icons.ts`
-- [ ] T-329 Add ~25 new i18n keys for session, feedback, sidebar, workspace, admin settings — `frontend/src/locales/en.json` + `frontend/src/locales/ar.json` (FR-041)
-- [ ] T-330 Regenerate frontend API client from updated OpenAPI — `frontend/scripts/generate-api-client.sh` (depends: T-313)
+- [X] T-322 Install npm deps: zustand, @fontsource-variable/inter, @fontsource/jetbrains-mono, shiki — `frontend/package.json`
+- [X] T-323 Add @theme block with QueryCraft design tokens (obsidian palette, neon accents, gradient keyframes, font families) + import fontsource — `frontend/src/index.css` (depends: T-322)
+- [X] T-324 [P] Create Zustand UI store: sidebarCollapsed (persisted), activeSessionId, hoveredSessionId, promptDraft — `frontend/src/stores/uiStore.ts`
+- [X] T-325 [P] Create TanStack Query hooks for sessions: useSessionsList, useSessionDetail, useCreateSession, useDeleteSession — `frontend/src/hooks/useSessions.ts`
+- [X] T-326 [P] Create TanStack Query hooks for feedback: useUpdateFeedback — `frontend/src/hooks/useFeedback.ts`
+- [X] T-327 [P] Create TanStack Query hooks for admin settings: useAdminSettings, useUpdateAdminSettings — `frontend/src/hooks/useAdminSettings.ts`
+- [X] T-328 [P] Create icon barrel export (~13 icons: Plus, Sparkles, Copy, RefreshCw, ThumbsUp, ThumbsDown, Trash2, PanelLeftClose, PanelLeftOpen, Send, Download, Settings, X) — `frontend/src/components/icons.ts`
+- [X] T-329 Add ~25 new i18n keys for session, feedback, sidebar, workspace, admin settings — `frontend/src/locales/en.json` + `frontend/src/locales/ar.json` (FR-041)
+- [X] T-330 Regenerate frontend API client from updated OpenAPI — `frontend/scripts/generate-api-client.sh` (depends: T-313)
 
 ### Frontend — Tests
 
-- [ ] T-331 [P] Unit test: uiStore default state + persistence — `frontend/src/stores/__tests__/uiStore.test.ts` (depends: T-324)
-- [ ] T-332 [P] Unit tests: TanStack hooks mock API responses (sessions, feedback, admin settings) — `frontend/src/hooks/__tests__/useSessionsHooks.test.tsx` (depends: T-325, T-326, T-327)
-- [ ] T-333 Verify existing AskQuestionPage + HistoryPage tests still pass (SC-014 regression gate) — no new files
+- [X] T-331 [P] Unit test: uiStore default state + persistence — `frontend/src/stores/__tests__/uiStore.test.ts` (depends: T-324)
+- [X] T-332 [P] Unit tests: TanStack hooks mock API responses (sessions, feedback, admin settings) — `frontend/src/hooks/__tests__/useSessionsHooks.test.tsx` (depends: T-325, T-326, T-327)
+- [X] T-333 Verify existing AskQuestionPage + HistoryPage tests still pass (SC-014 regression gate) — no new files
 
 ---
 

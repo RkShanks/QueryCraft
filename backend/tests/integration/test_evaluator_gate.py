@@ -29,10 +29,18 @@ class TestEvaluatorGate:
         )
         executor = AsyncMock()
         repo = MagicMock()
-        service = QueryService(repo, redis_client, mock_llm, evaluator, executor)
+        service = QueryService(
+            accepted_query_repository=repo,
+            session_repository=MagicMock(),
+            db_session=AsyncMock(),
+            redis=redis_client,
+            llm=mock_llm,
+            evaluator=evaluator,
+            source_db_executor=executor,
+        )
 
         result = await service.submit_question(
-            session_id="sess-1",
+            http_session_id="sess-1",
             user_id="550e8400-e29b-41d4-a716-446655440000",
             question="Drop table?",
         )

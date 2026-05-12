@@ -45,6 +45,8 @@ def mock_executor():
 def service(mock_repo, redis_client, mock_evaluator, mock_executor):
     return QueryService(
         accepted_query_repository=mock_repo,
+        session_repository=MagicMock(),
+        db_session=AsyncMock(),
         redis=redis_client,
         llm=AsyncMock(),
         evaluator=mock_evaluator,
@@ -59,11 +61,12 @@ async def test_f011a_lock_released_on_llm_failure(service, redis_client):
     service._llm.generate_sql.side_effect = Exception("boom")
 
     with pytest.raises(HTTPException) as exc_info:
-        await service.submit_question(session_id="s1", user_id="u1", question="q")
+        await service.submit_question(http_session_id="s1", user_id="u1", question="q")
     assert exc_info.value.status_code == 502
 
-    assert await redis_client.exists(PROCESSING_KEY.format(session_id="s1")) == 0, \
+    assert await redis_client.exists(PROCESSING_KEY.format(session_id="s1")) == 0, (
         "F-011a: lock leaked after LLM failure"
+    )
 
 
 @pytest.mark.integration
@@ -83,8 +86,9 @@ async def test_f011b_lock_released_on_evaluator_rejection(service, redis_client)
     result = await service.submit_question(session_id="s2", user_id="u1", question="q")
     assert result.message_key == "query.evaluator.rejected"
 
-    assert await redis_client.exists(PROCESSING_KEY.format(session_id="s2")) == 0, \
+    assert await redis_client.exists(PROCESSING_KEY.format(session_id="s2")) == 0, (
         "F-011b: lock leaked after evaluator rejection"
+    )
 
 
 @pytest.mark.integration
@@ -95,11 +99,12 @@ async def test_f011c_lock_released_on_executor_timeout(service, redis_client):
     service._executor.execute.side_effect = TimeoutError()
 
     with pytest.raises(HTTPException) as exc_info:
-        await service.submit_question(session_id="s3", user_id="u1", question="q")
+        await service.submit_question(http_session_id="s3", user_id="u1", question="q")
     assert exc_info.value.status_code == 504
 
-    assert await redis_client.exists(PROCESSING_KEY.format(session_id="s3")) == 0, \
+    assert await redis_client.exists(PROCESSING_KEY.format(session_id="s3")) == 0, (
         "F-011c: lock leaked after executor timeout"
+    )
 
 
 @pytest.mark.integration
@@ -121,8 +126,9 @@ async def test_f011d_lock_released_on_success_without_followup(service, redis_cl
     assert result.kind == "result"
 
     # Without accept/reject/regenerate, the lock should already be gone.
-    assert await redis_client.exists(PROCESSING_KEY.format(session_id="s4")) == 0, \
+    assert await redis_client.exists(PROCESSING_KEY.format(session_id="s4")) == 0, (
         "F-011d: lock leaked after successful submit without follow-up"
+    )
 
     # A fresh submit on the same session must not be 409'd.
     result2 = await service.submit_question(session_id="s4", user_id="u1", question="q2")

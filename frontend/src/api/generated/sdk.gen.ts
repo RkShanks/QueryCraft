@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptQueryData, AcceptQueryErrors, AcceptQueryResponses, GetHistoryEntryData, GetHistoryEntryErrors, GetHistoryEntryResponses, GetMeData, GetMeErrors, GetMeResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, RefreshSchemaData, RefreshSchemaErrors, RefreshSchemaResponses, RegenerateQueryData, RegenerateQueryErrors, RegenerateQueryResponses, RejectQueryData, RejectQueryErrors, RejectQueryResponses, SignInData, SignInErrors, SignInResponses, SignOutData, SignOutErrors, SignOutResponses, SubmitQuestionData, SubmitQuestionErrors, SubmitQuestionResponses } from './types.gen';
+import type { AcceptQueryData, AcceptQueryErrors, AcceptQueryResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, GetAdminSettingsData, GetAdminSettingsErrors, GetAdminSettingsResponses, GetHistoryEntryData, GetHistoryEntryErrors, GetHistoryEntryResponses, GetMeData, GetMeErrors, GetMeResponses, GetSessionData, GetSessionErrors, GetSessionResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, RefreshSchemaData, RefreshSchemaErrors, RefreshSchemaResponses, RegenerateQueryData, RegenerateQueryErrors, RegenerateQueryResponses, RejectQueryData, RejectQueryErrors, RejectQueryResponses, SignInData, SignInErrors, SignInResponses, SignOutData, SignOutErrors, SignOutResponses, SubmitQuestionData, SubmitQuestionErrors, SubmitQuestionResponses, UpdateAdminSettingsData, UpdateAdminSettingsErrors, UpdateAdminSettingsResponses, UpdateFeedbackData, UpdateFeedbackErrors, UpdateFeedbackResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -201,4 +201,82 @@ export const refreshSchema = <ThrowOnError extends boolean = false>(options?: Op
         }],
     url: '/admin/refresh-schema',
     ...options
+});
+
+export const createSession = <ThrowOnError extends boolean = false>(options?: Options<CreateSessionData, ThrowOnError>) => (options?.client ?? client).post<CreateSessionResponses, CreateSessionErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'session_id',
+            type: 'apiKey'
+        }],
+    url: '/sessions',
+    ...options
+});
+
+export const getSessions = <ThrowOnError extends boolean = false>(options?: Options<ListSessionsData, ThrowOnError>) => (options?.client ?? client).get<ListSessionsResponses, ListSessionsErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'session_id',
+            type: 'apiKey'
+        }],
+    url: '/sessions',
+    ...options
+});
+
+export const getSession = <ThrowOnError extends boolean = false>(options: Options<GetSessionData, ThrowOnError>) => (options.client ?? client).get<GetSessionResponses, GetSessionErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'session_id',
+            type: 'apiKey'
+        }],
+    url: '/sessions/{sessionId}',
+    ...options
+});
+
+export const deleteSession = <ThrowOnError extends boolean = false>(options: Options<DeleteSessionData, ThrowOnError>) => (options.client ?? client).delete<DeleteSessionResponses, DeleteSessionErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'session_id',
+            type: 'apiKey'
+        }],
+    url: '/sessions/{sessionId}',
+    ...options
+});
+
+export const updateFeedback = <ThrowOnError extends boolean = false>(options: Options<UpdateFeedbackData, ThrowOnError>) => (options.client ?? client).patch<UpdateFeedbackResponses, UpdateFeedbackErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'session_id',
+            type: 'apiKey'
+        }],
+    url: '/feedback/{attemptId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+export const getAdminSettings = <ThrowOnError extends boolean = false>(options?: Options<GetAdminSettingsData, ThrowOnError>) => (options?.client ?? client).get<GetAdminSettingsResponses, GetAdminSettingsErrors, ThrowOnError>({
+    security: [{
+            in: 'header',
+            name: 'X-Admin-Key',
+            type: 'apiKey'
+        }],
+    url: '/admin/settings',
+    ...options
+});
+
+export const updateAdminSettings = <ThrowOnError extends boolean = false>(options: Options<UpdateAdminSettingsData, ThrowOnError>) => (options.client ?? client).patch<UpdateAdminSettingsResponses, UpdateAdminSettingsErrors, ThrowOnError>({
+    security: [{
+            in: 'header',
+            name: 'X-Admin-Key',
+            type: 'apiKey'
+        }],
+    url: '/admin/settings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
 });

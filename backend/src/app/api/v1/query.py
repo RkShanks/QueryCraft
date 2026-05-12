@@ -16,6 +16,7 @@ from app.evaluator.rules.single_statement import SingleStatementRule
 from app.evaluator.rules.unsafe_pattern import UnsafePatternRule
 from app.llm.factory import LLMProviderFactory
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
+from app.repositories.session_repository import SessionRepository
 from app.schemas.query import (
     AcceptQueryRequest,
     EvaluatorRejection,
@@ -46,6 +47,8 @@ async def _get_query_service(
     settings = get_settings()
     return QueryService(
         accepted_query_repository=AcceptedQueryRepository(db),
+        session_repository=SessionRepository(db),
+        db_session=db,
         redis=redis,
         llm=LLMProviderFactory.from_config(settings),
         evaluator=Evaluator(
