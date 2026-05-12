@@ -292,13 +292,16 @@ git rebase main   # if branch is stale and main has new commits
 
 ### Step 2 — Implement one task at a time (commit triple)
 
+**Binding rule**: one T-ID = one commit triple. Do NOT batch multiple T-IDs into a single commit.
+
 For each T-ID in the dispatched range, in `tasks.md` dependency order:
 
-1. **Write failing test(s) first**, then commit:
+1. **Test-first — write failing test(s) first**, then commit:
    ```bash
    git add <test files>
    git commit -m "test(T-XXX): <short description>" -m "<body referencing FR/SC if applicable>"
    ```
+   The test commit MUST come before the implementation commit. This proves the test detects the absence of the feature.
 2. **Implement the task** so the new tests pass, then commit:
    ```bash
    git add <impl files>
@@ -312,7 +315,7 @@ For each T-ID in the dispatched range, in `tasks.md` dependency order:
    git commit -m "docs(T-XXX): mark task complete in tasks.md"
    ```
 
-Default = one task per commit triple (test, impl, mark-complete). Do NOT batch multiple T-IDs into one commit unless they are truly inseparable (e.g. a single Alembic migration that creates two tables referenced as one logical unit).
+The only exception to "one T-ID per commit triple" is when two or more T-IDs are literally inseparable (e.g. a single Alembic migration that creates two tables referenced as one logical unit). In that rare case, use a single triple with all T-IDs referenced in the commit messages.
 
 ### Step 3 — Signature-change caller sweep (CRITICAL)
 
