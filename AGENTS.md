@@ -29,7 +29,7 @@ This project has two distinct roles:
 
 | Role | Who does it | Where their context lives |
 |---|---|---|
-| **Implementer** | Kimi K2.6 (via opencode in Antigravity terminal) using `/speckit.implement T-IDs` | `.devin/skills/querycraft-dev/SKILL.md` — auto-loaded by opencode |
+| **Implementer** | Kimi K2.6 (via opencode in Antigravity terminal) using `/speckit.implement T-IDs` | This file, especially Section 11. `.devin/skills/querycraft-dev/SKILL.md` contains the same implementer rules for Devin sessions, but opencode/Kimi does NOT reliably auto-load `.devin/skills/`. |
 | **Orchestrator** | The agent reading this file (Devin, Codex 5.5, Claude, etc.) | This file (`AGENTS.md`) + per-phase `orchestration-log.md` |
 
 **The orchestrator never writes implementation code.** The orchestrator:
@@ -57,7 +57,7 @@ Phase planning and wave dispatch is done via spec-kit. The user runs these comma
 
 When Codex 5.5 acts as orchestrator and the user wants Codex to also implement (rare — implementation is Kimi's job), the equivalent dispatch is the plain-text prompt:
 
-> "Implement tasks T-XXX..T-YYY from `specs/00N-<phase>/tasks.md`. Single PR per wave. Branch: `phase-N/wave-W.X-<short-name>`. Follow all constraints in `.devin/skills/querycraft-dev/SKILL.md`. Open the PR only after foundation gates pass. Produce the Wave Final Report at the end (template in SKILL.md)."
+> "Implement tasks T-XXX..T-YYY from `specs/00N-<phase>/tasks.md`. Single PR per wave. Branch: `phase-N/wave-W.X-<short-name>`. Follow all constraints in AGENTS.md Section 11 and `.devin/skills/querycraft-dev/SKILL.md`. Open the PR only after foundation gates pass. Produce the Wave Final Report at the end (template in SKILL.md)."
 
 But the standard workflow keeps Kimi as the implementer and Codex/Devin/Claude as the orchestrator.
 
@@ -92,7 +92,7 @@ For each wave inside an active phase:
 
 1. Confirm prior wave merged + foundation gates passed on main
 2. User runs `/speckit.implement T-XXX..T-YYY` in opencode (Antigravity terminal) to Kimi
-3. Orchestrator does NOT need to paste a constraint block — SKILL.md has them
+3. Orchestrator does NOT need to paste a full constraint block — AGENTS.md Section 11 has the binding implementer protocol inline
 4. Append a dispatch entry to the active phase's `orchestration-log.md`
 
 ### b) Reviewing a Kimi PR
@@ -198,10 +198,10 @@ These are patterns discovered during Phase 1 + Phase 2 planning that future orch
 10. **Branch naming**: `phase-<N>/wave-<W.X>-<short-name>` for implementer waves (e.g. `phase-2/wave-8.0-foundation`); `chore/<topic>` for orchestrator-only docs.
 11. **Speckit governance docs are READ-ONLY by implementer** — spec/plan/tasks/data-model/contracts are edited ONLY via `/speckit.clarify` or by the orchestrator. Kimi must never modify them.
 12. **Every T-ID maps to FR(s) and/or SC(s)** — no orphan tasks. Verify in tasks.md review.
-13. **Kimi's Wave Final Report template lives in SKILL.md** — parse it after every wave. Extract self-discovered quirks; roll them into SKILL.md before the next dispatch.
+13. **Kimi's Wave Final Report template lives in SKILL.md** — parse it after every wave. Extract self-discovered quirks; roll them into SKILL.md before the next dispatch. Wave 8.1 example: real-translation i18n test mock replaced raw-key fallback assertions.
 14. **Phase boundaries are immutable.** Once a phase is snapshot in `wave-final-snapshot.md`, the `specs/00N-*/` directory is never edited again.
-15. **The constraint block is in SKILL.md** — don't paste it in each dispatch. Saves ~30 tokens per dispatch and avoids drift.
-16. **opencode + Antigravity terminal specifics**: User runs `/speckit.*` commands there. Kimi has access to repo files + SKILL.md + AGENTS.md auto-loaded via opencode project context. Orchestrator does NOT run `/speckit.*` commands — only the user does (via their opencode terminal).
+15. **The constraint block is inline in AGENTS.md Section 11 and mirrored in SKILL.md** — do not maintain a third divergent copy in chat prompts.
+16. **opencode + Antigravity terminal specifics**: User runs `/speckit.*` commands there. Kimi reliably reads AGENTS.md via opencode project context; `.devin/skills/` is Devin-specific and may not be auto-loaded by opencode. Orchestrator does NOT run `/speckit.*` commands — only the user does (via their opencode terminal).
 17. **AGENTS.md is auto-loaded** by Codex 5.5, Devin, Cursor, Aider, opencode. Single source of truth for cross-agent handoff. Updates here propagate to every agent.
 18. **End-of-FULL-wave audits, not sub-wave audits.** Audit Wave 8 after 8.0+8.1+8.2+8.3+8.4 all merge — not after each sub-wave. Sub-wave PRs are reviewed by orchestrator inline; full-wave audits are by Gemini + Opus independently.
 19. **Orchestration log is append-only** — never edit past entries; only add new ones. This preserves the audit trail of decisions and reasoning.
