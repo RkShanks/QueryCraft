@@ -11,6 +11,7 @@ class SubmitQuestionRequest(BaseModel):
     """POST /query/submit request body."""
 
     question: str = Field(..., min_length=1, max_length=2000)
+    session_id: str | None = Field(default=None, min_length=1)
 
     @field_validator("question")
     @classmethod
@@ -33,6 +34,7 @@ class QueryResult(BaseModel):
 
     kind: str = Field(default="result", pattern="^result$")
     attempt_id: str
+    session_id: str | None = None
     question: str
     generated_sql: str
     columns: list[ColumnMeta]

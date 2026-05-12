@@ -54,9 +54,7 @@ async def _check_alembic_drift(database_url: str) -> None:
 
     engine = create_async_engine(database_url)
     async with engine.connect() as conn:
-        current = await conn.run_sync(
-            lambda sync_conn: MigrationContext.configure(sync_conn).get_current_revision()
-        )
+        current = await conn.run_sync(lambda sync_conn: MigrationContext.configure(sync_conn).get_current_revision())
     await engine.dispose()
 
     alembic_ini = Path(__file__).resolve().parents[2] / "alembic.ini"
@@ -168,11 +166,13 @@ def create_app() -> FastAPI:
         details = []
         for err in exc.errors():
             field = ".".join(str(loc) for loc in err.get("loc", []))
-            details.append({
-                "field": field,
-                "message_key": err.get("type", "error.validation.generic"),
-                "message_params": {"msg": err.get("msg", "")},
-            })
+            details.append(
+                {
+                    "field": field,
+                    "message_key": err.get("type", "error.validation.generic"),
+                    "message_params": {"msg": err.get("msg", "")},
+                }
+            )
         return JSONResponse(
             status_code=422,
             content={
@@ -183,11 +183,13 @@ def create_app() -> FastAPI:
         )
 
     # Register v1 router stubs
-    from app.api.v1 import admin, auth, history, query  # noqa: F401
+    from app.api.v1 import admin, auth, feedback, history, query, sessions  # noqa: F401
 
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(query.router, prefix="/api/v1")
     app.include_router(history.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")
+    app.include_router(sessions.router, prefix="/api/v1")
+    app.include_router(feedback.router, prefix="/api/v1")
 
     return app

@@ -6,9 +6,18 @@ Protected by X-Admin-Key header matching ADMIN_API_KEY env var.
 
 import datetime
 
-from fastapi import APIRouter, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.dependencies import get_db
+from app.db.models.app_config import AppConfig
+from app.schemas.admin_settings import (
+    AdminSettingsResponse,
+    UpdateAdminSettingsRequest,
+    UpdateAdminSettingsResponse,
+)
 from app.source_db.connector import SourceDBConnector
 from app.source_db.introspector import SchemaIntrospector
 
@@ -76,3 +85,47 @@ async def refresh_schema(
         "approximate_tokens": approximate_tokens,
         "refreshed_at": datetime.datetime.now(datetime.UTC).isoformat(),
     }
+
+
+@router.get("/settings")
+async def get_settings_admin(
+    request: Request,
+    x_admin_key: str | None = Header(None, alias="X-Admin-Key"),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """GET /admin/settings — retrieve admin settings."""
+    _require_admin_key(x_admin_key)
+    result = await db.execute(select(AppConfig).where(AppConfig.key == "llm_context_cap"))
+    row = result.scalar_one_or_none()
+    cap = 3
+    if row is not None:
+        cap = int(row.value)
+    return AdminSettingsResponse(llm_context_cap=cap)
+
+
+@router.patch("/settings")
+async def update_settings_admin(
+    request: Request,
+    req: UpdateAdminSettingsRequest,
+    x_admin_key: str | None = Header(None, alias="X-Admin-Key"),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """PATCH /admin/settings — update admin settings."""
+    _require_admin_key(x_admin_key)
+    await db.execute(
+        text(
+            """
+            INSERT INTO app_config (key, value, updated_at)
+            VALUES ('llm_context_cap', :value::jsonb, now())
+            ON CONFLICT (key) DO UPDATE SET
+                value = EXCLUDED.value,
+                updated_at = EXCLUDED.updated_at
+            """
+        ),
+        {"value": str(req.llm_context_cap)},
+    )
+    await db.commit()
+    return UpdateAdminSettingsResponse(
+        llm_context_cap=req.llm_context_cap,
+        updated_at=datetime.datetime.now(datetime.UTC).isoformat(),
+    )
