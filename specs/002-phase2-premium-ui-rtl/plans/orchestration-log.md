@@ -208,7 +208,7 @@ Same PR initializes this orchestration log + backfills Phase 1 log skeleton + cr
 
 ---
 
-<!-- Append new entries below this line. Most recent at the bottom. -->
+<!-- Historical note: older recovery entries follow. Most recent entries are appended at the bottom sentinel. -->
 
 ## 2026-05-12 — Wave 8.0 dispatched + recovery + fix
 
@@ -321,3 +321,56 @@ Separate AGENTS.md inline-protocol patch merged as PR #49 (`chore/agents-inline-
 ---
 
 <!-- Append new entries below this line. Most recent at the bottom. -->
+
+### 2026-05-12 23:24 — review — Wave 8.2 Workspace Chat UI merged
+
+**Type**: review
+**Actor**: orchestrator (Devin session 99ac2127)
+**Artifacts**: PR #51 (`phase-2/wave-8.2-workspace` → `main`), merge commit `3658964539390f5729fa11c48fea41e21ca979ef`, final wave HEAD `a2ed191d47d28d7f256147e4ec6cede402668f24`
+
+Wave 8.2 completed and PR #51 was merged. Final CI reported backend-test PASS and frontend-test PASS. Deliverables matched T-343..T-352:
+
+- UserBubble, AssistantResponseCard, SqlCodeBlock, ResultTable, and PromptInput components.
+- Lazy-loaded Shiki SQL highlighting with custom QueryCraft dark theme.
+- RTL/logical CSS coverage for user bubbles and prompt input positioning.
+- WorkspacePage chat conversation rendering wired to `useQuerySubmit`.
+- `useQuerySubmit` session_id forwarding, lazy-session activeSessionId update, and sessions invalidation.
+- Chat component, SqlCodeBlock, PromptInput, QueryService, and submit endpoint regression tests.
+
+Wave 8.2 verifies FR-042, FR-050, FR-052, FR-053, SC-020, SC-021, and SC-022.
+
+### Blocking review finding resolved
+
+Initial review found a critical T-348 gap: frontend sent request-body `session_id`, but `backend/src/app/api/v1/query.py` dropped it when calling `QueryService.submit_question`, so follow-up questions would create new chat sessions instead of reusing the active session.
+
+Kimi fixed this in two commits:
+
+- `2499ecb` — endpoint now passes `http_session_id=request.state.session_id` and `chat_session_id=req.session_id`.
+- `a2ed191` — endpoint-level regression tests prove body `session_id` reaches the service; service-level tests also cover lazy creation vs existing-session reuse.
+
+Local orchestrator verification:
+
+- `cd backend && uv run pytest -q tests/unit/test_query_endpoint_submit.py tests/unit/test_query_service_submit.py` → 9 passed.
+- GitHub CI on PR #51 after final push → backend-test PASS, frontend-test PASS.
+
+Foundation gates from final Kimi report:
+
+- Backend pytest: 315 passed, 104 skipped, 68 deselected
+- Backend ruff check: pass
+- Backend ruff format: 47 pre-existing formatting issues
+- Frontend test: 181 passed
+- Frontend lint: pass
+- Frontend typecheck: pass
+- Frontend build: pass
+- Frontend lint:css: pass
+
+Self-discovered quirks rolled into `.devin/skills/querycraft-dev/SKILL.md`:
+
+- Shiki jsdom tests need file-level `vi.mock('shiki')`.
+- React Hooks lint rejects effect/ref synchronization patterns; prefer event-handler state updates and guarded render-phase reset for session switches.
+- Phase 2 UI waves should run `npm run lint:css` because stylelint can surface prior CSS issues.
+- Request-body-to-service forwarding changes need endpoint/router regression tests, not service-only tests.
+
+**Next step**: create/merge the Wave 8.2 orchestration follow-up PR, then dispatch `/speckit.implement T-353..T-361` (Wave 8.3 Actions + Feedback + Settings). Dependencies are satisfied because Wave 8.2 is merged into `main`.
+
+---
