@@ -143,3 +143,35 @@ class TestQueryServiceSubmit:
                 question="Another",
             )
         assert exc_info.value.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_chat_session_id_none_creates_new_session(self, service, mock_session_repo):
+        """Lazy creation: chat_session_id=None triggers session_repo.create."""
+        result = await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
+            question="New question",
+            chat_session_id=None,
+        )
+        assert result.kind == "result"
+        mock_session_repo.create.assert_awaited_once()
+        assert result.session_id == "550e8400-e29b-41d4-a716-446655440001"
+
+    @pytest.mark.asyncio
+    async def test_chat_session_id_provided_reuses_existing_session(self, service, mock_session_repo):
+        """Follow-up: chat_session_id='existing-id' validates session and skips creation."""
+        existing_session = MagicMock()
+        existing_session.id = "550e8400-e29b-41d4-a716-446655440002"
+        existing_session.preview_text = "Existing preview"
+        mock_session_repo.get_by_id.return_value = existing_session
+
+        result = await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
+            question="Follow-up",
+            chat_session_id="550e8400-e29b-41d4-a716-446655440002",
+        )
+        assert result.kind == "result"
+        assert result.session_id == "550e8400-e29b-41d4-a716-446655440002"
+        mock_session_repo.get_by_id.assert_awaited_once()
+        mock_session_repo.create.assert_not_awaited()
