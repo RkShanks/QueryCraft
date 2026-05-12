@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource/jetbrains-mono";
+
 @source not "**/*.test.ts";
 @source not "**/*.test.tsx";
 @source not "../tests/**/*.ts";
@@ -6,3 +9,84 @@
 @source not "../coverage/**/*";
 @source not "../stylelint-fixtures/**/*";
 @source not "../eslint-rules/**/*";
+
+@theme {
+  /* Font families */
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Obsidian palette */
+  --color-obsidian-950: #030712;
+  --color-obsidian-900: #0f172a;
+  --color-obsidian-800: #1e293b;
+  --color-obsidian-700: #334155;
+  --color-obsidian-600: #475569;
+  --color-obsidian-500: #64748b;
+  --color-obsidian-400: #94a3b8;
+  --color-obsidian-300: #cbd5e1;
+  --color-obsidian-200: #e2e8f0;
+  --color-obsidian-100: #f1f5f9;
+  --color-obsidian-50: #f8fafc;
+
+  /* Neon accents */
+  --color-neon-cyan: #06b6d4;
+  --color-neon-cyan-glow: rgb(6 182 212 / 35%);
+  --color-neon-purple: #8b5cf6;
+  --color-neon-purple-glow: rgb(139 92 246 / 35%);
+  --color-neon-fuchsia: #d946ef;
+  --color-neon-fuchsia-glow: rgb(217 70 239 / 35%);
+
+  /* Keyframes */
+  --animate-gradient-shift: gradient-shift 8s ease infinite;
+  --animate-glow-pulse: glow-pulse 2s ease-in-out infinite;
+  --animate-fade-in: fade-in 0.3s ease-out;
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Base dark mode styles */
+
+body {
+  background-color: var(--color-obsidian-950);
+  color: var(--color-obsidian-200);
+  font-family: var(--font-sans);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-obsidian-900);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-obsidian-700);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-obsidian-600);
+}

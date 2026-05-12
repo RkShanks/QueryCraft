@@ -21,6 +21,7 @@ export type SubmitQuestionRequest = {
      * Natural-language question in English.
      */
     question: string;
+    session_id?: string;
 };
 
 export type QueryResult = {
@@ -32,6 +33,7 @@ export type QueryResult = {
      * Ephemeral ID for this generation attempt (used in accept/reject).
      */
     attempt_id: string;
+    session_id?: string;
     question: string;
     generated_sql: string;
     columns: Array<ColumnMeta>;
@@ -524,3 +526,183 @@ export type RefreshSchemaResponses = {
 };
 
 export type RefreshSchemaResponse = RefreshSchemaResponses[keyof RefreshSchemaResponses];
+
+/* Phase 2: Session, Feedback, Admin Settings types */
+
+export type AttemptSummary = {
+    id: string;
+    question_text: string;
+    generated_sql: string;
+    accepted_at: string;
+    saved: boolean;
+    feedback?: number;
+};
+
+export type SessionSummary = {
+    id: string;
+    preview_text: string;
+    created_at: string;
+    last_activity_at: string;
+};
+
+export type SessionDetail = {
+    id: string;
+    preview_text: string;
+    created_at: string;
+    last_activity_at: string;
+    attempts: Array<AttemptSummary>;
+};
+
+export type CreateSessionResponse = {
+    id: string;
+    preview_text: string;
+    created_at: string;
+};
+
+export type SessionListResponse = {
+    items: Array<SessionSummary>;
+    total: number;
+};
+
+export type UpdateFeedbackRequest = {
+    feedback: number;
+};
+
+export type FeedbackResponse = {
+    id: string;
+    feedback: number;
+    saved: boolean;
+};
+
+export type AdminSettingsResponse = {
+    llm_context_cap: number;
+};
+
+export type UpdateAdminSettingsRequest = {
+    llm_context_cap: number;
+};
+
+export type UpdateAdminSettingsResponse = {
+    llm_context_cap: number;
+    updated_at: string;
+};
+
+/* Data / Errors / Responses for new endpoints */
+
+export type CreateSessionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/sessions';
+};
+
+export type CreateSessionErrors = {
+    401: ErrorResponse;
+};
+
+export type CreateSessionResponses = {
+    201: CreateSessionResponse;
+};
+
+export type ListSessionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/sessions';
+};
+
+export type ListSessionsErrors = {
+    401: ErrorResponse;
+};
+
+export type ListSessionsResponses = {
+    200: SessionListResponse;
+};
+
+export type GetSessionData = {
+    body?: never;
+    path: {
+        sessionId: string;
+    };
+    query?: never;
+    url: '/sessions/{sessionId}';
+};
+
+export type GetSessionErrors = {
+    401: ErrorResponse;
+    404: ErrorResponse;
+};
+
+export type GetSessionResponses = {
+    200: SessionDetail;
+};
+
+export type DeleteSessionData = {
+    body?: never;
+    path: {
+        sessionId: string;
+    };
+    query?: never;
+    url: '/sessions/{sessionId}';
+};
+
+export type DeleteSessionErrors = {
+    401: ErrorResponse;
+    404: ErrorResponse;
+};
+
+export type DeleteSessionResponses = {
+    204: void;
+};
+
+export type UpdateFeedbackData = {
+    body: UpdateFeedbackRequest;
+    path: {
+        attemptId: string;
+    };
+    query?: never;
+    url: '/feedback/{attemptId}';
+};
+
+export type UpdateFeedbackErrors = {
+    401: ErrorResponse;
+    404: ErrorResponse;
+    422: ErrorResponse;
+};
+
+export type UpdateFeedbackResponses = {
+    200: FeedbackResponse;
+};
+
+export type GetAdminSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/settings';
+};
+
+export type GetAdminSettingsErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+};
+
+export type GetAdminSettingsResponses = {
+    200: AdminSettingsResponse;
+};
+
+export type UpdateAdminSettingsData = {
+    body: UpdateAdminSettingsRequest;
+    path?: never;
+    query?: never;
+    url: '/admin/settings';
+};
+
+export type UpdateAdminSettingsErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    422: ErrorResponse;
+};
+
+export type UpdateAdminSettingsResponses = {
+    200: UpdateAdminSettingsResponse;
+};
