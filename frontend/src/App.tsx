@@ -7,6 +7,8 @@ import './index.css';
 import { SignInPage } from './pages/SignInPage';
 import { AskQuestionPage } from './pages/AskQuestionPage';
 import HistoryPage from './pages/HistoryPage';
+import { WorkspacePage } from './pages/WorkspacePage';
+import { AppShell } from './components/shell/AppShell';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading } = useCurrentUser();
@@ -38,6 +40,14 @@ function RootRedirect() {
   return <Navigate to="/sign-in" replace />;
 }
 
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthGuard>
+      <AppShell>{children}</AppShell>
+    </AuthGuard>
+  );
+}
+
 function App() {
   return (
     <QueryProvider>
@@ -47,17 +57,25 @@ function App() {
           <Route
             path="/"
             element={
-              <AuthGuard>
+              <AuthenticatedLayout>
+                <WorkspacePage />
+              </AuthenticatedLayout>
+            }
+          />
+          <Route
+            path="/ask"
+            element={
+              <AuthenticatedLayout>
                 <AskQuestionPage />
-              </AuthGuard>
+              </AuthenticatedLayout>
             }
           />
           <Route
             path="/history"
             element={
-              <AuthGuard>
+              <AuthenticatedLayout>
                 <HistoryPage />
-              </AuthGuard>
+              </AuthenticatedLayout>
             }
           />
           <Route path="*" element={<RootRedirect />} />

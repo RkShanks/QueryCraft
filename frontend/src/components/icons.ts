@@ -12,4 +12,5 @@ export {
   Download,
   Settings,
   X,
+  MessageSquare,
 } from 'lucide-react';

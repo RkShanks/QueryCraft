@@ -133,6 +133,8 @@
 
   "sidebar.newChat": "محادثة جديدة",
   "sidebar.sessions": "الجلسات",
+  "sidebar.expand": "توسيع الشريط الجانبي",
+  "sidebar.collapse": "طي الشريط الجانبي",
   "sidebar.today": "اليوم",
   "sidebar.previous7Days": "آخر 7 أيام",
   "sidebar.older": "أقدم",
@@ -141,6 +143,8 @@
   "sidebar.undo": "تراجع",
   "workspace.emptyState": "ابدأ محادثة جديدة",
   "workspace.placeholder": "اطرح سؤالاً حول بياناتك...",
+  "workspace.chatPlaceholder": "واجهة الدردشة ستتوفر في الموجة 8.2",
+  "workspace.attemptsCount": "{{count}} محاولة/محاولات",
   "session.previewFallback": "محادثة جديدة",
   "feedback.thumbsUp": "مفيد",
   "feedback.thumbsDown": "غير مفيد",
