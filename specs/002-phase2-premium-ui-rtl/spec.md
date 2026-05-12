@@ -18,6 +18,9 @@ Phase 1 (PR #38) shipped the core Text-to-SQL platform: 6 user stories, 5 Consti
 - Q: Does mobile layout ship in Phase 2? → A: No. Desktop-first with basic responsive breakpoints so layouts don't crash on small screens. Full mobile shell deferred to Phase 4+.
 - Q: Are session previews LLM-generated summaries? → A: No. Preview = first user message, hard-truncated to 60 chars + ellipsis (ADR-2).
 - Q: Can users rename sessions? → A: Not in Phase 2 UX. Backend already supports PUT /sessions/:id; rename UX deferred to Phase 3+.
+- Q: For FR-035, when loading the last N attempts for context, what should the prompt builder do with in-flight (pending) attempts that have no SQL yet? → A: Skip pending attempts entirely; only completed (accepted/rejected) attempts count toward the cap N.
+- Q: Should the edge case describing session deletion with an in-flight query be promoted to a numbered Functional Requirement? → A: Yes — promoted to FR-058.
+- Q: SC-022 specifies a 90-second time-bound for a multi-step flow. Should this be kept, removed, or replaced? → A: Replaced with a qualitative criterion: the flow completes without requiring the user to wait for any UI animation longer than 300ms.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -175,7 +178,7 @@ As the development team, we have a test framework that detects cross-test state 
 
 ### Edge Cases
 
-- What happens when the user deletes a session while a query is in-flight? The in-flight query is cancelled, the session is removed optimistically, and the undo toast appears. If the user undoes, the session is restored but the in-flight query result is lost.
+- What happens when the user deletes a session while a query is in-flight? Behaviour defined in FR-058. The in-flight query is cancelled, the session is removed optimistically, and the undo toast appears. If the user undoes within 5 seconds, the session is restored but the cancelled query result is permanently lost (the attempt is not resumable).
 - What happens when the user switches sessions while a query is in-flight? The in-flight query continues processing in the background. When the user switches back, the result is displayed if it completed.
 - What happens when the undo toast for session deletion is active and the user tries to delete another session? Each deletion gets its own independent undo toast. Multiple toasts stack.
 - What happens when the user gives explicit feedback on an attempt that already has implicit feedback? Explicit feedback overrides implicit feedback. The most recent signal wins.
@@ -191,7 +194,7 @@ As the development team, we have a test framework that detects cross-test state 
 - **FR-032**: The system MUST allow the user to switch between sessions via a sidebar list. Switching loads the selected session's full conversation history into the workspace.
 - **FR-033**: The system MUST allow the user to delete a session with optimistic UI removal and a 5-second undo toast. If the user does not undo within 5 seconds, the session and all associated data (attempts, feedback records) are permanently deleted via cascade. Destructive delete without undo is not permitted.
 - **FR-034**: The session list in the sidebar MUST group sessions chronologically under "Today", "Previous 7 Days", and "Older" headings, with sessions in reverse-chronological order within each group.
-- **FR-035**: When the user submits a follow-up query in an existing session, the system MUST load the last N accepted/pending attempts from that session (where N equals the admin-configured LLM context cap, default 3, range 0–10) and pass them to the prompt builder as conversational history.
+- **FR-035**: When the user submits a follow-up query in an existing session, the system MUST load the last N completed (accepted or rejected) attempts from that session (where N equals the admin-configured LLM context cap, default 3, range 0–10) and pass them to the prompt builder as conversational history. Pending/in-flight attempts (those with no generated SQL yet) MUST be excluded from the context window and do not count toward the cap.
 - **FR-036**: The system MUST apply implicit feedback rules: (a) follow-up submission in the same session assigns +1 and saved=true to the prior attempt only if its feedback is null; (b) Accept click assigns +1 and saved=true; (c) Reject click assigns -1; (d) Regenerate click assigns -1 to the old attempt, new attempt starts with feedback=null; (e) explicit ThumbsUp assigns +1 and saved=true; (f) explicit ThumbsDown assigns -1; (g) idle 5+ minutes with no follow-up produces no signal.
 - **FR-037**: The system MUST allow the user to copy generated SQL to the clipboard from the response card action bar. A brief visual confirmation MUST appear on the Copy button upon success.
 - **FR-038**: The system MUST allow the user to regenerate SQL via the action bar. The old attempt receives feedback=-1 and a new generation is triggered following existing reject/retry rules (FR-017/FR-019 from Phase 1).
@@ -214,6 +217,7 @@ As the development team, we have a test framework that detects cross-test state 
 - **FR-055**: The physical-direction lint rule MUST extend to cover `left:`, `right:`, `float:`, and `border-*` physical directional properties.
 - **FR-056**: The i18n key completeness test MUST validate that all keys present in the primary locale file exist in every secondary locale file.
 - **FR-057**: The `defaultValue` fallback parameter MUST be removed from translation function calls. A `saveMissing` handler MUST be configured to catch untranslated keys during development.
+- **FR-058**: When the user deletes a session with an in-flight query, the system MUST cancel the in-flight query, optimistically remove the session, and show the undo toast. If the user undoes within 5 seconds, the session is restored but the cancelled query result is permanently lost (the attempt is not resumable).
 
 ### Key Entities
 
@@ -237,7 +241,7 @@ As the development team, we have a test framework that detects cross-test state 
 - **SC-019**: All foundation quality gates (backend linting, backend tests, frontend tests, frontend linting, frontend type checking, frontend build) pass on every Phase 2 pull request.
 - **SC-020**: 100% of new user-facing strings are extracted to i18n keys with both English and Arabic translations present — no inline string literals exist in new components.
 - **SC-021**: 0 instances of physical directional CSS or utility classes exist in new components — all directional styling uses logical equivalents.
-- **SC-022**: The user can complete a session creation → question → follow-up → switch-session → delete-session flow in under 90 seconds, excluding LLM response time.
+- **SC-022**: The session creation → question → follow-up → switch-session → delete-session flow completes without requiring the user to wait for any UI animation longer than 300ms.
 - **SC-023**: Session deletion with undo completes the full optimistic-remove → toast → permanent-delete cycle in exactly 5 seconds (±500ms tolerance).
 - **SC-024**: The LLM context cap change via admin settings takes effect on the next query without any application restart.
 
