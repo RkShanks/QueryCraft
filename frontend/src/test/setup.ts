@@ -11,17 +11,22 @@ beforeAll(() => {
   client.setConfig({ baseUrl: 'http://localhost:3000/api/v1' }); 
 });
 
+import en from '../locales/en.json';
+
+const translations: Record<string, string> = en as unknown as Record<string, string>;
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: unknown) => {
       if (typeof options === 'string') return options;
       const opts = options as Record<string, unknown> | undefined;
       const defaultValue = opts?.defaultValue as string | undefined;
-      const value = defaultValue || key;
+      const value = translations[key] ?? defaultValue ?? key;
       return value.replace(/\{\{(\w+)\}\}/g, (_, match) => String(opts?.[match] ?? `{{${match}}}`));
     },
     i18n: {
       changeLanguage: () => Promise.resolve(),
+      language: 'en',
     },
   }),
   initReactI18next: {

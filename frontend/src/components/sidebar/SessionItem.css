@@ -1,0 +1,76 @@
+.session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  outline: none;
+}
+
+.session-item:hover,
+.session-item:focus-visible {
+  background-color: var(--color-obsidian-800);
+}
+
+.session-item-active {
+  background-color: var(--color-obsidian-800);
+  box-shadow: inset 0 0 0 1px var(--color-neon-cyan-glow);
+}
+
+.session-item-collapsed {
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.session-item-preview {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: var(--color-obsidian-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-item-active .session-item-preview {
+  color: var(--color-obsidian-100);
+  font-weight: 500;
+}
+
+.session-item-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
+  color: var(--color-obsidian-500);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s, background-color 0.2s;
+}
+
+.session-item-delete-visible {
+  opacity: 1;
+}
+
+.session-item-delete:hover {
+  color: var(--color-obsidian-200);
+  background-color: var(--color-obsidian-700);
+}
+
+.session-item-collapsed-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--color-neon-cyan);
+}
+
+.session-item-active .session-item-collapsed-dot {
+  box-shadow: 0 0 6px var(--color-neon-cyan-glow);
+}

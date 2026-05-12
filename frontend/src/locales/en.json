@@ -134,6 +134,8 @@
 
   "sidebar.newChat": "New Chat",
   "sidebar.sessions": "Sessions",
+  "sidebar.expand": "Expand sidebar",
+  "sidebar.collapse": "Collapse sidebar",
   "sidebar.today": "Today",
   "sidebar.previous7Days": "Previous 7 Days",
   "sidebar.older": "Older",
@@ -142,6 +144,8 @@
   "sidebar.undo": "Undo",
   "workspace.emptyState": "Start a new conversation",
   "workspace.placeholder": "Ask a question about your data...",
+  "workspace.chatPlaceholder": "Chat UI ships in Wave 8.2",
+  "workspace.attemptsCount": "{{count}} attempt(s)",
   "session.previewFallback": "New conversation",
   "feedback.thumbsUp": "Helpful",
   "feedback.thumbsDown": "Not helpful",

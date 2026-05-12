@@ -12,7 +12,7 @@ export const SignInForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username) {
-      setError(t('query.error.validation.questionEmpty', { defaultValue: 'Username cannot be empty.' }));
+      setError(t('auth.signIn.error.usernameEmpty', { defaultValue: 'Username cannot be empty.' }));
       return;
     }
     setError('');

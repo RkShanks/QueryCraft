@@ -64,7 +64,7 @@ describe('AskQuestionPage Integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /ask/i }));
     
     // Banner should appear
-    expect(await screen.findByText('query.evaluatorRejection.heading')).toBeInTheDocument();
+    expect(await screen.findByText(/generated sql was rejected for safety/i)).toBeInTheDocument();
   });
 
   it('should handle successful acceptance', async () => {
@@ -109,9 +109,9 @@ describe('AskQuestionPage US-2 State Machine', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
-      expect(screen.getByText('query.evaluatorRejection.heading')).toBeInTheDocument();
+      expect(screen.getByText(/generated sql was rejected for safety/i)).toBeInTheDocument();
     });
-    expect(screen.queryByText(/generated sql/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Generated SQL')).not.toBeInTheDocument();
   });
 
   it('shows TimeoutBanner on timeout submit', async () => {
@@ -124,7 +124,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
-      expect(screen.getByText('query.timeout.heading')).toBeInTheDocument();
+      expect(screen.getByText(/query took too long/i)).toBeInTheDocument();
     });
   });
 
@@ -214,7 +214,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
     fireEvent.click(screen.getByRole('button', { name: /reject/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('query.refine.heading')).toBeInTheDocument();
+      expect(screen.getByText(/please refine your question/i)).toBeInTheDocument();
     });
   });
 
@@ -227,7 +227,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
     fireEvent.click(screen.getByRole('button', { name: /ask/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('query.evaluatorRejection.heading')).toBeInTheDocument();
+      expect(screen.getByText(/generated sql was rejected for safety/i)).toBeInTheDocument();
     });
 
     setSubmitScenario('result');
@@ -235,7 +235,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
     fireEvent.click(screen.getByRole('button', { name: /ask/i }));
 
     await waitFor(() => {
-      expect(screen.queryByText('query.evaluatorRejection.heading')).not.toBeInTheDocument();
+      expect(screen.queryByText(/generated sql was rejected for safety/i)).not.toBeInTheDocument();
       expect(screen.getByText(/generated sql/i)).toBeInTheDocument();
     });
   });
@@ -255,13 +255,13 @@ describe('AskQuestionPage US-2 State Machine', () => {
     fireEvent.click(screen.getByRole('button', { name: /reject/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('query.refine.heading')).toBeInTheDocument();
+      expect(screen.getByText(/please refine your question/i)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'query.refine.cta' }));
+    fireEvent.click(screen.getByRole('button', { name: /try refining/i }));
 
     await waitFor(() => {
-      expect(screen.queryByText('query.refine.heading')).not.toBeInTheDocument();
+      expect(screen.queryByText(/please refine your question/i)).not.toBeInTheDocument();
       expect(textarea.value).toBe('');
     });
   });
@@ -275,14 +275,14 @@ describe('AskQuestionPage US-2 State Machine', () => {
     fireEvent.click(screen.getByRole('button', { name: /ask/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('query.timeout.heading')).toBeInTheDocument();
+      expect(screen.getByText(/query took too long/i)).toBeInTheDocument();
     });
 
     setSubmitScenario('result');
-    fireEvent.click(screen.getByRole('button', { name: 'query.timeout.cta' }));
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
 
     await waitFor(() => {
-      expect(screen.queryByText('query.timeout.heading')).not.toBeInTheDocument();
+      expect(screen.queryByText(/query took too long/i)).not.toBeInTheDocument();
       expect(screen.getByText(/generated sql/i)).toBeInTheDocument();
     });
   });

@@ -1,0 +1,94 @@
+.workspace-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.workspace-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.workspace-empty-icon {
+  color: var(--color-obsidian-600);
+}
+
+.workspace-empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-obsidian-300);
+}
+
+.workspace-empty-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-obsidian-500);
+}
+
+.workspace-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.workspace-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--color-obsidian-700);
+  border-top-color: var(--color-neon-cyan);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.workspace-active {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+.workspace-session-header {
+  padding-block-end: 1rem;
+  border-block-end: 1px solid var(--color-obsidian-800);
+  margin-block-end: 1rem;
+}
+
+.workspace-session-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-obsidian-200);
+}
+
+.workspace-chat-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--color-obsidian-500);
+}
+
+.workspace-placeholder-text {
+  font-size: 0.875rem;
+}
+
+.workspace-attempts-count {
+  font-size: 0.75rem;
+  color: var(--color-obsidian-600);
+}

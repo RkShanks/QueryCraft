@@ -1,0 +1,49 @@
+.undo-toast {
+  min-width: 280px;
+  background-color: var(--color-obsidian-800);
+  border: 1px solid var(--color-obsidian-700);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+  animation: var(--animate-fade-in);
+}
+
+.undo-toast-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.undo-toast-message {
+  font-size: 0.875rem;
+  color: var(--color-obsidian-200);
+}
+
+.undo-toast-button {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-neon-cyan);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.undo-toast-button:hover {
+  background-color: var(--color-neon-cyan-glow);
+}
+
+.undo-toast-progress {
+  height: 3px;
+  background-color: var(--color-obsidian-700);
+}
+
+.undo-toast-progress-bar {
+  height: 100%;
+  background-color: var(--color-neon-cyan);
+  transition: width 0.1s linear;
+}
