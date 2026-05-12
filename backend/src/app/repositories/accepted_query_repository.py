@@ -23,6 +23,9 @@ class AcceptedQueryRepository:
         generated_sql: str,
         llm_provider: str,
         attempt_id: str | None = None,
+        session_id: uuid.UUID | None = None,
+        saved: bool = False,
+        feedback: int | None = None,
     ) -> AcceptedQuery:
         """Persist a new accepted query."""
         query = AcceptedQuery(
@@ -32,6 +35,9 @@ class AcceptedQueryRepository:
             generated_sql=generated_sql,
             llm_provider=llm_provider,
             attempt_id=attempt_id,
+            session_id=session_id,
+            saved=saved,
+            feedback=feedback,
         )
         self._session.add(query)
         await self._session.flush()
@@ -58,9 +64,7 @@ class AcceptedQueryRepository:
                     raise ValueError("Invalid cursor format")
                 cursor_dt = datetime.fromisoformat(parts[0])
                 cursor_id = uuid.UUID(parts[1])
-                stmt = stmt.where(
-                    tuple_(AcceptedQuery.accepted_at, AcceptedQuery.id) < tuple_(cursor_dt, cursor_id)
-                )
+                stmt = stmt.where(tuple_(AcceptedQuery.accepted_at, AcceptedQuery.id) < tuple_(cursor_dt, cursor_id))
             except ValueError:
                 raise InvalidCursorError() from None
 
@@ -88,5 +92,49 @@ class AcceptedQueryRepository:
                 AcceptedQuery.id == query_id,
                 AcceptedQuery.user_id == user_id,
             )
+        )
+        return result.scalar_one_or_none()
+
+    async def list_by_session(self, session_id: uuid.UUID, user_id: uuid.UUID, limit: int = 100) -> list[AcceptedQuery]:
+        """Return completed accepted queries for a session, reverse-chronological.
+
+        Skips pending attempts — only accepted or rejected attempts count.
+        """
+        result = await self._session.execute(
+            select(AcceptedQuery)
+            .where(
+                AcceptedQuery.session_id == session_id,
+                AcceptedQuery.user_id == user_id,
+            )
+            .order_by(desc(AcceptedQuery.accepted_at))
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def update_feedback(self, query_id: uuid.UUID, user_id: uuid.UUID, feedback: int) -> AcceptedQuery | None:
+        """Update feedback on an accepted query. Returns updated row or None."""
+        result = await self._session.execute(
+            select(AcceptedQuery).where(
+                AcceptedQuery.id == query_id,
+                AcceptedQuery.user_id == user_id,
+            )
+        )
+        query = result.scalar_one_or_none()
+        if query is None:
+            return None
+        query.feedback = feedback
+        await self._session.flush()
+        return query
+
+    async def get_latest_by_session(self, session_id: uuid.UUID, user_id: uuid.UUID) -> AcceptedQuery | None:
+        """Return the most recent accepted query in a session."""
+        result = await self._session.execute(
+            select(AcceptedQuery)
+            .where(
+                AcceptedQuery.session_id == session_id,
+                AcceptedQuery.user_id == user_id,
+            )
+            .order_by(desc(AcceptedQuery.accepted_at))
+            .limit(1)
         )
         return result.scalar_one_or_none()
