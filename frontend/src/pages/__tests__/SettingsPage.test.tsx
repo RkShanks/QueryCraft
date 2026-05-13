@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { SettingsPage } from '../SettingsPage';
 import { renderWithClient } from '../../test/utils';
 import { useAdminSettings, useUpdateAdminSettings } from '../../hooks/useAdminSettings';
@@ -36,7 +36,7 @@ describe('SettingsPage', () => {
   });
 
   it('renders settings page with context cap input and save button', () => {
-    render(renderWithClient(<SettingsPage />));
+    renderWithClient(<SettingsPage />);
     expect(screen.getByTestId('settings-llm-context-cap')).toBeInTheDocument();
     expect(screen.getByTestId('settings-save-btn')).toBeInTheDocument();
   });
@@ -47,7 +47,7 @@ describe('SettingsPage', () => {
       isLoading: true,
       error: null,
     } as ReturnType<typeof useAdminSettings>);
-    render(renderWithClient(<SettingsPage />));
+    renderWithClient(<SettingsPage />);
     expect(screen.getByTestId('settings-page-loading')).toBeInTheDocument();
   });
 
@@ -57,14 +57,14 @@ describe('SettingsPage', () => {
       isLoading: false,
       error: new Error('Failed to load'),
     } as ReturnType<typeof useAdminSettings>);
-    render(renderWithClient(<SettingsPage />));
+    renderWithClient(<SettingsPage />);
     expect(screen.getByTestId('settings-page-error')).toBeInTheDocument();
   });
 
   it('calls mutate with saved context cap value on save', () => {
     const mutate = vi.fn();
     mockMutation({ mutate });
-    render(renderWithClient(<SettingsPage />));
+    renderWithClient(<SettingsPage />);
     const input = screen.getByTestId('settings-llm-context-cap') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '5' } });
     fireEvent.click(screen.getByTestId('settings-save-btn'));
@@ -74,7 +74,7 @@ describe('SettingsPage', () => {
   it('rejects out-of-range value and shows validation error', () => {
     const mutate = vi.fn();
     mockMutation({ mutate });
-    render(renderWithClient(<SettingsPage />));
+    renderWithClient(<SettingsPage />);
     const input = screen.getByTestId('settings-llm-context-cap') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '15' } });
     fireEvent.click(screen.getByTestId('settings-save-btn'));
@@ -85,7 +85,7 @@ describe('SettingsPage', () => {
   it('rejects negative value and shows validation error', () => {
     const mutate = vi.fn();
     mockMutation({ mutate });
-    render(renderWithClient(<SettingsPage />));
+    renderWithClient(<SettingsPage />);
     const input = screen.getByTestId('settings-llm-context-cap') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '-1' } });
     fireEvent.click(screen.getByTestId('settings-save-btn'));
@@ -95,13 +95,13 @@ describe('SettingsPage', () => {
 
   it('shows success message after save', () => {
     mockMutation({ isSuccess: true });
-    render(renderWithClient(<SettingsPage />));
+    renderWithClient(<SettingsPage />);
     expect(screen.getByTestId('settings-success-msg')).toBeInTheDocument();
   });
 
   it('shows error message when save fails', () => {
     mockMutation({ isError: true });
-    render(renderWithClient(<SettingsPage />));
+    renderWithClient(<SettingsPage />);
     expect(screen.getByTestId('settings-error-msg')).toBeInTheDocument();
   });
 });

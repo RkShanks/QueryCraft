@@ -58,7 +58,7 @@ export const ResponseFeedbackBar: React.FC<ResponseFeedbackBarProps> = ({
   return (
     <div className="response-feedback-bar" data-testid="response-feedback-bar">
       <button
-        className={`feedback-btn ${isThumbsUp ? 'feedback-btn--active-up' : ''}`}
+        className={`feedback-btn ${isThumbsUp ? 'feedback-btn-active-up' : ''}`}
         onClick={onThumbsUpClick}
         data-testid="feedback-thumbs-up"
         title={t('feedback.thumbsUp')}
@@ -72,7 +72,7 @@ export const ResponseFeedbackBar: React.FC<ResponseFeedbackBarProps> = ({
         )}
       </button>
       <button
-        className={`feedback-btn ${isThumbsDown ? 'feedback-btn--active-down' : ''}`}
+        className={`feedback-btn ${isThumbsDown ? 'feedback-btn-active-down' : ''}`}
         onClick={onThumbsDownClick}
         data-testid="feedback-thumbs-down"
         title={t('feedback.thumbsDown')}
