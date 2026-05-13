@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDebounce } from '../../hooks/useDebounce';
+import { useDebounce, FILTER_DEBOUNCE_MS } from '../../hooks/useDebounce';
 import type { AcceptedQuerySummary } from '../../api/generated/types.gen';
 
 export type HistoryItem = AcceptedQuerySummary;
@@ -23,7 +23,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 }) => {
   const { t } = useTranslation();
   const [rawFilter, setRawFilter] = useState('');
-  const filter = useDebounce(rawFilter, 300);
+  const filter = useDebounce(rawFilter, FILTER_DEBOUNCE_MS);
 
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
