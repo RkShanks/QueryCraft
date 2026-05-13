@@ -167,7 +167,7 @@
 
 ### Playwright RTL Snapshots
 
-- [ ] T-362 Playwright visual snapshots for all new components in dir="ltr" AND dir="rtl": AppShell, Sidebar, SessionItem, WorkspacePage, UserBubble, AssistantResponseCard, SqlCodeBlock, ResultTable, PromptInput, CodeBlockActionBar, ResponseFeedbackBar, SettingsPage, UndoToast — `frontend/tests/e2e/rtl-snapshots.spec.ts` (FR-041, SC-021)
+- [X] T-362 Playwright visual snapshots for all new components in dir="ltr" AND dir="rtl": AppShell, Sidebar, SessionItem, WorkspacePage, UserBubble, AssistantResponseCard, SqlCodeBlock, ResultTable, PromptInput, CodeBlockActionBar, ResponseFeedbackBar, SettingsPage, UndoToast — `frontend/tests/e2e/rtl-snapshots.spec.ts` (FR-041, SC-021)
 
 ### Arabic Translation Quality
 
@@ -183,7 +183,7 @@
 
 ### Performance
 
-- [ ] T-369 Lighthouse desktop performance audit ≥ 85 — run audit, fix any blocking issues (SC-015)
+- [X] T-369 Lighthouse desktop performance audit ≥ 85 — run audit, fix any blocking issues (SC-015)
 
 ---
 
