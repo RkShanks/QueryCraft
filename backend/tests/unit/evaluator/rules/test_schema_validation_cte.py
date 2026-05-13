@@ -67,10 +67,7 @@ def rule() -> SchemaValidationRule:
 @pytest.mark.asyncio
 async def test_cte_simple_passes(rule, schema_with_customer):
     """WITH ... SELECT * FROM cte_alias should pass."""
-    sql = (
-        "WITH active_customers AS (SELECT * FROM customer WHERE active = TRUE) "
-        "SELECT * FROM active_customers"
-    )
+    sql = "WITH active_customers AS (SELECT * FROM customer WHERE active = TRUE) SELECT * FROM active_customers"
     passed, reason = await rule.evaluate(sql, schema_with_customer)
     assert passed is True, f"Expected pass, got: {reason}"
 
@@ -89,11 +86,7 @@ async def test_cte_with_window_function_passes(rule, schema_with_customer):
 @pytest.mark.asyncio
 async def test_recursive_cte_passes(rule, schema_with_customer):
     """Recursive CTE should pass (does not reference schema tables)."""
-    sql = (
-        "WITH RECURSIVE depth(n) AS ("
-        "  SELECT 1 UNION SELECT n+1 FROM depth WHERE n < 5"
-        ") SELECT * FROM depth"
-    )
+    sql = "WITH RECURSIVE depth(n) AS (  SELECT 1 UNION SELECT n+1 FROM depth WHERE n < 5) SELECT * FROM depth"
     passed, reason = await rule.evaluate(sql, schema_with_customer)
     assert passed is True, f"Expected pass, got: {reason}"
 
@@ -101,9 +94,7 @@ async def test_recursive_cte_passes(rule, schema_with_customer):
 @pytest.mark.asyncio
 async def test_cte_referencing_nonexistent_table_fails(rule, schema_with_customer):
     """CTE body referencing a nonexistent base table must still fail."""
-    sql = (
-        "WITH x AS (SELECT * FROM nonexistent) SELECT * FROM x"
-    )
+    sql = "WITH x AS (SELECT * FROM nonexistent) SELECT * FROM x"
     passed, reason = await rule.evaluate(sql, schema_with_customer)
     assert passed is False, "Expected failure for CTE referencing nonexistent table"
     assert "nonexistent" in (reason or "")

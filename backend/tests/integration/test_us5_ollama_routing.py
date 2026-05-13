@@ -24,9 +24,9 @@ class TestOllamaExclusiveRouting:
                     json={"response": "SELECT 1 AS id"},
                 )
             )
-            openai_route = respx.post(
-                "https://api.openai.com/v1/chat/completions"
-            ).mock(return_value=Response(200, json={"choices": [{"message": {"content": "SELECT 1"}}]}))
+            openai_route = respx.post("https://api.openai.com/v1/chat/completions").mock(
+                return_value=Response(200, json={"choices": [{"message": {"content": "SELECT 1"}}]})
+            )
             anthropic_route = respx.post("https://api.anthropic.com/v1/messages").mock(
                 return_value=Response(200, json={"content": [{"text": "SELECT 1"}]})
             )

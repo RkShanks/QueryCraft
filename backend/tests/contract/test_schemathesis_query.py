@@ -25,7 +25,10 @@ if not os.environ.get("SCHEMATHESIS_RUN"):
 
 _schema_path = (
     pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    / "specs" / "001-core-text-to-sql" / "contracts" / "openapi.yaml"
+    / "specs"
+    / "001-core-text-to-sql"
+    / "contracts"
+    / "openapi.yaml"
 )
 schema = schemathesis.openapi.from_path(
     str(_schema_path),

@@ -35,10 +35,7 @@ class TestSchemaTokenLimit:
             Table(
                 name=f"table_{i}",
                 schema_name="public",
-                columns=[
-                    Column(name=f"col_{j}", type="character varying", nullable=False)
-                    for j in range(100)
-                ],
+                columns=[Column(name=f"col_{j}", type="character varying", nullable=False) for j in range(100)],
             )
             for i in range(50)
         ]
@@ -51,12 +48,14 @@ class TestSchemaTokenLimit:
                 rows = []
                 for t in huge_tables:
                     for c in t.columns:
-                        rows.append({
-                            "table_name": t.name,
-                            "column_name": c.name,
-                            "data_type": c.type,
-                            "is_nullable": "NO",
-                        })
+                        rows.append(
+                            {
+                                "table_name": t.name,
+                                "column_name": c.name,
+                                "data_type": c.type,
+                                "is_nullable": "NO",
+                            }
+                        )
                 return rows
             if "key_column_usage" in query:
                 return []

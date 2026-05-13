@@ -17,9 +17,7 @@ def adapter() -> GeminiAdapter:
 @respx.mock
 async def test_generate_success(adapter: GeminiAdapter):
     """Successful API call returns SQL from candidates[0].content.parts[0].text."""
-    route = respx.post(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
-    ).mock(
+    route = respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
         return_value=Response(
             200,
             json={
@@ -50,9 +48,9 @@ async def test_generate_success(adapter: GeminiAdapter):
 @respx.mock
 async def test_generate_502_raises_llm_unavailable(adapter: GeminiAdapter):
     """HTTP 502 raises LLMUnavailable."""
-    respx.post(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
-    ).mock(return_value=Response(502, text="Bad Gateway"))
+    respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
+        return_value=Response(502, text="Bad Gateway")
+    )
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")
@@ -61,9 +59,9 @@ async def test_generate_502_raises_llm_unavailable(adapter: GeminiAdapter):
 @respx.mock
 async def test_generate_timeout_raises_llm_timeout(adapter: GeminiAdapter):
     """Request timeout raises LLMTimeout."""
-    respx.post(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
-    ).mock(side_effect=httpx.TimeoutException("Request timed out"))
+    respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
+        side_effect=httpx.TimeoutException("Request timed out")
+    )
 
     with pytest.raises(LLMTimeout):
         await adapter.generate("prompt")
@@ -72,9 +70,9 @@ async def test_generate_timeout_raises_llm_timeout(adapter: GeminiAdapter):
 @respx.mock
 async def test_generate_429_raises_llm_unavailable(adapter: GeminiAdapter):
     """HTTP 429 rate limit raises LLMUnavailable."""
-    respx.post(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
-    ).mock(return_value=Response(429, text="Rate limited"))
+    respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
+        return_value=Response(429, text="Rate limited")
+    )
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")

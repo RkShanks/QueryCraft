@@ -35,9 +35,7 @@ class TestQueryResponseModel:
         assert "is_last_auto_retry" in data
 
     @pytest.mark.asyncio
-    async def test_submit_evaluator_rejection_matches_evaluator_rejection(
-        self, authenticated_client, monkeypatch
-    ):
+    async def test_submit_evaluator_rejection_matches_evaluator_rejection(self, authenticated_client, monkeypatch):
         """Unsafe SQL returns 422 with EvaluatorRejection shape (no 500)."""
 
         class BadLLM:

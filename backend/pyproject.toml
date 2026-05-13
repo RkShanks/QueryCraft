@@ -50,6 +50,7 @@ markers = [
     "contract: Schemathesis contract tests (run on demand)",
     "integration: Integration tests requiring external services",
     "acceptance: End-to-end acceptance tests using full app stack",
+    "lifecycle: Tests that opt into lifecycle invariant state leak detection",
 ]
 
 [tool.ruff]

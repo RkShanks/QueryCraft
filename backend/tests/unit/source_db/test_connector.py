@@ -24,8 +24,10 @@ class TestSourceDBConnectorUnit:
         mock_pool = AsyncMock()
         mock_create_pool = AsyncMock(return_value=mock_pool)
 
-        with patch("app.source_db.connector.asyncpg.create_pool", mock_create_pool), \
-             patch("app.source_db.connector.decrypt") as mock_decrypt:
+        with (
+            patch("app.source_db.connector.asyncpg.create_pool", mock_create_pool),
+            patch("app.source_db.connector.decrypt") as mock_decrypt,
+        ):
             mock_decrypt.return_value = "decrypted_password"
 
             settings = get_settings()
@@ -47,8 +49,10 @@ class TestSourceDBConnectorUnit:
         mock_pool = AsyncMock()
         mock_create_pool = AsyncMock(return_value=mock_pool)
 
-        with patch("app.source_db.connector.asyncpg.create_pool", mock_create_pool), \
-             patch("app.source_db.connector.decrypt") as mock_decrypt:
+        with (
+            patch("app.source_db.connector.asyncpg.create_pool", mock_create_pool),
+            patch("app.source_db.connector.decrypt") as mock_decrypt,
+        ):
             mock_decrypt.return_value = "decrypted_password"
 
             settings = get_settings()
@@ -85,6 +89,7 @@ class TestSourceDBConnectorIntegration:
         monkeypatch.setenv("SOURCE_DB_USER", "pagila_user")
         monkeypatch.setenv("SOURCE_DB_PASSWORD", "pagila_dev_pwd")
         from app.core.config import get_settings
+
         get_settings.cache_clear()
 
         connector = SourceDBConnector()
@@ -101,6 +106,7 @@ class TestSourceDBConnectorIntegration:
         monkeypatch.setenv("SOURCE_DB_USER", "pagila_user")
         monkeypatch.setenv("SOURCE_DB_PASSWORD", "pagila_dev_pwd")
         from app.core.config import get_settings
+
         get_settings.cache_clear()
 
         connector = SourceDBConnector()
@@ -108,8 +114,6 @@ class TestSourceDBConnectorIntegration:
         try:
             async with connector.get_connection() as conn:
                 with pytest.raises(asyncpg.exceptions.InsufficientPrivilegeError):
-                    await conn.fetch(
-                        "INSERT INTO actor (first_name, last_name) VALUES ('Test', 'User')"
-                    )
+                    await conn.fetch("INSERT INTO actor (first_name, last_name) VALUES ('Test', 'User')")
         finally:
             await connector.aclose()

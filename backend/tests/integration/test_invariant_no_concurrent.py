@@ -101,6 +101,7 @@ class TestInvariantNoConcurrent:
 
         # Wait for TTL to expire
         import asyncio
+
         await asyncio.sleep(1.5)
 
         # Verify lock is gone

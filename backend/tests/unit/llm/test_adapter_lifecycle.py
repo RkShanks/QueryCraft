@@ -97,9 +97,11 @@ async def test_factory_shutdown_all_closes_all_cached_adapters(monkeypatch):
     calls = []
     for adapter in (adapter1, adapter2):
         orig = adapter._client.aclose
+
         async def make_tracked(orig=orig):
             calls.append("aclose")
             await orig()
+
         monkeypatch.setattr(adapter._client, "aclose", make_tracked)
 
     await LLMProviderFactory.shutdown_all()

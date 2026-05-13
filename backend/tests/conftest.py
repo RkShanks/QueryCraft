@@ -13,9 +13,11 @@ Provides:
 import asyncio
 import base64
 from collections.abc import AsyncGenerator
+from typing import Any
 
 import pytest
 import pytest_asyncio
+from _pytest.fixtures import FixtureRequest
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy import text
@@ -131,6 +133,7 @@ async def app_client(set_test_env) -> AsyncGenerator[AsyncClient, None]:
 async def ensure_db_connection(async_engine_fixture):
     """Ensure at least one database_connections row exists for tests."""
     from sqlalchemy import text
+
     async with async_engine_fixture.connect() as conn:
         result = await conn.execute(text("SELECT id FROM database_connections LIMIT 1"))
         row = result.fetchone()
@@ -180,3 +183,116 @@ def mock_llm():
             return "SELECT 1 AS id"
 
     return StubLLM()
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle invariant checkers (T-376, T-377)
+#
+# Marker API::
+#   @pytest.mark.lifecycle("lock")          – LockInvariant via redis_client
+#   @pytest.mark.lifecycle("feedback")      – FeedbackStateInvariant via db_session
+#   @pytest.mark.lifecycle("session")       – SessionTouchInvariant via db_session
+#   @pytest.mark.lifecycle("lock", "session") – multiple invariants
+#
+# Tests using mocks can override the per-checker fixture:
+#   @pytest.fixture
+#   def lifecycle_lock_checker(self, mock_redis):
+#       return LockInvariant(mock_redis)
+#
+# If the dependency (redis_client / db_session) is unavailable the checker
+# is silently skipped. Unexpected exceptions in snapshot/validate are NOT
+# caught – they fail the test with a clear message.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def lifecycle_lock_checker(request: FixtureRequest):
+    """LockInvariant using the test's Redis client, or None if unavailable."""
+    from tests.lifecycle.invariants import LockInvariant
+
+    try:
+        redis = request.getfixturevalue("redis_client")
+        return LockInvariant(redis)
+    except BaseException:
+        return None
+
+
+@pytest.fixture
+def lifecycle_feedback_checker(request: FixtureRequest):
+    """FeedbackStateInvariant using the test's DB session, or None if unavailable."""
+    from tests.lifecycle.invariants import FeedbackStateInvariant
+
+    try:
+        db = request.getfixturevalue("db_session")
+        return FeedbackStateInvariant(db)
+    except BaseException:
+        return None
+
+
+@pytest.fixture
+def lifecycle_session_checker(request: FixtureRequest):
+    """SessionTouchInvariant using the test's DB session, or None if unavailable."""
+    from tests.lifecycle.invariants import SessionTouchInvariant
+
+    try:
+        db = request.getfixturevalue("db_session")
+        return SessionTouchInvariant(db)
+    except BaseException:
+        return None
+
+
+_INVARIANT_FIXTURE_MAP: dict[str, str] = {
+    "lock": "lifecycle_lock_checker",
+    "feedback": "lifecycle_feedback_checker",
+    "session": "lifecycle_session_checker",
+}
+
+
+@pytest.fixture
+async def lifecycle_aware(request: FixtureRequest):
+    """Snapshot/validate lifecycle invariants for ``@pytest.mark.lifecycle`` tests.
+
+    The marker must have at least one positional argument naming the invariants
+    to check. Usage without arguments is a configuration error.
+
+    Snapshot is taken before the test body; validation runs after.
+    Checker exceptions are NOT swallowed – they fail the test immediately.
+    """
+    marker = request.node.get_closest_marker("lifecycle")
+    if marker is None:
+        yield
+        return
+
+    names: tuple[str, ...] = marker.args if marker.args else ()
+    if not names:
+        pytest.fail(
+            "Empty @pytest.mark.lifecycle marker. "
+            "Supply invariant names, e.g. @pytest.mark.lifecycle('lock'). "
+            "Valid names: lock, feedback, session"
+        )
+
+    checkers: list[Any] = []
+    for name in names:
+        if name not in _INVARIANT_FIXTURE_MAP:
+            pytest.fail(f"Unknown lifecycle invariant: {name!r}. Valid: {set(_INVARIANT_FIXTURE_MAP)}")
+        fixture_name = _INVARIANT_FIXTURE_MAP[name]
+        try:
+            checker = request.getfixturevalue(fixture_name)
+        except pytest.skip.Exception:
+            continue  # dependency unavailable, skip this checker
+        if checker is not None:
+            checkers.append(checker)
+
+    before: dict[str, dict[str, Any]] = {}
+    for checker in checkers:
+        before[checker.name] = await checker.snapshot(None)
+
+    yield
+
+    issues: list[str] = []
+    for checker in checkers:
+        result = await checker.validate(before.get(checker.name, {}), None)
+        issues.extend(result)
+
+    if issues:
+        pytest.fail("Lifecycle invariant violation(s):\n" + "\n".join(issues))

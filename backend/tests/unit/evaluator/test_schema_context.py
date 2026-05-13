@@ -11,9 +11,7 @@ def test_empty_schema_context():
 
 
 def test_find_table_returns_table():
-    ctx = SchemaContext(
-        tables=[Table(name="users", columns=[Column(name="id", type="integer")])]
-    )
+    ctx = SchemaContext(tables=[Table(name="users", columns=[Column(name="id", type="integer")])])
     table = ctx.find_table("users")
     assert table is not None
     assert table.name == "users"
@@ -21,17 +19,13 @@ def test_find_table_returns_table():
 
 def test_find_table_case_insensitive():
     """Postgres folds unquoted identifiers to lowercase."""
-    ctx = SchemaContext(
-        tables=[Table(name="users", columns=[Column(name="id", type="integer")])]
-    )
+    ctx = SchemaContext(tables=[Table(name="users", columns=[Column(name="id", type="integer")])])
     assert ctx.find_table("USERS") is not None
     assert ctx.find_table("Users") is not None
 
 
 def test_find_column_returns_column():
-    ctx = SchemaContext(
-        tables=[Table(name="users", columns=[Column(name="id", type="integer")])]
-    )
+    ctx = SchemaContext(tables=[Table(name="users", columns=[Column(name="id", type="integer")])])
     col = ctx.find_column("users", "id")
     assert col is not None
     assert col.name == "id"
@@ -39,9 +33,7 @@ def test_find_column_returns_column():
 
 
 def test_find_column_case_insensitive():
-    ctx = SchemaContext(
-        tables=[Table(name="users", columns=[Column(name="id", type="integer")])]
-    )
+    ctx = SchemaContext(tables=[Table(name="users", columns=[Column(name="id", type="integer")])])
     assert ctx.find_column("USERS", "ID") is not None
     assert ctx.find_column("users", "Id") is not None
 

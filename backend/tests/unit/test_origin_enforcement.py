@@ -33,6 +33,7 @@ class TestOriginEnforcement:
     @pytest.mark.asyncio
     async def test_post_missing_origin_returns_403(self, allowed_origins):
         """POST without Origin header must return 403."""
+
         async def app(scope, receive, send):
             response = JSONResponse({"ok": True})
             await response(scope, receive, send)
@@ -50,6 +51,7 @@ class TestOriginEnforcement:
     @pytest.mark.asyncio
     async def test_post_invalid_origin_returns_403(self, allowed_origins):
         """POST with Origin not in ALLOWED_ORIGINS must return 403."""
+
         async def app(scope, receive, send):
             response = JSONResponse({"ok": True})
             await response(scope, receive, send)
@@ -67,6 +69,7 @@ class TestOriginEnforcement:
     @pytest.mark.asyncio
     async def test_post_valid_origin_passes(self, allowed_origins):
         """POST with valid Origin must pass through."""
+
         async def app(scope, receive, send):
             response = JSONResponse({"ok": True})
             await response(scope, receive, send)
@@ -84,6 +87,7 @@ class TestOriginEnforcement:
     @pytest.mark.asyncio
     async def test_get_bypasses_origin_check(self, allowed_origins):
         """GET requests must bypass Origin validation."""
+
         async def app(scope, receive, send):
             response = JSONResponse({"ok": True})
             await response(scope, receive, send)

@@ -63,12 +63,8 @@ class TestMessageKeys:
         assert leaf_classes, "No concrete exception classes found"
         for cls in leaf_classes:
             instance = cls()
-            assert hasattr(instance, "message_key"), (
-                f"{cls.__name__} missing message_key attribute"
-            )
-            assert instance.message_key, (
-                f"{cls.__name__}.message_key is empty"
-            )
+            assert hasattr(instance, "message_key"), f"{cls.__name__} missing message_key attribute"
+            assert instance.message_key, f"{cls.__name__}.message_key is empty"
 
     def test_all_exception_keys_exist_in_en_json(self, en_json_keys):
         """Every concrete exception's message_key must be present in en.json."""
@@ -95,9 +91,8 @@ class TestMessageKeys:
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call):
                     func = node.func
-                    is_http_exc = (
-                        (isinstance(func, ast.Name) and func.id == "HTTPException")
-                        or (isinstance(func, ast.Attribute) and func.attr == "HTTPException")
+                    is_http_exc = (isinstance(func, ast.Name) and func.id == "HTTPException") or (
+                        isinstance(func, ast.Attribute) and func.attr == "HTTPException"
                     )
                     if not is_http_exc:
                         continue
@@ -113,18 +108,14 @@ class TestMessageKeys:
 
                     if isinstance(detail_arg, ast.Dict):
                         keys = [
-                            k.value
-                            for k in detail_arg.keys
-                            if isinstance(k, ast.Constant) and isinstance(k.value, str)
+                            k.value for k in detail_arg.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)
                         ]
                         if "message_key" not in keys:
                             violations.append(f"{py_file.relative_to(src_dir)}:{node.lineno}")
                     elif isinstance(detail_arg, ast.Constant) and isinstance(detail_arg.value, str):
                         violations.append(f"{py_file.relative_to(src_dir)}:{node.lineno}")
 
-        assert not violations, (
-            f"HTTPException calls without message_key found at: {violations}"
-        )
+        assert not violations, f"HTTPException calls without message_key found at: {violations}"
 
     def test_all_handler_message_keys_exist_in_en_json(self, en_json_keys):
         """Every message_key referenced in HTTPException detail dicts must exist in en.json."""
@@ -141,9 +132,8 @@ class TestMessageKeys:
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call):
                     func = node.func
-                    is_http_exc = (
-                        (isinstance(func, ast.Name) and func.id == "HTTPException")
-                        or (isinstance(func, ast.Attribute) and func.attr == "HTTPException")
+                    is_http_exc = (isinstance(func, ast.Name) and func.id == "HTTPException") or (
+                        isinstance(func, ast.Attribute) and func.attr == "HTTPException"
                     )
                     if not is_http_exc:
                         continue
@@ -152,10 +142,7 @@ class TestMessageKeys:
                         if kw.arg == "detail" and isinstance(kw.value, ast.Dict):
                             # Find the message_key value in the dict
                             for i, key_node in enumerate(kw.value.keys):
-                                if (
-                                    isinstance(key_node, ast.Constant)
-                                    and key_node.value == "message_key"
-                                ):
+                                if isinstance(key_node, ast.Constant) and key_node.value == "message_key":
                                     val_node = kw.value.values[i]
                                     if isinstance(val_node, ast.Constant) and isinstance(val_node.value, str):
                                         handler_keys.add(val_node.value)

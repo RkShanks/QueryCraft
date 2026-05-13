@@ -19,9 +19,7 @@ from sqlalchemy import text
 class TestSubmitAttemptIntegration:
     """Integration tests for QueryService + AttemptStore (T-212)."""
 
-    async def test_successful_submit_creates_attempt_with_states(
-        self, authenticated_client, db_session, redis_client
-    ):
+    async def test_successful_submit_creates_attempt_with_states(self, authenticated_client, db_session, redis_client):
         """Happy path: attempt transitions PENDING→GENERATED→EVALUATED→EXECUTED."""
         await redis_client.flushdb()
 
@@ -56,9 +54,7 @@ class TestSubmitAttemptIntegration:
         assert accept_resp.status_code == 201
 
         result = await db_session.execute(
-            text(
-                "SELECT attempt_id FROM accepted_queries WHERE question_text = 'What is one?'"
-            )
+            text("SELECT attempt_id FROM accepted_queries WHERE question_text = 'What is one?'")
         )
         row = result.fetchone()
         assert row is not None
@@ -97,9 +93,7 @@ class TestSubmitAttemptIntegration:
         after = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         assert after.scalar() == before_count
 
-    async def test_timeout_submit_creates_timeout_attempt(
-        self, authenticated_client, db_session, redis_client
-    ):
+    async def test_timeout_submit_creates_timeout_attempt(self, authenticated_client, db_session, redis_client):
         """Timeout: attempt transitions to TIMEOUT, no accepted_queries row."""
         await redis_client.flushdb()
         before = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
@@ -140,9 +134,7 @@ class TestSubmitAttemptIntegration:
         after = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         assert after.scalar() == before_count
 
-    async def test_reject_validates_attempt_ownership(
-        self, authenticated_client, redis_client
-    ):
+    async def test_reject_validates_attempt_ownership(self, authenticated_client, redis_client):
         """Reject endpoint requires attempt_id to exist and be owned by session."""
         await redis_client.flushdb()
 

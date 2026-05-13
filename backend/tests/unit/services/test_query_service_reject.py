@@ -30,6 +30,12 @@ class TestQueryServiceReject:
     """QueryService.reject_query tests."""
 
     @pytest.fixture
+    def lifecycle_lock_checker(self, mock_deps):
+        from tests.lifecycle.invariants import LockInvariant
+
+        return LockInvariant(mock_deps["redis"])
+
+    @pytest.fixture
     def mock_deps(self):
         """Return mocked dependencies for QueryService."""
         redis = AsyncMock()
@@ -69,7 +75,8 @@ class TestQueryServiceReject:
             source_db_executor=mock_deps["executor"],
         )
 
-    async def test_reject_calls_llm_with_negative_context(self, service, mock_deps):
+    @pytest.mark.lifecycle("lock")
+    async def test_reject_calls_llm_with_negative_context(self, service, mock_deps, lifecycle_aware):
         """reject_query calls LLM with negative context (prior SQL)."""
         prior = EphemeralAttempt(
             attempt_id="a1",
