@@ -1,0 +1,47 @@
+.response-feedback-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-block: 0.5rem;
+}
+
+.feedback-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  background-color: transparent;
+  color: var(--color-obsidian-500);
+  border: 1px solid var(--color-obsidian-700);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  font-size: 0.8rem;
+}
+
+.feedback-btn:hover {
+  background-color: var(--color-obsidian-800);
+  color: var(--color-obsidian-200);
+}
+
+.feedback-btn-active-up {
+  background-color: rgb(0 200 150 / 15%);
+  border-color: var(--color-neon-cyan);
+  color: var(--color-neon-cyan);
+}
+
+.feedback-btn-active-down {
+  background-color: rgb(255 80 80 / 15%);
+  border-color: #ff5050;
+  color: #ff5050;
+}
+
+.feedback-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.feedback-saved-label {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}

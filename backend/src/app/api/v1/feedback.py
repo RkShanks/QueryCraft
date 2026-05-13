@@ -34,6 +34,7 @@ async def update_feedback(
         attempt_id,
         uuid.UUID(session["user_id"]),
         req.feedback,
+        saved=req.saved,
     )
     if updated is None:
         raise HTTPException(

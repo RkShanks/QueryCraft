@@ -141,21 +141,21 @@
 
 ### Components
 
-- [ ] T-353 [P] Create CodeBlockActionBar: Copy (clipboard write + confirmation animation), Regenerate (old attempt feedback=-1, triggers regen), ThumbsDown — `frontend/src/components/chat/CodeBlockActionBar.tsx` + `CodeBlockActionBar.css` (FR-037, FR-038)
-- [ ] T-354 [P] Create ResponseFeedbackBar: ThumbsUp (+1, saved=true), ThumbsDown (-1), mutual exclusion, selected state — `frontend/src/components/chat/ResponseFeedbackBar.tsx` + `ResponseFeedbackBar.css` (FR-039)
-- [ ] T-355 Integrate CodeBlockActionBar + ResponseFeedbackBar into AssistantResponseCard (replace placeholders) — `frontend/src/components/chat/AssistantResponseCard.tsx` (depends: T-353, T-354)
-- [ ] T-356 Wire implicit feedback on follow-up: prior attempt gets +1 if feedback=null, integrate with useFeedback mutation — `frontend/src/hooks/useQuerySubmit.ts` (FR-036a; depends: T-326)
+- [X] T-353 [P] Create CodeBlockActionBar: Copy (clipboard write + confirmation animation), Regenerate (old attempt feedback=-1, triggers regen), ThumbsDown — `frontend/src/components/chat/CodeBlockActionBar.tsx` + `CodeBlockActionBar.css` (FR-037, FR-038)
+- [X] T-354 [P] Create ResponseFeedbackBar: ThumbsUp (+1, saved=true), ThumbsDown (-1), mutual exclusion, selected state — `frontend/src/components/chat/ResponseFeedbackBar.tsx` + `ResponseFeedbackBar.css` (FR-039)
+- [X] T-355 Integrate CodeBlockActionBar + ResponseFeedbackBar into AssistantResponseCard (replace placeholders) — `frontend/src/components/chat/AssistantResponseCard.tsx` (depends: T-353, T-354)
+- [X] T-356 Wire implicit feedback on follow-up: prior attempt gets +1 if feedback=null, integrate with useFeedback mutation — `frontend/src/hooks/useQuerySubmit.ts` (FR-036a; depends: T-326)
 
 ### Admin Settings Page
 
-- [ ] T-357 Create SettingsPage: LLM context cap input (0–10 validation), save button, success/error feedback — `frontend/src/pages/SettingsPage.tsx` + `SettingsPage.css` (FR-040; depends: T-327)
-- [ ] T-358 Add /settings route with AuthGuard — `frontend/src/App.tsx` (depends: T-357)
+- [X] T-357 Create SettingsPage: LLM context cap input (0–10 validation), save button, success/error feedback — `frontend/src/pages/SettingsPage.tsx` + `SettingsPage.css` (FR-040; depends: T-327)
+- [X] T-358 Add /settings route with AuthGuard — `frontend/src/App.tsx` (depends: T-357)
 
 ### Tests
 
-- [ ] T-359 [P] Unit test: Copy button triggers clipboard API, Regenerate triggers mutation — `frontend/src/components/chat/__tests__/CodeBlockActionBar.test.tsx` (depends: T-353)
-- [ ] T-360 [P] Unit test: Feedback buttons toggle state, mutual exclusion — `frontend/src/components/chat/__tests__/ResponseFeedbackBar.test.tsx` (depends: T-354)
-- [ ] T-361 [P] Unit test: SettingsPage saves context cap, rejects out-of-range — `frontend/src/pages/__tests__/SettingsPage.test.tsx` (depends: T-357)
+- [X] T-359 [P] Unit test: Copy button triggers clipboard API, Regenerate triggers mutation — `frontend/src/components/chat/__tests__/CodeBlockActionBar.test.tsx` (depends: T-353)
+- [X] T-360 [P] Unit test: Feedback buttons toggle state, mutual exclusion — `frontend/src/components/chat/__tests__/ResponseFeedbackBar.test.tsx` (depends: T-354)
+- [X] T-361 [P] Unit test: SettingsPage saves context cap, rejects out-of-range — `frontend/src/pages/__tests__/SettingsPage.test.tsx` (depends: T-357)
 
 ---
 

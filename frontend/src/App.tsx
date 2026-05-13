@@ -8,6 +8,7 @@ import { SignInPage } from './pages/SignInPage';
 import { AskQuestionPage } from './pages/AskQuestionPage';
 import HistoryPage from './pages/HistoryPage';
 import { WorkspacePage } from './pages/WorkspacePage';
+import { SettingsPage } from './pages/SettingsPage';
 import { AppShell } from './components/shell/AppShell';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -75,6 +76,14 @@ function App() {
             element={
               <AuthenticatedLayout>
                 <HistoryPage />
+              </AuthenticatedLayout>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <AuthenticatedLayout>
+                <SettingsPage />
               </AuthenticatedLayout>
             }
           />

@@ -566,6 +566,7 @@ export type SessionListResponse = {
 
 export type UpdateFeedbackRequest = {
     feedback: number;
+    saved?: boolean;
 };
 
 export type FeedbackResponse = {

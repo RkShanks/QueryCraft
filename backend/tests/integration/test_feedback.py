@@ -46,11 +46,11 @@ class TestFeedbackRouter:
         assert response.status_code == 200
         data = response.json()
         assert data["feedback"] == 1
-        assert data["saved"] is False  # saved unchanged unless explicitly set
+        assert data["saved"] is True  # feedback=1 defaults saved to True
 
     @pytest.mark.asyncio
     async def test_update_feedback_negative(self, authenticated_client, accepted_query_id):
-        """PATCH /feedback/:id accepts -1."""
+        """PATCH /feedback/:id accepts -1 — does not force saved=true."""
         response = await authenticated_client.patch(
             f"/api/v1/feedback/{accepted_query_id}",
             json={"feedback": -1},
@@ -59,6 +59,33 @@ class TestFeedbackRouter:
         assert response.status_code == 200
         data = response.json()
         assert data["feedback"] == -1
+        assert data["saved"] is False  # feedback=-1 does not force saved=true
+
+    @pytest.mark.asyncio
+    async def test_update_feedback_saved_true_explicit(self, authenticated_client, accepted_query_id):
+        """PATCH /feedback/:id with feedback=1 and saved=true sets both."""
+        response = await authenticated_client.patch(
+            f"/api/v1/feedback/{accepted_query_id}",
+            json={"feedback": 1, "saved": True},
+            headers={"origin": "http://test"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["feedback"] == 1
+        assert data["saved"] is True
+
+    @pytest.mark.asyncio
+    async def test_update_feedback_saved_false_explicit(self, authenticated_client, accepted_query_id):
+        """PATCH /feedback/:id with feedback=1 and saved=false respects explicit override."""
+        response = await authenticated_client.patch(
+            f"/api/v1/feedback/{accepted_query_id}",
+            json={"feedback": 1, "saved": False},
+            headers={"origin": "http://test"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["feedback"] == 1
+        assert data["saved"] is False
 
     @pytest.mark.asyncio
     async def test_update_feedback_validation_out_of_range(self, authenticated_client, accepted_query_id):
