@@ -15,7 +15,9 @@
     ],
     "property-disallowed-list": [
       ["margin-left", "margin-right", "padding-left", "padding-right",
-       "border-left", "border-right",
+       "border-left", "border-right", "border-left-width", "border-right-width",
+       "border-left-style", "border-right-style", "border-left-color", "border-right-color",
+       "left", "right", "float",
        "clear"],
       {
         "message": "Use logical properties (e.g. margin-inline-start) instead of physical (R-012).",

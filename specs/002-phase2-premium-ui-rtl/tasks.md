@@ -176,7 +176,7 @@
 ### Phase 1 Polish Backlog
 
 - [X] T-364 [T-253] Extract FILTER_DEBOUNCE_MS as named constant — `frontend/src/hooks/useDebounce.ts` (FR-054)
-- [ ] T-365 [T-254] Extend stylelint property-disallowed-list: add left, right, float, border-left-*, border-right-* — `frontend/.stylelintrc.json` (FR-055)
+- [X] T-365 [T-254] Extend stylelint property-disallowed-list: add left, right, float, border-left-*, border-right-* — `frontend/.stylelintrc.json` (FR-055)
 - [ ] T-366 [T-255] Physical-tailwind test: scan source for ml-, mr-, pl-, pr-, left-, right- utility classes — `frontend/tests/lint/physical-tailwind.test.ts` (SC-021)
 - [ ] T-367 [T-256] i18n key completeness test: beforeAll() loads locale files, asserts all en keys exist in ar and vice versa — `frontend/tests/lint/i18n-completeness.test.ts` (FR-056)
 - [ ] T-368 [T-260] Remove defaultValue fallback from t() calls + configure saveMissing handler in i18n config — `frontend/src/i18n.ts` + grep all t() calls in src/ (FR-057)
