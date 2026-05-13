@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 import { WorkspacePage } from '../WorkspacePage';
 import { renderWithClient } from '../../test/utils';
+import { server } from '../../test/server';
 import { useUIStore } from '../../stores/uiStore';
 import { setSubmitScenario } from '../../test/handlers';
 
@@ -67,18 +69,68 @@ describe('WorkspacePage first-submit UX', () => {
     }, { timeout: 5000 });
   }, 15000);
 
-  it('passes result.attempt_id to AssistantResponseCard for feedback/regenerate', async () => {
-    renderWithClient(<WorkspacePage />);
+  it('uses result.attempt_id for feedback and regenerate actions', async () => {
+    let capturedFeedbackId: string | undefined;
+    let capturedRegenerateId: string | undefined;
 
+    const EXPECTED_ATTEMPT_ID = 'a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d';
+
+    server.use(
+      http.patch('/api/v1/feedback/:attemptId', ({ params }) => {
+        capturedFeedbackId = params.attemptId as string;
+        return HttpResponse.json({
+          id: capturedFeedbackId,
+          feedback: 1,
+          saved: true,
+        });
+      }),
+      http.post('/api/v1/query/regenerate', async ({ request }) => {
+        const body = (await request.json()) as { attempt_id: string };
+        capturedRegenerateId = body.attempt_id;
+        return HttpResponse.json({
+          kind: 'result',
+          attempt_id: 'regen-attempt-id',
+          session_id: '550e8400-e29b-41d4-a716-446655440003',
+          question: 'How many actors?',
+          generated_sql: 'SELECT COUNT(*) FROM users;',
+          columns: [{ name: 'count', type: 'bigint' }],
+          rows: [[42]],
+          row_count: 1,
+          attempt_number: 2,
+          is_last_auto_retry: false,
+        });
+      }),
+    );
+
+    renderWithClient(<WorkspacePage />);
     await typeAndSubmit('How many actors?');
 
     await waitFor(() => {
       expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    const sendBtn = screen.getByTestId('prompt-send');
-    expect(sendBtn).toBeDisabled();
-  }, 10000);
+    // Click thumbs-up in the response feedback bar
+    const thumbsUp = screen.getByTestId('feedback-thumbs-up');
+    fireEvent.click(thumbsUp);
+
+    await waitFor(() => {
+      expect(capturedFeedbackId).toBeDefined();
+    });
+
+    expect(capturedFeedbackId).toBe(EXPECTED_ATTEMPT_ID);
+    expect(capturedFeedbackId).not.toMatch(/^turn-/);
+
+    // Click regenerate in the code block action bar
+    const regenerateBtn = screen.getByTestId('action-regenerate');
+    fireEvent.click(regenerateBtn);
+
+    await waitFor(() => {
+      expect(capturedRegenerateId).toBeDefined();
+    });
+
+    expect(capturedRegenerateId).toBe(EXPECTED_ATTEMPT_ID);
+    expect(capturedRegenerateId).not.toMatch(/^turn-/);
+  }, 15000);
 
   it('second submit (follow-up) in same session preserves both turns', async () => {
     renderWithClient(<WorkspacePage />);
