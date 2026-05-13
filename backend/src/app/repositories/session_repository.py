@@ -1,7 +1,7 @@
 """SessionRepository — data access for sessions table."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,7 +66,7 @@ class SessionRepository:
         session = result.scalar_one_or_none()
         if session is None:
             return False
-        session.last_activity_at = datetime.now(datetime.timezone.utc)
+        session.last_activity_at = datetime.now(UTC)
         await self._session.flush()
         return True
 
