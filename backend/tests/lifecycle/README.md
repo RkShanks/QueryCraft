@@ -5,17 +5,23 @@ state (Redis keys, database rows) before and after each test.
 
 ## Quick start
 
-Add `@pytest.mark.lifecycle("lock")` to any test that uses a Redis client:
+Add `@pytest.mark.lifecycle("lock")` to any test that uses a Redis client,
+**and** request the ``lifecycle_aware`` fixture:
 
 ```python
 @pytest.mark.lifecycle("lock")
-async def test_my_feature(redis_client):
+async def test_my_feature(redis_client, lifecycle_aware):
     ...
 ```
 
-Only the invariants you name are activated. The `lifecycle_aware` autouse
-fixture (defined in `tests/conftest.py`) takes a snapshot before the test
-body runs and validates after.
+Only the invariants you name are activated. The ``lifecycle_aware`` fixture
+(defined in ``tests/conftest.py``) takes a snapshot before the test body runs
+and validates after. **The fixture is NOT autouse** — tests must explicitly
+request it.
+
+**Enforcement**: Any test with ``@pytest.mark.lifecycle(...)`` that does NOT
+request ``lifecycle_aware`` is flagged at collection time with
+``pytest.UsageError``.
 
 ### Available invariants
 
@@ -29,14 +35,14 @@ Multiple invariants can be combined:
 
 ```python
 @pytest.mark.lifecycle("lock", "session")
-async def test_with_both(redis_client, db_session):
+async def test_with_both(redis_client, db_session, lifecycle_aware):
     ...
 ```
 
 ### Tests using mocks
 
 Tests that mock Redis can still opt into the lock invariant by providing a
-`lifecycle_lock_checker` fixture override:
+``lifecycle_lock_checker`` fixture override:
 
 ```python
 class TestMyFeature:
@@ -46,12 +52,42 @@ class TestMyFeature:
         return LockInvariant(mock_redis)
 
     @pytest.mark.lifecycle("lock")
-    async def test_my_feature(self, ...):
+    async def test_my_feature(self, mock_redis, lifecycle_aware):
         ...
 ```
 
-The same override pattern works for `lifecycle_feedback_checker` and
-`lifecycle_session_checker`.
+The same override pattern works for ``lifecycle_feedback_checker`` and
+``lifecycle_session_checker``.
+
+For meaningful lock-invariant detection, the ``lifecycle_lock_checker`` should
+use a Redis instance whose ``keys()`` method reflects keys actually set by the
+test. Using ``tests.lifecycle.helpers.FakeRedis`` is recommended for mock-based
+tests.
+
+### Allowing expected mutations
+
+When a DB-backed test intentionally mutates ``accepted_queries`` or
+``sessions``, pass allowed IDs to the invariant constructor:
+
+```python
+@pytest.fixture
+def lifecycle_feedback_checker(self, db_session, accepted_query_id):
+    from tests.lifecycle.invariants import FeedbackStateInvariant
+    return FeedbackStateInvariant(db_session, allowed_query_ids={accepted_query_id})
+
+@pytest.mark.lifecycle("feedback")
+async def test_update_feedback(self, ..., lifecycle_aware):
+    ...
+```
+
+Similarly for session touches:
+
+```python
+@pytest.fixture
+def lifecycle_session_checker(self, db_session, my_session_id):
+    from tests.lifecycle.invariants import SessionTouchInvariant
+    return SessionTouchInvariant(db_session, allowed_session_ids={my_session_id})
+```
 
 ## Built-in invariants (3 examples)
 
@@ -65,6 +101,10 @@ The same override pattern works for `lifecycle_feedback_checker` and
 
 Snapshots all keys matching `processing_lock:*` before the test.
 After the test, any new keys are flagged as leaks.
+
+**Note**: Uses Redis ``KEYS``, which is acceptable only in test context
+where the key space is small and bounded. Production monitoring should use
+``SCAN`` instead.
 
 ### FeedbackStateInvariant
 
@@ -101,7 +141,7 @@ invariant = SessionTouchInvariant(db_session, allowed_session_ids={my_session_id
 4. Implement `async def validate(self, before, after) -> list[str]`.
 5. Add a per-checker fixture in `tests/conftest.py` following the
    `lifecycle_<name>_checker` naming convention.
-6. Register the marker name → fixture name pair in
+6. Register the marker name to fixture name pair in
    `_INVARIANT_FIXTURE_MAP` in `tests/conftest.py`.
 
 ## Framework architecture
@@ -110,28 +150,30 @@ invariant = SessionTouchInvariant(db_session, allowed_session_ids={my_session_id
 tests/lifecycle/
   __init__.py              Package marker
   invariants.py            InvariantChecker base + 3 built-in invariants
-  conftest.py              Lifecycle-specific conftest
+  helpers.py               Shared FakeRedis / fake-DB helpers for tests
+  conftest.py              (currently empty; global fixtures in tests/conftest.py)
   README.md                This file
   test_invariants.py       Unit tests for invariants
   test_conftest.py         Tests for lifecycle fixture wiring
   test_invariant_detection.py  Validation: leaks detected, clean tests pass
 
-tests/conftest.py          (root) lifecycle_aware autouse fixture +
-                           per-checker fixtures (lifecycle_lock_checker,
-                           lifecycle_feedback_checker,
-                           lifecycle_session_checker)
+tests/conftest.py          (root) lifecycle_aware fixture +
+                            per-checker fixtures (lifecycle_lock_checker,
+                            lifecycle_feedback_checker,
+                            lifecycle_session_checker) +
+                            pytest_collection_modifyitems enforcement
 ```
 
 ## When to opt in
 
-Add `@pytest.mark.lifecycle(...)` to tests that:
+Add `@pytest.mark.lifecycle(...)` + `lifecycle_aware` to tests that:
 
 - Use real Redis (`redis_client` fixture) — use `"lock"` to detect leftover
   processing locks.
 - Mutate the database (`db_session` fixture) — use `"feedback"` and/or
   `"session"` to detect unintended row changes.
 - Mock Redis but want lock invariant — override `lifecycle_lock_checker`
-  fixture.
+  fixture with a Redis instance that tracks keys meaningfully.
 
 Do NOT add lifecycle markers to:
 
@@ -144,4 +186,12 @@ exception propagates through `lifecycle_aware` and fails the test with the
 checker name and phase. Exceptions are NOT silently swallowed.
 
 If the dependency fixture (`redis_client` / `db_session`) is unavailable,
-the checker is silently skipped via `pytest.skip.Exception` handling.
+the checker is silently skipped via handling only ``pytest.skip.Exception``.
+Unexpected exceptions from fixture setup propagate to the test.
+
+## Enforcement
+
+A `pytest_collection_modifyitems` hook (in ``tests/conftest.py``) validates
+that every test with ``@pytest.mark.lifecycle(...)`` also has
+``lifecycle_aware`` in its fixture graph. Violations raise
+``pytest.UsageError`` at collection time.

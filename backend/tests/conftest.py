@@ -212,9 +212,13 @@ def lifecycle_lock_checker(request: FixtureRequest):
 
     try:
         redis = request.getfixturevalue("redis_client")
-        return LockInvariant(redis)
-    except BaseException:
+    except pytest.skip.Exception:
         return None
+    except pytest.FixtureLookupError:
+        return None
+    except RuntimeError:
+        return None
+    return LockInvariant(redis)
 
 
 @pytest.fixture
@@ -224,9 +228,13 @@ def lifecycle_feedback_checker(request: FixtureRequest):
 
     try:
         db = request.getfixturevalue("db_session")
-        return FeedbackStateInvariant(db)
-    except BaseException:
+    except pytest.skip.Exception:
         return None
+    except pytest.FixtureLookupError:
+        return None
+    except RuntimeError:
+        return None
+    return FeedbackStateInvariant(db)
 
 
 @pytest.fixture
@@ -236,9 +244,13 @@ def lifecycle_session_checker(request: FixtureRequest):
 
     try:
         db = request.getfixturevalue("db_session")
-        return SessionTouchInvariant(db)
-    except BaseException:
+    except pytest.skip.Exception:
         return None
+    except pytest.FixtureLookupError:
+        return None
+    except RuntimeError:
+        return None
+    return SessionTouchInvariant(db)
 
 
 _INVARIANT_FIXTURE_MAP: dict[str, str] = {
@@ -296,3 +308,23 @@ async def lifecycle_aware(request: FixtureRequest):
 
     if issues:
         pytest.fail("Lifecycle invariant violation(s):\n" + "\n".join(issues))
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Enforce @pytest.mark.lifecycle requires ``lifecycle_aware`` fixture.
+
+    A test with ``@pytest.mark.lifecycle(...)`` that does not request
+    ``lifecycle_aware`` in its fixture graph is a no-op and probably a bug.
+    Fail clearly at collection time.
+    """
+    for item in items:
+        marker = item.get_closest_marker("lifecycle")
+        if marker is None:
+            continue
+        fixturenames: set[str] = item.fixturenames
+        if "lifecycle_aware" not in fixturenames:
+            raise pytest.UsageError(
+                f"{item.nodeid}: @pytest.mark.lifecycle({marker.args}) requires "
+                "'lifecycle_aware' fixture. Add lifecycle_aware as a parameter "
+                "or use @pytest.mark.usefixtures('lifecycle_aware')."
+            )

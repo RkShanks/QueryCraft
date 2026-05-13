@@ -20,10 +20,6 @@ from app.db.models.accepted_query import AcceptedQuery
 from app.db.models.session import Session
 
 
-class HasRowId(Protocol):
-    id: Any
-
-
 class HasFeedback(Protocol):
     id: Any
     feedback: int | None

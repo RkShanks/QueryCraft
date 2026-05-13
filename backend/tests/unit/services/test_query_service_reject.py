@@ -15,6 +15,7 @@ from app.core.exceptions import (
     AttemptOwnershipViolation,
 )
 from app.services.query_service import QueryService
+from tests.lifecycle.helpers import FakeRedis
 
 
 def _active_attempt_get(active_attempt="a1"):
@@ -38,10 +39,10 @@ class TestQueryServiceReject:
     @pytest.fixture
     def mock_deps(self):
         """Return mocked dependencies for QueryService."""
-        redis = AsyncMock()
+        redis = FakeRedis()
         redis.get = AsyncMock(side_effect=_active_attempt_get())
-        redis.set = AsyncMock()
-        redis.delete = AsyncMock()
+        redis.set = AsyncMock(wraps=redis.set)
+        redis.delete = AsyncMock(wraps=redis.delete)
         session_repo = MagicMock()
         session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
         session_repo.get_by_id = AsyncMock(return_value=None)
@@ -91,7 +92,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
 
@@ -116,7 +116,6 @@ class TestQueryServiceReject:
         ):
             result = await service.reject_query("a1", "s1")
 
-        # Byte-equal -> RefinePrompt
         assert result.kind == "refine"
         mock_deps["evaluator"].evaluate.assert_not_called()
         mock_deps["executor"].execute.assert_not_called()
