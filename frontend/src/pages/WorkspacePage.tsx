@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../stores/uiStore';
 import { useSessionDetail } from '../hooks/useSessions';
 import { useQuerySubmit } from '../hooks/useQuerySubmit';
+import { useUpdateFeedback } from '../hooks/useFeedback';
 import { UserBubble } from '../components/chat/UserBubble';
 import { AssistantResponseCard } from '../components/chat/AssistantResponseCard';
 import { PromptInput } from '../components/chat/PromptInput';
@@ -18,6 +19,8 @@ interface ConversationTurn {
   refinePrompt?: RefinePrompt;
   evaluatorRejection?: EvaluatorRejection;
   isLoading?: boolean;
+  currentFeedback?: number | null;
+  saved?: boolean;
 }
 
 export const WorkspacePage: React.FC = () => {
@@ -25,6 +28,7 @@ export const WorkspacePage: React.FC = () => {
   const activeSessionId = useUIStore((state) => state.activeSessionId);
   const { data: sessionDetail, isLoading } = useSessionDetail(activeSessionId ?? '');
   const querySubmit = useQuerySubmit();
+  const feedbackMutation = useUpdateFeedback();
 
   const [localTurns, setLocalTurns] = useState<ConversationTurn[]>([]);
   const [renderedSessionId, setRenderedSessionId] = useState(activeSessionId);
@@ -41,12 +45,28 @@ export const WorkspacePage: React.FC = () => {
       id: a.id,
       question: a.question_text,
       sql: a.generated_sql,
+      currentFeedback: a.feedback ?? null,
+      saved: a.saved,
     })),
     ...localTurns,
   ];
 
   const showEmptyState = activeSessionId === null && allTurns.length === 0;
   const showLoading = isLoading && allTurns.length === 0 && !querySubmit.isSubmitting;
+
+  const handleRegenerate = useCallback(
+    (attemptId: string) => {
+      querySubmit.regenerateQuery(attemptId).catch(() => {});
+    },
+    [querySubmit]
+  );
+
+  const handleFeedback = useCallback(
+    (attemptId: string, feedback: number) => {
+      feedbackMutation.mutate({ attemptId, feedback });
+    },
+    [feedbackMutation]
+  );
 
   const handleSubmit = useCallback(
     async (question: string) => {
@@ -127,7 +147,15 @@ export const WorkspacePage: React.FC = () => {
                     <p>{t('query.refine.message')}</p>
                   </div>
                 ) : (
-                  <AssistantResponseCard sql={turn.sql ?? ''} result={turn.result} />
+                  <AssistantResponseCard
+                    sql={turn.sql ?? ''}
+                    result={turn.result}
+                    attemptId={turn.id}
+                    currentFeedback={turn.currentFeedback}
+                    saved={turn.saved}
+                    onRegenerate={handleRegenerate}
+                    onFeedback={handleFeedback}
+                  />
                 )}
               </div>
             ))}

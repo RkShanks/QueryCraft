@@ -1,6 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SqlCodeBlock } from './SqlCodeBlock';
+import { CodeBlockActionBar } from './CodeBlockActionBar';
+import { ResponseFeedbackBar } from './ResponseFeedbackBar';
 import { ResultTable } from './ResultTable';
 import type { QueryResult } from '../../api/generated/types.gen';
 import './AssistantResponseCard.css';
@@ -8,10 +10,24 @@ import './AssistantResponseCard.css';
 interface AssistantResponseCardProps {
   sql: string;
   result?: QueryResult;
+  attemptId?: string;
+  currentFeedback?: number | null;
+  saved?: boolean;
+  onRegenerate?: (attemptId: string) => void;
+  onFeedback?: (attemptId: string, feedback: number) => void;
 }
 
-export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({ sql, result }) => {
+export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
+  sql,
+  result,
+  attemptId,
+  currentFeedback,
+  saved,
+  onRegenerate,
+  onFeedback,
+}) => {
   const { t } = useTranslation();
+  const hasActions = !!attemptId && !!onRegenerate && !!onFeedback;
 
   return (
     <div className="assistant-card-wrapper" data-testid="assistant-response-card">
@@ -22,8 +38,14 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({ sq
             <SqlCodeBlock code={sql} />
           </div>
 
-          {/* Placeholder action bar — Wave 8.3 */}
-          <div className="assistant-card-action-bar-placeholder" data-testid="action-bar-placeholder" />
+          {hasActions && (
+            <CodeBlockActionBar
+              sql={sql}
+              attemptId={attemptId}
+              onRegenerate={onRegenerate}
+              onFeedback={onFeedback}
+            />
+          )}
 
           {result && (
             <div className="assistant-card-section">
@@ -32,8 +54,14 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({ sq
             </div>
           )}
 
-          {/* Placeholder feedback bar — Wave 8.3 */}
-          <div className="assistant-card-feedback-bar-placeholder" data-testid="feedback-bar-placeholder" />
+          {hasActions && (
+            <ResponseFeedbackBar
+              attemptId={attemptId}
+              currentFeedback={currentFeedback}
+              saved={saved}
+              onFeedback={onFeedback}
+            />
+          )}
         </div>
       </div>
     </div>
