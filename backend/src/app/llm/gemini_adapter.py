@@ -34,9 +34,20 @@ class GeminiAdapter:
         if response.status_code >= 500 or response.status_code == 429:
             raise LLMUnavailable(provider="gemini")
 
-        response.raise_for_status()
-        data = response.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        try:
+            response.raise_for_status()
+            data = response.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError, ValueError) as exc:
+            raise LLMUnavailable(provider="gemini", message="Malformed response from provider") from exc
+        except httpx.HTTPStatusError as exc:
+            msg = "Provider returned an error"
+            try:
+                err_data = exc.response.json()
+                msg = err_data.get("error", {}).get("message", msg)
+            except Exception:
+                pass
+            raise LLMUnavailable(provider="gemini", message=msg) from exc
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client."""
