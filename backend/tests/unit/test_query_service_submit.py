@@ -16,6 +16,12 @@ class TestQueryServiceSubmit:
     """QueryService.submit_question unit tests."""
 
     @pytest.fixture
+    def lifecycle_lock_checker(self, mock_redis):
+        from tests.lifecycle.invariants import LockInvariant
+
+        return LockInvariant(mock_redis)
+
+    @pytest.fixture
     def mock_repo(self):
         repo = MagicMock()
         repo.list_by_session = AsyncMock(return_value=[])
@@ -81,7 +87,7 @@ class TestQueryServiceSubmit:
             source_db_executor=mock_executor,
         )
 
-    @pytest.mark.lifecycle
+    @pytest.mark.lifecycle("lock")
     @pytest.mark.asyncio
     async def test_happy_path_returns_query_result(self, service, mock_redis):
         result = await service.submit_question(
@@ -145,7 +151,7 @@ class TestQueryServiceSubmit:
             )
         assert exc_info.value.status_code == 409
 
-    @pytest.mark.lifecycle
+    @pytest.mark.lifecycle("lock")
     @pytest.mark.asyncio
     async def test_chat_session_id_none_creates_new_session(self, service, mock_session_repo):
         """Lazy creation: chat_session_id=None triggers session_repo.create."""

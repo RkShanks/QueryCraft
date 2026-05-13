@@ -94,12 +94,12 @@ class TestLockInvariant:
         issues = await invariant.validate(before, None)
         assert issues == []
 
-    async def test_snapshot_returns_dict_when_redis_fails(self):
+    async def test_snapshot_raises_when_redis_fails(self):
         redis = AsyncMock()
         redis.keys.side_effect = Exception("Redis down")
         invariant = LockInvariant(redis)
-        state = await invariant.snapshot(None)
-        assert state == {}
+        with pytest.raises(Exception, match="Redis down"):
+            await invariant.snapshot(None)
 
     async def test_validate_handles_empty_before(self):
         redis = AsyncMock()

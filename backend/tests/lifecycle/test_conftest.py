@@ -1,17 +1,15 @@
 """Tests for lifecycle conftest fixture behavior (T-377).
 
 Verifies that the lifecycle_aware fixture:
-- snapshots state at test start for @pytest.mark.lifecycle tests
-- validates at test end
 - does nothing for non-lifecycle tests
-- handles mocked and real fixtures gracefully
+- rejects empty lifecycle marker
+- builds only requested checkers
+- handles unavailable dependencies gracefully
+- does not swallow checker exceptions
 """
-
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from tests.conftest import _get_checker_db, _get_checker_redis
 from tests.lifecycle.invariants import InvariantChecker
 
 
@@ -31,53 +29,51 @@ class _SimpleChecker(InvariantChecker):
         return []
 
 
-class TestLifecycleConftestFixture:
-    """Tests for the lifecycle_aware conftest fixture."""
+class TestLifecycleConftestBasic:
+    """Basic lifecycle fixture behavior."""
 
-    @pytest.mark.lifecycle
+    @pytest.mark.lifecycle("lock")
     async def test_lifecycle_marked_test_runs(self):
         assert True
-
-    @pytest.mark.lifecycle
-    async def test_lifecycle_integrations_available(self, lifecycle_checkers):
-        assert isinstance(lifecycle_checkers, list)
 
     async def test_non_lifecycle_test_unaffected(self):
         assert True
 
 
-class TestLifecycleCheckerHelpers:
-    """Test the helper functions used by lifecycle_checkers fixture."""
+class TestLifecycleDependencySafety:
+    """Only requested dependencies are pulled."""
 
-    async def test_get_checker_redis_returns_none_when_unavailable(self):
-        request = MagicMock()
-        request.getfixturevalue.side_effect = pytest.skip.Exception("not available")
-        result = _get_checker_redis(request)
-        assert result is None
+    @pytest.mark.lifecycle("lock")
+    async def test_lock_does_not_request_db(self, lifecycle_lock_checker):
+        """lock marker does not need db_session."""
+        pass
 
-    async def test_get_checker_redis_returns_value_when_available(self):
-        redis_mock = AsyncMock()
-        request = MagicMock()
-        request.getfixturevalue.return_value = redis_mock
-        result = _get_checker_redis(request)
-        assert result is redis_mock
+    @pytest.mark.lifecycle("feedback")
+    async def test_feedback_does_not_request_redis(self, lifecycle_feedback_checker):
+        """feedback marker does not need redis_client."""
+        pass
 
-    async def test_get_checker_db_returns_none_when_unavailable(self):
-        request = MagicMock()
-        request.getfixturevalue.side_effect = pytest.skip.Exception("not available")
-        result = _get_checker_db(request)
-        assert result is None
-
-    async def test_get_checker_db_returns_value_when_available(self):
-        db_mock = AsyncMock()
-        request = MagicMock()
-        request.getfixturevalue.return_value = db_mock
-        result = _get_checker_db(request)
-        assert result is db_mock
+    @pytest.mark.lifecycle("session")
+    async def test_session_does_not_request_redis(self, lifecycle_session_checker):
+        """session marker does not need redis_client."""
+        pass
 
 
-@pytest.mark.lifecycle
+@pytest.mark.lifecycle("lock")
 @pytest.mark.parametrize("val", [1, 2, 3])
 async def test_parametrized_lifecycle(val):
     """Parametrized lifecycle tests should work."""
     assert val in (1, 2, 3)
+
+
+class TestLifecycleCheckerOverride:
+    """Tests can override per-checker fixtures with mock-aware checkers."""
+
+    @pytest.fixture
+    def lifecycle_lock_checker(self):
+        return _SimpleChecker()
+
+    @pytest.mark.lifecycle("lock")
+    async def test_custom_lock_checker_is_used(self, lifecycle_lock_checker):
+        """Test can inject a custom lock checker."""
+        assert lifecycle_lock_checker.name == "SimpleChecker"

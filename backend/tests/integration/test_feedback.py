@@ -35,7 +35,7 @@ class TestFeedbackRouter:
         await db_session.commit()
         return str(row[0])
 
-    @pytest.mark.lifecycle
+    @pytest.mark.lifecycle("feedback")
     @pytest.mark.asyncio
     async def test_update_feedback_success(self, authenticated_client, accepted_query_id):
         """PATCH /feedback/:id updates feedback."""

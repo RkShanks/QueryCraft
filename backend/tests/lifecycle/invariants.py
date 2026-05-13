@@ -71,19 +71,12 @@ class LockInvariant(InvariantChecker):
         self._redis = redis
 
     async def snapshot(self, state: Any) -> dict[str, bool]:
-        try:
-            keys = await self._redis.keys(f"{_LOCK_PREFIX}*")
-            return {key: True for key in keys if isinstance(key, str)}
-        except Exception:
-            return {}
+        keys = await self._redis.keys(f"{_LOCK_PREFIX}*")
+        return {key: True for key in keys if isinstance(key, str)}
 
     async def validate(self, before: dict[str, bool], after: Any) -> list[str]:
-        try:
-            current_keys = await self._redis.keys(f"{_LOCK_PREFIX}*")
-            current = {k for k in current_keys if isinstance(k, str)}
-        except Exception:
-            return []
-
+        current_keys = await self._redis.keys(f"{_LOCK_PREFIX}*")
+        current = {k for k in current_keys if isinstance(k, str)}
         before_keys = set(before.keys())
         new_keys = current - before_keys
         return [f"{self.name}: unexpected processing_lock key leaked: {key}" for key in sorted(new_keys)]
