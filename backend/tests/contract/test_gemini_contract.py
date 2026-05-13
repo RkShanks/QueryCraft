@@ -66,3 +66,17 @@ async def test_gemini_contract_429_rate_limit(adapter: GeminiAdapter):
         await adapter.generate("Test prompt")
     
     assert exc.value.provider == "gemini"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_gemini_contract_5xx_server_error(adapter: GeminiAdapter):
+    """T-372: 5xx server error — clear service-unavailable error."""
+    respx.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
+    ).mock(return_value=Response(500, json={"error": {"code": 500, "message": "Internal error encountered.", "status": "INTERNAL"}}))
+
+    with pytest.raises(LLMUnavailable) as exc:
+        await adapter.generate("Test prompt")
+        
+    assert exc.value.provider == "gemini"
