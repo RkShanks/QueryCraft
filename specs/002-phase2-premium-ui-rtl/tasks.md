@@ -153,7 +153,7 @@
 
 ### Tests
 
-- [ ] T-359 [P] Unit test: Copy button triggers clipboard API, Regenerate triggers mutation — `frontend/src/components/chat/__tests__/CodeBlockActionBar.test.tsx` (depends: T-353)
+- [X] T-359 [P] Unit test: Copy button triggers clipboard API, Regenerate triggers mutation — `frontend/src/components/chat/__tests__/CodeBlockActionBar.test.tsx` (depends: T-353)
 - [ ] T-360 [P] Unit test: Feedback buttons toggle state, mutual exclusion — `frontend/src/components/chat/__tests__/ResponseFeedbackBar.test.tsx` (depends: T-354)
 - [ ] T-361 [P] Unit test: SettingsPage saves context cap, rejects out-of-range — `frontend/src/pages/__tests__/SettingsPage.test.tsx` (depends: T-357)
 
