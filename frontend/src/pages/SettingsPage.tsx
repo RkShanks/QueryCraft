@@ -1,30 +1,15 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminSettings, useUpdateAdminSettings } from '../hooks/useAdminSettings';
 import './SettingsPage.css';
 
-export const SettingsPage: React.FC = () => {
+const SettingsForm: React.FC<{
+  initialCap: number;
+  updateMutation: ReturnType<typeof useUpdateAdminSettings>;
+}> = ({ initialCap, updateMutation }) => {
   const { t } = useTranslation();
-  const { data: settings, isLoading, error: loadError } = useAdminSettings();
-  const updateMutation = useUpdateAdminSettings();
-
-  const [contextCap, setContextCap] = useState<number>(3);
+  const [contextCap, setContextCap] = useState<number>(initialCap);
   const [inputError, setInputError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (settings?.llm_context_cap !== undefined) {
-      setContextCap(settings.llm_context_cap);
-    }
-  }, [settings]);
-
-  useEffect(() => {
-    if (updateMutation.isSuccess) {
-      setSuccessMsg(t('admin.settings.saved'));
-      const timer = setTimeout(() => setSuccessMsg(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [updateMutation.isSuccess, t]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value, 10);
@@ -47,30 +32,13 @@ export const SettingsPage: React.FC = () => {
       return;
     }
     setInputError(null);
-    setSuccessMsg(null);
     updateMutation.mutate({ llm_context_cap: contextCap });
   }, [contextCap, updateMutation, t]);
 
-  if (isLoading) {
-    return (
-      <div className="settings-page" data-testid="settings-page-loading">
-        <div className="settings-spinner" />
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="settings-page" data-testid="settings-page-error">
-        <p className="settings-error-text">{t('admin.settings.error')}</p>
-      </div>
-    );
-  }
+  const showSuccess = updateMutation.isSuccess;
 
   return (
-    <div className="settings-page" data-testid="settings-page">
-      <h1 className="settings-title">{t('admin.settings.title')}</h1>
-
+    <>
       <div className="settings-field">
         <label htmlFor="llm-context-cap" className="settings-label">
           {t('admin.settings.contextCap')}
@@ -91,9 +59,9 @@ export const SettingsPage: React.FC = () => {
             {inputError}
           </p>
         )}
-        {successMsg && (
+        {showSuccess && (
           <p className="settings-success" data-testid="settings-success-msg">
-            {successMsg}
+            {t('admin.settings.saved')}
           </p>
         )}
         {updateMutation.isError && (
@@ -111,6 +79,39 @@ export const SettingsPage: React.FC = () => {
       >
         {updateMutation.isPending ? t('admin.settings.save') + '...' : t('admin.settings.save')}
       </button>
+    </>
+  );
+};
+
+export const SettingsPage: React.FC = () => {
+  const { t } = useTranslation();
+  const { data: settings, isLoading, error: loadError } = useAdminSettings();
+  const updateMutation = useUpdateAdminSettings();
+
+  if (isLoading) {
+    return (
+      <div className="settings-page" data-testid="settings-page-loading">
+        <div className="settings-spinner" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="settings-page" data-testid="settings-page-error">
+        <p className="settings-error-text">{t('admin.settings.error')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="settings-page" data-testid="settings-page">
+      <h1 className="settings-title">{t('admin.settings.title')}</h1>
+      <SettingsForm
+        key={`cap-${settings?.llm_context_cap ?? 3}`}
+        initialCap={settings?.llm_context_cap ?? 3}
+        updateMutation={updateMutation}
+      />
     </div>
   );
 };
