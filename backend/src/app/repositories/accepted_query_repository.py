@@ -111,8 +111,14 @@ class AcceptedQueryRepository:
         )
         return list(result.scalars().all())
 
-    async def update_feedback(self, query_id: uuid.UUID, user_id: uuid.UUID, feedback: int) -> AcceptedQuery | None:
-        """Update feedback on an accepted query. Returns updated row or None."""
+    async def update_feedback(
+        self, query_id: uuid.UUID, user_id: uuid.UUID, feedback: int, saved: bool | None = None
+    ) -> AcceptedQuery | None:
+        """Update feedback on an accepted query. Returns updated row or None.
+
+        When feedback=1 and saved is not explicitly passed, saved defaults to True.
+        Pass saved=False to explicitly opt out.
+        """
         result = await self._session.execute(
             select(AcceptedQuery).where(
                 AcceptedQuery.id == query_id,
@@ -123,6 +129,10 @@ class AcceptedQueryRepository:
         if query is None:
             return None
         query.feedback = feedback
+        if saved is not None:
+            query.saved = saved
+        elif feedback == 1:
+            query.saved = True
         await self._session.flush()
         return query
 

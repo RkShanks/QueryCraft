@@ -144,7 +144,7 @@
 - [X] T-353 [P] Create CodeBlockActionBar: Copy (clipboard write + confirmation animation), Regenerate (old attempt feedback=-1, triggers regen), ThumbsDown — `frontend/src/components/chat/CodeBlockActionBar.tsx` + `CodeBlockActionBar.css` (FR-037, FR-038)
 - [X] T-354 [P] Create ResponseFeedbackBar: ThumbsUp (+1, saved=true), ThumbsDown (-1), mutual exclusion, selected state — `frontend/src/components/chat/ResponseFeedbackBar.tsx` + `ResponseFeedbackBar.css` (FR-039)
 - [X] T-355 Integrate CodeBlockActionBar + ResponseFeedbackBar into AssistantResponseCard (replace placeholders) — `frontend/src/components/chat/AssistantResponseCard.tsx` (depends: T-353, T-354)
-- [X] T-356 Wire implicit feedback on follow-up: prior attempt gets +1 if feedback=null, integrate with useFeedback mutation — `frontend/src/pages/WorkspacePage.tsx` (FR-036a; depends: T-326)
+- [X] T-356 Wire implicit feedback on follow-up: prior attempt gets +1 if feedback=null, integrate with useFeedback mutation — `frontend/src/hooks/useQuerySubmit.ts` (FR-036a; depends: T-326)
 
 ### Admin Settings Page
 

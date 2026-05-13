@@ -7,6 +7,7 @@ class UpdateFeedbackRequest(BaseModel):
     """PATCH /feedback/:attempt_id request body."""
 
     feedback: int = Field(..., ge=-1, le=1)
+    saved: bool | None = None
 
 
 class FeedbackResponse(BaseModel):

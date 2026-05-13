@@ -1,19 +1,34 @@
-import { describe, it, expect } from 'vitest';
-import { Routes, Route } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import App from '../App';
+import { useAdminSettings, useUpdateAdminSettings } from '../hooks/useAdminSettings';
 
-describe('App routing', () => {
-  it('settings route exists in route config pattern', async () => {
-    // Verifies the /settings route pattern matches what is registered in App.tsx
-    render(
-      <MemoryRouter initialEntries={['/settings']}>
-        <Routes>
-          <Route path="/settings" element={<div data-testid="settings-route-matched" />} />
-          <Route path="*" element={<div data-testid="fallback" />} />
-        </Routes>
-      </MemoryRouter>
-    );
-    expect(screen.getByTestId('settings-route-matched')).toBeInTheDocument();
+vi.mock('../hooks/useAdminSettings', () => ({
+  useAdminSettings: vi.fn(),
+  useUpdateAdminSettings: vi.fn(),
+}));
+
+describe('App /settings route', () => {
+  beforeEach(() => {
+    vi.mocked(useAdminSettings).mockReturnValue({
+      data: { llm_context_cap: 3 },
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useAdminSettings>);
+    vi.mocked(useUpdateAdminSettings).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      isSuccess: false,
+      isError: false,
+      error: null,
+      reset: vi.fn(),
+    } as unknown as ReturnType<typeof useUpdateAdminSettings>);
+  });
+
+  it('renders SettingsPage at /settings under AuthGuard', async () => {
+    window.history.pushState({}, '', '/settings');
+    render(<App />);
+    expect(await screen.findByTestId('settings-page')).toBeInTheDocument();
+    expect(await screen.findByTestId('settings-llm-context-cap')).toBeInTheDocument();
   });
 });
