@@ -3,9 +3,11 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db
+from app.db.models.user import User
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.repositories.session_repository import SessionRepository
 from app.schemas.session import (
@@ -30,6 +32,7 @@ def _get_accepted_query_repo(db: AsyncSession = Depends(get_db)) -> AcceptedQuer
 async def create_session(
     request: Request,
     repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """POST /sessions — create a new session."""
     session = request.state.session
@@ -38,8 +41,16 @@ async def create_session(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
+    user_id = uuid.UUID(session["user_id"])
+    # Verify user exists in DB (guard against stale Redis sessions)
+    result = await db.execute(select(User).where(User.id == user_id))
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
     new_session = await repo.create(
-        user_id=uuid.UUID(session["user_id"]),
+        user_id=user_id,
     )
     return CreateSessionResponse(
         id=str(new_session.id),

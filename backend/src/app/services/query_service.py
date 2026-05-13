@@ -6,12 +6,13 @@ from typing import Any
 
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SourceDBTimeout
 from app.core.processing_lock import acquire_lock, release_lock
+from app.db.models.user import User
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.repositories.session_repository import SessionRepository
 from app.schemas.query import (
@@ -97,6 +98,14 @@ class QueryService:
 
         try:
             user_uuid = uuid.UUID(user_id)
+
+            # Verify user exists in DB (guard against stale Redis sessions)
+            result = await self._db_session.execute(select(User).where(User.id == user_uuid))
+            if result.scalar_one_or_none() is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+                )
 
             # Lazy session creation
             if chat_session_id is None:
