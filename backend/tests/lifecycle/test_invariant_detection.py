@@ -5,7 +5,7 @@ the real test DB/Redis.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -15,7 +15,6 @@ from tests.lifecycle.invariants import (
     LockInvariant,
     SessionTouchInvariant,
 )
-
 
 # ---------------------------------------------------------------------------
 # LockInvariant validation
@@ -182,7 +181,7 @@ def _make_session_row(
 ):
     row = MagicMock()
     row.id = session_id or uuid.uuid4()
-    row.last_activity_at = last_activity_at or datetime.now(timezone.utc)
+    row.last_activity_at = last_activity_at or datetime.now(UTC)
     return row
 
 
@@ -209,7 +208,7 @@ class TestSessionTouchInvariantDetection:
 
     async def test_clean_no_changes_passes(self, fake_db):
         """No session changes should pass validation."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         session_id = uuid.uuid4()
         fake_db._rows.append(_make_session_row(session_id, now))
         invariant = SessionTouchInvariant(fake_db)
@@ -229,8 +228,8 @@ class TestSessionTouchInvariantDetection:
     async def test_updated_timestamp_detected(self, fake_db):
         """Timestamp change in existing session is detected."""
         session_id = uuid.uuid4()
-        old_time = datetime(2025, 1, 1, tzinfo=timezone.utc)
-        new_time = datetime(2026, 6, 1, tzinfo=timezone.utc)
+        old_time = datetime(2025, 1, 1, tzinfo=UTC)
+        new_time = datetime(2026, 6, 1, tzinfo=UTC)
         fake_db._rows.append(_make_session_row(session_id, old_time))
         invariant = SessionTouchInvariant(fake_db)
         before = await invariant.snapshot(None)

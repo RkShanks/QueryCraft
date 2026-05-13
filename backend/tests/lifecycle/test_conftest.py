@@ -7,12 +7,12 @@ Verifies that the lifecycle_aware fixture:
 - handles mocked and real fixtures gracefully
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from tests.conftest import _get_checker_db, _get_checker_redis
 from tests.lifecycle.invariants import InvariantChecker
-from tests.conftest import _get_checker_redis, _get_checker_db
 
 
 class _SimpleChecker(InvariantChecker):

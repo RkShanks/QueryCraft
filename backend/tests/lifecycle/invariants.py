@@ -86,9 +86,7 @@ class LockInvariant(InvariantChecker):
 
         before_keys = set(before.keys())
         new_keys = current - before_keys
-        return [
-            f"{self.name}: unexpected processing_lock key leaked: {key}" for key in sorted(new_keys)
-        ]
+        return [f"{self.name}: unexpected processing_lock key leaked: {key}" for key in sorted(new_keys)]
 
 
 class FeedbackStateInvariant(InvariantChecker):
@@ -111,18 +109,12 @@ class FeedbackStateInvariant(InvariantChecker):
     async def snapshot(self, state: Any) -> dict[str, dict[str, Any]]:
         result = await self._db_session.execute(select(AcceptedQuery))
         rows: Sequence[HasFeedback] = result.scalars().all()
-        return {
-            str(row.id): {"feedback": row.feedback, "saved": row.saved}
-            for row in rows
-        }
+        return {str(row.id): {"feedback": row.feedback, "saved": row.saved} for row in rows}
 
     async def validate(self, before: dict[str, dict[str, Any]], after: Any) -> list[str]:
         result = await self._db_session.execute(select(AcceptedQuery))
         rows: Sequence[HasFeedback] = result.scalars().all()
-        after_state = {
-            str(row.id): {"feedback": row.feedback, "saved": row.saved}
-            for row in rows
-        }
+        after_state = {str(row.id): {"feedback": row.feedback, "saved": row.saved} for row in rows}
 
         issues: list[str] = []
         for row_id, after_val in after_state.items():
@@ -130,13 +122,11 @@ class FeedbackStateInvariant(InvariantChecker):
                 continue
             if row_id not in before:
                 issues.append(
-                    f"{self.name}: new accepted_query row appeared: {row_id} "
-                    f"(feedback={after_val['feedback']})"
+                    f"{self.name}: new accepted_query row appeared: {row_id} (feedback={after_val['feedback']})"
                 )
             elif before[row_id] != after_val:
                 issues.append(
-                    f"{self.name}: accepted_query {row_id} mutated: "
-                    f"before={before[row_id]} after={after_val}"
+                    f"{self.name}: accepted_query {row_id} mutated: before={before[row_id]} after={after_val}"
                 )
         return issues
 
@@ -173,12 +163,9 @@ class SessionTouchInvariant(InvariantChecker):
             if row_id in self._allowed_ids:
                 continue
             if row_id not in before:
-                issues.append(
-                    f"{self.name}: new session row appeared: {row_id} (last_activity_at={after_val})"
-                )
+                issues.append(f"{self.name}: new session row appeared: {row_id} (last_activity_at={after_val})")
             elif before[row_id] != after_val:
                 issues.append(
-                    f"{self.name}: session {row_id} last_activity_at changed: "
-                    f"before={before[row_id]} after={after_val}"
+                    f"{self.name}: session {row_id} last_activity_at changed: before={before[row_id]} after={after_val}"
                 )
         return issues

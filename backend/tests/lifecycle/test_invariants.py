@@ -1,7 +1,7 @@
 """Tests for InvariantChecker base class and built-in invariants (T-376)."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -181,7 +181,7 @@ class TestSessionTouchInvariant:
         return _mock_session_scalars(request.param if hasattr(request, "param") else [])
 
     async def test_snapshot_captures_last_activity(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         rows = [MagicMock(id=uuid.uuid4(), last_activity_at=now)]
         db = _mock_session_scalars(rows)
         invariant = SessionTouchInvariant(db)
@@ -190,8 +190,8 @@ class TestSessionTouchInvariant:
 
     async def test_validate_detects_updated_activity(self):
         session_id = uuid.uuid4()
-        new_time = datetime(2025, 6, 1, tzinfo=timezone.utc)
-        old_time = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        new_time = datetime(2025, 6, 1, tzinfo=UTC)
+        old_time = datetime(2025, 1, 1, tzinfo=UTC)
         rows = [MagicMock(id=session_id, last_activity_at=new_time)]
         db = _mock_session_scalars(rows)
         invariant = SessionTouchInvariant(db)
@@ -202,7 +202,7 @@ class TestSessionTouchInvariant:
 
     async def test_validate_allows_expected_touches(self):
         session_id = uuid.uuid4()
-        new_time = datetime(2025, 6, 1, tzinfo=timezone.utc)
+        new_time = datetime(2025, 6, 1, tzinfo=UTC)
         rows = [MagicMock(id=session_id, last_activity_at=new_time)]
         db = _mock_session_scalars(rows)
         invariant = SessionTouchInvariant(db, allowed_session_ids={session_id})
@@ -212,7 +212,7 @@ class TestSessionTouchInvariant:
 
     async def test_validate_detects_new_session(self):
         session_id = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         rows = [MagicMock(id=session_id, last_activity_at=now)]
         db = _mock_session_scalars(rows)
         invariant = SessionTouchInvariant(db)
@@ -223,7 +223,7 @@ class TestSessionTouchInvariant:
 
     async def test_validate_no_changes(self):
         session_id = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         rows = [MagicMock(id=session_id, last_activity_at=now)]
         db = _mock_session_scalars(rows)
         invariant = SessionTouchInvariant(db)

@@ -133,6 +133,7 @@ async def app_client(set_test_env) -> AsyncGenerator[AsyncClient, None]:
 async def ensure_db_connection(async_engine_fixture):
     """Ensure at least one database_connections row exists for tests."""
     from sqlalchemy import text
+
     async with async_engine_fixture.connect() as conn:
         result = await conn.execute(text("SELECT id FROM database_connections LIMIT 1"))
         row = result.fetchone()
