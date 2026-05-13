@@ -52,6 +52,7 @@ class GeminiAdapter:
                     pass
                 if is_limit:
                     from app.core.exceptions import SchemaTokenLimitExceeded
+
                     raise SchemaTokenLimitExceeded(tokens=0, limit=0) from exc
             raise LLMUnavailable(provider="gemini") from exc
 
