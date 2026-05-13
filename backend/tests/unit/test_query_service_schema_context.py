@@ -1,10 +1,13 @@
 """F-003: QueryService passes schema_context to LLM."""
 
+import uuid as _uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.services.query_service import QueryService
+
+_DB_CONN_ID = str(_uuid.UUID(int=0x1))
 
 
 class StubLLM:
@@ -44,6 +47,31 @@ class StubRepo:
     async def get_latest_by_session(self, *args, **kwargs):
         return None
 
+    async def get_by_attempt_id(self, *args, **kwargs):
+        return None
+
+    async def create(self, **kwargs):
+        m = MagicMock()
+        m.id = "aaaaaaaa-0000-0000-0000-000000000001"
+        return m
+
+
+def _make_db_session():
+    """AsyncMock db_session that routes execute() by SQL content."""
+    db = AsyncMock()
+
+    def _execute_side_effect(stmt, *args, **kwargs):
+        async def _coro():
+            if "database_connections" in str(stmt):
+                return MagicMock(fetchone=MagicMock(return_value=(_DB_CONN_ID,)))
+            return MagicMock(fetchone=MagicMock(return_value=(3,)))
+
+        return _coro()
+
+    db.execute = _execute_side_effect
+    db.flush = AsyncMock()
+    return db
+
 
 @pytest.mark.asyncio
 async def test_submit_question_passes_schema_context():
@@ -62,9 +90,7 @@ async def test_submit_question_passes_schema_context():
     session_repo = MagicMock()
     session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
     session_repo.get_by_id = AsyncMock(return_value=None)
-    db_session = AsyncMock()
-    db_session.execute = AsyncMock(return_value=MagicMock(fetchone=MagicMock(return_value=(3,))))
-    db_session.flush = AsyncMock()
+    db_session = _make_db_session()
 
     service = QueryService(
         accepted_query_repository=StubRepo(),
@@ -96,7 +122,7 @@ async def test_submit_question_passes_schema_context():
 async def test_regenerate_query_passes_schema_context():
     llm = StubLLM()
     session_repo = MagicMock()
-    db_session = AsyncMock()
+    db_session = _make_db_session()
     service = QueryService(
         accepted_query_repository=StubRepo(),
         session_repository=session_repo,
@@ -123,6 +149,7 @@ async def test_regenerate_query_passes_schema_context():
         attempt_number = 1
         llm_provider = "ollama"
         state = "EXECUTED"
+        user_id = "550e8400-e29b-41d4-a716-446655440000"
 
     service._redis = FakeRedis()
 

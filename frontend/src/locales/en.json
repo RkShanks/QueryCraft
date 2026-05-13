@@ -41,6 +41,7 @@
   "query.actions.accepted": "Query saved to history",
   "query.actions.reject": "Reject",
   "query.actions.regenerate": "Regenerate",
+  "query.actions.deleteResult": "Delete",
 
   "query.result.lastRetry": "Last auto retry",
 
@@ -161,5 +162,11 @@
   "common.delete": "Delete",
   "common.copy": "Copy",
   "common.regenerate": "Regenerate",
-  "common.send": "Send"
+  "common.send": "Send",
+
+  "query.sql.show": "Show SQL",
+  "query.sql.hide": "Hide SQL",
+
+  "admin.settings.maxRegenerateAttempts": "Max Regenerate Attempts",
+  "admin.settings.maxRegenerateAttemptsHelp": "Total attempts allowed per question (1–10, includes original)"
 }

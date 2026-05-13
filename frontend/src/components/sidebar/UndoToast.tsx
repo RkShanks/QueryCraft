@@ -25,6 +25,14 @@ export const UndoToast: React.FC<UndoToastProps> = ({ item, onUndo, onExpired })
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const expiredRef = React.useRef(false);
 
+  const deleteMutationRef = React.useRef(deleteMutation);
+  const onExpiredRef = React.useRef(onExpired);
+
+  React.useEffect(() => {
+    deleteMutationRef.current = deleteMutation;
+    onExpiredRef.current = onExpired;
+  }, [deleteMutation, onExpired]);
+
   React.useEffect(() => {
     const startTime = Date.now();
 
@@ -41,8 +49,8 @@ export const UndoToast: React.FC<UndoToastProps> = ({ item, onUndo, onExpired })
     timerRef.current = setTimeout(() => {
       if (!expiredRef.current) {
         expiredRef.current = true;
-        deleteMutation.mutate(item.sessionId);
-        onExpired();
+        deleteMutationRef.current.mutate(item.sessionId);
+        onExpiredRef.current();
       }
     }, UNDO_DURATION_MS);
 
@@ -50,7 +58,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({ item, onUndo, onExpired })
       if (timerRef.current) clearTimeout(timerRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [item.sessionId, deleteMutation, onExpired]);
+  }, [item.sessionId]);
 
   const handleUndo = () => {
     if (timerRef.current) clearTimeout(timerRef.current);

@@ -3,7 +3,7 @@ info:
   title: QueryCraft — Text-to-SQL Analytics Platform API
   version: "1.0.0"
   description: |
-    Phase 1 API contract for the core question-to-validated-answer loop.
+    Phase 1 + Phase 2 API contract.
     This document is the single source of truth (Constitution Principle XII).
     Frontend types are generated from this specification.
   contact:
@@ -20,6 +20,10 @@ tags:
     description: Question submission, accept/reject/regenerate
   - name: History
     description: Accepted query history
+  - name: Sessions
+    description: Chat session management
+  - name: Feedback
+    description: Feedback on query results
   - name: Admin
     description: Administrative operations
 
@@ -392,6 +396,259 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteHistoryEntry
+      tags: [History]
+      summary: Delete a single saved query result
+      description: Removes an accepted query from history. Does not cascade to session entries.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: query_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Query deleted successfully.
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Query not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────── Sessions ───────────────────────────
+  /sessions:
+    post:
+      operationId: createSession
+      tags: [Sessions]
+      summary: Create a new empty session
+      description: Creates a new chat session for the authenticated user. Returns the session ID.
+      security:
+        - sessionCookie: []
+      responses:
+        "201":
+          description: Session created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSessionResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      operationId: listSessions
+      tags: [Sessions]
+      summary: List sessions for the current user
+      description: Returns all chat sessions for the authenticated user, sorted by last activity descending.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: List of sessions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionListResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{sessionId}:
+    get:
+      operationId: getSession
+      tags: [Sessions]
+      summary: Get session detail with conversation history
+      description: Returns full session detail including all accepted query attempts.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Session detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionDetail"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Session not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteSession
+      tags: [Sessions]
+      summary: Delete a session
+      description: Deletes a chat session and cascade deletes all associated accepted queries.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Session deleted.
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Session not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────── Feedback ───────────────────────────
+  /feedback/{attemptId}:
+    patch:
+      operationId: updateFeedback
+      tags: [Feedback]
+      summary: Update feedback on an accepted query
+      description: Sets the user feedback (thumbs up/down) for a specific accepted query attempt.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeedbackRequest"
+      responses:
+        "200":
+          description: Feedback updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Attempt not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid feedback value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────── Admin ───────────────────────────
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [Admin]
+      summary: Get admin settings
+      description: Returns current application settings including LLM context cap and regenerate attempts.
+      security:
+        - sessionCookie: []
+        - AdminKey: []
+      responses:
+        "200":
+          description: Current admin settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSettingsResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin key required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateAdminSettings
+      tags: [Admin]
+      summary: Update admin settings
+      description: Updates application settings. Only provided fields are updated.
+      security:
+        - sessionCookie: []
+        - AdminKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAdminSettingsRequest"
+      responses:
+        "200":
+          description: Settings updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateAdminSettingsResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin key required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid settings values.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ─────────────────────────── Admin ───────────────────────────
   /admin/refresh-schema:
@@ -492,6 +749,11 @@ components:
           minLength: 1
           maxLength: 2000
           description: Natural-language question in English.
+        session_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Chat session ID for follow-up context. Null for first message (lazy session creation).
 
     QueryResult:
       type: object
@@ -505,6 +767,10 @@ components:
           type: string
           format: uuid
           description: Ephemeral ID for this generation attempt (used in accept/reject).
+        session_id:
+          type: string
+          nullable: true
+          description: Chat session ID this result belongs to. Null for legacy unsessioned results.
         question:
           type: string
         generated_sql:
@@ -528,6 +794,11 @@ components:
         is_last_auto_retry:
           type: boolean
           description: "True if this is the last automatic retry (attempt 2). UI shows indicator."
+        accepted_query_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the auto-saved AcceptedQuery row. Present when submit/regenerate succeeded.
 
     ColumnMeta:
       type: object
@@ -572,6 +843,161 @@ components:
           additionalProperties: true
           description: 'Key-value map for interpolated values (e.g., {"table": "orders"}).'
 
+    AttemptSummary:
+      type: object
+      required: [id, question_text, generated_sql, accepted_at, saved]
+      properties:
+        id:
+          type: string
+          format: uuid
+        question_text:
+          type: string
+        generated_sql:
+          type: string
+        accepted_at:
+          type: string
+          format: date-time
+        saved:
+          type: boolean
+        feedback:
+          type: integer
+          nullable: true
+          description: "1 for thumbs up, -1 for thumbs down, null if not rated."
+        result_columns:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ColumnMeta"
+        result_rows:
+          type: array
+          nullable: true
+          items:
+            type: array
+            items: {}
+        result_row_count:
+          type: integer
+          nullable: true
+
+    SessionSummary:
+      type: object
+      required: [id, preview_text, created_at, last_activity_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        preview_text:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_activity_at:
+          type: string
+          format: date-time
+
+    SessionDetail:
+      type: object
+      required: [id, preview_text, created_at, last_activity_at, attempts]
+      properties:
+        id:
+          type: string
+          format: uuid
+        preview_text:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_activity_at:
+          type: string
+          format: date-time
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttemptSummary"
+
+    CreateSessionResponse:
+      type: object
+      required: [id, preview_text, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        preview_text:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    SessionListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionSummary"
+        total:
+          type: integer
+
+    UpdateFeedbackRequest:
+      type: object
+      required: [feedback]
+      properties:
+        feedback:
+          type: integer
+          description: "1 for thumbs up, -1 for thumbs down."
+        saved:
+          type: boolean
+          description: "Mark the query as saved. Defaults to true when feedback is set."
+
+    FeedbackResponse:
+      type: object
+      required: [id, feedback, saved]
+      properties:
+        id:
+          type: string
+          format: uuid
+        feedback:
+          type: integer
+        saved:
+          type: boolean
+
+    AdminSettingsResponse:
+      type: object
+      required: [llm_context_cap, max_regenerate_attempts]
+      properties:
+        llm_context_cap:
+          type: integer
+          description: Number of previous conversation turns to include as context (0-10).
+        max_regenerate_attempts:
+          type: integer
+          description: Maximum number of regenerate attempts allowed per query including the original.
+
+    UpdateAdminSettingsRequest:
+      type: object
+      required: [llm_context_cap]
+      properties:
+        llm_context_cap:
+          type: integer
+          minimum: 0
+          maximum: 10
+          description: Number of previous conversation turns to include as context (0-10).
+        max_regenerate_attempts:
+          type: integer
+          minimum: 1
+          description: Maximum number of regenerate attempts allowed per query including the original.
+
+    UpdateAdminSettingsResponse:
+      type: object
+      required: [llm_context_cap, max_regenerate_attempts, updated_at]
+      properties:
+        llm_context_cap:
+          type: integer
+        max_regenerate_attempts:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+
     AcceptQueryRequest:
       type: object
       required: [attempt_id]
@@ -580,6 +1006,11 @@ components:
           type: string
           format: uuid
           description: The ephemeral attempt ID from QueryResult.
+        session_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Chat session ID, optional for linking to sidebar session.
 
     RejectQueryRequest:
       type: object
@@ -663,6 +1094,23 @@ components:
         database_connection_id:
           type: string
           format: uuid
+        result_columns:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ColumnMeta"
+          description: Column metadata from the executed query result.
+        result_rows:
+          type: array
+          nullable: true
+          items:
+            type: array
+            items: {}
+          description: Row data from the executed query result.
+        result_row_count:
+          type: integer
+          nullable: true
+          description: Total row count from the executed query result.
 
     # ─── Common ───
     ErrorResponse:

@@ -25,3 +25,6 @@ class AcceptedQueryDetail(BaseModel):
     llm_provider: str
     accepted_at: str
     database_connection_id: str
+    result_columns: list | None = None
+    result_rows: list | None = None
+    result_row_count: int | None = None

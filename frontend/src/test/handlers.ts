@@ -62,6 +62,7 @@ const defaultResult: QueryResult = {
   row_count: 1,
   attempt_number: 1,
   is_last_auto_retry: false,
+  accepted_query_id: 'f9e8d7c6-b5a4-4c3b-2a1d-0e9f8d7c6b5a',
 };
 
 const retryResult: QueryResult = {
@@ -275,7 +276,19 @@ export const handlers = [
       preview_text: 'Session detail',
       created_at: new Date().toISOString(),
       last_activity_at: new Date().toISOString(),
-      attempts: [],
+      attempts: [
+        {
+          id: 'session-attempt-1',
+          question_text: 'How many users?',
+          generated_sql: 'SELECT COUNT(*) FROM users;',
+          accepted_at: new Date().toISOString(),
+          saved: true,
+          feedback: 1,
+          result_columns: [{ name: 'count', type: 'bigint' }],
+          result_rows: [[42]],
+          result_row_count: 1,
+        },
+      ],
     };
     return HttpResponse.json(detail, { status: 200 });
   }),
@@ -301,6 +314,7 @@ export const handlers = [
     await delay(10);
     const settings: AdminSettingsResponse = {
       llm_context_cap: 3,
+      max_regenerate_attempts: 3,
     };
     return HttpResponse.json(settings, { status: 200 });
   }),
@@ -309,8 +323,15 @@ export const handlers = [
     await delay(10);
     const response: UpdateAdminSettingsResponse = {
       llm_context_cap: 5,
+      max_regenerate_attempts: 3,
       updated_at: new Date().toISOString(),
     };
     return HttpResponse.json(response, { status: 200 });
+  }),
+
+  // ─────────────────────────── History DELETE ───────────────────────────
+  http.delete('/api/v1/history/:query_id', async () => {
+    await delay(10);
+    return new HttpResponse(null, { status: 204 });
   }),
 ];

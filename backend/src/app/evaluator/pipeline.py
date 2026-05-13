@@ -83,9 +83,7 @@ class EvaluatorPipeline:
                 ``evaluate`` method is not an async coroutine function.
         """
         if not isinstance(rule, EvaluatorRule):
-            raise TypeError(
-                f"Rule must conform to EvaluatorRule protocol, got {type(rule).__name__}"
-            )
+            raise TypeError(f"Rule must conform to EvaluatorRule protocol, got {type(rule).__name__}")
         if not hasattr(rule, "evaluate") or not inspect.iscoroutinefunction(rule.evaluate):
             raise TypeError("Rule.evaluate must be an async coroutine function")
         self._rules.append(rule)

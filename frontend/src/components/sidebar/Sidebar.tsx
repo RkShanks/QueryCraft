@@ -51,7 +51,10 @@ export const Sidebar: React.FC = () => {
   const [toasts, setToasts] = React.useState<UndoToastItem[]>([]);
 
   const { data, isLoading } = useSessionsList();
-  const sessions = React.useMemo(() => data?.items ?? [], [data?.items]);
+  const deletingSessionIds = React.useMemo(() => new Set(toasts.map((t) => t.sessionId)), [toasts]);
+  const sessions = React.useMemo(() => {
+    return (data?.items ?? []).filter((s) => !deletingSessionIds.has(s.id));
+  }, [data?.items, deletingSessionIds]);
 
   const { todayGroup, previous7Group, olderGroup } = React.useMemo(
     () => groupSessionsByDate(sessions),
@@ -63,6 +66,9 @@ export const Sidebar: React.FC = () => {
   };
 
   const handleDeleteSession = (sessionId: string) => {
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(null);
+    }
     setToasts((prev) => [
       ...prev,
       {

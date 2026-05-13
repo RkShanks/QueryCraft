@@ -25,3 +25,30 @@
   overflow-x: auto;
   font-family: var(--font-mono);
 }
+
+.sql-code-block-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--qc-text-muted);
+  cursor: pointer;
+  padding: 0.5rem 0;
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+
+.sql-code-block-toggle:hover {
+  color: var(--qc-text);
+}
+
+.sql-toggle-arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+  font-size: 0.75rem;
+}
+
+.sql-toggle-arrow.expanded {
+  transform: rotate(90deg);
+}

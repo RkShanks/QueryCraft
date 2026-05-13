@@ -3,8 +3,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, SmallInteger, String, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, SmallInteger, String, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -38,5 +38,8 @@ class AcceptedQuery(Base):
         nullable=False,
         server_default=text("now()"),
     )
+    result_columns: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    result_rows: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    result_row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     session = relationship("Session", back_populates="accepted_queries")

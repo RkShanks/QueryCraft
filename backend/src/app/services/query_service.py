@@ -65,6 +65,22 @@ class QueryService:
             return int(row[0])
         return 3
 
+    async def _get_max_regenerate_attempts(self) -> int:
+        """Read max_regenerate_attempts from app_config (default 3 = 3 regen clicks after original)."""
+        result = await self._db_session.execute(
+            text("SELECT value FROM app_config WHERE key = 'max_regenerate_attempts'")
+        )
+        row = result.fetchone()
+        if row is not None:
+            return int(row[0])
+        return 3
+
+    async def _get_database_connection_id(self) -> str:
+        """Return first database_connection id (Phase 1: single DB)."""
+        result = await self._db_session.execute(text("SELECT id FROM database_connections LIMIT 1"))
+        row = result.fetchone()
+        return str(row[0]) if row else "00000000-0000-0000-0000-000000000000"
+
     async def submit_question(
         self,
         http_session_id: str,
@@ -212,6 +228,29 @@ class QueryService:
                 is_last_auto_retry=False,
             )
 
+            # 5. Auto-save (idempotent: skip if already persisted for this attempt_id)
+            session_uuid = uuid.UUID(chat_session_id) if chat_session_id else None
+            db_conn_id = await self._get_database_connection_id()
+            existing = await self._repo.get_by_attempt_id(attempt_id, user_uuid)
+            if existing is None:
+                saved_query = await self._repo.create(
+                    user_id=user_uuid,
+                    database_connection_id=uuid.UUID(db_conn_id),
+                    question_text=question,
+                    generated_sql=sql,
+                    llm_provider=self._llm_provider,
+                    attempt_id=attempt_id,
+                    session_id=session_uuid,
+                    saved=True,
+                    feedback=1,
+                    result_columns=[c.model_dump() for c in column_metas],
+                    result_rows=rows,
+                    result_row_count=len(rows),
+                )
+                result.accepted_query_id = str(saved_query.id)
+            else:
+                result.accepted_query_id = str(existing.id)
+
             # Track active attempt for session (G-001+G-004)
             await self._redis.set(f"active_attempt:{http_session_id}", attempt_id)
 
@@ -266,9 +305,22 @@ class QueryService:
                     detail={"error": "attempt_state_invalid", "message_key": "error.attemptStateInvalid"},
                 )
 
+            # Idempotency: skip if already persisted for this attempt_id (auto-saved)
+            user_uuid = uuid.UUID(user_id)
+            existing = await self._repo.get_by_attempt_id(attempt_id, user_uuid)
+            if existing is not None:
+                await delete_attempt(attempt_id, self._redis)
+                await self._redis.delete(f"active_attempt:{http_session_id}")
+                return AcceptedQuerySummary(
+                    id=str(existing.id),
+                    question_text=existing.question_text,
+                    generated_sql=existing.generated_sql,
+                    accepted_at=existing.accepted_at.isoformat(),
+                )
+
             session_uuid = uuid.UUID(chat_session_id) if chat_session_id else None
             query = await self._repo.create(
-                user_id=uuid.UUID(user_id),
+                user_id=user_uuid,
                 database_connection_id=uuid.UUID(database_connection_id),
                 question_text=attempt.get("question", ""),
                 generated_sql=attempt.get("sql", ""),
@@ -349,9 +401,11 @@ class QueryService:
             prior = await get_attempt(attempt_id, http_session_id, self._redis)
             await delete_attempt(attempt_id, self._redis)
 
-            # Max retries: original (attempt_number=1) + 1 regenerate = 2 total
+            # Max retries: max_regenerate_attempts = regen clicks after original (default 3)
+            # Total allowed attempts = 1 (original) + max_regenerate_attempts
             next_attempt_number = (prior.attempt_number or 1) + 1
-            if next_attempt_number > 2:
+            max_regens = await self._get_max_regenerate_attempts()
+            if next_attempt_number > max_regens + 1:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
@@ -439,12 +493,13 @@ class QueryService:
                 rows=rows,
                 row_count=len(rows),
                 attempt_number=next_attempt_number,
-                is_last_auto_retry=next_attempt_number >= 2,
+                is_last_auto_retry=next_attempt_number >= max_regens + 1,
             )
 
             new_attempt = EphemeralAttempt(
                 attempt_id=new_attempt_id,
                 session_id=http_session_id,
+                user_id=prior.user_id,
                 sql=new_sql,
                 question=prior.question,
                 attempt_number=next_attempt_number,
@@ -458,6 +513,37 @@ class QueryService:
             )
             await store_attempt(new_attempt, http_session_id, self._redis)
             await self._redis.set(f"active_attempt:{http_session_id}", new_attempt_id)
+
+            # Auto-save regenerated result (idempotent)
+            # Resolve user and chat session from the previously persisted original attempt
+            user_uuid = uuid.UUID(prior.user_id) if prior.user_id else None
+            session_uuid = None
+            if user_uuid is not None:
+                prior_saved = await self._repo.get_by_attempt_id(prior.attempt_id, user_uuid)
+                session_uuid = prior_saved.session_id if prior_saved else None
+            if session_uuid is not None:
+                result.session_id = str(session_uuid)
+            db_conn_id = await self._get_database_connection_id()
+            if user_uuid is not None:
+                existing = await self._repo.get_by_attempt_id(new_attempt_id, user_uuid)
+                if existing is None:
+                    saved_query = await self._repo.create(
+                        user_id=user_uuid,
+                        database_connection_id=uuid.UUID(db_conn_id),
+                        question_text=prior.question,
+                        generated_sql=new_sql,
+                        llm_provider=self._llm_provider,
+                        attempt_id=new_attempt_id,
+                        session_id=session_uuid,
+                        saved=True,
+                        feedback=1,
+                        result_columns=[c.model_dump() for c in column_metas],
+                        result_rows=rows,
+                        result_row_count=len(rows),
+                    )
+                    result.accepted_query_id = str(saved_query.id)
+                else:
+                    result.accepted_query_id = str(existing.id)
 
             return result
         finally:

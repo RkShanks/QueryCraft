@@ -1,20 +1,18 @@
 import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, RefreshCw, ThumbsDown } from '../icons';
+import { Copy, RefreshCw } from '../icons';
 import './CodeBlockActionBar.css';
 
 interface CodeBlockActionBarProps {
   sql: string;
   attemptId: string;
   onRegenerate: (attemptId: string) => void;
-  onFeedback: (attemptId: string, feedback: number) => void;
 }
 
 export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
   sql,
   attemptId,
   onRegenerate,
-  onFeedback,
 }) => {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -30,13 +28,8 @@ export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
   }, [sql]);
 
   const handleRegenerate = useCallback(() => {
-    onFeedback(attemptId, -1);
     onRegenerate(attemptId);
-  }, [attemptId, onFeedback, onRegenerate]);
-
-  const handleThumbsDown = useCallback(() => {
-    onFeedback(attemptId, -1);
-  }, [attemptId, onFeedback]);
+  }, [attemptId, onRegenerate]);
 
   return (
     <div className="code-block-action-bar" data-testid="code-block-action-bar">
@@ -55,14 +48,6 @@ export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
         title={t('common.regenerate')}
       >
         <RefreshCw className="action-icon" />
-      </button>
-      <button
-        className="action-btn"
-        onClick={handleThumbsDown}
-        data-testid="action-thumbs-down"
-        title={t('feedback.thumbsDown')}
-      >
-        <ThumbsDown className="action-icon" />
       </button>
     </div>
   );
