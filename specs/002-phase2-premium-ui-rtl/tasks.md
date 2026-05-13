@@ -208,7 +208,7 @@
 > **Verifies**: FR-048, SC-017
 > **Dependencies**: Wave 8.0 merged (2 of the 5 migrated tests are created in Wave 8.0)
 
-- [ ] T-376 Create invariant registry: InvariantChecker base class + 3 example invariants (lock, feedback-state, session-touch) — `backend/tests/lifecycle/invariants.py` + `backend/tests/lifecycle/__init__.py` (FR-048)
+- [X] T-376 Create invariant registry: InvariantChecker base class + 3 example invariants (lock, feedback-state, session-touch) — `backend/tests/lifecycle/invariants.py` + `backend/tests/lifecycle/__init__.py` (FR-048)
 - [ ] T-377 Create lifecycle conftest: autouse fixture for @pytest.mark.lifecycle tests, snapshots Redis+DB state at start, validates at end — `backend/tests/lifecycle/conftest.py` (depends: T-376)
 - [ ] T-378 Document framework: how to add invariants, how to opt in, 3 example invariants — `backend/tests/lifecycle/README.md` (SC-017; depends: T-376)
 - [ ] T-379 Migrate 5 existing tests to lifecycle fixtures: test_query_service_submit_question (lock), test_query_service_reject (lock), test_feedback_repository_update (feedback-state), test_session_repository_touch (session-touch, new in W8.0), test_query_service_submit_with_session (combined, new in W8.0) — various test files (depends: T-377, T-316, T-321)
