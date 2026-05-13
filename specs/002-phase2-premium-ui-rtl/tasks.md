@@ -171,7 +171,7 @@
 
 ### Arabic Translation Quality
 
-- [ ] T-363 Replace machine-translated Arabic stubs with reviewed translations for all ~25+ new keys — `frontend/src/locales/ar.json` (FR-041)
+- [X] T-363 Replace machine-translated Arabic stubs with reviewed translations for all ~25+ new keys — `frontend/src/locales/ar.json` (FR-041)
 
 ### Phase 1 Polish Backlog
 
