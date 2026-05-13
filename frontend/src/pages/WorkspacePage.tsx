@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../stores/uiStore';
 import { useSessionDetail } from '../hooks/useSessions';
@@ -21,6 +21,7 @@ interface ConversationTurn {
   isLoading?: boolean;
   currentFeedback?: number | null;
   saved?: boolean;
+  attemptId?: string;
 }
 
 export const WorkspacePage: React.FC = () => {
@@ -32,12 +33,28 @@ export const WorkspacePage: React.FC = () => {
 
   const [localTurns, setLocalTurns] = useState<ConversationTurn[]>([]);
   const [renderedSessionId, setRenderedSessionId] = useState(activeSessionId);
+  const prevSessionIdRef = useRef(activeSessionId);
+  const pendingSubmitRef = useRef(false);
 
-  // Reset local turns when switching sessions (setState during render is valid for resets)
-  if (renderedSessionId !== activeSessionId) {
-    setRenderedSessionId(activeSessionId);
-    setLocalTurns([]);
-  }
+  // Handle session transitions in useEffect, not during render.
+  // When a submit creates a new session (null → session_id), preserve localTurns.
+  // When the user intentionally switches sessions or clicks New Chat, clear localTurns.
+  useEffect(() => {
+    const prevId = prevSessionIdRef.current;
+    prevSessionIdRef.current = activeSessionId;
+
+    if (renderedSessionId === activeSessionId) return;
+
+    const isSubmitCreatedSession = prevId === null && activeSessionId !== null && pendingSubmitRef.current;
+
+    if (isSubmitCreatedSession) {
+      pendingSubmitRef.current = false;
+      setRenderedSessionId(activeSessionId);
+    } else {
+      setRenderedSessionId(activeSessionId);
+      setLocalTurns([]);
+    }
+  }, [activeSessionId, renderedSessionId]);
 
   const historyAttempts = sessionDetail?.attempts ?? [];
   const allTurns: ConversationTurn[] = [
@@ -78,6 +95,10 @@ export const WorkspacePage: React.FC = () => {
         }
       }
 
+      if (activeSessionId === null) {
+        pendingSubmitRef.current = true;
+      }
+
       const turnId = `turn-${Date.now()}`;
       setLocalTurns((prev) => [...prev, { id: turnId, question, isLoading: true }]);
 
@@ -88,7 +109,9 @@ export const WorkspacePage: React.FC = () => {
           const result = data as QueryResult;
           setLocalTurns((prev) =>
             prev.map((t) =>
-              t.id === turnId ? { ...t, isLoading: false, result, sql: result.generated_sql } : t
+              t.id === turnId
+                ? { ...t, isLoading: false, result, sql: result.generated_sql, attemptId: result.attempt_id }
+                : t
             )
           );
         } else if (record && typeof record === 'object' && 'kind' in record && record.kind === 'refine') {
@@ -158,7 +181,7 @@ export const WorkspacePage: React.FC = () => {
                   <AssistantResponseCard
                     sql={turn.sql ?? ''}
                     result={turn.result}
-                    attemptId={turn.id}
+                    attemptId={turn.attemptId || turn.id}
                     currentFeedback={turn.currentFeedback}
                     saved={turn.saved}
                     onRegenerate={handleRegenerate}
