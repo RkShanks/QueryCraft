@@ -80,3 +80,30 @@ async def test_gemini_contract_5xx_server_error(adapter: GeminiAdapter):
         await adapter.generate("Test prompt")
         
     assert exc.value.provider == "gemini"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_gemini_contract_malformed_response(adapter: GeminiAdapter):
+    """T-373: Malformed response: invalid JSON / missing candidates — graceful handling."""
+    # Test missing candidates
+    respx.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
+    ).mock(return_value=Response(200, json={"unexpected_format": True}))
+
+    with pytest.raises(LLMUnavailable) as exc:
+        await adapter.generate("Test prompt")
+        
+    assert exc.value.provider == "gemini"
+    assert "Malformed response" in str(exc.value)
+
+    # Test invalid JSON
+    respx.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
+    ).mock(return_value=Response(200, text="Not JSON format"))
+
+    with pytest.raises(LLMUnavailable) as exc:
+        await adapter.generate("Test prompt")
+        
+    assert exc.value.provider == "gemini"
+    assert "Malformed response" in str(exc.value)
