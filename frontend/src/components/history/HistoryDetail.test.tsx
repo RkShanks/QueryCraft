@@ -11,6 +11,13 @@ const sample = {
   database_connection_id: "conn-1",
 };
 
+const sampleWithResult = {
+  ...sample,
+  result_columns: [{ name: "count", type: "integer" }],
+  result_rows: [[42]],
+  result_row_count: 1,
+};
+
 function setup(item: typeof sample | null, opts: { isLoading?: boolean; error?: Error | null } = {}) {
   return render(
     <HistoryDetail item={item} isLoading={opts.isLoading} error={opts.error} />
@@ -26,6 +33,18 @@ describe("HistoryDetail (FR-023, SC-009)", () => {
     expect(screen.getByText("conn-1")).toBeInTheDocument();
     // accepted_at is rendered in a human-readable format; just check the date portion appears
     expect(screen.getByText(/2026/)).toBeInTheDocument();
+  });
+
+  it("renders result table when result_columns and result_rows are present", () => {
+    setup(sampleWithResult);
+    expect(screen.getByText("count")).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getByTestId("result-table")).toBeInTheDocument();
+  });
+
+  it("does not render result table when result_columns is null", () => {
+    setup(sample);
+    expect(screen.queryByTestId("result-table")).not.toBeInTheDocument();
   });
 
   it("renders loading state when isLoading=true and item is null", () => {

@@ -9,7 +9,7 @@ import { AssistantResponseCard } from '../components/chat/AssistantResponseCard'
 import { PromptInput } from '../components/chat/PromptInput';
 import { MessageSquare } from '../components/icons';
 import { deleteHistoryEntry } from '../api/generated/sdk.gen';
-import type { QueryResult, RefinePrompt, EvaluatorRejection } from '../api/generated/types.gen';
+import type { QueryResult, RefinePrompt, EvaluatorRejection, AttemptSummary } from '../api/generated/types.gen';
 import './WorkspacePage.css';
 
 interface ConversationTurn {
@@ -24,6 +24,31 @@ interface ConversationTurn {
   attemptId?: string;
 }
 
+function buildHistoryTurn(a: AttemptSummary): ConversationTurn {
+  const turn: ConversationTurn = {
+    id: a.id,
+    question: a.question_text,
+    sql: a.generated_sql,
+    savedQueryId: a.id,
+  };
+  if (a.result_columns && a.result_rows) {
+    turn.result = {
+      kind: 'result',
+      attempt_id: a.id,
+      session_id: undefined,
+      question: a.question_text,
+      generated_sql: a.generated_sql,
+      columns: a.result_columns,
+      rows: a.result_rows,
+      row_count: a.result_row_count ?? 0,
+      attempt_number: 1,
+      is_last_auto_retry: false,
+      accepted_query_id: a.id,
+    } as QueryResult;
+  }
+  return turn;
+}
+
 export const WorkspacePage: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -32,6 +57,7 @@ export const WorkspacePage: React.FC = () => {
   const querySubmit = useQuerySubmit();
 
   const [localTurns, setLocalTurns] = useState<ConversationTurn[]>([]);
+  const [deletedSavedIds, setDeletedSavedIds] = useState<Set<string>>(new Set());
   const [renderedSessionId, setRenderedSessionId] = useState(activeSessionId);
   const prevSessionIdRef = useRef(activeSessionId);
   const pendingSubmitRef = useRef(false);
@@ -50,18 +76,14 @@ export const WorkspacePage: React.FC = () => {
     } else {
       setRenderedSessionId(activeSessionId);
       setLocalTurns([]);
+      setDeletedSavedIds(new Set());
     }
   }, [activeSessionId, renderedSessionId]);
 
-  const historyAttempts = sessionDetail?.attempts ?? [];
+  const historyAttempts = (sessionDetail?.attempts ?? []).filter((a) => !deletedSavedIds.has(a.id));
   const allTurns: ConversationTurn[] = [
-    ...historyAttempts.map((a) => ({
-      id: a.id,
-      question: a.question_text,
-      sql: a.generated_sql,
-      savedQueryId: a.id, // history entries are already persisted
-    })),
-    ...localTurns,
+    ...historyAttempts.map(buildHistoryTurn),
+    ...localTurns.filter((t) => !(t.savedQueryId && deletedSavedIds.has(t.savedQueryId))),
   ];
 
   const showEmptyState = activeSessionId === null && allTurns.length === 0;
@@ -81,7 +103,8 @@ export const WorkspacePage: React.FC = () => {
 
   const handleDelete = useCallback(
     async (savedQueryId: string) => {
-      // Optimistically remove from local turns
+      // Optimistically remove from both history and local turns
+      setDeletedSavedIds((prev) => new Set(prev).add(savedQueryId));
       setLocalTurns((prev) => prev.filter((t) => t.savedQueryId !== savedQueryId));
       try {
         await deleteHistoryEntry({ path: { query_id: savedQueryId } });

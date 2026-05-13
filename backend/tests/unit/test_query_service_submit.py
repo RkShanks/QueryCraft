@@ -107,7 +107,7 @@ class TestQueryServiceSubmit:
 
     @pytest.mark.lifecycle("lock")
     @pytest.mark.asyncio
-    async def test_happy_path_returns_query_result(self, service, mock_redis, lifecycle_aware):
+    async def test_happy_path_returns_query_result(self, service, mock_repo, mock_redis, lifecycle_aware):
         result = await service.submit_question(
             http_session_id="http-sess-1",
             user_id="550e8400-e29b-41d4-a716-446655440000",
@@ -119,6 +119,14 @@ class TestQueryServiceSubmit:
         assert result.session_id == "550e8400-e29b-41d4-a716-446655440001"
         set_calls = [c for c in mock_redis._data if c.startswith("processing_lock:") or c.startswith("active_attempt:")]
         assert len(set_calls) >= 1
+        # Auto-save: repo.create called with result payload and accepted_query_id returned
+        mock_repo.create.assert_awaited()
+        create_call = mock_repo.create.await_args
+        create_kwargs = create_call[1] if create_call else {}
+        assert create_kwargs.get("result_columns") is not None
+        assert create_kwargs.get("result_rows") is not None
+        assert create_kwargs.get("result_row_count") == 1
+        assert result.accepted_query_id == "aaaaaaaa-0000-0000-0000-000000000001"
 
     @pytest.mark.asyncio
     async def test_evaluator_failure_returns_rejection(self, service, mock_evaluator):

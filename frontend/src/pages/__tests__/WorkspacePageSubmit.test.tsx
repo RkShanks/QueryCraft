@@ -87,6 +87,38 @@ describe('WorkspacePage first-submit UX', () => {
     });
   }, 15000);
 
+  it('renders result table from loaded session detail attempts with result payload', async () => {
+    useUIStore.setState({ activeSessionId: 'session-with-result' });
+
+    renderWithClient(<WorkspacePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    expect(screen.getByText('count')).toBeInTheDocument();
+    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.getByTestId('result-table')).toBeInTheDocument();
+    expect(screen.getByTestId('action-delete-result')).toBeInTheDocument();
+  }, 10000);
+
+  it('optimistically removes historical (session-loaded) turn on delete', async () => {
+    useUIStore.setState({ activeSessionId: 'session-with-delete-test' });
+
+    renderWithClient(<WorkspacePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    const deleteBtn = screen.getByTestId('action-delete-result');
+    fireEvent.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('assistant-response-card')).not.toBeInTheDocument();
+    }, { timeout: 5000 });
+  }, 15000);
+
   it('clears local turns on New Chat (activeSessionId set to null)', async () => {
     renderWithClient(<WorkspacePage />);
 

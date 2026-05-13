@@ -116,7 +116,7 @@ async def update_settings_admin(
         text(
             """
             INSERT INTO app_config (key, value, updated_at)
-            VALUES ('llm_context_cap', :cap::jsonb, now())
+            VALUES ('llm_context_cap', CAST(:cap AS jsonb), now())
             ON CONFLICT (key) DO UPDATE SET
                 value = EXCLUDED.value,
                 updated_at = EXCLUDED.updated_at
@@ -128,7 +128,7 @@ async def update_settings_admin(
         text(
             """
             INSERT INTO app_config (key, value, updated_at)
-            VALUES ('max_regenerate_attempts', :max_regen::jsonb, now())
+            VALUES ('max_regenerate_attempts', CAST(:max_regen AS jsonb), now())
             ON CONFLICT (key) DO UPDATE SET
                 value = EXCLUDED.value,
                 updated_at = EXCLUDED.updated_at

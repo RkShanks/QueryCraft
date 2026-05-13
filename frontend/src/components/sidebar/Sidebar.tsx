@@ -51,7 +51,6 @@ export const Sidebar: React.FC = () => {
   const [toasts, setToasts] = React.useState<UndoToastItem[]>([]);
 
   const { data, isLoading } = useSessionsList();
-  
   const deletingSessionIds = React.useMemo(() => new Set(toasts.map((t) => t.sessionId)), [toasts]);
   const sessions = React.useMemo(() => {
     return (data?.items ?? []).filter((s) => !deletingSessionIds.has(s.id));

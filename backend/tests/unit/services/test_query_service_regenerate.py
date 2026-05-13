@@ -187,6 +187,7 @@ class TestQueryServiceRegenerate:
             sql="SELECT 1",
             question="q1",
             attempt_number=1,
+            user_id="550e8400-e29b-41d4-a716-446655440000",
         )
         mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 2")
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
@@ -202,6 +203,14 @@ class TestQueryServiceRegenerate:
         mock_deps["evaluator"].evaluate.assert_awaited_once()
         mock_deps["executor"].execute.assert_awaited_once()
         assert result.kind == "result"
+        # Auto-save: repo.create called with result payload and accepted_query_id returned
+        mock_deps["repo"].create.assert_awaited()
+        create_call = mock_deps["repo"].create.await_args
+        create_kwargs = create_call[1] if create_call else {}
+        assert create_kwargs.get("result_columns") is not None
+        assert create_kwargs.get("result_rows") is not None
+        assert create_kwargs.get("result_row_count") == 1
+        assert result.accepted_query_id == "aaaaaaaa-0000-0000-0000-000000000001"
 
     async def test_regenerate_raises_on_cross_session(self, service, mock_deps):
         """regenerate_query with wrong session raises AttemptOwnershipViolation."""

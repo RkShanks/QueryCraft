@@ -276,7 +276,19 @@ export const handlers = [
       preview_text: 'Session detail',
       created_at: new Date().toISOString(),
       last_activity_at: new Date().toISOString(),
-      attempts: [],
+      attempts: [
+        {
+          id: 'session-attempt-1',
+          question_text: 'How many users?',
+          generated_sql: 'SELECT COUNT(*) FROM users;',
+          accepted_at: new Date().toISOString(),
+          saved: true,
+          feedback: 1,
+          result_columns: [{ name: 'count', type: 'bigint' }],
+          result_rows: [[42]],
+          result_row_count: 1,
+        },
+      ],
     };
     return HttpResponse.json(detail, { status: 200 });
   }),
