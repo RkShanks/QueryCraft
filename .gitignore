@@ -44,6 +44,12 @@ coverage.xml
 .pytest_cache/
 .mypy_cache/
 
+# ─── Lighthouse / Playwright browser artifacts ───
+C:*
+e2e-snapshots/
+test-results/
+playwright-report/
+
 # ─── Database ───
 *.db
 *.rdb
