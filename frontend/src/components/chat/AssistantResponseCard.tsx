@@ -15,6 +15,8 @@ interface AssistantResponseCardProps {
   saved?: boolean;
   onRegenerate?: (attemptId: string) => void;
   onFeedback?: (attemptId: string, feedback: number) => void;
+  onAccept?: (attemptId: string) => void;
+  isAccepting?: boolean;
 }
 
 export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
@@ -25,6 +27,8 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
   saved,
   onRegenerate,
   onFeedback,
+  onAccept,
+  isAccepting,
 }) => {
   const { t } = useTranslation();
   const hasActions = !!attemptId && !!onRegenerate && !!onFeedback;
@@ -51,6 +55,25 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
             <div className="assistant-card-section">
               <h3 className="assistant-card-heading">{t('query.result.tableHeading')}</h3>
               <ResultTable result={result} />
+            </div>
+          )}
+
+          {result && attemptId && onAccept && !saved && (
+            <div className="assistant-card-section assistant-accept-section">
+              <button
+                className="assistant-accept-btn"
+                onClick={() => onAccept(attemptId)}
+                disabled={isAccepting}
+                data-testid="action-accept"
+              >
+                {isAccepting ? t('query.actions.accepting') : t('query.actions.accept')}
+              </button>
+            </div>
+          )}
+
+          {result && saved && (
+            <div className="assistant-card-section assistant-accepted-banner" data-testid="accepted-banner">
+              <span>{t('query.actions.accepted')}</span>
             </div>
           )}
 

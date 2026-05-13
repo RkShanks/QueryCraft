@@ -137,10 +137,11 @@ async def accept_query(
         db_id = str(row[0]) if row else "00000000-0000-0000-0000-000000000000"
 
     return await service.accept_query(
-        session_id=request.state.session_id,
+        http_session_id=request.state.session_id,
         user_id=session["user_id"],
         attempt_id=attempt_id,
         database_connection_id=db_id,
+        chat_session_id=req.session_id,
     )
 
 

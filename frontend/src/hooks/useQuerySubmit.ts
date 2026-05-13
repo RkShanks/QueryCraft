@@ -26,8 +26,8 @@ type ErrorKind = 'concurrent' | 'llmUnavailable' | 'attemptInvalid' | 'network';
 export interface UseQuerySubmitReturn {
   submitQuestion: (q: string, sessionId?: string | null) => Promise<unknown>;
   rejectQuery: (attemptId: string) => Promise<void>;
-  regenerateQuery: (attemptId: string) => Promise<void>;
-  acceptQuery: (attemptId: string) => Promise<void>;
+  regenerateQuery: (attemptId: string) => Promise<unknown>;
+  acceptQuery: (attemptId: string, sessionId?: string | null) => Promise<void>;
   isSubmitting: boolean;
   result: QueryResult | null;
   refinePrompt: RefinePrompt | null;
@@ -174,6 +174,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
           setRefinePrompt(data as RefinePrompt);
         }
       }
+      return data;
     } catch (err: unknown) {
       handleError(err);
       throw err;
@@ -183,7 +184,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
     }
   }, [clearStates, handleError]);
 
-  const acceptQueryFn = useCallback(async (attemptId: string) => {
+  const acceptQueryFn = useCallback(async (attemptId: string, sessionId?: string | null) => {
     if (submittingRef.current) {
       throw new Error('submit_in_progress');
     }
@@ -192,7 +193,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
     clearStates();
 
     try {
-      await acceptQuery({ body: { attempt_id: attemptId }, throwOnError: true });
+      await acceptQuery({ body: { attempt_id: attemptId, session_id: sessionId ?? undefined }, throwOnError: true });
     } catch (err: unknown) {
       handleError(err);
       throw err;

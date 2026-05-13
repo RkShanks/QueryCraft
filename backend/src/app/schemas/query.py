@@ -64,6 +64,7 @@ class AcceptQueryRequest(BaseModel):
     """POST /query/accept request body."""
 
     attempt_id: str = Field(..., min_length=1)
+    session_id: str | None = Field(default=None, min_length=1)
 
 
 class RejectQueryRequest(BaseModel):

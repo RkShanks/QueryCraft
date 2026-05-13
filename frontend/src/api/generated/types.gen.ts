@@ -99,6 +99,10 @@ export type AcceptQueryRequest = {
      * The ephemeral attempt ID from QueryResult.
      */
     attempt_id: string;
+    /**
+     * Chat session ID from QueryResult, optional for linking to sidebar session.
+     */
+    session_id?: string;
 };
 
 export type RejectQueryRequest = {
