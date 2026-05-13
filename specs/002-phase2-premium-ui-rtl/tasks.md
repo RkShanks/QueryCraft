@@ -193,7 +193,7 @@
 > **Verifies**: FR-047, SC-016
 > **Dependencies**: None — dispatches immediately (parallel with Wave 8.0)
 
-- [ ] T-370 [P] Contract test: happy path — 200 with valid JSON, SQL extracted correctly — `backend/tests/contract/test_gemini_contract.py` (FR-047)
+- [X] T-370 [P] Contract test: happy path — 200 with valid JSON, SQL extracted correctly — `backend/tests/contract/test_gemini_contract.py` (FR-047)
 - [ ] T-371 [P] Contract test: 429 rate limit — clear error, no crash — `backend/tests/contract/test_gemini_contract.py` (FR-047)
 - [ ] T-372 [P] Contract test: 5xx server error — clear service-unavailable error — `backend/tests/contract/test_gemini_contract.py` (FR-047)
 - [ ] T-373 [P] Contract test: malformed response (invalid JSON / missing candidates) — graceful handling — `backend/tests/contract/test_gemini_contract.py` (FR-047)
