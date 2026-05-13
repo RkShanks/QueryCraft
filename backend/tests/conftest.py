@@ -13,9 +13,11 @@ Provides:
 import asyncio
 import base64
 from collections.abc import AsyncGenerator
+from typing import Any
 
 import pytest
 import pytest_asyncio
+from _pytest.fixtures import FixtureRequest
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy import text
@@ -180,3 +182,89 @@ def mock_llm():
             return "SELECT 1 AS id"
 
     return StubLLM()
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle invariant checkers (T-376, T-377)
+# ---------------------------------------------------------------------------
+
+
+def _get_checker_redis(request: FixtureRequest):
+    """Try to obtain a Redis client fixture for LockInvariant."""
+    try:
+        return request.getfixturevalue("redis_client")
+    except BaseException:
+        return None
+
+
+def _get_checker_db(request: FixtureRequest):
+    """Try to obtain a DB session fixture for DB-backed invariants."""
+    try:
+        return request.getfixturevalue("db_session")
+    except BaseException:
+        return None
+
+
+@pytest.fixture
+def lifecycle_checkers(request: FixtureRequest) -> list[Any]:
+    """Return lifecycle invariant checkers, skipping unavailable dependencies.
+
+    For mocked tests that don't use ``redis_client`` or ``db_session``,
+    the corresponding checkers are simply omitted.
+    """
+    from tests.lifecycle.invariants import (
+        FeedbackStateInvariant,
+        LockInvariant,
+        SessionTouchInvariant,
+    )
+
+    checkers: list[Any] = []
+    redis = _get_checker_redis(request)
+    if redis is not None:
+        checkers.append(LockInvariant(redis))
+
+    db = _get_checker_db(request)
+    if db is not None:
+        checkers.append(FeedbackStateInvariant(db))
+        checkers.append(SessionTouchInvariant(db))
+
+    return checkers
+
+
+@pytest.fixture(autouse=True)
+async def lifecycle_aware(request: FixtureRequest):
+    """Snapshot/validate lifecycle invariants for ``@pytest.mark.lifecycle`` tests.
+
+    For tests without the lifecycle marker this is a no-op.
+    Snapshot is taken before the test body; validation runs after.
+    """
+    marker = request.node.get_closest_marker("lifecycle")
+    if marker is None:
+        yield
+        return
+
+    try:
+        checkers = request.getfixturevalue("lifecycle_checkers")
+    except BaseException:
+        yield
+        return
+
+    before: dict[str, dict[str, Any]] = {}
+    for checker in checkers:
+        try:
+            before[checker.name] = await checker.snapshot(None)
+        except Exception:
+            before[checker.name] = {}
+
+    yield
+
+    issues: list[str] = []
+    for checker in checkers:
+        try:
+            result = await checker.validate(before.get(checker.name, {}), None)
+            issues.extend(result)
+        except Exception:
+            pass
+
+    if issues:
+        pytest.fail("Lifecycle invariant violation(s):\n" + "\n".join(issues))
