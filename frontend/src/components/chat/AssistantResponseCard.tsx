@@ -10,25 +10,21 @@ interface AssistantResponseCardProps {
   sql: string;
   result?: QueryResult;
   attemptId?: string;
-  saved?: boolean;
+  savedQueryId?: string;
   onRegenerate?: (attemptId: string) => void;
-  onFeedback?: (attemptId: string, feedback: number) => void;
-  onAccept?: (attemptId: string) => void;
-  isAccepting?: boolean;
+  onDelete?: (savedQueryId: string) => void;
 }
 
 export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
   sql,
   result,
   attemptId,
-  saved,
+  savedQueryId,
   onRegenerate,
-  onFeedback,
-  onAccept,
-  isAccepting,
+  onDelete,
 }) => {
   const { t } = useTranslation();
-  const hasActions = !!attemptId && !!onRegenerate && !!onFeedback;
+  const hasActions = !!attemptId && !!onRegenerate;
 
   return (
     <div className="assistant-card-wrapper" data-testid="assistant-response-card">
@@ -44,7 +40,6 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
               sql={sql}
               attemptId={attemptId}
               onRegenerate={onRegenerate}
-              onFeedback={onFeedback}
             />
           )}
 
@@ -55,22 +50,16 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
             </div>
           )}
 
-          {result && attemptId && onAccept && !saved && (
-            <div className="assistant-card-section assistant-accept-section">
+          {savedQueryId && onDelete && (
+            <div className="assistant-card-section assistant-delete-section">
               <button
-                className="assistant-accept-btn"
-                onClick={() => onAccept(attemptId)}
-                disabled={isAccepting}
-                data-testid="action-accept"
+                className="assistant-delete-btn"
+                onClick={() => onDelete(savedQueryId)}
+                data-testid="action-delete-result"
+                aria-label={t('query.actions.deleteResult')}
               >
-                {isAccepting ? t('query.actions.accepting') : t('query.actions.accept')}
+                {t('query.actions.deleteResult')}
               </button>
-            </div>
-          )}
-
-          {result && saved && (
-            <div className="assistant-card-section assistant-accepted-banner" data-testid="accepted-banner">
-              <span>{t('query.actions.accepted')}</span>
             </div>
           )}
         </div>

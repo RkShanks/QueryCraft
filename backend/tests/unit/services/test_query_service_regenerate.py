@@ -41,10 +41,23 @@ class TestQueryServiceRegenerate:
         session_repo.update_last_activity = AsyncMock(return_value=True)
         session_repo.update_preview_text = AsyncMock(return_value=True)
         db_session = AsyncMock()
-        db_session.execute = AsyncMock(return_value=MagicMock(fetchone=MagicMock(return_value=(3,))))
+        import uuid as _uuid
+        _db_conn_id = str(_uuid.UUID(int=0x1))
+        def _execute_side_effect(stmt, *args, **kwargs):
+            import asyncio
+            async def _coro():
+                if "database_connections" in str(stmt):
+                    return MagicMock(fetchone=MagicMock(return_value=(_db_conn_id,)))
+                return MagicMock(fetchone=MagicMock(return_value=(3,)))
+            return _coro()
+        db_session.execute = _execute_side_effect
         db_session.flush = AsyncMock()
+        _saved = MagicMock(id="aaaaaaaa-0000-0000-0000-000000000001")
+        repo = MagicMock()
+        repo.get_by_attempt_id = AsyncMock(return_value=None)
+        repo.create = AsyncMock(return_value=_saved)
         return {
-            "repo": MagicMock(),
+            "repo": repo,
             "session_repo": session_repo,
             "db_session": db_session,
             "redis": redis,
@@ -113,13 +126,13 @@ class TestQueryServiceRegenerate:
         mock_deps["executor"].execute.assert_not_called()
 
     async def test_regenerate_max_retries_returns_refine_prompt(self, service, mock_deps):
-        """On max retries (attempt #2 already), regenerate returns RefinePrompt."""
+        """On max retries (attempt #3 already, max=3), regenerate returns RefinePrompt."""
         prior = EphemeralAttempt(
             attempt_id="a1",
             session_id="s1",
             sql="SELECT 1",
             question="q1",
-            attempt_number=2,
+            attempt_number=3,  # next=4 > max(3) -> RefinePrompt
         )
         mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 2")
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))

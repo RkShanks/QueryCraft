@@ -41,6 +41,7 @@
   "query.actions.accepted": "تم حفظ الاستعلام في السجل",
   "query.actions.reject": "رفض",
   "query.actions.regenerate": "إعادة التوليد",
+  "query.actions.deleteResult": "حذف",
 
   "query.result.lastRetry": "آخر محاولة تلقائية",
 
@@ -161,5 +162,11 @@
   "common.delete": "حذف",
   "common.copy": "نسخ",
   "common.regenerate": "إعادة التوليد",
-  "common.send": "إرسال"
+  "common.send": "إرسال",
+
+  "query.sql.show": "عرض SQL",
+  "query.sql.hide": "إخفاء SQL",
+
+  "admin.settings.maxRegenerateAttempts": "الحد الأقصى للمحاولات",
+  "admin.settings.maxRegenerateAttemptsHelp": "إجمالي المحاولات المسموحة لكل سؤال (1–10، شامل المحاولة الأصلية)"
 }

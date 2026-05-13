@@ -51,7 +51,7 @@ describe('WorkspacePage first-submit UX', () => {
     expect(state.activeSessionId).toBe('550e8400-e29b-41d4-a716-446655440003');
   }, 10000);
 
-  it('renders Accept button on fresh result turn', async () => {
+  it('renders Delete button on result turn when accepted_query_id is returned', async () => {
     renderWithClient(<WorkspacePage />);
     await typeAndSubmit('How many actors?');
 
@@ -59,22 +59,17 @@ describe('WorkspacePage first-submit UX', () => {
       expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    expect(screen.getByTestId('action-accept')).toBeInTheDocument();
-    expect(screen.getByText('Accept')).toBeInTheDocument();
+    // auto-save returns accepted_query_id so delete button should appear
+    expect(screen.getByTestId('action-delete-result')).toBeInTheDocument();
   }, 10000);
 
-  it('clicking Accept posts real attempt_id and shows accepted state', async () => {
-    let capturedAcceptBody: Record<string, unknown> | undefined;
+  it('clicking Delete calls DELETE /history/{id}', async () => {
+    let deletedId: string | undefined;
 
     server.use(
-      http.post('/api/v1/query/accept', async ({ request }) => {
-        capturedAcceptBody = (await request.json()) as Record<string, unknown>;
-        return HttpResponse.json({
-          id: 'f9e8d7c6-b5a4-4c3b-2a1d-0e9f8d7c6b5a',
-          question_text: 'How many actors?',
-          generated_sql: 'SELECT COUNT(*) FROM users;',
-          accepted_at: new Date().toISOString(),
-        });
+      http.delete('/api/v1/history/:query_id', ({ params }) => {
+        deletedId = params.query_id as string;
+        return new HttpResponse(null, { status: 204 });
       }),
     );
 
@@ -82,21 +77,13 @@ describe('WorkspacePage first-submit UX', () => {
     await typeAndSubmit('How many actors?');
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
+      expect(screen.getByTestId('action-delete-result')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    const acceptBtn = screen.getByTestId('action-accept');
-    fireEvent.click(acceptBtn);
+    fireEvent.click(screen.getByTestId('action-delete-result'));
 
     await waitFor(() => {
-      expect(capturedAcceptBody).toBeDefined();
-    });
-
-    expect(capturedAcceptBody!.attempt_id).toBe('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
-    expect(capturedAcceptBody!.session_id).toBe('550e8400-e29b-41d4-a716-446655440003');
-
-    await waitFor(() => {
-      expect(screen.getByTestId('accepted-banner')).toBeInTheDocument();
+      expect(deletedId).toBeDefined();
     });
   }, 15000);
 

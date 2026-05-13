@@ -92,11 +92,7 @@ class SchemaValidationRule:
                 # Unqualified column — check schema tables and CTE columns
                 found = self._find_column_anywhere(schema, col_name)
                 if not found:
-                    found = any(
-                        col_name.lower() == c.lower()
-                        for cte_cols in local_ctes.values()
-                        for c in cte_cols
-                    )
+                    found = any(col_name.lower() == c.lower() for cte_cols in local_ctes.values() for c in cte_cols)
                 if not found:
                     return False, f"Unknown column: {col_name}"
                 continue
@@ -112,9 +108,7 @@ class SchemaValidationRule:
                 continue
 
             actual_table = alias_map.get(table_ref, table_ref)
-            col_table_quoted = (
-                hasattr(col.args.get("table"), "quoted") and col.args["table"].quoted
-            )
+            col_table_quoted = hasattr(col.args.get("table"), "quoted") and col.args["table"].quoted
             table_obj = self._find_table(schema, actual_table, col_table_quoted)
             if table_obj is None:
                 return False, f"Unknown table for column: {actual_table}"

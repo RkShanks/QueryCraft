@@ -7,14 +7,12 @@ interface CodeBlockActionBarProps {
   sql: string;
   attemptId: string;
   onRegenerate: (attemptId: string) => void;
-  onFeedback: (attemptId: string, feedback: number) => void;
 }
 
 export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
   sql,
   attemptId,
   onRegenerate,
-  onFeedback,
 }) => {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -30,9 +28,8 @@ export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
   }, [sql]);
 
   const handleRegenerate = useCallback(() => {
-    onFeedback(attemptId, -1);
     onRegenerate(attemptId);
-  }, [attemptId, onFeedback, onRegenerate]);
+  }, [attemptId, onRegenerate]);
 
   return (
     <div className="code-block-action-bar" data-testid="code-block-action-bar">

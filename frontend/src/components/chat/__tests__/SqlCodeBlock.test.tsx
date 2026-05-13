@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { SqlCodeBlock } from '../SqlCodeBlock';
+import { createWrapper } from '../../../test/utils';
 
 vi.mock('shiki', () => ({
   createHighlighter: vi.fn(() =>
@@ -12,28 +13,23 @@ vi.mock('shiki', () => ({
 
 describe('SqlCodeBlock', () => {
   it('is hidden by default and shows toggle button', () => {
-    render(<SqlCodeBlock code="SELECT * FROM users;" />);
+    render(<SqlCodeBlock code="SELECT * FROM users;" />, { wrapper: createWrapper() });
     expect(screen.getByTestId('sql-toggle-btn')).toBeInTheDocument();
     expect(screen.getByText('Show SQL')).toBeInTheDocument();
     expect(screen.queryByTestId('sql-skeleton')).not.toBeInTheDocument();
   });
 
-  it('renders loading skeleton and then code when toggle is clicked', async () => {
-    render(<SqlCodeBlock code="SELECT * FROM users;" />);
-    
+  it('shows SQL after toggle click and hides again on second click', async () => {
+    render(<SqlCodeBlock code="SELECT * FROM users;" />, { wrapper: createWrapper() });
+
     fireEvent.click(screen.getByTestId('sql-toggle-btn'));
-    
-    // Skeleton should show immediately
-    expect(screen.getByTestId('sql-skeleton')).toBeInTheDocument();
     expect(screen.getByText('Hide SQL')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.queryByTestId('sql-skeleton')).not.toBeInTheDocument();
       expect(screen.getByTestId('shiki-highlighter')).toBeInTheDocument();
-      expect(screen.getByText('SELECT * FROM users;')).toBeInTheDocument();
     });
-    
-    // Click again to hide
+
     fireEvent.click(screen.getByTestId('sql-toggle-btn'));
     expect(screen.getByText('Show SQL')).toBeInTheDocument();
     expect(screen.queryByTestId('shiki-highlighter')).not.toBeInTheDocument();

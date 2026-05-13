@@ -29,9 +29,5 @@ class DatabaseConnection(Base):
     ssl_mode: Mapped[str] = mapped_column(String, nullable=False, server_default="require")
     schema_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     schema_cached_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()")
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()")
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))

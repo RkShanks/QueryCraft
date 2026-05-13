@@ -53,6 +53,10 @@ export type QueryResult = {
      * True if this is the last automatic retry (attempt 2). UI shows indicator.
      */
     is_last_auto_retry: boolean;
+    /**
+     * ID of the auto-saved AcceptedQuery row. Present when submit/regenerate succeeded.
+     */
+    accepted_query_id?: string;
 };
 
 export type ColumnMeta = {
@@ -162,6 +166,9 @@ export type AcceptedQueryDetail = {
     llm_provider: string;
     accepted_at: string;
     database_connection_id: string;
+    result_columns?: Array<{ name: string; type: string }> | null;
+    result_rows?: Array<Array<unknown>> | null;
+    result_row_count?: number | null;
 };
 
 export type ErrorResponse = {
@@ -581,14 +588,17 @@ export type FeedbackResponse = {
 
 export type AdminSettingsResponse = {
     llm_context_cap: number;
+    max_regenerate_attempts: number;
 };
 
 export type UpdateAdminSettingsRequest = {
     llm_context_cap: number;
+    max_regenerate_attempts?: number;
 };
 
 export type UpdateAdminSettingsResponse = {
     llm_context_cap: number;
+    max_regenerate_attempts: number;
     updated_at: string;
 };
 
@@ -711,3 +721,24 @@ export type UpdateAdminSettingsErrors = {
 export type UpdateAdminSettingsResponses = {
     200: UpdateAdminSettingsResponse;
 };
+
+export type DeleteHistoryEntryData = {
+    body?: never;
+    path: {
+        query_id: string;
+    };
+    query?: never;
+    url: '/history/{query_id}';
+};
+
+export type DeleteHistoryEntryErrors = {
+    401: ErrorResponse;
+    404: ErrorResponse;
+};
+
+export type DeleteHistoryEntryResponses = {
+    204: void;
+};
+
+export type DeleteHistoryEntryError = DeleteHistoryEntryErrors[keyof DeleteHistoryEntryErrors];
+export type DeleteHistoryEntryResponse = DeleteHistoryEntryResponses[keyof DeleteHistoryEntryResponses];

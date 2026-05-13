@@ -42,6 +42,7 @@ class QueryResult(BaseModel):
     row_count: int
     attempt_number: int
     is_last_auto_retry: bool
+    accepted_query_id: str | None = None
 
 
 class Violation(BaseModel):

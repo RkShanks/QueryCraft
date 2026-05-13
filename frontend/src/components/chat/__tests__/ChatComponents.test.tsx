@@ -49,10 +49,20 @@ describe('AssistantResponseCard', () => {
         sql="SELECT 1;"
         attemptId="test-id"
         onRegenerate={vi.fn()}
-        onFeedback={vi.fn()}
       />
     );
     expect(screen.getByTestId('code-block-action-bar')).toBeInTheDocument();
+  });
+
+  it('renders delete button when savedQueryId and onDelete are provided', () => {
+    render(
+      <AssistantResponseCard
+        sql="SELECT 1;"
+        savedQueryId="saved-123"
+        onDelete={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId('action-delete-result')).toBeInTheDocument();
   });
 
   it('does not render action bar when attemptId is missing', () => {

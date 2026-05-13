@@ -23,11 +23,11 @@ describe('CodeBlockActionBar', () => {
         sql="SELECT 1;"
         attemptId="test-id"
         onRegenerate={vi.fn()}
-        onFeedback={vi.fn()}
       />
     );
     expect(screen.getByTestId('action-copy')).toBeInTheDocument();
     expect(screen.getByTestId('action-regenerate')).toBeInTheDocument();
+    // thumbs buttons removed in Wave 10.4
     expect(screen.queryByTestId('action-thumbs-down')).not.toBeInTheDocument();
   });
 
@@ -38,26 +38,22 @@ describe('CodeBlockActionBar', () => {
         sql="SELECT 1;"
         attemptId="test-id"
         onRegenerate={vi.fn()}
-        onFeedback={vi.fn()}
       />
     );
     fireEvent.click(screen.getByTestId('action-copy'));
     expect(mockWriteText).toHaveBeenCalledWith('SELECT 1;');
   });
 
-  it('calls onFeedback(-1) and onRegenerate when regenerate is clicked', () => {
-    const onFeedback = vi.fn();
+  it('calls onRegenerate when regenerate is clicked', () => {
     const onRegenerate = vi.fn();
     render(
       <CodeBlockActionBar
         sql="SELECT 1;"
         attemptId="attempt-42"
         onRegenerate={onRegenerate}
-        onFeedback={onFeedback}
       />
     );
     fireEvent.click(screen.getByTestId('action-regenerate'));
-    expect(onFeedback).toHaveBeenCalledWith('attempt-42', -1);
     expect(onRegenerate).toHaveBeenCalledWith('attempt-42');
   });
 });

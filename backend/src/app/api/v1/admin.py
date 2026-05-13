@@ -95,12 +95,12 @@ async def get_settings_admin(
 ):
     """GET /admin/settings — retrieve admin settings."""
     _require_admin_key(x_admin_key)
-    result = await db.execute(select(AppConfig).where(AppConfig.key == "llm_context_cap"))
-    row = result.scalar_one_or_none()
-    cap = 3
-    if row is not None:
-        cap = int(row.value)
-    return AdminSettingsResponse(llm_context_cap=cap)
+    keys = ["llm_context_cap", "max_regenerate_attempts"]
+    result = await db.execute(select(AppConfig).where(AppConfig.key.in_(keys)))
+    rows = {row.key: int(row.value) for row in result.scalars().all()}
+    cap = rows.get("llm_context_cap", 3)
+    max_regen = rows.get("max_regenerate_attempts", 3)
+    return AdminSettingsResponse(llm_context_cap=cap, max_regenerate_attempts=max_regen)
 
 
 @router.patch("/settings")
@@ -116,16 +116,30 @@ async def update_settings_admin(
         text(
             """
             INSERT INTO app_config (key, value, updated_at)
-            VALUES ('llm_context_cap', :value::jsonb, now())
+            VALUES ('llm_context_cap', :cap::jsonb, now())
             ON CONFLICT (key) DO UPDATE SET
                 value = EXCLUDED.value,
                 updated_at = EXCLUDED.updated_at
             """
         ),
-        {"value": str(req.llm_context_cap)},
+        {"cap": str(req.llm_context_cap)},
+    )
+    await db.execute(
+        text(
+            """
+            INSERT INTO app_config (key, value, updated_at)
+            VALUES ('max_regenerate_attempts', :max_regen::jsonb, now())
+            ON CONFLICT (key) DO UPDATE SET
+                value = EXCLUDED.value,
+                updated_at = EXCLUDED.updated_at
+            """
+        ),
+        {"max_regen": str(req.max_regenerate_attempts)},
     )
     await db.commit()
+    now = datetime.datetime.now(datetime.UTC).isoformat()
     return UpdateAdminSettingsResponse(
         llm_context_cap=req.llm_context_cap,
-        updated_at=datetime.datetime.now(datetime.UTC).isoformat(),
+        max_regenerate_attempts=req.max_regenerate_attempts,
+        updated_at=now,
     )

@@ -27,6 +27,10 @@ class TestQueryServiceSubmit:
         repo = MagicMock()
         repo.list_by_session = AsyncMock(return_value=[])
         repo.get_latest_by_session = AsyncMock(return_value=None)
+        # Auto-save new methods
+        repo.get_by_attempt_id = AsyncMock(return_value=None)
+        _saved = MagicMock(id="aaaaaaaa-0000-0000-0000-000000000001")
+        repo.create = AsyncMock(return_value=_saved)
         return repo
 
     @pytest.fixture
@@ -66,7 +70,20 @@ class TestQueryServiceSubmit:
     @pytest.fixture
     def mock_db_session(self):
         db = AsyncMock()
-        db.execute = AsyncMock(return_value=MagicMock(fetchone=MagicMock(return_value=(3,))))
+        # Side-effect to return different values for different SQL queries
+        import uuid as _uuid
+        _db_conn_id = str(_uuid.UUID(int=0x1))
+        # _get_llm_context_cap, _get_max_regenerate_attempts → (3,); _get_database_connection_id → (UUID,)
+        call_counter = {"n": 0}
+        def _execute_side_effect(stmt, *args, **kwargs):
+            call_counter["n"] += 1
+            import asyncio
+            async def _coro():
+                if "database_connections" in str(stmt):
+                    return MagicMock(fetchone=MagicMock(return_value=(_db_conn_id,)))
+                return MagicMock(fetchone=MagicMock(return_value=(3,)))
+            return _coro()
+        db.execute = _execute_side_effect
         db.flush = AsyncMock()
         return db
 

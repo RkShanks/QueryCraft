@@ -60,3 +60,9 @@ class HistoryService:
             accepted_at=query.accepted_at.isoformat(),
             database_connection_id=str(query.database_connection_id),
         )
+
+    async def delete_entry(self, query_id: uuid.UUID, user_id: str) -> bool:
+        """Delete a single accepted query entry. Returns True if deleted, False if not found."""
+        from uuid import UUID
+
+        return await self._repo.delete_by_id(query_id, UUID(user_id))

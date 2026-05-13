@@ -26,6 +26,9 @@ class AcceptedQueryRepository:
         session_id: uuid.UUID | None = None,
         saved: bool = False,
         feedback: int | None = None,
+        result_columns: list | None = None,
+        result_rows: list | None = None,
+        result_row_count: int | None = None,
     ) -> AcceptedQuery:
         """Persist a new accepted query."""
         query = AcceptedQuery(
@@ -38,6 +41,9 @@ class AcceptedQueryRepository:
             session_id=session_id,
             saved=saved,
             feedback=feedback,
+            result_columns=result_columns,
+            result_rows=result_rows,
+            result_row_count=result_row_count,
         )
         self._session.add(query)
         await self._session.flush()
@@ -146,5 +152,30 @@ class AcceptedQueryRepository:
             )
             .order_by(desc(AcceptedQuery.accepted_at))
             .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def delete_by_id(self, query_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """Delete a single accepted query row by ID and user. Returns True if deleted."""
+        result = await self._session.execute(
+            select(AcceptedQuery).where(
+                AcceptedQuery.id == query_id,
+                AcceptedQuery.user_id == user_id,
+            )
+        )
+        query = result.scalar_one_or_none()
+        if query is None:
+            return False
+        await self._session.delete(query)
+        await self._session.flush()
+        return True
+
+    async def get_by_attempt_id(self, attempt_id: str, user_id: uuid.UUID) -> AcceptedQuery | None:
+        """Fetch an existing accepted query by ephemeral attempt_id (for idempotency)."""
+        result = await self._session.execute(
+            select(AcceptedQuery).where(
+                AcceptedQuery.attempt_id == attempt_id,
+                AcceptedQuery.user_id == user_id,
+            )
         )
         return result.scalar_one_or_none()

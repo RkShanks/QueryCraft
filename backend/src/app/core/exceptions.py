@@ -24,6 +24,7 @@ class QueryCraftError(Exception):
 
 # ─── LLM ───
 
+
 class LLMError(QueryCraftError):
     """Base for LLM adapter errors."""
 
@@ -60,6 +61,7 @@ class LLMConfigurationError(LLMError):
 
 # ─── Evaluator ───
 
+
 class EvaluatorError(QueryCraftError):
     """Base for evaluator errors."""
 
@@ -79,6 +81,7 @@ class EvaluatorRejected(EvaluatorError):
 
 
 # ─── Source DB ───
+
 
 class SourceDBError(QueryCraftError):
     """Base for source database errors."""
@@ -112,6 +115,7 @@ class SourceDBConnectionFailed(SourceDBError):
 
 # ─── Attempt ───
 
+
 class AttemptError(QueryCraftError):
     """Base for ephemeral attempt errors."""
 
@@ -139,6 +143,7 @@ class AttemptOwnershipViolation(AttemptError):
 
 # ─── Session ───
 
+
 class SessionError(QueryCraftError):
     """Base for session errors."""
 
@@ -158,6 +163,7 @@ class InvalidCursorError(QueryCraftError):
 
 
 # ─── Schema ───
+
 
 class SchemaError(QueryCraftError):
     """Base for schema errors."""

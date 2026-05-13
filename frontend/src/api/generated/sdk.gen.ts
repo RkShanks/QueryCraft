@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptQueryData, AcceptQueryErrors, AcceptQueryResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, GetAdminSettingsData, GetAdminSettingsErrors, GetAdminSettingsResponses, GetHistoryEntryData, GetHistoryEntryErrors, GetHistoryEntryResponses, GetMeData, GetMeErrors, GetMeResponses, GetSessionData, GetSessionErrors, GetSessionResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, RefreshSchemaData, RefreshSchemaErrors, RefreshSchemaResponses, RegenerateQueryData, RegenerateQueryErrors, RegenerateQueryResponses, RejectQueryData, RejectQueryErrors, RejectQueryResponses, SignInData, SignInErrors, SignInResponses, SignOutData, SignOutErrors, SignOutResponses, SubmitQuestionData, SubmitQuestionErrors, SubmitQuestionResponses, UpdateAdminSettingsData, UpdateAdminSettingsErrors, UpdateAdminSettingsResponses, UpdateFeedbackData, UpdateFeedbackErrors, UpdateFeedbackResponses } from './types.gen';
+import type { AcceptQueryData, AcceptQueryErrors, AcceptQueryResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteHistoryEntryData, DeleteHistoryEntryErrors, DeleteHistoryEntryResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, GetAdminSettingsData, GetAdminSettingsErrors, GetAdminSettingsResponses, GetHistoryEntryData, GetHistoryEntryErrors, GetHistoryEntryResponses, GetMeData, GetMeErrors, GetMeResponses, GetSessionData, GetSessionErrors, GetSessionResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, RefreshSchemaData, RefreshSchemaErrors, RefreshSchemaResponses, RegenerateQueryData, RegenerateQueryErrors, RegenerateQueryResponses, RejectQueryData, RejectQueryErrors, RejectQueryResponses, SignInData, SignInErrors, SignInResponses, SignOutData, SignOutErrors, SignOutResponses, SubmitQuestionData, SubmitQuestionErrors, SubmitQuestionResponses, UpdateAdminSettingsData, UpdateAdminSettingsErrors, UpdateAdminSettingsResponses, UpdateFeedbackData, UpdateFeedbackErrors, UpdateFeedbackResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -279,4 +279,14 @@ export const updateAdminSettings = <ThrowOnError extends boolean = false>(option
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+export const deleteHistoryEntry = <ThrowOnError extends boolean = false>(options: Options<DeleteHistoryEntryData, ThrowOnError>) => (options.client ?? client).delete<DeleteHistoryEntryResponses, DeleteHistoryEntryErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'session_id',
+            type: 'apiKey'
+        }],
+    url: '/history/{query_id}',
+    ...options
 });
