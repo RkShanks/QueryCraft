@@ -70,6 +70,14 @@ export const WorkspacePage: React.FC = () => {
 
   const handleSubmit = useCallback(
     async (question: string) => {
+      if (activeSessionId) {
+        const priorAttempts = sessionDetail?.attempts ?? [];
+        const lastAttempt = priorAttempts[priorAttempts.length - 1];
+        if (lastAttempt && (lastAttempt.feedback === null || lastAttempt.feedback === undefined)) {
+          feedbackMutation.mutate({ attemptId: lastAttempt.id, feedback: 1 });
+        }
+      }
+
       const turnId = `turn-${Date.now()}`;
       setLocalTurns((prev) => [...prev, { id: turnId, question, isLoading: true }]);
 
@@ -111,7 +119,7 @@ export const WorkspacePage: React.FC = () => {
         }
       }
     },
-    [activeSessionId, querySubmit]
+    [activeSessionId, querySubmit, sessionDetail, feedbackMutation]
   );
 
   return (
