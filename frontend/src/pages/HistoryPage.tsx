@@ -14,7 +14,7 @@ export default function HistoryPage() {
     <div id="history-page" className="min-h-screen bg-gray-50">
       <header className="bg-white border-b px-6 py-4 shadow-sm">
         <h1 className="text-xl font-bold text-gray-900">
-          {t('history.title', { defaultValue: 'Query History' })}
+          {t('history.title')}
         </h1>
       </header>
       <main className="max-w-7xl mx-auto p-6">
@@ -31,7 +31,7 @@ export default function HistoryPage() {
           <div className="flex-1 min-w-0">
             {error ? (
               <div className="p-6 text-red-600">
-                {t('history.error', { defaultValue: 'Failed to load history.' })}
+                {t('history.error')}
               </div>
             ) : (
               <HistoryDetail

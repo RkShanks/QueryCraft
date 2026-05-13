@@ -13,6 +13,7 @@
   "auth.signIn.password.label": "Password",
   "auth.signIn.submit": "Sign In",
   "auth.signIn.signingIn": "Signing in...",
+  "auth.signIn.error.usernameEmpty": "Username cannot be empty.",
   "auth.signIn.error.invalidCredentials": "Invalid username or password",
   "auth.signIn.error.network": "Network error. Please try again.",
 

@@ -167,23 +167,23 @@
 
 ### Playwright RTL Snapshots
 
-- [ ] T-362 Playwright visual snapshots for all new components in dir="ltr" AND dir="rtl": AppShell, Sidebar, SessionItem, WorkspacePage, UserBubble, AssistantResponseCard, SqlCodeBlock, ResultTable, PromptInput, CodeBlockActionBar, ResponseFeedbackBar, SettingsPage, UndoToast — `frontend/tests/e2e/rtl-snapshots.spec.ts` (FR-041, SC-021)
+- [X] T-362 Playwright visual snapshots for all new components in dir="ltr" AND dir="rtl": AppShell, Sidebar, SessionItem, WorkspacePage, UserBubble, AssistantResponseCard, SqlCodeBlock, ResultTable, PromptInput, CodeBlockActionBar, ResponseFeedbackBar, SettingsPage, UndoToast — `frontend/tests/e2e/rtl-snapshots.spec.ts` (FR-041, SC-021)
 
 ### Arabic Translation Quality
 
-- [ ] T-363 Replace machine-translated Arabic stubs with reviewed translations for all ~25+ new keys — `frontend/src/locales/ar.json` (FR-041)
+- [X] T-363 Replace machine-translated Arabic stubs with reviewed translations for all ~25+ new keys — `frontend/src/locales/ar.json` (FR-041)
 
 ### Phase 1 Polish Backlog
 
-- [ ] T-364 [T-253] Extract FILTER_DEBOUNCE_MS as named constant — `frontend/src/hooks/useDebounce.ts` (FR-054)
-- [ ] T-365 [T-254] Extend stylelint property-disallowed-list: add left, right, float, border-left-*, border-right-* — `frontend/.stylelintrc.json` (FR-055)
-- [ ] T-366 [T-255] Physical-tailwind test: scan source for ml-, mr-, pl-, pr-, left-, right- utility classes — `frontend/tests/lint/physical-tailwind.test.ts` (SC-021)
-- [ ] T-367 [T-256] i18n key completeness test: beforeAll() loads locale files, asserts all en keys exist in ar and vice versa — `frontend/tests/lint/i18n-completeness.test.ts` (FR-056)
-- [ ] T-368 [T-260] Remove defaultValue fallback from t() calls + configure saveMissing handler in i18n config — `frontend/src/i18n.ts` + grep all t() calls in src/ (FR-057)
+- [X] T-364 [T-253] Extract FILTER_DEBOUNCE_MS as named constant — `frontend/src/hooks/useDebounce.ts` (FR-054)
+- [X] T-365 [T-254] Extend stylelint property-disallowed-list: add left, right, float, border-left-*, border-right-* — `frontend/.stylelintrc.json` (FR-055)
+- [X] T-366 [T-255] Physical-tailwind test: scan source for ml-, mr-, pl-, pr-, left-, right- utility classes — `frontend/tests/lint/no-physical-tailwind.test.ts` (SC-021)
+- [X] T-367 [T-256] i18n key completeness test: beforeAll() loads locale files, asserts all en keys exist in ar and vice versa — `frontend/tests/lint/i18n-completeness.test.ts` (FR-056)
+- [X] T-368 [T-260] Remove defaultValue fallback from t() calls + configure saveMissing handler in i18n config — `frontend/src/i18n.ts` + grep all t() calls in src/ (FR-057)
 
 ### Performance
 
-- [ ] T-369 Lighthouse desktop performance audit ≥ 85 — run audit, fix any blocking issues (SC-015)
+- [X] T-369 Lighthouse desktop performance audit ≥ 85 — run audit, fix any blocking issues (SC-015)
 
 ---
 

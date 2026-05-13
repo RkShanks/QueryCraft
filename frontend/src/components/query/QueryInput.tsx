@@ -53,7 +53,7 @@ export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting, 
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         disabled={isSubmitting}
-        placeholder={t('query.input.placeholder', { defaultValue: 'Ask a question about your data...' })}
+        placeholder={t('query.input.placeholder')}
         className="border p-2 min-h-[100px] resize-y w-full"
       />
         {droppedChars > 0 && (
@@ -65,13 +65,12 @@ export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting, 
             current: question.length,
             max: maxLength,
             dropped: droppedChars,
-            defaultValue: '{{current}} / {{max}} — input truncated, {{dropped}} characters dropped',
           })}
         </div>
       )}
       <div className="flex justify-between items-center">
         <span className="text-sm text-gray-500" data-testid="char-counter">
-          {t('query.input.charCount', { current: question.length, max: maxLength, defaultValue: '{{current}} / {{max}}' })}
+          {t('query.input.charCount', { current: question.length, max: maxLength })}
         </span>
         <button
           onClick={handleSubmit}
@@ -79,8 +78,8 @@ export const QueryInput: React.FC<QueryInputProps> = ({ onSubmit, isSubmitting, 
           className="bg-blue-500 text-white p-2 rounded disabled:opacity-50"
         >
           {isSubmitting 
-            ? t('query.input.submitting', { defaultValue: 'Submitting...' }) 
-            : t('query.input.submit', { defaultValue: 'Ask' })}
+            ? t('query.input.submitting') 
+            : t('query.input.submit')}
         </button>
       </div>
     </div>

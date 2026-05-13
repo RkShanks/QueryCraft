@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+export const FILTER_DEBOUNCE_MS = 300;
+
 export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
 

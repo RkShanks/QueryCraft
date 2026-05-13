@@ -17,7 +17,14 @@ i18n
       escapeValue: false, // React already escapes
     },
     detection: {
-      order: ['navigator', 'htmlTag'],
+      order: ['navigator', 'htmlTag'] as const,
+    },
+    saveMissing: true,
+    parseMissingKeyHandler: (key: string) => {
+      if (typeof import.meta !== 'undefined' && import.meta.env?.MODE !== 'production') {
+        console.warn(`[i18n] Missing translation key: ${key}`);
+      }
+      return key;
     },
   });
 
