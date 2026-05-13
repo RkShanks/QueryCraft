@@ -198,7 +198,7 @@
 - [X] T-372 [P] Contract test: 5xx server error — clear service-unavailable error — `backend/tests/contract/test_gemini_contract.py` (FR-047)
 - [X] T-373 [P] Contract test: malformed response (invalid JSON / missing candidates) — graceful handling — `backend/tests/contract/test_gemini_contract.py` (FR-047)
 - [X] T-374 [P] Contract test: schema-context-too-long — token-limit error surfaced — `backend/tests/contract/test_gemini_contract.py` (FR-047)
-- [X] T-375 [P] Optional: weekly CI job for real Gemini API contract run — `.github/workflows/llm-contract-weekly.yml`
+- [ ] T-375 [P] Optional: weekly CI job for real Gemini API contract run — `.github/workflows/llm-contract-weekly.yml`
 
 ---
 

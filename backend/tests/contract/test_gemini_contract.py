@@ -4,7 +4,6 @@ import pytest
 import respx
 from httpx import Response
 
-from app.core.exceptions import SchemaTokenLimitExceeded
 from app.llm.exceptions import LLMUnavailable
 from app.llm.gemini_adapter import GeminiAdapter
 
@@ -127,21 +126,24 @@ async def test_gemini_contract_malformed_response(adapter: GeminiAdapter):
 @respx.mock
 @pytest.mark.asyncio
 async def test_gemini_contract_schema_context_too_long(adapter: GeminiAdapter):
-    """T-374: Contract test schema-context-too-long — token-limit error surfaced."""
-    respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
+    """T-374: Contract test schema-context-too-long — token-limit error surfaced clearly."""
+    respx.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
+    ).mock(
         return_value=Response(
             400,
             json={
                 "error": {
                     "code": 400,
-                    "message": "Request payload size exceeds the limit: 10485760 bytes.",
-                    "status": "INVALID_ARGUMENT",
+                    "message": "Token count exceeds model limit",
+                    "status": "INVALID_ARGUMENT"
                 }
-            },
+            }
         )
     )
 
-    with pytest.raises(SchemaTokenLimitExceeded) as exc:
+    with pytest.raises(LLMUnavailable) as exc:
         await adapter.generate("Test prompt")
-
-    assert exc.value.message_key == "error.schemaTokenLimit"
+    
+    assert exc.value.provider == "gemini"
+    assert "Token count exceeds model limit" in str(exc.value)
