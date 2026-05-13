@@ -248,7 +248,7 @@ _INVARIANT_FIXTURE_MAP: dict[str, str] = {
 }
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def lifecycle_aware(request: FixtureRequest):
     """Snapshot/validate lifecycle invariants for ``@pytest.mark.lifecycle`` tests.
 

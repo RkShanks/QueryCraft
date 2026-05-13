@@ -80,7 +80,7 @@ class TestSessionRepository:
 
     @pytest.mark.asyncio
     @pytest.mark.lifecycle("session")
-    async def test_update_last_activity_changes_timestamp(self, db_session, admin_user_id):
+    async def test_update_last_activity_changes_timestamp(self, db_session, admin_user_id, lifecycle_aware):
         """update_last_activity changes last_activity_at."""
         repo = SessionRepository(db_session)
         created = await repo.create(user_id=admin_user_id, preview_text="Touch me")

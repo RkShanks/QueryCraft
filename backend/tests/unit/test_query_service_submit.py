@@ -89,7 +89,7 @@ class TestQueryServiceSubmit:
 
     @pytest.mark.lifecycle("lock")
     @pytest.mark.asyncio
-    async def test_happy_path_returns_query_result(self, service, mock_redis):
+    async def test_happy_path_returns_query_result(self, service, mock_redis, lifecycle_aware):
         result = await service.submit_question(
             http_session_id="http-sess-1",
             user_id="550e8400-e29b-41d4-a716-446655440000",
@@ -153,7 +153,7 @@ class TestQueryServiceSubmit:
 
     @pytest.mark.lifecycle("lock")
     @pytest.mark.asyncio
-    async def test_chat_session_id_none_creates_new_session(self, service, mock_session_repo):
+    async def test_chat_session_id_none_creates_new_session(self, service, mock_session_repo, lifecycle_aware):
         """Lazy creation: chat_session_id=None triggers session_repo.create."""
         result = await service.submit_question(
             http_session_id="http-sess-1",

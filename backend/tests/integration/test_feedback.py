@@ -37,7 +37,7 @@ class TestFeedbackRouter:
 
     @pytest.mark.lifecycle("feedback")
     @pytest.mark.asyncio
-    async def test_update_feedback_success(self, authenticated_client, accepted_query_id):
+    async def test_update_feedback_success(self, authenticated_client, accepted_query_id, lifecycle_aware):
         """PATCH /feedback/:id updates feedback."""
         response = await authenticated_client.patch(
             f"/api/v1/feedback/{accepted_query_id}",
