@@ -72,17 +72,21 @@ class TestQueryServiceSubmit:
         db = AsyncMock()
         # Side-effect to return different values for different SQL queries
         import uuid as _uuid
+
         _db_conn_id = str(_uuid.UUID(int=0x1))
         # _get_llm_context_cap, _get_max_regenerate_attempts → (3,); _get_database_connection_id → (UUID,)
         call_counter = {"n": 0}
+
         def _execute_side_effect(stmt, *args, **kwargs):
             call_counter["n"] += 1
-            import asyncio
+
             async def _coro():
                 if "database_connections" in str(stmt):
                     return MagicMock(fetchone=MagicMock(return_value=(_db_conn_id,)))
                 return MagicMock(fetchone=MagicMock(return_value=(3,)))
+
             return _coro()
+
         db.execute = _execute_side_effect
         db.flush = AsyncMock()
         return db

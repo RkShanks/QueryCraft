@@ -110,6 +110,9 @@ async def get_session(
                 "accepted_at": a.accepted_at.isoformat(),
                 "saved": a.saved,
                 "feedback": a.feedback,
+                "result_columns": a.result_columns,
+                "result_rows": a.result_rows,
+                "result_row_count": a.result_row_count,
             }
             for a in attempts
         ],

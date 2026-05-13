@@ -547,6 +547,9 @@ export type AttemptSummary = {
     accepted_at: string;
     saved: boolean;
     feedback?: number;
+    result_columns?: Array<{ name: string; type: string }> | null;
+    result_rows?: Array<Array<unknown>> | null;
+    result_row_count?: number | null;
 };
 
 export type SessionSummary = {

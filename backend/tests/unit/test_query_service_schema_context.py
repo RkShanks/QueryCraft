@@ -1,10 +1,13 @@
 """F-003: QueryService passes schema_context to LLM."""
 
+import uuid as _uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.services.query_service import QueryService
+
+_DB_CONN_ID = str(_uuid.UUID(int=0x1))
 
 
 class StubLLM:
@@ -37,10 +40,6 @@ class StubExecutor:
         return (["col"], [[1]])
 
 
-import uuid as _uuid
-_DB_CONN_ID = str(_uuid.UUID(int=0x1))
-
-
 class StubRepo:
     async def list_by_session(self, *args, **kwargs):
         return []
@@ -60,12 +59,15 @@ class StubRepo:
 def _make_db_session():
     """AsyncMock db_session that routes execute() by SQL content."""
     db = AsyncMock()
+
     def _execute_side_effect(stmt, *args, **kwargs):
         async def _coro():
             if "database_connections" in str(stmt):
                 return MagicMock(fetchone=MagicMock(return_value=(_DB_CONN_ID,)))
             return MagicMock(fetchone=MagicMock(return_value=(3,)))
+
         return _coro()
+
     db.execute = _execute_side_effect
     db.flush = AsyncMock()
     return db

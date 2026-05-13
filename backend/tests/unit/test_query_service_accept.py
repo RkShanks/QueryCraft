@@ -54,6 +54,7 @@ class TestQueryServiceAccept:
     def service(self, mock_repo, mock_redis):
         mock_repo.list_by_session = AsyncMock(return_value=[])
         mock_repo.get_latest_by_session = AsyncMock(return_value=None)
+        mock_repo.get_by_attempt_id = AsyncMock(return_value=None)
         session_repo = MagicMock()
         session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
         session_repo.get_by_id = AsyncMock(return_value=None)

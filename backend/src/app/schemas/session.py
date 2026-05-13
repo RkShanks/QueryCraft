@@ -12,6 +12,9 @@ class AttemptSummary(BaseModel):
     accepted_at: str
     saved: bool
     feedback: int | None = None
+    result_columns: list | None = None
+    result_rows: list | None = None
+    result_row_count: int | None = None
 
 
 class SessionSummary(BaseModel):

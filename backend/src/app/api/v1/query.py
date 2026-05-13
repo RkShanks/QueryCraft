@@ -161,7 +161,7 @@ async def reject_query(
     try:
         return await service.reject_query(
             attempt_id=req.attempt_id,
-            session_id=request.state.session_id,
+            http_session_id=request.state.session_id,
         )
     except (AttemptNotFound, AttemptOwnershipViolation) as exc:
         raise HTTPException(
@@ -191,7 +191,7 @@ async def regenerate_query(
     try:
         return await service.regenerate_query(
             attempt_id=req.attempt_id,
-            session_id=request.state.session_id,
+            http_session_id=request.state.session_id,
         )
     except (AttemptNotFound, AttemptOwnershipViolation) as exc:
         raise HTTPException(
