@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, RefreshCw, ThumbsDown } from '../icons';
+import { Copy, RefreshCw } from '../icons';
 import './CodeBlockActionBar.css';
 
 interface CodeBlockActionBarProps {
@@ -34,10 +34,6 @@ export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
     onRegenerate(attemptId);
   }, [attemptId, onFeedback, onRegenerate]);
 
-  const handleThumbsDown = useCallback(() => {
-    onFeedback(attemptId, -1);
-  }, [attemptId, onFeedback]);
-
   return (
     <div className="code-block-action-bar" data-testid="code-block-action-bar">
       <button
@@ -55,14 +51,6 @@ export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
         title={t('common.regenerate')}
       >
         <RefreshCw className="action-icon" />
-      </button>
-      <button
-        className="action-btn"
-        onClick={handleThumbsDown}
-        data-testid="action-thumbs-down"
-        title={t('feedback.thumbsDown')}
-      >
-        <ThumbsDown className="action-icon" />
       </button>
     </div>
   );

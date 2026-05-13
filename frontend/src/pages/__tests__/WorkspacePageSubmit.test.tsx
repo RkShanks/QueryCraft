@@ -118,21 +118,12 @@ describe('WorkspacePage first-submit UX', () => {
     }, { timeout: 5000 });
   }, 15000);
 
-  it('uses result.attempt_id for feedback and regenerate actions', async () => {
-    let capturedFeedbackId: string | undefined;
+  it('uses result.attempt_id for regenerate actions', async () => {
     let capturedRegenerateId: string | undefined;
 
     const EXPECTED_ATTEMPT_ID = 'a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d';
 
     server.use(
-      http.patch('/api/v1/feedback/:attemptId', ({ params }) => {
-        capturedFeedbackId = params.attemptId as string;
-        return HttpResponse.json({
-          id: capturedFeedbackId,
-          feedback: 1,
-          saved: true,
-        });
-      }),
       http.post('/api/v1/query/regenerate', async ({ request }) => {
         const body = (await request.json()) as { attempt_id: string };
         capturedRegenerateId = body.attempt_id;
@@ -157,16 +148,6 @@ describe('WorkspacePage first-submit UX', () => {
     await waitFor(() => {
       expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
     }, { timeout: 5000 });
-
-    const thumbsUp = screen.getByTestId('feedback-thumbs-up');
-    fireEvent.click(thumbsUp);
-
-    await waitFor(() => {
-      expect(capturedFeedbackId).toBeDefined();
-    });
-
-    expect(capturedFeedbackId).toBe(EXPECTED_ATTEMPT_ID);
-    expect(capturedFeedbackId).not.toMatch(/^turn-/);
 
     const regenerateBtn = screen.getByTestId('action-regenerate');
     fireEvent.click(regenerateBtn);

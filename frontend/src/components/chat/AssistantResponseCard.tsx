@@ -2,7 +2,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SqlCodeBlock } from './SqlCodeBlock';
 import { CodeBlockActionBar } from './CodeBlockActionBar';
-import { ResponseFeedbackBar } from './ResponseFeedbackBar';
 import { ResultTable } from './ResultTable';
 import type { QueryResult } from '../../api/generated/types.gen';
 import './AssistantResponseCard.css';
@@ -11,7 +10,6 @@ interface AssistantResponseCardProps {
   sql: string;
   result?: QueryResult;
   attemptId?: string;
-  currentFeedback?: number | null;
   saved?: boolean;
   onRegenerate?: (attemptId: string) => void;
   onFeedback?: (attemptId: string, feedback: number) => void;
@@ -23,7 +21,6 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
   sql,
   result,
   attemptId,
-  currentFeedback,
   saved,
   onRegenerate,
   onFeedback,
@@ -75,15 +72,6 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
             <div className="assistant-card-section assistant-accepted-banner" data-testid="accepted-banner">
               <span>{t('query.actions.accepted')}</span>
             </div>
-          )}
-
-          {hasActions && (
-            <ResponseFeedbackBar
-              attemptId={attemptId}
-              currentFeedback={currentFeedback}
-              saved={saved}
-              onFeedback={onFeedback}
-            />
           )}
         </div>
       </div>

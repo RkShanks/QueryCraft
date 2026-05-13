@@ -43,7 +43,7 @@ describe('AssistantResponseCard', () => {
     expect(screen.getByTestId('sql-code-block')).toBeInTheDocument();
   });
 
-  it('renders code block action bar and feedback bar when attemptId is provided', () => {
+  it('renders code block action bar when attemptId is provided', () => {
     render(
       <AssistantResponseCard
         sql="SELECT 1;"
@@ -53,13 +53,11 @@ describe('AssistantResponseCard', () => {
       />
     );
     expect(screen.getByTestId('code-block-action-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('response-feedback-bar')).toBeInTheDocument();
   });
 
-  it('does not render action bars when attemptId is missing', () => {
+  it('does not render action bar when attemptId is missing', () => {
     render(<AssistantResponseCard sql="SELECT 1;" />);
     expect(screen.queryByTestId('code-block-action-bar')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('response-feedback-bar')).not.toBeInTheDocument();
   });
 
   it('renders result table when result is provided', () => {
