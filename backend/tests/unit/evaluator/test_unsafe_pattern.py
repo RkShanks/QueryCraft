@@ -13,6 +13,7 @@ def rule() -> UnsafePatternRule:
 
 # --- Reject cases ---
 
+
 @pytest.mark.asyncio
 async def test_pg_sleep_rejected(rule):
     passed, reason = await rule.evaluate("SELECT pg_sleep(10)", SchemaContext())
@@ -57,6 +58,7 @@ async def test_set_statement_timeout_rejected(rule):
 
 # --- Allow cases ---
 
+
 @pytest.mark.asyncio
 async def test_now_allowed(rule):
     passed, reason = await rule.evaluate("SELECT now()", SchemaContext())
@@ -80,12 +82,15 @@ async def test_literal_with_pg_allowed(rule):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("sql", [
-    'SELECT "dblink"(\'dbname=postgres\', \'DROP TABLE users;\')',
-    'SELECT "pg_sleep"(10)',
-    'SELECT "pg_read_file"(\'/etc/passwd\')',
-    'SELECT "PG_SLEEP"(10)',  # mixed case quoted
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT \"dblink\"('dbname=postgres', 'DROP TABLE users;')",
+        'SELECT "pg_sleep"(10)',
+        "SELECT \"pg_read_file\"('/etc/passwd')",
+        'SELECT "PG_SLEEP"(10)',  # mixed case quoted
+    ],
+)
 async def test_quoted_identifier_bypass_blocked(rule, sql):
     ok, msg = await rule.evaluate(sql, SchemaContext())
     assert not ok
@@ -93,13 +98,23 @@ async def test_quoted_identifier_bypass_blocked(rule, sql):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("func", [
-    "pg_advisory_lock", "pg_advisory_unlock", "pg_advisory_lock_shared",
-    "pg_advisory_xact_lock", "pg_try_advisory_lock", "pg_try_advisory_xact_lock",
-    "set_config", "current_setting",
-    "pg_promote", "pg_switch_wal",
-    "pg_backup_start", "pg_backup_stop",
-])
+@pytest.mark.parametrize(
+    "func",
+    [
+        "pg_advisory_lock",
+        "pg_advisory_unlock",
+        "pg_advisory_lock_shared",
+        "pg_advisory_xact_lock",
+        "pg_try_advisory_lock",
+        "pg_try_advisory_xact_lock",
+        "set_config",
+        "current_setting",
+        "pg_promote",
+        "pg_switch_wal",
+        "pg_backup_start",
+        "pg_backup_stop",
+    ],
+)
 async def test_extended_unsafe_catalog(rule, func):
     ok, msg = await rule.evaluate(f"SELECT {func}(1)", SchemaContext())
     assert not ok
@@ -113,10 +128,18 @@ async def test_unsafe_pattern_add_pattern_extends_catalog(rule):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("func", [
-    "version", "pg_version_num", "inet_server_addr", "pg_postmaster_start_time",
-    "current_database", "current_user", "session_user",
-])
+@pytest.mark.parametrize(
+    "func",
+    [
+        "version",
+        "pg_version_num",
+        "inet_server_addr",
+        "pg_postmaster_start_time",
+        "current_database",
+        "current_user",
+        "session_user",
+    ],
+)
 async def test_metadata_disclosure_blocked(rule, func):
     ok, _ = await rule.evaluate(f"SELECT {func}()", SchemaContext())
     assert not ok

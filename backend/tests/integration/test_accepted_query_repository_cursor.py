@@ -53,16 +53,14 @@ class TestCompositeCursorPagination:
             await repo.create(
                 user_id=admin_user_id,
                 database_connection_id=db_connection_id,
-                question_text=f"Q{i+1}",
-                generated_sql=f"SELECT {i+1}",
+                question_text=f"Q{i + 1}",
+                generated_sql=f"SELECT {i + 1}",
                 llm_provider="ollama",
             )
 
         # Force identical accepted_at via raw SQL (flush then update)
         await db_session.execute(
-            text(
-                "UPDATE accepted_queries SET accepted_at = :t WHERE user_id = :uid"
-            ),
+            text("UPDATE accepted_queries SET accepted_at = :t WHERE user_id = :uid"),
             {"t": same_time, "uid": admin_user_id},
         )
         await db_session.commit()

@@ -44,9 +44,7 @@ async def test_generate_success(adapter: AnthropicAdapter):
 @respx.mock
 async def test_generate_502_raises_llm_unavailable(adapter: AnthropicAdapter):
     """HTTP 502 from upstream raises LLMUnavailable."""
-    respx.post("https://api.anthropic.com/v1/messages").mock(
-        return_value=Response(502, text="Bad Gateway")
-    )
+    respx.post("https://api.anthropic.com/v1/messages").mock(return_value=Response(502, text="Bad Gateway"))
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")
@@ -55,9 +53,7 @@ async def test_generate_502_raises_llm_unavailable(adapter: AnthropicAdapter):
 @respx.mock
 async def test_generate_timeout_raises_llm_timeout(adapter: AnthropicAdapter):
     """Request timeout raises LLMTimeout."""
-    respx.post("https://api.anthropic.com/v1/messages").mock(
-        side_effect=httpx.TimeoutException("Request timed out")
-    )
+    respx.post("https://api.anthropic.com/v1/messages").mock(side_effect=httpx.TimeoutException("Request timed out"))
 
     with pytest.raises(LLMTimeout):
         await adapter.generate("prompt")
@@ -66,9 +62,7 @@ async def test_generate_timeout_raises_llm_timeout(adapter: AnthropicAdapter):
 @respx.mock
 async def test_generate_429_raises_llm_unavailable(adapter: AnthropicAdapter):
     """HTTP 429 rate limit raises LLMUnavailable."""
-    respx.post("https://api.anthropic.com/v1/messages").mock(
-        return_value=Response(429, text="Rate limited")
-    )
+    respx.post("https://api.anthropic.com/v1/messages").mock(return_value=Response(429, text="Rate limited"))
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")

@@ -27,4 +27,4 @@ def test_special_characters_escaped():
     """Questions with quotes and newlines are rendered safely."""
     question = 'What\'s the "total" cost?\nAnd tax?'
     prompt = build_prompt(question, "orders:\n  - total: decimal")
-    assert "What's the \"total\" cost?\nAnd tax?" in prompt
+    assert 'What\'s the "total" cost?\nAnd tax?' in prompt

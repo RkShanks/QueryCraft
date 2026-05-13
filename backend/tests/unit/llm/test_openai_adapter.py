@@ -49,9 +49,7 @@ async def test_generate_success(adapter: OpenAIAdapter):
 @respx.mock
 async def test_generate_502_raises_llm_unavailable(adapter: OpenAIAdapter):
     """HTTP 502 raises LLMUnavailable."""
-    respx.post("https://api.openai.com/v1/chat/completions").mock(
-        return_value=Response(502, text="Bad Gateway")
-    )
+    respx.post("https://api.openai.com/v1/chat/completions").mock(return_value=Response(502, text="Bad Gateway"))
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")
@@ -71,9 +69,7 @@ async def test_generate_timeout_raises_llm_timeout(adapter: OpenAIAdapter):
 @respx.mock
 async def test_generate_429_raises_llm_unavailable(adapter: OpenAIAdapter):
     """HTTP 429 rate limit raises LLMUnavailable."""
-    respx.post("https://api.openai.com/v1/chat/completions").mock(
-        return_value=Response(429, text="Rate limited")
-    )
+    respx.post("https://api.openai.com/v1/chat/completions").mock(return_value=Response(429, text="Rate limited"))
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")

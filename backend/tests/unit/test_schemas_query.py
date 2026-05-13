@@ -82,9 +82,7 @@ class TestEvaluatorRejection:
     def test_round_trip(self):
         rejection = EvaluatorRejection(
             message_key="query.evaluator.rejected",
-            violations=[
-                Violation(rule="read_only_check", message_key="evaluator.violation.dataModifying")
-            ],
+            violations=[Violation(rule="read_only_check", message_key="evaluator.violation.dataModifying")],
         )
         assert rejection.message_key == "query.evaluator.rejected"
         assert len(rejection.violations) == 1

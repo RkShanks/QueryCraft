@@ -24,9 +24,11 @@ def api_schema():
     app = create_app()
     return schemathesis.from_path(str(schema_path), app=app)
 
+
 # Load the OpenAPI schema from the running app using a fixture
 # This ensures it uses the mocked test environment from conftest.py
 schema = schemathesis.from_pytest_fixture("api_schema")
+
 
 @schema.parametrize()
 def test_api_contract(case, set_test_env, async_engine_fixture, redis_client):

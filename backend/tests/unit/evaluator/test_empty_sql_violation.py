@@ -11,11 +11,13 @@ from app.evaluator.rules.single_statement import SingleStatementRule
 @pytest.mark.asyncio
 @pytest.mark.parametrize("sql", ["", "   ", None])
 async def test_empty_sql_violation_identity(sql):
-    evaluator = Evaluator(rules=[
-        EmptySqlRule(),
-        ReadOnlyRule(),
-        SingleStatementRule(),
-    ])
+    evaluator = Evaluator(
+        rules=[
+            EmptySqlRule(),
+            ReadOnlyRule(),
+            SingleStatementRule(),
+        ]
+    )
     result = await evaluator.evaluate(sql, None)
     assert not result.passed
     assert result.violations

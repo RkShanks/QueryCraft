@@ -26,6 +26,7 @@ class TestSessionEventAttribution:
             }
             await send(response_start)
             await send({"type": "http.response.body", "body": b"{}"})
+
         return app
 
     @pytest.fixture
@@ -49,6 +50,7 @@ class TestSessionEventAttribution:
         """When a valid session is present, user_id is bound to log context."""
         user_id = "550e8400-e29b-41d4-a716-446655440000"
         import time
+
         now = time.time()
         session_data = {
             "user_id": user_id,
@@ -77,6 +79,7 @@ class TestSessionEventAttribution:
                 return {"type": "http.request"}
 
             messages = []
+
             async def send(message):
                 messages.append(message)
 
@@ -107,6 +110,7 @@ class TestSessionEventAttribution:
                 return {"type": "http.request"}
 
             messages = []
+
             async def send(message):
                 messages.append(message)
 

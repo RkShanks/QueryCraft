@@ -28,9 +28,7 @@ async def test_f014_gemini_url_redacted_in_logs(caplog):
     caplog.set_level(logging.INFO, logger="httpx")
 
     with respx.mock:
-        respx.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
-        ).mock(
+        respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
             return_value=Response(
                 200,
                 json={

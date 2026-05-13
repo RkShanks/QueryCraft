@@ -71,10 +71,8 @@ def fk_rows():
 class TestSchemaIntrospector:
     """SchemaIntrospector tests."""
 
-    async def test_introspect_builds_schema_context(
-        self, mock_connector, table_rows, column_rows, pk_rows, fk_rows
-    ):
-        """ introspect() returns SchemaContext with correct tables/columns/PK/FK."""
+    async def test_introspect_builds_schema_context(self, mock_connector, table_rows, column_rows, pk_rows, fk_rows):
+        """introspect() returns SchemaContext with correct tables/columns/PK/FK."""
         connector, conn = mock_connector
 
         async def _fetch(query, *args):

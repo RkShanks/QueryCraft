@@ -14,9 +14,7 @@ from sqlalchemy import text
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_f013_startup_refuses_or_warns_on_alembic_drift(
-    async_engine_fixture, caplog
-):
+async def test_f013_startup_refuses_or_warns_on_alembic_drift(async_engine_fixture, caplog):
     """F-013: app startup should refuse, auto-upgrade, or emit a loud
     warning when alembic current < head.
 
@@ -28,9 +26,7 @@ async def test_f013_startup_refuses_or_warns_on_alembic_drift(
     """
     # 1. Roll back alembic_version to '001'
     async with async_engine_fixture.connect() as conn:
-        await conn.execute(
-            text("UPDATE alembic_version SET version_num = '001'")
-        )
+        await conn.execute(text("UPDATE alembic_version SET version_num = '001'"))
         await conn.commit()
 
     # 2. Capture WARN+ logs
@@ -52,15 +48,12 @@ async def test_f013_startup_refuses_or_warns_on_alembic_drift(
 
     # 4. Restore alembic_version so subsequent tests are not broken
     async with async_engine_fixture.connect() as conn:
-        await conn.execute(
-            text("UPDATE alembic_version SET version_num = '003'")
-        )
+        await conn.execute(text("UPDATE alembic_version SET version_num = '003'"))
         await conn.commit()
 
     # 5. Assert desired behaviour
     drift_logs = [
-        r for r in caplog.records
-        if r.levelno >= logging.WARNING and "migration_drift_detected" in r.getMessage()
+        r for r in caplog.records if r.levelno >= logging.WARNING and "migration_drift_detected" in r.getMessage()
     ]
 
     assert runtime_error_raised or drift_logs, (

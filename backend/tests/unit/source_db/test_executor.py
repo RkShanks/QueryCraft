@@ -60,6 +60,7 @@ class TestSourceDBExecutorUnit:
 
         async def slow_fetch(*args, **kwargs):
             import asyncio
+
             await asyncio.sleep(0.5)
             return []
 
@@ -131,6 +132,7 @@ class TestSourceDBExecutorIntegration:
     async def test_select_against_pagila(self):
         """Execute SELECT against pagila returns columns and rows."""
         from app.source_db.connector import SourceDBConnector
+
         connector = SourceDBConnector()
         await connector.init_pool()
         try:

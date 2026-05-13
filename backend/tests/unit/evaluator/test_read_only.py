@@ -55,18 +55,14 @@ async def test_create_table_fails(rule):
 
 @pytest.mark.asyncio
 async def test_cte_select_passes(rule):
-    passed, reason = await rule.evaluate(
-        "WITH x AS (SELECT 1) SELECT * FROM x", SchemaContext()
-    )
+    passed, reason = await rule.evaluate("WITH x AS (SELECT 1) SELECT * FROM x", SchemaContext())
     assert passed is True
     assert reason is None
 
 
 @pytest.mark.asyncio
 async def test_cte_delete_fails(rule):
-    passed, reason = await rule.evaluate(
-        "WITH x AS (DELETE FROM users RETURNING *) SELECT * FROM x", SchemaContext()
-    )
+    passed, reason = await rule.evaluate("WITH x AS (DELETE FROM users RETURNING *) SELECT * FROM x", SchemaContext())
     assert passed is False
     assert reason is not None
 
@@ -86,26 +82,32 @@ async def test_truncate_fails(rule):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("sql", [
-    "SELECT * FROM users FOR UPDATE",
-    "SELECT * FROM users FOR SHARE",
-    "SELECT * FROM users FOR NO KEY UPDATE",
-    "SELECT * FROM users FOR KEY SHARE",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT * FROM users FOR UPDATE",
+        "SELECT * FROM users FOR SHARE",
+        "SELECT * FROM users FOR NO KEY UPDATE",
+        "SELECT * FROM users FOR KEY SHARE",
+    ],
+)
 async def test_select_for_lock_blocked(rule, sql):
     ok, msg = await rule.evaluate(sql, SchemaContext())
     assert not ok, f"{sql} should be blocked but passed"
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("sql", [
-    "SELECT 1 UNION SELECT 2",
-    "SELECT 1 UNION ALL SELECT 2",
-    "SELECT 1 INTERSECT SELECT 1",
-    "SELECT 1 EXCEPT SELECT 2",
-    # Recursive CTE with UNION
-    "WITH RECURSIVE n(i) AS (SELECT 1 UNION SELECT i+1 FROM n WHERE i < 5) SELECT * FROM n",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT 1 UNION SELECT 2",
+        "SELECT 1 UNION ALL SELECT 2",
+        "SELECT 1 INTERSECT SELECT 1",
+        "SELECT 1 EXCEPT SELECT 2",
+        # Recursive CTE with UNION
+        "WITH RECURSIVE n(i) AS (SELECT 1 UNION SELECT i+1 FROM n WHERE i < 5) SELECT * FROM n",
+    ],
+)
 async def test_set_operations_pass_read_only(rule, sql):
     ok, _ = await rule.evaluate(sql, SchemaContext())
     assert ok, f"{sql} is read-only and must pass"

@@ -42,9 +42,7 @@ async def test_generate_success(adapter: OllamaAdapter):
 @respx.mock
 async def test_generate_502_raises_llm_unavailable(adapter: OllamaAdapter):
     """HTTP 502 raises LLMUnavailable."""
-    respx.post("http://localhost:11434/api/generate").mock(
-        return_value=Response(502, text="Bad Gateway")
-    )
+    respx.post("http://localhost:11434/api/generate").mock(return_value=Response(502, text="Bad Gateway"))
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")
@@ -53,9 +51,7 @@ async def test_generate_502_raises_llm_unavailable(adapter: OllamaAdapter):
 @respx.mock
 async def test_generate_timeout_raises_llm_timeout(adapter: OllamaAdapter):
     """Request timeout raises LLMTimeout."""
-    respx.post("http://localhost:11434/api/generate").mock(
-        side_effect=httpx.TimeoutException("Request timed out")
-    )
+    respx.post("http://localhost:11434/api/generate").mock(side_effect=httpx.TimeoutException("Request timed out"))
 
     with pytest.raises(LLMTimeout):
         await adapter.generate("prompt")
@@ -64,9 +60,7 @@ async def test_generate_timeout_raises_llm_timeout(adapter: OllamaAdapter):
 @respx.mock
 async def test_generate_429_raises_llm_unavailable(adapter: OllamaAdapter):
     """HTTP 429 rate limit raises LLMUnavailable."""
-    respx.post("http://localhost:11434/api/generate").mock(
-        return_value=Response(429, text="Rate limited")
-    )
+    respx.post("http://localhost:11434/api/generate").mock(return_value=Response(429, text="Rate limited"))
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")

@@ -14,9 +14,7 @@ from sqlalchemy import text
 @pytest.mark.acceptance
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_query_timeout_cancellation_and_cleanup(
-    authenticated_acceptance_client, db_session, redis_client
-):
+async def test_query_timeout_cancellation_and_cleanup(authenticated_acceptance_client, db_session, redis_client):
     """Slow query must timeout, return 504, and leave no orphan state."""
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     before = result.scalar()

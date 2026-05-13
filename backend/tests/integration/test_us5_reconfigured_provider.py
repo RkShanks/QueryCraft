@@ -46,11 +46,7 @@ class TestReconfiguredProviderHandlesNewQuestions:
             ).mock(
                 return_value=Response(
                     200,
-                    json={
-                        "candidates": [
-                            {"content": {"parts": [{"text": "SELECT 2 AS id"}]}}
-                        ]
-                    },
+                    json={"candidates": [{"content": {"parts": [{"text": "SELECT 2 AS id"}]}}]},
                 )
             )
 

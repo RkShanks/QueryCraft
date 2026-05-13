@@ -27,6 +27,7 @@ def test_adapter_has_generate_sql(adapter_cls, kwargs):
     adapter = adapter_cls(**kwargs)
     assert hasattr(adapter, "generate_sql")
     import inspect
+
     sig = inspect.signature(adapter.generate_sql)
     params = list(sig.parameters.keys())
     assert "question" in params

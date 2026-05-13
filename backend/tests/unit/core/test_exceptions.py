@@ -23,6 +23,7 @@ from app.core.exceptions import (
 
 # --- Base ---
 
+
 def test_all_inherit_from_querycraft_error():
     exceptions = [
         LLMUnavailable(),
@@ -45,6 +46,7 @@ def test_all_inherit_from_querycraft_error():
 
 # --- LLM ---
 
+
 def test_llm_unavailable_attributes():
     exc = LLMUnavailable(provider="anthropic")
     assert exc.provider == "anthropic"
@@ -64,6 +66,7 @@ def test_llm_configuration_error_attributes():
 
 # --- Evaluator ---
 
+
 def test_evaluator_rejected_attributes():
     exc = EvaluatorRejected(failed_rule="read_only", reason="INSERT detected")
     assert exc.failed_rule == "read_only"
@@ -71,6 +74,7 @@ def test_evaluator_rejected_attributes():
 
 
 # --- Source DB ---
+
 
 def test_source_db_timeout_attributes():
     exc = SourceDBTimeout(timeout_seconds=30)
@@ -89,6 +93,7 @@ def test_source_db_connection_failed_attributes():
 
 # --- Attempt ---
 
+
 def test_attempt_not_found():
     exc = AttemptNotFound()
     assert isinstance(exc, AttemptError)
@@ -106,12 +111,14 @@ def test_attempt_ownership_violation():
 
 # --- Session ---
 
+
 def test_session_busy():
     exc = SessionBusy()
     assert isinstance(exc, SessionError)
 
 
 # --- Schema ---
+
 
 def test_schema_token_limit_exceeded():
     exc = SchemaTokenLimitExceeded(tokens=100, limit=50)
@@ -120,6 +127,7 @@ def test_schema_token_limit_exceeded():
 
 
 # --- Chained exceptions ---
+
 
 def test_chained_exception_preserves_traceback():
     try:
@@ -133,6 +141,7 @@ def test_chained_exception_preserves_traceback():
 
 
 # --- Catch by base class ---
+
 
 def test_catch_by_base_class():
     with pytest.raises(QueryCraftError):
