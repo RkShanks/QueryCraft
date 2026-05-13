@@ -9,6 +9,10 @@ Verifies that the lifecycle_aware fixture:
 - does not swallow checker exceptions
 """
 
+import os
+import subprocess
+import sys
+
 import pytest
 
 from tests.lifecycle.invariants import InvariantChecker
@@ -28,16 +32,6 @@ class _SimpleChecker(InvariantChecker):
     async def validate(self, before, after):
         self.validate_count += 1
         return []
-
-
-class _LeakChecker(InvariantChecker):
-    name = "LeakChecker"
-
-    async def snapshot(self, state):
-        return {"before": "clean"}
-
-    async def validate(self, before, after):
-        return ["LeakChecker: unexpected leak detected"]
 
 
 class TestLifecycleConftestBasic:
@@ -85,41 +79,206 @@ class TestLifecycleCheckerOverride:
         assert lifecycle_lock_checker.name == "SimpleChecker"
 
 
-class TestLifecycleFixturePipeline:
-    """Fixture-pipeline tests: marker + lifecycle_aware => snapshot then validate."""
-
-    @pytest.mark.lifecycle("lock")
-    async def test_marker_with_aware_snapshots_and_validates(self, lifecycle_aware):
-        pass
-
-    @pytest.mark.lifecycle("lock")
-    async def test_checker_violation_causes_pytest_failure(self, lifecycle_lock_checker, lifecycle_aware):
-        """Overriding with a checker that returns violations causes failure."""
-        await lifecycle_aware.__anext__()
-        issues = await lifecycle_aware.asend(None)
-        # The above is incorrect for yield fixtures.
-        # Instead, test the checker directly.
-        checker = _LeakChecker()
-        before = await checker.snapshot(None)
-        issues = await checker.validate(before, None)
-        assert len(issues) == 1
-        assert "unexpected leak" in issues[0]
+# ---------------------------------------------------------------------------
+# Real pytest sub-runs proving lifecycle fixture pipeline behavior
+#
+# Uses subprocess rather than pytester to avoid session event-loop
+# interference from the pytester plugin.
+# ---------------------------------------------------------------------------
 
 
-class TestMarkerValidation:
-    """Validate marker enforcement rules."""
+_SUBRUN_CONFTEST = """\
+import asyncio
+import pytest
+from pytest import FixtureRequest
 
-    def test_empty_marker_args_fail(self):
-        """Simulate what lifecycle_aware does with empty marker args."""
-        with pytest.raises(pytest.fail.Exception):
-            marker_args: tuple = ()
-            if not marker_args:
-                pytest.fail("Empty lifecycle marker")
+pytest_plugins = "pytest_asyncio"
 
-    def test_unknown_marker_name_fails(self):
-        """Simulate what lifecycle_aware does with unknown marker name."""
-        known = {"lock", "feedback", "session"}
-        with pytest.raises(pytest.fail.Exception):
-            name = "nonexistent"
-            if name not in known:
-                pytest.fail(f"Unknown lifecycle invariant: {name!r}")
+
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+
+class _StateChecker:
+    name = "StateChecker"
+    def __init__(self):
+        self.snap_count = 0
+        self.val_count = 0
+    async def snapshot(self, state):
+        self.snap_count += 1
+        return {}
+    async def validate(self, before, after):
+        self.val_count += 1
+        return []
+
+
+class _ViolationChecker:
+    name = "ViolationChecker"
+    async def snapshot(self, state):
+        return {}
+    async def validate(self, before, after):
+        return ["ViolationChecker: intentional violation"]
+
+
+@pytest.fixture
+def lifecycle_lock_checker():
+    return _StateChecker()
+
+
+@pytest.fixture
+def lifecycle_feedback_checker():
+    return _ViolationChecker()
+
+
+_INVARIANT_FIXTURE_MAP = {
+    "lock": "lifecycle_lock_checker",
+    "feedback": "lifecycle_feedback_checker",
+}
+
+
+@pytest.fixture
+async def lifecycle_aware(request: FixtureRequest):
+    marker = request.node.get_closest_marker("lifecycle")
+    if marker is None:
+        yield
+        return
+    names = marker.args if marker.args else ()
+    if not names:
+        pytest.fail("Empty lifecycle marker")
+    checkers = []
+    for name in names:
+        if name not in _INVARIANT_FIXTURE_MAP:
+            pytest.fail(f"Unknown lifecycle invariant: {name!r}")
+        checker = request.getfixturevalue(_INVARIANT_FIXTURE_MAP[name])
+        checkers.append(checker)
+    for checker in checkers:
+        await checker.snapshot(None)
+    yield
+    issues = []
+    for checker in checkers:
+        result = await checker.validate({}, None)
+        issues.extend(result)
+    if issues:
+        pytest.fail("Lifecycle invariant violation(s):\\n" + "\\n".join(issues))
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        marker = item.get_closest_marker("lifecycle")
+        if marker is None:
+            continue
+        if "lifecycle_aware" not in item.fixturenames:
+            raise pytest.UsageError(
+                f"{item.nodeid}: @pytest.mark.lifecycle requires lifecycle_aware",
+            )
+"""
+
+
+def _run_pytest_subprocess(test_code: str, expected_ret: int = 0) -> str:
+    """Run pytest against a temporary test file with the subrun conftest.
+
+    Returns combined stdout+stderr for assertion inspection.
+    """
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        conftest_path = os.path.join(tmpdir, "conftest.py")
+        with open(conftest_path, "w") as f:
+            f.write(_SUBRUN_CONFTEST)
+
+        test_path = os.path.join(tmpdir, "test_subrun.py")
+        with open(test_path, "w") as f:
+            f.write(test_code)
+
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", str(test_path), "--asyncio-mode=auto", "--no-header", "-q"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=tmpdir,
+        )
+        if expected_ret is not None:
+            assert result.returncode == expected_ret, (
+                f"Expected ret={expected_ret}, got {result.returncode}\n"
+                f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+            )
+        return result.stdout + "\n" + result.stderr
+
+
+class TestLifecyclePipelineSubrun:
+    """Real pytest sub-runs proving lifecycle fixture pipeline behavior.
+
+    Each test creates a temporary test module and runs pytest against it
+    using subprocess, verifying fixture behavior end-to-end.
+    """
+
+    def test_marker_with_aware_snapshots_and_validates(self):
+        """@pytest.mark.lifecycle + lifecycle_aware calls snapshot then validate."""
+        output = _run_pytest_subprocess("""\
+import pytest
+
+@pytest.mark.lifecycle("lock")
+async def test_state(lifecycle_lock_checker, lifecycle_aware):
+    assert lifecycle_lock_checker.snap_count == 1, "snapshot must run before body"
+    assert lifecycle_lock_checker.val_count == 0, "validate must NOT run before body"
+""")
+        assert "1 passed" in output
+
+    def test_checker_violation_produces_error(self):
+        """A checker returning violations triggers pytest.fail during teardown -> ERROR."""
+        output = _run_pytest_subprocess(
+            """\
+import pytest
+
+@pytest.mark.lifecycle("feedback")
+async def test_violation(lifecycle_aware):
+    pass
+""",
+            expected_ret=1,
+        )
+        assert "Lifecycle invariant violation" in output
+
+    def test_empty_lifecycle_marker_produces_error(self):
+        """@pytest.mark.lifecycle() without args fails during fixture setup -> ERROR."""
+        output = _run_pytest_subprocess(
+            """\
+import pytest
+
+@pytest.mark.lifecycle()
+async def test_empty(lifecycle_aware):
+    pass
+""",
+            expected_ret=1,
+        )
+        assert "Empty lifecycle marker" in output
+
+    def test_unknown_marker_name_produces_error(self):
+        """An unrecognised invariant name fails during fixture setup -> ERROR."""
+        output = _run_pytest_subprocess(
+            """\
+import pytest
+
+@pytest.mark.lifecycle("nonexistent")
+async def test_unknown(lifecycle_aware):
+    pass
+""",
+            expected_ret=1,
+        )
+        assert "Unknown lifecycle invariant" in output
+
+    def test_marker_without_lifecycle_aware_raises_usage_error(self):
+        """@pytest.mark.lifecycle without lifecycle_aware fails collection -> USAGE_ERROR."""
+        output = _run_pytest_subprocess(
+            """\
+import pytest
+
+@pytest.mark.lifecycle("lock")
+async def test_no_aware():
+    pass
+""",
+            expected_ret=4,
+        )
+        assert "requires lifecycle_aware" in output

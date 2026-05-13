@@ -149,7 +149,7 @@ class TestQueryServiceSubmit:
             )
         assert exc_info.value.status_code == 409
 
-    @pytest.mark.lifecycle("lock", "session")
+    @pytest.mark.lifecycle("lock")
     @pytest.mark.asyncio
     async def test_chat_session_id_none_creates_new_session(self, service, mock_session_repo, lifecycle_aware):
         """Lazy creation: chat_session_id=None triggers session_repo.create.

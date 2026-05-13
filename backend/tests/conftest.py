@@ -212,9 +212,13 @@ def lifecycle_lock_checker(request: FixtureRequest):
 
     try:
         redis = request.getfixturevalue("redis_client")
-        return LockInvariant(redis)
-    except Exception:
+    except pytest.skip.Exception:
         return None
+    except pytest.FixtureLookupError:
+        return None
+    except RuntimeError:
+        return None
+    return LockInvariant(redis)
 
 
 @pytest.fixture
@@ -224,9 +228,13 @@ def lifecycle_feedback_checker(request: FixtureRequest):
 
     try:
         db = request.getfixturevalue("db_session")
-        return FeedbackStateInvariant(db)
-    except Exception:
+    except pytest.skip.Exception:
         return None
+    except pytest.FixtureLookupError:
+        return None
+    except RuntimeError:
+        return None
+    return FeedbackStateInvariant(db)
 
 
 @pytest.fixture
@@ -236,9 +244,13 @@ def lifecycle_session_checker(request: FixtureRequest):
 
     try:
         db = request.getfixturevalue("db_session")
-        return SessionTouchInvariant(db)
-    except Exception:
+    except pytest.skip.Exception:
         return None
+    except pytest.FixtureLookupError:
+        return None
+    except RuntimeError:
+        return None
+    return SessionTouchInvariant(db)
 
 
 _INVARIANT_FIXTURE_MAP: dict[str, str] = {
