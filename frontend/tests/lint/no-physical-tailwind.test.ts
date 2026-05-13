@@ -39,6 +39,8 @@ describe('T-181: built CSS bundle has no physical-direction utilities', () => {
       /\.pr-/,   // padding-right
       /\.text-left/,   // text-align left
       /\.text-right/,  // text-align right
+      /\.left-/,       // left positioning
+      /\.right-/,      // right positioning
     ];
 
     const violations: Array<{ file: string; line: number; text: string }> = [];
