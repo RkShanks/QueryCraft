@@ -79,6 +79,7 @@ class TestSessionRepository:
         assert deleted is False
 
     @pytest.mark.asyncio
+    @pytest.mark.lifecycle
     async def test_update_last_activity_changes_timestamp(self, db_session, admin_user_id):
         """update_last_activity changes last_activity_at."""
         repo = SessionRepository(db_session)

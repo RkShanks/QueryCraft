@@ -69,6 +69,7 @@ class TestQueryServiceReject:
             source_db_executor=mock_deps["executor"],
         )
 
+    @pytest.mark.lifecycle
     async def test_reject_calls_llm_with_negative_context(self, service, mock_deps):
         """reject_query calls LLM with negative context (prior SQL)."""
         prior = EphemeralAttempt(

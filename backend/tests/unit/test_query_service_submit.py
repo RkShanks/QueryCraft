@@ -81,6 +81,7 @@ class TestQueryServiceSubmit:
             source_db_executor=mock_executor,
         )
 
+    @pytest.mark.lifecycle
     @pytest.mark.asyncio
     async def test_happy_path_returns_query_result(self, service, mock_redis):
         result = await service.submit_question(
@@ -144,6 +145,7 @@ class TestQueryServiceSubmit:
             )
         assert exc_info.value.status_code == 409
 
+    @pytest.mark.lifecycle
     @pytest.mark.asyncio
     async def test_chat_session_id_none_creates_new_session(self, service, mock_session_repo):
         """Lazy creation: chat_session_id=None triggers session_repo.create."""
