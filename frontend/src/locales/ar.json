@@ -13,6 +13,7 @@
   "auth.signIn.password.label": "كلمة المرور",
   "auth.signIn.submit": "تسجيل الدخول",
   "auth.signIn.signingIn": "جارٍ تسجيل الدخول...",
+  "auth.signIn.error.usernameEmpty": "اسم المستخدم لا يمكن أن يكون فارغاً.",
   "auth.signIn.error.invalidCredentials": "اسم المستخدم أو كلمة المرور غير صحيحة",
   "auth.signIn.error.network": "خطأ في الشبكة. يرجى المحاولة مرة أخرى.",
 

@@ -44,14 +44,14 @@ export const ResultTable: React.FC<ResultTableProps> = ({
       
       {result.is_last_auto_retry && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-md text-sm font-medium">
-          {t('query.result.lastRetry', { defaultValue: 'Last auto retry' })}
+          {t('query.result.lastRetry')}
         </div>
       )}
       
       <div className="table-wrapper bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden">
         {result.rows.length === 0 ? (
           <div className="no-results p-8 text-center bg-gray-50 text-gray-500 italic">
-            {t('query.result.empty', { defaultValue: 'No results found for your query' })}
+            {t('query.result.empty')}
           </div>
         ) : (
           <div className="overflow-x-auto">

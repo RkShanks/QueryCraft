@@ -68,7 +68,7 @@ export const Sidebar: React.FC = () => {
       {
         id: `${sessionId}-${Date.now()}`,
         sessionId,
-        message: t('sidebar.deleteConfirm', { defaultValue: 'Delete session?' }),
+        message: t('sidebar.deleteConfirm'),
       },
     ]);
   };

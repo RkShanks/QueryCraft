@@ -92,14 +92,14 @@ export const AskQuestionPage: React.FC = () => {
     try {
       await acceptQuery(id);
       showAlert(
-        t('query.accept.success.title', { defaultValue: 'Success' }),
-        t('query.accept.success.message', { defaultValue: 'Query accepted and saved to history.' }),
+        t('query.accept.success.title'),
+        t('query.accept.success.message'),
         'success'
       );
     } catch {
       showAlert(
-        t('query.error.accept.title', { defaultValue: 'Error' }),
-        t('query.error.accept.message', { defaultValue: 'Failed to accept query.' }),
+        t('query.error.accept.title'),
+        t('query.error.accept.message'),
         'destructive'
       );
     }
@@ -112,7 +112,7 @@ export const AskQuestionPage: React.FC = () => {
       const e = err as { error?: string };
       if (e.error === 'concurrent') {
         showAlert(
-          t('query.error.concurrent', { defaultValue: 'A query is already being processed.' }),
+          t('query.error.concurrent'),
           '',
           'destructive'
         );
@@ -127,7 +127,7 @@ export const AskQuestionPage: React.FC = () => {
       const e = err as { error?: string };
       if (e.error === 'concurrent') {
         showAlert(
-          t('query.error.concurrent', { defaultValue: 'A query is already being processed.' }),
+          t('query.error.concurrent'),
           '',
           'destructive'
         );
@@ -161,13 +161,13 @@ export const AskQuestionPage: React.FC = () => {
     const timer = setTimeout(() => {
       if (error.kind === 'concurrent') {
         showAlert(
-          t('query.error.concurrent', { defaultValue: 'A query is already being processed.' }),
+          t('query.error.concurrent'),
           '',
           'destructive'
         );
       } else if (error.kind === 'llmUnavailable') {
         showAlert(
-          t('query.error.llmUnavailable', { defaultValue: 'The AI service is temporarily unavailable.' }),
+          t('query.error.llmUnavailable'),
           '',
           'destructive'
         );
@@ -195,7 +195,7 @@ export const AskQuestionPage: React.FC = () => {
             className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
           >
             <History className="w-4 h-4" />
-            {t('nav.history', { defaultValue: 'History' })}
+            {t('nav.history')}
           </Link>
         </nav>
       </header>
@@ -214,7 +214,7 @@ export const AskQuestionPage: React.FC = () => {
           <button
             onClick={() => setAlert(null)}
             className="text-current opacity-70 hover:opacity-100"
-            aria-label={t('common.close', { defaultValue: 'Close' })}
+            aria-label={t('common.close')}
           >
             ×
           </button>
@@ -224,7 +224,7 @@ export const AskQuestionPage: React.FC = () => {
       <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-10 flex flex-col gap-8">
         <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
           <h2 className="text-lg font-semibold mb-4 text-gray-800">
-            {t('query.ask.title', { defaultValue: 'What would you like to know?' })}
+            {t('query.ask.title')}
           </h2>
           <QueryInput
             onSubmit={handleQuestionSubmit}
@@ -238,7 +238,7 @@ export const AskQuestionPage: React.FC = () => {
           <div className="flex flex-col items-center justify-center py-12 animate-pulse">
             <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
             <p className="text-gray-500 font-medium">
-              {t('query.status.processing', { defaultValue: 'Analyzing your question...' })}
+              {t('query.status.processing')}
             </p>
           </div>
         )}

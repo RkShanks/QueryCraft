@@ -19,6 +19,12 @@ i18n
     detection: {
       order: ['navigator', 'htmlTag'],
     },
+    saveMissing: true,
+    missingKeyHandler: (_lng: string, ns: string, key: string) => {
+      if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+        console.warn(`[i18n] Missing translation key: ${ns}:${key}`);
+      }
+    },
   });
 
 export default i18n;

@@ -45,7 +45,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   if (isLoading && items.length === 0) {
     return (
       <div className="history-loading p-8 text-center text-gray-500">
-        {t('history.loading', { defaultValue: 'Loading history...' })}
+        {t('history.loading')}
       </div>
     );
   }
@@ -53,7 +53,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   if (items.length === 0) {
     return (
       <div className="history-empty p-8 text-center text-gray-500">
-        {t('history.empty', { defaultValue: 'No history yet — submit a question to get started.' })}
+        {t('history.empty')}
       </div>
     );
   }
@@ -65,9 +65,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({
           type="text"
           value={rawFilter}
           onChange={(e) => setRawFilter(e.target.value)}
-          placeholder={t('history.filter.placeholder', { defaultValue: 'Filter by question or SQL...' })}
+          placeholder={t('history.filter.placeholder')}
           className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          aria-label={t('history.filter.placeholder', { defaultValue: 'Filter by question or SQL...' })}
+          aria-label={t('history.filter.placeholder')}
         />
       </div>
 
@@ -76,13 +76,13 @@ export const HistoryList: React.FC<HistoryListProps> = ({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {t('history.column.question', { defaultValue: 'Question' })}
+                {t('history.column.question')}
               </th>
               <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {t('history.column.sql', { defaultValue: 'SQL' })}
+                {t('history.column.sql')}
               </th>
               <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {t('history.detail.acceptedAt', { defaultValue: 'Accepted at' })}
+                {t('history.detail.acceptedAt')}
               </th>
             </tr>
           </thead>
@@ -123,7 +123,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
             onClick={onLoadMore}
             className="px-4 py-2 text-sm font-medium text-indigo-600 bg-white border border-indigo-200 rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
           >
-            {t('history.loadMore', { defaultValue: 'Load more' })}
+            {t('history.loadMore')}
           </button>
         </div>
       )}
