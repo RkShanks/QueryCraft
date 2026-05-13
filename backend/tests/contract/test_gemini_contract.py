@@ -52,3 +52,17 @@ async def test_gemini_contract_happy_path(adapter: GeminiAdapter):
     body = request.content.decode()
     assert "Test prompt" in body
     assert "contents" in body
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_gemini_contract_429_rate_limit(adapter: GeminiAdapter):
+    """T-371: 429 rate limit — clear error, no crash."""
+    respx.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
+    ).mock(return_value=Response(429, json={"error": {"code": 429, "message": "Resource has been exhausted (e.g. check quota).", "status": "RESOURCE_EXHAUSTED"}}))
+
+    with pytest.raises(LLMUnavailable) as exc:
+        await adapter.generate("Test prompt")
+    
+    assert exc.value.provider == "gemini"
