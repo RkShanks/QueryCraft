@@ -51,6 +51,55 @@ describe('WorkspacePage first-submit UX', () => {
     expect(state.activeSessionId).toBe('550e8400-e29b-41d4-a716-446655440003');
   }, 10000);
 
+  it('renders Accept button on fresh result turn', async () => {
+    renderWithClient(<WorkspacePage />);
+    await typeAndSubmit('How many actors?');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    expect(screen.getByTestId('action-accept')).toBeInTheDocument();
+    expect(screen.getByText('Accept')).toBeInTheDocument();
+  }, 10000);
+
+  it('clicking Accept posts real attempt_id and shows accepted state', async () => {
+    let capturedAcceptBody: Record<string, unknown> | undefined;
+
+    server.use(
+      http.post('/api/v1/query/accept', async ({ request }) => {
+        capturedAcceptBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          id: 'f9e8d7c6-b5a4-4c3b-2a1d-0e9f8d7c6b5a',
+          question_text: 'How many actors?',
+          generated_sql: 'SELECT COUNT(*) FROM users;',
+          accepted_at: new Date().toISOString(),
+        });
+      }),
+    );
+
+    renderWithClient(<WorkspacePage />);
+    await typeAndSubmit('How many actors?');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    const acceptBtn = screen.getByTestId('action-accept');
+    fireEvent.click(acceptBtn);
+
+    await waitFor(() => {
+      expect(capturedAcceptBody).toBeDefined();
+    });
+
+    expect(capturedAcceptBody!.attempt_id).toBe('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
+    expect(capturedAcceptBody!.session_id).toBe('550e8400-e29b-41d4-a716-446655440003');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('accepted-banner')).toBeInTheDocument();
+    });
+  }, 15000);
+
   it('clears local turns on New Chat (activeSessionId set to null)', async () => {
     renderWithClient(<WorkspacePage />);
 
@@ -109,7 +158,6 @@ describe('WorkspacePage first-submit UX', () => {
       expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    // Click thumbs-up in the response feedback bar
     const thumbsUp = screen.getByTestId('feedback-thumbs-up');
     fireEvent.click(thumbsUp);
 
@@ -120,7 +168,6 @@ describe('WorkspacePage first-submit UX', () => {
     expect(capturedFeedbackId).toBe(EXPECTED_ATTEMPT_ID);
     expect(capturedFeedbackId).not.toMatch(/^turn-/);
 
-    // Click regenerate in the code block action bar
     const regenerateBtn = screen.getByTestId('action-regenerate');
     fireEvent.click(regenerateBtn);
 

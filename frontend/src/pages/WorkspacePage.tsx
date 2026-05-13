@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores/uiStore';
 import { useSessionDetail } from '../hooks/useSessions';
 import { useQuerySubmit } from '../hooks/useQuerySubmit';
@@ -22,10 +23,12 @@ interface ConversationTurn {
   currentFeedback?: number | null;
   saved?: boolean;
   attemptId?: string;
+  isAccepting?: boolean;
 }
 
 export const WorkspacePage: React.FC = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const activeSessionId = useUIStore((state) => state.activeSessionId);
   const { data: sessionDetail, isLoading } = useSessionDetail(activeSessionId ?? '');
   const querySubmit = useQuerySubmit();
@@ -36,9 +39,6 @@ export const WorkspacePage: React.FC = () => {
   const prevSessionIdRef = useRef(activeSessionId);
   const pendingSubmitRef = useRef(false);
 
-  // Handle session transitions in useEffect, not during render.
-  // When a submit creates a new session (null → session_id), preserve localTurns.
-  // When the user intentionally switches sessions or clicks New Chat, clear localTurns.
   useEffect(() => {
     const prevId = prevSessionIdRef.current;
     prevSessionIdRef.current = activeSessionId;
@@ -71,18 +71,90 @@ export const WorkspacePage: React.FC = () => {
   const showEmptyState = activeSessionId === null && allTurns.length === 0;
   const showLoading = isLoading && allTurns.length === 0 && !querySubmit.isSubmitting;
 
-  const handleRegenerate = useCallback(
-    (attemptId: string) => {
-      querySubmit.regenerateQuery(attemptId).catch(() => {});
+  const updateTurn = useCallback(
+    (matchKey: string, patch: Partial<ConversationTurn>) => {
+      setLocalTurns((prev) =>
+        prev.map((t) => {
+          const tKey = t.attemptId || t.id;
+          return tKey === matchKey ? { ...t, ...patch } : t;
+        })
+      );
     },
-    [querySubmit]
+    []
+  );
+
+  const handleAccept = useCallback(
+    async (attemptId: string) => {
+      updateTurn(attemptId, { isAccepting: true });
+
+      try {
+        await querySubmit.acceptQuery(attemptId, activeSessionId);
+        updateTurn(attemptId, {
+          saved: true,
+          currentFeedback: 1,
+          isAccepting: false,
+        });
+        queryClient.invalidateQueries({ queryKey: ['sessions'] });
+        queryClient.invalidateQueries({ queryKey: ['history'] });
+      } catch {
+        updateTurn(attemptId, { isAccepting: false });
+      }
+    },
+    [querySubmit, updateTurn, queryClient, activeSessionId]
+  );
+
+  const handleRegenerate = useCallback(
+    async (attemptId: string) => {
+      updateTurn(attemptId, { isLoading: true });
+
+      try {
+        const data = await querySubmit.regenerateQuery(attemptId);
+        if (data && typeof data === 'object' && 'kind' in data) {
+          if (data.kind === 'result') {
+            const result = data as QueryResult;
+            updateTurn(attemptId, {
+              isLoading: false,
+              result,
+              sql: result.generated_sql,
+              attemptId: result.attempt_id,
+              refinePrompt: undefined,
+              evaluatorRejection: undefined,
+              currentFeedback: null,
+              saved: false,
+            });
+          } else if (data.kind === 'refine') {
+            updateTurn(attemptId, {
+              isLoading: false,
+              refinePrompt: data as RefinePrompt,
+              result: undefined,
+              sql: '',
+              evaluatorRejection: undefined,
+            });
+          }
+        }
+      } catch {
+        updateTurn(attemptId, { isLoading: false });
+      }
+    },
+    [querySubmit, updateTurn]
   );
 
   const handleFeedback = useCallback(
     (attemptId: string, feedback: number) => {
-      feedbackMutation.mutate({ attemptId, feedback });
+      feedbackMutation.mutate(
+        { attemptId, feedback },
+        {
+          onSuccess: () => {
+            updateTurn(attemptId, {
+              currentFeedback: feedback,
+              saved: feedback === 1,
+            });
+            queryClient.invalidateQueries({ queryKey: ['sessions'] });
+          },
+        }
+      );
     },
-    [feedbackMutation]
+    [feedbackMutation, updateTurn, queryClient]
   );
 
   const handleSubmit = useCallback(
@@ -186,6 +258,8 @@ export const WorkspacePage: React.FC = () => {
                     saved={turn.saved}
                     onRegenerate={handleRegenerate}
                     onFeedback={handleFeedback}
+                    onAccept={handleAccept}
+                    isAccepting={turn.isAccepting}
                   />
                 )}
               </div>

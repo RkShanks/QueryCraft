@@ -32,3 +32,39 @@
   letter-spacing: 0.05em;
   margin-block-end: 0.5rem;
 }
+
+.assistant-accept-section {
+  display: flex;
+  align-items: center;
+}
+
+.assistant-accept-btn {
+  background: linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-fuchsia));
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.assistant-accept-btn:hover {
+  opacity: 0.85;
+}
+
+.assistant-accept-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.assistant-accepted-banner {
+  background: rgb(34 197 94 / 15%);
+  border: 1px solid rgb(34 197 94 / 30%);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  color: #22c55e;
+  text-align: center;
+}
