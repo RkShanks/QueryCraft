@@ -23,6 +23,19 @@ class TestSessionRepository:
         assert row is not None
         return row[0]
 
+    @pytest.fixture
+    async def touch_session(self, db_session, admin_user_id):
+        """Create a session for lifecycle-mutated test."""
+        repo = SessionRepository(db_session)
+        return await repo.create(user_id=admin_user_id, preview_text="Touch me")
+
+    @pytest.fixture
+    def lifecycle_session_checker(self, db_session, touch_session):
+        """Override: allow the expected mutation from update_last_activity."""
+        from tests.lifecycle.invariants import SessionTouchInvariant
+
+        return SessionTouchInvariant(db_session, allowed_session_ids={touch_session.id})
+
     @pytest.mark.asyncio
     async def test_create_persists_row(self, db_session, admin_user_id):
         """Creating a session should persist it."""
@@ -80,15 +93,16 @@ class TestSessionRepository:
 
     @pytest.mark.asyncio
     @pytest.mark.lifecycle("session")
-    async def test_update_last_activity_changes_timestamp(self, db_session, admin_user_id, lifecycle_aware):
+    async def test_update_last_activity_changes_timestamp(
+        self, db_session, admin_user_id, touch_session, lifecycle_aware
+    ):
         """update_last_activity changes last_activity_at."""
         repo = SessionRepository(db_session)
-        created = await repo.create(user_id=admin_user_id, preview_text="Touch me")
-        original = created.last_activity_at
-        updated = await repo.update_last_activity(created.id, admin_user_id)
+        original = touch_session.last_activity_at
+        updated = await repo.update_last_activity(touch_session.id, admin_user_id)
         assert updated is True
-        await db_session.refresh(created)
-        assert created.last_activity_at > original
+        await db_session.refresh(touch_session)
+        assert touch_session.last_activity_at > original
 
     @pytest.mark.asyncio
     async def test_update_preview_text_truncates_long_text(self, db_session, admin_user_id):

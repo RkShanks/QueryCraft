@@ -250,6 +250,56 @@ class TestSessionTouchInvariantDetection:
 
 
 # ---------------------------------------------------------------------------
+# LockInvariant: regression — leak detection with FakeRedis (mock
+# QueryService style, per T-379 audit hardening)
+# ---------------------------------------------------------------------------
+
+
+class TestLockInvariantMockQueryServiceStyle:
+    """Regression: LockInvariant detects leaks via FakeRedis, the same
+    implementation used by mock-based QueryService lifecycle tests."""
+
+    async def test_leaked_key_in_mock_query_service_style(self):
+        """Prove leak detection works with FakeRedis (mock QueryService style).
+
+        This replicates the pattern used by test_query_service_submit.py
+        and test_query_service_reject.py where lifecycle_lock_checker
+        wraps a FakeRedis instance.
+        """
+        from tests.lifecycle.helpers import FakeRedis
+
+        redis = FakeRedis()
+        invariant = LockInvariant(redis)
+
+        before = await invariant.snapshot(None)
+
+        # Simulate QueryService acquiring a processing lock
+        await redis.set("processing_lock:http-sess-1", "1", nx=True, ex=300)
+
+        # Intentionally NOT releasing — this is the leak the checker should catch
+        issues = await invariant.validate(before, None)
+        assert len(issues) == 1
+        assert "processing_lock:http-sess-1" in issues[0]
+        assert "LockInvariant" in issues[0]
+
+    async def test_clean_lock_no_leak_regression(self):
+        """Prove that a properly released lock is not flagged."""
+        from tests.lifecycle.helpers import FakeRedis
+
+        redis = FakeRedis()
+        invariant = LockInvariant(redis)
+
+        before = await invariant.snapshot(None)
+
+        # Simulate QueryService acquiring and releasing a lock
+        await redis.set("processing_lock:http-sess-1", "1", nx=True, ex=300)
+        await redis.delete("processing_lock:http-sess-1")
+
+        issues = await invariant.validate(before, None)
+        assert issues == []
+
+
+# ---------------------------------------------------------------------------
 # Cross-invariant: multiple checkers work together
 # ---------------------------------------------------------------------------
 

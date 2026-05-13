@@ -35,6 +35,13 @@ class TestFeedbackRouter:
         await db_session.commit()
         return str(row[0])
 
+    @pytest.fixture
+    def lifecycle_feedback_checker(self, db_session, accepted_query_id):
+        """Override: allow the expected mutation from PATCH /feedback."""
+        from tests.lifecycle.invariants import FeedbackStateInvariant
+
+        return FeedbackStateInvariant(db_session, allowed_query_ids={accepted_query_id})
+
     @pytest.mark.lifecycle("feedback")
     @pytest.mark.asyncio
     async def test_update_feedback_success(self, authenticated_client, accepted_query_id, lifecycle_aware):

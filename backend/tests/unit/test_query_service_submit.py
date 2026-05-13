@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.services.query_service import QueryService
+from tests.lifecycle.helpers import FakeRedis
 
 
 class TestQueryServiceSubmit:
@@ -30,11 +31,7 @@ class TestQueryServiceSubmit:
 
     @pytest.fixture
     def mock_redis(self):
-        redis = AsyncMock()
-        redis.set = AsyncMock()
-        redis.get = AsyncMock(return_value=None)
-        redis.delete = AsyncMock()
-        return redis
+        return FakeRedis()
 
     @pytest.fixture
     def mock_llm(self):
@@ -99,7 +96,8 @@ class TestQueryServiceSubmit:
         assert result.row_count == 1
         assert result.generated_sql == "SELECT 1 AS id"
         assert result.session_id == "550e8400-e29b-41d4-a716-446655440001"
-        assert mock_redis.set.await_count >= 1
+        set_calls = [c for c in mock_redis._data if c.startswith("processing_lock:") or c.startswith("active_attempt:")]
+        assert len(set_calls) >= 1
 
     @pytest.mark.asyncio
     async def test_evaluator_failure_returns_rejection(self, service, mock_evaluator):
@@ -142,7 +140,7 @@ class TestQueryServiceSubmit:
 
     @pytest.mark.asyncio
     async def test_concurrent_submission_raises_409(self, service, mock_redis):
-        mock_redis.set.return_value = None  # lock already held (nx failed)
+        await mock_redis.set("processing_lock:http-sess-1", "1")
         with pytest.raises(Exception) as exc_info:
             await service.submit_question(
                 http_session_id="http-sess-1",
@@ -151,10 +149,12 @@ class TestQueryServiceSubmit:
             )
         assert exc_info.value.status_code == 409
 
-    @pytest.mark.lifecycle("lock")
+    @pytest.mark.lifecycle("lock", "session")
     @pytest.mark.asyncio
     async def test_chat_session_id_none_creates_new_session(self, service, mock_session_repo, lifecycle_aware):
-        """Lazy creation: chat_session_id=None triggers session_repo.create."""
+        """Lazy creation: chat_session_id=None triggers session_repo.create.
+        Combined lock + session invariants (T-379).
+        """
         result = await service.submit_question(
             http_session_id="http-sess-1",
             user_id="550e8400-e29b-41d4-a716-446655440000",
