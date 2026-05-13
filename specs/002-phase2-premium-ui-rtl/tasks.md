@@ -148,7 +148,7 @@
 
 ### Admin Settings Page
 
-- [ ] T-357 Create SettingsPage: LLM context cap input (0–10 validation), save button, success/error feedback — `frontend/src/pages/SettingsPage.tsx` + `SettingsPage.css` (FR-040; depends: T-327)
+- [X] T-357 Create SettingsPage: LLM context cap input (0–10 validation), save button, success/error feedback — `frontend/src/pages/SettingsPage.tsx` + `SettingsPage.css` (FR-040; depends: T-327)
 - [ ] T-358 Add /settings route with AuthGuard — `frontend/src/App.tsx` (depends: T-357)
 
 ### Tests
