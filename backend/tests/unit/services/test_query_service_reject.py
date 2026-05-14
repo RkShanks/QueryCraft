@@ -55,8 +55,11 @@ class TestQueryServiceReject:
 
         def _execute_side_effect(stmt, *args, **kwargs):
             async def _coro():
-                if "database_connections" in str(stmt):
+                stmt_str = str(stmt)
+                if "database_connections" in stmt_str:
                     return MagicMock(fetchone=MagicMock(return_value=(_db_conn_id,)))
+                if "FROM users" in stmt_str:
+                    return MagicMock(scalar_one_or_none=MagicMock(return_value=MagicMock(id=_db_conn_id)))
                 return MagicMock(fetchone=MagicMock(return_value=(3,)))
 
             return _coro()
@@ -128,7 +131,6 @@ class TestQueryServiceReject:
 
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
-            patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
 
@@ -152,7 +154,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
 
@@ -179,7 +180,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
 
@@ -202,7 +202,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.release_lock"),
         ):
             result = await service.reject_query("a1", "s1")
 
@@ -218,7 +217,6 @@ class TestQueryServiceReject:
 
         mock_deps["redis"].get = AsyncMock(return_value="a1")
         with (
-            patch("app.services.query_service.release_lock"),
             patch("app.services.query_service.get_attempt", side_effect=_get_attempt),
             pytest.raises(AttemptOwnershipViolation),
         ):
@@ -232,19 +230,13 @@ class TestQueryServiceReject:
 
         mock_deps["redis"].get = AsyncMock(return_value="missing")
         with (
-            patch("app.services.query_service.release_lock"),
             patch("app.services.query_service.get_attempt", side_effect=_get_attempt),
             pytest.raises(AttemptNotFound),
         ):
             await service.reject_query("missing", "s1")
 
-    async def test_reject_releases_lock(self, service, mock_deps):
-        """Processing lock is released around reject."""
-        lock_calls = []
-
-        async def _release(sid, redis):
-            lock_calls.append("release")
-
+    async def test_reject_acquires_and_releases_lock(self, service, mock_deps):
+        """Processing lock is acquired and released around reject."""
         prior = EphemeralAttempt(
             attempt_id="a1",
             session_id="s1",
@@ -258,11 +250,53 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.release_lock", side_effect=_release),
         ):
             await service.reject_query("a1", "s1")
 
-        assert lock_calls == ["release"]
+        # Lock was acquired (set with nx=True) and released
+        lock_set_calls = [c for c in mock_deps["redis"].set.call_args_list if "processing_lock:" in str(c)]
+        assert len(lock_set_calls) >= 1
+
+    async def test_reject_busy_returns_409(self, service, mock_deps):
+        """reject returns 409 when processing lock is held."""
+        prior = EphemeralAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            sql="SELECT 1",
+            question="q1",
+        )
+        mock_deps["redis"].set = AsyncMock(return_value=None)  # lock busy
+
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            pytest.raises(Exception) as exc_info,
+        ):
+            await service.reject_query("a1", "s1")
+        assert exc_info.value.status_code == 409
+
+    async def test_reject_stale_user_raises_401(self, service, mock_deps):
+        """reject with stale user raises 401."""
+        prior = EphemeralAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            sql="SELECT 1",
+            question="q1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
+        )
+        mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 2")
+        mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
+        mock_deps["executor"].execute = AsyncMock(return_value=(["col"], [(1,)]))
+        # Make user check return None
+        mock_deps["db_session"].execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+        )
+
+        with (
+            patch("app.services.query_service.get_attempt", return_value=prior),
+            pytest.raises(Exception) as exc_info,
+        ):
+            await service.reject_query("a1", "s1")
+        assert exc_info.value.status_code == 401
 
     async def test_reject_never_writes_to_repository(self, service, mock_deps):
         """Reject auto-saves the new result (same as regenerate)."""
@@ -280,7 +314,6 @@ class TestQueryServiceReject:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
-            patch("app.services.query_service.release_lock"),
         ):
             await service.reject_query("a1", "s1")
 

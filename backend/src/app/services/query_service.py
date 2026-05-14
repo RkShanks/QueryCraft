@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -11,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SourceDBTimeout
-from app.core.processing_lock import acquire_lock, release_lock
+from app.core.processing_lock import acquire_lock, release_lock_if_owned
 from app.db.models.user import User
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.repositories.session_repository import SessionRepository
@@ -50,13 +51,16 @@ class QueryService:
         self._llm_provider = llm_provider
         self._schema_context = schema_context
 
-    async def _acquire_lock(self, session_id: str, ttl: int = 60) -> bool:
-        """Try to acquire a per-session processing lock."""
+    async def _acquire_lock(self, session_id: str, ttl: int = 60) -> str | None:
+        """Try to acquire a per-session processing lock.
+
+        Returns an owner token (uuid string) if acquired, None if already held.
+        """
         return await acquire_lock(session_id, self._redis, ttl=ttl)
 
-    async def _release_lock(self, session_id: str) -> None:
-        """Release the per-session processing lock."""
-        await release_lock(session_id, self._redis)
+    async def _release_lock_if_owned(self, session_id: str, owner: str | None) -> bool:
+        """Release the processing lock only if we own it."""
+        return await release_lock_if_owned(session_id, owner, self._redis)
 
     async def _get_llm_context_cap(self) -> int:
         """Read llm_context_cap from app_config (default 3)."""
@@ -90,7 +94,8 @@ class QueryService:
         chat_session_id: str | None = None,
     ) -> QueryResult | EvaluatorRejection:
         """Submit a question: LLM -> evaluate -> execute -> result."""
-        if not await self._acquire_lock(http_session_id, ttl=300):
+        lock_owner = await self._acquire_lock(http_session_id, ttl=300)
+        if lock_owner is None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"error": "concurrent", "message_key": "error.concurrent"},
@@ -265,17 +270,25 @@ class QueryService:
 
             return result
         finally:
-            await self._release_lock(http_session_id)
+            await self._release_lock_if_owned(http_session_id, lock_owner)
 
     async def accept_query(
         self,
         http_session_id: str,
         user_id: str,
         attempt_id: str,
-        database_connection_id: str,
         chat_session_id: str | None = None,
     ) -> AcceptedQuerySummary:
         """Accept a query result: persist to DB and delete Redis attempt."""
+        # Verify user exists in DB (guard against stale Redis sessions)
+        user_uuid = uuid.UUID(user_id)
+        user_result = await self._db_session.execute(select(User).where(User.id == user_uuid))
+        if user_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+            )
+
         lock_key = f"accept:{attempt_id}"
         lock_acquired = await self._redis.set(lock_key, "1", nx=True, ex=5)
         if not lock_acquired:
@@ -315,7 +328,6 @@ class QueryService:
                 )
 
             # Idempotency: skip if already persisted for this attempt_id (auto-saved)
-            user_uuid = uuid.UUID(user_id)
             existing = await self._repo.get_by_attempt_id(attempt_id, user_uuid)
             if existing is not None:
                 await delete_attempt(attempt_id, self._redis)
@@ -327,10 +339,12 @@ class QueryService:
                     accepted_at=existing.accepted_at.isoformat(),
                 )
 
+            # Resolve database_connection_id internally (High 2 fix)
+            db_conn_id = await self._get_database_connection_id()
             session_uuid = uuid.UUID(chat_session_id) if chat_session_id else None
             query = await self._repo.create(
                 user_id=user_uuid,
-                database_connection_id=uuid.UUID(database_connection_id),
+                database_connection_id=uuid.UUID(db_conn_id),
                 question_text=attempt.get("question", ""),
                 generated_sql=attempt.get("sql", ""),
                 llm_provider=attempt.get("llm_provider", ""),
@@ -342,7 +356,6 @@ class QueryService:
 
             await delete_attempt(attempt_id, self._redis)
             await self._redis.delete(f"active_attempt:{http_session_id}")
-            await self._release_lock(http_session_id)
 
             return AcceptedQuerySummary(
                 id=str(query.id),
@@ -381,37 +394,52 @@ class QueryService:
         """Regenerate SQL for a rejected query result.
 
         Flow:
-        1. Acquire processing lock.
-        2. Get prior attempt (validate ownership).
-        3. Build LLM prompt with negative context.
-        4. Call LLM.
-        5. Inv 4 byte-equal check: if new SQL == prior SQL -> RefinePrompt.
-        6. Run evaluator (Inv 1).
-        7. If evaluator fails -> store attempt, return RefinePrompt.
-        8. If evaluator passes -> run executor.
-        9. Store new attempt.
-        10. Check max retries -> if exceeded, return RefinePrompt.
-        11. Release lock, return QueryResult.
+        1. Acquire processing lock (Critical 1 fix).
+        2. Verify user exists in DB (Critical 2 fix).
+        3. Get prior attempt (validate ownership).
+        4. Build LLM prompt with negative context.
+        5. Call LLM.
+        6. Inv 4 byte-equal check.
+        7. Run evaluator (Inv 1).
+        8. Run executor.
+        9. Auto-save: update prior row in-place (Option B, High 3 fix).
+        10. Release lock, return QueryResult.
 
         Raises:
-            SessionBusy: if a concurrent operation is in progress.
-            AttemptNotFound: if the attempt does not exist.
-            AttemptOwnershipViolation: if session_id doesn't match.
+            HTTPException 409: if another operation holds the session processing lock.
+            HTTPException 401: if the user has been deleted from DB.
         """
-        # G-001+G-004: verify active attempt instead of acquiring new lock
-        active_attempt_id = await self._redis.get(f"active_attempt:{http_session_id}")
-        if active_attempt_id != attempt_id:
+        lock_owner = await self._acquire_lock(http_session_id, ttl=300)
+        if lock_owner is None:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={"error": "attempt_not_active", "message_key": "error.attemptInvalid"},
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": "concurrent", "message_key": "error.concurrent"},
             )
 
         try:
+            # G-001+G-004: verify active attempt
+            active_attempt_id = await self._redis.get(f"active_attempt:{http_session_id}")
+            if active_attempt_id != attempt_id:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": "attempt_not_active", "message_key": "error.attemptInvalid"},
+                )
+
             prior = await get_attempt(attempt_id, http_session_id, self._redis)
             await delete_attempt(attempt_id, self._redis)
 
+            # Critical 2: verify user exists in DB before any writes
+            user_uuid = uuid.UUID(prior.user_id) if prior.user_id else None
+            if user_uuid is not None:
+                user_result = await self._db_session.execute(select(User).where(User.id == user_uuid))
+                if user_result.scalar_one_or_none() is None:
+                    await self._redis.delete(f"active_attempt:{http_session_id}")
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+                    )
+
             # Max retries: max_regenerate_attempts = regen clicks after original (default 3)
-            # Total allowed attempts = 1 (original) + max_regenerate_attempts
             next_attempt_number = (prior.attempt_number or 1) + 1
             max_regens = await self._get_max_regenerate_attempts()
             if next_attempt_number > max_regens + 1:
@@ -449,7 +477,6 @@ class QueryService:
             # Inv 1: evaluator gate
             eval_result = await self._evaluator.evaluate(new_sql, None)
             if not eval_result.passed:
-                # Store the failed attempt so the user can see why
                 new_attempt_id = str(uuid.uuid4())
                 failed_attempt = EphemeralAttempt(
                     attempt_id=new_attempt_id,
@@ -523,19 +550,26 @@ class QueryService:
             await store_attempt(new_attempt, http_session_id, self._redis)
             await self._redis.set(f"active_attempt:{http_session_id}", new_attempt_id)
 
-            # Auto-save regenerated result (idempotent)
-            # Resolve user and chat session from the previously persisted original attempt
-            user_uuid = uuid.UUID(prior.user_id) if prior.user_id else None
+            # Auto-save regenerated result (Option B: update prior saved row in-place)
+            # High 3: instead of creating a duplicate row, update the prior saved row
+            # with new SQL/results to avoid confusing duplicates in history.
             session_uuid = None
             if user_uuid is not None:
                 prior_saved = await self._repo.get_by_attempt_id(prior.attempt_id, user_uuid)
-                session_uuid = prior_saved.session_id if prior_saved else None
-            if session_uuid is not None:
-                result.session_id = str(session_uuid)
-            db_conn_id = await self._get_database_connection_id()
-            if user_uuid is not None:
-                existing = await self._repo.get_by_attempt_id(new_attempt_id, user_uuid)
-                if existing is None:
+                if prior_saved is not None:
+                    session_uuid = prior_saved.session_id
+                    # Update in-place: replace SQL, results, and attempt_id
+                    prior_saved.generated_sql = new_sql
+                    prior_saved.attempt_id = new_attempt_id
+                    prior_saved.result_columns = [c.model_dump() for c in column_metas]
+                    prior_saved.result_rows = rows
+                    prior_saved.result_row_count = len(rows)
+                    prior_saved.accepted_at = datetime.now(UTC)
+                    await self._db_session.flush()
+                    result.accepted_query_id = str(prior_saved.id)
+                else:
+                    # No prior row — create fresh
+                    db_conn_id = await self._get_database_connection_id()
                     saved_query = await self._repo.create(
                         user_id=user_uuid,
                         database_connection_id=uuid.UUID(db_conn_id),
@@ -543,7 +577,7 @@ class QueryService:
                         generated_sql=new_sql,
                         llm_provider=self._llm_provider,
                         attempt_id=new_attempt_id,
-                        session_id=session_uuid,
+                        session_id=None,
                         saved=True,
                         feedback=1,
                         result_columns=[c.model_dump() for c in column_metas],
@@ -551,9 +585,9 @@ class QueryService:
                         result_row_count=len(rows),
                     )
                     result.accepted_query_id = str(saved_query.id)
-                else:
-                    result.accepted_query_id = str(existing.id)
+                if session_uuid is not None:
+                    result.session_id = str(session_uuid)
 
             return result
         finally:
-            await self._release_lock(http_session_id)
+            await self._release_lock_if_owned(http_session_id, lock_owner)

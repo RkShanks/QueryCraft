@@ -1,12 +1,16 @@
 """FastAPI dependency injection wiring."""
 
+import uuid
 from collections.abc import AsyncGenerator
 
-from fastapi import Request
+from fastapi import Depends, HTTPException, Request, status
 from redis.asyncio import Redis
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.db.base import get_db as _get_db  # noqa: F401 — re-exported
+from app.db.models.user import User
 
 # Re-export get_db for convenience
 get_db = _get_db
@@ -51,8 +55,6 @@ async def get_current_user(request: Request) -> dict:
 
     This is a stub that reads session data set by the session middleware.
     """
-    from fastapi import HTTPException, status
-
     session_data = getattr(request.state, "session", None)
     if session_data is None:
         raise HTTPException(
@@ -60,3 +62,38 @@ async def get_current_user(request: Request) -> dict:
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
     return session_data
+
+
+async def require_active_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
+) -> str:
+    """Validate the Redis session user still exists in the database.
+
+    Returns the user_id (string) if the user exists.
+    If the user has been deleted, the stale Redis session is cleaned up
+    and a 401 is raised.
+
+    Use this dependency on any endpoint that creates or modifies data
+    keyed by user_id to prevent FK violations on stale sessions.
+    """
+    session = getattr(request.state, "session", None)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    user_id = uuid.UUID(session["user_id"])
+    result = await db.execute(select(User).where(User.id == user_id))
+    if result.scalar_one_or_none() is None:
+        session_id = getattr(request.state, "session_id", None)
+        if session_id:
+            await redis.delete(f"session:{session_id}")
+            request.state.session = None
+            request.state.session_id = None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    return session["user_id"]

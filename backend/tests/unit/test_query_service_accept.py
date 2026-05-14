@@ -61,8 +61,21 @@ class TestQueryServiceAccept:
         session_repo.update_last_activity = AsyncMock(return_value=True)
         session_repo.update_preview_text = AsyncMock(return_value=True)
         db_session = AsyncMock()
-        db_session.execute = AsyncMock(return_value=MagicMock(fetchone=MagicMock(return_value=(3,))))
         db_session.flush = AsyncMock()
+        _db_conn_id = "00000000-0000-0000-0000-000000000001"
+
+        def _execute_side_effect(stmt, *args, **kwargs):
+            async def _coro():
+                stmt_str = str(stmt)
+                if "database_connections" in stmt_str:
+                    return MagicMock(fetchone=MagicMock(return_value=(_db_conn_id,)))
+                if "FROM users" in stmt_str:
+                    return MagicMock(scalar_one_or_none=MagicMock(return_value=MagicMock(id=_db_conn_id)))
+                return MagicMock(fetchone=MagicMock(return_value=(3,)))
+
+            return _coro()
+
+        db_session.execute = _execute_side_effect
         return QueryService(
             accepted_query_repository=mock_repo,
             session_repository=session_repo,
@@ -90,7 +103,6 @@ class TestQueryServiceAccept:
             http_session_id="sess-1",
             user_id="550e8400-e29b-41d4-a716-446655440000",
             attempt_id="a-1",
-            database_connection_id="550e8400-e29b-41d4-a716-446655440001",
         )
         assert result.id == "q-1"
         mock_repo.create.assert_awaited_once()
@@ -106,7 +118,6 @@ class TestQueryServiceAccept:
                 http_session_id="sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
-                database_connection_id="550e8400-e29b-41d4-a716-446655440001",
             )
         assert exc_info.value.status_code == 422
 
@@ -130,7 +141,6 @@ class TestQueryServiceAccept:
                 http_session_id="sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
-                database_connection_id="550e8400-e29b-41d4-a716-446655440001",
             )
         assert exc_info.value.status_code == 400
 
@@ -146,7 +156,6 @@ class TestQueryServiceAccept:
                 http_session_id="sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
-                database_connection_id="550e8400-e29b-41d4-a716-446655440001",
             )
         assert exc_info.value.status_code == 409
         mock_repo.create.assert_not_called()
@@ -176,7 +185,21 @@ class TestQueryServiceAccept:
                 http_session_id="sess-1",
                 user_id="550e8400-e29b-41d4-a716-446655440000",
                 attempt_id="a-1",
-                database_connection_id="550e8400-e29b-41d4-a716-446655440001",
             )
         assert exc_info.value.status_code == 422
         mock_repo.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_accept_stale_user_raises_401(self, service, mock_repo, mock_redis):
+        """Accept with stale session user raises 401, not FK 500."""
+        mock_redis.get.side_effect = self._make_get()
+        # Override db_session to return None for user check
+        service._db_session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None)))
+        with pytest.raises(Exception) as exc_info:
+            await service.accept_query(
+                http_session_id="sess-1",
+                user_id="550e8400-e29b-41d4-a716-446655440000",
+                attempt_id="a-1",
+            )
+        assert exc_info.value.status_code == 401
+        mock_repo.create.assert_not_awaited()

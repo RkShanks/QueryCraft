@@ -34,7 +34,9 @@ async def test_submit_endpoint_forwards_chat_session_id():
     request = MockRequest(session={"user_id": "550e8400-e29b-41d4-a716-446655440000"}, session_id="http-sess-1")
     req = SubmitQuestionRequest(question="Follow-up", session_id="550e8400-e29b-41d4-a716-446655440002")
 
-    result = await submit_question(request=request, req=req, service=mock_service)
+    result = await submit_question(
+        request=request, req=req, user_id="550e8400-e29b-41d4-a716-446655440000", service=mock_service
+    )
 
     mock_service.submit_question.assert_awaited_once()
     call_kwargs = mock_service.submit_question.await_args.kwargs
@@ -58,7 +60,9 @@ async def test_submit_endpoint_forwards_none_chat_session_id_for_new_chat():
     request = MockRequest(session={"user_id": "550e8400-e29b-41d4-a716-446655440000"}, session_id="http-sess-1")
     req = SubmitQuestionRequest(question="New question")
 
-    result = await submit_question(request=request, req=req, service=mock_service)
+    result = await submit_question(
+        request=request, req=req, user_id="550e8400-e29b-41d4-a716-446655440000", service=mock_service
+    )
 
     mock_service.submit_question.assert_awaited_once()
     call_kwargs = mock_service.submit_question.await_args.kwargs

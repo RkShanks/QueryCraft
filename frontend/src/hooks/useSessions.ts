@@ -42,5 +42,11 @@ export const useDeleteSession = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
+    onError: () => {
+      // If DELETE fails (e.g. 500), refetch sessions to restore optimistic UI state.
+      // The session was hidden from the sidebar by the undo soft-delete mechanism;
+      // invalidating ensures the session reappears.
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    },
   });
 };

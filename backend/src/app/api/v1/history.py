@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, require_active_user
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.history import HistoryListResponse
 from app.services.history_service import HistoryService
@@ -22,17 +22,12 @@ async def list_history(
     request: Request,
     cursor: str | None = None,
     limit: int = Query(default=100, ge=1, le=1000),
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """GET /history — list accepted queries."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
     return await service.list_history(
-        user_id=session["user_id"],
+        user_id=user_id,
         cursor=cursor,
         limit=limit,
     )
@@ -42,32 +37,22 @@ async def list_history(
 async def get_history_entry(
     request: Request,
     query_id: uuid.UUID,
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """GET /history/{id} — single accepted query detail."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
-    return await service.get_detail(query_id, session["user_id"])
+    return await service.get_detail(query_id, user_id)
 
 
 @router.delete("/{query_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_history_entry(
     request: Request,
     query_id: uuid.UUID,
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """DELETE /history/{id} — delete a single saved query result."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
-    deleted = await service.delete_entry(query_id, session["user_id"])
+    deleted = await service.delete_entry(query_id, user_id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
