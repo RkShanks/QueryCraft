@@ -374,3 +374,64 @@ Self-discovered quirks rolled into `.devin/skills/querycraft-dev/SKILL.md`:
 **Next step**: create/merge the Wave 8.2 orchestration follow-up PR, then dispatch `/speckit.implement T-353..T-361` (Wave 8.3 Actions + Feedback + Settings). Dependencies are satisfied because Wave 8.2 is merged into `main`.
 
 ---
+
+### 2026-05-17 22:24 — review — Wave 10 closure smoke hardening PR #65
+
+**Type**: review
+**Actor**: orchestrator (Devin session 99ac2127)
+**Artifacts**: PR #65 (`phase-2/closure-smoke-hardening` → `main`), branch HEAD `4a04e0e3b810198c79caa4eb7a6d2b87bfdc7612`, initial reported HEAD `2370f3bb47992e8b15086c7ca31ee94d2c3a`, audit PR #64 (`audit/phase-2/full-chrome-devtools-mcp-smoke.md`)
+
+PR #64's Chrome DevTools MCP smoke audit blocked Phase 2 closure with 3 Critical + 4 High findings. Kimi opened PR #65 to harden the Wave 10 closure path. Orchestrator reviewed PR #65 diff and CI.
+
+Smoke findings reviewed:
+
+- CRIT-1 admin settings auth: `GET/PATCH /admin/settings` now use session-backed `require_admin_user()` and reject non-admin users with 403. `/admin/refresh-schema` remains protected by `X-Admin-Key`.
+- CRIT-2 settings UI: `SettingsPage` renders and saves both `llm_context_cap` (0..10) and `max_regenerate_attempts` (1..10), with localized validation.
+- CRIT-3 source DB connection seed: `_upsert_source_db_connection()` now inserts or updates the configured source DB connection on startup; `_get_database_connection_id()` raises controlled `error.sourceDbNotConfigured` instead of returning the nil UUID.
+- HIGH-1 admin credentials sync: `_sync_admin_user()` runs during lifespan startup to sync `.env` admin username/display name/password hash on existing dev volumes.
+- HIGH-2 sign-out UX: sidebar footer now exposes an accessible Sign Out button wired to `useSignOut()` / `POST /auth/sign-out`.
+- HIGH-3 frontend warning: `frontend/src/test/setup.ts` narrowly suppresses the known MSW/rettime EventTarget listener warning only.
+- HIGH-4 lint/i18n: locale JSONs updated and production strings remain routed through i18n.
+
+CI status from GitHub checks:
+
+- `backend-test`: PASS
+- `frontend-test`: PASS
+
+Kimi-reported gates:
+
+- Backend ruff check: pass
+- Backend ruff format check: pass
+- Backend unit pytest: 350 passed, 9 deselected
+- Frontend test: 222 passed
+- Frontend `NODE_OPTIONS=--trace-warnings npm run test -- --run`: clean, no MaxListeners warning
+- Frontend lint/typecheck/build/lint:css: pass
+
+Chrome DevTools MCP smoke evidence in Kimi report covered sign-in, `/settings` loading without `X-Admin-Key`, both settings values visible, settings PATCH/GET persistence, sign-out 204 + subsequent `/auth/me` 401, and no unexpected browser console/network 500s.
+
+Review outcome: implementation fixes match the Critical/High smoke blockers and CI is green, but PR #65 is **not yet merge-ready** due to OpenAPI contract drift found during review. `specs/001-core-text-to-sql/contracts/openapi.yaml` still lists `AdminKey` as a security scheme for `GET/PATCH /admin/settings` and still describes 403 as "Admin key required", even though backend behavior is now session/admin-role based. Orchestrator commented on PR #65 requesting that contract cleanup before merge.
+
+**Next step**: Kimi should push a small follow-up removing `AdminKey` from `/admin/settings` in OpenAPI and updating 403 descriptions to authenticated-admin/session role language. After CI remains green, PR #65 can be re-reviewed and then green-lit for merge. Phase 2 closure remains blocked until PR #65 lands.
+
+---
+
+### 2026-05-17 22:33 — review — PR #65 contract follow-up green-lit
+
+**Type**: review
+**Actor**: orchestrator (Devin session 99ac2127)
+**Artifacts**: PR #65 (`phase-2/closure-smoke-hardening` → `main`), follow-up HEAD `4249131fc8d2953dc9449b85ccc0f8c6ddb741bf`
+
+Kimi pushed the requested OpenAPI contract cleanup:
+
+- `GET /admin/settings` and `PATCH /admin/settings` now list only `sessionCookie` security.
+- Both `/admin/settings` 403 descriptions now say "Admin role required".
+- `/admin/refresh-schema` still retains `AdminKey`, preserving SC G-006.
+
+Orchestrator re-reviewed the contract slice and GitHub CI:
+
+- `backend-test`: PASS
+- `frontend-test`: PASS
+
+Review outcome: PR #65 is now green-lit for merge. All 7 Critical/High Chrome DevTools MCP smoke blockers are resolved, CI is green, and the OpenAPI contract now matches runtime behavior. Phase 2 closure can proceed after PR #65 merges and the final phase snapshot/log footer are produced.
+
+---
