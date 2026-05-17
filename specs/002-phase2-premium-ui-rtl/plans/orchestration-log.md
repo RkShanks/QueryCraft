@@ -7,6 +7,8 @@
 
 This file is the **source of truth for orchestration decisions and reviews** in Phase 2. When asked "why did we decide X?" or "what's the state of Wave Y?", check this file FIRST before re-reading spec/plan/tasks.
 
+---
+
 ## Entry format
 
 Every event in this log uses this template:
