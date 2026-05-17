@@ -582,6 +582,8 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   # ─────────────────────────── Admin ───────────────────────────
+  # NOTE: /admin/settings uses session-based admin role validation.
+  # X-Admin-Key is NOT required; the backend checks request.state.session.role.
   /admin/settings:
     get:
       operationId: getAdminSettings

@@ -258,21 +258,11 @@ export const updateFeedback = <ThrowOnError extends boolean = false>(options: Op
 });
 
 export const getAdminSettings = <ThrowOnError extends boolean = false>(options?: Options<GetAdminSettingsData, ThrowOnError>) => (options?.client ?? client).get<GetAdminSettingsResponses, GetAdminSettingsErrors, ThrowOnError>({
-    security: [{
-            in: 'header',
-            name: 'X-Admin-Key',
-            type: 'apiKey'
-        }],
     url: '/admin/settings',
     ...options
 });
 
 export const updateAdminSettings = <ThrowOnError extends boolean = false>(options: Options<UpdateAdminSettingsData, ThrowOnError>) => (options.client ?? client).patch<UpdateAdminSettingsResponses, UpdateAdminSettingsErrors, ThrowOnError>({
-    security: [{
-            in: 'header',
-            name: 'X-Admin-Key',
-            type: 'apiKey'
-        }],
     url: '/admin/settings',
     ...options,
     headers: {

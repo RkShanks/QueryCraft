@@ -9,9 +9,9 @@ vi.mock('../../hooks/useAdminSettings', () => ({
   useUpdateAdminSettings: vi.fn(),
 }));
 
-function mockSettings(data: { llm_context_cap?: number } = {}) {
+function mockSettings(data: { llm_context_cap?: number; max_regenerate_attempts?: number } = {}) {
   vi.mocked(useAdminSettings).mockReturnValue({
-    data: { llm_context_cap: 3, ...data },
+    data: { llm_context_cap: 3, max_regenerate_attempts: 3, ...data },
     isLoading: false,
     error: null,
   } as ReturnType<typeof useAdminSettings>);
@@ -35,9 +35,10 @@ describe('SettingsPage', () => {
     mockMutation();
   });
 
-  it('renders settings page with context cap input and save button', () => {
+  it('renders settings page with both fields and save button', () => {
     renderWithClient(<SettingsPage />);
     expect(screen.getByTestId('settings-llm-context-cap')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-max-regenerate-attempts')).toBeInTheDocument();
     expect(screen.getByTestId('settings-save-btn')).toBeInTheDocument();
   });
 
@@ -61,35 +62,59 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('settings-page-error')).toBeInTheDocument();
   });
 
-  it('calls mutate with saved context cap value on save', () => {
+  it('calls mutate with both values on save', () => {
     const mutate = vi.fn();
     mockMutation({ mutate });
     renderWithClient(<SettingsPage />);
-    const input = screen.getByTestId('settings-llm-context-cap') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '5' } });
+    const capInput = screen.getByTestId('settings-llm-context-cap') as HTMLInputElement;
+    const regenInput = screen.getByTestId('settings-max-regenerate-attempts') as HTMLInputElement;
+    fireEvent.change(capInput, { target: { value: '5' } });
+    fireEvent.change(regenInput, { target: { value: '4' } });
     fireEvent.click(screen.getByTestId('settings-save-btn'));
-    expect(mutate).toHaveBeenCalledWith({ llm_context_cap: 5 });
+    expect(mutate).toHaveBeenCalledWith({ llm_context_cap: 5, max_regenerate_attempts: 4 });
   });
 
-  it('rejects out-of-range value and shows validation error', () => {
+  it('rejects out-of-range context cap and shows validation error', () => {
     const mutate = vi.fn();
     mockMutation({ mutate });
     renderWithClient(<SettingsPage />);
     const input = screen.getByTestId('settings-llm-context-cap') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '15' } });
     fireEvent.click(screen.getByTestId('settings-save-btn'));
-    expect(screen.getByTestId('settings-input-error')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-context-cap-error')).toBeInTheDocument();
     expect(mutate).not.toHaveBeenCalled();
   });
 
-  it('rejects negative value and shows validation error', () => {
+  it('rejects negative context cap and shows validation error', () => {
     const mutate = vi.fn();
     mockMutation({ mutate });
     renderWithClient(<SettingsPage />);
     const input = screen.getByTestId('settings-llm-context-cap') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '-1' } });
     fireEvent.click(screen.getByTestId('settings-save-btn'));
-    expect(screen.getByTestId('settings-input-error')).toBeInTheDocument();
+    expect(screen.getByTestId('settings-context-cap-error')).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('rejects out-of-range max regenerate attempts', () => {
+    const mutate = vi.fn();
+    mockMutation({ mutate });
+    renderWithClient(<SettingsPage />);
+    const regenInput = screen.getByTestId('settings-max-regenerate-attempts') as HTMLInputElement;
+    fireEvent.change(regenInput, { target: { value: '15' } });
+    fireEvent.click(screen.getByTestId('settings-save-btn'));
+    expect(screen.getByTestId('settings-max-regen-error')).toBeInTheDocument();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('rejects below-1 max regenerate attempts', () => {
+    const mutate = vi.fn();
+    mockMutation({ mutate });
+    renderWithClient(<SettingsPage />);
+    const regenInput = screen.getByTestId('settings-max-regenerate-attempts') as HTMLInputElement;
+    fireEvent.change(regenInput, { target: { value: '0' } });
+    fireEvent.click(screen.getByTestId('settings-save-btn'));
+    expect(screen.getByTestId('settings-max-regen-error')).toBeInTheDocument();
     expect(mutate).not.toHaveBeenCalled();
   });
 

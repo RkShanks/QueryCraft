@@ -11,7 +11,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, require_admin_user
 from app.db.models.app_config import AppConfig
 from app.schemas.admin_settings import (
     AdminSettingsResponse,
@@ -90,11 +90,10 @@ async def refresh_schema(
 @router.get("/settings")
 async def get_settings_admin(
     request: Request,
-    x_admin_key: str | None = Header(None, alias="X-Admin-Key"),
+    _: str = Depends(require_admin_user),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    """GET /admin/settings — retrieve admin settings."""
-    _require_admin_key(x_admin_key)
+    """GET /admin/settings — retrieve admin settings via session cookie."""
     keys = ["llm_context_cap", "max_regenerate_attempts"]
     result = await db.execute(select(AppConfig).where(AppConfig.key.in_(keys)))
     rows = {row.key: int(row.value) for row in result.scalars().all()}
@@ -107,11 +106,10 @@ async def get_settings_admin(
 async def update_settings_admin(
     request: Request,
     req: UpdateAdminSettingsRequest,
-    x_admin_key: str | None = Header(None, alias="X-Admin-Key"),
+    _: str = Depends(require_admin_user),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    """PATCH /admin/settings — update admin settings."""
-    _require_admin_key(x_admin_key)
+    """PATCH /admin/settings — update admin settings via session cookie."""
     await db.execute(
         text(
             """

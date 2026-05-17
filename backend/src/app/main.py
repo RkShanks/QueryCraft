@@ -71,29 +71,66 @@ async def _check_alembic_drift(database_url: str) -> None:
         )
 
 
+async def _sync_admin_user(settings):
+    """Sync admin user credentials from .env on startup (dev/single-admin behavior).
+
+    Re-hashes the password so changes to ADMIN_PASSWORD in .env are picked up
+    even on an existing volume. Migrations do not rerun automatically.
+    """
+    from argon2 import PasswordHasher
+    from sqlalchemy import text
+    from sqlalchemy.exc import ProgrammingError
+
+    session_factory = get_async_session_factory()
+    ph = PasswordHasher()
+    password_hash = ph.hash(settings.ADMIN_PASSWORD)
+
+    try:
+        async with session_factory() as session:
+            await session.execute(
+                text(
+                    """
+                    INSERT INTO users (username, display_name, password_hash, role)
+                    VALUES (:username, :display_name, :password_hash, 'admin')
+                    ON CONFLICT (username) DO UPDATE SET
+                        display_name = EXCLUDED.display_name,
+                        password_hash = EXCLUDED.password_hash,
+                        updated_at = now()
+                    """
+                ),
+                {
+                    "username": settings.ADMIN_USERNAME,
+                    "display_name": settings.ADMIN_DISPLAY_NAME,
+                    "password_hash": password_hash,
+                },
+            )
+            await session.commit()
+            logger.info("admin_user_synced", username=settings.ADMIN_USERNAME)
+    except ProgrammingError:
+        logger.warning("users_table_missing", msg="Skipping admin sync. Run alembic upgrade head.")
+
+
 async def _upsert_source_db_connection(settings):
     """Upsert the source database connection row on startup."""
     from sqlalchemy import text
     from sqlalchemy.exc import ProgrammingError
 
-    # Initialize engine
     session_factory = get_async_session_factory()
 
     try:
         async with session_factory() as session:
-            # Check if connection already exists
             result = await session.execute(
                 text("SELECT id FROM database_connections WHERE name = :name"),
                 {"name": settings.SOURCE_DB_NAME},
             )
             existing = result.scalar_one_or_none()
 
+            encrypted_password = encrypt(
+                settings.SOURCE_DB_PASSWORD,
+                settings.PLATFORM_ENCRYPTION_KEY,
+            )
+
             if existing is None:
-                # Encrypt the source DB password
-                encrypted_password = encrypt(
-                    settings.SOURCE_DB_PASSWORD,
-                    settings.PLATFORM_ENCRYPTION_KEY,
-                )
                 await session.execute(
                     text("""
                         INSERT INTO database_connections (
@@ -114,7 +151,30 @@ async def _upsert_source_db_connection(settings):
                 await session.commit()
                 logger.info("source_db_connection_created", name=settings.SOURCE_DB_NAME)
             else:
-                logger.info("source_db_connection_exists", name=settings.SOURCE_DB_NAME)
+                await session.execute(
+                    text("""
+                        UPDATE database_connections
+                        SET host = :host,
+                            port = :port,
+                            database_name = :database_name,
+                            username = :username,
+                            encrypted_password = :encrypted_password,
+                            ssl_mode = :ssl_mode,
+                            updated_at = now()
+                        WHERE name = :name
+                    """),
+                    {
+                        "name": settings.SOURCE_DB_NAME,
+                        "host": settings.SOURCE_DB_HOST,
+                        "port": settings.SOURCE_DB_PORT,
+                        "database_name": settings.SOURCE_DB_NAME,
+                        "username": settings.SOURCE_DB_USER,
+                        "encrypted_password": encrypted_password,
+                        "ssl_mode": settings.SOURCE_DB_SSL_MODE,
+                    },
+                )
+                await session.commit()
+                logger.info("source_db_connection_updated", name=settings.SOURCE_DB_NAME)
     except ProgrammingError:
         logger.warning("database_connections_table_missing", msg="Skipping seed. Run alembic upgrade head.")
 

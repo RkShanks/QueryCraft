@@ -13,4 +13,5 @@ export {
   Settings,
   X,
   MessageSquare,
+  LogOut,
 } from 'lucide-react';

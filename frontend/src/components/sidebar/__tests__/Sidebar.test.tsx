@@ -30,7 +30,12 @@ vi.mock('../../../hooks/useSessions', () => ({
   useDeleteSession: vi.fn(),
 }));
 
+vi.mock('../../../hooks/useAuth', () => ({
+  useSignOut: vi.fn(),
+}));
+
 import { useSessionsList } from '../../../hooks/useSessions';
+import { useSignOut } from '../../../hooks/useAuth';
 
 function setup(sessions = mockSessions, isLoading = false) {
   (useSessionsList as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -40,6 +45,18 @@ function setup(sessions = mockSessions, isLoading = false) {
   return render(<Sidebar />, { wrapper: createWrapper() });
 }
 
+function setupSignOutMock(overrides: Record<string, unknown> = {}) {
+  const mutate = vi.fn();
+  (useSignOut as ReturnType<typeof vi.fn>).mockReturnValue({
+    mutate,
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+    ...overrides,
+  });
+  return mutate;
+}
+
 describe('Sidebar', () => {
   beforeEach(() => {
     useUIStore.getState().setActiveSessionId(null);
@@ -47,6 +64,7 @@ describe('Sidebar', () => {
       useUIStore.getState().toggleSidebar();
     }
     vi.clearAllMocks();
+    setupSignOutMock();
   });
 
   it('renders chronological session groups (Today / Previous 7 Days / Older)', () => {
@@ -128,5 +146,25 @@ describe('Sidebar', () => {
     expect(screen.getByText('Today')).toBeInTheDocument();
     expect(screen.queryByText('Previous 7 Days')).not.toBeInTheDocument();
     expect(screen.queryByText('Older')).not.toBeInTheDocument();
+  });
+
+  it('renders sign-out button', () => {
+    setup();
+    expect(screen.getByTestId('sidebar-sign-out')).toBeInTheDocument();
+  });
+
+  it('clicking sign-out calls sign-out mutation', () => {
+    const mutate = setupSignOutMock();
+    setup();
+    fireEvent.click(screen.getByTestId('sidebar-sign-out'));
+    expect(mutate).toHaveBeenCalled();
+  });
+
+  it('collapsed sidebar still exposes sign-out button', () => {
+    setup();
+    useUIStore.getState().toggleSidebar();
+    setup();
+    const buttons = screen.getAllByTestId('sidebar-sign-out');
+    expect(buttons.length).toBeGreaterThanOrEqual(1);
   });
 });
