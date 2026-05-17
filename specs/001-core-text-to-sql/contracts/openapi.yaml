@@ -592,7 +592,6 @@ paths:
       description: Returns current application settings including LLM context cap and regenerate attempts.
       security:
         - sessionCookie: []
-        - AdminKey: []
       responses:
         "200":
           description: Current admin settings.
@@ -607,7 +606,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
-          description: Admin key required.
+          description: Admin role required.
           content:
             application/json:
               schema:
@@ -619,7 +618,6 @@ paths:
       description: Updates application settings. Only provided fields are updated.
       security:
         - sessionCookie: []
-        - AdminKey: []
       requestBody:
         required: true
         content:
@@ -640,7 +638,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
-          description: Admin key required.
+          description: Admin role required.
           content:
             application/json:
               schema:
