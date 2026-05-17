@@ -3,6 +3,7 @@
 import asyncio
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -24,6 +25,17 @@ from app.schemas.query import (
     RefinePrompt,
     Violation,
 )
+
+
+def _sanitize_for_json(obj: Any) -> Any:
+    """Recursively convert Decimal (and other non-JSON types) to JSON-safe values."""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_for_json(item) for item in obj]
+    return obj
 
 
 class QueryService:
@@ -270,7 +282,7 @@ class QueryService:
                     saved=True,
                     feedback=1,
                     result_columns=[c.model_dump() for c in column_metas],
-                    result_rows=rows,
+                    result_rows=_sanitize_for_json(rows),
                     result_row_count=len(rows),
                 )
                 result.accepted_query_id = str(saved_query.id)
@@ -593,7 +605,7 @@ class QueryService:
                         saved=True,
                         feedback=1,
                         result_columns=[c.model_dump() for c in column_metas],
-                        result_rows=rows,
+                        result_rows=_sanitize_for_json(rows),
                         result_row_count=len(rows),
                     )
                     result.accepted_query_id = str(saved_query.id)
