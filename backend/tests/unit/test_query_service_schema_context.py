@@ -62,8 +62,11 @@ def _make_db_session():
 
     def _execute_side_effect(stmt, *args, **kwargs):
         async def _coro():
-            if "database_connections" in str(stmt):
+            stmt_str = str(stmt)
+            if "database_connections" in stmt_str:
                 return MagicMock(fetchone=MagicMock(return_value=(_DB_CONN_ID,)))
+            if "FROM users" in stmt_str:
+                return MagicMock(scalar_one_or_none=MagicMock(return_value=MagicMock(id=_DB_CONN_ID)))
             return MagicMock(fetchone=MagicMock(return_value=(3,)))
 
         return _coro()
@@ -78,14 +81,17 @@ async def test_submit_question_passes_schema_context():
     llm = StubLLM()
 
     class FakeRedis:
-        async def set(self, key, value, ex=None):
-            pass
+        async def set(self, key, value, nx=False, ex=None):
+            return True
 
         async def get(self, key):
             return None
 
         async def delete(self, key):
             pass
+
+        async def eval(self, script, num_keys, *args):
+            return 1
 
     session_repo = MagicMock()
     session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
@@ -104,14 +110,14 @@ async def test_submit_question_passes_schema_context():
     )
 
     # Bypass the lock by monkeypatching
-    async def _true(*args, **kwargs):
+    async def _acquire(*args, **kwargs):
+        return "test-owner"
+
+    async def _release(*args, **kwargs):
         return True
 
-    async def _none(*args, **kwargs):
-        pass
-
-    service._acquire_lock = _true
-    service._release_lock = _none
+    service._acquire_lock = _acquire
+    service._release_lock_if_owned = _release
 
     await service.submit_question("http-session-1", "550e8400-e29b-41d4-a716-446655440000", "How many customers?")
     assert len(llm.calls) == 1
@@ -135,11 +141,17 @@ async def test_regenerate_query_passes_schema_context():
     )
 
     class FakeRedis:
+        async def set(self, key, value, nx=False, ex=None):
+            return True
+
         async def get(self, key):
             return "attempt-1"
 
         async def delete(self, key):
             pass
+
+        async def eval(self, script, num_keys, *args):
+            return 1
 
     class FakeAttempt:
         attempt_id = "attempt-1"

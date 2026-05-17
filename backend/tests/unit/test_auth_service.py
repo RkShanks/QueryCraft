@@ -18,6 +18,7 @@ class TestAuthService:
     def mock_repo(self):
         repo = MagicMock()
         repo.get_by_username = AsyncMock()
+        repo.get_by_id = AsyncMock()
         return repo
 
     @pytest.fixture
@@ -61,10 +62,29 @@ class TestAuthService:
         mock_redis.delete.assert_awaited_once_with("session:session-123")
 
     @pytest.mark.asyncio
-    async def test_get_me_returns_profile(self, service, mock_redis):
+    async def test_get_me_returns_profile(self, service, mock_redis, mock_repo):
         mock_redis.get.return_value = (
             '{"user_id": "550e8400-e29b-41d4-a716-446655440000",'
             ' "username": "admin", "display_name": "Admin", "role": "admin"}'
         )
+        mock_repo.get_by_id.return_value = MagicMock(
+            id="550e8400-e29b-41d4-a716-446655440000",
+            username="admin",
+            display_name="Admin",
+            role="admin",
+        )
         profile = await service.get_me("session-123")
         assert profile.username == "admin"
+
+    @pytest.mark.asyncio
+    async def test_get_me_stale_session_deletes_key_and_raises_401(self, service, mock_redis, mock_repo):
+        """Stale Redis session (user_id absent from DB) deletes key and raises 401."""
+        mock_redis.get.return_value = (
+            '{"user_id": "550e8400-e29b-41d4-a716-446655440000",'
+            ' "username": "admin", "display_name": "Admin", "role": "admin"}'
+        )
+        mock_repo.get_by_id.return_value = None
+        with pytest.raises(Exception) as exc_info:
+            await service.get_me("session-123")
+        assert exc_info.value.status_code == 401
+        mock_redis.delete.assert_awaited_once_with("session:session-123")

@@ -2,10 +2,10 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, require_active_user
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.schemas.feedback import FeedbackResponse, UpdateFeedbackRequest
 
@@ -18,21 +18,15 @@ def _get_repo(db: AsyncSession = Depends(get_db)) -> AcceptedQueryRepository:  #
 
 @router.patch("/{attempt_id}", response_model=FeedbackResponse)
 async def update_feedback(
-    request: Request,
     attempt_id: uuid.UUID,
     req: UpdateFeedbackRequest,
+    user_id: str = Depends(require_active_user),  # noqa: B008
     repo: AcceptedQueryRepository = Depends(_get_repo),  # noqa: B008
 ):
     """PATCH /feedback/:attempt_id — update feedback on an accepted query."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
     updated = await repo.update_feedback(
         attempt_id,
-        uuid.UUID(session["user_id"]),
+        uuid.UUID(user_id),
         req.feedback,
         saved=req.saved,
     )

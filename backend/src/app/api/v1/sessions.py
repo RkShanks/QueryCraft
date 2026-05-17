@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, require_active_user
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.repositories.session_repository import SessionRepository
 from app.schemas.session import (
@@ -30,16 +30,11 @@ def _get_accepted_query_repo(db: AsyncSession = Depends(get_db)) -> AcceptedQuer
 async def create_session(
     request: Request,
     repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
 ):
     """POST /sessions — create a new session."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
     new_session = await repo.create(
-        user_id=uuid.UUID(session["user_id"]),
+        user_id=uuid.UUID(user_id),
     )
     return CreateSessionResponse(
         id=str(new_session.id),
@@ -52,15 +47,10 @@ async def create_session(
 async def list_sessions(
     request: Request,
     repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
 ):
     """GET /sessions — list sessions for the current user."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
-    items = await repo.list_by_user(uuid.UUID(session["user_id"]))
+    items = await repo.list_by_user(uuid.UUID(user_id))
     return SessionListResponse(
         items=[
             SessionSummary(
@@ -81,22 +71,17 @@ async def get_session(
     session_id: uuid.UUID,
     session_repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
     query_repo: AcceptedQueryRepository = Depends(_get_accepted_query_repo),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
 ):
     """GET /sessions/:id — get session detail with conversation history."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
-    user_id = uuid.UUID(session["user_id"])
-    sess = await session_repo.get_by_id(session_id, user_id)
+    user_uuid = uuid.UUID(user_id)
+    sess = await session_repo.get_by_id(session_id, user_uuid)
     if sess is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "not_found", "message_key": "error.notFound"},
         )
-    attempts = await query_repo.list_by_session(session_id, user_id)
+    attempts = await query_repo.list_by_session(session_id, user_uuid)
     return SessionDetail(
         id=str(sess.id),
         preview_text=sess.preview_text,
@@ -124,15 +109,10 @@ async def delete_session(
     request: Request,
     session_id: uuid.UUID,
     repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
 ):
     """DELETE /sessions/:id — delete a session (cascade deletes accepted_queries)."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
-    deleted = await repo.delete(session_id, uuid.UUID(session["user_id"]))
+    deleted = await repo.delete(session_id, uuid.UUID(user_id))
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

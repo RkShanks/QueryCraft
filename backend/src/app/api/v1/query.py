@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.validation import validate_body
 from app.core.config import get_settings
-from app.core.dependencies import get_db, get_redis
+from app.core.dependencies import get_db, get_redis, require_active_user
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
 from app.evaluator.pipeline import Evaluator
 from app.evaluator.rules.empty_sql import EmptySqlRule
@@ -70,6 +70,7 @@ async def _get_query_service(
 async def submit_question(
     request: Request,
     req: SubmitQuestionRequest = Depends(validate_body(SubmitQuestionRequest)),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
     """POST /query/submit — ask a question.
@@ -80,12 +81,6 @@ async def submit_question(
     response_model is intentionally omitted because the endpoint returns
     discriminated union shapes; openapi.yaml remains the source of truth.
     """
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
     stripped = req.question.strip()
     if not stripped:
         raise HTTPException(
@@ -99,7 +94,7 @@ async def submit_question(
         )
     result = await service.submit_question(
         http_session_id=request.state.session_id,
-        user_id=session["user_id"],
+        user_id=user_id,
         question=stripped,
         chat_session_id=req.session_id,
     )
@@ -115,32 +110,18 @@ async def submit_question(
 async def accept_query(
     request: Request,
     req: AcceptQueryRequest = Depends(validate_body(AcceptQueryRequest)),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
-    """POST /query/accept — persist the current result."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
-    attempt_id = req.attempt_id
-    # Use the first database_connection as the target (Phase 1 has exactly one)
-    from sqlalchemy import text
+    """POST /query/accept — persist the current result.
 
-    from app.db.base import get_async_session_factory
-
-    factory = get_async_session_factory()
-    async with factory() as db:
-        result = await db.execute(text("SELECT id FROM database_connections LIMIT 1"))
-        row = result.fetchone()
-        db_id = str(row[0]) if row else "00000000-0000-0000-0000-000000000000"
-
+    High 2: database_connection_id is now resolved inside QueryService.accept_query
+    via _get_database_connection_id() on the same request-scoped DB session.
+    """
     return await service.accept_query(
         http_session_id=request.state.session_id,
-        user_id=session["user_id"],
-        attempt_id=attempt_id,
-        database_connection_id=db_id,
+        user_id=user_id,
+        attempt_id=req.attempt_id,
         chat_session_id=req.session_id,
     )
 
@@ -149,15 +130,10 @@ async def accept_query(
 async def reject_query(
     request: Request,
     req: RejectQueryRequest = Depends(validate_body(RejectQueryRequest)),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
     """POST /query/reject — reject current result and trigger auto-retry."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
     try:
         return await service.reject_query(
             attempt_id=req.attempt_id,
@@ -179,15 +155,10 @@ async def reject_query(
 async def regenerate_query(
     request: Request,
     req: RegenerateQueryRequest = Depends(validate_body(RegenerateQueryRequest)),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
     """POST /query/regenerate — regenerate SQL with negative context."""
-    session = request.state.session
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-        )
     try:
         return await service.regenerate_query(
             attempt_id=req.attempt_id,

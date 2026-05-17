@@ -75,14 +75,19 @@ class TestQueryServiceSubmit:
 
         _db_conn_id = str(_uuid.UUID(int=0x1))
         # _get_llm_context_cap, _get_max_regenerate_attempts → (3,); _get_database_connection_id → (UUID,)
+        # User existence check → returns a user row by default
         call_counter = {"n": 0}
 
         def _execute_side_effect(stmt, *args, **kwargs):
             call_counter["n"] += 1
 
             async def _coro():
-                if "database_connections" in str(stmt):
+                stmt_str = str(stmt)
+                if "database_connections" in stmt_str:
                     return MagicMock(fetchone=MagicMock(return_value=(_db_conn_id,)))
+                if "FROM users" in stmt_str:
+                    # User existence check: return a user row by default
+                    return MagicMock(scalar_one_or_none=MagicMock(return_value=MagicMock(id=_db_conn_id)))
                 return MagicMock(fetchone=MagicMock(return_value=(3,)))
 
             return _coro()
@@ -177,6 +182,32 @@ class TestQueryServiceSubmit:
                 question="Another",
             )
         assert exc_info.value.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_submit_stale_user_raises_401(self, service, mock_db_session):
+        """Stale Redis session (user not in DB) raises 401, not FK violation 500."""
+
+        async def _no_user(*args, **kwargs):
+            return MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+
+        # Override the user existence check to return None (user not found)
+        original_side_effect = mock_db_session.execute
+
+        def _stale_user_side_effect(stmt, *args, **kwargs):
+            stmt_str = str(stmt)
+            if "FROM users" in stmt_str:
+                return _no_user()
+            return original_side_effect(stmt, *args, **kwargs)
+
+        mock_db_session.execute = _stale_user_side_effect
+
+        with pytest.raises(Exception) as exc_info:
+            await service.submit_question(
+                http_session_id="http-sess-1",
+                user_id="550e8400-e29b-41d4-a716-446655440999",  # non-existent user
+                question="Test question",
+            )
+        assert exc_info.value.status_code == 401
 
     @pytest.mark.lifecycle("lock")
     @pytest.mark.asyncio

@@ -41,6 +41,15 @@ class FakeRedis:
     async def flushdb(self) -> None:
         self._data.clear()
 
+    async def eval(self, script: str, num_keys: int, *args: str) -> int:
+        """Simple Lua script emulation for compare-and-delete (release_lock_if_owned)."""
+        key = args[0]
+        expected_owner = args[1]
+        if self._data.get(key) == expected_owner:
+            self._data.pop(key, None)
+            return 1
+        return 0
+
     async def aclose(self) -> None:
         pass
 

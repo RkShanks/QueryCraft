@@ -3,6 +3,7 @@
 import json
 import os
 import time
+import uuid
 
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
@@ -64,7 +65,11 @@ class AuthService:
         await self._redis.delete(f"session:{session_id}")
 
     async def get_me(self, session_id: str) -> UserProfile:
-        """Return the user profile for the given session."""
+        """Return the user profile for the given session.
+
+        Validates the user still exists in the database. If the user has been
+        deleted, the stale Redis session is cleaned up and a 401 is raised.
+        """
         raw = await self._redis.get(f"session:{session_id}")
         if raw is None:
             raise HTTPException(
@@ -72,9 +77,17 @@ class AuthService:
                 detail={"error": "unauthorized", "message_key": "error.unauthorized"},
             )
         data = json.loads(raw)
+        user_id = uuid.UUID(data["user_id"])
+        user = await self._repo.get_by_id(user_id)
+        if user is None:
+            await self._redis.delete(f"session:{session_id}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+            )
         return UserProfile(
-            id=data["user_id"],
-            username=data["username"],
-            display_name=data["display_name"],
-            role=data["role"],
+            id=str(user.id),
+            username=user.username,
+            display_name=user.display_name,
+            role=user.role,
         )
