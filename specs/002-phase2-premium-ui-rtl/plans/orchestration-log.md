@@ -414,3 +414,24 @@ Review outcome: implementation fixes match the Critical/High smoke blockers and 
 **Next step**: Kimi should push a small follow-up removing `AdminKey` from `/admin/settings` in OpenAPI and updating 403 descriptions to authenticated-admin/session role language. After CI remains green, PR #65 can be re-reviewed and then green-lit for merge. Phase 2 closure remains blocked until PR #65 lands.
 
 ---
+
+### 2026-05-17 22:33 — review — PR #65 contract follow-up green-lit
+
+**Type**: review
+**Actor**: orchestrator (Devin session 99ac2127)
+**Artifacts**: PR #65 (`phase-2/closure-smoke-hardening` → `main`), follow-up HEAD `4249131fc8d2953dc9449b85ccc0f8c6ddb741bf`
+
+Kimi pushed the requested OpenAPI contract cleanup:
+
+- `GET /admin/settings` and `PATCH /admin/settings` now list only `sessionCookie` security.
+- Both `/admin/settings` 403 descriptions now say "Admin role required".
+- `/admin/refresh-schema` still retains `AdminKey`, preserving SC G-006.
+
+Orchestrator re-reviewed the contract slice and GitHub CI:
+
+- `backend-test`: PASS
+- `frontend-test`: PASS
+
+Review outcome: PR #65 is now green-lit for merge. All 7 Critical/High Chrome DevTools MCP smoke blockers are resolved, CI is green, and the OpenAPI contract now matches runtime behavior. Phase 2 closure can proceed after PR #65 merges and the final phase snapshot/log footer are produced.
+
+---
