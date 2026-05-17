@@ -34,6 +34,9 @@ async def lifespan(app: FastAPI):
     # Upsert database_connections row for the source DB
     await _upsert_source_db_connection(settings)
 
+    # Sync admin user credentials from .env (dev/single-admin: picks up changes)
+    await _sync_admin_user(settings)
+
     yield
 
     # Shutdown
