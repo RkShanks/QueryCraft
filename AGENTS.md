@@ -360,6 +360,16 @@ cd ../frontend && npm run build
 
 If any gate fails, STOP. Fix the code (NOT the tests, unless the test is genuinely wrong). Do not push broken code. Do not report "complete" with a failing gate.
 
+### Step 5b — Browser feature smoke with Chrome DevTools MCP
+
+For any user-facing feature or frontend-visible behavior change, run a browser smoke test through the Chrome DevTools MCP after the app is built and served. This is required in addition to unit/component tests because Wave 10 found Docker/browser-state bugs that mocked tests missed.
+
+- Use the Chrome DevTools MCP to drive the real app in Chrome, inspect console/network failures, and verify the changed UI behavior end-to-end.
+- Exercise the feature's golden path and at least one relevant failure/stale-state path when applicable (auth expiry, deleted session, failed delete, regenerate exhaustion, RTL/i18n, etc.).
+- Record the exact manual scenario in the PR report: route visited, user action, expected result, observed result, and any console/network errors.
+- If the feature requires the Docker stack, use `./scripts/dev-up.sh --rebuild` after pulling/rebuilding so the browser tests run against the current image and migrations.
+- If Chrome DevTools MCP is unavailable, state that explicitly in the Wave Final Report and fall back to Playwright/computer-use/manual browser testing. Do not silently skip browser validation.
+
 ### Step 6 — Push after every sub-wave (do not hoard locally)
 
 ```bash

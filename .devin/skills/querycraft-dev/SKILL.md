@@ -7,6 +7,7 @@ When working on the QueryCraft repo (Phase 1 text-to-SQL platform), the items be
 - **NEVER run `npm install` or `npm ci` from the repo root.** This pollutes the root with a stray `node_modules/` and causes "two different versions of @playwright/test" errors. Always `cd frontend/` first.
 - **Playwright browsers persist across PC restarts** because `package.json` has a postinstall hook: `"postinstall": "playwright install chromium"`. After `npm ci` in `frontend/`, browsers auto-install to `~/.cache/ms-playwright/` (WSL-persistent).
 - **Playwright OS deps** are usually already present in the standard dev environment. If they're missing on a fresh WSL install, run `sudo npx playwright install --with-deps chromium` (the `--with-deps` flag requires sudo). Without sudo, plain `npx playwright install chromium` still works if OS deps are satisfied.
+- **Use Chrome DevTools MCP for frontend-visible feature smoke tests.** For any user-facing feature or browser-visible behavior change, drive the real app with Chrome DevTools MCP after build/serve, inspect console/network failures, and record the route, user action, expected result, observed result, and any errors in the final report. If the MCP is unavailable, state that explicitly and fall back to Playwright/computer-use/manual browser testing; do not silently skip browser validation.
 
 ## Backend tooling
 
