@@ -113,6 +113,7 @@
   "error.timeout": "The query timed out. Please try a simpler question.",
   "error.forbidden": "This request was blocked for security reasons.",
   "error.notFound": "The requested resource was not found.",
+  "error.sourceDbNotConfigured": "Source database connection is not configured. Please check your environment settings.",
   "error.invalidCursor": "Invalid pagination cursor.",
   "error.schemaTokenLimit": "The database schema is too large ({{tokens}} tokens, limit {{limit}}). Please contact your administrator.",
   "error.acceptConflict": "This query is already being accepted.",

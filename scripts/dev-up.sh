@@ -53,6 +53,10 @@ case "${1:-}" in
     ensure_env
     $COMPOSE build --no-cache backend
     $COMPOSE up -d --force-recreate
+    echo "[dev-up] waiting for backend healthy..."
+    wait_healthy
+    echo "[dev-up] running alembic upgrade head"
+    $COMPOSE exec -T backend alembic upgrade head
     ;;
   *)
     ensure_env

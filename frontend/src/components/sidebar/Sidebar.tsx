@@ -1,7 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../stores/uiStore';
 import { useSessionsList } from '../../hooks/useSessions';
+import { useSignOut } from '../../hooks/useAuth';
 import { SessionItem } from './SessionItem';
 import { UndoToast, type UndoToastItem } from './UndoToast';
 import {
@@ -9,6 +11,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
+  LogOut,
 } from '../icons';
 import './Sidebar.css';
 
@@ -44,11 +47,13 @@ function groupSessionsByDate(
 
 export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const activeSessionId = useUIStore((state) => state.activeSessionId);
   const setActiveSessionId = useUIStore((state) => state.setActiveSessionId);
   const [toasts, setToasts] = React.useState<UndoToastItem[]>([]);
+  const signOutMutation = useSignOut();
 
   const { data, isLoading } = useSessionsList();
   const deletingSessionIds = React.useMemo(() => new Set(toasts.map((t) => t.sessionId)), [toasts]);
@@ -85,6 +90,14 @@ export const Sidebar: React.FC = () => {
 
   const handleToastExpired = (toastId: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== toastId));
+  };
+
+  const handleSignOut = () => {
+    signOutMutation.mutate(undefined as never, {
+      onSuccess: () => {
+        navigate('/sign-in');
+      },
+    });
   };
 
   return (
@@ -179,6 +192,19 @@ export const Sidebar: React.FC = () => {
               ))}
           </>
         )}
+      </div>
+
+      <div className="sidebar-footer">
+        <button
+          className="sidebar-sign-out-btn"
+          onClick={handleSignOut}
+          aria-label={t('nav.signOut')}
+          data-testid="sidebar-sign-out"
+          disabled={signOutMutation.isPending}
+        >
+          <LogOut className="w-4 h-4" />
+          {!sidebarCollapsed && t('nav.signOut')}
+        </button>
       </div>
 
       <div className="undo-toast-container">

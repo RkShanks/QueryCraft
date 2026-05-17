@@ -6,9 +6,29 @@ import { server } from './server';
 import { resetQueryScenarios } from './handlers';
 import { client } from '../api/generated/client.gen';
 
+// MSW (via rettime) registers multiple abort listeners on a shared AbortSignal
+// across parallel Vitest workers. The Node.js EventTarget polyfill has a default
+// max of 10 listeners, triggering a warning that is not actionable for test setups.
+// We suppress only this specific warning rather than silencing all warnings.
+// This runs only in the Vitest jsdom environment where process exists.
+const g = globalThis as Record<string, unknown>;
+if (typeof g.process === 'object' && g.process !== null) {
+  const proc = g.process as { emitWarning?: (warning: string | Error, ...rest: unknown[]) => void };
+  const _origEmitWarning = proc.emitWarning;
+  if (_origEmitWarning) {
+    proc.emitWarning = (warning: string | Error, ...rest: unknown[]) => {
+      const msg = typeof warning === 'string' ? warning : warning.message;
+      if (msg.includes('Possible EventTarget memory leak detected')) {
+        return;
+      }
+      _origEmitWarning(warning, ...rest);
+    };
+  }
+}
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
-  client.setConfig({ baseUrl: 'http://localhost:3000/api/v1' }); 
+  client.setConfig({ baseUrl: 'http://localhost:3000/api/v1' });
 });
 
 import en from '../locales/en.json';

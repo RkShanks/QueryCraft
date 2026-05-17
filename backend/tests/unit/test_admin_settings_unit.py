@@ -31,11 +31,11 @@ async def test_patch_settings_binds_both_params():
 
     db.execute = _capture_execute
 
-    with patch("app.api.v1.admin._require_admin_key", return_value=None):
+    with patch("app.api.v1.admin.require_admin_user", return_value="admin"):
         await update_settings_admin(
             request=request,
             req=req,
-            x_admin_key="test-key",
+            _="admin",
             db=db,
         )
 

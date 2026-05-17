@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminSettings, useUpdateAdminSettings } from '../hooks/useAdminSettings';
@@ -5,35 +6,62 @@ import './SettingsPage.css';
 
 const SettingsForm: React.FC<{
   initialCap: number;
+  initialMaxRegen: number;
   updateMutation: ReturnType<typeof useUpdateAdminSettings>;
-}> = ({ initialCap, updateMutation }) => {
+}> = ({ initialCap, initialMaxRegen, updateMutation }) => {
   const { t } = useTranslation();
   const [contextCap, setContextCap] = useState<number>(initialCap);
-  const [inputError, setInputError] = useState<string | null>(null);
+  const [maxRegen, setMaxRegen] = useState<number>(initialMaxRegen);
+  const [contextCapError, setContextCapError] = useState<string | null>(null);
+  const [maxRegenError, setMaxRegenError] = useState<string | null>(null);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleContextCapChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value, 10);
     if (isNaN(val) || e.target.value === '') {
-      setInputError(null);
+      setContextCapError(null);
       setContextCap(NaN);
       return;
     }
     if (val < 0 || val > 10) {
-      setInputError(t('admin.settings.contextCapHelp'));
+      setContextCapError(t('admin.settings.contextCapHelp'));
     } else {
-      setInputError(null);
+      setContextCapError(null);
     }
     setContextCap(val);
   }, [t]);
 
-  const handleSave = useCallback(() => {
-    if (isNaN(contextCap) || contextCap < 0 || contextCap > 10) {
-      setInputError(t('admin.settings.contextCapHelp'));
+  const handleMaxRegenChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10);
+    if (isNaN(val) || e.target.value === '') {
+      setMaxRegenError(null);
+      setMaxRegen(NaN);
       return;
     }
-    setInputError(null);
-    updateMutation.mutate({ llm_context_cap: contextCap });
-  }, [contextCap, updateMutation, t]);
+    if (val < 1 || val > 10) {
+      setMaxRegenError(t('admin.settings.maxRegenerateAttemptsHelp'));
+    } else {
+      setMaxRegenError(null);
+    }
+    setMaxRegen(val);
+  }, [t]);
+
+  const handleSave = useCallback(() => {
+    let valid = true;
+    if (isNaN(contextCap) || contextCap < 0 || contextCap > 10) {
+      setContextCapError(t('admin.settings.contextCapHelp'));
+      valid = false;
+    } else {
+      setContextCapError(null);
+    }
+    if (isNaN(maxRegen) || maxRegen < 1 || maxRegen > 10) {
+      setMaxRegenError(t('admin.settings.maxRegenerateAttemptsHelp'));
+      valid = false;
+    } else {
+      setMaxRegenError(null);
+    }
+    if (!valid) return;
+    updateMutation.mutate({ llm_context_cap: contextCap, max_regenerate_attempts: maxRegen });
+  }, [contextCap, maxRegen, updateMutation, t]);
 
   const showSuccess = updateMutation.isSuccess;
 
@@ -51,25 +79,48 @@ const SettingsForm: React.FC<{
           min={0}
           max={10}
           value={isNaN(contextCap) ? '' : contextCap}
-          onChange={handleInputChange}
+          onChange={handleContextCapChange}
           data-testid="settings-llm-context-cap"
         />
-        {inputError && (
-          <p className="settings-field-error" data-testid="settings-input-error">
-            {inputError}
-          </p>
-        )}
-        {showSuccess && (
-          <p className="settings-success" data-testid="settings-success-msg">
-            {t('admin.settings.saved')}
-          </p>
-        )}
-        {updateMutation.isError && (
-          <p className="settings-error" data-testid="settings-error-msg">
-            {t('admin.settings.error')}
+        {contextCapError && (
+          <p className="settings-field-error" data-testid="settings-context-cap-error">
+            {contextCapError}
           </p>
         )}
       </div>
+
+      <div className="settings-field">
+        <label htmlFor="max-regenerate-attempts" className="settings-label">
+          {t('admin.settings.maxRegenerateAttempts')}
+        </label>
+        <p className="settings-help">{t('admin.settings.maxRegenerateAttemptsHelp')}</p>
+        <input
+          id="max-regenerate-attempts"
+          className="settings-input"
+          type="number"
+          min={1}
+          max={10}
+          value={isNaN(maxRegen) ? '' : maxRegen}
+          onChange={handleMaxRegenChange}
+          data-testid="settings-max-regenerate-attempts"
+        />
+        {maxRegenError && (
+          <p className="settings-field-error" data-testid="settings-max-regen-error">
+            {maxRegenError}
+          </p>
+        )}
+      </div>
+
+      {showSuccess && (
+        <p className="settings-success" data-testid="settings-success-msg">
+          {t('admin.settings.saved')}
+        </p>
+      )}
+      {updateMutation.isError && (
+        <p className="settings-error" data-testid="settings-error-msg">
+          {t('admin.settings.error')}
+        </p>
+      )}
 
       <button
         className="settings-save-btn"
@@ -108,8 +159,9 @@ export const SettingsPage: React.FC = () => {
     <div className="settings-page" data-testid="settings-page">
       <h1 className="settings-title">{t('admin.settings.title')}</h1>
       <SettingsForm
-        key={`cap-${settings?.llm_context_cap ?? 3}`}
+        key={`cap-${settings?.llm_context_cap ?? 3}-regen-${settings?.max_regenerate_attempts ?? 3}`}
         initialCap={settings?.llm_context_cap ?? 3}
+        initialMaxRegen={settings?.max_regenerate_attempts ?? 3}
         updateMutation={updateMutation}
       />
     </div>

@@ -81,10 +81,22 @@ class QueryService:
         return 3
 
     async def _get_database_connection_id(self) -> str:
-        """Return first database_connection id (Phase 1: single DB)."""
+        """Return first database_connection id (Phase 1: single DB).
+
+        Raises:
+            HTTPException 500 if no database_connections row exists.
+        """
         result = await self._db_session.execute(text("SELECT id FROM database_connections LIMIT 1"))
         row = result.fetchone()
-        return str(row[0]) if row else "00000000-0000-0000-0000-000000000000"
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "error": "config_error",
+                    "message_key": "error.sourceDbNotConfigured",
+                },
+            )
+        return str(row[0])
 
     async def submit_question(
         self,

@@ -107,6 +107,39 @@
   color: var(--color-obsidian-500);
 }
 
+.sidebar-footer {
+  flex-shrink: 0;
+  padding-block-start: 0.5rem;
+  border-block-start: 1px solid var(--color-obsidian-800);
+}
+
+.sidebar-sign-out-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-obsidian-400);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.sidebar-sign-out-btn:hover {
+  color: var(--color-obsidian-200);
+  background-color: var(--color-obsidian-800);
+}
+
+.sidebar-sign-out-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .undo-toast-container {
   position: fixed;
   inset-block-end: 1rem;

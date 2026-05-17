@@ -97,3 +97,41 @@ async def require_active_user(
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
     return session["user_id"]
+
+
+async def require_admin_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
+) -> str:
+    """Like require_active_user but also checks admin role. Returns user_id.
+
+    Raises:
+        HTTPException 401: no session, stale session, or user not found.
+        HTTPException 403: user is not an admin.
+    """
+    session = getattr(request.state, "session", None)
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    user_id = uuid.UUID(session["user_id"])
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        session_id = getattr(request.state, "session_id", None)
+        if session_id:
+            await redis.delete(f"session:{session_id}")
+            request.state.session = None
+            request.state.session_id = None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "forbidden", "message_key": "error.forbidden"},
+        )
+    return session["user_id"]
