@@ -34,6 +34,15 @@ vi.mock('../../../hooks/useAuth', () => ({
   useSignOut: vi.fn(),
 }));
 
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 import { useSessionsList } from '../../../hooks/useSessions';
 import { useSignOut } from '../../../hooks/useAuth';
 
@@ -166,5 +175,35 @@ describe('Sidebar', () => {
     setup();
     const buttons = screen.getAllByTestId('sidebar-sign-out');
     expect(buttons.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders History and Settings nav buttons in expanded sidebar', () => {
+    setup();
+    expect(screen.getByTestId('sidebar-nav-history')).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-nav-settings')).toBeInTheDocument();
+    expect(screen.getByText('History')).toBeInTheDocument();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
+  });
+
+  it('clicking History navigates to /history', () => {
+    setup();
+    fireEvent.click(screen.getByTestId('sidebar-nav-history'));
+    expect(mockNavigate).toHaveBeenCalledWith('/history');
+  });
+
+  it('clicking Settings navigates to /settings', () => {
+    setup();
+    fireEvent.click(screen.getByTestId('sidebar-nav-settings'));
+    expect(mockNavigate).toHaveBeenCalledWith('/settings');
+  });
+
+  it('collapsed sidebar exposes History and Settings buttons by aria-label', () => {
+    setup();
+    useUIStore.getState().toggleSidebar();
+    setup();
+    const historyButtons = screen.getAllByLabelText('History');
+    const settingsButtons = screen.getAllByLabelText('Settings');
+    expect(historyButtons.length).toBeGreaterThanOrEqual(1);
+    expect(settingsButtons.length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -11,6 +11,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
+  Settings,
+  MessageSquare,
   LogOut,
 } from '../icons';
 import './Sidebar.css';
@@ -127,6 +129,27 @@ export const Sidebar: React.FC = () => {
         >
           <Plus className="w-4 h-4" />
           {!sidebarCollapsed && t('sidebar.newChat')}
+        </button>
+      </div>
+
+      <div className="sidebar-nav-buttons">
+        <button
+          className="sidebar-nav-btn"
+          onClick={() => navigate('/history')}
+          aria-label={t('nav.history')}
+          data-testid="sidebar-nav-history"
+        >
+          <MessageSquare className="w-4 h-4" />
+          {!sidebarCollapsed && t('nav.history')}
+        </button>
+        <button
+          className="sidebar-nav-btn"
+          onClick={() => navigate('/settings')}
+          aria-label={t('nav.settings')}
+          data-testid="sidebar-nav-settings"
+        >
+          <Settings className="w-4 h-4" />
+          {!sidebarCollapsed && t('nav.settings')}
         </button>
       </div>
 

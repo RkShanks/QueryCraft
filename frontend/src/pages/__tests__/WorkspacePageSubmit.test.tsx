@@ -52,6 +52,18 @@ describe('WorkspacePage first-submit UX', () => {
   }, 10000);
 
   it('renders Delete button on result turn when accepted_query_id is returned', async () => {
+    server.use(
+      http.get('/api/v1/sessions/:sessionId', async () => {
+        return HttpResponse.json({
+          id: '550e8400-e29b-41d4-a716-446655440003',
+          preview_text: '',
+          created_at: new Date().toISOString(),
+          last_activity_at: new Date().toISOString(),
+          attempts: [],
+        }, { status: 200 });
+      }),
+    );
+
     renderWithClient(<WorkspacePage />);
     await typeAndSubmit('How many actors?');
 
