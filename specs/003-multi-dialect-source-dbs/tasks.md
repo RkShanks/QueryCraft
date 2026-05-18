@@ -83,7 +83,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Driver Dependencies & Docs
 
-- [ ] T-418 Add `asyncmy` and `aioodbc` to `backend/pyproject.toml` dependencies; document MSSQL system deps (`unixODBC`, `freetds-dev`, `tdsodbc`) in `Dockerfile`, `docker-compose.yml`, and `README.md` (ADR-10)
+- [X] T-418 Add `asyncmy` and `aioodbc` to `backend/pyproject.toml` dependencies; document MSSQL system deps (`unixODBC`, `freetds-dev`, `tdsodbc`) in `Dockerfile`, `docker-compose.yml`, and `README.md` (ADR-10)
 
 ### Source DB Adapter Abstraction
 
