@@ -94,7 +94,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Schema Introspection
 
-- [ ] T-423 Create `ConnectionSchemaEntry` ORM model in `backend/src/app/db/models/connection_schema.py` (table `connection_schema_entries`, cascade delete) (FR-065, FR-066)
+- [X] T-423 Create `ConnectionSchemaEntry` ORM model in `backend/src/app/db/models/connection_schema.py` (table `connection_schema_entries`, cascade delete) (FR-065, FR-066)
 - [ ] T-424 Implement `SchemaIntrospector` strategy pattern in `backend/src/app/source_db/schema_introspector.py`: per-dialect `information_schema` queries for PG/MySQL/MSSQL, full-replace refresh logic (FR-065, FR-066, ADR-11)
 - [ ] T-425 Implement auto-introspect pipeline in `ConnectionService`: on first save → health check → introspect; mark status accordingly (FR-093)
 - [ ] T-426 Add admin schema endpoints: `POST .../refresh-schema` and `GET .../schema` in `backend/src/app/api/v1/admin_connections.py` (FR-066, FR-067, FR-068)
