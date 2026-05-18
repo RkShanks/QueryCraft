@@ -113,7 +113,7 @@ Wave Final Reports MUST include red/green evidence per task.
 ### Prompt Builder & Query Flow
 
 - [X] T-432 Update `prompt_builder.py` in `backend/src/app/llm/prompt_builder.py`: add `target_dialect` parameter, include `TARGET_DIALECT:` instruction, include only selected connection's schema (FR-070)
-- [ ] T-433 Update `POST /api/v1/query/submit` in `backend/src/app/api/v1/query.py`: require `connection_id`, validate connection state (active + healthy + introspected), store on attempt; route query to correct adapter (FR-075, FR-094)
+- [X] T-433 Update `POST /api/v1/query/submit` in `backend/src/app/api/v1/query.py`: require `connection_id`, validate connection state (active + healthy + introspected), store on attempt; route query to correct adapter (FR-075, FR-094)
 - [ ] T-434 Add `PATCH /api/v1/sessions/{session_id}/connection` endpoint in `backend/src/app/api/v1/sessions.py` (FR-094)
 - [ ] T-435 Write query flow tests: submit with connection_id, schema isolation (only selected connection's schema in prompt), disabled connection blocked, retry exhaustion → error card in `backend/tests/unit/api/test_query_connection_routing.py` (SC-027, SC-035)
 
