@@ -71,3 +71,22 @@ class ConnectionListResponse(BaseModel):
     """Response body for listing connections."""
 
     connections: list[ConnectionResponse]
+
+
+class UserConnectionResponse(BaseModel):
+    """Minimal user-facing connection response (T-428, FR-077).
+
+    Only id, display_name, and database_type. No host/port/credentials.
+    """
+
+    id: UUID
+    display_name: str
+    database_type: DatabaseType
+
+    model_config = {"from_attributes": True}
+
+
+class UserConnectionListResponse(BaseModel):
+    """Response body for user-facing connection list."""
+
+    connections: list[UserConnectionResponse]

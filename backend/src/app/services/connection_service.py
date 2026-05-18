@@ -15,7 +15,14 @@ from app.core.exceptions import QueryCraftError
 from app.db.models.database_connection import SourceDatabaseConnection
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 from app.repositories.connection_repository import ConnectionRepository
-from app.schemas.connection import ConnectionCreate, ConnectionResponse, ConnectionTestResult, ConnectionUpdate
+from app.schemas.connection import (
+    ConnectionCreate,
+    ConnectionResponse,
+    ConnectionTestResult,
+    ConnectionUpdate,
+    UserConnectionListResponse,
+    UserConnectionResponse,
+)
 
 
 class ConnectionReferencedError(QueryCraftError):
@@ -142,6 +149,23 @@ class ConnectionService:
         """List all connections."""
         connections = await self._repo.list_all()
         return [ConnectionResponse.model_validate(c) for c in connections]
+
+    async def list_user_available(self) -> UserConnectionListResponse:
+        """List connections available for user selection (T-428, FR-077).
+
+        Returns only active + healthy + successfully introspected connections
+        with minimal payload (id, display_name, database_type).
+        """
+        connections = await self._repo.list_user_available()
+        items = [
+            UserConnectionResponse(
+                id=c.id,
+                display_name=c.display_name,
+                database_type=c.database_type,
+            )
+            for c in connections
+        ]
+        return UserConnectionListResponse(connections=items)
 
     async def update(self, connection_id: uuid.UUID, req: ConnectionUpdate) -> ConnectionResponse:
         """Update an existing connection."""
