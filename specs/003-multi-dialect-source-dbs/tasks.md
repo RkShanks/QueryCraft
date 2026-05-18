@@ -123,7 +123,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Backend Gates
 
-- [ ] T-437 Run backend foundation gates and paste verbatim output:
+- [X] T-437 Run backend foundation gates and paste verbatim output:
   - `cd backend && uv run ruff check src tests`
   - `cd backend && uv run ruff format --check src tests`
   - `cd backend && uv run pytest -q -m "not integration"`
