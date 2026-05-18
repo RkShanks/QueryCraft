@@ -26,6 +26,11 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN groupadd --system app && useradd --system --gid app --create-home app
 
+# MSSQL ODBC driver system dependencies (ADR-10)
+RUN apt-get update && apt-get install -y \
+    unixodbc unixodbc-dev freetds-dev tdsodbc \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=builder --chown=app:app /app/.venv /app/.venv

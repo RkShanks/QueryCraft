@@ -1,6 +1,24 @@
 # QueryCraft — Text-to-SQL Analytics Platform
 
-Enterprise-grade, secure, LLM-agnostic analytics platform for querying PostgreSQL databases using natural language.
+Enterprise-grade, secure, LLM-agnostic analytics platform for querying PostgreSQL, MySQL, and MSSQL databases using natural language.
+
+## Supported Source Databases
+
+| Database | Driver | Default Port |
+|----------|--------|-------------|
+| PostgreSQL | `asyncpg` | 5432 |
+| MySQL | `asyncmy` | 3306 |
+| MSSQL | `aioodbc` | 1433 |
+
+### MSSQL System Dependencies (Linux)
+
+The MSSQL adapter requires ODBC driver libraries. On Debian/Ubuntu-based systems:
+
+```bash
+apt-get install -y unixodbc unixodbc-dev freetds-dev tdsodbc
+```
+
+These are pre-installed in the Docker image (see `backend/Dockerfile`). macOS users can install via Homebrew: `brew install unixodbc freetds`.
 
 ## Monorepo Structure
 
