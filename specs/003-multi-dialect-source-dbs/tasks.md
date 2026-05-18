@@ -98,7 +98,7 @@ Wave Final Reports MUST include red/green evidence per task.
 - [X] T-424 Implement `SchemaIntrospector` strategy pattern in `backend/src/app/source_db/schema_introspector.py`: per-dialect `information_schema` queries for PG/MySQL/MSSQL, full-replace refresh logic (FR-065, FR-066, ADR-11)
 - [X] T-425 Implement auto-introspect pipeline in `ConnectionService`: on first save → health check → introspect; mark status accordingly (FR-093)
 - [X] T-426 Add admin schema endpoints: `POST .../refresh-schema` and `GET .../schema` in `backend/src/app/api/v1/admin_connections.py` (FR-066, FR-067, FR-068)
-- [ ] T-427 Write introspection tests: PG/MySQL/MSSQL fake adapter returns expected metadata, full-replace on refresh, failure handling, auto-introspect on save in `backend/tests/unit/source_db/test_schema_introspector.py` (SC-026)
+- [X] T-427 Write introspection tests: PG/MySQL/MSSQL fake adapter returns expected metadata, full-replace on refresh, failure handling, auto-introspect on save in `backend/tests/unit/source_db/test_schema_introspector.py` (SC-026)
 
 ### User-Facing Connection Endpoint
 
