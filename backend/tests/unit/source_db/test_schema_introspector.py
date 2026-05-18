@@ -81,7 +81,14 @@ async def test_schema_introspector_pg_queries() -> None:
     from app.source_db.schema_introspector import SchemaIntrospector
 
     fake_adapter = FakeAdapterForIntrospection(DatabaseType.POSTGRESQL)
-    introspector = SchemaIntrospector(adapter=fake_adapter, database_type=DatabaseType.POSTGRESQL)
+    mock_session = AsyncMock()
+    conn_id = uuid4()
+    introspector = SchemaIntrospector(
+        adapter=fake_adapter,
+        database_type=DatabaseType.POSTGRESQL,
+        db_session=mock_session,
+        connection_id=conn_id,
+    )
 
     tables, columns = await introspector._fetch_schema(fake_adapter)
     assert len(tables) == 2
@@ -94,7 +101,14 @@ async def test_schema_introspector_mysql_queries() -> None:
     from app.source_db.schema_introspector import SchemaIntrospector
 
     fake_adapter = FakeAdapterForIntrospection(DatabaseType.MYSQL)
-    introspector = SchemaIntrospector(adapter=fake_adapter, database_type=DatabaseType.MYSQL)
+    mock_session = AsyncMock()
+    conn_id = uuid4()
+    introspector = SchemaIntrospector(
+        adapter=fake_adapter,
+        database_type=DatabaseType.MYSQL,
+        db_session=mock_session,
+        connection_id=conn_id,
+    )
 
     tables, columns = await introspector._fetch_schema(fake_adapter)
     assert len(tables) == 2
@@ -107,8 +121,59 @@ async def test_schema_introspector_mssql_queries() -> None:
     from app.source_db.schema_introspector import SchemaIntrospector
 
     fake_adapter = FakeAdapterForIntrospection(DatabaseType.MSSQL)
-    introspector = SchemaIntrospector(adapter=fake_adapter, database_type=DatabaseType.MSSQL)
+    mock_session = AsyncMock()
+    conn_id = uuid4()
+    introspector = SchemaIntrospector(
+        adapter=fake_adapter,
+        database_type=DatabaseType.MSSQL,
+        db_session=mock_session,
+        connection_id=conn_id,
+    )
 
     tables, columns = await introspector._fetch_schema(fake_adapter)
     assert len(tables) == 2
     assert len(columns) == 4
+
+
+@pytest.mark.asyncio
+async def test_schema_introspector_full_replace_deletes_old_entries() -> None:
+    """SchemaIntrospector deletes existing entries before inserting new ones."""
+    from app.source_db.schema_introspector import SchemaIntrospector
+
+    fake_adapter = FakeAdapterForIntrospection(DatabaseType.POSTGRESQL)
+    mock_session = AsyncMock()
+    conn_id = uuid4()
+    introspector = SchemaIntrospector(
+        adapter=fake_adapter,
+        database_type=DatabaseType.POSTGRESQL,
+        db_session=mock_session,
+        connection_id=conn_id,
+    )
+
+    result = await introspector.introspect()
+
+    assert result["tables_count"] == 2
+    assert result["columns_count"] == 4
+    mock_session.execute.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_schema_introspector_failure_propagates() -> None:
+    """SchemaIntrospector raises SchemaIntrospectionError on adapter failure."""
+    from app.source_db.schema_introspector import SchemaIntrospectionError, SchemaIntrospector
+
+    failing_adapter = AsyncMock()
+    failing_adapter.execute = AsyncMock(side_effect=ConnectionError("connection lost"))
+    failing_adapter.close = AsyncMock()
+
+    mock_session = AsyncMock()
+    conn_id = uuid4()
+    introspector = SchemaIntrospector(
+        adapter=failing_adapter,
+        database_type=DatabaseType.POSTGRESQL,
+        db_session=mock_session,
+        connection_id=conn_id,
+    )
+
+    with pytest.raises(SchemaIntrospectionError):
+        await introspector.introspect()
