@@ -102,7 +102,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### User-Facing Connection Endpoint
 
-- [ ] T-428 Implement `GET /api/v1/connections` endpoint: returns active + healthy + introspected connections (minimal payload: id, display_name, database_type) in `backend/src/app/api/v1/connections.py` (FR-073, FR-077)
+- [X] T-428 Implement `GET /api/v1/connections` endpoint: returns active + healthy + introspected connections (minimal payload: id, display_name, database_type) in `backend/src/app/api/v1/connections.py` (FR-073, FR-077)
 
 ### Dialect-Aware Evaluator
 
