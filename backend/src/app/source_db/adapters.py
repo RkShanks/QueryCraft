@@ -123,3 +123,153 @@ class PostgresAdapter:
         if self._pool is not None:
             await self._pool.close()
             self._pool = None
+
+
+class MySQLAdapter:
+    """MySQL adapter using asyncmy.
+
+    Implements SourceDBAdapter protocol for MySQL databases.
+    Uses %s parameter placeholders (MySQL native).
+    """
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        database: str,
+        username: str,
+        encrypted_password: str,
+        ssl_mode: str,
+        credential_provider: CredentialProvider,
+    ) -> None:
+        self._host = host
+        self._port = port
+        self._database = database
+        self._username = username
+        self._encrypted_password = encrypted_password
+        self._ssl_mode = ssl_mode
+        self._credential_provider = credential_provider
+        self._pool: Any = None
+
+    async def connect(self) -> None:
+        """Establish an asyncmy connection pool."""
+        import asyncmy
+
+        password = self._credential_provider.decrypt(self._encrypted_password)
+        ssl = {} if self._ssl_mode == "disable" else {"ssl": True}
+        self._pool = await asyncmy.create_pool(
+            host=self._host,
+            port=self._port,
+            database=self._database,
+            user=self._username,
+            password=password,
+            minsize=1,
+            maxsize=5,
+            **ssl,
+        )
+
+    async def execute(self, sql: str, params: tuple = ()) -> ExecuteResult:
+        """Execute a parameterized query using asyncmy."""
+        if self._pool is None:
+            await self.connect()
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(sql, params)
+                rows = await cursor.fetchall()
+                if not rows:
+                    return ExecuteResult(columns=[], rows=[])
+                columns = [d[0] for d in cursor.description] if cursor.description else []
+                row_tuples = [tuple(r) for r in rows]
+                return ExecuteResult(columns=columns, rows=row_tuples)
+
+    async def health_check(self) -> bool:
+        """Run SELECT 1 health check."""
+        try:
+            if self._pool is None:
+                await self.connect()
+            async with self._pool.acquire() as conn:
+                async with conn.cursor() as cursor:
+                    await cursor.execute("SELECT 1")
+            return True
+        except Exception:
+            return False
+
+    async def close(self) -> None:
+        """Close the asyncmy pool."""
+        if self._pool is not None:
+            await self._pool.close()
+            self._pool = None
+
+
+class MSSQLAdapter:
+    """MSSQL adapter using aioodbc.
+
+    Implements SourceDBAdapter protocol for Microsoft SQL Server.
+    Uses ? parameter placeholders (ODBC native).
+    """
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        database: str,
+        username: str,
+        encrypted_password: str,
+        ssl_mode: str,
+        credential_provider: CredentialProvider,
+    ) -> None:
+        self._host = host
+        self._port = port
+        self._database = database
+        self._username = username
+        self._encrypted_password = encrypted_password
+        self._ssl_mode = ssl_mode
+        self._credential_provider = credential_provider
+        self._pool: Any = None
+
+    async def connect(self) -> None:
+        """Establish an aioodbc connection pool."""
+        import aioodbc
+
+        password = self._credential_provider.decrypt(self._encrypted_password)
+        conn_str = (
+            f"DRIVER={{FreeTDS}};"
+            f"SERVER={self._host},{self._port};"
+            f"DATABASE={self._database};"
+            f"UID={self._username};"
+            f"PWD={password};"
+            f"TDS_Version=7.4;"
+        )
+        self._pool = await aioodbc.create_pool(dsn=conn_str, minsize=1, maxsize=5)
+
+    async def execute(self, sql: str, params: tuple = ()) -> ExecuteResult:
+        """Execute a parameterized query using aioodbc."""
+        if self._pool is None:
+            await self.connect()
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(sql, params)
+                rows = await cur.fetchall()
+                if not rows:
+                    return ExecuteResult(columns=[], rows=[])
+                columns = [d[0] for d in cur.description] if cur.description else []
+                row_tuples = [tuple(r) for r in rows]
+                return ExecuteResult(columns=columns, rows=row_tuples)
+
+    async def health_check(self) -> bool:
+        """Run SELECT 1 health check."""
+        try:
+            if self._pool is None:
+                await self.connect()
+            async with self._pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute("SELECT 1")
+            return True
+        except Exception:
+            return False
+
+    async def close(self) -> None:
+        """Close the aioodbc pool."""
+        if self._pool is not None:
+            await self._pool.close()
+            self._pool = None
