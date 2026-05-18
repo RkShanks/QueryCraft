@@ -178,3 +178,69 @@ class TestAdminConnectionHardDeleteGuard:
             data = response.json()
             # FastAPI exception handler returns detail directly when it's a dict
             assert "connection_referenced" in str(data)
+
+
+class TestAdminConnectionSchemaEndpoints:
+    """Verify refresh-schema and schema endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_refresh_schema_success(self):
+        from app.api.v1.admin_connections import router
+        from app.services.connection_service import ConnectionService
+
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v1")
+
+        conn_id = uuid4()
+        mock_service = MagicMock(spec=ConnectionService)
+        mock_service.refresh_schema = AsyncMock(return_value={
+            "tables_count": 5,
+            "columns_count": 23,
+            "refreshed_at": datetime.now(UTC),
+        })
+
+        async def override_service():
+            return mock_service
+
+        app.dependency_overrides[_get_service_dep()] = override_service
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(f"/api/v1/admin/connections/{conn_id}/refresh-schema")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["tables_count"] == 5
+
+    @pytest.mark.asyncio
+    async def test_get_schema_summary(self):
+        from app.api.v1.admin_connections import router
+        from app.services.connection_service import ConnectionService
+
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v1")
+
+        conn_id = uuid4()
+        mock_service = MagicMock(spec=ConnectionService)
+        mock_service.get_schema_summary = AsyncMock(return_value={
+            "connection_id": str(conn_id),
+            "tables": [{"table_name": "users", "column_count": 3, "columns": []}],
+            "introspected_at": datetime.now(UTC),
+        })
+
+        async def override_service():
+            return mock_service
+
+        app.dependency_overrides[_get_service_dep()] = override_service
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get(f"/api/v1/admin/connections/{conn_id}/schema")
+            assert response.status_code == 200
+            data = response.json()
+            assert len(data["tables"]) == 1
+
+
+def _get_service_dep():
+    """Get the service dependency callable for override."""
+    from app.api.v1.admin_connections import _get_connection_service
+    return _get_connection_service
