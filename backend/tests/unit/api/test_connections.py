@@ -1,6 +1,5 @@
 """Tests for user-facing connections endpoint (T-428, FR-077)."""
 
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -8,7 +7,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
+from app.db.models.enums import DatabaseType
 
 
 class TestUserConnectionsEndpoint:
@@ -17,7 +16,7 @@ class TestUserConnectionsEndpoint:
     @pytest.mark.asyncio
     async def test_list_user_connections_empty(self):
         """No available connections returns empty list."""
-        from app.api.v1.connections import router, _get_connection_service
+        from app.api.v1.connections import _get_connection_service, router
         from app.core.dependencies import require_active_user
         from app.schemas.connection import UserConnectionListResponse
         from app.services.connection_service import ConnectionService
@@ -46,7 +45,7 @@ class TestUserConnectionsEndpoint:
     @pytest.mark.asyncio
     async def test_list_user_connections_filters_unhealthy(self):
         """Unhealthy connections are excluded from user-facing list."""
-        from app.api.v1.connections import router, _get_connection_service
+        from app.api.v1.connections import _get_connection_service, router
         from app.core.dependencies import require_active_user
         from app.schemas.connection import UserConnectionListResponse, UserConnectionResponse
         from app.services.connection_service import ConnectionService
@@ -93,7 +92,7 @@ class TestUserConnectionsEndpoint:
     @pytest.mark.asyncio
     async def test_list_user_connections_multiple_dialects(self):
         """Multiple available connections with different dialects are returned."""
-        from app.api.v1.connections import router, _get_connection_service
+        from app.api.v1.connections import _get_connection_service, router
         from app.core.dependencies import require_active_user
         from app.schemas.connection import UserConnectionListResponse, UserConnectionResponse
         from app.services.connection_service import ConnectionService

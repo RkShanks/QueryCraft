@@ -57,7 +57,8 @@ def build_prompt(
 
     dialect_instruction = ""
     if target_dialect:
-        dialect_instruction = f"TARGET_DIALECT: {target_dialect}\n" + DIALECT_INSTRUCTION_TEMPLATE.format(dialect=target_dialect)
+        tmpl = DIALECT_INSTRUCTION_TEMPLATE.format(dialect=target_dialect)
+        dialect_instruction = f"TARGET_DIALECT: {target_dialect}\n{tmpl}"
 
     return PROMPT_TEMPLATE.format(
         schema_yaml=schema_context or "",

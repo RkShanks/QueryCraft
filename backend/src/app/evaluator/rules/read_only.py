@@ -3,8 +3,8 @@
 T-429: Dialect-aware parsing via sqlglot.parse(sql, read=dialect).
 """
 
-from sqlglot import exp
 import sqlglot
+from sqlglot import exp
 
 from app.db.models.enums import DatabaseType
 from app.evaluator.schema_context import SchemaContext

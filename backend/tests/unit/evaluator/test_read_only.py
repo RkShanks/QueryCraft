@@ -3,7 +3,7 @@
 import pytest
 
 from app.db.models.enums import DatabaseType
-from app.evaluator.rules.read_only import ReadOnlyRule, DIALECT_MAP
+from app.evaluator.rules.read_only import DIALECT_MAP, ReadOnlyRule
 from app.evaluator.schema_context import SchemaContext
 
 

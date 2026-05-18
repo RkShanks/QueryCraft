@@ -1,4 +1,4 @@
-"""Query flow tests: connection routing, schema isolation, disabled blocking, retry exhaustion (T-435, SC-027, SC-035)."""
+"""Query connection routing tests (T-435, SC-027, SC-035)."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -45,9 +45,10 @@ class TestDisabledConnectionBlocked:
     @pytest.mark.asyncio
     async def test_disabled_connection_raises_400(self):
         """_get_query_service_for_connection raises 400 for disabled connection."""
+        from fastapi import HTTPException
+
         from app.api.v1.query import _get_query_service_for_connection
         from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
-        from fastapi import HTTPException
 
         conn_id = uuid4()
 
@@ -76,9 +77,10 @@ class TestDisabledConnectionBlocked:
     @pytest.mark.asyncio
     async def test_unhealthy_connection_raises_400(self):
         """_get_query_service_for_connection raises 400 for unhealthy connection."""
+        from fastapi import HTTPException
+
         from app.api.v1.query import _get_query_service_for_connection
         from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
-        from fastapi import HTTPException
 
         conn_id = uuid4()
 
@@ -107,9 +109,10 @@ class TestDisabledConnectionBlocked:
     @pytest.mark.asyncio
     async def test_no_schema_connection_raises_400(self):
         """_get_query_service_for_connection raises 400 for non-introspected connection."""
+        from fastapi import HTTPException
+
         from app.api.v1.query import _get_query_service_for_connection
         from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
-        from fastapi import HTTPException
 
         conn_id = uuid4()
 
@@ -186,8 +189,7 @@ class TestRetryExhaustion:
     async def test_regenerate_exhaustion_returns_refine(self):
         """After max regenerations, service must return refine prompt (kind=refine)."""
         from app.api.v1.query import regenerate_query
-        from app.core.exceptions import AttemptNotFound
-        from app.schemas.query import RegenerateQueryRequest, RefinePrompt
+        from app.schemas.query import RefinePrompt, RegenerateQueryRequest
 
         mock_service = AsyncMock()
         mock_service.regenerate_query.return_value = RefinePrompt(

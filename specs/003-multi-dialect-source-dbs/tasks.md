@@ -119,7 +119,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### OpenAPI Client Regeneration
 
-- [ ] T-436 Regenerate OpenAPI client: run `npm run gen:api` in `frontend/`, verify `types.gen.ts` includes schema/introspection/user-connections/session-connection types
+- [X] T-436 Regenerate OpenAPI client: run `npm run gen:api` in `frontend/`, verify `types.gen.ts` includes schema/introspection/user-connections/session-connection types
 
 ### Backend Gates
 

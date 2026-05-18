@@ -10,11 +10,10 @@ from app.api.dependencies.validation import validate_body
 from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis, require_active_user
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
-from app.db.models.enums import DatabaseType
 from app.evaluator.pipeline import Evaluator
 from app.evaluator.rules.dialect_validation import DialectValidationRule
 from app.evaluator.rules.empty_sql import EmptySqlRule
-from app.evaluator.rules.read_only import ReadOnlyRule, DIALECT_MAP
+from app.evaluator.rules.read_only import DIALECT_MAP, ReadOnlyRule
 from app.evaluator.rules.schema_validation import SchemaValidationRule
 from app.evaluator.rules.single_statement import SingleStatementRule
 from app.evaluator.rules.unsafe_pattern import UnsafePatternRule

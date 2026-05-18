@@ -15,11 +15,6 @@ router = APIRouter(prefix="/connections", tags=["Connections"])
 
 async def _get_connection_service() -> ConnectionService:
     """Resolve ConnectionService from app state."""
-    from app.core.config import get_settings
-
-    settings = get_settings()
-    from app.core.dependencies import get_db
-
     # This is a placeholder; the real service is constructed via app state
     # For now, we use the pattern from admin_connections
     raise NotImplementedError("Service must be provided via dependency override or app state")
