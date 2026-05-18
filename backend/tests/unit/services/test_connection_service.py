@@ -182,3 +182,70 @@ class TestConnectionServiceHardDeleteGuard:
         await service.hard_delete(conn_id)
 
         mock_repo.delete.assert_called_once_with(conn_id)
+
+
+class TestConnectionServiceRefreshSchema:
+    """Verify refresh_schema updates status correctly."""
+
+    @pytest.mark.asyncio
+    async def test_refresh_schema_success(self):
+        from app.repositories.connection_repository import ConnectionRepository
+        from app.services.connection_service import ConnectionService
+
+        key = Fernet.generate_key().decode()
+        mock_repo = MagicMock(spec=ConnectionRepository)
+        conn = _make_conn(
+            schema_introspection_status=SchemaIntrospectionStatus.NONE,
+            health_status=HealthStatus.HEALTHY,
+        )
+        mock_repo.get_by_id = AsyncMock(return_value=conn)
+        mock_repo.update = AsyncMock(return_value=conn)
+
+        service = ConnectionService(mock_repo, key)
+        service._get_db_session = AsyncMock(return_value=AsyncMock())
+
+        result = await service.refresh_schema(conn.id)
+
+        assert result["tables_count"] >= 0
+        assert conn.schema_introspection_status == SchemaIntrospectionStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_refresh_schema_failure(self):
+        from app.repositories.connection_repository import ConnectionRepository
+        from app.services.connection_service import ConnectionService
+
+        key = Fernet.generate_key().decode()
+        mock_repo = MagicMock(spec=ConnectionRepository)
+        conn = _make_conn(
+            schema_introspection_status=SchemaIntrospectionStatus.SUCCESS,
+            health_status=HealthStatus.HEALTHY,
+        )
+        mock_repo.get_by_id = AsyncMock(return_value=conn)
+        mock_repo.update = AsyncMock(return_value=conn)
+
+        service = ConnectionService(mock_repo, key)
+        service._get_db_session = AsyncMock(return_value=AsyncMock())
+
+        with pytest.raises(Exception):
+            await service.refresh_schema(conn.id)
+
+
+class TestConnectionServiceGetSchemaSummary:
+    """Verify get_schema_summary returns grouped schema data."""
+
+    @pytest.mark.asyncio
+    async def test_get_schema_summary(self):
+        from app.repositories.connection_repository import ConnectionRepository
+        from app.services.connection_service import ConnectionService
+
+        key = Fernet.generate_key().decode()
+        mock_repo = MagicMock(spec=ConnectionRepository)
+        conn_id = uuid4()
+        mock_repo.get_by_id = AsyncMock(return_value=_make_conn(id=conn_id))
+        mock_repo.get_schema_entries = AsyncMock(return_value=[])
+
+        service = ConnectionService(mock_repo, key)
+        result = await service.get_schema_summary(conn_id)
+
+        assert result["connection_id"] == conn_id
+        assert result["tables"] == []
