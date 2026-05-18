@@ -586,7 +586,7 @@ class QueryService:
                     prior_saved.generated_sql = new_sql
                     prior_saved.attempt_id = new_attempt_id
                     prior_saved.result_columns = [c.model_dump() for c in column_metas]
-                    prior_saved.result_rows = rows
+                    prior_saved.result_rows = _sanitize_for_json(rows)
                     prior_saved.result_row_count = len(rows)
                     prior_saved.accepted_at = datetime.now(UTC)
                     await self._db_session.flush()
