@@ -27,6 +27,7 @@ class Settings(BaseSettings):
 
     # ─── Security ───
     PLATFORM_ENCRYPTION_KEY: str  # base64-encoded 32-byte key for AES-256-GCM
+    DB_CREDENTIAL_KEY: str = ""  # base64-encoded Fernet key for DB credential encryption
     ALLOWED_ORIGINS: str = "http://localhost:3000"  # comma-separated
 
     # ─── Admin User ───
