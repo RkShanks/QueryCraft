@@ -114,7 +114,8 @@ async def _sync_admin_user(settings):
 
 
 async def _upsert_source_db_connection(settings):
-    """Upsert the source database connection row on startup."""
+    """Upsert the source database connection row on startup (Phase 3)."""
+    # TODO(T-405): Migrate to credential provider after encryption foundation is implemented.
     from sqlalchemy import text
     from sqlalchemy.exc import ProgrammingError
 
@@ -123,7 +124,7 @@ async def _upsert_source_db_connection(settings):
     try:
         async with session_factory() as session:
             result = await session.execute(
-                text("SELECT id FROM database_connections WHERE name = :name"),
+                text("SELECT id FROM source_database_connections WHERE display_name = :name"),
                 {"name": settings.SOURCE_DB_NAME},
             )
             existing = result.scalar_one_or_none()
@@ -136,10 +137,10 @@ async def _upsert_source_db_connection(settings):
             if existing is None:
                 await session.execute(
                     text("""
-                        INSERT INTO database_connections (
-                            name, host, port, database_name, username, encrypted_password, ssl_mode
+                        INSERT INTO source_database_connections (
+                            display_name, database_type, host, port, database_name, username, encrypted_password, ssl_mode
                         )
-                        VALUES (:name, :host, :port, :database_name, :username, :encrypted_password, :ssl_mode)
+                        VALUES (:name, 'postgresql', :host, :port, :database_name, :username, :encrypted_password, :ssl_mode)
                     """),
                     {
                         "name": settings.SOURCE_DB_NAME,
@@ -156,7 +157,7 @@ async def _upsert_source_db_connection(settings):
             else:
                 await session.execute(
                     text("""
-                        UPDATE database_connections
+                        UPDATE source_database_connections
                         SET host = :host,
                             port = :port,
                             database_name = :database_name,
@@ -164,7 +165,7 @@ async def _upsert_source_db_connection(settings):
                             encrypted_password = :encrypted_password,
                             ssl_mode = :ssl_mode,
                             updated_at = now()
-                        WHERE name = :name
+                        WHERE display_name = :name
                     """),
                     {
                         "name": settings.SOURCE_DB_NAME,
@@ -179,7 +180,7 @@ async def _upsert_source_db_connection(settings):
                 await session.commit()
                 logger.info("source_db_connection_updated", name=settings.SOURCE_DB_NAME)
     except ProgrammingError:
-        logger.warning("database_connections_table_missing", msg="Skipping seed. Run alembic upgrade head.")
+        logger.warning("source_database_connections_table_missing", msg="Skipping seed. Run alembic upgrade head.")
 
 
 def create_app() -> FastAPI:
