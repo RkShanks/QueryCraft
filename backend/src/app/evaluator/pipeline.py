@@ -15,6 +15,7 @@ _MESSAGE_KEY_MAP = {
     "single_statement": "evaluator.violation.multiStatement",
     "schema_validation": "evaluator.violation.unknownTable",
     "unsafe_pattern": "evaluator.violation.unsafePattern",
+    "dialect_validation": "evaluator.violation.dialectMismatch",
 }
 
 
