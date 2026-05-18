@@ -50,7 +50,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Pydantic Schemas
 
-- [ ] T-411 [P] Create connection request/response Pydantic schemas in `backend/src/app/schemas/connection.py`: `ConnectionCreate`, `ConnectionUpdate`, `ConnectionResponse`, `ConnectionTestResult`, `ConnectionListResponse` (FR-059, FR-060)
+- [X] T-411 [P] Create connection request/response Pydantic schemas in `backend/src/app/schemas/connection.py`: `ConnectionCreate`, `ConnectionUpdate`, `ConnectionResponse`, `ConnectionTestResult`, `ConnectionListResponse` (FR-059, FR-060)
 
 ### Admin API Endpoints
 
