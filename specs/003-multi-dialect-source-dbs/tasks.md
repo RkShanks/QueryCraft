@@ -30,7 +30,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Data Model & Migration
 
-- [ ] T-400 Add `DatabaseType`, `LifecycleState`, `HealthStatus`, `SchemaIntrospectionStatus` enums in `backend/src/app/db/models/enums.py` (FR-090)
+- [X] T-400 Add `DatabaseType`, `LifecycleState`, `HealthStatus`, `SchemaIntrospectionStatus` enums in `backend/src/app/db/models/enums.py` (FR-090)
 - [ ] T-401 Update `SourceDatabaseConnection` ORM model: rename table `database_connections` → `source_database_connections`, add `display_name`, `database_type`, `lifecycle_state`, `health_status`, `last_health_check_at`, `health_error_category`, `schema_introspection_status`, `schema_last_refreshed_at`; drop `name`, `schema_metadata`, `schema_cached_at` in `backend/src/app/db/models/database_connection.py` (FR-087, FR-090)
 - [ ] T-402 Add `connection_id` nullable FK to `Session` model in `backend/src/app/db/models/session.py` (FR-094)
 - [ ] T-403 Create Alembic migration `006_phase3_multi_dialect_connections.py` in `backend/alembic/versions/`: rename table, add columns, backfill `display_name` from `name`, set `database_type='postgresql'` + `lifecycle_state='active'`, drop obsolete columns, create `connection_schema_entries` table, add `connection_id` to `sessions`, update FK constraints (FR-087, FR-091)
