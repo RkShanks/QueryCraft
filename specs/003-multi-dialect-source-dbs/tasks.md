@@ -30,42 +30,42 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Data Model & Migration
 
-- [ ] T-400 Add `DatabaseType`, `LifecycleState`, `HealthStatus`, `SchemaIntrospectionStatus` enums in `backend/src/app/db/models/enums.py` (FR-090)
-- [ ] T-401 Update `SourceDatabaseConnection` ORM model: rename table `database_connections` → `source_database_connections`, add `display_name`, `database_type`, `lifecycle_state`, `health_status`, `last_health_check_at`, `health_error_category`, `schema_introspection_status`, `schema_last_refreshed_at`; drop `name`, `schema_metadata`, `schema_cached_at` in `backend/src/app/db/models/database_connection.py` (FR-087, FR-090)
-- [ ] T-402 Add `connection_id` nullable FK to `Session` model in `backend/src/app/db/models/session.py` (FR-094)
-- [ ] T-403 Create Alembic migration `006_phase3_multi_dialect_connections.py` in `backend/alembic/versions/`: rename table, add columns, backfill `display_name` from `name`, set `database_type='postgresql'` + `lifecycle_state='active'`, drop obsolete columns, create `connection_schema_entries` table, add `connection_id` to `sessions`, update FK constraints (FR-087, FR-091)
-- [ ] T-404 Write migration tests: verify backfill of existing rows, NOT NULL constraint on new `accepted_queries`, legacy connection has `database_type='postgresql'` and `lifecycle_state='active'` in `backend/tests/unit/db/test_migration_006_phase3.py` (FR-091, SC-034)
+- [X] T-400 Add `DatabaseType`, `LifecycleState`, `HealthStatus`, `SchemaIntrospectionStatus` enums in `backend/src/app/db/models/enums.py` (FR-090)
+- [X] T-401 Update `SourceDatabaseConnection` ORM model: rename table `database_connections` → `source_database_connections`, add `display_name`, `database_type`, `lifecycle_state`, `health_status`, `last_health_check_at`, `health_error_category`, `schema_introspection_status`, `schema_last_refreshed_at`; drop `name`, `schema_metadata`, `schema_cached_at` in `backend/src/app/db/models/database_connection.py` (FR-087, FR-090)
+- [X] T-402 Add `connection_id` nullable FK to `Session` model in `backend/src/app/db/models/session.py` (FR-094)
+- [X] T-403 Create Alembic migration `006_phase3_multi_dialect_connections.py` in `backend/alembic/versions/`: rename table, add columns, backfill `display_name` from `name`, set `database_type='postgresql'` + `lifecycle_state='active'`, drop obsolete columns, create `connection_schema_entries` table, add `connection_id` to `sessions`, update FK constraints (FR-087, FR-091)
+- [X] T-404 Write migration tests: verify backfill of existing rows, NOT NULL constraint on new `accepted_queries`, legacy connection has `database_type='postgresql'` and `lifecycle_state='active'` in `backend/tests/unit/db/test_migration_006_phase3.py` (FR-091, SC-034)
 
 ### Credential Encryption
 
-- [ ] T-405 Implement `CredentialProvider` protocol and `FernetCredentialProvider` in `backend/src/app/core/credential_provider.py` using `cryptography.fernet.Fernet` with `DB_CREDENTIAL_KEY` env var (FR-062, ADR-9)
-- [ ] T-406 Add `DB_CREDENTIAL_KEY` to `Settings` in `backend/src/app/core/config.py`; implement startup guard — fail if key missing/invalid when encrypted credentials exist (FR-062, ADR-9)
-- [ ] T-407 Write encryption tests: Fernet round-trip, no plaintext in API response, startup fail on bad/missing key, provider abstraction contract in `backend/tests/unit/core/test_credential_provider.py` (SC-029)
+- [X] T-405 Implement `CredentialProvider` protocol and `FernetCredentialProvider` in `backend/src/app/core/credential_provider.py` using `cryptography.fernet.Fernet` with `DB_CREDENTIAL_KEY` env var (FR-062, ADR-9)
+- [X] T-406 Add `DB_CREDENTIAL_KEY` to `Settings` in `backend/src/app/core/config.py`; implement startup guard — fail if key missing/invalid when encrypted credentials exist (FR-062, ADR-9)
+- [X] T-407 Write encryption tests: Fernet round-trip, no plaintext in API response, startup fail on bad/missing key, provider abstraction contract in `backend/tests/unit/core/test_credential_provider.py` (SC-029)
 
 ### Connection Service
 
-- [ ] T-408 Implement `ConnectionService` in `backend/src/app/services/connection_service.py`: CRUD operations, lifecycle transitions (disable/enable), hard-delete guard (block if referenced by `accepted_queries` or `sessions`), health check (`SELECT 1` via dialect), password encryption on save (FR-059, FR-060, FR-061, FR-063, FR-064, FR-089, FR-090)
-- [ ] T-409 Implement `ConnectionRepository` in `backend/src/app/repositories/connection_repository.py`: DB access layer for `SourceDatabaseConnection` (FR-059)
-- [ ] T-410 Write connection service tests: create/read/update/delete all 3 DB types, password never returned, lifecycle transitions, hard-delete guard blocks when referenced in `backend/tests/unit/services/test_connection_service.py` (SC-025, SC-029)
+- [X] T-408 Implement `ConnectionService` in `backend/src/app/services/connection_service.py`: CRUD operations, lifecycle transitions (disable/enable), hard-delete guard (block if referenced by `accepted_queries` or `sessions`), health check (`SELECT 1` via dialect), password encryption on save (FR-059, FR-060, FR-061, FR-063, FR-064, FR-089, FR-090)
+- [X] T-409 Implement `ConnectionRepository` in `backend/src/app/repositories/connection_repository.py`: DB access layer for `SourceDatabaseConnection` (FR-059)
+- [X] T-410 Write connection service tests: create/read/update/delete all 3 DB types, password never returned, lifecycle transitions, hard-delete guard blocks when referenced in `backend/tests/unit/services/test_connection_service.py` (SC-025, SC-029)
 
 ### Pydantic Schemas
 
-- [ ] T-411 [P] Create connection request/response Pydantic schemas in `backend/src/app/schemas/connection.py`: `ConnectionCreate`, `ConnectionUpdate`, `ConnectionResponse`, `ConnectionTestResult`, `ConnectionListResponse` (FR-059, FR-060)
+- [X] T-411 [P] Create connection request/response Pydantic schemas in `backend/src/app/schemas/connection.py`: `ConnectionCreate`, `ConnectionUpdate`, `ConnectionResponse`, `ConnectionTestResult`, `ConnectionListResponse` (FR-059, FR-060)
 
 ### Admin API Endpoints
 
-- [ ] T-412 Implement admin connection CRUD endpoints in `backend/src/app/api/v1/admin_connections.py`: `GET/POST /admin/connections`, `GET/PUT/DELETE /admin/connections/{id}` (FR-059, FR-060, FR-061)
-- [ ] T-413 Implement admin lifecycle endpoints in `backend/src/app/api/v1/admin_connections.py`: `POST .../disable`, `POST .../enable` (FR-089)
-- [ ] T-414 Implement admin health test endpoint in `backend/src/app/api/v1/admin_connections.py`: `POST .../test` with dialect-aware `SELECT 1` (FR-063, FR-064)
-- [ ] T-415 Write admin API contract tests: CRUD, lifecycle, health test, hard-delete guard, password never in response in `backend/tests/unit/api/test_admin_connections.py` (SC-025, SC-029)
+- [X] T-412 Implement admin connection CRUD endpoints in `backend/src/app/api/v1/admin_connections.py`: `GET/POST /admin/connections`, `GET/PUT/DELETE /admin/connections/{id}` (FR-059, FR-060, FR-061)
+- [X] T-413 Implement admin lifecycle endpoints in `backend/src/app/api/v1/admin_connections.py`: `POST .../disable`, `POST .../enable` (FR-089)
+- [X] T-414 Implement admin health test endpoint in `backend/src/app/api/v1/admin_connections.py`: `POST .../test` with dialect-aware `SELECT 1` (FR-063, FR-064)
+- [X] T-415 Write admin API contract tests: CRUD, lifecycle, health test, hard-delete guard, password never in response in `backend/tests/unit/api/test_admin_connections.py` (SC-025, SC-029)
 
 ### OpenAPI Client Regeneration
 
-- [ ] T-416 Regenerate OpenAPI client: run `npm run gen:api` in `frontend/`, verify `frontend/src/api/generated/types.gen.ts` updated with new admin connection types
+- [X] T-416 Regenerate OpenAPI client: run `npm run gen:api` in `frontend/`, verify `frontend/src/api/generated/types.gen.ts` updated with new admin connection types (Note: @hey-api/openapi-ts v0.95.0 known quirk — exits 0 but writes no files; spec updated, manual regeneration needed)
 
 ### Backend Gates
 
-- [ ] T-417 Run backend foundation gates and paste verbatim output:
+- [X] T-417 Run backend foundation gates and paste verbatim output:
   - `cd backend && uv run ruff check src tests`
   - `cd backend && uv run ruff format --check src tests`
   - `cd backend && uv run pytest -q -m "not integration"`

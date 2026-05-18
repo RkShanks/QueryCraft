@@ -22,7 +22,7 @@ class AcceptedQuery(Base):
     )
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     database_connection_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("database_connections.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("source_database_connections.id"), nullable=False
     )
     session_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=True

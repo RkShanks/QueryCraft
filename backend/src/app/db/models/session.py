@@ -23,6 +23,9 @@ class Session(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
+    connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_database_connections.id", ondelete="SET NULL"), nullable=True
+    )
     preview_text: Mapped[str] = mapped_column(String, nullable=False, server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     last_activity_at: Mapped[datetime] = mapped_column(

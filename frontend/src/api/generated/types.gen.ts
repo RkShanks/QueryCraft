@@ -745,3 +745,214 @@ export type DeleteHistoryEntryResponses = {
 
 export type DeleteHistoryEntryError = DeleteHistoryEntryErrors[keyof DeleteHistoryEntryErrors];
 export type DeleteHistoryEntryResponse = DeleteHistoryEntryResponses[keyof DeleteHistoryEntryResponses];
+
+// ─────────────────── Admin Connections (Phase 3) ───────────────────
+
+export type DatabaseType = 'postgresql' | 'mysql' | 'mssql';
+export type LifecycleState = 'active' | 'disabled';
+export type HealthStatus = 'untested' | 'healthy' | 'unhealthy';
+export type SchemaIntrospectionStatus = 'none' | 'success' | 'failed' | 'stale';
+
+export type ConnectionCreate = {
+    display_name: string;
+    database_type: DatabaseType;
+    host: string;
+    port: number;
+    database_name: string;
+    username: string;
+    password: string;
+    ssl_mode?: string;
+};
+
+export type ConnectionUpdate = {
+    display_name?: string | null;
+    database_type?: DatabaseType | null;
+    host?: string | null;
+    port?: number | null;
+    database_name?: string | null;
+    username?: string | null;
+    password?: string | null;
+    ssl_mode?: string | null;
+};
+
+export type ConnectionResponse = {
+    id: string;
+    display_name: string;
+    database_type: DatabaseType;
+    host: string;
+    port: number;
+    database_name: string;
+    username: string;
+    ssl_mode: string;
+    lifecycle_state: LifecycleState;
+    health_status: HealthStatus;
+    last_health_check_at: string | null;
+    health_error_category: string | null;
+    schema_introspection_status: SchemaIntrospectionStatus;
+    schema_last_refreshed_at: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ConnectionTestResult = {
+    status: 'healthy' | 'unhealthy';
+    latency_ms?: number | null;
+    error_category?: string | null;
+    message_key?: string | null;
+    tested_at: string;
+};
+
+export type ConnectionListResponse = {
+    connections: ConnectionResponse[];
+};
+
+export type ListAdminConnectionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/connections';
+};
+
+export type ListAdminConnectionsErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+};
+
+export type ListAdminConnectionsResponses = {
+    200: ConnectionListResponse;
+};
+
+export type CreateAdminConnectionData = {
+    body: ConnectionCreate;
+    path?: never;
+    query?: never;
+    url: '/admin/connections';
+};
+
+export type CreateAdminConnectionErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    422: ErrorResponse;
+};
+
+export type CreateAdminConnectionResponses = {
+    201: ConnectionResponse;
+};
+
+export type GetAdminConnectionData = {
+    body?: never;
+    path: {
+        connectionId: string;
+    };
+    query?: never;
+    url: '/admin/connections/{connectionId}';
+};
+
+export type GetAdminConnectionErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+};
+
+export type GetAdminConnectionResponses = {
+    200: ConnectionResponse;
+};
+
+export type UpdateAdminConnectionData = {
+    body: ConnectionUpdate;
+    path: {
+        connectionId: string;
+    };
+    query?: never;
+    url: '/admin/connections/{connectionId}';
+};
+
+export type UpdateAdminConnectionErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    422: ErrorResponse;
+};
+
+export type UpdateAdminConnectionResponses = {
+    200: ConnectionResponse;
+};
+
+export type DeleteAdminConnectionData = {
+    body?: never;
+    path: {
+        connectionId: string;
+    };
+    query?: never;
+    url: '/admin/connections/{connectionId}';
+};
+
+export type DeleteAdminConnectionErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    409: ErrorResponse;
+};
+
+export type DeleteAdminConnectionResponses = {
+    204: void;
+};
+
+export type DisableAdminConnectionData = {
+    body?: never;
+    path: {
+        connectionId: string;
+    };
+    query?: never;
+    url: '/admin/connections/{connectionId}/disable';
+};
+
+export type DisableAdminConnectionErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    409: ErrorResponse;
+};
+
+export type DisableAdminConnectionResponses = {
+    200: ConnectionResponse;
+};
+
+export type EnableAdminConnectionData = {
+    body?: never;
+    path: {
+        connectionId: string;
+    };
+    query?: never;
+    url: '/admin/connections/{connectionId}/enable';
+};
+
+export type EnableAdminConnectionErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    409: ErrorResponse;
+};
+
+export type EnableAdminConnectionResponses = {
+    200: ConnectionResponse;
+};
+
+export type TestAdminConnectionData = {
+    body?: never;
+    path: {
+        connectionId: string;
+    };
+    query?: never;
+    url: '/admin/connections/{connectionId}/test';
+};
+
+export type TestAdminConnectionErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+};
+
+export type TestAdminConnectionResponses = {
+    200: ConnectionTestResult;
+};

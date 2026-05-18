@@ -17,7 +17,7 @@ async def test_upsert_source_db_connection_inserts_when_missing():
     settings.SOURCE_DB_USER = "test_user"
     settings.SOURCE_DB_PASSWORD = "test_pass"
     settings.SOURCE_DB_SSL_MODE = "disable"
-    settings.PLATFORM_ENCRYPTION_KEY = "test-key"
+    settings.DB_CREDENTIAL_KEY = "test-fernet-key"
 
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
@@ -31,9 +31,12 @@ async def test_upsert_source_db_connection_inserts_when_missing():
     factory.return_value.__aenter__ = AsyncMock(return_value=session)
     factory.return_value.__aexit__ = AsyncMock(return_value=False)
 
+    mock_provider = MagicMock()
+    mock_provider.encrypt.return_value = "fernet_encrypted"
+
     with (
         patch("app.main.get_async_session_factory", return_value=factory),
-        patch("app.main.encrypt", return_value="encrypted"),
+        patch("app.core.credential_provider.get_credential_provider", return_value=mock_provider),
     ):
         await _upsert_source_db_connection(settings)
 
@@ -42,7 +45,9 @@ async def test_upsert_source_db_connection_inserts_when_missing():
     # First call is SELECT
     assert "SELECT id" in str(calls[0][0][0])
     # Second call is INSERT
-    assert "INSERT INTO database_connections" in str(calls[1][0][0])
+    assert "INSERT INTO source_database_connections" in str(calls[1][0][0])
+    # Verify Fernet encryption was used
+    mock_provider.encrypt.assert_called_once_with("test_pass")
 
 
 @pytest.mark.asyncio
@@ -55,7 +60,7 @@ async def test_upsert_source_db_connection_updates_when_exists():
     settings.SOURCE_DB_USER = "new_user"
     settings.SOURCE_DB_PASSWORD = "new_pass"
     settings.SOURCE_DB_SSL_MODE = "require"
-    settings.PLATFORM_ENCRYPTION_KEY = "test-key"
+    settings.DB_CREDENTIAL_KEY = "test-fernet-key"
 
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
@@ -69,15 +74,20 @@ async def test_upsert_source_db_connection_updates_when_exists():
     factory.return_value.__aenter__ = AsyncMock(return_value=session)
     factory.return_value.__aexit__ = AsyncMock(return_value=False)
 
+    mock_provider = MagicMock()
+    mock_provider.encrypt.return_value = "fernet_encrypted_new"
+
     with (
         patch("app.main.get_async_session_factory", return_value=factory),
-        patch("app.main.encrypt", return_value="encrypted_new"),
+        patch("app.core.credential_provider.get_credential_provider", return_value=mock_provider),
     ):
         await _upsert_source_db_connection(settings)
 
     calls = session.execute.call_args_list
     # Second call should be UPDATE
-    assert "UPDATE database_connections" in str(calls[1][0][0])
+    assert "UPDATE source_database_connections" in str(calls[1][0][0])
+    # Verify Fernet encryption was used
+    mock_provider.encrypt.assert_called_once_with("new_pass")
 
 
 @pytest.mark.asyncio

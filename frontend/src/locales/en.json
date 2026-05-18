@@ -1,13 +1,11 @@
 {
   "common.close": "Close",
-
   "app.title": "QueryCraft",
   "app.subtitle": "Text-to-SQL Analytics Platform",
   "nav.signIn": "Sign In",
   "nav.signOut": "Sign Out",
   "nav.history": "History",
   "nav.settings": "Settings",
-
   "auth.signIn.title": "Sign In",
   "auth.signIn.username.label": "Username",
   "auth.signIn.password.label": "Password",
@@ -16,35 +14,27 @@
   "auth.signIn.error.usernameEmpty": "Username cannot be empty.",
   "auth.signIn.error.invalidCredentials": "Invalid username or password",
   "auth.signIn.error.network": "Network error. Please try again.",
-
   "auth.signOut.label": "Sign Out",
-
   "query.input.placeholder": "Ask a question about your data...",
   "query.input.submit": "Ask",
   "query.input.submitting": "Submitting...",
   "query.input.charCount": "{{current}} / {{max}}",
   "query.input.truncation.warning": "{{current}} / {{max}} — input truncated, {{dropped}} characters dropped",
-
   "query.ask.title": "What would you like to know?",
   "query.status.processing": "Analyzing your question...",
-
   "query.result.title": "Results",
   "query.result.sqlHeading": "Generated SQL",
   "query.result.tableHeading": "Results",
   "query.result.empty": "No results found for your query",
-
   "query.accept.success.title": "Success",
   "query.accept.success.message": "Query accepted and saved to history.",
-
   "query.actions.accept": "Accept",
   "query.actions.accepting": "Accepting...",
   "query.actions.accepted": "Query saved to history",
   "query.actions.reject": "Reject",
   "query.actions.regenerate": "Regenerate",
   "query.actions.deleteResult": "Delete",
-
   "query.result.lastRetry": "Last auto retry",
-
   "query.evaluator.rejected": "We couldn't generate a safe query for your question. Please try rephrasing it in a different way.",
   "query.evaluator.read_only": "Write operations are blocked. Try a SELECT.",
   "query.evaluator.schema_validation": "Schema mismatch: {{identifier}}. Check table/column names.",
@@ -52,25 +42,21 @@
   "query.evaluator.unsafe_pattern": "Unsafe pattern detected: {{pattern}}. Use a safer alternative.",
   "query.evaluator.syntax": "SQL syntax error: {{details}}.",
   "query.evaluator.unknown": "The generated SQL was rejected by safety rules.",
-
   "query.evaluatorRejection.heading": "Generated SQL was rejected for safety",
   "query.evaluatorRejection.body": "The system blocked this query because: {reason}",
   "query.evaluatorRejection.rule.ReadOnlyRule": "Read-only rule violation",
   "query.evaluatorRejection.rule.SingleStatementRule": "Multiple statements not allowed",
   "query.evaluatorRejection.rule.SchemaValidationRule": "Unknown table or column",
   "query.evaluatorRejection.rule.UnsafePatternRule": "Unsafe SQL pattern",
-
   "query.refine.message": "We couldn't refine this query automatically. Please rephrase your question.",
   "query.refine.heading": "Please refine your question",
   "query.refine.body.maxRetries": "We tried twice and the result was the same. Try rephrasing or narrowing the question.",
   "query.refine.body.byteEqual": "The regenerated SQL was identical. Try a different phrasing.",
   "query.refine.body.evaluatorBlocked": "We can't safely answer this. Please rephrase.",
   "query.refine.cta": "Try refining",
-
   "query.timeout.heading": "Query took too long",
   "query.timeout.body": "The source database didn't respond in time. Try a narrower question.",
   "query.timeout.cta": "Try again",
-
   "query.error.unauthorized": "Your session has expired or you are not signed in. Please sign in again.",
   "query.error.network": "Network error. Please check your connection and try again.",
   "query.error.concurrent": "A query is already being processed. Please wait.",
@@ -86,7 +72,6 @@
   "query.error.validation.questionEmpty": "Question cannot be empty.",
   "query.error.validation.questionTooLong": "Question must be at most {{max}} characters.",
   "query.error.validation.unknown": "Validation failed. Please check your input.",
-
   "history.title": "Query History",
   "history.empty": "No history yet — submit a question to get started.",
   "history.loading": "Loading history...",
@@ -103,7 +88,6 @@
   "history.column.acceptedAt": "Accepted",
   "history.loadMore": "Load more",
   "history.loadingMore": "Loading more...",
-
   "error.unauthorized": "Your session has expired or you are not signed in. Please sign in again.",
   "error.network": "Network error. Please check your connection and try again.",
   "error.concurrent": "A query is already being processed. Please wait.",
@@ -134,7 +118,6 @@
   "error.validation.questionTooLong": "Question must be at most {{max}} characters.",
   "error.validation.unknown": "Validation failed. Please check your input.",
   "error.validation.generic": "Validation failed. Please check your input.",
-
   "sidebar.newChat": "New Chat",
   "sidebar.sessions": "Sessions",
   "sidebar.expand": "Expand sidebar",
@@ -164,10 +147,29 @@
   "common.copy": "Copy",
   "common.regenerate": "Regenerate",
   "common.send": "Send",
-
   "query.sql.show": "Show SQL",
   "query.sql.hide": "Hide SQL",
-
   "admin.settings.maxRegenerateAttempts": "Max Regenerate Attempts",
-  "admin.settings.maxRegenerateAttemptsHelp": "Total attempts allowed per question (1–10, includes original)"
+  "admin.settings.maxRegenerateAttemptsHelp": "Total attempts allowed per question (1–10, includes original)",
+  "error.connection_already_active": "Connection is already active",
+  "error.connection_not_found": "Connection not found",
+  "error.connection_referenced_delete_blocked": "Cannot delete: connection is referenced by query attempts or sessions",
+  "error.internal": "Internal server error",
+  "error.connection_already_disabled": "Connection is already disabled",
+  "error.connection_auth_failed": "Authentication failed. Check username and password.",
+  "error.connection_network_unreachable": "Network unreachable. Check host and port.",
+  "error.connection_db_not_found": "Database not found",
+  "error.connection_timeout": "Connection timed out",
+  "error.credential_config": "Credential encryption not configured",
+  "error.introspection_failed": "Schema introspection failed",
+  "error.introspection_timeout": "Schema introspection timed out",
+  "error.connection_disabled": "Connection is disabled",
+  "error.connection_unhealthy": "Connection is unhealthy",
+  "error.connection_no_schema": "Connection has no schema",
+  "error.dialect_validation_failed": "Dialect validation failed",
+  "error.unsupported_dialect": "Unsupported dialect",
+  "error.no_database_available": "No database available",
+  "error.query_execution_failed": "Query execution failed",
+  "error.connection_unavailable_query": "Connection unavailable during query",
+  "error.configuration_error": "Configuration error"
 }

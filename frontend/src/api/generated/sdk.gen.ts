@@ -280,3 +280,104 @@ export const deleteHistoryEntry = <ThrowOnError extends boolean = false>(options
     url: '/history/{query_id}',
     ...options
 });
+
+// ─────────────────── Admin Connections (Phase 3) ───────────────────
+
+import type {
+    ListAdminConnectionsData,
+    ListAdminConnectionsErrors,
+    ListAdminConnectionsResponses,
+    CreateAdminConnectionData,
+    CreateAdminConnectionErrors,
+    CreateAdminConnectionResponses,
+    GetAdminConnectionData,
+    GetAdminConnectionErrors,
+    GetAdminConnectionResponses,
+    UpdateAdminConnectionData,
+    UpdateAdminConnectionErrors,
+    UpdateAdminConnectionResponses,
+    DeleteAdminConnectionData,
+    DeleteAdminConnectionErrors,
+    DeleteAdminConnectionResponses,
+    DisableAdminConnectionData,
+    DisableAdminConnectionErrors,
+    DisableAdminConnectionResponses,
+    EnableAdminConnectionData,
+    EnableAdminConnectionErrors,
+    EnableAdminConnectionResponses,
+    TestAdminConnectionData,
+    TestAdminConnectionErrors,
+    TestAdminConnectionResponses,
+} from './types.gen';
+
+/**
+ * List all source database connections
+ */
+export const listAdminConnections = <ThrowOnError extends boolean = false>(options?: Options<ListAdminConnectionsData, ThrowOnError>) => (options?.client ?? client).get<ListAdminConnectionsResponses, ListAdminConnectionsErrors, ThrowOnError>({
+    url: '/admin/connections',
+    ...options
+});
+
+/**
+ * Create a new source database connection
+ */
+export const createAdminConnection = <ThrowOnError extends boolean = false>(options: Options<CreateAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<CreateAdminConnectionResponses, CreateAdminConnectionErrors, ThrowOnError>({
+    url: '/admin/connections',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get a connection by ID
+ */
+export const getAdminConnection = <ThrowOnError extends boolean = false>(options: Options<GetAdminConnectionData, ThrowOnError>) => (options.client ?? client).get<GetAdminConnectionResponses, GetAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}`,
+    ...options
+});
+
+/**
+ * Update an existing connection
+ */
+export const updateAdminConnection = <ThrowOnError extends boolean = false>(options: Options<UpdateAdminConnectionData, ThrowOnError>) => (options.client ?? client).put<UpdateAdminConnectionResponses, UpdateAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}`,
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Hard-delete a connection (blocked if referenced)
+ */
+export const deleteAdminConnection = <ThrowOnError extends boolean = false>(options: Options<DeleteAdminConnectionData, ThrowOnError>) => (options.client ?? client).delete<DeleteAdminConnectionResponses, DeleteAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}`,
+    ...options
+});
+
+/**
+ * Disable an active connection
+ */
+export const disableAdminConnection = <ThrowOnError extends boolean = false>(options: Options<DisableAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<DisableAdminConnectionResponses, DisableAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}/disable`,
+    ...options
+});
+
+/**
+ * Re-enable a disabled connection
+ */
+export const enableAdminConnection = <ThrowOnError extends boolean = false>(options: Options<EnableAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<EnableAdminConnectionResponses, EnableAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}/enable`,
+    ...options
+});
+
+/**
+ * Test a connection's health
+ */
+export const testAdminConnection = <ThrowOnError extends boolean = false>(options: Options<TestAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<TestAdminConnectionResponses, TestAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}/test`,
+    ...options
+});

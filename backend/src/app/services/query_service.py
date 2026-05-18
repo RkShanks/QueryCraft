@@ -93,12 +93,12 @@ class QueryService:
         return 3
 
     async def _get_database_connection_id(self) -> str:
-        """Return first database_connection id (Phase 1: single DB).
+        """Return first source_database_connection id (Phase 1: single DB).
 
         Raises:
-            HTTPException 500 if no database_connections row exists.
+            HTTPException 500 if no source_database_connections row exists.
         """
-        result = await self._db_session.execute(text("SELECT id FROM database_connections LIMIT 1"))
+        result = await self._db_session.execute(text("SELECT id FROM source_database_connections LIMIT 1"))
         row = result.fetchone()
         if row is None:
             raise HTTPException(
