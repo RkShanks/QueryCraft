@@ -87,7 +87,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Source DB Adapter Abstraction
 
-- [ ] T-419 Implement `SourceDBAdapter` protocol and `PostgresAdapter` in `backend/src/app/source_db/adapters.py`: async connect, execute parameterized query, health check, close (ADR-10, FR-069)
+- [X] T-419 Implement `SourceDBAdapter` protocol and `PostgresAdapter` in `backend/src/app/source_db/adapters.py`: async connect, execute parameterized query, health check, close (ADR-10, FR-069)
 - [ ] T-420 [P] Implement `MySQLAdapter` in `backend/src/app/source_db/adapters.py` using `asyncmy`; parameterized queries only (ADR-10, FR-069)
 - [ ] T-421 [P] Implement `MSSQLAdapter` in `backend/src/app/source_db/adapters.py` using `aioodbc`; parameterized queries only (ADR-10, FR-069)
 - [ ] T-422 Write adapter tests: connect/execute/health-check for all 3 adapters with fake/mock connections in `backend/tests/unit/source_db/test_adapters.py` (SC-027)
