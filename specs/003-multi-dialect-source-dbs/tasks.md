@@ -54,10 +54,10 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Admin API Endpoints
 
-- [ ] T-412 Implement admin connection CRUD endpoints in `backend/src/app/api/v1/admin_connections.py`: `GET/POST /admin/connections`, `GET/PUT/DELETE /admin/connections/{id}` (FR-059, FR-060, FR-061)
-- [ ] T-413 Implement admin lifecycle endpoints in `backend/src/app/api/v1/admin_connections.py`: `POST .../disable`, `POST .../enable` (FR-089)
-- [ ] T-414 Implement admin health test endpoint in `backend/src/app/api/v1/admin_connections.py`: `POST .../test` with dialect-aware `SELECT 1` (FR-063, FR-064)
-- [ ] T-415 Write admin API contract tests: CRUD, lifecycle, health test, hard-delete guard, password never in response in `backend/tests/unit/api/test_admin_connections.py` (SC-025, SC-029)
+- [X] T-412 Implement admin connection CRUD endpoints in `backend/src/app/api/v1/admin_connections.py`: `GET/POST /admin/connections`, `GET/PUT/DELETE /admin/connections/{id}` (FR-059, FR-060, FR-061)
+- [X] T-413 Implement admin lifecycle endpoints in `backend/src/app/api/v1/admin_connections.py`: `POST .../disable`, `POST .../enable` (FR-089)
+- [X] T-414 Implement admin health test endpoint in `backend/src/app/api/v1/admin_connections.py`: `POST .../test` with dialect-aware `SELECT 1` (FR-063, FR-064)
+- [X] T-415 Write admin API contract tests: CRUD, lifecycle, health test, hard-delete guard, password never in response in `backend/tests/unit/api/test_admin_connections.py` (SC-025, SC-029)
 
 ### OpenAPI Client Regeneration
 
