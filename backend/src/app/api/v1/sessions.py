@@ -7,9 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, require_active_user
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
+from app.repositories.connection_repository import ConnectionRepository
 from app.repositories.session_repository import SessionRepository
 from app.schemas.session import (
     CreateSessionResponse,
+    SessionConnectionResponse,
+    SessionConnectionUpdate,
     SessionDetail,
     SessionListResponse,
     SessionSummary,
@@ -20,6 +23,10 @@ router = APIRouter(prefix="/sessions", tags=["Sessions"])
 
 def _get_session_repo(db: AsyncSession = Depends(get_db)) -> SessionRepository:  # noqa: B008
     return SessionRepository(db)
+
+
+def _get_connection_repo(db: AsyncSession = Depends(get_db)) -> ConnectionRepository:  # noqa: B008
+    return ConnectionRepository(db)
 
 
 def _get_accepted_query_repo(db: AsyncSession = Depends(get_db)) -> AcceptedQueryRepository:  # noqa: B008
@@ -118,3 +125,60 @@ async def delete_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "not_found", "message_key": "error.notFound"},
         )
+
+
+@router.patch("/{session_id}/connection", response_model=SessionConnectionResponse)
+async def update_session_connection(
+    request: Request,
+    session_id: uuid.UUID,
+    req: SessionConnectionUpdate,
+    conn_repo: ConnectionRepository = Depends(_get_connection_repo),  # noqa: B008
+    session_repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
+):
+    """PATCH /sessions/{id}/connection — update session's selected database (T-434, FR-094).
+
+    Validates the connection is active + healthy + introspected before updating.
+    """
+    from app.db.models.enums import HealthStatus, LifecycleState, SchemaIntrospectionStatus
+
+    conn = await conn_repo.get_by_id(uuid.UUID(req.connection_id))
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
+        )
+    if conn.lifecycle_state != LifecycleState.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_disabled", "message_key": "error.connection_disabled"},
+        )
+    if conn.health_status != HealthStatus.HEALTHY:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_unhealthy", "message_key": "error.connection_unhealthy"},
+        )
+    if conn.schema_introspection_status != SchemaIntrospectionStatus.SUCCESS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_no_schema", "message_key": "error.connection_no_schema"},
+        )
+
+    updated = await session_repo.update_connection(
+        session_id=session_id,
+        user_id=uuid.UUID(user_id),
+        connection_id=uuid.UUID(req.connection_id),
+    )
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "not_found", "message_key": "error.notFound"},
+        )
+
+    return SessionConnectionResponse(
+        id=str(updated.id),
+        connection_id=str(updated.connection_id) if updated.connection_id else None,
+        preview_text=updated.preview_text or "",
+        created_at=updated.created_at.isoformat(),
+        last_activity_at=updated.last_activity_at.isoformat(),
+    )
