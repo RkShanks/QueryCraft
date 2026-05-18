@@ -106,7 +106,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Dialect-Aware Evaluator
 
-- [ ] T-429 Update `ReadOnlyRule` in `backend/src/app/evaluator/rules/read_only.py`: parameterize `sqlglot.parse(sql, read=dialect)` per connection's `database_type`; add dialect mapping (FR-071, FR-072)
+- [X] T-429 Update `ReadOnlyRule` in `backend/src/app/evaluator/rules/read_only.py`: parameterize `sqlglot.parse(sql, read=dialect)` per connection's `database_type`; add dialect mapping (FR-071, FR-072)
 - [ ] T-430 Implement dialect validation: reject on parse failure or low confidence → trigger regeneration with dialect hint; never execute unvalidated SQL in `backend/src/app/evaluator/rules/dialect_validation.py` (FR-071, FR-092)
 - [ ] T-431 Write dialect evaluator tests: PG `LIMIT` ok / T-SQL `LIMIT` rejected; T-SQL `TOP` ok / PG `TOP` rejected; INSERT/UPDATE/DELETE rejected across all 3 dialects; parse failure → reject → hint in `backend/tests/unit/evaluator/test_dialect_evaluator.py` (SC-027, SC-028)
 
