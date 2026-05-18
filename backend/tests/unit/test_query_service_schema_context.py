@@ -16,13 +16,14 @@ class StubLLM:
     def __init__(self):
         self.calls = []
 
-    async def generate_sql(self, question, schema_context, negative_examples=None, conversation_history=None):
+    async def generate_sql(self, question, schema_context, negative_examples=None, conversation_history=None, target_dialect=None):
         self.calls.append(
             {
                 "question": question,
                 "schema_context": schema_context,
                 "negative_examples": negative_examples,
                 "conversation_history": conversation_history,
+                "target_dialect": target_dialect,
             }
         )
         return "SELECT 1"
@@ -119,7 +120,12 @@ async def test_submit_question_passes_schema_context():
     service._acquire_lock = _acquire
     service._release_lock_if_owned = _release
 
-    await service.submit_question("http-session-1", "550e8400-e29b-41d4-a716-446655440000", "How many customers?")
+    await service.submit_question(
+        http_session_id="http-session-1",
+        user_id="550e8400-e29b-41d4-a716-446655440000",
+        question="How many customers?",
+        connection_id="550e8400-e29b-41d4-a716-446655440001",
+    )
     assert len(llm.calls) == 1
     assert llm.calls[0]["schema_context"] == "TABLE customers (id INT, name TEXT)"
 

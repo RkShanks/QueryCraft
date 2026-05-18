@@ -1,4 +1,4 @@
-"""T-087 — Prompt builder (test + impl combined)."""
+"""T-087 — Prompt builder (test + impl combined). T-432 — dialect parameterization."""
 
 from app.llm.prompt_builder import build_prompt
 
@@ -28,3 +28,50 @@ def test_special_characters_escaped():
     question = 'What\'s the "total" cost?\nAnd tax?'
     prompt = build_prompt(question, "orders:\n  - total: decimal")
     assert 'What\'s the "total" cost?\nAnd tax?' in prompt
+
+
+class TestPromptBuilderDialectParameterization:
+    """T-432: Verify target_dialect is included in prompt."""
+
+    def test_includes_target_dialect_instruction(self):
+        """Prompt includes TARGET_DIALECT instruction when dialect is provided."""
+        prompt = build_prompt(
+            "Show all users",
+            "users:\n  - id: integer",
+            target_dialect="postgresql",
+        )
+        assert "TARGET_DIALECT:" in prompt
+        assert "postgresql" in prompt
+
+    def test_mysql_dialect_in_prompt(self):
+        """MySQL dialect instruction appears in prompt."""
+        prompt = build_prompt(
+            "Show all orders",
+            "orders:\n  - id: integer",
+            target_dialect="mysql",
+        )
+        assert "TARGET_DIALECT: mysql" in prompt
+
+    def test_tsql_dialect_in_prompt(self):
+        """T-SQL dialect instruction appears in prompt."""
+        prompt = build_prompt(
+            "Show all records",
+            "records:\n  - id: integer",
+            target_dialect="tsql",
+        )
+        assert "TARGET_DIALECT: tsql" in prompt
+
+    def test_no_dialect_when_none(self):
+        """TARGET_DIALECT instruction is absent when dialect is None."""
+        prompt = build_prompt(
+            "Show all users",
+            "users:\n  - id: integer",
+            target_dialect=None,
+        )
+        assert "TARGET_DIALECT:" not in prompt
+
+    def test_backward_compatible_no_dialect(self):
+        """build_prompt without target_dialect arg works (backward compatible)."""
+        prompt = build_prompt("Show users", "users:\n  - id: integer")
+        assert "TARGET_DIALECT:" not in prompt
+        assert "Show users" in prompt

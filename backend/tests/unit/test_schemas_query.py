@@ -39,7 +39,7 @@ class TestSubmitQuestionRequest:
         assert "question" in str(exc_info.value)
 
     def test_accepts_valid_question(self):
-        req = SubmitQuestionRequest(question="Show me sales by region")
+        req = SubmitQuestionRequest(question="Show me sales by region", connection_id="550e8400-e29b-41d4-a716-446655440001")
         assert req.question == "Show me sales by region"
 
 

@@ -12,6 +12,7 @@ class SubmitQuestionRequest(BaseModel):
 
     question: str = Field(..., min_length=1, max_length=2000)
     session_id: str | None = Field(default=None, min_length=1)
+    connection_id: str = Field(..., min_length=1)
 
     @field_validator("question")
     @classmethod

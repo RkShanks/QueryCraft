@@ -23,6 +23,8 @@ tags:
   description: Accepted query history
 - name: Sessions
   description: Chat session management
+- name: Connections
+  description: User-facing database connection listing
 - name: Feedback
   description: Feedback on query results
 - name: Admin
@@ -555,6 +557,77 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /connections:
+    get:
+      operationId: listUserConnections
+      tags:
+      - Connections
+      summary: List available database connections for the current user
+      description: Returns active, healthy, and introspected connections that can be used for querying.
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: List of available connections.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserConnectionResponse'
+        '401':
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /sessions/{sessionId}/connection:
+    patch:
+      operationId: updateSessionConnection
+      tags:
+      - Sessions
+      summary: Update the database connection for a session
+      description: Changes which database connection a session uses for queries. Validates the connection is active, healthy, and introspected.
+      security:
+      - sessionCookie: []
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionConnectionUpdate'
+      responses:
+        '200':
+          description: Session connection updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionConnectionResponse'
+        '400':
+          description: Connection is disabled, unhealthy, or not introspected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /feedback/{attemptId}:
     patch:
       operationId: updateFeedback
@@ -962,6 +1035,7 @@ components:
       type: object
       required:
       - question
+      - connection_id
       properties:
         question:
           type: string
@@ -973,6 +1047,10 @@ components:
           format: uuid
           nullable: true
           description: Chat session ID for follow-up context. Null for first message (lazy session creation).
+        connection_id:
+          type: string
+          format: uuid
+          description: Source database connection ID to route the query to.
     QueryResult:
       type: object
       required:
@@ -1609,6 +1687,55 @@ components:
           type: string
           nullable: true
         tested_at:
+          type: string
+          format: date-time
+    UserConnectionResponse:
+      type: object
+      required:
+      - id
+      - display_name
+      - database_type
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        database_type:
+          type: string
+          enum:
+          - postgresql
+          - mysql
+          - mssql
+    SessionConnectionUpdate:
+      type: object
+      required:
+      - connection_id
+      properties:
+        connection_id:
+          type: string
+          format: uuid
+    SessionConnectionResponse:
+      type: object
+      required:
+      - id
+      - preview_text
+      - created_at
+      - last_activity_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        connection_id:
+          type: string
+          format: uuid
+          nullable: true
+        preview_text:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_activity_at:
           type: string
           format: date-time
   /admin/connections:

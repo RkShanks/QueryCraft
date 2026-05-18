@@ -10,5 +10,6 @@ class StubLLM:
         schema_context: str,
         negative_examples: list[str] | None = None,
         conversation_history: list[dict] | None = None,
+        target_dialect: str | None = None,
     ) -> str:
         return "SELECT 1 AS id"
