@@ -435,3 +435,45 @@ Orchestrator re-reviewed the contract slice and GitHub CI:
 Review outcome: PR #65 is now green-lit for merge. All 7 Critical/High Chrome DevTools MCP smoke blockers are resolved, CI is green, and the OpenAPI contract now matches runtime behavior. Phase 2 closure can proceed after PR #65 merges and the final phase snapshot/log footer are produced.
 
 ---
+
+### 2026-05-18 11:00 — review — PR #67 duplicate chat/nav post-closure fix
+
+**Type**: review
+**Actor**: orchestrator (Devin session 99ac2127)
+**Artifacts**: PR #67 (`phase-2/post-closure-chat-nav-fix` → `main`), final reviewed HEAD `27e02c54317d82584bd26495697e46fb98f1dfc9`
+
+User reported two post-closure issues after PRs #65 and #66 merged:
+
+- Submitting one query in chat rendered two message/turn copies.
+- Sidebar needed visible History and Settings navigation buttons.
+
+Kimi opened PR #67 to fix the user-reported issues and added a backend Decimal serialization fix discovered during Chrome DevTools MCP smoke testing.
+
+Review findings:
+
+- Duplicate chat turn: `WorkspacePage` now dedupes optimistic `localTurns` when their `savedQueryId` appears in persisted `sessionDetail.attempts`, preserving immediate loading UX while avoiding persisted+local duplicate rendering.
+- Sidebar nav: `Sidebar` now renders History and Settings buttons between New Chat and the session list, with expanded labels and collapsed `aria-label`s.
+- Decimal serialization: initial backend patch sanitized Redis attempt storage plus new auto-save/regenerate-create JSONB writes, but orchestrator found the existing-saved-row regenerate path still assigned raw `rows` to `prior_saved.result_rows`.
+
+Blocking review comments resolved:
+
+- Kimi changed the `prior_saved` regenerate branch to `prior_saved.result_rows = _sanitize_for_json(rows)`.
+- Kimi added `backend/tests/unit/services/test_query_service_decimal_regen.py`, proving Decimal executor rows are converted to floats before assignment in that branch.
+- A follow-up lint push removed an unused import, wrapped a long line, removed an unused variable, and formatted the new test.
+
+Orchestrator verification:
+
+- Local targeted backend check: `cd backend && uv run ruff check src tests && uv run ruff format --check src tests && uv run pytest -q -m "not integration" tests/unit/services/test_query_service_decimal_regen.py tests/unit/services/test_query_service_regenerate.py` → ruff pass, format pass, 14 passed.
+- GitHub CI on final PR #67 HEAD: `backend-test` PASS, `frontend-test` PASS.
+
+Kimi-reported gates:
+
+- Backend ruff check/format: pass.
+- Backend unit pytest: 359 passed.
+- Frontend test: 229 passed.
+- Frontend lint/typecheck/build/lint:css: pass.
+- Chrome DevTools MCP smoke: History/Settings visible and navigable, `/settings` shows both fields, first query and follow-up query render exactly once each, no console errors, Decimal value `2.98` displays in results.
+
+Review outcome: PR #67 is green-lit for merge. The user-reported duplicate chat turn and missing History/Settings nav are fixed, Decimal serialization is covered in all discovered submit/regenerate persistence paths, and CI is green.
+
+---
