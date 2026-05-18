@@ -477,3 +477,15 @@ Kimi-reported gates:
 Review outcome: PR #67 is green-lit for merge. The user-reported duplicate chat turn and missing History/Settings nav are fixed, Decimal serialization is covered in all discovered submit/regenerate persistence paths, and CI is green.
 
 ---
+
+### 2026-05-18 11:05 — snapshot — Phase 2 Closed
+
+**Type**: snapshot
+**Actor**: orchestrator
+**Artifacts**: specs/002-phase2-premium-ui-rtl/plans/wave-final-snapshot.md
+
+Phase 2 is now officially closed. All 8 Waves (8.0..8.4, 9, 10, plus post-closure PR #67) have been merged to main. All tests, gates, and smoke evidence pass. Critical and high audit findings have been resolved. The Phase 2 charter (Premium UI, Constitution VI Arabic/RTL, and backend hardening) is successfully delivered.
+
+Next action: Specify Phase 3.
+
+---

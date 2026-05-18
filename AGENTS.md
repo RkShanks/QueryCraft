@@ -68,8 +68,8 @@ Phases are sequential and **immutable** once snapshot. Each phase has its own `s
 | Phase | Status | Directory | Scope |
 |---|---|---|---|
 | Phase 1 | FROZEN | `specs/001-core-text-to-sql/` | Core text-to-SQL: 6 user stories, 28 PRs, 224 tasks, Constitutions I–III/V/VIII |
-| Phase 2 | ACTIVE | `specs/002-phase2-premium-ui-rtl/` | Premium UI refactor + Constitution VI (Arabic/RTL) + backend hardening (real-LLM smoke + lifecycle invariants) |
-| Phase 3 | DEFERRED | not yet specified | Saved Queries Library, Constitution IV (hostile input), Constitution VII (per-DB RBAC), Constitution IX (audit log), Constitution X (rate limiting) |
+| Phase 2 | FROZEN | `specs/002-phase2-premium-ui-rtl/` | Premium UI refactor + Constitution VI (Arabic/RTL) + backend hardening (real-LLM smoke + lifecycle invariants) |
+| Phase 3 | NEXT | not yet specified | Saved Queries Library, Constitution IV (hostile input), Constitution VII (per-DB RBAC), Constitution IX (audit log), Constitution X (rate limiting) |
 | Phase 4+ | DEFERRED | not yet specified | Mobile shell, multi-tenant, additional source DB providers (MySQL/MSSQL) |
 
 ### Starting a new phase
