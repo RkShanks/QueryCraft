@@ -17,7 +17,7 @@ Bootstrap prompt: `"Continue work on RkShanks/QueryCraft. Read AGENTS.md first."
 - **Repo**: github.com/RkShanks/QueryCraft (single-tenant)
 - **Product**: Text-to-SQL — natural language → SQL → execute → results.
 - **Stack**: FastAPI (Python 3.11) · Postgres 15 · Redis 7 · React 19 · Tailwind v4 · Vite · TanStack Query · Playwright. LLM: Google Gemini (default), provider-agnostic interface.
-- **Constitution**: 10 principles in `specs/001-core-text-to-sql/constitution.md`. Shipped: I/II/III/V/VI/VIII. Deferred to Phase 3+: IV/VII/IX/X.
+- **Constitution**: 10 principles in `.specify/memory/constitution.md`. Shipped: I/II/III/V/VI/VIII. Deferred to Phase 3+: IV/VII/IX/X.
 
 ## 2. Roles & Models
 
@@ -58,7 +58,7 @@ Phases are sequential and **immutable** once snapshot.
 | Implementer protocol | `.agents/IMPLEMENTER.md` |
 | Frontend skill (Gemini) | `.agents/skills/FRONTEND_GEMINI.md` |
 | Backend skill (Qwen) | `.agents/skills/BACKEND_QWEN.md` |
-| TDD skill (pointer) | `.agents/skills/TDD.md` → `~/.agents/skills/tdd/` |
+| TDD skill | `.agents/skills/TDD.md` → `.agents/skills/tdd/` |
 | Karpathy guidelines | `.agents/skills/KARPATHY.md` |
 | Devin skill (legacy) | `.devin/skills/querycraft-dev/SKILL.md` |
 | Phase 1 (FROZEN) | `specs/001-core-text-to-sql/` |

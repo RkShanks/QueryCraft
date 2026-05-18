@@ -1,15 +1,15 @@
-# TDD Skill — Project-Local Pointer
+# TDD Skill
 
-This project uses the global TDD skill at `~/.agents/skills/tdd/`.
+Self-contained TDD skill vendored into this repo.
 
 ## Read before writing any test
 
-1. `~/.agents/skills/tdd/SKILL.md` — red/green/refactor workflow, anti-patterns, per-cycle checklist
-2. `~/.agents/skills/tdd/tests.md` — good vs bad test examples
-3. `~/.agents/skills/tdd/mocking.md` — mock at system boundaries only
-4. `~/.agents/skills/tdd/interface-design.md` — design for testability
-5. `~/.agents/skills/tdd/deep-modules.md` — small interface, deep implementation
-6. `~/.agents/skills/tdd/refactoring.md` — refactor candidates after GREEN
+1. [SKILL.md](tdd/SKILL.md) — red/green/refactor workflow, anti-patterns, per-cycle checklist
+2. [tests.md](tdd/tests.md) — good vs bad test examples
+3. [mocking.md](tdd/mocking.md) — mock at system boundaries only
+4. [interface-design.md](tdd/interface-design.md) — design for testability
+5. [deep-modules.md](tdd/deep-modules.md) — small interface, deep implementation
+6. [refactoring.md](tdd/refactoring.md) — refactor candidates after GREEN
 
 ## QueryCraft TDD evidence requirement
 

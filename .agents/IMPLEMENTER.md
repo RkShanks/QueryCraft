@@ -95,13 +95,11 @@ Don't hoard locally. Push gives orchestrator visibility + remote backup.
 
 ## Step 7 — Open PR before reporting
 
-```bash
-gh pr create \
-  --title "Phase <N> — Wave <W.X>: <Name> (T-XXX..T-YYY)" \
-  --base main --head <branch> --body "..."
-```
+Open a PR using the available GitHub tooling (CLI, web UI, or API). Target `main`, head is your wave branch.
 
-Include: Summary, T-IDs, FR/SC verified, verbatim gates, quirks, BLOCKED markers.
+**Title**: `Phase <N> — Wave <W.X>: <Name> (T-XXX..T-YYY)`
+
+**Body must include**: Summary, T-IDs, FR/SC verified, verbatim gates, quirks, BLOCKED markers.
 
 ## Step 8 — Wave Final Report
 
