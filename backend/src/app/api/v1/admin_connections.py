@@ -208,3 +208,52 @@ async def test_connection(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": "internal_error", "message_key": "error.internal"},
         ) from e
+
+
+@router.post("/{connection_id}/refresh-schema")
+async def refresh_schema(
+    connection_id: uuid.UUID,
+    _: str = Depends(require_admin_user),  # noqa: B008
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
+):
+    """POST /admin/connections/{id}/refresh-schema — trigger schema introspection."""
+    try:
+        result = await service.refresh_schema(connection_id)
+        return result
+    except ConnectionNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
+        ) from None
+    except Exception as e:
+        if hasattr(e, "message_key") and e.message_key == "error.introspection_failed":  # type: ignore[attr-defined]
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={"error": "introspection_failed", "message_key": "error.introspection_failed", "detail": str(e)},
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal_error", "message_key": "error.internal"},
+        ) from e
+
+
+@router.get("/{connection_id}/schema")
+async def get_schema(
+    connection_id: uuid.UUID,
+    _: str = Depends(require_admin_user),  # noqa: B008
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
+):
+    """GET /admin/connections/{id}/schema — get introspected schema summary."""
+    try:
+        result = await service.get_schema_summary(connection_id)
+        return result
+    except ConnectionNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
+        ) from None
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal_error", "message_key": "error.internal"},
+        ) from e
