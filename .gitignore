@@ -60,10 +60,9 @@ playwright-report/
 # ─── Jupyter ───
 .ipynb_checkpoints/
 
-# ─── SpecKit (tracked separately) ───
+# ─── SpecKit (auto-generated, tracked separately) ───
 .specify
-.agents
-AGENTS.md
+.agents/skills/speckit-*
 .opencode/
 .specify.bak
 # dbTest SQL files are ignored via dbTest/.gitignore
