@@ -3,9 +3,12 @@
 FR-059, FR-060, FR-061, FR-063, FR-064, FR-089, FR-090.
 """
 
+import contextlib
 import time
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any
 
 from app.core.credential_provider import FernetCredentialProvider
 from app.core.exceptions import QueryCraftError
@@ -39,12 +42,22 @@ class ConnectionNotFoundError(QueryCraftError):
 class ConnectionService:
     """Business logic for source database connection lifecycle."""
 
-    def __init__(self, repository: ConnectionRepository, credential_key: str) -> None:
+    def __init__(
+        self,
+        repository: ConnectionRepository,
+        credential_key: str,
+        get_db_session: Callable | None = None,
+    ) -> None:
         self._repo = repository
         self._credential_provider = FernetCredentialProvider(credential_key)
+        self._get_db_session = get_db_session or (lambda: None)
 
     async def create(self, req: ConnectionCreate) -> ConnectionResponse:
-        """Create a new source database connection."""
+        """Create a new source database connection.
+
+        After persisting, runs auto-introspect pipeline: health check → introspect.
+        Statuses are updated accordingly (FR-093).
+        """
         encrypted_password = self._credential_provider.encrypt(req.password)
 
         conn = SourceDatabaseConnection(
@@ -62,7 +75,61 @@ class ConnectionService:
         )
 
         created = await self._repo.create(conn)
+
+        # Auto-introspect pipeline: health check → introspect (FR-093)
+        await self._auto_introspect_on_create(created)
+
         return ConnectionResponse.model_validate(created)
+
+    async def _auto_introspect_on_create(self, conn: SourceDatabaseConnection) -> None:
+        """Run health check and introspection after first save.
+
+        Updates connection health_status and schema_introspection_status.
+        Errors are caught and statuses marked as FAILED — connection is not rolled back.
+        """
+        try:
+            adapter = self._build_adapter(conn)
+            healthy = await adapter.health_check()
+            await adapter.close()
+
+            if healthy:
+                conn.health_status = HealthStatus.HEALTHY
+                conn.last_health_check_at = datetime.now(UTC)
+                conn.health_error_category = None
+            else:
+                conn.health_status = HealthStatus.UNHEALTHY
+                conn.last_health_check_at = datetime.now(UTC)
+                conn.health_error_category = "unknown"
+                conn.schema_introspection_status = SchemaIntrospectionStatus.FAILED
+                await self._repo.update(conn)
+                return
+
+            await self._repo.update(conn)
+
+            # Run introspection if healthy
+            db_session = self._get_db_session()
+            if db_session is None:
+                conn.schema_introspection_status = SchemaIntrospectionStatus.FAILED
+                await self._repo.update(conn)
+                return
+
+            from app.source_db.schema_introspector import SchemaIntrospector
+
+            introspector = SchemaIntrospector(
+                adapter=self._build_adapter(conn),
+                database_type=conn.database_type,
+                db_session=db_session,
+                connection_id=conn.id,
+            )
+
+            result = await introspector.introspect()
+            conn.schema_introspection_status = SchemaIntrospectionStatus.SUCCESS
+            conn.schema_last_refreshed_at = result["refreshed_at"]
+            await self._repo.update(conn)
+        except Exception:
+            conn.schema_introspection_status = SchemaIntrospectionStatus.FAILED
+            with contextlib.suppress(Exception):
+                await self._repo.update(conn)
 
     async def get_by_id(self, connection_id: uuid.UUID) -> ConnectionResponse:
         """Get a connection by ID."""
@@ -232,3 +299,103 @@ class ConnectionService:
         if "timeout" in error_lower:
             return "timeout"
         return "unknown"
+
+    async def refresh_schema(self, connection_id: uuid.UUID) -> dict[str, Any]:
+        """Run schema introspection for a connection.
+
+        Updates schema_introspection_status and schema_last_refreshed_at.
+        """
+        from app.source_db.schema_introspector import SchemaIntrospectionError, SchemaIntrospector
+
+        conn = await self._repo.get_by_id(connection_id)
+        if conn is None:
+            raise ConnectionNotFoundError(connection_id)
+
+        adapter = self._build_adapter(conn)
+        db_session = self._get_db_session()
+
+        introspector = SchemaIntrospector(
+            adapter=adapter,
+            database_type=conn.database_type,
+            db_session=db_session,
+            connection_id=connection_id,
+        )
+
+        try:
+            result = await introspector.introspect()
+            conn.schema_introspection_status = SchemaIntrospectionStatus.SUCCESS
+            conn.schema_last_refreshed_at = result["refreshed_at"]
+            await self._repo.update(conn)
+            return result
+        except SchemaIntrospectionError as e:
+            conn.schema_introspection_status = SchemaIntrospectionStatus.FAILED
+            await self._repo.update(conn)
+            raise QueryCraftError(
+                f"Schema introspection failed: {e.detail}",
+                message_key="error.introspection_failed",
+                detail=e.detail,
+            ) from e
+        finally:
+            await adapter.close()
+
+    async def get_schema_summary(self, connection_id: uuid.UUID) -> dict[str, Any]:
+        """Get the introspected schema summary for a connection."""
+        conn = await self._repo.get_by_id(connection_id)
+        if conn is None:
+            raise ConnectionNotFoundError(connection_id)
+
+        entries = await self._repo.get_schema_entries(connection_id)
+
+        tables_map: dict[str, dict] = {}
+        for entry in entries:
+            tname = entry.table_name
+            if tname not in tables_map:
+                tables_map[tname] = {
+                    "table_name": tname,
+                    "column_count": 0,
+                    "columns": [],
+                }
+            col_info = {
+                "column_name": entry.column_name,
+                "data_type": entry.column_data_type,
+                "is_primary_key": entry.is_primary_key,
+                "foreign_key": None,
+            }
+            if entry.foreign_key_table:
+                col_info["foreign_key"] = {
+                    "table": entry.foreign_key_table,
+                    "column": entry.foreign_key_column,
+                }
+            tables_map[tname]["columns"].append(col_info)
+            tables_map[tname]["column_count"] += 1
+
+        latest_introspected_at = max((e.introspected_at for e in entries), default=None)
+
+        return {
+            "connection_id": connection_id,
+            "tables": list(tables_map.values()),
+            "introspected_at": latest_introspected_at,
+        }
+
+    def _build_adapter(self, conn: SourceDatabaseConnection) -> Any:
+        """Build a SourceDBAdapter for the given connection."""
+        from app.source_db.adapters import MSSQLAdapter, MySQLAdapter, PostgresAdapter
+
+        adapter_map = {
+            DatabaseType.POSTGRESQL: PostgresAdapter,
+            DatabaseType.MYSQL: MySQLAdapter,
+            DatabaseType.MSSQL: MSSQLAdapter,
+        }
+        adapter_cls = adapter_map.get(conn.database_type)
+        if adapter_cls is None:
+            raise QueryCraftError(f"Unsupported database type: {conn.database_type.value}")
+
+        return adapter_cls(
+            host=conn.host,
+            port=conn.port,
+            database=conn.database_name,
+            username=conn.username,
+            encrypted_password=conn.encrypted_password,
+            ssl_mode=conn.ssl_mode,
+            credential_provider=self._credential_provider,
+        )

@@ -83,22 +83,22 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Driver Dependencies & Docs
 
-- [ ] T-418 Add `asyncmy` and `aioodbc` to `backend/pyproject.toml` dependencies; document MSSQL system deps (`unixODBC`, `freetds-dev`, `tdsodbc`) in `Dockerfile`, `docker-compose.yml`, and `README.md` (ADR-10)
+- [X] T-418 Add `asyncmy` and `aioodbc` to `backend/pyproject.toml` dependencies; document MSSQL system deps (`unixODBC`, `freetds-dev`, `tdsodbc`) in `Dockerfile`, `docker-compose.yml`, and `README.md` (ADR-10)
 
 ### Source DB Adapter Abstraction
 
-- [ ] T-419 Implement `SourceDBAdapter` protocol and `PostgresAdapter` in `backend/src/app/source_db/adapters.py`: async connect, execute parameterized query, health check, close (ADR-10, FR-069)
-- [ ] T-420 [P] Implement `MySQLAdapter` in `backend/src/app/source_db/adapters.py` using `asyncmy`; parameterized queries only (ADR-10, FR-069)
-- [ ] T-421 [P] Implement `MSSQLAdapter` in `backend/src/app/source_db/adapters.py` using `aioodbc`; parameterized queries only (ADR-10, FR-069)
-- [ ] T-422 Write adapter tests: connect/execute/health-check for all 3 adapters with fake/mock connections in `backend/tests/unit/source_db/test_adapters.py` (SC-027)
+- [X] T-419 Implement `SourceDBAdapter` protocol and `PostgresAdapter` in `backend/src/app/source_db/adapters.py`: async connect, execute parameterized query, health check, close (ADR-10, FR-069)
+- [X] T-420 [P] Implement `MySQLAdapter` in `backend/src/app/source_db/adapters.py` using `asyncmy`; parameterized queries only (ADR-10, FR-069)
+- [X] T-421 [P] Implement `MSSQLAdapter` in `backend/src/app/source_db/adapters.py` using `aioodbc`; parameterized queries only (ADR-10, FR-069)
+- [X] T-422 Write adapter tests: connect/execute/health-check for all 3 adapters with fake/mock connections in `backend/tests/unit/source_db/test_adapters.py` (SC-027)
 
 ### Schema Introspection
 
-- [ ] T-423 Create `ConnectionSchemaEntry` ORM model in `backend/src/app/db/models/connection_schema.py` (table `connection_schema_entries`, cascade delete) (FR-065, FR-066)
-- [ ] T-424 Implement `SchemaIntrospector` strategy pattern in `backend/src/app/source_db/schema_introspector.py`: per-dialect `information_schema` queries for PG/MySQL/MSSQL, full-replace refresh logic (FR-065, FR-066, ADR-11)
-- [ ] T-425 Implement auto-introspect pipeline in `ConnectionService`: on first save → health check → introspect; mark status accordingly (FR-093)
-- [ ] T-426 Add admin schema endpoints: `POST .../refresh-schema` and `GET .../schema` in `backend/src/app/api/v1/admin_connections.py` (FR-066, FR-067, FR-068)
-- [ ] T-427 Write introspection tests: PG/MySQL/MSSQL fake adapter returns expected metadata, full-replace on refresh, failure handling, auto-introspect on save in `backend/tests/unit/source_db/test_schema_introspector.py` (SC-026)
+- [X] T-423 Create `ConnectionSchemaEntry` ORM model in `backend/src/app/db/models/connection_schema.py` (table `connection_schema_entries`, cascade delete) (FR-065, FR-066)
+- [X] T-424 Implement `SchemaIntrospector` strategy pattern in `backend/src/app/source_db/schema_introspector.py`: per-dialect `information_schema` queries for PG/MySQL/MSSQL, full-replace refresh logic (FR-065, FR-066, ADR-11)
+- [X] T-425 Implement auto-introspect pipeline in `ConnectionService`: on first save → health check → introspect; mark status accordingly (FR-093)
+- [X] T-426 Add admin schema endpoints: `POST .../refresh-schema` and `GET .../schema` in `backend/src/app/api/v1/admin_connections.py` (FR-066, FR-067, FR-068)
+- [X] T-427 Write introspection tests: PG/MySQL/MSSQL fake adapter returns expected metadata, full-replace on refresh, failure handling, auto-introspect on save in `backend/tests/unit/source_db/test_schema_introspector.py` (SC-026)
 
 ### User-Facing Connection Endpoint
 

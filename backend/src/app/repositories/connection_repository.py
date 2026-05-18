@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.connection_schema import ConnectionSchemaEntry
 from app.db.models.database_connection import SourceDatabaseConnection
 
 
@@ -72,3 +73,12 @@ class ConnectionRepository:
         )
         count = raw.scalar()
         return count > 0
+
+    async def get_schema_entries(self, connection_id: uuid.UUID) -> list[ConnectionSchemaEntry]:
+        """Get all schema entries for a connection."""
+        result = await self._db_session.execute(
+            select(ConnectionSchemaEntry)
+            .where(ConnectionSchemaEntry.connection_id == connection_id)
+            .order_by(ConnectionSchemaEntry.table_name, ConnectionSchemaEntry.column_name)
+        )
+        return list(result.scalars().all())

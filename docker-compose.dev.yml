@@ -1,5 +1,10 @@
 # Development Docker Compose — QueryCraft Text-to-SQL Analytics Platform
 # Usage: cp .env.example .env && docker compose -f docker-compose.dev.yml up -d
+#
+# MSSQL support (optional, ADR-10):
+#   Requires system packages: unixODBC, freetds-dev, tdsodbc
+#   See backend/Dockerfile for installation.
+#   MySQL/MSSQL real-service tests are @pytest.mark.integration (not run in default CI).
 
 services:
   postgres-platform:
