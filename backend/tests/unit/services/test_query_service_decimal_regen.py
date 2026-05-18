@@ -12,7 +12,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.core.attempt_store import EphemeralAttempt
-from app.schemas.query import ColumnMeta
 from app.services.query_service import QueryService
 
 
@@ -50,7 +49,9 @@ class TestRegenerateDecimalSerialization:
                 if "database_connections" in stmt_str:
                     return MagicMock(fetchone=MagicMock(return_value=("00000000-0000-0000-0000-000000000002",)))
                 if "FROM users" in stmt_str:
-                    return MagicMock(scalar_one_or_none=MagicMock(return_value=MagicMock(id="00000000-0000-0000-0000-000000000001")))
+                    return MagicMock(
+                        scalar_one_or_none=MagicMock(return_value=MagicMock(id="00000000-0000-0000-0000-000000000001"))
+                    )
                 return MagicMock(fetchone=MagicMock(return_value=(3,)))
 
             return _coro()
@@ -102,10 +103,12 @@ class TestRegenerateDecimalSerialization:
 
         # Executor returns Decimal values (as PostgreSQL does for numeric/avg)
         decimal_rows = [[Decimal("2.9800000000000000")]]
-        mock_deps["executor"].execute = AsyncMock(return_value=(
-            [{"name": "avg", "type": "text"}],
-            decimal_rows,
-        ))
+        mock_deps["executor"].execute = AsyncMock(
+            return_value=(
+                [{"name": "avg", "type": "text"}],
+                decimal_rows,
+            )
+        )
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(violations=[]))
         mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT AVG(rating) FROM films;")
 
@@ -123,7 +126,7 @@ class TestRegenerateDecimalSerialization:
         service = self._make_service(mock_deps)
 
         with patch("app.services.query_service.get_attempt", new_callable=AsyncMock, return_value=prior):
-            result = await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1")
 
         # Verify the prior_saved row was updated with sanitized rows
         saved_row = mock_deps["repo"].get_by_attempt_id.return_value
