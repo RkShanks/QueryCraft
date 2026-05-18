@@ -87,3 +87,39 @@ class TestCredentialProviderProtocol:
         assert hasattr(provider, "decrypt")
         assert callable(provider.encrypt)
         assert callable(provider.decrypt)
+
+
+class TestCredentialProviderStartupGuard:
+    """Verify startup guard behavior (SC-029)."""
+
+    def test_get_provider_before_init_raises(self):
+        """Calling get_credential_provider before init raises ConfigurationError."""
+        from app.core import credential_provider
+        original = credential_provider._provider
+        credential_provider._provider = None
+        try:
+            with pytest.raises(ConfigurationError):
+                credential_provider.get_credential_provider()
+        finally:
+            credential_provider._provider = original
+
+    def test_init_then_get_provider_works(self):
+        """After init, get_provider returns the initialized provider."""
+        from app.core import credential_provider
+        original = credential_provider._provider
+        key = Fernet.generate_key().decode()
+        try:
+            credential_provider.init_credential_provider(key)
+            provider = credential_provider.get_credential_provider()
+            assert isinstance(provider, FernetCredentialProvider)
+        finally:
+            credential_provider._provider = original
+
+    def test_encrypted_password_not_plaintext(self):
+        """Encrypted password is never the original plaintext."""
+        key = Fernet.generate_key().decode()
+        provider = FernetCredentialProvider(key)
+        plaintext = "super_secret_password_123"
+        encrypted = provider.encrypt(plaintext)
+        assert encrypted != plaintext
+        assert plaintext not in encrypted

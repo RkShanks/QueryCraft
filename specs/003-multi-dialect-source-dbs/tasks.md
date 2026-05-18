@@ -39,7 +39,7 @@ Wave Final Reports MUST include red/green evidence per task.
 ### Credential Encryption
 
 - [X] T-405 Implement `CredentialProvider` protocol and `FernetCredentialProvider` in `backend/src/app/core/credential_provider.py` using `cryptography.fernet.Fernet` with `DB_CREDENTIAL_KEY` env var (FR-062, ADR-9)
-- [ ] T-406 Add `DB_CREDENTIAL_KEY` to `Settings` in `backend/src/app/core/config.py`; implement startup guard — fail if key missing/invalid when encrypted credentials exist (FR-062, ADR-9)
+- [X] T-406 Add `DB_CREDENTIAL_KEY` to `Settings` in `backend/src/app/core/config.py`; implement startup guard — fail if key missing/invalid when encrypted credentials exist (FR-062, ADR-9)
 - [ ] T-407 Write encryption tests: Fernet round-trip, no plaintext in API response, startup fail on bad/missing key, provider abstraction contract in `backend/tests/unit/core/test_credential_provider.py` (SC-029)
 
 ### Connection Service
