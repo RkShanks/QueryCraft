@@ -22,6 +22,15 @@ class QueryCraftError(Exception):
         self.extra = kwargs
 
 
+class ConfigurationError(QueryCraftError):
+    """Raised when application configuration is missing or invalid."""
+
+    def __init__(self, error: str = "", message_key: str = "", detail: str = ""):
+        super().__init__(detail or message_key, message_key=message_key, error=error)
+        self.error = error
+        self.detail = detail
+
+
 # ─── LLM ───
 
 
