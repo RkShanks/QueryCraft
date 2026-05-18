@@ -6,7 +6,7 @@ CRUD, lifecycle (disable/enable), health test, hard-delete guard.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -39,7 +39,7 @@ def _get_connection_service(
 @router.get("", response_model=list[ConnectionResponse])
 async def list_connections(
     _: str = Depends(require_admin_user),  # noqa: B008
-    service: ConnectionService = Depends(_get_connection_service),
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """GET /admin/connections — list all source database connections."""
     try:
@@ -56,7 +56,7 @@ async def list_connections(
 async def create_connection(
     req: ConnectionCreate,
     _: str = Depends(require_admin_user),  # noqa: B008
-    service: ConnectionService = Depends(_get_connection_service),
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """POST /admin/connections — create a new source database connection."""
     try:
@@ -72,7 +72,7 @@ async def create_connection(
 async def get_connection(
     connection_id: uuid.UUID,
     _: str = Depends(require_admin_user),  # noqa: B008
-    service: ConnectionService = Depends(_get_connection_service),
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """GET /admin/connections/{id} — get a connection by ID."""
     try:
@@ -81,7 +81,7 @@ async def get_connection(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
-        )
+        ) from None
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -94,7 +94,7 @@ async def update_connection(
     connection_id: uuid.UUID,
     req: ConnectionUpdate,
     _: str = Depends(require_admin_user),  # noqa: B008
-    service: ConnectionService = Depends(_get_connection_service),
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """PUT /admin/connections/{id} — update an existing connection."""
     try:
@@ -103,7 +103,7 @@ async def update_connection(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
-        )
+        ) from None
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -115,7 +115,7 @@ async def update_connection(
 async def delete_connection(
     connection_id: uuid.UUID,
     _: str = Depends(require_admin_user),  # noqa: B008
-    service: ConnectionService = Depends(_get_connection_service),
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """DELETE /admin/connections/{id} — hard-delete a connection (blocked if referenced)."""
     try:
@@ -124,12 +124,12 @@ async def delete_connection(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
-        )
+        ) from None
     except ConnectionReferencedError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"error": "connection_referenced", "message_key": "error.connection_referenced_delete_blocked"},
-        )
+        ) from None
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -141,7 +141,7 @@ async def delete_connection(
 async def disable_connection(
     connection_id: uuid.UUID,
     _: str = Depends(require_admin_user),  # noqa: B008
-    service: ConnectionService = Depends(_get_connection_service),
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """POST /admin/connections/{id}/disable — disable an active connection."""
     try:
@@ -150,13 +150,13 @@ async def disable_connection(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
-        )
+        ) from None
     except Exception as e:
         if "already_disabled" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"error": "already_disabled", "message_key": "error.connection_already_disabled"},
-            )
+            ) from None
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": "internal_error", "message_key": "error.internal"},
@@ -167,7 +167,7 @@ async def disable_connection(
 async def enable_connection(
     connection_id: uuid.UUID,
     _: str = Depends(require_admin_user),  # noqa: B008
-    service: ConnectionService = Depends(_get_connection_service),
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """POST /admin/connections/{id}/enable — re-enable a disabled connection."""
     try:
@@ -176,13 +176,13 @@ async def enable_connection(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
-        )
+        ) from None
     except Exception as e:
         if "already_active" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"error": "already_active", "message_key": "error.connection_already_active"},
-            )
+            ) from None
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": "internal_error", "message_key": "error.internal"},
@@ -193,7 +193,7 @@ async def enable_connection(
 async def test_connection(
     connection_id: uuid.UUID,
     _: str = Depends(require_admin_user),  # noqa: B008
-    service: ConnectionService = Depends(_get_connection_service),
+    service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """POST /admin/connections/{id}/test — test a connection's health."""
     try:
@@ -202,7 +202,7 @@ async def test_connection(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
-        )
+        ) from None
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

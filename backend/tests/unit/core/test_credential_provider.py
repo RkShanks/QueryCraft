@@ -1,12 +1,9 @@
 """Tests for CredentialProvider protocol and FernetCredentialProvider (T-405, SC-029)."""
 
-import base64
-import os
-
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
 
-from app.core.credential_provider import CredentialProvider, FernetCredentialProvider, ConfigurationError
+from app.core.credential_provider import ConfigurationError, FernetCredentialProvider
 
 
 class TestFernetCredentialProvider:
@@ -95,6 +92,7 @@ class TestCredentialProviderStartupGuard:
     def test_get_provider_before_init_raises(self):
         """Calling get_credential_provider before init raises ConfigurationError."""
         from app.core import credential_provider
+
         original = credential_provider._provider
         credential_provider._provider = None
         try:
@@ -106,6 +104,7 @@ class TestCredentialProviderStartupGuard:
     def test_init_then_get_provider_works(self):
         """After init, get_provider returns the initialized provider."""
         from app.core import credential_provider
+
         original = credential_provider._provider
         key = Fernet.generate_key().decode()
         try:

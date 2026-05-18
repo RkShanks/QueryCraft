@@ -138,9 +138,13 @@ async def _upsert_source_db_connection(settings):
                 await session.execute(
                     text("""
                         INSERT INTO source_database_connections (
-                            display_name, database_type, host, port, database_name, username, encrypted_password, ssl_mode
+                            display_name, database_type, host, port,
+                            database_name, username, encrypted_password, ssl_mode
                         )
-                        VALUES (:name, 'postgresql', :host, :port, :database_name, :username, :encrypted_password, :ssl_mode)
+                        VALUES (
+                            :name, 'postgresql', :host, :port, :database_name,
+                            :username, :encrypted_password, :ssl_mode
+                        )
                     """),
                     {
                         "name": settings.SOURCE_DB_NAME,

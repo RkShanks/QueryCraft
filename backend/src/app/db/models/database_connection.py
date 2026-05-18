@@ -61,6 +61,4 @@ class SourceDatabaseConnection(Base):
         "updated_at", DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    __table_args__ = (
-        Index("ix_source_db_connections_lifecycle_state", "lifecycle_state"),
-    )
+    __table_args__ = (Index("ix_source_db_connections_lifecycle_state", "lifecycle_state"),)

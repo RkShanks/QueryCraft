@@ -1,11 +1,14 @@
-"""Connection service for source database connection management (FR-059, FR-060, FR-061, FR-063, FR-064, FR-089, FR-090)."""
+"""Connection service for source database connection management.
+
+FR-059, FR-060, FR-061, FR-063, FR-064, FR-089, FR-090.
+"""
 
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.credential_provider import FernetCredentialProvider
-from app.core.exceptions import ConfigurationError, QueryCraftError
+from app.core.exceptions import QueryCraftError
 from app.db.models.database_connection import SourceDatabaseConnection
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 from app.repositories.connection_repository import ConnectionRepository
@@ -143,7 +146,10 @@ class ConnectionService:
             # Build connection URL based on database type
             if conn.database_type == DatabaseType.POSTGRESQL:
                 import asyncpg
-                db_url = f"postgresql://{conn.username}:{decrypted_password}@{conn.host}:{conn.port}/{conn.database_name}"
+
+                db_url = (
+                    f"postgresql://{conn.username}:{decrypted_password}@{conn.host}:{conn.port}/{conn.database_name}"
+                )
                 if conn.ssl_mode != "disable":
                     db_url += f"?ssl={conn.ssl_mode}"
 
@@ -158,14 +164,14 @@ class ConnectionService:
             latency_ms = (time.monotonic() - start) * 1000
 
             conn.health_status = HealthStatus.HEALTHY
-            conn.last_health_check_at = datetime.now(timezone.utc)
+            conn.last_health_check_at = datetime.now(UTC)
             conn.health_error_category = None
             await self._repo.update(conn)
 
             return ConnectionTestResult(
                 status="healthy",
                 latency_ms=round(latency_ms, 2),
-                tested_at=datetime.now(timezone.utc),
+                tested_at=datetime.now(UTC),
             )
         except NotImplementedError:
             latency_ms = (time.monotonic() - start) * 1000
@@ -174,14 +180,14 @@ class ConnectionService:
                 latency_ms=round(latency_ms, 2),
                 error_category="not_implemented",
                 message_key="error.connection_unhealthy",
-                tested_at=datetime.now(timezone.utc),
+                tested_at=datetime.now(UTC),
             )
         except Exception as e:
             latency_ms = (time.monotonic() - start) * 1000
             error_category = self._classify_error(str(e))
 
             conn.health_status = HealthStatus.UNHEALTHY
-            conn.last_health_check_at = datetime.now(timezone.utc)
+            conn.last_health_check_at = datetime.now(UTC)
             conn.health_error_category = error_category
             await self._repo.update(conn)
 
@@ -190,7 +196,7 @@ class ConnectionService:
                 latency_ms=round(latency_ms, 2),
                 error_category=error_category,
                 message_key=f"error.connection_{error_category}",
-                tested_at=datetime.now(timezone.utc),
+                tested_at=datetime.now(UTC),
             )
 
     async def hard_delete(self, connection_id: uuid.UUID) -> None:

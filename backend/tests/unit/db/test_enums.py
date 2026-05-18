@@ -1,7 +1,5 @@
 """Tests for Phase 3 database enums (T-400)."""
 
-import pytest
-
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 
 

@@ -7,4 +7,14 @@ from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, Sche
 from app.db.models.session import Session
 from app.db.models.user import User
 
-__all__ = ["AcceptedQuery", "AppConfig", "DatabaseType", "HealthStatus", "LifecycleState", "SchemaIntrospectionStatus", "Session", "SourceDatabaseConnection", "User"]
+__all__ = [
+    "AcceptedQuery",
+    "AppConfig",
+    "DatabaseType",
+    "HealthStatus",
+    "LifecycleState",
+    "SchemaIntrospectionStatus",
+    "Session",
+    "SourceDatabaseConnection",
+    "User",
+]

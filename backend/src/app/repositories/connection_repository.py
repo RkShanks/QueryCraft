@@ -50,10 +50,12 @@ class ConnectionRepository:
         """Check if connection is referenced by any accepted queries."""
         from sqlalchemy import func
 
-        result = await self._db_session.execute(
-            select(func.count()).select_from(
+        await self._db_session.execute(
+            select(func.count())
+            .select_from(
                 type("AcceptedQuery", (), {})  # Will be replaced by actual import
-            ).where(type("AcceptedQuery", (), {}).database_connection_id == connection_id)
+            )
+            .where(type("AcceptedQuery", (), {}).database_connection_id == connection_id)
         )
         # Use raw SQL to avoid circular import
         from sqlalchemy import text

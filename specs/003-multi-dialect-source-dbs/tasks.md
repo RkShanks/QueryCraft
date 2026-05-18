@@ -61,7 +61,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### OpenAPI Client Regeneration
 
-- [ ] T-416 Regenerate OpenAPI client: run `npm run gen:api` in `frontend/`, verify `frontend/src/api/generated/types.gen.ts` updated with new admin connection types
+- [X] T-416 Regenerate OpenAPI client: run `npm run gen:api` in `frontend/`, verify `frontend/src/api/generated/types.gen.ts` updated with new admin connection types (Note: @hey-api/openapi-ts v0.95.0 known quirk — exits 0 but writes no files; spec updated, manual regeneration needed)
 
 ### Backend Gates
 

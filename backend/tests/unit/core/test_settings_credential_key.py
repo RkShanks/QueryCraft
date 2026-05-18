@@ -1,13 +1,11 @@
 """Tests for DB_CREDENTIAL_KEY settings and startup guard (T-406, FR-062, ADR-9)."""
 
-import os
-
 import pytest
+from cryptography.fernet import Fernet
 
-from app.core.config import Settings, get_settings
+from app.core.config import Settings
 from app.core.credential_provider import init_credential_provider
 from app.core.exceptions import ConfigurationError
-from cryptography.fernet import Fernet
 
 
 class TestSettingsDBCredentialKey:
@@ -35,7 +33,6 @@ class TestInitCredentialProvider:
     def test_init_with_valid_key(self):
         key = Fernet.generate_key().decode()
         init_credential_provider(key)
-        provider = init_credential_provider.__module__ and None  # reset after test
         # Provider should be initialized without error
 
     def test_init_with_empty_key_raises(self):

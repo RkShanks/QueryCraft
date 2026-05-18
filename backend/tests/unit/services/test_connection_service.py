@@ -1,15 +1,15 @@
 """Tests for ConnectionService (T-408, SC-025, SC-029)."""
 
-import pytest
-from uuid import uuid4
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, timezone
+from uuid import uuid4
 
+import pytest
 from cryptography.fernet import Fernet
 
 from app.db.models.database_connection import SourceDatabaseConnection
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
-from app.schemas.connection import ConnectionCreate, ConnectionUpdate
+from app.schemas.connection import ConnectionCreate
 
 
 def _make_create_request(**kwargs) -> ConnectionCreate:
@@ -40,8 +40,8 @@ def _make_conn(**kwargs) -> SourceDatabaseConnection:
         "lifecycle_state": LifecycleState.ACTIVE,
         "health_status": HealthStatus.UNTESTED,
         "schema_introspection_status": SchemaIntrospectionStatus.NONE,
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
     }
     defaults.update(kwargs)
     return SourceDatabaseConnection(**defaults)
@@ -113,7 +113,7 @@ class TestConnectionServiceHardDeleteGuard:
     @pytest.mark.asyncio
     async def test_delete_blocked_by_accepted_queries(self):
         from app.repositories.connection_repository import ConnectionRepository
-        from app.services.connection_service import ConnectionService, ConnectionReferencedError
+        from app.services.connection_service import ConnectionReferencedError, ConnectionService
 
         key = Fernet.generate_key().decode()
         mock_repo = MagicMock(spec=ConnectionRepository)
@@ -130,7 +130,7 @@ class TestConnectionServiceHardDeleteGuard:
     @pytest.mark.asyncio
     async def test_delete_blocked_by_sessions(self):
         from app.repositories.connection_repository import ConnectionRepository
-        from app.services.connection_service import ConnectionService, ConnectionReferencedError
+        from app.services.connection_service import ConnectionReferencedError, ConnectionService
 
         key = Fernet.generate_key().decode()
         mock_repo = MagicMock(spec=ConnectionRepository)

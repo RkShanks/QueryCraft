@@ -42,7 +42,7 @@ async def test_upsert_source_db_connection_inserts_when_missing():
     # First call is SELECT
     assert "SELECT id" in str(calls[0][0][0])
     # Second call is INSERT
-    assert "INSERT INTO database_connections" in str(calls[1][0][0])
+    assert "INSERT INTO source_database_connections" in str(calls[1][0][0])
 
 
 @pytest.mark.asyncio
@@ -77,7 +77,7 @@ async def test_upsert_source_db_connection_updates_when_exists():
 
     calls = session.execute.call_args_list
     # Second call should be UPDATE
-    assert "UPDATE database_connections" in str(calls[1][0][0])
+    assert "UPDATE source_database_connections" in str(calls[1][0][0])
 
 
 @pytest.mark.asyncio

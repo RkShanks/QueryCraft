@@ -3,7 +3,7 @@
 import enum
 
 
-class DatabaseType(str, enum.Enum):
+class DatabaseType(enum.StrEnum):
     """Supported source database types."""
 
     POSTGRESQL = "postgresql"
@@ -11,14 +11,14 @@ class DatabaseType(str, enum.Enum):
     MSSQL = "mssql"
 
 
-class LifecycleState(str, enum.Enum):
+class LifecycleState(enum.StrEnum):
     """Connection lifecycle states."""
 
     ACTIVE = "active"
     DISABLED = "disabled"
 
 
-class HealthStatus(str, enum.Enum):
+class HealthStatus(enum.StrEnum):
     """Connection health check results."""
 
     UNTESTED = "untested"
@@ -26,7 +26,7 @@ class HealthStatus(str, enum.Enum):
     UNHEALTHY = "unhealthy"
 
 
-class SchemaIntrospectionStatus(str, enum.Enum):
+class SchemaIntrospectionStatus(enum.StrEnum):
     """Schema introspection lifecycle states."""
 
     NONE = "none"

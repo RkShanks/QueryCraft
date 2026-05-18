@@ -42,71 +42,71 @@ class TestMigration006UpgradeOperations:
 
     def test_renames_table(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert 'rename_table("database_connections", "source_database_connections")' in source
 
     def test_adds_display_name_column(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert '"display_name"' in source
 
     def test_adds_database_type_column(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert '"database_type"' in source
 
     def test_adds_lifecycle_state_column(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert '"lifecycle_state"' in source
 
     def test_adds_health_status_column(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert '"health_status"' in source
 
     def test_adds_schema_introspection_status_column(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert '"schema_introspection_status"' in source
 
     def test_backfills_postgresql_type(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert "database_type = 'postgresql'" in source
 
     def test_backfills_active_state(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert "lifecycle_state = 'active'" in source
 
     def test_drops_name_column(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert 'drop_column("source_database_connections", "name")' in source
 
     def test_drops_schema_metadata_column(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert 'drop_column("source_database_connections", "schema_metadata")' in source
 
     def test_drops_schema_cached_at_column(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert 'drop_column("source_database_connections", "schema_cached_at")' in source
 
     def test_creates_connection_schema_entries_table(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert '"connection_schema_entries"' in source
 
     def test_adds_connection_id_to_sessions(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert '"connection_id"' in source
         assert '"sessions"' in source
 
     def test_creates_lifecycle_state_index(self):
         mod = _load_migration_module()
-        source = open(mod.__file__).read()
+        source = Path(mod.__file__).read_text()
         assert "ix_source_db_connections_lifecycle_state" in source

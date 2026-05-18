@@ -1,6 +1,5 @@
 """Tests for SourceDatabaseConnection ORM model (T-401, FR-087, FR-090)."""
 
-import pytest
 from sqlalchemy import inspect
 
 from app.db.models.database_connection import SourceDatabaseConnection

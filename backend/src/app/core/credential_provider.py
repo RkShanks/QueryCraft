@@ -6,7 +6,7 @@ The DB_CREDENTIAL_KEY environment variable holds the base64-encoded Fernet key.
 
 from typing import Protocol
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet
 
 from app.core.exceptions import ConfigurationError
 
@@ -62,7 +62,7 @@ class FernetCredentialProvider:
                 error="credential_config",
                 message_key="error.credential_config",
                 detail=f"Invalid DB_CREDENTIAL_KEY: {e}",
-            )
+            ) from e
 
     def encrypt(self, plaintext: str) -> str:
         """Encrypt a plaintext password using Fernet."""

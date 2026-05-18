@@ -1,9 +1,8 @@
 """Tests for ConnectionRepository (T-409, FR-059)."""
 
-import pytest
-import pytest_asyncio
 from uuid import uuid4
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.database_connection import SourceDatabaseConnection

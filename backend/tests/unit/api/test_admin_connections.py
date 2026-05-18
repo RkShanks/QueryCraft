@@ -1,13 +1,13 @@
 """Tests for admin connection API endpoints (T-415, SC-025, SC-029)."""
 
-import pytest
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime, timezone
 
+import pytest
 from cryptography.fernet import Fernet
 from fastapi import FastAPI
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 
@@ -15,7 +15,6 @@ from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, Sche
 def _create_test_app():
     """Create a test FastAPI app with mocked connection service."""
     from app.api.v1.admin_connections import router
-    from app.services.connection_service import ConnectionService
 
     app = FastAPI()
     app.include_router(router, prefix="/api/v1")
@@ -27,10 +26,9 @@ class TestAdminConnectionsCRUD:
 
     @pytest.mark.asyncio
     async def test_list_connections_empty(self):
-        from app.api.v1.admin_connections import router
         from app.services.connection_service import ConnectionService
 
-        key = Fernet.generate_key().decode()
+        Fernet.generate_key().decode()
         mock_service = MagicMock(spec=ConnectionService)
         mock_service.list_all = AsyncMock(return_value=[])
 
@@ -49,10 +47,9 @@ class TestAdminConnectionsCRUD:
 
     @pytest.mark.asyncio
     async def test_create_connection(self):
-        from app.api.v1.admin_connections import router
         from app.schemas.connection import ConnectionResponse
 
-        key = Fernet.generate_key().decode()
+        Fernet.generate_key().decode()
         mock_response = ConnectionResponse(
             id=uuid4(),
             display_name="New DB",
@@ -68,8 +65,8 @@ class TestAdminConnectionsCRUD:
             health_error_category=None,
             schema_introspection_status=SchemaIntrospectionStatus.NONE,
             schema_last_refreshed_at=None,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         app = FastAPI()
@@ -111,8 +108,8 @@ class TestAdminConnectionLifecycle:
             health_error_category=None,
             schema_introspection_status=SchemaIntrospectionStatus.NONE,
             schema_last_refreshed_at=None,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         app = FastAPI()
@@ -140,7 +137,7 @@ class TestAdminConnectionTest:
         mock_result = ConnectionTestResult(
             status="healthy",
             latency_ms=12.5,
-            tested_at=datetime.now(timezone.utc),
+            tested_at=datetime.now(UTC),
         )
 
         app = FastAPI()
@@ -168,6 +165,7 @@ class TestAdminConnectionHardDeleteGuard:
         @app.delete("/api/v1/admin/connections/{conn_id}")
         async def delete_connection(conn_id: str):
             from fastapi import HTTPException
+
             raise HTTPException(
                 status_code=409,
                 detail={"error": "connection_referenced", "message_key": "error.connection_referenced_delete_blocked"},

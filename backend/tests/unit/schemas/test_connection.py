@@ -1,16 +1,17 @@
 """Tests for connection Pydantic schemas (T-411, FR-059, FR-060)."""
 
-import pytest
+from datetime import UTC, datetime
 from uuid import uuid4
-from datetime import datetime, timezone
+
+import pytest
 
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 from app.schemas.connection import (
     ConnectionCreate,
-    ConnectionUpdate,
+    ConnectionListResponse,
     ConnectionResponse,
     ConnectionTestResult,
-    ConnectionListResponse,
+    ConnectionUpdate,
 )
 
 
@@ -31,7 +32,7 @@ class TestConnectionCreate:
         assert req.ssl_mode == "require"
 
     def test_empty_display_name_rejected(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             ConnectionCreate(
                 display_name="",
                 database_type=DatabaseType.POSTGRESQL,
@@ -43,7 +44,7 @@ class TestConnectionCreate:
             )
 
     def test_port_out_of_range_rejected(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             ConnectionCreate(
                 display_name="Test DB",
                 database_type=DatabaseType.POSTGRESQL,
@@ -55,7 +56,7 @@ class TestConnectionCreate:
             )
 
     def test_empty_password_rejected(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             ConnectionCreate(
                 display_name="Test DB",
                 database_type=DatabaseType.POSTGRESQL,
@@ -98,12 +99,12 @@ class TestConnectionResponse:
             ssl_mode="require",
             lifecycle_state=LifecycleState.ACTIVE,
             health_status=HealthStatus.HEALTHY,
-            last_health_check_at=datetime.now(timezone.utc),
+            last_health_check_at=datetime.now(UTC),
             health_error_category=None,
             schema_introspection_status=SchemaIntrospectionStatus.SUCCESS,
-            schema_last_refreshed_at=datetime.now(timezone.utc),
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            schema_last_refreshed_at=datetime.now(UTC),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         resp = ConnectionResponse.model_validate(conn)
         assert resp.display_name == "Test DB"
@@ -119,7 +120,7 @@ class TestConnectionTestResult:
         result = ConnectionTestResult(
             status="healthy",
             latency_ms=12.5,
-            tested_at=datetime.now(timezone.utc),
+            tested_at=datetime.now(UTC),
         )
         assert result.status == "healthy"
         assert result.error_category is None
@@ -129,7 +130,7 @@ class TestConnectionTestResult:
             status="unhealthy",
             error_category="auth_failed",
             message_key="error.connection_auth_failed",
-            tested_at=datetime.now(timezone.utc),
+            tested_at=datetime.now(UTC),
         )
         assert result.status == "unhealthy"
         assert result.latency_ms is None
