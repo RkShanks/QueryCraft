@@ -81,9 +81,20 @@ export const WorkspacePage: React.FC = () => {
   }, [activeSessionId, renderedSessionId]);
 
   const historyAttempts = (sessionDetail?.attempts ?? []).filter((a) => !deletedSavedIds.has(a.id));
+  const historyAttemptIds = React.useMemo(() => new Set(historyAttempts.map((a) => a.id)), [historyAttempts]);
+  const dedupedLocalTurns = React.useMemo(
+    () =>
+      localTurns.filter(
+        (t) =>
+          !(t.savedQueryId && historyAttemptIds.has(t.savedQueryId)) &&
+          !(t.savedQueryId && deletedSavedIds.has(t.savedQueryId))
+      ),
+    [localTurns, historyAttemptIds, deletedSavedIds]
+  );
+
   const allTurns: ConversationTurn[] = [
     ...historyAttempts.map(buildHistoryTurn),
-    ...localTurns.filter((t) => !(t.savedQueryId && deletedSavedIds.has(t.savedQueryId))),
+    ...dedupedLocalTurns,
   ];
 
   const showEmptyState = activeSessionId === null && allTurns.length === 0;

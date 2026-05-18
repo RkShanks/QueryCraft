@@ -5,12 +5,22 @@ validation (Inv 6) and 15-minute TTL.
 """
 
 import json
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel
 from redis.asyncio import Redis
 
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation
+
+
+class _DecimalEncoder(json.JSONEncoder):
+    """JSON encoder that converts Decimal to float."""
+
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super().default(obj)
 
 
 class EphemeralAttempt(BaseModel):
@@ -45,7 +55,7 @@ async def store_attempt(
     # Ensure session_id is present for ownership validation
     data["session_id"] = session_id
     key = f"attempt:{data.get('attempt_id')}"
-    await redis.set(key, json.dumps(data), ex=ttl)
+    await redis.set(key, json.dumps(data, cls=_DecimalEncoder), ex=ttl)
 
 
 async def get_attempt(
