@@ -26,12 +26,14 @@ class TestSubmitWithConnectionId:
         conn_id = str(uuid4())
         req = SubmitQuestionRequest(question="Show me users", connection_id=conn_id)
 
-        result = await submit_question(
-            request=request,
-            req=req,
-            user_id=str(uuid4()),
-            service=mock_service,
-        )
+        with patch("app.api.v1.query._build_query_service_for_connection", new=AsyncMock(return_value=mock_service)):
+            result = await submit_question(
+                request=request,
+                req=req,
+                user_id=str(uuid4()),
+                db=AsyncMock(),
+                redis=AsyncMock(),
+            )
 
         mock_service.submit_question.assert_awaited_once()
         call_kwargs = mock_service.submit_question.await_args.kwargs
@@ -44,10 +46,10 @@ class TestDisabledConnectionBlocked:
 
     @pytest.mark.asyncio
     async def test_disabled_connection_raises_400(self):
-        """_get_query_service_for_connection raises 400 for disabled connection."""
+        """_build_query_service_for_connection raises 400 for disabled connection."""
         from fastapi import HTTPException
 
-        from app.api.v1.query import _get_query_service_for_connection
+        from app.api.v1.query import _build_query_service_for_connection
         from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 
         conn_id = uuid4()
@@ -66,7 +68,7 @@ class TestDisabledConnectionBlocked:
 
         with patch("app.api.v1.query.ConnectionRepository", return_value=mock_conn_repo):
             with pytest.raises(HTTPException) as exc_info:
-                await _get_query_service_for_connection(
+                await _build_query_service_for_connection(
                     connection_id=str(conn_id),
                     db=mock_db,
                     redis=AsyncMock(),
@@ -76,10 +78,10 @@ class TestDisabledConnectionBlocked:
 
     @pytest.mark.asyncio
     async def test_unhealthy_connection_raises_400(self):
-        """_get_query_service_for_connection raises 400 for unhealthy connection."""
+        """_build_query_service_for_connection raises 400 for unhealthy connection."""
         from fastapi import HTTPException
 
-        from app.api.v1.query import _get_query_service_for_connection
+        from app.api.v1.query import _build_query_service_for_connection
         from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 
         conn_id = uuid4()
@@ -98,7 +100,7 @@ class TestDisabledConnectionBlocked:
 
         with patch("app.api.v1.query.ConnectionRepository", return_value=mock_conn_repo):
             with pytest.raises(HTTPException) as exc_info:
-                await _get_query_service_for_connection(
+                await _build_query_service_for_connection(
                     connection_id=str(conn_id),
                     db=mock_db,
                     redis=AsyncMock(),
@@ -108,10 +110,10 @@ class TestDisabledConnectionBlocked:
 
     @pytest.mark.asyncio
     async def test_no_schema_connection_raises_400(self):
-        """_get_query_service_for_connection raises 400 for non-introspected connection."""
+        """_build_query_service_for_connection raises 400 for non-introspected connection."""
         from fastapi import HTTPException
 
-        from app.api.v1.query import _get_query_service_for_connection
+        from app.api.v1.query import _build_query_service_for_connection
         from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 
         conn_id = uuid4()
@@ -130,7 +132,7 @@ class TestDisabledConnectionBlocked:
 
         with patch("app.api.v1.query.ConnectionRepository", return_value=mock_conn_repo):
             with pytest.raises(HTTPException) as exc_info:
-                await _get_query_service_for_connection(
+                await _build_query_service_for_connection(
                     connection_id=str(conn_id),
                     db=mock_db,
                     redis=AsyncMock(),

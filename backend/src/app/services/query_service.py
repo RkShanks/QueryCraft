@@ -54,6 +54,7 @@ class QueryService:
         schema_context: str = "",
         target_dialect: str | None = None,
         connection_id: str | None = None,
+        source_db_adapter: Any = None,
     ) -> None:
         self._repo = accepted_query_repository
         self._session_repo = session_repository
@@ -66,6 +67,7 @@ class QueryService:
         self._schema_context = schema_context
         self._target_dialect = target_dialect
         self._connection_id = connection_id
+        self._adapter = source_db_adapter
 
     async def _acquire_lock(self, session_id: str, ttl: int = 60) -> str | None:
         """Try to acquire a per-session processing lock.
@@ -97,11 +99,16 @@ class QueryService:
         return 3
 
     async def _get_database_connection_id(self) -> str:
-        """Return first source_database_connection id (Phase 1: single DB).
+        """Return the source_database_connection id.
+
+        Uses the connection-scoped ID when available (Phase 3 multi-connection).
+        Falls back to first source_database_connection id (Phase 1: single DB).
 
         Raises:
             HTTPException 500 if no source_database_connections row exists.
         """
+        if self._connection_id is not None:
+            return self._connection_id
         result = await self._db_session.execute(text("SELECT id FROM source_database_connections LIMIT 1"))
         row = result.fetchone()
         if row is None:
@@ -232,10 +239,17 @@ class QueryService:
 
             # 3. Execute against source DB
             try:
-                columns, rows = await asyncio.wait_for(
-                    self._executor.execute(sql),
-                    timeout=30,
-                )
+                if self._adapter is not None:
+                    exec_result = await asyncio.wait_for(
+                        self._adapter.execute(sql),
+                        timeout=30,
+                    )
+                    columns, rows = exec_result.columns, exec_result.rows
+                else:
+                    columns, rows = await asyncio.wait_for(
+                        self._executor.execute(sql),
+                        timeout=30,
+                    )
             except (TimeoutError, SourceDBTimeout) as exc:
                 attempt.state = "TIMEOUT"
                 await store_attempt(attempt, http_session_id, self._redis)

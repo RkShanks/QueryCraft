@@ -41,6 +41,13 @@ class DialectValidationRule:
         if not sql or not sql.strip():
             return False, f"Empty SQL for dialect '{self.dialect}'"
 
+        # T-SQL uses TOP, not LIMIT. Reject LIMIT syntax for tsql dialect.
+        if self.dialect == "tsql":
+            import re
+
+            if re.search(r"\bLIMIT\b", sql, re.IGNORECASE):
+                return False, "T-SQL does not support LIMIT; use TOP instead"
+
         try:
             parsed = sqlglot.parse(sql.strip(), read=self.dialect)
         except sqlglot.errors.ParseError as exc:

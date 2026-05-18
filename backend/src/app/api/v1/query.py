@@ -60,7 +60,7 @@ async def _get_query_service(
                 EmptySqlRule(),
                 ReadOnlyRule(),
                 SingleStatementRule(),
-                SchemaValidationRule(schema_context),
+                SchemaValidationRule(schema_context, dialect="postgres"),
                 UnsafePatternRule(),
             ]
         ),
@@ -70,10 +70,10 @@ async def _get_query_service(
     )
 
 
-async def _get_query_service_for_connection(
+async def _build_query_service_for_connection(
     connection_id: str,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
-    redis: Redis = Depends(get_redis),  # noqa: B008
+    db: AsyncSession,
+    redis: Redis,
 ) -> QueryService:
     """Build QueryService scoped to a specific connection (T-433).
 
@@ -127,7 +127,36 @@ async def _get_query_service_for_connection(
     # Get dialect from connection type
     dialect = DIALECT_MAP.get(conn.database_type, "postgres")
 
+    # Build connection-specific adapter
+    from app.core.credential_provider import FernetCredentialProvider
+    from app.db.models.enums import DatabaseType
+    from app.source_db.adapters import MSSQLAdapter, MySQLAdapter, PostgresAdapter
+
     settings = get_settings()
+    credential_provider = FernetCredentialProvider(settings.DB_CREDENTIAL_KEY)
+
+    adapter_map = {
+        DatabaseType.POSTGRESQL: PostgresAdapter,
+        DatabaseType.MYSQL: MySQLAdapter,
+        DatabaseType.MSSQL: MSSQLAdapter,
+    }
+    adapter_cls = adapter_map.get(conn.database_type)
+    if adapter_cls is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "unsupported_dialect", "message_key": "error.unsupported_dialect"},
+        )
+
+    adapter = adapter_cls(
+        host=conn.host,
+        port=conn.port,
+        database=conn.database_name,
+        username=conn.username,
+        encrypted_password=conn.encrypted_password,
+        ssl_mode=conn.ssl_mode,
+        credential_provider=credential_provider,
+    )
+
     return QueryService(
         accepted_query_repository=AcceptedQueryRepository(db),
         session_repository=SessionRepository(db),
@@ -140,7 +169,7 @@ async def _get_query_service_for_connection(
                 DialectValidationRule(dialect=dialect),
                 ReadOnlyRule(dialect=dialect),
                 SingleStatementRule(),
-                SchemaValidationRule(schema_context),
+                SchemaValidationRule(schema_context, dialect=dialect),
                 UnsafePatternRule(),
             ]
         ),
@@ -149,6 +178,7 @@ async def _get_query_service_for_connection(
         schema_context=schema_context,
         target_dialect=dialect,
         connection_id=connection_id,
+        source_db_adapter=adapter,
     )
 
 
@@ -157,7 +187,8 @@ async def submit_question(
     request: Request,
     req: SubmitQuestionRequest = Depends(validate_body(SubmitQuestionRequest)),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
-    service: QueryService = Depends(_get_query_service_for_connection),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
 ):
     """POST /query/submit — ask a question.
 
@@ -178,6 +209,7 @@ async def submit_question(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": "validation", "message_key": "error.validation.questionTooLong"},
         )
+    service = await _build_query_service_for_connection(req.connection_id, db, redis)
     result = await service.submit_question(
         http_session_id=request.state.session_id,
         user_id=user_id,
