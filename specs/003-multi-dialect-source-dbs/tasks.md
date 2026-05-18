@@ -44,9 +44,9 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Connection Service
 
-- [ ] T-408 Implement `ConnectionService` in `backend/src/app/services/connection_service.py`: CRUD operations, lifecycle transitions (disable/enable), hard-delete guard (block if referenced by `accepted_queries` or `sessions`), health check (`SELECT 1` via dialect), password encryption on save (FR-059, FR-060, FR-061, FR-063, FR-064, FR-089, FR-090)
+- [X] T-408 Implement `ConnectionService` in `backend/src/app/services/connection_service.py`: CRUD operations, lifecycle transitions (disable/enable), hard-delete guard (block if referenced by `accepted_queries` or `sessions`), health check (`SELECT 1` via dialect), password encryption on save (FR-059, FR-060, FR-061, FR-063, FR-064, FR-089, FR-090)
 - [X] T-409 Implement `ConnectionRepository` in `backend/src/app/repositories/connection_repository.py`: DB access layer for `SourceDatabaseConnection` (FR-059)
-- [ ] T-410 Write connection service tests: create/read/update/delete all 3 DB types, password never returned, lifecycle transitions, hard-delete guard blocks when referenced in `backend/tests/unit/services/test_connection_service.py` (SC-025, SC-029)
+- [X] T-410 Write connection service tests: create/read/update/delete all 3 DB types, password never returned, lifecycle transitions, hard-delete guard blocks when referenced in `backend/tests/unit/services/test_connection_service.py` (SC-025, SC-029)
 
 ### Pydantic Schemas
 

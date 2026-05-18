@@ -247,12 +247,13 @@ def create_app() -> FastAPI:
         )
 
     # Register v1 router stubs
-    from app.api.v1 import admin, auth, feedback, history, query, sessions  # noqa: F401
+    from app.api.v1 import admin, admin_connections, auth, feedback, history, query, sessions  # noqa: F401
 
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(query.router, prefix="/api/v1")
     app.include_router(history.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")
+    app.include_router(admin_connections.router, prefix="/api/v1")
     app.include_router(sessions.router, prefix="/api/v1")
     app.include_router(feedback.router, prefix="/api/v1")
 
