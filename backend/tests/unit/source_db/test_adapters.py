@@ -89,7 +89,6 @@ class FakePoolAcquireContext:
 async def test_postgres_adapter_connect_and_health() -> None:
     """PostgresAdapter connects and runs health check."""
     from app.core.credential_provider import FernetCredentialProvider
-    from app.db.models.enums import DatabaseType
     from app.source_db.adapters import PostgresAdapter
 
     fake_conn = FakePGConnection()
@@ -211,21 +210,43 @@ class FakeMySQLConnection:
         self._fetch_calls: list[tuple[str, tuple]] = []
         self._execute_calls: list[str] = []
         self._fail_on: str | None = None
+        self._cursor = FakeMySQLCursor(self)
 
-    async def fetch(self, query: str, *args: Any) -> list[dict]:
-        if self._fail_on == "fetch":
-            raise ConnectionError("fake fetch failure")
-        self._fetch_calls.append((query, args))
-        return [{"result": 1}]
-
-    async def execute(self, query: str, *args: Any) -> int:
-        if self._fail_on == "execute":
-            raise ConnectionError("fake execute failure")
-        self._execute_calls.append(query)
-        return 1
+    def cursor(self) -> "FakeMySQLCursor":
+        return self._cursor
 
     async def close(self) -> None:
         self._closed = True
+
+
+class FakeMySQLCursor:
+    """Fake asyncmy-like cursor."""
+
+    def __init__(self, conn: FakeMySQLConnection) -> None:
+        self._conn = conn
+        self._rows: list[dict] = []
+        self._description: list | None = None
+
+    async def __aenter__(self) -> "FakeMySQLCursor":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
+    async def execute(self, query: str, *args: Any) -> int:
+        if self._conn._fail_on == "execute":
+            raise ConnectionError("fake execute failure")
+        self._conn._execute_calls.append(query)
+        self._rows = [{"result": 1}]
+        self._description = [("result",)]
+        return 1
+
+    async def fetchall(self) -> list[tuple]:
+        return [tuple(r.values()) for r in self._rows]
+
+    @property
+    def description(self) -> list | None:
+        return self._description
 
 
 class FakeMySQLPool:
@@ -313,7 +334,7 @@ async def test_mysql_adapter_execute_parameterized() -> None:
     result = await adapter.execute("SELECT * FROM users WHERE id = %s", (1,))
     assert result.columns is not None
     assert result.rows is not None
-    assert fake_conn._fetch_calls[0][0] == "SELECT * FROM users WHERE id = %s"
+    assert fake_conn._execute_calls == ["SELECT * FROM users WHERE id = %s"]
 
 
 @pytest.mark.asyncio
@@ -373,6 +394,12 @@ class FakeMSSQLCursor:
         self._rows: list[dict] = []
         self._description: list | None = None
 
+    async def __aenter__(self) -> "FakeMSSQLCursor":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
     async def execute(self, query: str, *params: Any) -> None:
         if self._conn._fail_on == "execute":
             raise ConnectionError("fake execute failure")
@@ -392,14 +419,14 @@ class FakeMSSQLCursor:
 
 
 class FakeMSSQLPool:
-    """Fake aioodbc-like connection pool (aioodbc uses connect, not pool)."""
+    """Fake aioodbc-like connection pool."""
 
     def __init__(self, conn: FakeMSSQLConnection) -> None:
         self._conn = conn
         self._closed = False
 
-    async def acquire(self) -> FakeMSSQLConnection:
-        return self._conn
+    def acquire(self) -> "FakeMSSQLPoolAcquireContext":
+        return FakeMSSQLPoolAcquireContext(self._conn)
 
     async def close(self) -> None:
         self._closed = True
@@ -407,6 +434,19 @@ class FakeMSSQLPool:
     @property
     def is_closed(self) -> bool:
         return self._closed
+
+
+class FakeMSSQLPoolAcquireContext:
+    """Async context manager for fake MSSQL pool acquire."""
+
+    def __init__(self, conn: FakeMSSQLConnection) -> None:
+        self._conn = conn
+
+    async def __aenter__(self) -> FakeMSSQLConnection:
+        return self._conn
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
 
 
 @pytest.mark.asyncio

@@ -3,9 +3,8 @@
 Tests verify per-dialect introspection queries and full-replace refresh.
 """
 
-from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest

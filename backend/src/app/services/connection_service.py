@@ -5,9 +5,9 @@ FR-059, FR-060, FR-061, FR-063, FR-064, FR-089, FR-090.
 
 import time
 import uuid
-from collections import defaultdict
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, Callable
+from typing import Any
 
 from app.core.credential_provider import FernetCredentialProvider
 from app.core.exceptions import QueryCraftError
@@ -246,12 +246,7 @@ class ConnectionService:
 
         Updates schema_introspection_status and schema_last_refreshed_at.
         """
-        from app.source_db.adapters import (
-            MSSQLAdapter,
-            MySQLAdapter,
-            PostgresAdapter,
-        )
-        from app.source_db.schema_introspector import SchemaIntrospector, SchemaIntrospectionError
+        from app.source_db.schema_introspector import SchemaIntrospectionError, SchemaIntrospector
 
         conn = await self._repo.get_by_id(connection_id)
         if conn is None:

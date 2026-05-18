@@ -1,7 +1,5 @@
 """T-418: Verify multi-dialect driver dependencies are importable."""
 
-import pytest
-
 
 def test_asyncmy_importable() -> None:
     """asyncmy must be importable for MySQL adapter."""

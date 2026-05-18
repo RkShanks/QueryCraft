@@ -172,24 +172,22 @@ class MySQLAdapter:
         """Execute a parameterized query using asyncmy."""
         if self._pool is None:
             await self.connect()
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(sql, params)
-                rows = await cursor.fetchall()
-                if not rows:
-                    return ExecuteResult(columns=[], rows=[])
-                columns = [d[0] for d in cursor.description] if cursor.description else []
-                row_tuples = [tuple(r) for r in rows]
-                return ExecuteResult(columns=columns, rows=row_tuples)
+        async with self._pool.acquire() as conn, conn.cursor() as cursor:
+            await cursor.execute(sql, params)
+            rows = await cursor.fetchall()
+            if not rows:
+                return ExecuteResult(columns=[], rows=[])
+            columns = [d[0] for d in cursor.description] if cursor.description else []
+            row_tuples = [tuple(r) for r in rows]
+            return ExecuteResult(columns=columns, rows=row_tuples)
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""
         try:
             if self._pool is None:
                 await self.connect()
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cursor:
-                    await cursor.execute("SELECT 1")
+            async with self._pool.acquire() as conn, conn.cursor() as cursor:
+                await cursor.execute("SELECT 1")
             return True
         except Exception:
             return False
@@ -246,24 +244,22 @@ class MSSQLAdapter:
         """Execute a parameterized query using aioodbc."""
         if self._pool is None:
             await self.connect()
-        async with self._pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(sql, params)
-                rows = await cur.fetchall()
-                if not rows:
-                    return ExecuteResult(columns=[], rows=[])
-                columns = [d[0] for d in cur.description] if cur.description else []
-                row_tuples = [tuple(r) for r in rows]
-                return ExecuteResult(columns=columns, rows=row_tuples)
+        async with self._pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(sql, params)
+            rows = await cur.fetchall()
+            if not rows:
+                return ExecuteResult(columns=[], rows=[])
+            columns = [d[0] for d in cur.description] if cur.description else []
+            row_tuples = [tuple(r) for r in rows]
+            return ExecuteResult(columns=columns, rows=row_tuples)
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""
         try:
             if self._pool is None:
                 await self.connect()
-            async with self._pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute("SELECT 1")
+            async with self._pool.acquire() as conn, conn.cursor() as cur:
+                await cur.execute("SELECT 1")
             return True
         except Exception:
             return False

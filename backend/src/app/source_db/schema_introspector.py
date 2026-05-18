@@ -8,12 +8,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.connection_schema import ConnectionSchemaEntry
-from app.db.models.enums import DatabaseType, SchemaIntrospectionStatus
-from app.source_db.adapters import ExecuteResult, SourceDBAdapter
+from app.db.models.enums import DatabaseType
+from app.source_db.adapters import SourceDBAdapter
 
 
 class SchemaIntrospectionError(Exception):
@@ -94,26 +94,24 @@ class SchemaIntrospector:
         tables_result = await adapter.execute(self._tables_query())
         columns_result = await adapter.execute(self._columns_query())
 
-        tables = [dict(zip(tables_result.columns, row)) for row in tables_result.rows]
-        columns = [dict(zip(columns_result.columns, row)) for row in columns_result.rows]
+        tables = [dict(zip(tables_result.columns, row, strict=False)) for row in tables_result.rows]
+        columns = [dict(zip(columns_result.columns, row, strict=False)) for row in columns_result.rows]
         return tables, columns
 
     async def _fetch_primary_keys(self, adapter: SourceDBAdapter) -> list[dict]:
         """Fetch primary key columns."""
         result = await adapter.execute(self._primary_keys_query())
-        return [dict(zip(result.columns, row)) for row in result.rows]
+        return [dict(zip(result.columns, row, strict=False)) for row in result.rows]
 
     async def _fetch_foreign_keys(self, adapter: SourceDBAdapter) -> list[dict]:
         """Fetch foreign key columns."""
         result = await adapter.execute(self._foreign_keys_query())
-        return [dict(zip(result.columns, row)) for row in result.rows]
+        return [dict(zip(result.columns, row, strict=False)) for row in result.rows]
 
     async def _full_replace(self, entries: list[ConnectionSchemaEntry]) -> None:
         """Delete all existing entries and insert new ones."""
         await self._db_session.execute(
-            delete(ConnectionSchemaEntry).where(
-                ConnectionSchemaEntry.connection_id == self._connection_id
-            )
+            delete(ConnectionSchemaEntry).where(ConnectionSchemaEntry.connection_id == self._connection_id)
         )
         if entries:
             self._db_session.add_all(entries)

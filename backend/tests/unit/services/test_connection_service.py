@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 from cryptography.fernet import Fernet
 
+from app.core.exceptions import QueryCraftError
 from app.db.models.database_connection import SourceDatabaseConnection
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 from app.schemas.connection import ConnectionCreate
@@ -193,20 +194,31 @@ class TestConnectionServiceRefreshSchema:
         from app.services.connection_service import ConnectionService
 
         key = Fernet.generate_key().decode()
+        provider = Fernet(key)
+        encrypted_pw = provider.encrypt(b"secret").decode()
+
         mock_repo = MagicMock(spec=ConnectionRepository)
         conn = _make_conn(
             schema_introspection_status=SchemaIntrospectionStatus.NONE,
             health_status=HealthStatus.HEALTHY,
+            encrypted_password=encrypted_pw,
         )
         mock_repo.get_by_id = AsyncMock(return_value=conn)
         mock_repo.update = AsyncMock(return_value=conn)
 
         service = ConnectionService(mock_repo, key)
-        service._get_db_session = AsyncMock(return_value=AsyncMock())
+
+        mock_session = AsyncMock()
+        service._get_db_session = AsyncMock(return_value=mock_session)
+
+        mock_adapter = AsyncMock()
+        mock_adapter.execute = AsyncMock(return_value=MagicMock(columns=[], rows=[]))
+        mock_adapter.close = AsyncMock()
+        service._build_adapter = MagicMock(return_value=mock_adapter)
 
         result = await service.refresh_schema(conn.id)
 
-        assert result["tables_count"] >= 0
+        assert result["tables_count"] == 0
         assert conn.schema_introspection_status == SchemaIntrospectionStatus.SUCCESS
 
     @pytest.mark.asyncio
@@ -215,19 +227,32 @@ class TestConnectionServiceRefreshSchema:
         from app.services.connection_service import ConnectionService
 
         key = Fernet.generate_key().decode()
+        provider = Fernet(key)
+        encrypted_pw = provider.encrypt(b"secret").decode()
+
         mock_repo = MagicMock(spec=ConnectionRepository)
         conn = _make_conn(
             schema_introspection_status=SchemaIntrospectionStatus.SUCCESS,
             health_status=HealthStatus.HEALTHY,
+            encrypted_password=encrypted_pw,
         )
         mock_repo.get_by_id = AsyncMock(return_value=conn)
         mock_repo.update = AsyncMock(return_value=conn)
 
         service = ConnectionService(mock_repo, key)
-        service._get_db_session = AsyncMock(return_value=AsyncMock())
 
-        with pytest.raises(Exception):
+        mock_session = AsyncMock()
+        service._get_db_session = AsyncMock(return_value=mock_session)
+
+        mock_adapter = AsyncMock()
+        mock_adapter.execute = AsyncMock(side_effect=ConnectionError("db down"))
+        mock_adapter.close = AsyncMock()
+        service._build_adapter = MagicMock(return_value=mock_adapter)
+
+        with pytest.raises(QueryCraftError):
             await service.refresh_schema(conn.id)
+
+        assert conn.schema_introspection_status == SchemaIntrospectionStatus.FAILED
 
 
 class TestConnectionServiceGetSchemaSummary:
