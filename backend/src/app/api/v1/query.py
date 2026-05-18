@@ -97,6 +97,7 @@ async def submit_question(
         user_id=user_id,
         question=stripped,
         chat_session_id=req.session_id,
+        connection_id=req.connection_id,
     )
     if isinstance(result, EvaluatorRejection):
         raise HTTPException(
