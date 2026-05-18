@@ -96,7 +96,7 @@ async def test_schema_introspector_pg_queries() -> None:
 
 @pytest.mark.asyncio
 async def test_schema_introspector_mysql_queries() -> None:
-    """SchemaIntrospector uses correct information_schema queries for MySQL."""
+    """SchemaIntrospector uses DATABASE() for MySQL, not 'public' schema."""
     from app.source_db.schema_introspector import SchemaIntrospector
 
     fake_adapter = FakeAdapterForIntrospection(DatabaseType.MYSQL)
@@ -112,6 +112,33 @@ async def test_schema_introspector_mysql_queries() -> None:
     tables, columns = await introspector._fetch_schema(fake_adapter)
     assert len(tables) == 2
     assert len(columns) == 4
+
+    # Verify MySQL uses DATABASE() not 'public'
+    for query in fake_adapter._executed_queries:
+        assert "public" not in query.lower(), f"MySQL query should not reference 'public' schema: {query}"
+        assert "database()" in query.lower() or "information_schema" in query.lower()
+
+
+@pytest.mark.asyncio
+async def test_schema_introspector_pg_uses_public_schema() -> None:
+    """SchemaIntrospector uses 'public' schema for PostgreSQL."""
+    from app.source_db.schema_introspector import SchemaIntrospector
+
+    fake_adapter = FakeAdapterForIntrospection(DatabaseType.POSTGRESQL)
+    mock_session = AsyncMock()
+    conn_id = uuid4()
+    introspector = SchemaIntrospector(
+        adapter=fake_adapter,
+        database_type=DatabaseType.POSTGRESQL,
+        db_session=mock_session,
+        connection_id=conn_id,
+    )
+
+    await introspector._fetch_schema(fake_adapter)
+
+    # Verify PG uses 'public' schema
+    for query in fake_adapter._executed_queries:
+        assert "public" in query.lower(), f"PG query should reference 'public' schema: {query}"
 
 
 @pytest.mark.asyncio

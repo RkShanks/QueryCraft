@@ -126,6 +126,14 @@ class SchemaIntrospector:
                 WHERE TABLE_TYPE = 'BASE TABLE'
                 ORDER BY TABLE_NAME
             """
+        if self._database_type == DatabaseType.MYSQL:
+            return """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_type = 'BASE TABLE'
+                  AND table_schema = DATABASE()
+                ORDER BY table_name
+            """
         return """
             SELECT table_name
             FROM information_schema.tables
@@ -141,6 +149,13 @@ class SchemaIntrospector:
                 SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE
                 FROM INFORMATION_SCHEMA.COLUMNS
                 ORDER BY TABLE_NAME, ORDINAL_POSITION
+            """
+        if self._database_type == DatabaseType.MYSQL:
+            return """
+                SELECT table_name, column_name, data_type
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                ORDER BY table_name, ordinal_position
             """
         return """
             SELECT table_name, column_name, data_type
@@ -161,6 +176,18 @@ class SchemaIntrospector:
                     ON TC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME
                 WHERE TC.CONSTRAINT_TYPE = 'PRIMARY KEY'
                 ORDER BY KCU.TABLE_NAME, KCU.ORDINAL_POSITION
+            """
+        if self._database_type == DatabaseType.MYSQL:
+            return """
+                SELECT
+                    kcu.table_name,
+                    kcu.column_name
+                FROM information_schema.table_constraints tc
+                JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                WHERE tc.constraint_type = 'PRIMARY KEY'
+                  AND tc.table_schema = DATABASE()
+                ORDER BY kcu.table_name, kcu.ordinal_position
             """
         return """
             SELECT
@@ -190,6 +217,18 @@ class SchemaIntrospector:
                     ON TC.CONSTRAINT_NAME = CCU.CONSTRAINT_NAME
                 WHERE TC.CONSTRAINT_TYPE = 'FOREIGN KEY'
                 ORDER BY KCU.TABLE_NAME, KCU.ORDINAL_POSITION
+            """
+        if self._database_type == DatabaseType.MYSQL:
+            return """
+                SELECT
+                    kcu.table_name,
+                    kcu.column_name,
+                    kcu.referenced_table_name AS foreign_table_name,
+                    kcu.referenced_column_name AS foreign_column_name
+                FROM information_schema.key_column_usage kcu
+                WHERE kcu.referenced_table_name IS NOT NULL
+                  AND kcu.table_schema = DATABASE()
+                ORDER BY kcu.table_name, kcu.ordinal_position
             """
         return """
             SELECT

@@ -193,9 +193,13 @@ class MySQLAdapter:
             return False
 
     async def close(self) -> None:
-        """Close the asyncmy pool."""
+        """Close the asyncmy pool.
+
+        asyncmy.Pool.close() is synchronous; must await wait_closed().
+        """
         if self._pool is not None:
-            await self._pool.close()
+            self._pool.close()
+            await self._pool.wait_closed()
             self._pool = None
 
 
@@ -265,7 +269,11 @@ class MSSQLAdapter:
             return False
 
     async def close(self) -> None:
-        """Close the aioodbc pool."""
+        """Close the aioodbc pool.
+
+        aioodbc.Pool.close() is synchronous; must await wait_closed().
+        """
         if self._pool is not None:
-            await self._pool.close()
+            self._pool.close()
+            await self._pool.wait_closed()
             self._pool = None

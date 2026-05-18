@@ -224,3 +224,70 @@ class TestAdminConnectionSchemaEndpoints:
             assert response.status_code == 200
             data = response.json()
             assert len(data["tables"]) == 1
+
+
+class TestAdminConnectionSchemaRealDependencyPath:
+    """Verify refresh-schema endpoint works with real FastAPI dependency injection."""
+
+    @pytest.mark.asyncio
+    async def test_refresh_schema_via_real_dependency(self):
+        """Test that refresh-schema works when service is constructed via FastAPI deps."""
+        from app.api.v1.admin_connections import _get_connection_service, router
+        from app.core.dependencies import require_admin_user
+        from app.services.connection_service import ConnectionService
+
+        conn_id = uuid4()
+        mock_service = MagicMock(spec=ConnectionService)
+        mock_service.refresh_schema = AsyncMock(
+            return_value={
+                "tables_count": 3,
+                "columns_count": 12,
+                "refreshed_at": datetime.now(UTC),
+            }
+        )
+
+        async def override_service():
+            return mock_service
+
+        async def override_admin():
+            return "admin"
+
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v1")
+        app.dependency_overrides[_get_connection_service] = override_service
+        app.dependency_overrides[require_admin_user] = override_admin
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(f"/api/v1/admin/connections/{conn_id}/refresh-schema")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["tables_count"] == 3
+            mock_service.refresh_schema.assert_called_once_with(conn_id)
+
+    @pytest.mark.asyncio
+    async def test_refresh_schema_not_found_via_real_dependency(self):
+        """Test that refresh-schema returns 404 when connection not found."""
+        from app.api.v1.admin_connections import _get_connection_service, router
+        from app.core.dependencies import require_admin_user
+        from app.services.connection_service import ConnectionNotFoundError, ConnectionService
+
+        conn_id = uuid4()
+        mock_service = MagicMock(spec=ConnectionService)
+        mock_service.refresh_schema = AsyncMock(side_effect=ConnectionNotFoundError(conn_id))
+
+        async def override_service():
+            return mock_service
+
+        async def override_admin():
+            return "admin"
+
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v1")
+        app.dependency_overrides[_get_connection_service] = override_service
+        app.dependency_overrides[require_admin_user] = override_admin
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(f"/api/v1/admin/connections/{conn_id}/refresh-schema")
+            assert response.status_code == 404

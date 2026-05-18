@@ -71,6 +71,132 @@ class TestConnectionServiceCreate:
         assert conn_arg.encrypted_password != req.password
         assert result.display_name == "Test DB"
 
+    @pytest.mark.asyncio
+    async def test_create_auto_introspect_health_check_passes(self):
+        """Create triggers health check and introspection on success."""
+        from app.repositories.connection_repository import ConnectionRepository
+        from app.services.connection_service import ConnectionService
+
+        key = Fernet.generate_key().decode()
+        mock_repo = MagicMock(spec=ConnectionRepository)
+
+        conn_id = uuid4()
+        created_conn = _make_conn(
+            id=conn_id,
+            health_status=HealthStatus.UNTESTED,
+            schema_introspection_status=SchemaIntrospectionStatus.NONE,
+        )
+
+        def capture_create(conn):
+            conn.id = conn_id
+            conn.created_at = datetime.now(UTC)
+            conn.updated_at = datetime.now(UTC)
+            return conn
+
+        mock_repo.create = AsyncMock(side_effect=capture_create)
+        mock_repo.update = AsyncMock(return_value=created_conn)
+
+        mock_session = MagicMock()
+        mock_session.execute = AsyncMock()
+        mock_session.flush = AsyncMock()
+        mock_session.add_all = MagicMock()
+
+        service = ConnectionService(mock_repo, key, get_db_session=lambda: mock_session)
+
+        mock_adapter = AsyncMock()
+        mock_adapter.health_check = AsyncMock(return_value=True)
+        mock_adapter.close = AsyncMock()
+        mock_adapter.execute = AsyncMock(return_value=MagicMock(columns=[], rows=[]))
+        service._build_adapter = MagicMock(return_value=mock_adapter)
+
+        req = _make_create_request()
+        result = await service.create(req)
+
+        assert result.health_status == HealthStatus.HEALTHY
+        assert result.schema_introspection_status == SchemaIntrospectionStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_create_auto_introspect_health_check_fails(self):
+        """Create marks status as UNHEALTHY/FAILED when health check fails."""
+        from app.repositories.connection_repository import ConnectionRepository
+        from app.services.connection_service import ConnectionService
+
+        key = Fernet.generate_key().decode()
+        mock_repo = MagicMock(spec=ConnectionRepository)
+
+        conn_id = uuid4()
+        created_conn = _make_conn(
+            id=conn_id,
+            health_status=HealthStatus.UNTESTED,
+            schema_introspection_status=SchemaIntrospectionStatus.NONE,
+        )
+
+        def capture_create(conn):
+            conn.id = conn_id
+            conn.created_at = datetime.now(UTC)
+            conn.updated_at = datetime.now(UTC)
+            return conn
+
+        mock_repo.create = AsyncMock(side_effect=capture_create)
+        mock_repo.update = AsyncMock(return_value=created_conn)
+
+        service = ConnectionService(mock_repo, key, get_db_session=lambda: MagicMock())
+
+        mock_adapter = AsyncMock()
+        mock_adapter.health_check = AsyncMock(return_value=False)
+        mock_adapter.close = AsyncMock()
+        service._build_adapter = MagicMock(return_value=mock_adapter)
+
+        req = _make_create_request()
+        result = await service.create(req)
+
+        assert result.health_status == HealthStatus.UNHEALTHY
+        assert result.schema_introspection_status == SchemaIntrospectionStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_create_auto_introspect_exception(self):
+        """Create marks status as FAILED when introspection raises."""
+        from app.repositories.connection_repository import ConnectionRepository
+        from app.services.connection_service import ConnectionService
+
+        key = Fernet.generate_key().decode()
+        mock_repo = MagicMock(spec=ConnectionRepository)
+
+        conn_id = uuid4()
+        created_conn = _make_conn(
+            id=conn_id,
+            health_status=HealthStatus.UNTESTED,
+            schema_introspection_status=SchemaIntrospectionStatus.NONE,
+        )
+
+        def capture_create(conn):
+            conn.id = conn_id
+            conn.created_at = datetime.now(UTC)
+            conn.updated_at = datetime.now(UTC)
+            return conn
+
+        mock_repo.create = AsyncMock(side_effect=capture_create)
+        mock_repo.update = AsyncMock(return_value=created_conn)
+
+        mock_session = MagicMock()
+        mock_session.execute = AsyncMock()
+        mock_session.flush = AsyncMock()
+        mock_session.add_all = MagicMock()
+
+        service = ConnectionService(mock_repo, key, get_db_session=lambda: mock_session)
+
+        mock_adapter = AsyncMock()
+        mock_adapter.health_check = AsyncMock(return_value=True)
+        mock_adapter.close = AsyncMock()
+        mock_adapter.execute = AsyncMock(side_effect=ConnectionError("db down"))
+        service._build_adapter = MagicMock(return_value=mock_adapter)
+
+        req = _make_create_request()
+        result = await service.create(req)
+
+        assert result.health_status == HealthStatus.HEALTHY
+        assert result.schema_introspection_status == SchemaIntrospectionStatus.FAILED
+
 
 class TestConnectionServiceLifecycle:
     """Verify lifecycle transitions."""
@@ -208,8 +334,11 @@ class TestConnectionServiceRefreshSchema:
 
         service = ConnectionService(mock_repo, key)
 
-        mock_session = AsyncMock()
-        service._get_db_session = AsyncMock(return_value=mock_session)
+        mock_session = MagicMock()
+        mock_session.execute = AsyncMock()
+        mock_session.flush = AsyncMock()
+        mock_session.add_all = MagicMock()
+        service._get_db_session = lambda: mock_session
 
         mock_adapter = AsyncMock()
         mock_adapter.execute = AsyncMock(return_value=MagicMock(columns=[], rows=[]))
@@ -241,8 +370,8 @@ class TestConnectionServiceRefreshSchema:
 
         service = ConnectionService(mock_repo, key)
 
-        mock_session = AsyncMock()
-        service._get_db_session = AsyncMock(return_value=mock_session)
+        mock_session = MagicMock()
+        service._get_db_session = lambda: mock_session
 
         mock_adapter = AsyncMock()
         mock_adapter.execute = AsyncMock(side_effect=ConnectionError("db down"))

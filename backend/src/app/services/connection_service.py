@@ -3,6 +3,7 @@
 FR-059, FR-060, FR-061, FR-063, FR-064, FR-089, FR-090.
 """
 
+import contextlib
 import time
 import uuid
 from collections.abc import Callable
@@ -52,7 +53,11 @@ class ConnectionService:
         self._get_db_session = get_db_session or (lambda: None)
 
     async def create(self, req: ConnectionCreate) -> ConnectionResponse:
-        """Create a new source database connection."""
+        """Create a new source database connection.
+
+        After persisting, runs auto-introspect pipeline: health check → introspect.
+        Statuses are updated accordingly (FR-093).
+        """
         encrypted_password = self._credential_provider.encrypt(req.password)
 
         conn = SourceDatabaseConnection(
@@ -70,7 +75,61 @@ class ConnectionService:
         )
 
         created = await self._repo.create(conn)
+
+        # Auto-introspect pipeline: health check → introspect (FR-093)
+        await self._auto_introspect_on_create(created)
+
         return ConnectionResponse.model_validate(created)
+
+    async def _auto_introspect_on_create(self, conn: SourceDatabaseConnection) -> None:
+        """Run health check and introspection after first save.
+
+        Updates connection health_status and schema_introspection_status.
+        Errors are caught and statuses marked as FAILED — connection is not rolled back.
+        """
+        try:
+            adapter = self._build_adapter(conn)
+            healthy = await adapter.health_check()
+            await adapter.close()
+
+            if healthy:
+                conn.health_status = HealthStatus.HEALTHY
+                conn.last_health_check_at = datetime.now(UTC)
+                conn.health_error_category = None
+            else:
+                conn.health_status = HealthStatus.UNHEALTHY
+                conn.last_health_check_at = datetime.now(UTC)
+                conn.health_error_category = "unknown"
+                conn.schema_introspection_status = SchemaIntrospectionStatus.FAILED
+                await self._repo.update(conn)
+                return
+
+            await self._repo.update(conn)
+
+            # Run introspection if healthy
+            db_session = self._get_db_session()
+            if db_session is None:
+                conn.schema_introspection_status = SchemaIntrospectionStatus.FAILED
+                await self._repo.update(conn)
+                return
+
+            from app.source_db.schema_introspector import SchemaIntrospector
+
+            introspector = SchemaIntrospector(
+                adapter=self._build_adapter(conn),
+                database_type=conn.database_type,
+                db_session=db_session,
+                connection_id=conn.id,
+            )
+
+            result = await introspector.introspect()
+            conn.schema_introspection_status = SchemaIntrospectionStatus.SUCCESS
+            conn.schema_last_refreshed_at = result["refreshed_at"]
+            await self._repo.update(conn)
+        except Exception:
+            conn.schema_introspection_status = SchemaIntrospectionStatus.FAILED
+            with contextlib.suppress(Exception):
+                await self._repo.update(conn)
 
     async def get_by_id(self, connection_id: uuid.UUID) -> ConnectionResponse:
         """Get a connection by ID."""
@@ -253,7 +312,7 @@ class ConnectionService:
             raise ConnectionNotFoundError(connection_id)
 
         adapter = self._build_adapter(conn)
-        db_session = await self._get_db_session()
+        db_session = self._get_db_session()
 
         introspector = SchemaIntrospector(
             adapter=adapter,

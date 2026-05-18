@@ -250,17 +250,24 @@ class FakeMySQLCursor:
 
 
 class FakeMySQLPool:
-    """Fake asyncmy-like pool."""
+    """Fake asyncmy-like pool.
+
+    asyncmy.Pool.close() is synchronous; wait_closed() is async.
+    """
 
     def __init__(self, conn: FakeMySQLConnection) -> None:
         self._conn = conn
         self._closed = False
+        self._wait_closed_called = False
 
     def acquire(self) -> "FakeMySQLPoolAcquireContext":
         return FakeMySQLPoolAcquireContext(self._conn)
 
-    async def close(self) -> None:
+    def close(self) -> None:
         self._closed = True
+
+    async def wait_closed(self) -> None:
+        self._wait_closed_called = True
 
     @property
     def is_closed(self) -> bool:
@@ -362,9 +369,9 @@ async def test_mysql_adapter_close() -> None:
 
     await adapter.close()
     assert fake_pool.is_closed
+    assert fake_pool._wait_closed_called
 
 
-# ---------------------------------------------------------------------------
 # T-421: MSSQLAdapter tests
 # ---------------------------------------------------------------------------
 
@@ -419,17 +426,24 @@ class FakeMSSQLCursor:
 
 
 class FakeMSSQLPool:
-    """Fake aioodbc-like connection pool."""
+    """Fake aioodbc-like connection pool.
+
+    aioodbc.Pool.close() is synchronous; wait_closed() is async.
+    """
 
     def __init__(self, conn: FakeMSSQLConnection) -> None:
         self._conn = conn
         self._closed = False
+        self._wait_closed_called = False
 
     def acquire(self) -> "FakeMSSQLPoolAcquireContext":
         return FakeMSSQLPoolAcquireContext(self._conn)
 
-    async def close(self) -> None:
+    def close(self) -> None:
         self._closed = True
+
+    async def wait_closed(self) -> None:
+        self._wait_closed_called = True
 
     @property
     def is_closed(self) -> bool:
@@ -529,3 +543,4 @@ async def test_mssql_adapter_close() -> None:
 
     await adapter.close()
     assert fake_pool.is_closed
+    assert fake_pool._wait_closed_called

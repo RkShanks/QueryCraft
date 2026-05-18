@@ -33,7 +33,7 @@ def _get_connection_service(
     """Create a ConnectionService with repository and credential key."""
     settings = get_settings()
     repo = ConnectionRepository(db)
-    return ConnectionService(repo, settings.DB_CREDENTIAL_KEY)
+    return ConnectionService(repo, settings.DB_CREDENTIAL_KEY, get_db_session=lambda: db)
 
 
 @router.get("", response_model=list[ConnectionResponse])
