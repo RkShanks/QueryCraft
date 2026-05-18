@@ -8,8 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
+from app.core.credential_provider import init_credential_provider
 from app.core.dependencies import close_redis, init_redis
-from app.core.encryption import encrypt
 from app.core.logging import get_logger, setup_logging
 from app.core.security import OriginValidatorMiddleware, SessionMiddleware
 from app.db.base import dispose_engine, get_async_session_factory
@@ -30,6 +30,10 @@ async def lifespan(app: FastAPI):
 
     # Refuse to start if the DB schema is behind the source tree's alembic head
     await _check_alembic_drift(settings.DATABASE_URL)
+
+    # Initialize credential provider (ADR-9: fail startup if DB_CREDENTIAL_KEY missing/invalid)
+    init_credential_provider(settings.DB_CREDENTIAL_KEY)
+    logger.info("credential_provider_initialized")
 
     # Upsert database_connections row for the source DB
     await _upsert_source_db_connection(settings)
@@ -114,12 +118,17 @@ async def _sync_admin_user(settings):
 
 
 async def _upsert_source_db_connection(settings):
-    """Upsert the source database connection row on startup (Phase 3)."""
-    # TODO(T-405): Migrate to credential provider after encryption foundation is implemented.
+    """Upsert the source database connection row on startup (Phase 3).
+
+    Uses Fernet credential provider (ADR-9) for password encryption.
+    """
     from sqlalchemy import text
     from sqlalchemy.exc import ProgrammingError
 
+    from app.core.credential_provider import get_credential_provider
+
     session_factory = get_async_session_factory()
+    provider = get_credential_provider()
 
     try:
         async with session_factory() as session:
@@ -129,10 +138,7 @@ async def _upsert_source_db_connection(settings):
             )
             existing = result.scalar_one_or_none()
 
-            encrypted_password = encrypt(
-                settings.SOURCE_DB_PASSWORD,
-                settings.PLATFORM_ENCRYPTION_KEY,
-            )
+            encrypted_password = provider.encrypt(settings.SOURCE_DB_PASSWORD)
 
             if existing is None:
                 await session.execute(

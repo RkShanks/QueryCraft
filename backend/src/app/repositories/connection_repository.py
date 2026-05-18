@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.database_connection import SourceDatabaseConnection
@@ -48,18 +48,6 @@ class ConnectionRepository:
 
     async def is_referenced_by_accepted_queries(self, connection_id: uuid.UUID) -> bool:
         """Check if connection is referenced by any accepted queries."""
-        from sqlalchemy import func
-
-        await self._db_session.execute(
-            select(func.count())
-            .select_from(
-                type("AcceptedQuery", (), {})  # Will be replaced by actual import
-            )
-            .where(type("AcceptedQuery", (), {}).database_connection_id == connection_id)
-        )
-        # Use raw SQL to avoid circular import
-        from sqlalchemy import text
-
         raw = await self._db_session.execute(
             text("SELECT COUNT(*) FROM accepted_queries WHERE database_connection_id = :id"),
             {"id": str(connection_id)},
@@ -69,10 +57,17 @@ class ConnectionRepository:
 
     async def is_referenced_by_sessions(self, connection_id: uuid.UUID) -> bool:
         """Check if connection is referenced by any sessions."""
-        from sqlalchemy import text
-
         raw = await self._db_session.execute(
             text("SELECT COUNT(*) FROM sessions WHERE connection_id = :id"),
+            {"id": str(connection_id)},
+        )
+        count = raw.scalar()
+        return count > 0
+
+    async def has_schema_entries(self, connection_id: uuid.UUID) -> bool:
+        """Check if connection has any schema introspection entries."""
+        raw = await self._db_session.execute(
+            text("SELECT COUNT(*) FROM connection_schema_entries WHERE connection_id = :id"),
             {"id": str(connection_id)},
         )
         count = raw.scalar()

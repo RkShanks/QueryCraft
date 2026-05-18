@@ -200,7 +200,10 @@ class ConnectionService:
             )
 
     async def hard_delete(self, connection_id: uuid.UUID) -> None:
-        """Hard-delete a connection only if unreferenced."""
+        """Hard-delete a connection only if unreferenced.
+
+        Blocked if referenced by accepted_queries, sessions, or schema entries.
+        """
         conn = await self._repo.get_by_id(connection_id)
         if conn is None:
             raise ConnectionNotFoundError(connection_id)
@@ -209,6 +212,9 @@ class ConnectionService:
             raise ConnectionReferencedError()
 
         if await self._repo.is_referenced_by_sessions(connection_id):
+            raise ConnectionReferencedError()
+
+        if await self._repo.has_schema_entries(connection_id):
             raise ConnectionReferencedError()
 
         await self._repo.delete(connection_id)
