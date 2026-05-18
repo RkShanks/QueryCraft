@@ -24,7 +24,18 @@ The following items were deferred from Phase 2. Only items marked **[PULLED]** a
 
 ## Clarifications
 
-*(To be populated during `/speckit.clarify`)*
+### Session 2026-05-18 (specify)
+
+- Q1: Should Phase 3 use Fernet-based encryption with an environment variable key, or integrate with an external secrets manager? → A: Implement Fernet encryption now via `cryptography` library with `DB_CREDENTIAL_KEY` from env var, behind a small credential-encryption/provider abstraction so Phase 5+ can swap to an external secrets manager without rewriting connection services. Never expose plaintext credentials after save. If credentials exist and the key is missing/invalid, fail startup or block credential use with a typed configuration error. Key rotation is deferred but should be documented.
+- Q2: Confirm async driver choices for MySQL and MS SQL Server. → A: Use `asyncmy` for MySQL and `aioodbc` for MS SQL Server. Document MSSQL system dependencies (`unixODBC` + FreeTDS/ODBC driver) in setup/Docker/CI planning. Use parameterized queries only. If real MySQL/MSSQL services are not available in CI, unit-test dialect/introspection behavior with adapters/fakes and keep real-service integration tests optional/manual.
+
+### Session 2026-05-18 (clarify)
+
+- Q1: What lifecycle states should a connection have, and what is the delete behavior? → A: Three lifecycle states: **active**, **disabled**, **hard-delete**. Hard-delete is allowed only when the connection has no referenced query attempts, sessions, or schema-cache rows; if referenced, hard-delete is blocked with a typed localized error and the admin must disable instead. Disabled connections are hidden from the user DB selector and cannot be queried, but remain visible to admins and preserve historical metadata. Health status (`untested`, `healthy`, `unhealthy`) is a separate dimension from lifecycle state, not another lifecycle state.
+- Q2: How should legacy Phase 1/2 historical query attempts (which have no `connection_id`) be handled? → A: Migrate the existing Phase 1/2 hardcoded PostgreSQL connection as the first `source_database_connections` row during the database migration. Backfill all existing query attempt/history rows with that connection's ID, then enforce `connection_id` as NOT NULL going forward. Historical UI shows the migrated legacy connection name and dialect, not "Unknown". Migration tests MUST prove existing rows are backfilled and new attempts require a connection.
+- Q3: What should the evaluator do when dialect-specific parsing fails or confidence is low? → A: Reject the attempt and enter the existing reject/retry regeneration path (FR-017/FR-019) with an explicit dialect correction hint and the selected connection's dialect/schema context. Never execute SQL that failed dialect validation. After the configured retry limit is exhausted, surface a localized assistant refusal/error card rather than executing.
+- Q4: When should schema introspection run relative to saving a new connection? → A: Auto-introspect on first successful save: run a health check first, and if it passes, automatically run initial schema introspection so the connection is immediately usable. If health check or introspection fails, keep the connection saved but mark status accordingly with a localized admin error and retry action. After initial introspection, schema refresh is explicit/manual only. Track `schema_last_refreshed_at` and stale/error status for UI display.
+- Q5: Does the database selection persist globally or per-session? → A: Per-session only. Store `connection_id` on the session record. Each new session starts with no selected connection and must prompt the user to choose before the first query. Exception: when exactly one active connection exists, auto-select it. Switching databases mid-session affects only subsequent queries; prior turns keep their original connection metadata. No global user default in Phase 3.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -46,9 +57,13 @@ As the platform administrator, I can add, edit, test, and remove source database
 
 4. **Given** the admin edits an existing connection, **When** the edit form opens, **Then** all fields are pre-filled except the password field, which shows a placeholder indicating the existing credential is retained unless a new value is entered.
 
-5. **Given** the admin clicks "Remove" on a connection, **When** a confirmation prompt is acknowledged, **Then** the connection and its cached schema metadata are removed. Any queries targeting that connection in future will fail gracefully.
+5. **Given** the admin clicks "Remove" on an unreferenced connection, **When** a confirmation prompt is acknowledged, **Then** the connection and its cached schema metadata are permanently deleted.
 
-6. **Given** a connection is the only configured connection for its dialect, **When** the admin removes it, **Then** the system does not block removal but displays a warning that users who had selected this connection will need to choose a different one.
+6. **Given** the admin clicks "Remove" on a connection that has referenced query attempts or sessions, **When** the system checks referential integrity, **Then** hard-delete is blocked with a typed localized error message instructing the admin to disable the connection instead.
+
+7. **Given** the admin clicks "Disable" on an active connection, **When** the action completes, **Then** the connection is hidden from the user database selector, cannot be queried, but remains visible in the admin connection list with a "disabled" indicator. Historical query results referencing this connection continue to display the connection name.
+
+8. **Given** the admin clicks "Enable" on a disabled connection, **When** the action completes, **Then** the connection returns to active state and reappears in the user database selector.
 
 ---
 
@@ -72,6 +87,8 @@ As the platform administrator, I can test a database connection's health and tri
 
 5. **Given** schema metadata already exists for a connection, **When** the admin triggers "Refresh Schema" again, **Then** the previous metadata is replaced with the freshly introspected data. The system does not merge old and new schemas.
 
+6. **Given** the admin saves a brand-new connection, **When** the save succeeds, **Then** the system automatically runs a health check followed by schema introspection. If both succeed, the connection is immediately usable in the database selector. If either fails, the connection is saved with appropriate health/schema error status and the admin sees a localized error with a retry action.
+
 ---
 
 ### User Story 16 — User Selects a Target Database Before Asking a Question (Priority: P1)
@@ -84,15 +101,17 @@ As a platform user, I can select which connected database my question targets be
 
 **Acceptance Scenarios**:
 
-1. **Given** the user opens a new chat session, **When** the workspace loads, **Then** a database selector is visible near the prompt input area showing the currently selected database connection (or prompting to select one if none is defaulted).
+1. **Given** the user opens a new chat session with multiple active connections, **When** the workspace loads, **Then** a database selector is visible near the prompt input area prompting the user to select a connection. The prompt input MUST be disabled until a connection is selected. No global default is carried from other sessions.
 
-2. **Given** multiple database connections are configured, **When** the user opens the database selector, **Then** all connections with a healthy status and successfully introspected schema are listed, each showing display name and database type icon/badge.
+2. **Given** exactly one active connection exists, **When** the user opens a new chat session, **Then** that connection is auto-selected in the database selector and the prompt input is immediately enabled.
 
-3. **Given** the user selects a database connection, **When** they submit a question, **Then** the system uses the selected connection's schema for LLM context and generates SQL in the matching dialect.
+3. **Given** multiple database connections are configured, **When** the user opens the database selector, **Then** all **active** connections (not disabled) with a healthy status and successfully introspected schema are listed, each showing display name and database type icon/badge. Disabled connections are excluded.
 
-4. **Given** no database connections are configured or all are unhealthy, **When** the user attempts to ask a question, **Then** the system displays a localized message explaining that no database is available and suggesting the user contact an administrator.
+4. **Given** the user selects a database connection, **When** they submit a question, **Then** the system uses the selected connection's schema for LLM context and generates SQL in the matching dialect. The selected `connection_id` is stored on the session record.
 
-5. **Given** a connection becomes unhealthy after the user selected it, **When** the user submits a question, **Then** the system detects the connection failure before or during query execution and displays a localized error message rather than crashing or returning garbled results.
+5. **Given** no database connections are configured or all are unhealthy, **When** the user attempts to ask a question, **Then** the system displays a localized message explaining that no database is available and suggesting the user contact an administrator.
+
+6. **Given** a connection becomes unhealthy after the user selected it, **When** the user submits a question, **Then** the system detects the connection failure before or during query execution and displays a localized error message rather than crashing or returning garbled results.
 
 ---
 
@@ -164,13 +183,16 @@ As a platform user, the multi-database selector, admin connection management int
 
 ### Edge Cases
 
-- What happens when the admin removes a connection that a user currently has selected? The user's next query attempt detects the missing connection and displays a localized error prompting them to select a different database. The selector is automatically updated to reflect the removed connection.
+- What happens when the admin disables a connection that a user currently has selected? The user's next query attempt detects the disabled connection and displays a localized error prompting them to select a different database. The selector is automatically updated to exclude the disabled connection.
+- What happens when the admin tries to hard-delete a connection that has referenced query attempts? Hard-delete is blocked with a typed localized error. The admin must disable the connection instead. Disabled connections preserve all historical metadata and query references.
 - What happens when schema introspection returns zero tables? The connection is marked as "no tables found" and the admin is shown a warning. Users can still select the connection but will receive an error when submitting a query (LLM cannot generate SQL without schema context).
 - What happens when a user switches databases mid-session? The next query uses the newly selected database's schema and dialect. Prior turns in the session remain associated with their original connection. The LLM context builder sends only schema for the currently selected connection.
 - What happens when two connections have the same display name? The system allows it (display names are not unique identifiers) but shows the database type badge alongside the name to help users distinguish them.
 - What happens when a database connection's password needs rotation? The admin edits the connection and provides the new password. The system updates the stored encrypted credential. Existing active queries against the old credential may fail and surface a connection error.
-- What happens when the admin saves a connection without testing it first? The system allows saving untested connections but marks them as "untested" in the connection list. Users can select untested connections; the system will fail at query time with a clear error if the connection is invalid.
+- What happens when the admin saves a connection without testing it first? On initial save, the system auto-runs a health check + introspection. If the health check fails, the connection is saved with "unhealthy" status and "introspection: none". The admin sees a localized error with retry. Users can select the connection but queries will fail at runtime with a clear error.
+- What happens when the initial auto-introspection fails after a successful health check? The connection is saved as "healthy" but with schema status "failed". The admin sees a localized introspection error with retry action. Users can select the connection but queries will fail because the LLM has no schema context.
 - What happens when the schema changes on the remote database after introspection? The system uses stale schema until the admin triggers "Refresh Schema". No automatic schema polling occurs in Phase 3.
+- What happens when the evaluator cannot parse the generated SQL for the target dialect? The evaluator rejects the attempt and triggers regeneration with a dialect correction hint. After the retry limit is exhausted, a localized error card is shown. Unvalidated SQL is never executed.
 
 ## Requirements *(mandatory)*
 
@@ -180,7 +202,9 @@ As a platform user, the multi-database selector, admin connection management int
 
 - **FR-059**: The system MUST allow the administrator to add a new source database connection by specifying: display name, database type (PostgreSQL, MySQL, or MS SQL Server), host, port, database name, username, and password.
 - **FR-060**: The system MUST allow the administrator to edit an existing source database connection. All fields are editable. When editing, the password field MUST NOT display the stored credential; instead it MUST show a placeholder indicating the existing credential is retained unless a new value is entered.
-- **FR-061**: The system MUST allow the administrator to remove a source database connection. Removal MUST require explicit confirmation. Upon removal, cached schema metadata for that connection MUST be deleted.
+- **FR-061**: The system MUST allow the administrator to hard-delete a source database connection only when it has no referenced query attempts or sessions. Hard-delete MUST require explicit confirmation. Upon hard-delete, cached schema metadata for that connection MUST be deleted. If the connection is referenced, hard-delete MUST be blocked with a typed localized error directing the admin to disable instead.
+- **FR-089**: The system MUST allow the administrator to disable an active connection and re-enable a disabled connection. Disabled connections MUST be hidden from the user database selector, MUST reject query submissions, and MUST remain visible in the admin connection management list with a "disabled" indicator. Disabling MUST preserve all historical query references and schema metadata.
+- **FR-090**: Connection lifecycle state (active, disabled) and health status (untested, healthy, unhealthy) MUST be tracked as independent dimensions. A connection can be active+unhealthy or disabled+healthy, etc.
 - **FR-062**: The system MUST NOT store database connection passwords in plaintext. Passwords MUST be encrypted at rest using a server-side encryption key or delegated to a secrets management mechanism. The password MUST NOT appear in API responses, logs, or frontend state after initial submission.
 - **FR-063**: The system MUST allow the administrator to test a database connection's health by executing a lightweight connectivity check (e.g., `SELECT 1`). The result MUST be returned as success (with latency) or failure (with a categorized, localized error message).
 - **FR-064**: The system MUST persist each connection's most recent health check result (status, timestamp, error category if failed) and display it in the connection list.
@@ -191,21 +215,24 @@ As a platform user, the multi-database selector, admin connection management int
 - **FR-066**: The system MUST store introspected schema metadata per connection. Schema data MUST be refreshable on admin demand. Refreshing MUST fully replace prior metadata (no merge).
 - **FR-067**: The system MUST display a summary of introspected schema to the admin: list of tables with column count per table.
 - **FR-068**: The system MUST handle schema introspection failures gracefully with localized error messages. A failed introspection MUST NOT silently use stale data; the connection's schema status MUST be updated to reflect the failure.
+- **FR-093**: When a new connection is saved for the first time, the system MUST automatically run a health check. If the health check passes, schema introspection MUST run automatically so the connection is immediately usable in the workspace database selector. If health check or introspection fails, the connection MUST be saved with the appropriate health/schema error status and a localized error with retry action shown to the admin. After initial introspection, all subsequent schema refreshes are manual (admin-triggered "Refresh Schema" only).
 
 #### Dialect-Aware SQL Generation
 
 - **FR-069**: The system MUST generate SQL in the dialect matching the user's selected database connection type. Supported dialects: PostgreSQL, MySQL (including MariaDB-compatible subset), T-SQL (MS SQL Server).
 - **FR-070**: The LLM prompt builder MUST include the selected connection's introspected schema (tables, columns, types, relationships) and an explicit dialect instruction identifying the target SQL dialect.
-- **FR-071**: The evaluator MUST validate generated SQL against the dialect of the selected connection. SQL containing constructs invalid for the target dialect (e.g., `LIMIT` in T-SQL) MUST be rejected by the evaluator.
+- **FR-071**: The evaluator MUST validate generated SQL against the dialect of the selected connection. SQL containing constructs invalid for the target dialect (e.g., `LIMIT` in T-SQL) MUST be rejected by the evaluator. If dialect-specific parsing fails, parser confidence is low, or the evaluator cannot prove the SQL is safe read-only SQL for the selected dialect, the evaluator MUST reject the attempt and trigger the existing reject/retry regeneration path (FR-017/FR-019) with an explicit dialect correction hint and the connection's dialect/schema context. SQL that fails dialect validation MUST NEVER be executed.
 - **FR-072**: Generated SQL MUST remain read-only. The existing security invariant (no INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE) MUST apply across all dialects.
+- **FR-092**: When the evaluator's dialect-rejection retry limit is exhausted (per the configured max regenerate attempts), the system MUST surface a localized assistant refusal/error card in the chat conversation rather than executing unvalidated SQL.
 
 #### Database Selection UX
 
 - **FR-073**: The user interface MUST display a database selector near the prompt input area, allowing the user to choose which configured connection their question targets.
 - **FR-074**: The database selector MUST display each connection's display name and database type (with a distinguishing icon or badge).
-- **FR-075**: When a user submits a question, the system MUST associate the query attempt with the selected connection ID. This association MUST be persisted so the response card can display which database was queried.
+- **FR-075**: When a user submits a question, the system MUST associate the query attempt with the selected connection ID. This association MUST be persisted on both the session record and the query attempt so the response card can display which database was queried.
 - **FR-076**: The response card MUST display the connection display name and database type badge, indicating which database was queried for that result.
 - **FR-077**: When no database connections are configured or all connections are unhealthy, the system MUST display a localized message in the prompt area explaining that no database is available.
+- **FR-094**: Database selection MUST be per-session scoped. Each new session starts with no selected connection; the user MUST select one before the first query (prompt input disabled until selection). Exception: if exactly one active connection exists, it is auto-selected. The selected `connection_id` MUST be stored on the session record. Switching databases mid-session updates the session's `connection_id` and affects only subsequent queries; prior query attempts retain their original `connection_id`. No global user default is persisted in Phase 3.
 
 #### Error Handling
 
@@ -224,16 +251,17 @@ As a platform user, the multi-database selector, admin connection management int
 
 #### Migrations and Backward Compatibility
 
-- **FR-087**: A new database migration MUST introduce tables for source database connections and per-connection schema metadata. The existing `source_db_connections` seeding from Phase 1/2 MUST be migrated to the new schema without data loss.
+- **FR-087**: A new database migration MUST introduce tables for source database connections and per-connection schema metadata. The existing Phase 1/2 hardcoded PostgreSQL source database MUST be migrated as the first row in the new `source_database_connections` table. All existing query attempt and history rows MUST be backfilled with this legacy connection's ID. After backfill, `connection_id` MUST be NOT NULL on the query attempt table.
 - **FR-088**: The existing single-source-database behavior MUST be preserved as a degenerate case: if only one connection exists, it is auto-selected and the database selector may be hidden or shown in a simplified state.
+- **FR-091**: Migration tests MUST verify: (a) existing query attempt rows are backfilled with the legacy connection ID, (b) new query attempts require a non-null `connection_id`, (c) the legacy connection record is created with correct type (PostgreSQL) and credentials from the existing configuration.
 
 ### Key Entities
 
-- **SourceDatabaseConnection**: A configured connection to an external database. Attributes: unique identifier, display name, database type enum (PostgreSQL, MySQL, MS SQL Server), host, port, database name, username, encrypted password, health status, last health check timestamp, schema introspection status, created timestamp, updated timestamp.
+- **SourceDatabaseConnection**: A configured connection to an external database. Attributes: unique identifier, display name, database type enum (PostgreSQL, MySQL, MS SQL Server), host, port, database name, username, encrypted password, **lifecycle state enum (active, disabled)**, health status enum (untested, healthy, unhealthy), last health check timestamp, schema introspection status enum (none, success, failed, stale), **schema_last_refreshed_at** timestamp (nullable), created timestamp, updated timestamp. Hard-deleted connections are physically removed from the database (no soft-delete row).
 
 - **ConnectionSchema**: Introspected schema metadata for a connection. Attributes: connection identifier (FK), table name, column name, column data type, is primary key, foreign key references (nullable), introspected timestamp. One-to-many from connection to schema entries. Cascade-deletes when parent connection is deleted.
 
-- **QueryAttempt** (extended): Gains a `connection_id` foreign key to track which source database was targeted for each query attempt.
+- **QueryAttempt** (extended): Gains a `connection_id` NOT NULL foreign key to track which source database was targeted for each query attempt. Historical attempts from Phase 1/2 are backfilled with the migrated legacy connection's ID.
 
 ## Success Criteria *(mandatory)*
 
@@ -258,7 +286,7 @@ As a platform user, the multi-database selector, admin connection management int
 - Connection pooling configuration is not exposed to the admin. The system uses sensible defaults internally.
 - Cross-database joins are not supported. Each query targets exactly one connection.
 - Read replicas and replication configuration are out of scope.
-- Schema introspection is admin-triggered, not automatic or periodic. Stale schema is possible between manual refreshes.
+- Schema introspection is admin-triggered for refreshes after the initial auto-introspection on first save. No automatic or periodic re-introspection. Stale schema is possible between manual refreshes.
 - The encryption key for database passwords is configured server-side (e.g., via environment variable). Key management and rotation procedures are outside Phase 3 scope.
 - MySQL dialect support covers MySQL 5.7+ and MariaDB 10.3+ through the common SQL subset.
 - MS SQL Server support covers SQL Server 2017+.
@@ -289,11 +317,11 @@ The following are NOT covered by this specification and belong to later phases:
 
 The following ADR seeds require resolution during `/speckit.clarify` or `/speckit.plan`:
 
-- **ADR-9 — DB Credential Storage**: Database connection passwords MUST be encrypted at rest. Seed decision: use Fernet symmetric encryption (via `cryptography` library) with a server-side encryption key loaded from environment variable `DB_CREDENTIAL_KEY`. Alternative: delegate to a secrets manager (e.g., HashiCorp Vault). Phase 3 assumes Fernet for simplicity; secrets manager integration is a future enhancement. [NEEDS CLARIFICATION: Confirm Fernet-based approach vs. alternative]
-- **ADR-10 — Driver/Library Choices**: PostgreSQL: `asyncpg` (existing). MySQL: `aiomysql` or `asyncmy`. MS SQL Server: `aioodbc` with FreeTDS or `pymssql`. Each driver MUST support async execution and parameterized queries. Seed decision: `asyncmy` for MySQL, `aioodbc` for MS SQL Server. [NEEDS CLARIFICATION: Confirm driver choices for MySQL and MS SQL Server]
+- **ADR-9 — DB Credential Storage**: Database connection passwords MUST be encrypted at rest using Fernet symmetric encryption (via `cryptography` library) with a server-side encryption key loaded from environment variable `DB_CREDENTIAL_KEY`. A credential-encryption provider abstraction MUST be introduced so Phase 5+ can swap to an external secrets manager (e.g., HashiCorp Vault) without rewriting connection services. If stored encrypted credentials exist and `DB_CREDENTIAL_KEY` is missing or invalid at startup, the system MUST fail startup or block credential use with a typed configuration error — never silently serve unencrypted data. Key rotation is deferred to a future phase but the abstraction layer should document the rotation interface. **LOCKED.**
+- **ADR-10 — Driver/Library Choices**: PostgreSQL: `asyncpg` (existing). MySQL: `asyncmy`. MS SQL Server: `aioodbc` with `unixODBC` + FreeTDS/ODBC driver. Each driver MUST support async execution and parameterized queries only (no string interpolation). MSSQL system dependencies (`unixODBC`, FreeTDS/ODBC driver packages) MUST be documented in setup guides, Dockerfile, and CI configuration. If real MySQL/MSSQL services are not available in CI, dialect/introspection behavior MUST be unit-tested with adapters/fakes; real-service integration tests remain optional/manual. **LOCKED.**
 - **ADR-11 — Schema Introspection Strategy**: Use `information_schema` views (standard across all three dialects) as the primary introspection mechanism. Fall back to dialect-specific system catalogs only where `information_schema` is insufficient (e.g., foreign key details in older MySQL versions). Schema metadata is stored in application database tables, not cached in Redis.
 - **ADR-12 — Dialect Routing**: The LLM prompt builder includes an explicit `TARGET_DIALECT: <dialect>` instruction along with the connection's schema. The evaluator's validation rules are parameterized by dialect (e.g., `LIMIT` allowed for PostgreSQL/MySQL but not T-SQL). Connection-to-dialect mapping is derived from the `database_type` enum on the connection record.
-- **ADR-13 — Selected Connection UX**: The database selector is a dropdown/popover near the prompt input, showing connection display name + database type icon. Selection persists per session (switching databases mid-session is allowed and takes effect on the next query). Single-connection deployments auto-select and may visually simplify or hide the selector.
+- **ADR-13 — Selected Connection UX**: The database selector is a dropdown/popover near the prompt input, showing connection display name + database type icon. Selection is per-session scoped: stored as `connection_id` on the session record. Each new session starts unselected (user must choose before first query). Exception: single active connection is auto-selected. Switching databases mid-session is allowed and takes effect on the next query; prior turns retain their original connection. No global user default in Phase 3. **LOCKED.**
 - **ADR-14 — Frontend Icon Library**: Continue using lucide-react (already installed in Phase 2). New database-type icons (PostgreSQL elephant, MySQL dolphin, SQL Server logo) may use lucide-react's generic `Database`, `Server`, or `HardDrive` icons combined with text labels/badges rather than brand logos. Brand SVGs are not introduced.
 - **ADR-15 — Chrome DevTools MCP Smoke Requirements**: Gemini (frontend implementer) MUST conduct Chrome DevTools MCP smoke tests for every new user-facing flow. Smoke evidence includes: page load without console errors, interactive element responsiveness, i18n key resolution in both languages, RTL layout correctness, and correct API response rendering.
 
