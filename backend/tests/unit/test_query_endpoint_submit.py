@@ -1,11 +1,9 @@
 """Endpoint regression test: POST /query/submit forwards chat session_id (T-348).
-
-Proves the API endpoint passes request-body session_id to
-QueryService.submit_question as chat_session_id, and passes the HTTP
-session id as http_session_id.
+T-433: Updated to include connection_id routing.
 """
 
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 
@@ -32,7 +30,12 @@ async def test_submit_endpoint_forwards_chat_session_id():
     from app.api.v1.query import submit_question
 
     request = MockRequest(session={"user_id": "550e8400-e29b-41d4-a716-446655440000"}, session_id="http-sess-1")
-    req = SubmitQuestionRequest(question="Follow-up", session_id="550e8400-e29b-41d4-a716-446655440002")
+    conn_id = str(uuid4())
+    req = SubmitQuestionRequest(
+        question="Follow-up",
+        session_id="550e8400-e29b-41d4-a716-446655440002",
+        connection_id=conn_id,
+    )
 
     result = await submit_question(
         request=request, req=req, user_id="550e8400-e29b-41d4-a716-446655440000", service=mock_service
@@ -44,6 +47,7 @@ async def test_submit_endpoint_forwards_chat_session_id():
     assert call_kwargs["user_id"] == "550e8400-e29b-41d4-a716-446655440000"
     assert call_kwargs["question"] == "Follow-up"
     assert call_kwargs["chat_session_id"] == "550e8400-e29b-41d4-a716-446655440002"
+    assert call_kwargs["connection_id"] == conn_id
     assert result.kind == "result"
 
 
@@ -58,7 +62,8 @@ async def test_submit_endpoint_forwards_none_chat_session_id_for_new_chat():
     from app.api.v1.query import submit_question
 
     request = MockRequest(session={"user_id": "550e8400-e29b-41d4-a716-446655440000"}, session_id="http-sess-1")
-    req = SubmitQuestionRequest(question="New question")
+    conn_id = str(uuid4())
+    req = SubmitQuestionRequest(question="New question", connection_id=conn_id)
 
     result = await submit_question(
         request=request, req=req, user_id="550e8400-e29b-41d4-a716-446655440000", service=mock_service
@@ -67,4 +72,13 @@ async def test_submit_endpoint_forwards_none_chat_session_id_for_new_chat():
     mock_service.submit_question.assert_awaited_once()
     call_kwargs = mock_service.submit_question.await_args.kwargs
     assert call_kwargs["chat_session_id"] is None
+    assert call_kwargs["connection_id"] == conn_id
     assert result.kind == "result"
+
+
+@pytest.mark.asyncio
+async def test_submit_requires_connection_id():
+    """SubmitQuestionRequest requires connection_id field."""
+    conn_id = str(uuid4())
+    req = SubmitQuestionRequest(question="Test", connection_id=conn_id)
+    assert req.connection_id == conn_id
