@@ -1,5 +1,7 @@
 """Query router — submit, accept, reject, regenerate."""
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,14 +10,17 @@ from app.api.dependencies.validation import validate_body
 from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis, require_active_user
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
+from app.db.models.enums import DatabaseType
 from app.evaluator.pipeline import Evaluator
+from app.evaluator.rules.dialect_validation import DialectValidationRule
 from app.evaluator.rules.empty_sql import EmptySqlRule
-from app.evaluator.rules.read_only import ReadOnlyRule
+from app.evaluator.rules.read_only import ReadOnlyRule, DIALECT_MAP
 from app.evaluator.rules.schema_validation import SchemaValidationRule
 from app.evaluator.rules.single_statement import SingleStatementRule
 from app.evaluator.rules.unsafe_pattern import UnsafePatternRule
 from app.llm.factory import LLMProviderFactory
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
+from app.repositories.connection_repository import ConnectionRepository
 from app.repositories.session_repository import SessionRepository
 from app.schemas.query import (
     AcceptQueryRequest,
@@ -66,12 +71,94 @@ async def _get_query_service(
     )
 
 
+async def _get_query_service_for_connection(
+    connection_id: str,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
+) -> QueryService:
+    """Build QueryService scoped to a specific connection (T-433).
+
+    Validates connection is active + healthy + introspected.
+    Uses connection-specific schema and dialect.
+    """
+    conn_repo = ConnectionRepository(db)
+    conn = await conn_repo.get_by_id(uuid.UUID(connection_id))
+    if conn is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
+        )
+
+    from app.db.models.enums import HealthStatus, LifecycleState, SchemaIntrospectionStatus
+
+    if conn.lifecycle_state != LifecycleState.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_disabled", "message_key": "error.connection_disabled"},
+        )
+    if conn.health_status != HealthStatus.HEALTHY:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_unhealthy", "message_key": "error.connection_unhealthy"},
+        )
+    if conn.schema_introspection_status != SchemaIntrospectionStatus.SUCCESS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_no_schema", "message_key": "error.connection_no_schema"},
+        )
+
+    # Get connection-specific schema
+    schema_entries = await conn_repo.get_schema_entries(conn.id)
+    from app.evaluator.schema_context import Column, SchemaContext, Table
+
+    tables = {}
+    for entry in schema_entries:
+        if entry.table_name not in tables:
+            tables[entry.table_name] = Table(name=entry.table_name, columns=[])
+        tables[entry.table_name].columns.append(
+            Column(
+                name=entry.column_name,
+                data_type=entry.column_data_type,
+                is_primary_key=entry.is_primary_key,
+            )
+        )
+
+    schema_context = SchemaContext(tables=list(tables.values()))
+
+    # Get dialect from connection type
+    dialect = DIALECT_MAP.get(conn.database_type, "postgres")
+
+    settings = get_settings()
+    return QueryService(
+        accepted_query_repository=AcceptedQueryRepository(db),
+        session_repository=SessionRepository(db),
+        db_session=db,
+        redis=redis,
+        llm=LLMProviderFactory.from_config(settings),
+        evaluator=Evaluator(
+            rules=[
+                EmptySqlRule(),
+                DialectValidationRule(dialect=dialect),
+                ReadOnlyRule(dialect=dialect),
+                SingleStatementRule(),
+                SchemaValidationRule(schema_context),
+                UnsafePatternRule(),
+            ]
+        ),
+        source_db_executor=_source_db_executor,
+        llm_provider=settings.LLM_PROVIDER,
+        schema_context=schema_context,
+        target_dialect=dialect,
+        connection_id=connection_id,
+    )
+
+
 @router.post("/submit")
 async def submit_question(
     request: Request,
     req: SubmitQuestionRequest = Depends(validate_body(SubmitQuestionRequest)),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
-    service: QueryService = Depends(_get_query_service),  # noqa: B008
+    service: QueryService = Depends(_get_query_service_for_connection),  # noqa: B008
 ):
     """POST /query/submit — ask a question.
 

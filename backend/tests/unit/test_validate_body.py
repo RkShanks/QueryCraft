@@ -19,7 +19,7 @@ class TestValidateBody:
     async def test_valid_body_returns_model(self):
         """Valid payload should return the parsed model."""
         dep = validate_body(SubmitQuestionRequest)
-        result = await dep({"question": "What is revenue?"})
+        result = await dep({"question": "What is revenue?", "connection_id": "550e8400-e29b-41d4-a716-446655440001"})
         assert isinstance(result, SubmitQuestionRequest)
         assert result.question == "What is revenue?"
 

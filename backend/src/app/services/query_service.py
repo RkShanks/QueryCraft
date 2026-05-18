@@ -52,6 +52,8 @@ class QueryService:
         source_db_executor: Any,
         llm_provider: str = "",
         schema_context: str = "",
+        target_dialect: str | None = None,
+        connection_id: str | None = None,
     ) -> None:
         self._repo = accepted_query_repository
         self._session_repo = session_repository
@@ -62,6 +64,8 @@ class QueryService:
         self._executor = source_db_executor
         self._llm_provider = llm_provider
         self._schema_context = schema_context
+        self._target_dialect = target_dialect
+        self._connection_id = connection_id
 
     async def _acquire_lock(self, session_id: str, ttl: int = 60) -> str | None:
         """Try to acquire a per-session processing lock.
@@ -116,6 +120,7 @@ class QueryService:
         user_id: str,
         question: str,
         chat_session_id: str | None = None,
+        connection_id: str | None = None,
     ) -> QueryResult | EvaluatorRejection:
         """Submit a question: LLM -> evaluate -> execute -> result."""
         lock_owner = await self._acquire_lock(http_session_id, ttl=300)
@@ -195,6 +200,7 @@ class QueryService:
                     question=question,
                     schema_context=self._schema_context,
                     conversation_history=conversation_history or None,
+                    target_dialect=self._target_dialect,
                 )
             except Exception as exc:
                 raise HTTPException(
