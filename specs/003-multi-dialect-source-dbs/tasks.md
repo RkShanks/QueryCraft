@@ -167,7 +167,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Login UI Polish
 
-- [ ] T-452 Refresh `SignInPage` and `SignInForm` UI: premium dark-mode styling, accent glow, branded elements — no auth semantics change in `frontend/src/pages/SignInPage.tsx` and `frontend/src/components/auth/SignInForm.tsx` (FR-082)
+- [X] T-452 Refresh `SignInPage` and `SignInForm` UI: premium dark-mode styling, accent glow, branded elements — no auth semantics change in `frontend/src/pages/SignInPage.tsx` and `frontend/src/components/auth/SignInForm.tsx` (FR-082)
 
 ### Route & Navigation
 
