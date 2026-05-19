@@ -163,7 +163,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### i18n
 
-- [ ] T-451 [P] Add all Wave 13 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: connection CRUD labels, status labels, error messages, admin page titles (FR-084, SC-030)
+- [X] T-451 [P] Add all Wave 13 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: connection CRUD labels, status labels, error messages, admin page titles (FR-084, SC-030)
 
 ### Login UI Polish
 
