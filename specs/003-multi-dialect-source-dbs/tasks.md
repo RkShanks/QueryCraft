@@ -143,8 +143,8 @@ Wave Final Reports MUST include red/green evidence per task.
 
 - [X] T-438 Create `AdminConnectionsPage` component with connection list, lifecycle/health/schema status indicators, and `schema_last_refreshed_at` display in `frontend/src/pages/AdminConnectionsPage.tsx` (FR-080, FR-064, FR-090)
 - [X] T-439 Create `AdminConnectionsPage.test.tsx` co-located test: renders list, status indicators, empty state in `frontend/src/pages/AdminConnectionsPage.test.tsx`
-- [ ] T-440 Create `ConnectionForm` component: add/edit form with database type selector, port auto-fill per dialect (5432/3306/1433), password placeholder on edit in `frontend/src/components/admin/ConnectionForm.tsx` (FR-059, FR-060)
-- [ ] T-441 Create `ConnectionForm.test.tsx` co-located test: form validation, type switching, port auto-fill, password placeholder in `frontend/src/components/admin/ConnectionForm.test.tsx`
+- [X] T-440 Create `ConnectionForm` component: add/edit form with database type selector, port auto-fill per dialect (5432/3306/1433), password placeholder on edit in `frontend/src/components/admin/ConnectionForm.tsx` (FR-059, FR-060)
+- [X] T-441 Create `ConnectionForm.test.tsx` co-located test: form validation, type switching, port auto-fill, password placeholder in `frontend/src/components/admin/ConnectionForm.test.tsx`
 - [ ] T-442 Implement test-connection button with loading state and result display (success with latency, failure with localized error) in `frontend/src/components/admin/ConnectionTestButton.tsx` (FR-063)
 - [ ] T-443 Create `ConnectionTestButton.test.tsx` co-located test in `frontend/src/components/admin/ConnectionTestButton.test.tsx`
 - [ ] T-444 Implement refresh-schema button with loading state, summary display, and `schema_last_refreshed_at` update in `frontend/src/components/admin/RefreshSchemaButton.tsx` (FR-066, FR-067, FR-068)
