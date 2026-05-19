@@ -22,6 +22,7 @@ export type SubmitQuestionRequest = {
      */
     question: string;
     session_id?: string;
+    connection_id: string;
 };
 
 export type QueryResult = {
@@ -956,3 +957,54 @@ export type TestAdminConnectionErrors = {
 export type TestAdminConnectionResponses = {
     200: ConnectionTestResult;
 };
+
+export type UserConnectionResponse = {
+    id: string;
+    display_name: string;
+    database_type: DatabaseType;
+};
+
+export type ListUserConnectionsResponse = {
+    connections: UserConnectionResponse[];
+};
+
+export type ListUserConnectionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/connections';
+};
+
+export type ListUserConnectionsErrors = {
+    401: ErrorResponse;
+};
+
+export type ListUserConnectionsResponses = {
+    200: ListUserConnectionsResponse;
+};
+
+export type UpdateSessionConnectionRequest = {
+    connection_id: string;
+};
+
+export type UpdateSessionConnectionData = {
+    body: UpdateSessionConnectionRequest;
+    path: {
+        sessionId: string;
+    };
+    query?: never;
+    url: '/sessions/{sessionId}/connection';
+};
+
+export type UpdateSessionConnectionErrors = {
+    400: ErrorResponse;
+    401: ErrorResponse;
+    404: ErrorResponse;
+    409: ErrorResponse;
+    422: ErrorResponse;
+};
+
+export type UpdateSessionConnectionResponses = {
+    200: SessionDetail;
+};
+
