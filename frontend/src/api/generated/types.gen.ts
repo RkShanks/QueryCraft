@@ -504,9 +504,11 @@ export type GetHistoryEntryResponse = GetHistoryEntryResponses[keyof GetHistoryE
 
 export type RefreshSchemaData = {
     body?: never;
-    path?: never;
+    path: {
+        connectionId: string;
+    };
     query?: never;
-    url: '/admin/refresh-schema';
+    url: '/admin/connections/{connectionId}/refresh-schema';
 };
 
 export type RefreshSchemaErrors = {

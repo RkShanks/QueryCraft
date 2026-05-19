@@ -79,7 +79,10 @@ export const useConnections = () => {
   });
 
   const refreshSchemaMutation = useMutation({
-    mutationFn: () => refreshSchema({ throwOnError: true }).then((res) => res.data),
+    mutationFn: (id: string) =>
+      refreshSchema({ path: { connectionId: id }, throwOnError: true }).then(
+        (res) => res.data
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminConnections'] });
     },
