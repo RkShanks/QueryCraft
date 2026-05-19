@@ -90,7 +90,7 @@ describe('RefreshSchemaButton', () => {
     );
 
     // Should display the formatted time. We check if the localized text prefix is in document.
-    expect(screen.getByText(/Refreshed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Refreshed May/i)).toBeInTheDocument();
   });
 
   it('renders refreshed time from mutation response when mutation succeeds', () => {
@@ -108,7 +108,7 @@ describe('RefreshSchemaButton', () => {
 
     render(<RefreshSchemaButton connectionId="conn-123" />);
 
-    expect(screen.getByText(/Refreshed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Refreshed May/i)).toBeInTheDocument();
   });
 
   it('handles response with status unhealthy or failure as an error', () => {
