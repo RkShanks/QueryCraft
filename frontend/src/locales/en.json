@@ -218,5 +218,13 @@
   "admin.connections.form.submit.create": "Create Connection",
   "admin.connections.form.submit.edit": "Save Changes",
   "admin.connections.form.passwordPlaceholder": "••••••••",
-  "admin.connections.form.passwordHelpEdit": "Leave blank to keep existing password"
+  "admin.connections.form.passwordHelpEdit": "Leave blank to keep existing password",
+  "admin.connections.disable": "Disable",
+  "admin.connections.disabling": "Disabling...",
+  "admin.connections.enable": "Enable",
+  "admin.connections.enabling": "Enabling...",
+  "admin.connections.delete": "Delete",
+  "admin.connections.deleting": "Deleting...",
+  "admin.connections.deleteConfirm": "Are you sure you want to delete this connection? This action cannot be undone.",
+  "admin.connections.deleteConfirmTitle": "Delete Connection"
 }

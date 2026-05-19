@@ -237,5 +237,13 @@
   "admin.connections.form.submit.create": "إنشاء اتصال",
   "admin.connections.form.submit.edit": "حفظ التغييرات",
   "admin.connections.form.passwordPlaceholder": "••••••••",
-  "admin.connections.form.passwordHelpEdit": "اتركه فارغاً للاحتفاظ بكلمة المرور الحالية"
+  "admin.connections.form.passwordHelpEdit": "اتركه فارغاً للاحتفاظ بكلمة المرور الحالية",
+  "admin.connections.disable": "تعطيل",
+  "admin.connections.disabling": "جارٍ التعطيل...",
+  "admin.connections.enable": "تفعيل",
+  "admin.connections.enabling": "جارٍ التفعيل...",
+  "admin.connections.delete": "حذف",
+  "admin.connections.deleting": "جارٍ الحذف...",
+  "admin.connections.deleteConfirm": "هل أنت متأكد من رغبتك في حذف هذا الاتصال؟ لا يمكن التراجع عن هذا الإجراء.",
+  "admin.connections.deleteConfirmTitle": "حذف الاتصال"
 }
