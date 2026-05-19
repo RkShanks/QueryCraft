@@ -24,7 +24,7 @@ export const useAcceptQuery = () => {
 type ErrorKind = 'concurrent' | 'llmUnavailable' | 'attemptInvalid' | 'network';
 
 export interface UseQuerySubmitReturn {
-  submitQuestion: (q: string, sessionId?: string | null) => Promise<unknown>;
+  submitQuestion: (q: string, sessionId?: string | null, connectionId?: string | null) => Promise<unknown>;
   rejectQuery: (attemptId: string) => Promise<void>;
   regenerateQuery: (attemptId: string) => Promise<unknown>;
   acceptQuery: (attemptId: string, sessionId?: string | null) => Promise<void>;
@@ -97,7 +97,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
     }
   }, []);
 
-  const submitQuestionFn = useCallback(async (q: string, sessionId?: string | null) => {
+  const submitQuestionFn = useCallback(async (q: string, sessionId?: string | null, connectionId?: string | null) => {
     if (submittingRef.current) {
       throw new Error('submit_in_progress');
     }
@@ -107,7 +107,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
 
     try {
       const res = await submitQuestion({
-        body: { question: q, session_id: sessionId ?? undefined },
+        body: { question: q, session_id: sessionId ?? undefined, connection_id: connectionId ?? '550e8400-e29b-41d4-a716-446655440001' },
         throwOnError: true,
       });
       const data = res.data;

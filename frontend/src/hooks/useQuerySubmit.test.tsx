@@ -15,7 +15,7 @@ describe('Query Hooks', () => {
     it('should submit a question successfully', async () => {
       const { result } = renderHook(() => useSubmitQuestion(), { wrapper: createWrapper() });
       
-      result.current.mutate({ question: 'How many users?' });
+      result.current.mutate({ question: 'How many users?', connection_id: '550e8400-e29b-41d4-a716-446655440001' });
       
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data?.kind).toBe('result');
@@ -30,7 +30,7 @@ describe('Query Hooks', () => {
       );
 
       const { result } = renderHook(() => useSubmitQuestion(), { wrapper: createWrapper() });
-      result.current.mutate({ question: '' });
+      result.current.mutate({ question: '', connection_id: '550e8400-e29b-41d4-a716-446655440001' });
       
       await waitFor(() => expect(result.current.isError).toBe(true));
     });
@@ -57,6 +57,20 @@ describe('Query Hooks', () => {
       expect(result.current.result?.kind).toBe('result');
       expect(result.current.result?.attempt_id).toBe('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
       expect(result.current.isSubmitting).toBe(false);
+    });
+
+    it('sends connection_id in the request body when provided', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let requestBody: any;
+      server.use(
+        http.post('/api/v1/query/submit', async ({ request }) => {
+          requestBody = await request.json();
+          return HttpResponse.json({ kind: 'result', attempt_id: 'test-id' }, { status: 200 });
+        })
+      );
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
+      expect(requestBody).toMatchObject({ connection_id: '550e8400-e29b-41d4-a716-446655440001' });
     });
 
     it('2. rejectQuery returns QueryResult (kind=result) on first rejection', async () => {

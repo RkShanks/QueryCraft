@@ -47,7 +47,7 @@ export const AdminConnectionsPage: React.FC = () => {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border bg-bg-card shadow-sm">
-          <table className="w-full text-left text-sm text-text-secondary">
+          <table className="w-full text-start text-sm text-text-secondary">
             <thead className="text-xs text-text-primary uppercase bg-bg-elevated border-b border-border">
               <tr>
                 <th className="px-6 py-4 font-medium">{t('admin.connections.column.name')}</th>

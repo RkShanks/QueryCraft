@@ -38,7 +38,6 @@ describe('useConnections', () => {
       ],
     };
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data: mockConnections as any,
@@ -59,7 +58,6 @@ describe('useConnections', () => {
   });
 
   it('handles empty state data', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
       data: { connections: [] },
       response: new Response(),
