@@ -15,6 +15,7 @@ class ValidAdapter:
         schema_context: str,
         negative_examples: list[str] | None = None,
         conversation_history: list[dict] | None = None,
+        target_dialect: str | None = None,
     ) -> str:
         return "SELECT 1"
 
@@ -67,12 +68,20 @@ def test_sync_generate_sql_passes_isinstance():
 
 def test_generate_sql_signature():
     """Protocol declares generate_sql(self, question, schema_context,
-    negative_examples, conversation_history) -> str."""
+    negative_examples, conversation_history, target_dialect) -> str."""
     method = getattr(LLMProvider, "generate_sql", None)
     assert method is not None
     sig = inspect.signature(method)
     params = list(sig.parameters.keys())
-    assert params == ["self", "question", "schema_context", "negative_examples", "conversation_history"]
+    expected = [
+        "self",
+        "question",
+        "schema_context",
+        "negative_examples",
+        "conversation_history",
+        "target_dialect",
+    ]
+    assert params == expected
     assert sig.parameters["question"].annotation is str
     assert sig.parameters["schema_context"].annotation is str
     assert sig.return_annotation is str

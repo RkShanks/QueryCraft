@@ -34,6 +34,22 @@ class ConnectionRepository:
         result = await self._db_session.execute(select(SourceDatabaseConnection))
         return list(result.scalars().all())
 
+    async def list_user_available(self) -> list[SourceDatabaseConnection]:
+        """Return connections that are active + healthy + successfully introspected.
+
+        Used by user-facing GET /connections endpoint (T-428, FR-077).
+        """
+        from app.db.models.enums import HealthStatus, LifecycleState, SchemaIntrospectionStatus
+
+        result = await self._db_session.execute(
+            select(SourceDatabaseConnection).where(
+                SourceDatabaseConnection.lifecycle_state == LifecycleState.ACTIVE,
+                SourceDatabaseConnection.health_status == HealthStatus.HEALTHY,
+                SourceDatabaseConnection.schema_introspection_status == SchemaIntrospectionStatus.SUCCESS,
+            )
+        )
+        return list(result.scalars().all())
+
     async def update(self, connection: SourceDatabaseConnection) -> SourceDatabaseConnection:
         """Update an existing connection."""
         await self._db_session.flush()

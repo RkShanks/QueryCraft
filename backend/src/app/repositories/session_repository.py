@@ -85,3 +85,25 @@ class SessionRepository:
         session.preview_text = truncated
         await self._session.flush()
         return True
+
+    async def update_connection(
+        self,
+        session_id: uuid.UUID,
+        user_id: uuid.UUID,
+        connection_id: uuid.UUID,
+    ) -> Session | None:
+        """Update session's selected connection (T-434, FR-094)."""
+        result = await self._session.execute(
+            select(Session).where(
+                Session.id == session_id,
+                Session.user_id == user_id,
+            )
+        )
+        session = result.scalar_one_or_none()
+        if session is None:
+            return None
+        session.connection_id = connection_id
+        session.last_activity_at = datetime.now(UTC)
+        await self._session.flush()
+        await self._session.refresh(session)
+        return session

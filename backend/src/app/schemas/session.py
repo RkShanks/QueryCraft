@@ -49,3 +49,19 @@ class SessionListResponse(BaseModel):
 
     items: list[SessionSummary]
     total: int
+
+
+class SessionConnectionUpdate(BaseModel):
+    """Request body for updating session connection (T-434, FR-094)."""
+
+    connection_id: str
+
+
+class SessionConnectionResponse(BaseModel):
+    """Response after updating session connection."""
+
+    id: str
+    connection_id: str | None = None
+    preview_text: str
+    created_at: str
+    last_activity_at: str

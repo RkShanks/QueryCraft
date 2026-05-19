@@ -11,8 +11,9 @@ class SchemaValidationRule:
 
     name = "schema_validation"
 
-    def __init__(self, schema: SchemaContext | None = None):
+    def __init__(self, schema: SchemaContext | None = None, dialect: str = "postgres"):
         self._schema = schema
+        self._dialect = dialect
 
     async def evaluate(self, sql: str, schema: SchemaContext | None = None) -> tuple[bool, str | None]:
         """Reject SQL referencing unknown tables or columns."""
@@ -21,7 +22,7 @@ class SchemaValidationRule:
             return True, None
 
         try:
-            parsed = sqlglot.parse(sql, read="postgres")
+            parsed = sqlglot.parse(sql, read=self._dialect)
         except Exception:
             return False, "Unable to parse SQL"
 

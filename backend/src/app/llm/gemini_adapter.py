@@ -59,11 +59,12 @@ class GeminiAdapter:
         schema_context: str,
         negative_examples: list[str] | None = None,
         conversation_history: list[dict] | None = None,
+        target_dialect: str | None = None,
     ) -> str:
         """Build prompt and generate SQL."""
         from app.llm.prompt_builder import build_prompt
 
-        prompt = build_prompt(question, schema_context, conversation_history)
+        prompt = build_prompt(question, schema_context, conversation_history, target_dialect=target_dialect)
         if negative_examples:
             prompt += "\nAvoid generating these SQL variants:\n" + "\n".join(f"- {ex}" for ex in negative_examples)
         return await self.generate(prompt)

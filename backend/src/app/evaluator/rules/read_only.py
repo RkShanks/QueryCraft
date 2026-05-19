@@ -1,9 +1,20 @@
-"""ReadOnlyRule — rejects any non-SELECT SQL."""
+"""ReadOnlyRule — rejects any non-SELECT SQL.
+
+T-429: Dialect-aware parsing via sqlglot.parse(sql, read=dialect).
+"""
 
 import sqlglot
 from sqlglot import exp
 
+from app.db.models.enums import DatabaseType
 from app.evaluator.schema_context import SchemaContext
+
+# DatabaseType → sqlglot dialect mapping (T-429, FR-071)
+DIALECT_MAP: dict[DatabaseType, str] = {
+    DatabaseType.POSTGRESQL: "postgres",
+    DatabaseType.MYSQL: "mysql",
+    DatabaseType.MSSQL: "tsql",
+}
 
 
 class ReadOnlyRule:
@@ -11,10 +22,31 @@ class ReadOnlyRule:
 
     name = "read_only"
 
+    def __init__(self, dialect: str = "postgres") -> None:
+        """Initialize with a sqlglot read dialect.
+
+        Args:
+            dialect: sqlglot dialect string (e.g. "postgres", "mysql", "tsql").
+        """
+        self.dialect = dialect
+
+    @classmethod
+    def from_database_type(cls, database_type: DatabaseType) -> "ReadOnlyRule":
+        """Create a ReadOnlyRule from a DatabaseType enum.
+
+        Args:
+            database_type: The database type to map to a sqlglot dialect.
+
+        Returns:
+            ReadOnlyRule configured with the appropriate dialect.
+        """
+        dialect = DIALECT_MAP[database_type]
+        return cls(dialect=dialect)
+
     async def evaluate(self, sql: str, schema: SchemaContext | None) -> tuple[bool, str | None]:
         """Reject SQL containing INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, TRUNCATE."""
         try:
-            parsed = sqlglot.parse(sql, read="postgres")
+            parsed = sqlglot.parse(sql, read=self.dialect)
         except Exception:
             return False, "Unable to parse SQL"
 

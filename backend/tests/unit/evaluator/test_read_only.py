@@ -1,8 +1,9 @@
-"""T-090 — ReadOnlyRule unit tests."""
+"""T-090 — ReadOnlyRule unit tests. T-429 — dialect parameterization."""
 
 import pytest
 
-from app.evaluator.rules.read_only import ReadOnlyRule
+from app.db.models.enums import DatabaseType
+from app.evaluator.rules.read_only import DIALECT_MAP, ReadOnlyRule
 from app.evaluator.schema_context import SchemaContext
 
 
@@ -120,3 +121,61 @@ async def test_union_with_update_branch_blocked(rule):
         SchemaContext(),
     )
     assert not ok, "UNION containing UPDATE branch must be blocked"
+
+
+class TestReadOnlyRuleDialectParameterization:
+    """T-429: Verify dialect-aware parsing in ReadOnlyRule."""
+
+    @pytest.mark.asyncio
+    async def test_dialect_map_exists(self):
+        """DIALECT_MAP maps all DatabaseType values to sqlglot dialect strings."""
+        assert DIALECT_MAP[DatabaseType.POSTGRESQL] == "postgres"
+        assert DIALECT_MAP[DatabaseType.MYSQL] == "mysql"
+        assert DIALECT_MAP[DatabaseType.MSSQL] == "tsql"
+
+    @pytest.mark.asyncio
+    async def test_select_with_postgres_dialect(self):
+        """SELECT passes when parsed with postgres dialect."""
+        rule = ReadOnlyRule(dialect="postgres")
+        passed, reason = await rule.evaluate("SELECT * FROM users", SchemaContext())
+        assert passed is True
+
+    @pytest.mark.asyncio
+    async def test_select_with_mysql_dialect(self):
+        """SELECT passes when parsed with mysql dialect."""
+        rule = ReadOnlyRule(dialect="mysql")
+        passed, reason = await rule.evaluate("SELECT * FROM users", SchemaContext())
+        assert passed is True
+
+    @pytest.mark.asyncio
+    async def test_select_with_tsql_dialect(self):
+        """SELECT passes when parsed with tsql dialect."""
+        rule = ReadOnlyRule(dialect="tsql")
+        passed, reason = await rule.evaluate("SELECT * FROM users", SchemaContext())
+        assert passed is True
+
+    @pytest.mark.asyncio
+    async def test_insert_fails_across_all_dialects(self):
+        """INSERT is rejected regardless of dialect."""
+        for dialect in ["postgres", "mysql", "tsql"]:
+            rule = ReadOnlyRule(dialect=dialect)
+            passed, _ = await rule.evaluate("INSERT INTO users VALUES (1)", SchemaContext())
+            assert passed is False, f"INSERT should fail with dialect={dialect}"
+
+    @pytest.mark.asyncio
+    async def test_default_dialect_is_postgres(self):
+        """Default dialect is postgres for backward compatibility."""
+        rule = ReadOnlyRule()
+        assert rule.dialect == "postgres"
+
+    @pytest.mark.asyncio
+    async def test_from_database_type_classmethod(self):
+        """from_database_type creates rule with correct dialect."""
+        rule_pg = ReadOnlyRule.from_database_type(DatabaseType.POSTGRESQL)
+        assert rule_pg.dialect == "postgres"
+
+        rule_mysql = ReadOnlyRule.from_database_type(DatabaseType.MYSQL)
+        assert rule_mysql.dialect == "mysql"
+
+        rule_mssql = ReadOnlyRule.from_database_type(DatabaseType.MSSQL)
+        assert rule_mssql.dialect == "tsql"

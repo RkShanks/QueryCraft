@@ -102,28 +102,28 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### User-Facing Connection Endpoint
 
-- [ ] T-428 Implement `GET /api/v1/connections` endpoint: returns active + healthy + introspected connections (minimal payload: id, display_name, database_type) in `backend/src/app/api/v1/connections.py` (FR-073, FR-077)
+- [X] T-428 Implement `GET /api/v1/connections` endpoint: returns active + healthy + introspected connections (minimal payload: id, display_name, database_type) in `backend/src/app/api/v1/connections.py` (FR-073, FR-077)
 
 ### Dialect-Aware Evaluator
 
-- [ ] T-429 Update `ReadOnlyRule` in `backend/src/app/evaluator/rules/read_only.py`: parameterize `sqlglot.parse(sql, read=dialect)` per connection's `database_type`; add dialect mapping (FR-071, FR-072)
-- [ ] T-430 Implement dialect validation: reject on parse failure or low confidence → trigger regeneration with dialect hint; never execute unvalidated SQL in `backend/src/app/evaluator/rules/dialect_validation.py` (FR-071, FR-092)
-- [ ] T-431 Write dialect evaluator tests: PG `LIMIT` ok / T-SQL `LIMIT` rejected; T-SQL `TOP` ok / PG `TOP` rejected; INSERT/UPDATE/DELETE rejected across all 3 dialects; parse failure → reject → hint in `backend/tests/unit/evaluator/test_dialect_evaluator.py` (SC-027, SC-028)
+- [X] T-429 Update `ReadOnlyRule` in `backend/src/app/evaluator/rules/read_only.py`: parameterize `sqlglot.parse(sql, read=dialect)` per connection's `database_type`; add dialect mapping (FR-071, FR-072)
+- [X] T-430 Implement dialect validation: reject on parse failure or low confidence → trigger regeneration with dialect hint; never execute unvalidated SQL in `backend/src/app/evaluator/rules/dialect_validation.py` (FR-071, FR-092)
+- [X] T-431 Write dialect evaluator tests: PG `LIMIT` ok / T-SQL `LIMIT` rejected; T-SQL `TOP` ok / PG `TOP` rejected; INSERT/UPDATE/DELETE rejected across all 3 dialects; parse failure → reject → hint in `backend/tests/unit/evaluator/test_dialect_evaluator.py` (SC-027, SC-028)
 
 ### Prompt Builder & Query Flow
 
-- [ ] T-432 Update `prompt_builder.py` in `backend/src/app/llm/prompt_builder.py`: add `target_dialect` parameter, include `TARGET_DIALECT:` instruction, include only selected connection's schema (FR-070)
-- [ ] T-433 Update `POST /api/v1/query/submit` in `backend/src/app/api/v1/query.py`: require `connection_id`, validate connection state (active + healthy + introspected), store on attempt; route query to correct adapter (FR-075, FR-094)
-- [ ] T-434 Add `PATCH /api/v1/sessions/{session_id}/connection` endpoint in `backend/src/app/api/v1/sessions.py` (FR-094)
-- [ ] T-435 Write query flow tests: submit with connection_id, schema isolation (only selected connection's schema in prompt), disabled connection blocked, retry exhaustion → error card in `backend/tests/unit/api/test_query_connection_routing.py` (SC-027, SC-035)
+- [X] T-432 Update `prompt_builder.py` in `backend/src/app/llm/prompt_builder.py`: add `target_dialect` parameter, include `TARGET_DIALECT:` instruction, include only selected connection's schema (FR-070)
+- [X] T-433 Update `POST /api/v1/query/submit` in `backend/src/app/api/v1/query.py`: require `connection_id`, validate connection state (active + healthy + introspected), store on attempt; route query to correct adapter (FR-075, FR-094)
+- [X] T-434 Add `PATCH /api/v1/sessions/{session_id}/connection` endpoint in `backend/src/app/api/v1/sessions.py` (FR-094)
+- [X] T-435 Write query flow tests: submit with connection_id, schema isolation (only selected connection's schema in prompt), disabled connection blocked, retry exhaustion → error card in `backend/tests/unit/api/test_query_connection_routing.py` (SC-027, SC-035)
 
 ### OpenAPI Client Regeneration
 
-- [ ] T-436 Regenerate OpenAPI client: run `npm run gen:api` in `frontend/`, verify `types.gen.ts` includes schema/introspection/user-connections/session-connection types
+- [X] T-436 Regenerate OpenAPI client: run `npm run gen:api` in `frontend/`, verify `types.gen.ts` includes schema/introspection/user-connections/session-connection types
 
 ### Backend Gates
 
-- [ ] T-437 Run backend foundation gates and paste verbatim output:
+- [X] T-437 Run backend foundation gates and paste verbatim output:
   - `cd backend && uv run ruff check src tests`
   - `cd backend && uv run ruff format --check src tests`
   - `cd backend && uv run pytest -q -m "not integration"`
