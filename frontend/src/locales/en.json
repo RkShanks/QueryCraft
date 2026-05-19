@@ -180,6 +180,7 @@
   "admin.connections.refreshingSchema": "Refreshing...",
   "admin.connections.refreshSchemaSuccess": "Schema refreshed successfully ({{tables}} tables, {{columns}} columns)",
   "admin.connections.title": "Database Connections",
+  "admin.connections.loadError": "Failed to load database connections.",
   "admin.connections.add": "Add Connection",
   "admin.connections.empty": "No database connections configured.",
   "admin.connections.type.postgresql": "PostgreSQL",

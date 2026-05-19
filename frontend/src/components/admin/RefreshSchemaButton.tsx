@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConnections } from '../../hooks/useConnections';
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
+import { getSafeConnectionErrorKey } from './connectionErrorMessages';
 
 export interface RefreshSchemaButtonProps {
   connectionId: string;
@@ -10,38 +11,6 @@ export interface RefreshSchemaButtonProps {
   onSuccess?: () => void;
   onError?: (error: unknown) => void;
 }
-
-const KNOWN_SAFE_KEYS = [
-  'error.introspection_failed',
-  'error.introspection_timeout',
-  'error.connection_network_unreachable',
-  'error.credential_config',
-  'error.unknown.message',
-];
-
-const mapCategoryToKey = (category?: string | null): string => {
-  if (!category) return 'error.unknown.message';
-  if (category === 'introspection_failed') {
-    return 'error.introspection_failed';
-  }
-  if (category === 'introspection_timeout') {
-    return 'error.introspection_timeout';
-  }
-  if (category === 'network_unreachable' || category === 'connection_network_unreachable') {
-    return 'error.connection_network_unreachable';
-  }
-  if (category === 'credential_config') {
-    return 'error.credential_config';
-  }
-  return 'error.unknown.message';
-};
-
-const getSafeMessageKey = (key?: string | null): string => {
-  if (key && KNOWN_SAFE_KEYS.includes(key)) {
-    return key;
-  }
-  return 'error.unknown.message';
-};
 
 export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
   connectionId,
@@ -88,14 +57,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
 
   let errorMessage = '';
   if (isErrorState && refreshSchemaMutation.error) {
-    const errorObj = refreshSchemaMutation.error as unknown as Record<string, unknown> | null;
-    if (errorObj && typeof errorObj === 'object' && 'message_key' in errorObj && typeof errorObj.message_key === 'string') {
-      errorMessage = t(getSafeMessageKey(errorObj.message_key));
-    } else if (errorObj && typeof errorObj === 'object' && 'error' in errorObj && typeof errorObj.error === 'string') {
-      errorMessage = t(mapCategoryToKey(errorObj.error));
-    } else {
-      errorMessage = t('error.unknown.message');
-    }
+    errorMessage = t(getSafeConnectionErrorKey(refreshSchemaMutation.error));
   }
 
   // Display counts if available from the mutation success payload

@@ -199,6 +199,7 @@
   "admin.connections.refreshingSchema": "جارٍ التحديث...",
   "admin.connections.refreshSchemaSuccess": "تم تحديث المخطط بنجاح ({{tables}} جداول، {{columns}} أعمدة)",
   "admin.connections.title": "اتصالات قواعد البيانات",
+  "admin.connections.loadError": "فشل تحميل اتصالات قاعدة البيانات.",
   "admin.connections.add": "إضافة اتصال",
   "admin.connections.empty": "لا توجد اتصالات قواعد بيانات مكونة.",
   "admin.connections.type.postgresql": "PostgreSQL",
