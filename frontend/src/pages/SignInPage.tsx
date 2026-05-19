@@ -30,17 +30,17 @@ export const SignInPage: React.FC = () => {
       {/* Main Glassmorphic Container */}
       <div className="max-w-md w-full relative z-10 bg-obsidian-900/60 backdrop-blur-xl border border-obsidian-800 rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
         {/* Accent Top Bar */}
-        <div className="h-1.5 w-full bg-gradient-to-e from-neon-cyan via-neon-purple to-neon-fuchsia" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-neon-cyan via-neon-purple to-neon-fuchsia" />
         
         <div className="p-8">
           {/* Brand Header */}
           <div className="flex flex-col items-center gap-2 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-e from-neon-cyan to-neon-purple flex items-center justify-center shadow-lg shadow-neon-cyan-glow relative group">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-purple flex items-center justify-center shadow-lg shadow-neon-cyan-glow relative group">
               <Database className="w-6 h-6 text-white" />
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-e from-neon-cyan to-neon-purple opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-purple opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
             </div>
             <div className="text-center mt-2">
-              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-e from-white via-obsidian-200 to-obsidian-400 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-obsidian-200 to-obsidian-400 bg-clip-text text-transparent">
                 {t('app.title')}
               </h1>
               <p className="text-sm text-obsidian-400 mt-1.5 flex items-center justify-center gap-1">

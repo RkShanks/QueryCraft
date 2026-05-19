@@ -85,7 +85,7 @@ export const SignInForm: React.FC = () => {
       <button 
         type="submit" 
         disabled={signInMutation.isPending}
-        className="w-full mt-2 relative overflow-hidden group rounded-lg py-2.5 px-4 bg-gradient-to-e from-neon-cyan to-neon-purple text-white font-medium hover:brightness-110 active:brightness-95 disabled:opacity-50 disabled:pointer-events-none transition-all duration-200 shadow-lg shadow-neon-cyan-glow flex items-center justify-center gap-2 cursor-pointer"
+        className="w-full mt-2 relative overflow-hidden group rounded-lg py-2.5 px-4 bg-gradient-to-r from-neon-cyan to-neon-purple text-white font-medium hover:brightness-110 active:brightness-95 disabled:opacity-50 disabled:pointer-events-none transition-all duration-200 shadow-lg shadow-neon-cyan-glow flex items-center justify-center gap-2 cursor-pointer"
       >
         {signInMutation.isPending ? (
           <>
