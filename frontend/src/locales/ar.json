@@ -10,7 +10,9 @@
 
   "auth.signIn.title": "تسجيل الدخول",
   "auth.signIn.username.label": "اسم المستخدم",
+  "auth.signIn.username.placeholder": "أدخل اسم المستخدم",
   "auth.signIn.password.label": "كلمة المرور",
+  "auth.signIn.password.placeholder": "أدخل كلمة المرور",
   "auth.signIn.submit": "تسجيل الدخول",
   "auth.signIn.signingIn": "جارٍ تسجيل الدخول...",
   "auth.signIn.error.usernameEmpty": "اسم المستخدم لا يمكن أن يكون فارغاً.",
