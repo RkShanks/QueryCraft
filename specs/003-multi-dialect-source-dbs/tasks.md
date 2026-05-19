@@ -141,8 +141,8 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Admin Connections Page
 
-- [ ] T-438 Create `AdminConnectionsPage` component with connection list, lifecycle/health/schema status indicators, and `schema_last_refreshed_at` display in `frontend/src/pages/AdminConnectionsPage.tsx` (FR-080, FR-064, FR-090)
-- [ ] T-439 Create `AdminConnectionsPage.test.tsx` co-located test: renders list, status indicators, empty state in `frontend/src/pages/AdminConnectionsPage.test.tsx`
+- [X] T-438 Create `AdminConnectionsPage` component with connection list, lifecycle/health/schema status indicators, and `schema_last_refreshed_at` display in `frontend/src/pages/AdminConnectionsPage.tsx` (FR-080, FR-064, FR-090)
+- [X] T-439 Create `AdminConnectionsPage.test.tsx` co-located test: renders list, status indicators, empty state in `frontend/src/pages/AdminConnectionsPage.test.tsx`
 - [ ] T-440 Create `ConnectionForm` component: add/edit form with database type selector, port auto-fill per dialect (5432/3306/1433), password placeholder on edit in `frontend/src/components/admin/ConnectionForm.tsx` (FR-059, FR-060)
 - [ ] T-441 Create `ConnectionForm.test.tsx` co-located test: form validation, type switching, port auto-fill, password placeholder in `frontend/src/components/admin/ConnectionForm.test.tsx`
 - [ ] T-442 Implement test-connection button with loading state and result display (success with latency, failure with localized error) in `frontend/src/components/admin/ConnectionTestButton.tsx` (FR-063)
@@ -154,8 +154,8 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### API Hooks
 
-- [ ] T-448 [P] Create `useConnections` admin hook (list, create, update, delete, test, disable, enable, refresh-schema) in `frontend/src/hooks/useConnections.ts`
-- [ ] T-449 [P] Create `useConnections.test.tsx` co-located test in `frontend/src/hooks/useConnections.test.tsx`
+- [X] T-448 [P] Create `useConnections` admin hook (list, create, update, delete, test, disable, enable, refresh-schema) in `frontend/src/hooks/useConnections.ts`
+- [X] T-449 [P] Create `useConnections.test.tsx` co-located test in `frontend/src/hooks/useConnections.test.tsx`
 
 ### Typed Error UX
 
@@ -171,7 +171,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Route & Navigation
 
-- [ ] T-453 Add admin connections route to `AppShell`/router; add navigation link with `lucide-react` `Database` icon in `frontend/src/components/shell/AppShell.tsx` (FR-083)
+- [X] T-453 Add admin connections route to `AppShell`/router; add navigation link with `lucide-react` `Database` icon in `frontend/src/components/shell/AppShell.tsx` (FR-083)
 
 ### Chrome DevTools MCP Smoke
 
