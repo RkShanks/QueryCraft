@@ -182,9 +182,10 @@ describe('ConnectionTestButton', () => {
       },
     } as unknown as ReturnType<typeof useConnections>);
 
-    render(<ConnectionTestButton connectionId="test-id-123" />);
+    const { container } = render(<ConnectionTestButton connectionId="test-id-123" />);
 
-    expect(screen.getByText(/Some unexpected crash/i)).toBeInTheDocument();
+    expect(screen.getByText(/An unexpected error occurred. Please try again./i)).toBeInTheDocument();
+    expect(container.innerHTML).not.toContain('Some unexpected crash');
   });
 
   it('disabled prop prevents click and disables button', () => {

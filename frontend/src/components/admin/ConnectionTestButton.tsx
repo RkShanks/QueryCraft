@@ -60,19 +60,14 @@ export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
   let errorMessage = '';
   if (isUnhealthyResult && testMutation.data) {
     const data = testMutation.data;
-    if (data.message_key) {
-      errorMessage = t(data.message_key);
-    } else {
-      errorMessage = t(mapCategoryToKey(data.error_category));
-    }
+    const key = data.message_key || mapCategoryToKey(data.error_category);
+    errorMessage = t(key, { defaultValue: t('error.unknown.message') });
   } else if (testMutation.isError && testMutation.error) {
     const errorObj = testMutation.error as unknown as Record<string, unknown> | null;
     if (errorObj && typeof errorObj === 'object' && 'message_key' in errorObj && typeof errorObj.message_key === 'string') {
-      errorMessage = t(errorObj.message_key);
+      errorMessage = t(errorObj.message_key, { defaultValue: t('error.unknown.message') });
     } else if (errorObj && typeof errorObj === 'object' && 'error' in errorObj && typeof errorObj.error === 'string') {
-      errorMessage = t(mapCategoryToKey(errorObj.error));
-    } else if (testMutation.error instanceof Error) {
-      errorMessage = testMutation.error.message;
+      errorMessage = t(mapCategoryToKey(errorObj.error), { defaultValue: t('error.unknown.message') });
     } else {
       errorMessage = t('error.unknown.message');
     }
