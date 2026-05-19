@@ -38,10 +38,14 @@ describe('useConnections', () => {
       ],
     };
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data: mockConnections as any,
       response: new Response(),
-    });
+      request: new Request('http://localhost'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     const { result } = renderHook(() => useConnections(), { wrapper });
 
@@ -55,10 +59,13 @@ describe('useConnections', () => {
   });
 
   it('handles empty state data', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
       data: { connections: [] },
       response: new Response(),
-    });
+      request: new Request('http://localhost'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     const { result } = renderHook(() => useConnections(), { wrapper });
 

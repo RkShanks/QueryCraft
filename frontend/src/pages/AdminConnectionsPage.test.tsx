@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { AdminConnectionsPage } from './AdminConnectionsPage';
 import { useConnections } from '../hooks/useConnections';
 
@@ -56,6 +56,7 @@ describe('AdminConnectionsPage', () => {
   });
 
   it('renders empty state when no connections', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(useConnections).mockReturnValue(mockEmptyUseConnections as any);
     render(<AdminConnectionsPage />);
     
@@ -64,6 +65,7 @@ describe('AdminConnectionsPage', () => {
   });
 
   it('renders populated list with status indicators and formatted time', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(useConnections).mockReturnValue(mockPopulatedUseConnections as any);
     render(<AdminConnectionsPage />);
 
@@ -87,6 +89,7 @@ describe('AdminConnectionsPage', () => {
   it('renders loading state', () => {
     vi.mocked(useConnections).mockReturnValue({
       listQuery: { isLoading: true, data: undefined, isError: false },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     render(<AdminConnectionsPage />);
@@ -96,6 +99,7 @@ describe('AdminConnectionsPage', () => {
   it('renders error state', () => {
     vi.mocked(useConnections).mockReturnValue({
       listQuery: { isLoading: false, data: undefined, isError: true },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     render(<AdminConnectionsPage />);

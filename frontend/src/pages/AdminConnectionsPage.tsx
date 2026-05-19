@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConnections } from '../hooks/useConnections';
-import { Database, Plus, RefreshCw, Server, Activity, Power, PowerOff, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { Database, Plus, RefreshCw, Server, Power, PowerOff, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 
 export const AdminConnectionsPage: React.FC = () => {
   const { t } = useTranslation();
