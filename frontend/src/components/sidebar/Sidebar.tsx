@@ -14,6 +14,7 @@ import {
   Settings,
   MessageSquare,
   LogOut,
+  Database,
 } from '../icons';
 import './Sidebar.css';
 
@@ -150,6 +151,15 @@ export const Sidebar: React.FC = () => {
         >
           <Settings className="w-4 h-4" />
           {!sidebarCollapsed && t('nav.settings')}
+        </button>
+        <button
+          className="sidebar-nav-btn"
+          onClick={() => navigate('/admin/connections')}
+          aria-label={t('nav.adminConnections')}
+          data-testid="sidebar-nav-connections"
+        >
+          <Database className="w-4 h-4" />
+          {!sidebarCollapsed && t('nav.adminConnections')}
         </button>
       </div>
 

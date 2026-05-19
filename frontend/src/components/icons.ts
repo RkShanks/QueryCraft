@@ -14,4 +14,5 @@ export {
   X,
   MessageSquare,
   LogOut,
+  Database,
 } from 'lucide-react';

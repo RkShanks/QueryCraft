@@ -9,6 +9,7 @@ import { AskQuestionPage } from './pages/AskQuestionPage';
 import HistoryPage from './pages/HistoryPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AdminConnectionsPage } from './pages/AdminConnectionsPage';
 import { AppShell } from './components/shell/AppShell';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -84,6 +85,14 @@ function App() {
             element={
               <AuthenticatedLayout>
                 <SettingsPage />
+              </AuthenticatedLayout>
+            }
+          />
+          <Route
+            path="/admin/connections"
+            element={
+              <AuthenticatedLayout>
+                <AdminConnectionsPage />
               </AuthenticatedLayout>
             }
           />
