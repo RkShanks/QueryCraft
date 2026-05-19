@@ -226,5 +226,6 @@
   "admin.connections.form.invalidPort": "يجب أن يكون المنفذ رقماً بين 1 و 65535",
   "admin.connections.form.submit.create": "إنشاء اتصال",
   "admin.connections.form.submit.edit": "حفظ التغييرات",
+  "admin.connections.form.passwordPlaceholder": "••••••••",
   "admin.connections.form.passwordHelpEdit": "اتركه فارغاً للاحتفاظ بكلمة المرور الحالية"
 }

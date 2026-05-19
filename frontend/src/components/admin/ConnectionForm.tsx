@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   ConnectionResponse,
@@ -9,7 +9,7 @@ import type {
 
 export interface ConnectionFormProps {
   initialValues?: ConnectionResponse;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: ConnectionCreate | ConnectionUpdate) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
@@ -23,30 +23,16 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   const { t } = useTranslation();
   const isEdit = !!initialValues;
 
-  const [displayName, setDisplayName] = useState('');
-  const [databaseType, setDatabaseType] = useState<DatabaseType>('postgresql');
-  const [host, setHost] = useState('');
-  const [port, setPort] = useState<number>(5432);
-  const [databaseName, setDatabaseName] = useState('');
-  const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState(initialValues?.display_name || '');
+  const [databaseType, setDatabaseType] = useState<DatabaseType>(initialValues?.database_type || 'postgresql');
+  const [host, setHost] = useState(initialValues?.host || '');
+  const [port, setPort] = useState<number>(initialValues?.port ?? 5432);
+  const [databaseName, setDatabaseName] = useState(initialValues?.database_name || '');
+  const [username, setUsername] = useState(initialValues?.username || '');
   const [password, setPassword] = useState('');
-  const [sslMode, setSslMode] = useState('');
+  const [sslMode, setSslMode] = useState(initialValues?.ssl_mode || '');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Initialize form values from initialValues if in edit mode
-  useEffect(() => {
-    if (initialValues) {
-      setDisplayName(initialValues.display_name || '');
-      setDatabaseType(initialValues.database_type || 'postgresql');
-      setHost(initialValues.host || '');
-      setPort(initialValues.port ?? 5432);
-      setDatabaseName(initialValues.database_name || '');
-      setUsername(initialValues.username || '');
-      setSslMode(initialValues.ssl_mode || '');
-      setPassword(''); // Password never populated for editing
-    }
-  }, [initialValues]);
 
   // Handle port auto-fill when database type changes
   const handleDatabaseTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -243,7 +229,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={isEdit ? '••••••••' : ''}
+              placeholder={isEdit ? t('admin.connections.form.passwordPlaceholder') : undefined}
               className="w-full px-3 py-2.5 bg-bg-elevated border border-border rounded-md text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all"
             />
             {isEdit && (
