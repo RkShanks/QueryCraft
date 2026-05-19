@@ -66,13 +66,13 @@ export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
       errorMessage = t(mapCategoryToKey(data.error_category));
     }
   } else if (testMutation.isError && testMutation.error) {
-    const errorObj = testMutation.error as any;
-    if (errorObj?.message_key) {
+    const errorObj = testMutation.error as unknown as Record<string, unknown> | null;
+    if (errorObj && typeof errorObj === 'object' && 'message_key' in errorObj && typeof errorObj.message_key === 'string') {
       errorMessage = t(errorObj.message_key);
-    } else if (errorObj?.error) {
+    } else if (errorObj && typeof errorObj === 'object' && 'error' in errorObj && typeof errorObj.error === 'string') {
       errorMessage = t(mapCategoryToKey(errorObj.error));
-    } else if (errorObj instanceof Error) {
-      errorMessage = errorObj.message;
+    } else if (testMutation.error instanceof Error) {
+      errorMessage = testMutation.error.message;
     } else {
       errorMessage = t('error.unknown.message');
     }

@@ -25,7 +25,7 @@ describe('ConnectionTestButton', () => {
     vi.clearAllMocks();
     vi.mocked(useConnections).mockReturnValue({
       testMutation: { ...defaultMutationState },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
   });
 
   it('renders enabled button with localized label', () => {
@@ -52,7 +52,7 @@ describe('ConnectionTestButton', () => {
         ...defaultMutationState,
         isPending: true,
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionTestButton connectionId="test-id-123" />);
 
@@ -72,7 +72,7 @@ describe('ConnectionTestButton', () => {
           tested_at: '2026-05-19T20:00:00Z',
         },
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     const onSuccess = vi.fn();
     render(<ConnectionTestButton connectionId="test-id-123" onSuccess={onSuccess} />);
@@ -92,7 +92,7 @@ describe('ConnectionTestButton', () => {
           tested_at: '2026-05-19T20:00:00Z',
         },
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     const onError = vi.fn();
     render(<ConnectionTestButton connectionId="test-id-123" onError={onError} />);
@@ -112,7 +112,7 @@ describe('ConnectionTestButton', () => {
           tested_at: '2026-05-19T20:00:00Z',
         },
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionTestButton connectionId="test-id-123" />);
 
@@ -131,7 +131,7 @@ describe('ConnectionTestButton', () => {
           tested_at: '2026-05-19T20:00:00Z',
         },
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionTestButton connectionId="test-id-123" />);
 
@@ -150,7 +150,7 @@ describe('ConnectionTestButton', () => {
           tested_at: '2026-05-19T20:00:00Z',
         },
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionTestButton connectionId="test-id-123" />);
 
@@ -166,7 +166,7 @@ describe('ConnectionTestButton', () => {
           message_key: 'error.connection_auth_failed',
         },
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionTestButton connectionId="test-id-123" />);
 
@@ -180,7 +180,7 @@ describe('ConnectionTestButton', () => {
         isError: true,
         error: new Error('Some unexpected crash'),
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionTestButton connectionId="test-id-123" />);
 
@@ -208,7 +208,7 @@ describe('ConnectionTestButton', () => {
           tested_at: '2026-05-19T20:00:00Z',
         },
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     const { container } = render(<ConnectionTestButton connectionId="test-id-123" />);
     expect(container.innerHTML).not.toContain('password');
