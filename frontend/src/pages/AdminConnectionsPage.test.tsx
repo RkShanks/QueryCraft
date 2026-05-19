@@ -103,6 +103,6 @@ describe('AdminConnectionsPage', () => {
     } as any);
 
     render(<AdminConnectionsPage />);
-    expect(screen.getByText('history.error')).toBeInTheDocument();
+    expect(screen.getByText('admin.connections.loadError')).toBeInTheDocument();
   });
 });
