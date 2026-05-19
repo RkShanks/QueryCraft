@@ -16,7 +16,14 @@ class StubLLM:
     def __init__(self):
         self.calls = []
 
-    async def generate_sql(self, question, schema_context, negative_examples=None, conversation_history=None, target_dialect=None):
+    async def generate_sql(
+        self,
+        question,
+        schema_context,
+        negative_examples=None,
+        conversation_history=None,
+        target_dialect=None,
+    ):
         self.calls.append(
             {
                 "question": question,

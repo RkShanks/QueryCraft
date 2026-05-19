@@ -73,7 +73,15 @@ def test_generate_sql_signature():
     assert method is not None
     sig = inspect.signature(method)
     params = list(sig.parameters.keys())
-    assert params == ["self", "question", "schema_context", "negative_examples", "conversation_history", "target_dialect"]
+    expected = [
+        "self",
+        "question",
+        "schema_context",
+        "negative_examples",
+        "conversation_history",
+        "target_dialect",
+    ]
+    assert params == expected
     assert sig.parameters["question"].annotation is str
     assert sig.parameters["schema_context"].annotation is str
     assert sig.return_annotation is str

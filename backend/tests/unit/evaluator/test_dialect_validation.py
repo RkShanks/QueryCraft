@@ -73,3 +73,12 @@ class TestDialectValidationRule:
         """Default dialect is postgres for backward compatibility."""
         rule = DialectValidationRule()
         assert rule.dialect == "postgres"
+
+    @pytest.mark.asyncio
+    async def test_tsql_limit_rejected(self):
+        """T-SQL must reject LIMIT syntax (FR-071, Wave 12 contract)."""
+        rule = DialectValidationRule(dialect="tsql")
+        passed, reason = await rule.evaluate("SELECT * FROM users LIMIT 10", SchemaContext())
+        assert passed is False
+        assert reason is not None
+        assert "LIMIT" in reason

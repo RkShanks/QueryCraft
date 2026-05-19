@@ -60,14 +60,16 @@ class TestDialectSpecificSyntax:
     async def test_mysql_select_with_limit(self):
         """MySQL accepts SELECT with LIMIT."""
         evaluator = _make_evaluator(DatabaseType.MYSQL)
-        result = await evaluator.evaluate("SELECT id, name FROM orders WHERE status = 'pending' LIMIT 50", SchemaContext())
+        sql = "SELECT id, name FROM orders WHERE status = 'pending' LIMIT 50"
+        result = await evaluator.evaluate(sql, SchemaContext())
         assert result.passed is True
 
     @pytest.mark.asyncio
     async def test_tsql_select_with_top(self):
         """T-SQL accepts SELECT with TOP."""
         evaluator = _make_evaluator(DatabaseType.MSSQL)
-        result = await evaluator.evaluate("SELECT TOP 50 id, name FROM orders WHERE status = 'pending'", SchemaContext())
+        sql = "SELECT TOP 50 id, name FROM orders WHERE status = 'pending'"
+        result = await evaluator.evaluate(sql, SchemaContext())
         assert result.passed is True
 
 
