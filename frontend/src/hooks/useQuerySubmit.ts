@@ -21,7 +21,7 @@ export const useAcceptQuery = () => {
   });
 };
 
-type ErrorKind = 'concurrent' | 'llmUnavailable' | 'attemptInvalid' | 'network';
+type ErrorKind = 'concurrent' | 'llmUnavailable' | 'attemptInvalid' | 'network' | 'connectionRequired';
 
 export interface UseQuerySubmitReturn {
   submitQuestion: (q: string, sessionId?: string | null, connectionId?: string | null) => Promise<unknown>;
@@ -101,13 +101,17 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
     if (submittingRef.current) {
       throw new Error('submit_in_progress');
     }
+    if (!connectionId) {
+      setError({ kind: 'connectionRequired' });
+      throw new Error('connection_required');
+    }
     submittingRef.current = true;
     setIsSubmitting(true);
     clearStates();
 
     try {
       const res = await submitQuestion({
-        body: { question: q, session_id: sessionId ?? undefined, connection_id: connectionId ?? '550e8400-e29b-41d4-a716-446655440001' },
+        body: { question: q, session_id: sessionId ?? undefined, connection_id: connectionId },
         throwOnError: true,
       });
       const data = res.data;

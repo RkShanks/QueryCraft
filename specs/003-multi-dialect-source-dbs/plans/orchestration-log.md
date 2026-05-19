@@ -16,3 +16,14 @@
   - A physical Tailwind CSS property (`text-left`) in `AdminConnectionsPage.tsx` was replaced with its logical equivalent (`text-start`) to pass `lint:css`.
   - All ESLint warnings were cleared.
 - **Corrected Gates Passed**: `npm run test -- --run`, `NODE_OPTIONS=--trace-warnings npm run test -- --run`, `npm run lint`, `npm run typecheck`, `npm run build`, and `npm run lint:css` all executed successfully. No Wave 13B or Wave 14 scope was implemented.
+
+## Wave 13A: Second Correction - Safe Runtime connection_id Behavior
+- **Status**: COMPLETED
+- **Branch**: phase-3/wave-13.1-admin-connections-list
+- **Correction Notes**: The previous fallback strategy in production code (`connection_id: connectionId ?? '550e8400-e29b-41d4-a716-446655440001'`) was unsafe because it silently routed production user queries to a fake database connection when no real connection was chosen.
+- **Resolution**:
+  - Removed the dummy fallback from `frontend/src/hooks/useQuerySubmit.ts`. If `connectionId` is missing, `submitQuestion` now fails locally before making the API request by throwing a `connection_required` error and setting `error.kind` to `connectionRequired`.
+  - Added a test in `frontend/src/hooks/useQuerySubmit.test.tsx` asserting that submitting without `connectionId` fails locally without invoking the API.
+  - Added Vitest mock blocks in `WorkspacePageSubmit.test.tsx`, `WorkspacePageDuplicate.test.tsx`, and `AskQuestionPage.test.tsx` to supply the dummy connection ID only during tests for these legacy/non-selector pages.
+  - All six frontend gates now pass cleanly with exit code 0.
+

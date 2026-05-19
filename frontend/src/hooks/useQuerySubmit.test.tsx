@@ -51,7 +51,7 @@ describe('Query Hooks', () => {
     it('1. submit returns QueryResult (kind=result) on 200', async () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await result.current.submitQuestion('How many users?');
+      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
 
       await waitFor(() => expect(result.current.result).not.toBeNull());
       expect(result.current.result?.kind).toBe('result');
@@ -73,10 +73,24 @@ describe('Query Hooks', () => {
       expect(requestBody).toMatchObject({ connection_id: '550e8400-e29b-41d4-a716-446655440001' });
     });
 
+    it('fails locally with connection_required if connectionId is missing and does not call API', async () => {
+      let apiCalled = false;
+      server.use(
+        http.post('/api/v1/query/submit', () => {
+          apiCalled = true;
+          return HttpResponse.json({ kind: 'result', attempt_id: 'test-id' }, { status: 200 });
+        })
+      );
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow('connection_required');
+      await waitFor(() => expect(result.current.error?.kind).toBe('connectionRequired'));
+      expect(apiCalled).toBe(false);
+    });
+
     it('2. rejectQuery returns QueryResult (kind=result) on first rejection', async () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await result.current.submitQuestion('How many users?');
+      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await waitFor(() => expect(result.current.result).not.toBeNull());
 
       await result.current.rejectQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
@@ -90,7 +104,7 @@ describe('Query Hooks', () => {
       setRejectScenario('refine');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await result.current.submitQuestion('How many users?');
+      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await waitFor(() => expect(result.current.result).not.toBeNull());
 
       await result.current.rejectQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
@@ -104,7 +118,7 @@ describe('Query Hooks', () => {
       setRegenerateScenario('refine');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await result.current.submitQuestion('How many users?');
+      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await waitFor(() => expect(result.current.result).not.toBeNull());
 
       await result.current.regenerateQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
@@ -118,7 +132,7 @@ describe('Query Hooks', () => {
       setSubmitScenario('concurrent');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await expect(result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001')).rejects.toThrow();
 
       await waitFor(() => expect(result.current.error).not.toBeNull());
       expect(result.current.error?.kind).toBe('concurrent');
@@ -128,7 +142,7 @@ describe('Query Hooks', () => {
       setRegenerateScenario('concurrent');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await result.current.submitQuestion('How many users?');
+      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await waitFor(() => expect(result.current.result).not.toBeNull());
 
       await expect(result.current.regenerateQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d')).rejects.toThrow();
@@ -141,7 +155,7 @@ describe('Query Hooks', () => {
       setSubmitScenario('llm_unavailable');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await expect(result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001')).rejects.toThrow();
 
       await waitFor(() => expect(result.current.error).not.toBeNull());
       expect(result.current.error?.kind).toBe('llmUnavailable');
@@ -154,7 +168,7 @@ describe('Query Hooks', () => {
       setSubmitScenario('llm_unavailable');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await expect(result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001')).rejects.toThrow();
 
       await waitFor(() => expect(result.current.error).not.toBeNull());
       expect(result.current.error?.kind).toBe('llmUnavailable');
@@ -164,10 +178,10 @@ describe('Query Hooks', () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
       // Start a submission but don't await it
-      const first = result.current.submitQuestion('How many users?');
+      const first = result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
 
       // While still submitting, call again
-      await expect(result.current.submitQuestion('Another?')).rejects.toThrow('submit_in_progress');
+      await expect(result.current.submitQuestion('Another?', null, '550e8400-e29b-41d4-a716-446655440001')).rejects.toThrow('submit_in_progress');
 
       await first;
     });
@@ -176,7 +190,7 @@ describe('Query Hooks', () => {
       setSubmitScenario('evaluator_rejected');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await expect(result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001')).rejects.toThrow();
 
       await waitFor(() => expect(result.current.evaluatorRejection).not.toBeNull());
       expect(result.current.evaluatorRejection?.violations[0].rule).toBe('UnsafePattern');
@@ -186,7 +200,7 @@ describe('Query Hooks', () => {
       setSubmitScenario('timeout');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await expect(result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001')).rejects.toThrow();
 
       await waitFor(() => expect(result.current.timeout).toBe(true));
     });
@@ -194,7 +208,7 @@ describe('Query Hooks', () => {
     it('acceptQuery succeeds and clears states', async () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await result.current.submitQuestion('How many users?');
+      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await waitFor(() => expect(result.current.result).not.toBeNull());
 
       await result.current.acceptQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
@@ -205,7 +219,7 @@ describe('Query Hooks', () => {
     it('regenerateQuery returns QueryResult on success', async () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await result.current.submitQuestion('How many users?');
+      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await waitFor(() => expect(result.current.result).not.toBeNull());
 
       await result.current.regenerateQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d');
@@ -216,7 +230,7 @@ describe('Query Hooks', () => {
     it('rejectQuery while isSubmitting rejects with submit_in_progress', async () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      const first = result.current.submitQuestion('How many users?');
+      const first = result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await expect(result.current.rejectQuery('test-id')).rejects.toThrow('submit_in_progress');
       await first;
     });
@@ -224,7 +238,7 @@ describe('Query Hooks', () => {
     it('regenerateQuery while isSubmitting rejects with submit_in_progress', async () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      const first = result.current.submitQuestion('How many users?');
+      const first = result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await expect(result.current.regenerateQuery('test-id')).rejects.toThrow('submit_in_progress');
       await first;
     });
@@ -232,7 +246,7 @@ describe('Query Hooks', () => {
     it('acceptQuery while isSubmitting rejects with submit_in_progress', async () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      const first = result.current.submitQuestion('How many users?');
+      const first = result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await expect(result.current.acceptQuery('test-id')).rejects.toThrow('submit_in_progress');
       await first;
     });
@@ -245,7 +259,7 @@ describe('Query Hooks', () => {
       );
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await result.current.submitQuestion('How many users?');
+      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       await waitFor(() => expect(result.current.result).not.toBeNull());
 
       await expect(result.current.acceptQuery('a1b2c3d4-5e6f-4a5b-8c7d-9e0f1a2b3c4d')).rejects.toThrow();
@@ -261,7 +275,7 @@ describe('Query Hooks', () => {
       );
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await expect(result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001')).rejects.toThrow();
       await waitFor(() => expect(result.current.error).not.toBeNull());
       expect(result.current.error?.kind).toBe('network');
     });
@@ -274,7 +288,7 @@ describe('Query Hooks', () => {
       );
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await expect(result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001')).rejects.toThrow();
       await waitFor(() => expect(result.current.error).not.toBeNull());
       expect(result.current.error?.kind).toBe('network');
     });
@@ -283,7 +297,7 @@ describe('Query Hooks', () => {
       setSubmitScenario('concurrent');
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await expect(result.current.submitQuestion('How many users?')).rejects.toThrow();
+      await expect(result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001')).rejects.toThrow();
       await waitFor(() => expect(result.current.error).not.toBeNull());
 
       result.current.resetError();
