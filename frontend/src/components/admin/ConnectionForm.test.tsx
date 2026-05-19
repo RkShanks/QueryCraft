@@ -31,8 +31,7 @@ describe('ConnectionForm', () => {
     const typeSelect = screen.getByLabelText(/Database Type/i);
     const portInput = screen.getByLabelText(/Port/i) as HTMLInputElement;
 
-    // Default should be postgresql and port 5432
-    expect(typeSelect).value = 'postgresql';
+    expect((typeSelect as HTMLSelectElement).value).toBe('postgresql');
     expect(portInput.value).toBe('5432');
 
     // Switch to mysql
@@ -66,13 +65,13 @@ describe('ConnectionForm', () => {
 
     render(<ConnectionForm {...defaultProps} initialValues={initialValues} />);
 
-    expect(screen.getByLabelText(/Display Name/i)).value = 'My Custom PG';
-    expect(screen.getByLabelText(/Database Type/i)).value = 'postgresql';
-    expect(screen.getByLabelText(/Host/i)).value = 'pg.custom.com';
+    expect((screen.getByLabelText(/Display Name/i) as HTMLInputElement).value).toBe('My Custom PG');
+    expect((screen.getByLabelText(/Database Type/i) as HTMLSelectElement).value).toBe('postgresql');
+    expect((screen.getByLabelText(/Host/i) as HTMLInputElement).value).toBe('pg.custom.com');
     expect((screen.getByLabelText(/Port/i) as HTMLInputElement).value).toBe('9999');
-    expect(screen.getByLabelText(/Database Name/i)).value = 'custom_db';
-    expect(screen.getByLabelText(/Username/i)).value = 'custom_user';
-    expect(screen.getByLabelText(/SSL Mode/i)).value = 'require';
+    expect((screen.getByLabelText(/Database Name/i) as HTMLInputElement).value).toBe('custom_db');
+    expect((screen.getByLabelText(/Username/i) as HTMLInputElement).value).toBe('custom_user');
+    expect((screen.getByLabelText(/SSL Mode/i) as HTMLInputElement).value).toBe('require');
 
     expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
   });
