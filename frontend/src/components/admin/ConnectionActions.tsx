@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConnections } from '../../hooks/useConnections';
 import { AlertCircle, Loader2, Power, Trash2 } from 'lucide-react';
+import { getSafeConnectionErrorKey } from './connectionErrorMessages';
 
 export interface ConnectionActionsProps {
   connectionId: string;
@@ -10,42 +11,6 @@ export interface ConnectionActionsProps {
   onSuccess?: () => void;
   onError?: (error: unknown) => void;
 }
-
-const KNOWN_SAFE_KEYS = [
-  'error.connection_referenced_delete_blocked',
-  'error.connection_already_active',
-  'error.connection_already_disabled',
-  'error.connection_not_found',
-  'error.credential_config',
-  'error.unknown.message',
-];
-
-const mapCategoryToKey = (category?: string | null): string => {
-  if (!category) return 'error.unknown.message';
-  if (category === 'connection_referenced_delete_blocked' || category === 'referenced_delete_blocked') {
-    return 'error.connection_referenced_delete_blocked';
-  }
-  if (category === 'connection_already_active') {
-    return 'error.connection_already_active';
-  }
-  if (category === 'connection_already_disabled') {
-    return 'error.connection_already_disabled';
-  }
-  if (category === 'connection_not_found') {
-    return 'error.connection_not_found';
-  }
-  if (category === 'credential_config') {
-    return 'error.credential_config';
-  }
-  return 'error.unknown.message';
-};
-
-const getSafeMessageKey = (key?: string | null): string => {
-  if (key && KNOWN_SAFE_KEYS.includes(key)) {
-    return key;
-  }
-  return 'error.unknown.message';
-};
 
 export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
   connectionId,
@@ -123,14 +88,7 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
   let errorMessage = '';
 
   if (activeError) {
-    const errorObj = activeError as unknown as Record<string, unknown> | null;
-    if (errorObj && typeof errorObj === 'object' && 'message_key' in errorObj && typeof errorObj.message_key === 'string') {
-      errorMessage = t(getSafeMessageKey(errorObj.message_key));
-    } else if (errorObj && typeof errorObj === 'object' && 'error' in errorObj && typeof errorObj.error === 'string') {
-      errorMessage = t(mapCategoryToKey(errorObj.error));
-    } else {
-      errorMessage = t('error.unknown.message');
-    }
+    errorMessage = t(getSafeConnectionErrorKey(activeError));
   }
 
   return (

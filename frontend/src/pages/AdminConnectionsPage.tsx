@@ -18,7 +18,7 @@ export const AdminConnectionsPage: React.FC = () => {
   if (listQuery.isError) {
     return (
       <div className="flex justify-center items-center h-64 text-red-500">
-        {t('history.error')}
+        {t('admin.connections.loadError')}
       </div>
     );
   }

@@ -159,7 +159,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Typed Error UX
 
-- [ ] T-450 Add typed/localized error display for: `credential_config`, `connection_auth_failed`, `connection_network_unreachable`, `introspection_failed`, `connection_referenced_delete_blocked`, `connection_disabled` in admin components (FR-078, SC-035)
+- [X] T-450 Add typed/localized error display for: `credential_config`, `connection_auth_failed`, `connection_network_unreachable`, `introspection_failed`, `connection_referenced_delete_blocked`, `connection_disabled` in admin components (FR-078, SC-035)
 
 ### i18n
 
