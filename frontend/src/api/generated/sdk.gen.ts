@@ -193,13 +193,13 @@ export const getHistoryEntry = <ThrowOnError extends boolean = false>(options: O
  * refreshed schema exceeds `max_schema_tokens`, returns a 422 error.
  *
  */
-export const refreshSchema = <ThrowOnError extends boolean = false>(options?: Options<RefreshSchemaData, ThrowOnError>) => (options?.client ?? client).post<RefreshSchemaResponses, RefreshSchemaErrors, ThrowOnError>({
+export const refreshSchema = <ThrowOnError extends boolean = false>(options: Options<RefreshSchemaData, ThrowOnError>) => (options.client ?? client).post<RefreshSchemaResponses, RefreshSchemaErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'session_id',
             type: 'apiKey'
         }],
-    url: '/admin/refresh-schema',
+    url: `/admin/connections/${options.path.connectionId}/refresh-schema`,
     ...options
 });
 
