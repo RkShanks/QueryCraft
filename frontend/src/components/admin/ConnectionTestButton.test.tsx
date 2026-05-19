@@ -215,4 +215,96 @@ describe('ConnectionTestButton', () => {
     expect(container.innerHTML).not.toContain('password');
     expect(container.innerHTML).not.toContain('secret');
   });
+
+  it('handles unknown error string and falls back to generic localized message without leaking key or message', () => {
+    vi.mocked(useConnections).mockReturnValue({
+      testMutation: {
+        ...defaultMutationState,
+        isError: true,
+        error: {
+          error: 'raw_driver_secret_password_crash',
+        },
+      },
+    } as unknown as ReturnType<typeof useConnections>);
+
+    const { container } = render(<ConnectionTestButton connectionId="test-id-123" />);
+
+    expect(screen.getByText(/An unexpected error occurred. Please try again./i)).toBeInTheDocument();
+    expect(container.innerHTML).not.toContain('raw_driver_secret_password_crash');
+    expect(container.innerHTML).not.toContain('error.raw_driver_secret_password_crash');
+  });
+
+  it('handles unknown message_key string and falls back to generic localized message', () => {
+    vi.mocked(useConnections).mockReturnValue({
+      testMutation: {
+        ...defaultMutationState,
+        isError: true,
+        error: {
+          message_key: 'error.raw_driver_secret_password_crash',
+        },
+      },
+    } as unknown as ReturnType<typeof useConnections>);
+
+    const { container } = render(<ConnectionTestButton connectionId="test-id-123" />);
+
+    expect(screen.getByText(/An unexpected error occurred. Please try again./i)).toBeInTheDocument();
+    expect(container.innerHTML).not.toContain('raw_driver_secret_password_crash');
+    expect(container.innerHTML).not.toContain('error.raw_driver_secret_password_crash');
+  });
+
+  it('handles known message keys by rendering their localized messages correctly', () => {
+    vi.mocked(useConnections).mockReturnValue({
+      testMutation: {
+        ...defaultMutationState,
+        isError: true,
+        error: {
+          message_key: 'error.connection_auth_failed',
+        },
+      },
+    } as unknown as ReturnType<typeof useConnections>);
+
+    render(<ConnectionTestButton connectionId="test-id-123" />);
+
+    expect(screen.getByText(/Authentication failed. Check username and password./i)).toBeInTheDocument();
+  });
+
+  it('handles unhealthy response with unknown error_category by falling back to generic message', () => {
+    vi.mocked(useConnections).mockReturnValue({
+      testMutation: {
+        ...defaultMutationState,
+        isSuccess: true,
+        data: {
+          status: 'unhealthy',
+          error_category: 'raw_driver_secret_password_crash',
+          tested_at: '2026-05-19T20:00:00Z',
+        },
+      },
+    } as unknown as ReturnType<typeof useConnections>);
+
+    const { container } = render(<ConnectionTestButton connectionId="test-id-123" />);
+
+    expect(screen.getByText(/An unexpected error occurred. Please try again./i)).toBeInTheDocument();
+    expect(container.innerHTML).not.toContain('raw_driver_secret_password_crash');
+    expect(container.innerHTML).not.toContain('error.raw_driver_secret_password_crash');
+  });
+
+  it('handles unhealthy response with unknown message_key by falling back to generic message', () => {
+    vi.mocked(useConnections).mockReturnValue({
+      testMutation: {
+        ...defaultMutationState,
+        isSuccess: true,
+        data: {
+          status: 'unhealthy',
+          message_key: 'error.raw_driver_secret_password_crash',
+          tested_at: '2026-05-19T20:00:00Z',
+        },
+      },
+    } as unknown as ReturnType<typeof useConnections>);
+
+    const { container } = render(<ConnectionTestButton connectionId="test-id-123" />);
+
+    expect(screen.getByText(/An unexpected error occurred. Please try again./i)).toBeInTheDocument();
+    expect(container.innerHTML).not.toContain('raw_driver_secret_password_crash');
+    expect(container.innerHTML).not.toContain('error.raw_driver_secret_password_crash');
+  });
 });

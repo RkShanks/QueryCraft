@@ -10,14 +10,36 @@ export interface ConnectionTestButtonProps {
   onError?: (error: unknown) => void;
 }
 
+const KNOWN_SAFE_KEYS = [
+  'error.connection_auth_failed',
+  'error.connection_network_unreachable',
+  'error.connection_timeout',
+  'error.credential_config',
+  'error.unknown.message',
+];
+
 const mapCategoryToKey = (category?: string | null): string => {
   if (!category) return 'error.unknown.message';
-  if (category.startsWith('error.')) return category;
-  if (category === 'auth_failed' || category === 'connection_auth_failed') return 'error.connection_auth_failed';
-  if (category === 'network_unreachable' || category === 'connection_network_unreachable') return 'error.connection_network_unreachable';
-  if (category === 'timeout' || category === 'connection_timeout') return 'error.connection_timeout';
-  if (category === 'credential_config') return 'error.credential_config';
-  return `error.${category}`;
+  if (category === 'auth_failed' || category === 'connection_auth_failed') {
+    return 'error.connection_auth_failed';
+  }
+  if (category === 'network_unreachable' || category === 'connection_network_unreachable') {
+    return 'error.connection_network_unreachable';
+  }
+  if (category === 'timeout' || category === 'connection_timeout') {
+    return 'error.connection_timeout';
+  }
+  if (category === 'credential_config') {
+    return 'error.credential_config';
+  }
+  return 'error.unknown.message';
+};
+
+const getSafeMessageKey = (key?: string | null): string => {
+  if (key && KNOWN_SAFE_KEYS.includes(key)) {
+    return key;
+  }
+  return 'error.unknown.message';
 };
 
 export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
@@ -60,14 +82,14 @@ export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
   let errorMessage = '';
   if (isUnhealthyResult && testMutation.data) {
     const data = testMutation.data;
-    const key = data.message_key || mapCategoryToKey(data.error_category);
-    errorMessage = t(key, { defaultValue: t('error.unknown.message') });
+    const key = data.message_key ? getSafeMessageKey(data.message_key) : mapCategoryToKey(data.error_category);
+    errorMessage = t(key);
   } else if (testMutation.isError && testMutation.error) {
     const errorObj = testMutation.error as unknown as Record<string, unknown> | null;
     if (errorObj && typeof errorObj === 'object' && 'message_key' in errorObj && typeof errorObj.message_key === 'string') {
-      errorMessage = t(errorObj.message_key, { defaultValue: t('error.unknown.message') });
+      errorMessage = t(getSafeMessageKey(errorObj.message_key));
     } else if (errorObj && typeof errorObj === 'object' && 'error' in errorObj && typeof errorObj.error === 'string') {
-      errorMessage = t(mapCategoryToKey(errorObj.error), { defaultValue: t('error.unknown.message') });
+      errorMessage = t(mapCategoryToKey(errorObj.error));
     } else {
       errorMessage = t('error.unknown.message');
     }
