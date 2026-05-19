@@ -149,8 +149,8 @@ Wave Final Reports MUST include red/green evidence per task.
 - [X] T-443 Create `ConnectionTestButton.test.tsx` co-located test in `frontend/src/components/admin/ConnectionTestButton.test.tsx`
 - [X] T-444 Implement refresh-schema button with loading state, summary display, and `schema_last_refreshed_at` update in `frontend/src/components/admin/RefreshSchemaButton.tsx` (FR-066, FR-067, FR-068)
 - [X] T-445 Create `RefreshSchemaButton.test.tsx` co-located test in `frontend/src/components/admin/RefreshSchemaButton.test.tsx`
-- [ ] T-446 Implement disable/enable toggle and hard-delete with confirmation dialog and blocked-error display in `frontend/src/components/admin/ConnectionActions.tsx` (FR-061, FR-089)
-- [ ] T-447 Create `ConnectionActions.test.tsx` co-located test: disable/enable, delete confirmation, delete-blocked error in `frontend/src/components/admin/ConnectionActions.test.tsx`
+- [X] T-446 Implement disable/enable toggle and hard-delete with confirmation dialog and blocked-error display in `frontend/src/components/admin/ConnectionActions.tsx` (FR-061, FR-089)
+- [X] T-447 Create `ConnectionActions.test.tsx` co-located test: disable/enable, delete confirmation, delete-blocked error in `frontend/src/components/admin/ConnectionActions.test.tsx`
 
 ### API Hooks
 
