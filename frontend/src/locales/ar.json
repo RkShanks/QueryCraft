@@ -213,5 +213,18 @@
   "admin.connections.schema.stale": "قديم",
   "admin.connections.schema.refreshed": "تم التحديث {{time}}",
   "admin.connections.schema.neverRefreshed": "لم يتم التحديث أبدًا",
-  "nav.adminConnections": "الاتصالات"
+  "nav.adminConnections": "الاتصالات",
+  "admin.connections.form.displayName": "الاسم المعروض",
+  "admin.connections.form.databaseType": "نوع قاعدة البيانات",
+  "admin.connections.form.host": "المضيف",
+  "admin.connections.form.port": "المنفذ",
+  "admin.connections.form.databaseName": "اسم قاعدة البيانات",
+  "admin.connections.form.username": "اسم المستخدم",
+  "admin.connections.form.password": "كلمة المرور",
+  "admin.connections.form.sslMode": "وضع SSL",
+  "admin.connections.form.required": "هذا الحقل مطلوب",
+  "admin.connections.form.invalidPort": "يجب أن يكون المنفذ رقماً بين 1 و 65535",
+  "admin.connections.form.submit.create": "إنشاء اتصال",
+  "admin.connections.form.submit.edit": "حفظ التغييرات",
+  "admin.connections.form.passwordHelpEdit": "اتركه فارغاً للاحتفاظ بكلمة المرور الحالية"
 }

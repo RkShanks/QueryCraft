@@ -194,5 +194,18 @@
   "admin.connections.schema.stale": "Stale",
   "admin.connections.schema.refreshed": "Refreshed {{time}}",
   "admin.connections.schema.neverRefreshed": "Never refreshed",
-  "nav.adminConnections": "Connections"
+  "nav.adminConnections": "Connections",
+  "admin.connections.form.displayName": "Display Name",
+  "admin.connections.form.databaseType": "Database Type",
+  "admin.connections.form.host": "Host",
+  "admin.connections.form.port": "Port",
+  "admin.connections.form.databaseName": "Database Name",
+  "admin.connections.form.username": "Username",
+  "admin.connections.form.password": "Password",
+  "admin.connections.form.sslMode": "SSL Mode",
+  "admin.connections.form.required": "This field is required",
+  "admin.connections.form.invalidPort": "Port must be a number between 1 and 65535",
+  "admin.connections.form.submit.create": "Create Connection",
+  "admin.connections.form.submit.edit": "Save Changes",
+  "admin.connections.form.passwordHelpEdit": "Leave blank to keep existing password"
 }
