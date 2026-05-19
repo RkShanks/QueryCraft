@@ -308,6 +308,12 @@ import type {
     TestAdminConnectionData,
     TestAdminConnectionErrors,
     TestAdminConnectionResponses,
+    ListUserConnectionsData,
+    ListUserConnectionsErrors,
+    ListUserConnectionsResponses,
+    UpdateSessionConnectionData,
+    UpdateSessionConnectionErrors,
+    UpdateSessionConnectionResponses,
 } from './types.gen';
 
 /**
@@ -381,3 +387,24 @@ export const testAdminConnection = <ThrowOnError extends boolean = false>(option
     url: `/admin/connections/${options.path.connectionId}/test`,
     ...options
 });
+
+/**
+ * List user-available source database connections
+ */
+export const listUserConnections = <ThrowOnError extends boolean = false>(options?: Options<ListUserConnectionsData, ThrowOnError>) => (options?.client ?? client).get<ListUserConnectionsResponses, ListUserConnectionsErrors, ThrowOnError>({
+    url: '/connections',
+    ...options
+});
+
+/**
+ * Update the connection for a session
+ */
+export const updateSessionConnection = <ThrowOnError extends boolean = false>(options: Options<UpdateSessionConnectionData, ThrowOnError>) => (options.client ?? client).patch<UpdateSessionConnectionResponses, UpdateSessionConnectionErrors, ThrowOnError>({
+    url: `/sessions/${options.path.sessionId}/connection`,
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+

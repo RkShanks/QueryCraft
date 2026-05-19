@@ -177,12 +177,14 @@ describe('Sidebar', () => {
     expect(buttons.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders History and Settings nav buttons in expanded sidebar', () => {
+  it('renders History, Settings, and Connections nav buttons in expanded sidebar', () => {
     setup();
     expect(screen.getByTestId('sidebar-nav-history')).toBeInTheDocument();
     expect(screen.getByTestId('sidebar-nav-settings')).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-nav-connections')).toBeInTheDocument();
     expect(screen.getByText('History')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByText('Connections')).toBeInTheDocument();
   });
 
   it('clicking History navigates to /history', () => {
@@ -195,6 +197,12 @@ describe('Sidebar', () => {
     setup();
     fireEvent.click(screen.getByTestId('sidebar-nav-settings'));
     expect(mockNavigate).toHaveBeenCalledWith('/settings');
+  });
+
+  it('clicking Connections navigates to /admin/connections', () => {
+    setup();
+    fireEvent.click(screen.getByTestId('sidebar-nav-connections'));
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/connections');
   });
 
   it('collapsed sidebar exposes History and Settings buttons by aria-label', () => {

@@ -1,5 +1,21 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+
+vi.mock('../hooks/useQuerySubmit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/useQuerySubmit')>();
+  return {
+    ...actual,
+    useQuerySubmit: () => {
+      const hook = actual.useQuerySubmit();
+      return {
+        ...hook,
+        submitQuestion: (q: string, sessionId?: string | null, connectionId?: string | null) =>
+          hook.submitQuestion(q, sessionId, connectionId || '550e8400-e29b-41d4-a716-446655440001'),
+      };
+    },
+  };
+});
+
 import { AskQuestionPage } from './AskQuestionPage';
 import { createWrapper } from '../test/utils';
 import { server } from '../test/server';
