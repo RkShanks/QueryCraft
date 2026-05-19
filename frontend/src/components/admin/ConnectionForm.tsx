@@ -34,6 +34,21 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [prevInitialValues, setPrevInitialValues] = useState<ConnectionResponse | undefined>(initialValues);
+
+  if (initialValues?.id !== prevInitialValues?.id) {
+    setPrevInitialValues(initialValues);
+    setDisplayName(initialValues?.display_name || '');
+    setDatabaseType(initialValues?.database_type || 'postgresql');
+    setHost(initialValues?.host || '');
+    setPort(initialValues?.port ?? 5432);
+    setDatabaseName(initialValues?.database_name || '');
+    setUsername(initialValues?.username || '');
+    setPassword('');
+    setSslMode(initialValues?.ssl_mode || '');
+    setErrors({});
+  }
+
   // Handle port auto-fill when database type changes
   const handleDatabaseTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nextType = e.target.value as DatabaseType;

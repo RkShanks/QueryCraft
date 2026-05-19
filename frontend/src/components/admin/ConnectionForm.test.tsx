@@ -181,4 +181,52 @@ describe('ConnectionForm', () => {
 
     expect(screen.queryAllByText(/This field is required/i).length).toBeGreaterThan(0);
   });
+
+  it('clears typed password and omits/includes password appropriately when switching from create to edit mode', () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(<ConnectionForm {...defaultProps} onSubmit={onSubmit} />);
+
+    // Type a password in create mode
+    const passwordInput = screen.getByLabelText(/Password/i) as HTMLInputElement;
+    fireEvent.change(passwordInput, { target: { value: 'my-create-secret' } });
+    expect(passwordInput.value).toBe('my-create-secret');
+
+    // Transition same component instance to edit mode by providing initialValues
+    const initialValues: ConnectionResponse = {
+      id: '456-uuid',
+      display_name: 'Existing Db',
+      database_type: 'postgresql',
+      host: 'localhost',
+      port: 5432,
+      database_name: 'test_db',
+      username: 'db_user',
+      ssl_mode: 'prefer',
+      lifecycle_state: 'active',
+      health_status: 'healthy',
+      last_health_check_at: null,
+      health_error_category: null,
+      schema_introspection_status: 'success',
+      schema_last_refreshed_at: null,
+      created_at: '',
+      updated_at: '',
+    };
+
+    rerender(<ConnectionForm {...defaultProps} initialValues={initialValues} onSubmit={onSubmit} />);
+
+    // 1. Assert password field is cleared on transition to edit mode
+    expect(passwordInput.value).toBe('');
+
+    // 2. Assert submission after transition omits password (if unchanged)
+    const submitButton = screen.getByRole('button', { name: /Save Changes/i });
+    fireEvent.click(submitButton);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0].password).toBeUndefined();
+
+    // 3. Type a new password in edit mode and assert submission includes it
+    onSubmit.mockClear();
+    fireEvent.change(passwordInput, { target: { value: 'new-edit-secret' } });
+    fireEvent.click(submitButton);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0].password).toBe('new-edit-secret');
+  });
 });
