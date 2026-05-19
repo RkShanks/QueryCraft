@@ -28,12 +28,7 @@ describe('ConnectionActions', () => {
       disableMutation: { ...defaultMutationState, mutate: mockDisableMutate },
       enableMutation: { ...defaultMutationState, mutate: mockEnableMutate },
       deleteMutation: { ...defaultMutationState, mutate: mockDeleteMutate },
-      createMutation: defaultMutationState,
-      updateMutation: defaultMutationState,
-      testMutation: defaultMutationState,
-      refreshSchemaMutation: defaultMutationState,
-      listQuery: {} as any,
-    });
+    } as unknown as ReturnType<typeof useConnections>);
   });
 
   it('renders Disable and Delete buttons when lifecycleState is active', () => {
@@ -73,7 +68,7 @@ describe('ConnectionActions', () => {
       disableMutation: { ...defaultMutationState, mutate: mockDisableMutate, isPending: true },
       enableMutation: { ...defaultMutationState, mutate: mockEnableMutate },
       deleteMutation: { ...defaultMutationState, mutate: mockDeleteMutate },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionActions connectionId="conn-1" lifecycleState="active" />);
 
@@ -89,7 +84,7 @@ describe('ConnectionActions', () => {
       disableMutation: { ...defaultMutationState, mutate: mockDisableMutate },
       enableMutation: { ...defaultMutationState, mutate: mockEnableMutate, isPending: true },
       deleteMutation: { ...defaultMutationState, mutate: mockDeleteMutate },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionActions connectionId="conn-1" lifecycleState="disabled" />);
 
@@ -134,7 +129,7 @@ describe('ConnectionActions', () => {
       disableMutation: { ...defaultMutationState, mutate: mockDisableMutate },
       enableMutation: { ...defaultMutationState, mutate: mockEnableMutate },
       deleteMutation: { ...defaultMutationState, mutate: mockDeleteMutate, isPending: true },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionActions connectionId="conn-1" lifecycleState="active" />);
 
@@ -152,7 +147,7 @@ describe('ConnectionActions', () => {
         isError: true,
         error: { message_key: 'error.connection_referenced_delete_blocked' },
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionActions connectionId="conn-1" lifecycleState="active" />);
 
@@ -169,7 +164,7 @@ describe('ConnectionActions', () => {
       },
       enableMutation: { ...defaultMutationState, mutate: mockEnableMutate },
       deleteMutation: { ...defaultMutationState, mutate: mockDeleteMutate },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     render(<ConnectionActions connectionId="conn-1" lifecycleState="active" />);
 
@@ -187,7 +182,7 @@ describe('ConnectionActions', () => {
         isError: true,
         error: { error: rawErrorMsg, message: rawErrorMsg },
       },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
 
     const { container } = render(<ConnectionActions connectionId="conn-1" lifecycleState="active" />);
 
