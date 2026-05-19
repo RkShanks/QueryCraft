@@ -25,11 +25,6 @@ ensure_env() {
     sed -i.bak "s|^PLATFORM_ENCRYPTION_KEY=.*|PLATFORM_ENCRYPTION_KEY=$KEY|" .env && rm -f .env.bak
     echo "[dev-up] generated PLATFORM_ENCRYPTION_KEY"
   fi
-  if ! grep -qE "^DB_CREDENTIAL_KEY=.+$" .env; then
-    KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
-    sed -i.bak "s|^DB_CREDENTIAL_KEY=.*|DB_CREDENTIAL_KEY=$KEY|" .env && rm -f .env.bak
-    echo "[dev-up] generated DB_CREDENTIAL_KEY"
-  fi
 }
 
 wait_healthy() {
