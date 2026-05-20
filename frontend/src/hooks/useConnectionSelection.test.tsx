@@ -87,7 +87,10 @@ describe('useConnectionSelection', () => {
       () => useConnectionSelection({
         sessionId: 'session-1',
         initialConnectionId: null,
-        availableConnections: [makeConnection('conn-a', 'DB A')],
+        availableConnections: [
+          makeConnection('conn-a', 'DB A'),
+          makeConnection('conn-b', 'DB B'),
+        ],
       }),
       { wrapper }
     );
@@ -140,7 +143,10 @@ describe('useConnectionSelection', () => {
       () => useConnectionSelection({
         sessionId: 'session-1',
         initialConnectionId: null,
-        availableConnections: [makeConnection('conn-a', 'DB A')],
+        availableConnections: [
+          makeConnection('conn-a', 'DB A'),
+          makeConnection('conn-b', 'DB B'),
+        ],
       }),
       { wrapper }
     );
@@ -170,7 +176,10 @@ describe('useConnectionSelection', () => {
       () => useConnectionSelection({
         sessionId: 'session-1',
         initialConnectionId: null,
-        availableConnections: [makeConnection('conn-a', 'DB A')],
+        availableConnections: [
+          makeConnection('conn-a', 'DB A'),
+          makeConnection('conn-b', 'DB B'),
+        ],
       }),
       { wrapper }
     );
@@ -222,5 +231,77 @@ describe('useConnectionSelection', () => {
 
     expect(result.current.selectedConnectionId).toBeNull();
     expect(updateSessionConnection).not.toHaveBeenCalled();
+  });
+
+  it('syncs initialConnectionId when it arrives later without auto-selecting another connection', async () => {
+    const { result, rerender } = renderHook(
+      ({ initialConnectionId }: { initialConnectionId: string | null }) => useConnectionSelection({
+        sessionId: 'session-1',
+        initialConnectionId,
+        availableConnections: [
+          makeConnection('conn-a', 'DB A'),
+          makeConnection('conn-b', 'DB B'),
+        ],
+      }),
+      {
+        wrapper,
+        initialProps: { initialConnectionId: null },
+      }
+    );
+
+    // Initially null, multiple connections available -> no auto-select
+    expect(result.current.selectedConnectionId).toBeNull();
+
+    // Session detail later reports connection_id 'conn-b'
+    rerender({ initialConnectionId: 'conn-b' });
+
+    await waitFor(() => {
+      expect(result.current.selectedConnectionId).toBe('conn-b');
+    });
+
+    // Should not have PATCHed anything because the sync was from prop, not user action
+    expect(updateSessionConnection).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite user selection when initialConnectionId prop changes later', async () => {
+    vi.mocked(updateSessionConnection).mockResolvedValueOnce({
+      data: { id: 'session-1', preview_text: 'Test', created_at: new Date().toISOString(), last_activity_at: new Date().toISOString(), attempts: [] },
+      response: new Response(),
+      request: new Request('http://localhost'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    const { result, rerender } = renderHook(
+      ({ initialConnectionId }: { initialConnectionId: string | null }) => useConnectionSelection({
+        sessionId: 'session-1',
+        initialConnectionId,
+        availableConnections: [
+          makeConnection('conn-a', 'DB A'),
+          makeConnection('conn-b', 'DB B'),
+        ],
+      }),
+      {
+        wrapper,
+        initialProps: { initialConnectionId: null },
+      }
+    );
+
+    // User explicitly selects conn-a
+    act(() => {
+      result.current.setSelectedConnectionId('conn-a');
+    });
+
+    await waitFor(() => {
+      expect(updateSessionConnection).toHaveBeenCalledTimes(1);
+    });
+
+    // Later, prop says conn-b (e.g. from a refetched session)
+    rerender({ initialConnectionId: 'conn-b' });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    // User selection should be preserved
+    expect(result.current.selectedConnectionId).toBe('conn-a');
+    expect(updateSessionConnection).toHaveBeenCalledTimes(1);
   });
 });

@@ -27,6 +27,14 @@ export const useConnectionSelection = ({
   );
   const queryClient = useQueryClient();
 
+  // Track whether the user has explicitly made a selection.
+  // User selection takes precedence over prop-driven sync.
+  const userSelectedRef = useRef(false);
+
+  // Track whether the next selection change was driven by prop sync
+  // (initialConnectionId arriving later) so we can skip PATCH.
+  const skipNextPatchRef = useRef(false);
+
   const mutation = useMutation({
     mutationFn: (connectionId: string) =>
       sessionId
@@ -49,14 +57,32 @@ export const useConnectionSelection = ({
     mutateRef.current = mutation.mutate;
   }, [mutation.mutate]);
 
-  // Auto-select single available connection when no selection exists.
-  // This is intentional prop-to-state synchronization.
+  // Sync initialConnectionId prop to state when it arrives or changes,
+  // unless the user has already made an explicit selection.
   useEffect(() => {
-    if (selectedConnectionId === null && availableConnections.length === 1) {
+    if (!userSelectedRef.current && initialConnectionId !== null) {
+      setSelectedConnectionIdState((prev) => {
+        if (prev === initialConnectionId) return prev;
+        skipNextPatchRef.current = true;
+        return initialConnectionId;
+      });
+    }
+  }, [initialConnectionId]);
+
+  // Auto-select single available connection when no selection exists
+  // and no initialConnectionId has been provided.
+  useEffect(() => {
+    if (
+      !userSelectedRef.current &&
+      selectedConnectionId === null &&
+      initialConnectionId === null &&
+      availableConnections.length === 1
+    ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      skipNextPatchRef.current = true;
       setSelectedConnectionIdState(availableConnections[0].id);
     }
-  }, [selectedConnectionId, availableConnections]);
+  }, [selectedConnectionId, initialConnectionId, availableConnections]);
 
   // Trigger PATCH when selection changes and a session id exists.
   const prevSelectedRef = useRef<string | null>(selectedConnectionId);
@@ -64,13 +90,18 @@ export const useConnectionSelection = ({
     if (prevSelectedRef.current !== selectedConnectionId) {
       prevSelectedRef.current = selectedConnectionId;
       if (sessionId && selectedConnectionId) {
-        mutateRef.current(selectedConnectionId);
+        if (skipNextPatchRef.current) {
+          skipNextPatchRef.current = false;
+        } else {
+          mutateRef.current(selectedConnectionId);
+        }
       }
     }
   }, [sessionId, selectedConnectionId]);
 
   const setSelectedConnectionId = useCallback(
     (id: string | null) => {
+      userSelectedRef.current = true;
       setSelectedConnectionIdState((prev) => {
         if (prev === id) {
           return prev;
