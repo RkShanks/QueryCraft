@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { AdminConnectionsPage } from './AdminConnectionsPage';
 import { useConnections } from '../hooks/useConnections';
 
@@ -126,7 +126,7 @@ describe('AdminConnectionsPage', () => {
     render(<AdminConnectionsPage />);
 
     const addButton = screen.getByRole('button', { name: 'admin.connections.add' });
-    addButton.click();
+    fireEvent.click(addButton);
 
     expect(screen.getByText('admin.connections.form.createTitle')).toBeInTheDocument();
   });
@@ -137,7 +137,7 @@ describe('AdminConnectionsPage', () => {
     render(<AdminConnectionsPage />);
 
     const editButtons = screen.getAllByRole('button', { name: 'common.edit' });
-    editButtons[0].click();
+    fireEvent.click(editButtons[0]);
 
     expect(screen.getByText('admin.connections.form.editTitle')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Prod DB')).toBeInTheDocument();
