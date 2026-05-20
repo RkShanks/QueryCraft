@@ -255,5 +255,8 @@
   "admin.connections.deleteConfirm": "هل أنت متأكد من رغبتك في حذف هذا الاتصال؟ لا يمكن التراجع عن هذا الإجراء.",
   "admin.connections.deleteConfirmTitle": "حذف الاتصال",
   "databaseSelector.selectDatabase": "اختر قاعدة البيانات",
-  "databaseSelector.empty": "لا توجد اتصالات قواعد بيانات متاحة"
+  "databaseSelector.empty": "لا توجد اتصالات قواعد بيانات متاحة",
+  "query.result.databaseType.postgresql": "PostgreSQL",
+  "query.result.databaseType.mysql": "MySQL",
+  "query.result.databaseType.mssql": "MS SQL Server"
 }

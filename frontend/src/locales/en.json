@@ -236,5 +236,8 @@
   "admin.connections.deleteConfirm": "Are you sure you want to delete this connection? This action cannot be undone.",
   "admin.connections.deleteConfirmTitle": "Delete Connection",
   "databaseSelector.selectDatabase": "Select database",
-  "databaseSelector.empty": "No database connections available"
+  "databaseSelector.empty": "No database connections available",
+  "query.result.databaseType.postgresql": "PostgreSQL",
+  "query.result.databaseType.mysql": "MySQL",
+  "query.result.databaseType.mssql": "MS SQL Server"
 }

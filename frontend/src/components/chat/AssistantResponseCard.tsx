@@ -11,6 +11,8 @@ interface AssistantResponseCardProps {
   result?: QueryResult;
   attemptId?: string;
   savedQueryId?: string;
+  connectionName?: string;
+  databaseType?: string;
   onRegenerate?: (attemptId: string) => void;
   onDelete?: (savedQueryId: string) => void;
 }
@@ -20,16 +22,33 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
   result,
   attemptId,
   savedQueryId,
+  connectionName,
+  databaseType,
   onRegenerate,
   onDelete,
 }) => {
   const { t } = useTranslation();
   const hasActions = !!attemptId && !!onRegenerate;
+  const hasMeta = !!connectionName && !!databaseType;
+
+  const typeLabelKey = databaseType
+    ? `query.result.databaseType.${databaseType}`
+    : undefined;
+  const typeLabel = typeLabelKey && t(typeLabelKey) !== typeLabelKey
+    ? t(typeLabelKey)
+    : databaseType;
 
   return (
     <div className="assistant-card-wrapper" data-testid="assistant-response-card">
       <div className="assistant-card">
         <div className="assistant-card-inner">
+          {hasMeta && (
+            <div className="assistant-card-meta" data-testid="connection-metadata">
+              <span className="assistant-card-meta-name">{connectionName}</span>
+              <span className="assistant-card-meta-badge">{typeLabel}</span>
+            </div>
+          )}
+
           <div className="assistant-card-section">
             <h3 className="assistant-card-heading">{t('query.result.sqlHeading')}</h3>
             <SqlCodeBlock code={sql} />
