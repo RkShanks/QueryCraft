@@ -97,3 +97,4 @@ class AcceptedQuerySummary(BaseModel):
     question_text: str
     generated_sql: str
     accepted_at: str
+    database_connection_id: str | None = None

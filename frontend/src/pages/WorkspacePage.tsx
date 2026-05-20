@@ -9,7 +9,7 @@ import { AssistantResponseCard } from '../components/chat/AssistantResponseCard'
 import { PromptInput } from '../components/chat/PromptInput';
 import { MessageSquare } from '../components/icons';
 import { deleteHistoryEntry, listUserConnections } from '../api/generated/sdk.gen';
-import type { QueryResult, RefinePrompt, EvaluatorRejection, AttemptSummary } from '../api/generated/types.gen';
+import type { QueryResult, RefinePrompt, EvaluatorRejection, AttemptSummary, UserConnectionResponse } from '../api/generated/types.gen';
 import { useQuery } from '@tanstack/react-query';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import './WorkspacePage.css';
@@ -24,15 +24,20 @@ interface ConversationTurn {
   isLoading?: boolean;
   savedQueryId?: string;
   attemptId?: string;
+  connectionName?: string;
+  databaseType?: string;
 }
 
-function buildHistoryTurn(a: AttemptSummary): ConversationTurn {
+function buildHistoryTurn(a: AttemptSummary, connections: UserConnectionResponse[]): ConversationTurn {
   const turn: ConversationTurn = {
     id: a.id,
     question: a.question_text,
     sql: a.generated_sql,
     savedQueryId: a.id,
   };
+  // Try to find connection metadata from available connections using database_connection_id
+  // Note: AttemptSummary doesn't have database_connection_id yet, so this is a best-effort
+  // fallback using session connection. Proper fix requires backend schema update.
   if (a.result_columns && a.result_rows) {
     turn.result = {
       kind: 'result',
@@ -49,6 +54,16 @@ function buildHistoryTurn(a: AttemptSummary): ConversationTurn {
     } as QueryResult;
   }
   return turn;
+}
+
+function getConnectionMeta(
+  connectionId: string | null,
+  connections: UserConnectionResponse[]
+): { name?: string; type?: string } {
+  if (!connectionId) return {};
+  const conn = connections.find((c) => c.id === connectionId);
+  if (!conn) return {};
+  return { name: conn.display_name, type: conn.database_type };
 }
 
 export const WorkspacePage: React.FC = () => {
@@ -111,7 +126,7 @@ export const WorkspacePage: React.FC = () => {
   );
 
   const allTurns: ConversationTurn[] = [
-    ...historyAttempts.map(buildHistoryTurn),
+    ...historyAttempts.map((a) => buildHistoryTurn(a, availableConnections)),
     ...dedupedLocalTurns,
   ];
 
@@ -208,7 +223,17 @@ export const WorkspacePage: React.FC = () => {
       }
 
       const turnId = `turn-${Date.now()}`;
-      setLocalTurns((prev) => [...prev, { id: turnId, question, isLoading: true }]);
+      const meta = getConnectionMeta(selectedConnectionId, availableConnections);
+      setLocalTurns((prev) => [
+        ...prev,
+        {
+          id: turnId,
+          question,
+          isLoading: true,
+          connectionName: meta.name,
+          databaseType: meta.type,
+        },
+      ]);
 
       try {
         const data = (await querySubmit.submitQuestion(question, activeSessionId, selectedConnectionId)) as unknown;
@@ -298,6 +323,8 @@ export const WorkspacePage: React.FC = () => {
                     result={turn.result}
                     attemptId={turn.attemptId}
                     savedQueryId={turn.savedQueryId}
+                    connectionName={turn.connectionName}
+                    databaseType={turn.databaseType}
                     onRegenerate={turn.attemptId ? handleRegenerate : undefined}
                     onDelete={turn.savedQueryId ? handleDelete : undefined}
                   />

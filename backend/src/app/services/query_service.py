@@ -381,6 +381,7 @@ class QueryService:
                     question_text=existing.question_text,
                     generated_sql=existing.generated_sql,
                     accepted_at=existing.accepted_at.isoformat(),
+                    database_connection_id=str(existing.database_connection_id) if existing.database_connection_id else None,
                 )
 
             # Resolve database_connection_id internally (High 2 fix)
@@ -406,6 +407,7 @@ class QueryService:
                 question_text=query.question_text,
                 generated_sql=query.generated_sql,
                 accepted_at=query.accepted_at.isoformat(),
+                database_connection_id=str(query.database_connection_id) if query.database_connection_id else None,
             )
         finally:
             await self._redis.delete(lock_key)
