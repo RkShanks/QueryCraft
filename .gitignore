@@ -74,3 +74,4 @@ cookies.txt
 *.cookies.txt
 .cookies/
 
+.agents/*
