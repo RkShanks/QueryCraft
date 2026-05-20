@@ -163,6 +163,7 @@
   "admin.settings.error": "فشل حفظ الإعدادات",
   "common.cancel": "إلغاء",
   "common.delete": "حذف",
+  "common.edit": "تعديل",
   "common.copy": "نسخ",
   "common.regenerate": "إعادة التوليد",
   "common.send": "إرسال",

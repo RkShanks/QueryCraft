@@ -1,11 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConnections } from '../hooks/useConnections';
 import { Database, Plus, RefreshCw, Server, Power, PowerOff, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { ConnectionForm } from '../components/admin/ConnectionForm';
+import { ConnectionTestButton } from '../components/admin/ConnectionTestButton';
+import { RefreshSchemaButton } from '../components/admin/RefreshSchemaButton';
+import { ConnectionActions } from '../components/admin/ConnectionActions';
+import type { ConnectionResponse, ConnectionCreate, ConnectionUpdate } from '../api/generated/types.gen';
 
 export const AdminConnectionsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { listQuery } = useConnections();
+  const { listQuery, createMutation, updateMutation } = useConnections();
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingConnection, setEditingConnection] = useState<ConnectionResponse | undefined>(undefined);
 
   if (listQuery.isLoading) {
     return (
@@ -23,7 +30,49 @@ export const AdminConnectionsPage: React.FC = () => {
     );
   }
 
-  const connections = listQuery.data?.connections || [];
+  if (isAdding) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <ConnectionForm
+          onSubmit={(data) => {
+            createMutation.mutate(data as ConnectionCreate, {
+              onSuccess: () => {
+                setIsAdding(false);
+              },
+            });
+          }}
+          onCancel={() => setIsAdding(false)}
+          isSubmitting={createMutation.isPending}
+        />
+      </div>
+    );
+  }
+
+  if (editingConnection) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <ConnectionForm
+          initialValues={editingConnection}
+          onSubmit={(data) => {
+            updateMutation.mutate(
+              { id: editingConnection.id, data: data as ConnectionUpdate },
+              {
+                onSuccess: () => {
+                  setEditingConnection(undefined);
+                },
+              }
+            );
+          }}
+          onCancel={() => setEditingConnection(undefined)}
+          isSubmitting={updateMutation.isPending}
+        />
+      </div>
+    );
+  }
+
+  const connections: ConnectionResponse[] = Array.isArray(listQuery.data)
+    ? (listQuery.data as ConnectionResponse[])
+    : ((listQuery.data as { connections?: ConnectionResponse[] } | undefined)?.connections) || [];
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -34,7 +83,10 @@ export const AdminConnectionsPage: React.FC = () => {
             {t('admin.connections.title')}
           </h1>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-accent-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors font-medium">
+        <button
+          onClick={() => setIsAdding(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-accent-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors font-medium"
+        >
           <Plus className="w-4 h-4" />
           {t('admin.connections.add')}
         </button>
@@ -50,10 +102,10 @@ export const AdminConnectionsPage: React.FC = () => {
           <table className="w-full text-start text-sm text-text-secondary">
             <thead className="text-xs text-text-primary uppercase bg-bg-elevated border-b border-border">
               <tr>
-                <th className="px-6 py-4 font-medium">{t('admin.connections.column.name')}</th>
-                <th className="px-6 py-4 font-medium">{t('admin.connections.column.type')}</th>
-                <th className="px-6 py-4 font-medium">{t('admin.connections.column.status')}</th>
-                <th className="px-6 py-4 font-medium">{t('admin.connections.column.schema')}</th>
+                <th className="px-6 py-4 font-medium text-start">{t('admin.connections.column.name')}</th>
+                <th className="px-6 py-4 font-medium text-start">{t('admin.connections.column.type')}</th>
+                <th className="px-6 py-4 font-medium text-start">{t('admin.connections.column.status')}</th>
+                <th className="px-6 py-4 font-medium text-start">{t('admin.connections.column.schema')}</th>
                 <th className="px-6 py-4 font-medium text-end">{t('admin.connections.column.actions')}</th>
               </tr>
             </thead>
@@ -119,7 +171,23 @@ export const AdminConnectionsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-end">
-                    {/* Actions will be implemented in subsequent tasks */}
+                    <div className="flex items-center justify-end gap-3 flex-wrap">
+                      <button
+                        onClick={() => setEditingConnection(conn)}
+                        className="inline-flex items-center justify-center px-3 py-1.5 border border-border bg-transparent text-text-primary hover:bg-bg-elevated rounded-md text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-neon-cyan/20 select-none"
+                      >
+                        {t('common.edit')}
+                      </button>
+                      <ConnectionTestButton connectionId={conn.id} />
+                      <RefreshSchemaButton
+                        connectionId={conn.id}
+                        schemaLastRefreshedAt={conn.schema_last_refreshed_at}
+                      />
+                      <ConnectionActions
+                        connectionId={conn.id}
+                        lifecycleState={conn.lifecycle_state as 'active' | 'disabled'}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

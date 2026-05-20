@@ -146,6 +146,7 @@
   "admin.settings.error": "Failed to save settings",
   "common.cancel": "Cancel",
   "common.delete": "Delete",
+  "common.edit": "Edit",
   "common.copy": "Copy",
   "common.regenerate": "Regenerate",
   "common.send": "Send",
