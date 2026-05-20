@@ -212,8 +212,8 @@ Wave Final Reports MUST include red/green evidence per task.
 ### Query Flow Integration
 
 - [X] T-461 Update `useQuerySubmit` hook to send selected `connection_id` with each query submission in `frontend/src/hooks/useQuerySubmit.ts` (FR-075)
-- [ ] T-462 Update `AssistantResponseCard` to display connection name + database type badge in response card header in `frontend/src/components/chat/AssistantResponseCard.tsx` (FR-076)
-- [ ] T-463 Write `AssistantResponseCard` connection metadata test in `frontend/src/components/chat/AssistantResponseCard.test.tsx`
+- [X] T-462 Update `AssistantResponseCard` to display connection name + database type badge in response card header in `frontend/src/components/chat/AssistantResponseCard.tsx` (FR-076)
+- [X] T-463 Write `AssistantResponseCard` connection metadata test in `frontend/src/components/chat/AssistantResponseCard.test.tsx`
 
 ### Mid-Session Switch & History
 
