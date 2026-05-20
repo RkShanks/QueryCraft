@@ -66,7 +66,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 
   return (
     <div className="prompt-input-container" data-testid="prompt-input">
-      <div className="prompt-input-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+      <div className="prompt-input-header">
         <DatabaseSelector
           connections={connections}
           selectedId={selectedConnectionId}
@@ -101,7 +101,6 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         <div
           className="prompt-input-warning"
           data-testid="prompt-input-warning"
-          style={{ fontSize: '0.75rem', color: 'var(--color-neon-cyan)', marginTop: '0.25rem' }}
         >
           {connections.length === 0
             ? t('query.input.warningNoConnections')

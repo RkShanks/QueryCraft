@@ -211,7 +211,7 @@ export const WorkspacePage: React.FC = () => {
       setLocalTurns((prev) => [...prev, { id: turnId, question, isLoading: true }]);
 
       try {
-        const data = (await querySubmit.submitQuestion(question, activeSessionId)) as unknown;
+        const data = (await querySubmit.submitQuestion(question, activeSessionId, selectedConnectionId)) as unknown;
         const record = data as Record<string, unknown>;
         if (record && typeof record === 'object' && 'kind' in record && record.kind === 'result') {
           const result = data as QueryResult;

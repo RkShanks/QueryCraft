@@ -1,22 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { screen, waitFor, act, fireEvent } from '@testing-library/react';
-import { http, HttpResponse } from 'msw';
-import { vi } from 'vitest';
-
-vi.mock('../../hooks/useQuerySubmit', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/useQuerySubmit')>();
-  return {
-    ...actual,
-    useQuerySubmit: () => {
-      const hook = actual.useQuerySubmit();
-      return {
-        ...hook,
-        submitQuestion: (q: string, sessionId?: string | null, connectionId?: string | null) =>
-          hook.submitQuestion(q, sessionId, connectionId || '550e8400-e29b-41d4-a716-446655440001'),
-      };
-    },
-  };
-});
+import { http, HttpResponse, delay } from 'msw';
 
 import { WorkspacePage } from '../WorkspacePage';
 import { renderWithClient } from '../../test/utils';
@@ -244,4 +228,88 @@ describe('WorkspacePage submit scenarios', () => {
       expect(screen.getByTestId('rejection-banner')).toBeInTheDocument();
     }, { timeout: 5000 });
   }, 10000);
+});
+
+describe('WorkspacePage multi-connection selection (T-460)', () => {
+  it('prompt disabled with two connections until explicit selection, submit sends selected connection_id', async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+
+    server.use(
+      http.get('/api/v1/connections', async () => {
+        await delay(10);
+        return HttpResponse.json(
+          {
+            connections: [
+              {
+                id: 'conn-pg-001',
+                display_name: 'PostgreSQL DB',
+                database_type: 'postgresql',
+              },
+              {
+                id: 'conn-mysql-002',
+                display_name: 'MySQL DB',
+                database_type: 'mysql',
+              },
+            ],
+          },
+          { status: 200 }
+        );
+      }),
+      http.post('/api/v1/query/submit', async ({ request }) => {
+        await delay(10);
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(
+          {
+            kind: 'result',
+            attempt_id: 'attempt-460-001',
+            session_id: '550e8400-e29b-41d4-a716-446655440003',
+            question: 'Show me users',
+            generated_sql: 'SELECT * FROM users;',
+            columns: [{ name: 'id', type: 'bigint' }],
+            rows: [[1]],
+            row_count: 1,
+            attempt_number: 1,
+            is_last_auto_retry: false,
+            accepted_query_id: 'accepted-460-001',
+          },
+          { status: 200 }
+        );
+      })
+    );
+
+    renderWithClient(<WorkspacePage />);
+
+    // Selector should render with two connections
+    await waitFor(() => {
+      expect(screen.getByTestId('database-selector')).toBeInTheDocument();
+    });
+
+    // Prompt should be disabled because no connection is auto-selected when >1 available
+    const input = screen.getByRole('textbox');
+    expect(input).toBeDisabled();
+
+    // Open selector and select MySQL connection
+    fireEvent.click(screen.getByTestId('database-selector-trigger'));
+    await waitFor(() => {
+      expect(screen.getByTestId('database-selector-option-conn-mysql-002')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('database-selector-option-conn-mysql-002'));
+
+    // Prompt should now be enabled
+    await waitFor(() => {
+      expect(input).not.toBeDisabled();
+    });
+
+    // Type and submit
+    fireEvent.change(input, { target: { value: 'Show me users' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    // Assert captured POST body includes selected connection_id
+    expect(capturedBody).toBeDefined();
+    expect(capturedBody!.connection_id).toBe('conn-mysql-002');
+  }, 15000);
 });

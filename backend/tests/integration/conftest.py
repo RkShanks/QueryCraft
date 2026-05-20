@@ -32,7 +32,9 @@ async def truncate_test_tables(async_engine_fixture):
     async with async_engine_fixture.connect() as conn:
         await conn.execute(
             text(
-                "TRUNCATE accepted_queries, sessions, users, database_connections, app_config RESTART IDENTITY CASCADE"
+                "TRUNCATE accepted_queries, sessions, users, "
+                "source_database_connections, app_config "
+                "RESTART IDENTITY CASCADE"
             )
         )
         # Re-seed the admin user (required by authenticated_client fixture)

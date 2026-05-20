@@ -127,7 +127,7 @@ class TestSessionsRouter:
         # Insert an accepted query manually for the session
         result = await db_session.execute(text("SELECT id FROM users WHERE username = 'admin'"))
         user_id = result.fetchone()[0]
-        result = await db_session.execute(text("SELECT id FROM database_connections LIMIT 1"))
+        result = await db_session.execute(text("SELECT id FROM source_database_connections LIMIT 1"))
         db_conn_id = result.fetchone()[0]
 
         await db_session.execute(
