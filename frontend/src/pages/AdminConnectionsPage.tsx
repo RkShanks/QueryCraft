@@ -70,7 +70,9 @@ export const AdminConnectionsPage: React.FC = () => {
     );
   }
 
-  const connections = listQuery.data?.connections || [];
+  const connections: ConnectionResponse[] = Array.isArray(listQuery.data)
+    ? (listQuery.data as ConnectionResponse[])
+    : ((listQuery.data as { connections?: ConnectionResponse[] } | undefined)?.connections) || [];
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
