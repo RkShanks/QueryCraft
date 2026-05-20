@@ -249,5 +249,7 @@
   "admin.connections.delete": "حذف",
   "admin.connections.deleting": "جارٍ الحذف...",
   "admin.connections.deleteConfirm": "هل أنت متأكد من رغبتك في حذف هذا الاتصال؟ لا يمكن التراجع عن هذا الإجراء.",
-  "admin.connections.deleteConfirmTitle": "حذف الاتصال"
+  "admin.connections.deleteConfirmTitle": "حذف الاتصال",
+  "databaseSelector.selectDatabase": "اختر قاعدة البيانات",
+  "databaseSelector.empty": "لا توجد اتصالات قواعد بيانات متاحة"
 }
