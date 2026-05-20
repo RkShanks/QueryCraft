@@ -17,7 +17,7 @@ i18n
       escapeValue: false, // React already escapes
     },
     detection: {
-      order: ['navigator', 'htmlTag'] as const,
+      order: ['querystring', 'navigator', 'htmlTag'] as const,
     },
     saveMissing: true,
     parseMissingKeyHandler: (key: string) => {
