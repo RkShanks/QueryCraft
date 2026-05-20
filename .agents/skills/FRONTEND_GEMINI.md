@@ -18,6 +18,8 @@ For every user-facing feature or browser-visible change:
 4. Record in PR report: route → action → expected → observed → errors.
 5. If Docker stack needed: `./scripts/dev-up.sh --rebuild`.
 6. If MCP unavailable: state explicitly in report; fall back to Playwright/manual.
+7. If the browser subagent/MCP fails to connect with ECONNREFUSED on port 9222, launch a headless Chrome instance with remote debugging enabled:
+   `google-chrome --remote-debugging-port=9222 --headless --no-sandbox --disable-gpu --disable-dev-shm-usage >/tmp/chrome.log 2>&1 &`
 
 ## Login UI
 
