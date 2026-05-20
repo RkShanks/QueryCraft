@@ -91,6 +91,7 @@
   "history.detail.databaseConnection": "Database Connection",
   "history.column.question": "Question",
   "history.column.sql": "SQL",
+  "history.column.connection": "Connection",
   "history.column.acceptedAt": "Accepted",
   "history.loadMore": "Load more",
   "history.loadingMore": "Loading more...",

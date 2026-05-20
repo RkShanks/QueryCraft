@@ -51,6 +51,13 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
 
   return (
     <article className="history-detail p-6 space-y-4" data-testid="history-detail">
+      {item.database_connection_id && (
+        <div className="history-detail-meta" data-testid="history-detail-meta">
+          <span className="history-detail-meta-badge">
+            {item.database_connection_id}
+          </span>
+        </div>
+      )}
       <section>
         <h3 className="text-sm font-medium text-gray-700">
           {t('history.detail.question')}
@@ -75,15 +82,11 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
       )}
       <section className="flex gap-6 text-sm text-gray-600">
         <div>
-                      <span className="font-medium">{t('history.detail.llmProvider')}:</span>{' '}
+          <span className="font-medium">{t('history.detail.llmProvider')}:</span>{' '}
           {item.llm_provider ?? '—'}
         </div>
         <div>
-                      <span className="font-medium">{t('history.detail.databaseConnection')}:</span>{' '}
-          {item.database_connection_id ?? '—'}
-        </div>
-        <div>
-                      <span className="font-medium">{t('history.detail.acceptedAt')}:</span>{' '}
+          <span className="font-medium">{t('history.detail.acceptedAt')}:</span>{' '}
           {item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '—'}
         </div>
       </section>

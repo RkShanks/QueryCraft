@@ -24,7 +24,7 @@ function setup(item: typeof sample | null, opts: { isLoading?: boolean; error?: 
   );
 }
 
-describe("HistoryDetail (FR-023, SC-009)", () => {
+describe("HistoryDetail (FR-023, SC-009, T-465)", () => {
   it("renders question, sql, llm_provider, database_connection_id, accepted_at when item is provided", () => {
     setup(sample);
     expect(screen.getByText(/total customers/i)).toBeInTheDocument();
@@ -67,5 +67,17 @@ describe("HistoryDetail (FR-023, SC-009)", () => {
     const codeEl = container.querySelector("pre, code");
     expect(codeEl).not.toBeNull();
     expect(codeEl?.textContent).toContain("SELECT COUNT(*)");
+  });
+
+  it("renders connection metadata badge when database_connection_id is present (T-465)", () => {
+    setup(sample);
+    expect(screen.getByTestId("history-detail-meta")).toBeInTheDocument();
+    expect(screen.getByTestId("history-detail-meta")).toHaveTextContent("conn-1");
+  });
+
+  it("does not render connection metadata badge when database_connection_id is absent (T-465)", () => {
+    const withoutConn = { ...sample, database_connection_id: null };
+    setup(withoutConn);
+    expect(screen.queryByTestId("history-detail-meta")).not.toBeInTheDocument();
   });
 });

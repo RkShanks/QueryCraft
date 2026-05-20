@@ -125,6 +125,7 @@ export type AcceptedQuerySummary = {
      */
     generated_sql: string;
     accepted_at: string;
+    database_connection_id?: string | null;
 };
 
 export type RefinePrompt = {
@@ -553,6 +554,7 @@ export type AttemptSummary = {
     result_columns?: Array<{ name: string; type: string }> | null;
     result_rows?: Array<Array<unknown>> | null;
     result_row_count?: number | null;
+    database_connection_id?: string | null;
 };
 
 export type SessionSummary = {

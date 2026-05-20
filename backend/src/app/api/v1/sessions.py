@@ -106,6 +106,7 @@ async def get_session(
                 "result_columns": a.result_columns,
                 "result_rows": a.result_rows,
                 "result_row_count": a.result_row_count,
+                "database_connection_id": str(a.database_connection_id) if a.database_connection_id else None,
             }
             for a in attempts
         ],

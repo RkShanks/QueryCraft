@@ -35,9 +35,12 @@ function buildHistoryTurn(a: AttemptSummary, connections: UserConnectionResponse
     sql: a.generated_sql,
     savedQueryId: a.id,
   };
-  // Try to find connection metadata from available connections using database_connection_id
-  // Note: AttemptSummary doesn't have database_connection_id yet, so this is a best-effort
-  // fallback using session connection. Proper fix requires backend schema update.
+  // Look up connection metadata from available connections using database_connection_id
+  if (a.database_connection_id) {
+    const meta = getConnectionMeta(a.database_connection_id, connections);
+    turn.connectionName = meta.name;
+    turn.databaseType = meta.type;
+  }
   if (a.result_columns && a.result_rows) {
     turn.result = {
       kind: 'result',

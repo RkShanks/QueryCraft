@@ -82,6 +82,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 {t('history.column.sql')}
               </th>
               <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {t('history.column.connection')}
+              </th>
+              <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {t('history.detail.acceptedAt')}
               </th>
             </tr>
@@ -107,6 +110,15 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600 font-mono">
                   <code className="text-xs bg-gray-100 px-2 py-1 rounded">{item.generated_sql}</code>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {item.database_connection_id ? (
+                    <span className="history-list-connection-badge" data-testid="history-list-connection">
+                      {item.database_connection_id}
+                    </span>
+                  ) : (
+                    '-'
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '-'}
