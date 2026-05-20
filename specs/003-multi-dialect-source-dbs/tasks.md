@@ -207,7 +207,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 - [X] T-458 Create `useConnectionSelection` hook: per-session `connection_id` state, auto-select when single active connection, `PATCH /sessions/{id}/connection` on change in `frontend/src/hooks/useConnectionSelection.ts` (FR-094)
 - [X] T-459 Create `useConnectionSelection.test.tsx` co-located test in `frontend/src/hooks/useConnectionSelection.test.tsx`
-- [ ] T-460 Integrate `DatabaseSelector` into `WorkspacePage`/`PromptInput`: disable prompt until DB selected, block first query with localized prompt/error until selection in `frontend/src/pages/WorkspacePage.tsx` and `frontend/src/components/chat/PromptInput.tsx` (FR-094, FR-077)
+- [X] T-460 Integrate `DatabaseSelector` into `WorkspacePage`/`PromptInput`: disable prompt until DB selected, block first query with localized prompt/error until selection in `frontend/src/pages/WorkspacePage.tsx` and `frontend/src/components/chat/PromptInput.tsx` (FR-094, FR-077)
 
 ### Query Flow Integration
 
