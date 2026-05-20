@@ -91,6 +91,7 @@ async def get_session(
     attempts = await query_repo.list_by_session(session_id, user_uuid)
     return SessionDetail(
         id=str(sess.id),
+        connection_id=str(sess.connection_id) if sess.connection_id else None,
         preview_text=sess.preview_text,
         created_at=sess.created_at.isoformat(),
         last_activity_at=sess.last_activity_at.isoformat(),

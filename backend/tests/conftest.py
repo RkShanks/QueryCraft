@@ -131,23 +131,24 @@ async def app_client(set_test_env) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture
 async def ensure_db_connection(async_engine_fixture):
-    """Ensure at least one database_connections row exists for tests."""
+    """Ensure at least one source_database_connections row exists for tests."""
     from sqlalchemy import text
 
     async with async_engine_fixture.connect() as conn:
-        result = await conn.execute(text("SELECT id FROM database_connections LIMIT 1"))
+        result = await conn.execute(text("SELECT id FROM source_database_connections LIMIT 1"))
         row = result.fetchone()
         if row is None:
             await conn.execute(
                 text(
                     """
-                    INSERT INTO database_connections (
-                        name, host, port, database_name, username,
-                        encrypted_password, ssl_mode
+                    INSERT INTO source_database_connections (
+                        id, display_name, host, port, database_name, username,
+                        encrypted_password, database_type, lifecycle_state, health_status,
+                        schema_introspection_status
                     )
                     VALUES (
-                        'test_source', 'localhost', 5434, 'source_analytics',
-                        'source_readonly', 'enc', 'disable'
+                        gen_random_uuid(), 'Test Source', 'localhost', 5434, 'source_analytics',
+                        'source_readonly', 'enc', 'postgresql', 'active', 'healthy', 'success'
                     )
                     RETURNING id
                     """

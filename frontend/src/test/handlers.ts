@@ -242,6 +242,38 @@ export const handlers = [
     return HttpResponse.json(history, { status: 200 });
   }),
 
+  // ─────────────────────────── Connections ───────────────────────────
+  http.get('/api/v1/connections', async () => {
+    await delay(10);
+    return HttpResponse.json(
+      {
+        connections: [
+          {
+            id: 'default-pg-connection',
+            display_name: 'PostgreSQL DB',
+            database_type: 'postgresql',
+          },
+        ],
+      },
+      { status: 200 }
+    );
+  }),
+
+  // ─────────────────────────── Session Connection ───────────────────────────
+  http.patch('/api/v1/sessions/:sessionId/connection', async ({ params }) => {
+    await delay(10);
+    return HttpResponse.json(
+      {
+        id: params.sessionId as string,
+        connection_id: 'default-pg-connection',
+        preview_text: 'Session detail',
+        created_at: new Date().toISOString(),
+        last_activity_at: new Date().toISOString(),
+      },
+      { status: 200 }
+    );
+  }),
+
   // ─────────────────────────── Sessions ───────────────────────────
   http.post('/api/v1/sessions', async () => {
     await delay(10);

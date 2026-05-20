@@ -564,6 +564,7 @@ export type SessionSummary = {
 
 export type SessionDetail = {
     id: string;
+    connection_id?: string | null;
     preview_text: string;
     created_at: string;
     last_activity_at: string;

@@ -1,22 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { vi } from 'vitest';
-
-vi.mock('../../hooks/useQuerySubmit', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/useQuerySubmit')>();
-  return {
-    ...actual,
-    useQuerySubmit: () => {
-      const hook = actual.useQuerySubmit();
-      return {
-        ...hook,
-        submitQuestion: (q: string, sessionId?: string | null, connectionId?: string | null) =>
-          hook.submitQuestion(q, sessionId, connectionId || '550e8400-e29b-41d4-a716-446655440001'),
-      };
-    },
-  };
-});
 
 import { WorkspacePage } from '../WorkspacePage';
 import { renderWithClient } from '../../test/utils';
@@ -35,6 +19,9 @@ beforeEach(() => {
 
 async function typeAndSubmit(text: string): Promise<void> {
   const input = screen.getByRole('textbox');
+  await waitFor(() => {
+    expect(input).not.toBeDisabled();
+  });
   fireEvent.change(input, { target: { value: text } });
   fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 }
