@@ -1,7 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
 const mockUseQuerySubmitState = vi.hoisted(() => ({ enabled: true }));
+
+afterEach(() => {
+  mockUseQuerySubmitState.enabled = true;
+});
 
 vi.mock('../hooks/useQuerySubmit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../hooks/useQuerySubmit')>();
@@ -104,17 +108,19 @@ describe('AskQuestionPage Integration', () => {
 
   it('shows no database available alert when submitting without connectionId (T-461 regression)', async () => {
     mockUseQuerySubmitState.enabled = false;
-    render(<AskQuestionPage />, { wrapper: createWrapper() });
+    try {
+      render(<AskQuestionPage />, { wrapper: createWrapper() });
 
-    const textarea = screen.getByPlaceholderText(/ask a question/i);
-    fireEvent.change(textarea, { target: { value: 'How many users?' } });
-    fireEvent.click(screen.getByRole('button', { name: /ask/i }));
+      const textarea = screen.getByPlaceholderText(/ask a question/i);
+      fireEvent.change(textarea, { target: { value: 'How many users?' } });
+      fireEvent.click(screen.getByRole('button', { name: /ask/i }));
 
-    await waitFor(() => {
-      expect(screen.getByText(/no database available/i)).toBeInTheDocument();
-    });
-
-    mockUseQuerySubmitState.enabled = true;
+      await waitFor(() => {
+        expect(screen.getByText(/no database available/i)).toBeInTheDocument();
+      });
+    } finally {
+      mockUseQuerySubmitState.enabled = true;
+    }
   });
 });
 
