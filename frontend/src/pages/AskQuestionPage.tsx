@@ -171,6 +171,12 @@ export const AskQuestionPage: React.FC = () => {
           '',
           'destructive'
         );
+      } else if (error.kind === 'connectionRequired') {
+        showAlert(
+          t('error.no_database_available'),
+          '',
+          'destructive'
+        );
       }
     }, 0);
     return () => clearTimeout(timer);

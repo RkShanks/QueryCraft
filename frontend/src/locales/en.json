@@ -175,7 +175,7 @@
   "error.connection_no_schema": "Connection has no schema",
   "error.dialect_validation_failed": "Dialect validation failed",
   "error.unsupported_dialect": "Unsupported dialect",
-  "error.no_database_available": "No database available",
+  "error.no_database_available": "No database available. Please select a database connection.",
   "error.query_execution_failed": "Query execution failed",
   "error.connection_unavailable_query": "Connection unavailable during query",
   "error.configuration_error": "Configuration error",
