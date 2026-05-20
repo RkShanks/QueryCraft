@@ -78,7 +78,6 @@ export const useConnectionSelection = ({
       initialConnectionId === null &&
       availableConnections.length === 1
     ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       skipNextPatchRef.current = true;
       setSelectedConnectionIdState(availableConnections[0].id);
     }

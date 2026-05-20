@@ -234,8 +234,11 @@ describe('useConnectionSelection', () => {
   });
 
   it('syncs initialConnectionId when it arrives later without auto-selecting another connection', async () => {
-    const { result, rerender } = renderHook(
-      ({ initialConnectionId }: { initialConnectionId: string | null }) => useConnectionSelection({
+    const { result, rerender } = renderHook<
+      ReturnType<typeof useConnectionSelection>,
+      { initialConnectionId: string | null }
+    >(
+      ({ initialConnectionId }) => useConnectionSelection({
         sessionId: 'session-1',
         initialConnectionId,
         availableConnections: [
@@ -271,8 +274,11 @@ describe('useConnectionSelection', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
-    const { result, rerender } = renderHook(
-      ({ initialConnectionId }: { initialConnectionId: string | null }) => useConnectionSelection({
+    const { result, rerender } = renderHook<
+      ReturnType<typeof useConnectionSelection>,
+      { initialConnectionId: string | null }
+    >(
+      ({ initialConnectionId }) => useConnectionSelection({
         sessionId: 'session-1',
         initialConnectionId,
         availableConnections: [
