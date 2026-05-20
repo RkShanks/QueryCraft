@@ -8,8 +8,10 @@ import { UserBubble } from '../components/chat/UserBubble';
 import { AssistantResponseCard } from '../components/chat/AssistantResponseCard';
 import { PromptInput } from '../components/chat/PromptInput';
 import { MessageSquare } from '../components/icons';
-import { deleteHistoryEntry } from '../api/generated/sdk.gen';
+import { deleteHistoryEntry, listUserConnections } from '../api/generated/sdk.gen';
 import type { QueryResult, RefinePrompt, EvaluatorRejection, AttemptSummary } from '../api/generated/types.gen';
+import { useQuery } from '@tanstack/react-query';
+import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import './WorkspacePage.css';
 
 interface ConversationTurn {
@@ -55,6 +57,22 @@ export const WorkspacePage: React.FC = () => {
   const activeSessionId = useUIStore((state) => state.activeSessionId);
   const { data: sessionDetail, isLoading } = useSessionDetail(activeSessionId ?? '');
   const querySubmit = useQuerySubmit();
+
+  // Fetch available connections for T-460
+  const { data: userConnectionsResponse } = useQuery({
+    queryKey: ['userConnections'],
+    queryFn: () => listUserConnections({ throwOnError: true }).then((res) => res.data),
+  });
+  const availableConnections = userConnectionsResponse?.connections ?? [];
+
+  const {
+    selectedConnectionId,
+    setSelectedConnectionId,
+  } = useConnectionSelection({
+    sessionId: activeSessionId,
+    initialConnectionId: sessionDetail?.connection_id ?? null,
+    availableConnections,
+  });
 
   const [localTurns, setLocalTurns] = useState<ConversationTurn[]>([]);
   const [deletedSavedIds, setDeletedSavedIds] = useState<Set<string>>(new Set());
@@ -164,6 +182,27 @@ export const WorkspacePage: React.FC = () => {
 
   const handleSubmit = useCallback(
     async (question: string) => {
+      if (!selectedConnectionId) {
+        const turnId = `turn-${Date.now()}`;
+        setLocalTurns((prev) => [
+          ...prev,
+          {
+            id: turnId,
+            question,
+            evaluatorRejection: {
+              message_key: 'query.error.noDatabaseSelected',
+              violations: [
+                {
+                  rule: 'connection_required',
+                  message_key: 'query.error.noDatabaseSelectedMessage',
+                },
+              ],
+            } as EvaluatorRejection,
+          },
+        ]);
+        return;
+      }
+
       if (activeSessionId === null) {
         pendingSubmitRef.current = true;
       }
@@ -218,7 +257,7 @@ export const WorkspacePage: React.FC = () => {
         }
       }
     },
-    [activeSessionId, querySubmit]
+    [activeSessionId, querySubmit, selectedConnectionId]
   );
 
   return (
@@ -268,7 +307,13 @@ export const WorkspacePage: React.FC = () => {
           </div>
         )}
       </div>
-      <PromptInput onSubmit={handleSubmit} disabled={querySubmit.isSubmitting} />
+      <PromptInput
+        onSubmit={handleSubmit}
+        disabled={querySubmit.isSubmitting}
+        connections={availableConnections}
+        selectedConnectionId={selectedConnectionId}
+        onSelectConnection={setSelectedConnectionId}
+      />
     </div>
   );
 };

@@ -30,6 +30,7 @@ class SessionDetail(BaseModel):
     """Full session detail with conversation history."""
 
     id: str
+    connection_id: str | None = None
     preview_text: str
     created_at: str
     last_activity_at: str

@@ -22,6 +22,10 @@
   "auth.signOut.label": "تسجيل الخروج",
 
   "query.input.placeholder": "اطرح سؤالاً حول بياناتك...",
+  "query.input.placeholderNoConnections": "يرجى إضافة اتصال قاعدة بيانات أولاً.",
+  "query.input.placeholderNoSelection": "اختر قاعدة بيانات أعلاه لبدء الاستعلام.",
+  "query.input.warningNoConnections": "يرجى إضافة اتصال قاعدة بيانات أولاً.",
+  "query.input.warningNoSelection": "يرجى اختيار قاعدة بيانات أولاً.",
   "query.input.submit": "اسأل",
   "query.input.submitting": "جارٍ الإرسال...",
   "query.input.charCount": "{{current}} / {{max}}",

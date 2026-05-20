@@ -35,6 +35,9 @@ beforeEach(() => {
 
 async function typeAndSubmit(text: string): Promise<void> {
   const input = screen.getByRole('textbox');
+  await waitFor(() => {
+    expect(input).not.toBeDisabled();
+  });
   fireEvent.change(input, { target: { value: text } });
   fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 }
