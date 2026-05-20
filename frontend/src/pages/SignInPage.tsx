@@ -6,7 +6,7 @@ import { useCurrentUser } from '../hooks/useAuth';
 import { Database, Sparkles } from 'lucide-react';
 
 export const SignInPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data: user, isLoading } = useCurrentUser();
 
   if (isLoading) {
@@ -21,8 +21,13 @@ export const SignInPage: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
+  const dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+
   return (
-    <div className="sign-in-page min-h-screen flex items-center justify-center bg-obsidian-950 p-4 relative overflow-hidden">
+    <div 
+      dir={dir}
+      className="sign-in-page min-h-screen flex items-center justify-center bg-obsidian-950 p-4 relative overflow-hidden"
+    >
       {/* Background Neon Accent Glows */}
       <div className="absolute top-1/4 start-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-neon-cyan-glow/20 blur-[120px] rounded-full pointer-events-none animate-glow-pulse" />
       <div className="absolute bottom-1/4 start-1/3 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-neon-purple-glow/20 blur-[100px] rounded-full pointer-events-none" />
