@@ -13,12 +13,23 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+const mockMutations = {
+  createMutation: { mutate: vi.fn(), isPending: false },
+  updateMutation: { mutate: vi.fn(), isPending: false },
+  deleteMutation: { mutate: vi.fn(), isPending: false },
+  testMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, isError: false },
+  disableMutation: { mutate: vi.fn(), isPending: false },
+  enableMutation: { mutate: vi.fn(), isPending: false },
+  refreshSchemaMutation: { mutate: vi.fn(), isPending: false },
+};
+
 const mockEmptyUseConnections = {
   listQuery: {
     data: { connections: [] },
     isLoading: false,
     isError: false,
   },
+  ...mockMutations,
 };
 
 const mockPopulatedUseConnections = {
@@ -48,6 +59,7 @@ const mockPopulatedUseConnections = {
     isLoading: false,
     isError: false,
   },
+  ...mockMutations,
 };
 
 describe('AdminConnectionsPage', () => {
@@ -89,6 +101,7 @@ describe('AdminConnectionsPage', () => {
   it('renders loading state', () => {
     vi.mocked(useConnections).mockReturnValue({
       listQuery: { isLoading: true, data: undefined, isError: false },
+      ...mockMutations,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
@@ -99,10 +112,34 @@ describe('AdminConnectionsPage', () => {
   it('renders error state', () => {
     vi.mocked(useConnections).mockReturnValue({
       listQuery: { isLoading: false, data: undefined, isError: true },
+      ...mockMutations,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     render(<AdminConnectionsPage />);
     expect(screen.getByText('admin.connections.loadError')).toBeInTheDocument();
+  });
+
+  it('opens connection form on Add Connection click', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useConnections).mockReturnValue(mockEmptyUseConnections as any);
+    render(<AdminConnectionsPage />);
+
+    const addButton = screen.getByRole('button', { name: 'admin.connections.add' });
+    addButton.click();
+
+    expect(screen.getByText('admin.connections.form.createTitle')).toBeInTheDocument();
+  });
+
+  it('opens connection form with initial values on Edit click', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useConnections).mockReturnValue(mockPopulatedUseConnections as any);
+    render(<AdminConnectionsPage />);
+
+    const editButtons = screen.getAllByRole('button', { name: 'common.edit' });
+    editButtons[0].click();
+
+    expect(screen.getByText('admin.connections.form.editTitle')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Prod DB')).toBeInTheDocument();
   });
 });
