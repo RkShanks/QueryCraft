@@ -217,8 +217,8 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Mid-Session Switch & History
 
-- [ ] T-464 Implement mid-session DB switch: update session connection, prior turns keep original metadata; workspace displays active DB/dialect in `frontend/src/pages/WorkspacePage.tsx` (FR-094)
-- [ ] T-465 Update history views to show source DB/dialect metadata per query in `frontend/src/components/history/HistoryDetail.tsx` and `frontend/src/components/history/HistoryList.tsx` (FR-076)
+- [X] T-464 Implement mid-session DB switch: update session connection, prior turns keep original metadata; workspace displays active DB/dialect in `frontend/src/pages/WorkspacePage.tsx` (FR-094)
+- [X] T-465 Update history views to show source DB/dialect metadata per query in `frontend/src/components/history/HistoryDetail.tsx` and `frontend/src/components/history/HistoryList.tsx` (FR-076)
 
 ### Error UX
 
