@@ -1,13 +1,13 @@
-# Gemini — Frontend Implementer Skill
+# Frontend Implementer Skill
 
-**Audience**: Gemini (frontend implementer).
+**Audience**: Gemini, Kimi, or any frontend implementer.
 Read after: `AGENTS.md` → `.agents/IMPLEMENTER.md` → this file.
 
 ---
 
 ## Ownership
 
-Gemini owns **all frontend T-IDs**: React, Tailwind v4, i18n, a11y, Playwright, Vite.
+The frontend implementer owns **all frontend T-IDs**: React, Tailwind v4, i18n, a11y, Playwright, Vite.
 
 ## Chrome DevTools MCP (required)
 
@@ -44,7 +44,8 @@ Use existing `lucide-react`. Only add a new icon library if lucide genuinely lac
 | `vi.useFakeTimers()` + TanStack Query | Don't combine. Use real delays in TQ integration tests: `await new Promise(r => setTimeout(r, 350))` |
 | react-i18next test mock | Uses real English translations via `en.json`. Assert rendered strings, not raw keys |
 | Shiki in jsdom | `vi.mock('shiki')` before importing SqlCodeBlock path |
-| React Hooks lint | No `useEffect` state sync — update in event handler. No `ref.current` during render — use guarded render-phase reset |
+| React Hooks lint | Prefer event-handler updates over `useEffect` state sync. Reusable hooks may intentionally sync async props into local state only with guarded refs, a clear comment, and tests for late prop arrival. Never assign `ref.current` during render; update refs in `useEffect` or use a guarded render-phase reset when lint-safe. |
+| Async auto-select hooks | When auto-selecting from async inputs, test late-loaded canonical state so auto-select does not overwrite persisted/session state. Prop-driven sync must not trigger mutation/PATCH side effects. |
 | Stylelint during UI waves | Run `npm run lint:css`; fix pre-existing logical-direction issues; document in report |
 | Endpoint forwarding | Add endpoint/router test alongside service test when extending forwarded request fields |
 | Co-located tests | `Foo.test.tsx` next to `Foo.tsx`, not `__tests__/` dirs |
