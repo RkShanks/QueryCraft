@@ -43,16 +43,31 @@ export const useConnectionSelection = ({
     },
   });
 
-  // Keep a stable ref to the latest mutate function to avoid effect dependency churn
+  // Keep ref to latest mutate to avoid effect dependency churn
   const mutateRef = useRef(mutation.mutate);
-  mutateRef.current = mutation.mutate;
+  useEffect(() => {
+    mutateRef.current = mutation.mutate;
+  }, [mutation.mutate]);
 
-  // Auto-select single available connection when no selection exists
+  // Auto-select single available connection when no selection exists.
+  // This is intentional prop-to-state synchronization.
   useEffect(() => {
     if (selectedConnectionId === null && availableConnections.length === 1) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedConnectionIdState(availableConnections[0].id);
     }
   }, [selectedConnectionId, availableConnections]);
+
+  // Trigger PATCH when selection changes and a session id exists.
+  const prevSelectedRef = useRef<string | null>(selectedConnectionId);
+  useEffect(() => {
+    if (prevSelectedRef.current !== selectedConnectionId) {
+      prevSelectedRef.current = selectedConnectionId;
+      if (sessionId && selectedConnectionId) {
+        mutateRef.current(selectedConnectionId);
+      }
+    }
+  }, [sessionId, selectedConnectionId]);
 
   const setSelectedConnectionId = useCallback(
     (id: string | null) => {
@@ -65,13 +80,6 @@ export const useConnectionSelection = ({
     },
     []
   );
-
-  // Trigger PATCH when selection changes and session exists
-  useEffect(() => {
-    if (sessionId && selectedConnectionId) {
-      mutateRef.current(selectedConnectionId);
-    }
-  }, [sessionId, selectedConnectionId]);
 
   return {
     selectedConnectionId,
