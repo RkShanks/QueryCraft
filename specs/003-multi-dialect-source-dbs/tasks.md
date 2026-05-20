@@ -175,7 +175,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Chrome DevTools MCP Smoke
 
-- [x] T-454 Chrome DevTools MCP smoke: login UI, admin connection list/add/edit/test/refresh/disable/enable/delete-guard, console errors, network checks, i18n resolution, RTL layout (FR-086, SC-032)
+- [X] T-454 Chrome DevTools MCP smoke: login UI, admin connection list/add/edit/test/refresh/disable/enable/delete-guard, console errors, network checks, i18n resolution, RTL layout (FR-086, SC-032)
 
 ### Frontend Gates
 
