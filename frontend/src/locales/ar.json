@@ -194,7 +194,7 @@
   "error.connection_no_schema": "الاتصال ليس لديه مخطط",
   "error.dialect_validation_failed": "فشل التحقق من اللهجة",
   "error.unsupported_dialect": "لهجة غير مدعومة",
-  "error.no_database_available": "لا توجد قاعدة بيانات متاحة",
+  "error.no_database_available": "لا توجد قاعدة بيانات متاحة. يرجى اختيار اتصال قاعدة بيانات.",
   "error.query_execution_failed": "فشل تنفيذ الاستعلام",
   "error.connection_unavailable_query": "الاتصال غير متاح أثناء الاستعلام",
   "error.configuration_error": "خطأ في التكوين",

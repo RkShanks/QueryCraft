@@ -96,7 +96,8 @@ describe('WorkspacePage first-submit UX', () => {
       expect(screen.getByTestId('action-delete-result')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    fireEvent.click(screen.getByTestId('action-delete-result'));
+    const deleteButtons = screen.getAllByTestId('action-delete-result');
+    fireEvent.click(deleteButtons[deleteButtons.length - 1]);
 
     await waitFor(() => {
       expect(deletedId).toBeDefined();

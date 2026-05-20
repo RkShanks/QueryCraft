@@ -73,3 +73,5 @@ s.md
 cookies.txt
 *.cookies.txt
 .cookies/
+
+.agents/*
