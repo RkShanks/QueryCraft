@@ -33,6 +33,7 @@ class HistoryService:
                 question_text=q.question_text,
                 generated_sql=q.generated_sql,
                 accepted_at=q.accepted_at.isoformat(),
+                database_connection_id=(str(q.database_connection_id) if q.database_connection_id else None),
             )
             for q in items
         ]
@@ -58,7 +59,7 @@ class HistoryService:
             generated_sql=query.generated_sql,
             llm_provider=query.llm_provider,
             accepted_at=query.accepted_at.isoformat(),
-            database_connection_id=str(query.database_connection_id),
+            database_connection_id=str(query.database_connection_id) if query.database_connection_id else None,
             result_columns=query.result_columns,
             result_rows=query.result_rows,
             result_row_count=query.result_row_count,

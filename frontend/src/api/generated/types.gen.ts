@@ -167,7 +167,7 @@ export type AcceptedQueryDetail = {
     generated_sql: string;
     llm_provider: string;
     accepted_at: string;
-    database_connection_id: string;
+    database_connection_id?: string | null;
     result_columns?: Array<{ name: string; type: string }> | null;
     result_rows?: Array<Array<unknown>> | null;
     result_row_count?: number | null;

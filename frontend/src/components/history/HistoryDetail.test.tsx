@@ -18,9 +18,9 @@ const sampleWithResult = {
   result_row_count: 1,
 };
 
-function setup(item: typeof sample | null, opts: { isLoading?: boolean; error?: Error | null } = {}) {
+function setup(item: Partial<typeof sample> | null, opts: { isLoading?: boolean; error?: Error | null } = {}) {
   return render(
-    <HistoryDetail item={item} isLoading={opts.isLoading} error={opts.error} />
+    <HistoryDetail item={item as typeof sample} isLoading={opts.isLoading} error={opts.error} />
   );
 }
 
@@ -76,7 +76,7 @@ describe("HistoryDetail (FR-023, SC-009, T-465)", () => {
   });
 
   it("does not render connection metadata badge when database_connection_id is absent (T-465)", () => {
-    const withoutConn = { ...sample, database_connection_id: null };
+    const withoutConn = { ...sample, database_connection_id: undefined };
     setup(withoutConn);
     expect(screen.queryByTestId("history-detail-meta")).not.toBeInTheDocument();
   });

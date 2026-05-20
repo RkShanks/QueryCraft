@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { http, HttpResponse, delay } from 'msw';
 
 import { WorkspacePage } from '../WorkspacePage';

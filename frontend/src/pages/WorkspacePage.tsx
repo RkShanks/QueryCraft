@@ -81,7 +81,10 @@ export const WorkspacePage: React.FC = () => {
     queryKey: ['userConnections'],
     queryFn: () => listUserConnections({ throwOnError: true }).then((res) => res.data),
   });
-  const availableConnections = userConnectionsResponse?.connections ?? [];
+  const availableConnections = React.useMemo(
+    () => userConnectionsResponse?.connections ?? [],
+    [userConnectionsResponse]
+  );
 
   const {
     selectedConnectionId,
@@ -285,7 +288,7 @@ export const WorkspacePage: React.FC = () => {
         }
       }
     },
-    [activeSessionId, querySubmit, selectedConnectionId]
+    [activeSessionId, querySubmit, selectedConnectionId, availableConnections]
   );
 
   return (
