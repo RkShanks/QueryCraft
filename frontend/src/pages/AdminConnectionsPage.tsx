@@ -6,7 +6,7 @@ import { ConnectionForm } from '../components/admin/ConnectionForm';
 import { ConnectionTestButton } from '../components/admin/ConnectionTestButton';
 import { RefreshSchemaButton } from '../components/admin/RefreshSchemaButton';
 import { ConnectionActions } from '../components/admin/ConnectionActions';
-import type { ConnectionResponse } from '../api/generated/types.gen';
+import type { ConnectionResponse, ConnectionCreate, ConnectionUpdate } from '../api/generated/types.gen';
 
 export const AdminConnectionsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -35,7 +35,7 @@ export const AdminConnectionsPage: React.FC = () => {
       <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <ConnectionForm
           onSubmit={(data) => {
-            createMutation.mutate(data as any, {
+            createMutation.mutate(data as ConnectionCreate, {
               onSuccess: () => {
                 setIsAdding(false);
               },
@@ -55,7 +55,7 @@ export const AdminConnectionsPage: React.FC = () => {
           initialValues={editingConnection}
           onSubmit={(data) => {
             updateMutation.mutate(
-              { id: editingConnection.id, data: data as any },
+              { id: editingConnection.id, data: data as ConnectionUpdate },
               {
                 onSuccess: () => {
                   setEditingConnection(undefined);
