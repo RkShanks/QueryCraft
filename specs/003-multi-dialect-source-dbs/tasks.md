@@ -200,8 +200,8 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Database Selector
 
-- [ ] T-456 Create `DatabaseSelector` dropdown/popover component near prompt input: shows active connections with display name + database type icon (`lucide-react`), mirrors in RTL in `frontend/src/components/chat/DatabaseSelector.tsx` (FR-073, FR-074, FR-081)
-- [ ] T-457 Create `DatabaseSelector.test.tsx` co-located test: renders connections, selection, auto-select single, empty state, RTL in `frontend/src/components/chat/DatabaseSelector.test.tsx`
+- [X] T-456 Create `DatabaseSelector` dropdown/popover component near prompt input: shows active connections with display name + database type icon (`lucide-react`), mirrors in RTL in `frontend/src/components/chat/DatabaseSelector.tsx` (FR-073, FR-074, FR-081)
+- [X] T-457 Create `DatabaseSelector.test.tsx` co-located test: renders connections, selection, auto-select single, empty state, RTL in `frontend/src/components/chat/DatabaseSelector.test.tsx`
 
 ### Per-Session Connection State
 

@@ -101,3 +101,10 @@
 - **Status**: READY FOR WAVE 14 DISPATCH
 - **Completed Wave 13 Tasks**: T-438 through T-455 complete, including T-450, T-452, T-454 hardening.
 - **Known Notes**: Re-smoke real-backend populated admin flow after PR #83 merge before/at Wave 14 start. Wave 14 scope: workspace DB selector + query flow metadata. Use latest `FRONTEND_GEMINI.md`: read skills first, full PR description, reuse Chrome page, no extra tabs unless needed.
+
+## Wave 14.1: Database Selector Component
+- **Status**: IN REVIEW
+- **Branch**: `phase-3/wave-14.1-database-selector`
+- **PR**: #84 open
+- **Completed Tasks**: T-456, T-457
+- **Notes**: Added reusable `DatabaseSelector` dropdown in `frontend/src/components/chat/DatabaseSelector.tsx` with co-located tests. Accepts `UserConnection[]`, shows display name + database type badge, auto-selects single connection, localized empty state, accessible listbox behavior, closes on outside click. Uses `lucide-react` icons only, logical Tailwind directions in CSS (`inset-inline-start`, `margin-inline-start`), EN/AR i18n keys. Not yet wired into `WorkspacePage` — stays reusable for T-458/T-460 integration. All 6 frontend gates pass. Chrome MCP smoke on built app confirmed workspace renders cleanly.

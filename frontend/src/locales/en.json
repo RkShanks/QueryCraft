@@ -230,5 +230,7 @@
   "admin.connections.delete": "Delete",
   "admin.connections.deleting": "Deleting...",
   "admin.connections.deleteConfirm": "Are you sure you want to delete this connection? This action cannot be undone.",
-  "admin.connections.deleteConfirmTitle": "Delete Connection"
+  "admin.connections.deleteConfirmTitle": "Delete Connection",
+  "databaseSelector.selectDatabase": "Select database",
+  "databaseSelector.empty": "No database connections available"
 }
