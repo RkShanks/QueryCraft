@@ -12,6 +12,8 @@ import { deleteHistoryEntry, listUserConnections } from '../api/generated/sdk.ge
 import type { QueryResult, RefinePrompt, EvaluatorRejection, AttemptSummary, UserConnectionResponse } from '../api/generated/types.gen';
 import { useQuery } from '@tanstack/react-query';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
+import { ConnectionErrorCard } from '../components/chat/ConnectionErrorCard';
+import type { ConnectionErrorKind } from '../components/chat/ConnectionErrorCard';
 import './WorkspacePage.css';
 
 interface ConversationTurn {
@@ -26,6 +28,7 @@ interface ConversationTurn {
   attemptId?: string;
   connectionName?: string;
   databaseType?: string;
+  connectionError?: ConnectionErrorKind;
 }
 
 function buildHistoryTurn(a: AttemptSummary, connections: UserConnectionResponse[]): ConversationTurn {
@@ -69,6 +72,25 @@ function getConnectionMeta(
   const conn = connections.find((c) => c.id === connectionId);
   if (!conn) return {};
   return { name: conn.display_name, type: conn.database_type };
+}
+
+function mapApiErrorToConnectionErrorKind(err: Record<string, unknown>): ConnectionErrorKind | null {
+  const code = (err.error as string) || (err.detail as Record<string, unknown>)?.error as string;
+  if (!code) return null;
+  switch (code) {
+    case 'connection_disabled':
+      return 'disabled';
+    case 'connection_unhealthy':
+      return 'unhealthy';
+    case 'connection_no_schema':
+      return 'noSchema';
+    case 'no_database_available':
+      return 'noConnections';
+    case 'query_execution_failed':
+      return 'queryExecutionFailed';
+    default:
+      return null;
+  }
 }
 
 export const WorkspacePage: React.FC = () => {
@@ -286,7 +308,14 @@ export const WorkspacePage: React.FC = () => {
             )
           );
         } else {
-          setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, isLoading: false } : t)));
+          const connErr = mapApiErrorToConnectionErrorKind(apiErr);
+          if (connErr) {
+            setLocalTurns((prev) =>
+              prev.map((t) => (t.id === turnId ? { ...t, isLoading: false, connectionError: connErr } : t))
+            );
+          } else {
+            setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, isLoading: false } : t)));
+          }
         }
       }
     },
@@ -317,6 +346,8 @@ export const WorkspacePage: React.FC = () => {
                     <div className="workspace-spinner-small" />
                     <span>{t('query.status.processing')}</span>
                   </div>
+                ) : turn.connectionError ? (
+                  <ConnectionErrorCard kind={turn.connectionError} />
                 ) : turn.evaluatorRejection ? (
                   <div className="workspace-rejection-banner" data-testid="rejection-banner">
                     <p>{t('query.evaluator.rejected')}</p>

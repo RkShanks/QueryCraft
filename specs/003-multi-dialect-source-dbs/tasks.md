@@ -222,7 +222,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Error UX
 
-- [ ] T-466 Implement error UX for: disabled connection, unhealthy connection, no schema, no connections available, query execution failure — localized inline error cards in `frontend/src/components/chat/ConnectionErrorCard.tsx` (FR-077, FR-078, FR-079, SC-035)
+- [X] T-466 Implement error UX for: disabled connection, unhealthy connection, no schema, no connections available, query execution failure — localized inline error cards in `frontend/src/components/chat/ConnectionErrorCard.tsx` (FR-077, FR-078, FR-079, SC-035)
 
 ### i18n / RTL / a11y
 
