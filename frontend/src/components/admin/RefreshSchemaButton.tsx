@@ -99,7 +99,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
       </button>
 
       {isSuccessState && (
-        <div className="absolute top-full right-0 mt-1 z-50 flex flex-col gap-1 text-sm text-green-500 bg-bg-card border border-green-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px]">
+        <div className="absolute top-full end-0 mt-1 z-50 flex flex-col gap-1 text-sm text-green-500 bg-bg-card border border-green-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px]">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>
@@ -115,7 +115,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
       )}
 
       {isErrorState && errorMessage && (
-        <div className="absolute top-full right-0 mt-1 z-50 flex items-start gap-2 text-sm text-red-500 bg-bg-card border border-red-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px]">
+        <div className="absolute top-full end-0 mt-1 z-50 flex items-start gap-2 text-sm text-red-500 bg-bg-card border border-red-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px]">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>{errorMessage}</span>
         </div>
