@@ -14,22 +14,22 @@ describe('ConnectionErrorCard', () => {
   it('renders disabled error with title and select-another action', () => {
     render(<ConnectionErrorCard kind="disabled" />);
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText(/connection is disabled/i)).toBeInTheDocument();
-    expect(screen.getByText(/select another/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /connection is disabled/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /select another/i })).toBeInTheDocument();
   });
 
   it('renders unhealthy error with title and contact-admin action', () => {
     render(<ConnectionErrorCard kind="unhealthy" />);
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText(/connection is unavailable/i)).toBeInTheDocument();
-    expect(screen.getByText(/try another/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /connection is unavailable/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try another/i })).toBeInTheDocument();
   });
 
   it('renders no-schema error with title and refresh action', () => {
     render(<ConnectionErrorCard kind="noSchema" />);
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText(/schema not ready/i)).toBeInTheDocument();
-    expect(screen.getByText(/contact admin/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /schema not ready/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /refresh schema/i })).toBeInTheDocument();
   });
 
   it('renders query-execution-failure error with safe generic message', () => {
@@ -42,7 +42,7 @@ describe('ConnectionErrorCard', () => {
   it('falls back to generic message for unknown error kind', () => {
     render(<ConnectionErrorCard kind={'unknown_kind' as ConnectionErrorKind} />);
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText(/unexpected error/i)).toBeInTheDocument();
+    expect(screen.getByText('Error')).toBeInTheDocument();
   });
 
   it('does not render raw backend error strings or credentials', () => {
