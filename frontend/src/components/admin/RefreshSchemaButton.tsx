@@ -78,7 +78,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
   const lastRefreshed = refreshSchemaMutation.data?.refreshed_at || schemaLastRefreshedAt;
 
   return (
-    <div className="flex flex-col gap-2 text-start">
+    <div className="relative text-start">
       <button
         type="button"
         onClick={handleRefresh}
@@ -99,7 +99,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
       </button>
 
       {isSuccessState && (
-        <div className="flex flex-col gap-1 text-sm text-green-500 bg-green-500/10 border border-green-500/20 px-3 py-2 rounded-md transition-all select-none">
+        <div className="absolute top-full right-0 mt-1 z-50 flex flex-col gap-1 text-sm text-green-500 bg-bg-card border border-green-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px]">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>
@@ -115,14 +115,14 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
       )}
 
       {isErrorState && errorMessage && (
-        <div className="flex items-start gap-2 text-sm text-red-500 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-md transition-all select-none">
+        <div className="absolute top-full right-0 mt-1 z-50 flex items-start gap-2 text-sm text-red-500 bg-bg-card border border-red-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px]">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>{errorMessage}</span>
         </div>
       )}
 
       {lastRefreshed && (
-        <div className="text-xs text-text-muted select-none px-1">
+        <div className="text-xs text-text-muted select-none px-1 mt-1">
           {t('admin.connections.schema.refreshed', {
             time: formatRefreshedAt(lastRefreshed),
           })}

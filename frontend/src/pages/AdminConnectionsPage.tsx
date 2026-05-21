@@ -171,7 +171,7 @@ export const AdminConnectionsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-end">
-                    <div className="flex items-center justify-end gap-3 flex-wrap">
+                    <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => setEditingConnection(conn)}
                         className="inline-flex items-center justify-center px-3 py-1.5 border border-border bg-transparent text-text-primary hover:bg-bg-elevated rounded-md text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-neon-cyan/20 select-none"
