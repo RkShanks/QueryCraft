@@ -74,6 +74,11 @@ export const Sidebar: React.FC = () => {
     navigate('/');
   };
 
+  const handleSessionClick = (sessionId: string) => {
+    setActiveSessionId(sessionId);
+    navigate('/');
+  };
+
   const handleDeleteSession = (sessionId: string) => {
     if (activeSessionId === sessionId) {
       setActiveSessionId(null);
@@ -179,7 +184,7 @@ export const Sidebar: React.FC = () => {
                     key={session.id}
                     session={session}
                     isActive={session.id === activeSessionId}
-                    onClick={() => setActiveSessionId(session.id)}
+                    onClick={() => handleSessionClick(session.id)}
                     onDelete={() => handleDeleteSession(session.id)}
                   />
                 ))}
@@ -193,7 +198,7 @@ export const Sidebar: React.FC = () => {
                     key={session.id}
                     session={session}
                     isActive={session.id === activeSessionId}
-                    onClick={() => setActiveSessionId(session.id)}
+                    onClick={() => handleSessionClick(session.id)}
                     onDelete={() => handleDeleteSession(session.id)}
                   />
                 ))}
@@ -207,7 +212,7 @@ export const Sidebar: React.FC = () => {
                     key={session.id}
                     session={session}
                     isActive={session.id === activeSessionId}
-                    onClick={() => setActiveSessionId(session.id)}
+                    onClick={() => handleSessionClick(session.id)}
                     onDelete={() => handleDeleteSession(session.id)}
                   />
                 ))}
@@ -219,7 +224,7 @@ export const Sidebar: React.FC = () => {
                   key={session.id}
                   session={session}
                   isActive={session.id === activeSessionId}
-                  onClick={() => setActiveSessionId(session.id)}
+                  onClick={() => handleSessionClick(session.id)}
                   onDelete={() => handleDeleteSession(session.id)}
                   collapsed
                 />

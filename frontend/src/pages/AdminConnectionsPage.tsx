@@ -17,7 +17,7 @@ export const AdminConnectionsPage: React.FC = () => {
   if (listQuery.isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <RefreshCw className="animate-spin text-accent-cyan" data-testid="loading-spinner" />
+        <RefreshCw className="animate-spin text-neon-cyan" data-testid="loading-spinner" />
       </div>
     );
   }
@@ -79,13 +79,13 @@ export const AdminConnectionsPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-text-primary flex items-center gap-2">
-            <Database className="w-6 h-6 text-accent-cyan" />
+            <Database className="w-6 h-6 text-neon-cyan" />
             {t('admin.connections.title')}
           </h1>
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-accent-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors font-medium"
         >
           <Plus className="w-4 h-4" />
           {t('admin.connections.add')}
@@ -98,7 +98,7 @@ export const AdminConnectionsPage: React.FC = () => {
           <p className="text-text-secondary text-lg mb-4">{t('admin.connections.empty')}</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-bg-card shadow-sm">
+        <div className="overflow-visible rounded-lg border border-border bg-bg-card shadow-sm">
           <table className="w-full text-start text-sm text-text-secondary">
             <thead className="text-xs text-text-primary uppercase bg-bg-elevated border-b border-border">
               <tr>

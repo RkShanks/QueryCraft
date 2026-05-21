@@ -161,7 +161,7 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
       </div>
 
       {displayConfirm && (
-        <div className="absolute top-full end-0 mt-1 z-50 flex flex-col gap-2 p-3 bg-bg-card border border-border rounded-md shadow-lg select-none min-w-[240px]">
+        <div className="absolute top-full end-0 mt-1 z-50 flex flex-col gap-2 p-3 bg-bg-card border border-border rounded-md shadow-lg select-none min-w-[240px] animate-fade-in">
           <p className="text-xs text-text-secondary">
             {t('admin.connections.deleteConfirm')}
           </p>
@@ -198,7 +198,7 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
       )}
 
       {errorMessage && (
-        <div className="absolute top-full end-0 mt-1 z-50 flex items-start gap-2 text-xs text-red-500 bg-bg-card border border-red-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px]">
+        <div className="absolute top-full end-0 mt-1 z-50 flex items-start gap-2 text-xs text-red-500 bg-bg-card border border-red-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px] animate-fade-in">
           <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
           <span>{errorMessage}</span>
         </div>

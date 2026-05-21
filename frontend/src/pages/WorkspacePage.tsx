@@ -156,7 +156,7 @@ export const WorkspacePage: React.FC = () => {
   );
 
   const allTurns: ConversationTurn[] = [
-    ...historyAttempts.map((a) => buildHistoryTurn(a, availableConnections)),
+    ...[...historyAttempts].reverse().map((a) => buildHistoryTurn(a, availableConnections)),
     ...dedupedLocalTurns,
   ];
 
@@ -183,11 +183,14 @@ export const WorkspacePage: React.FC = () => {
       try {
         await deleteHistoryEntry({ path: { query_id: savedQueryId } });
         queryClient.invalidateQueries({ queryKey: ['history'] });
+        if (activeSessionId) {
+          queryClient.invalidateQueries({ queryKey: ['sessions', activeSessionId] });
+        }
       } catch {
         // Silently ignore — turn is already removed from UI
       }
     },
-    [queryClient]
+    [queryClient, activeSessionId]
   );
 
   const handleRegenerate = useCallback(
@@ -208,6 +211,9 @@ export const WorkspacePage: React.FC = () => {
               refinePrompt: undefined,
               evaluatorRejection: undefined,
             });
+            if (activeSessionId) {
+              queryClient.invalidateQueries({ queryKey: ['sessions', activeSessionId] });
+            }
           } else if (data.kind === 'refine') {
             updateTurn(attemptId, {
               isLoading: false,
@@ -222,7 +228,7 @@ export const WorkspacePage: React.FC = () => {
         updateTurn(attemptId, { isLoading: false });
       }
     },
-    [querySubmit, updateTurn]
+    [querySubmit, updateTurn, queryClient, activeSessionId]
   );
 
   const handleSubmit = useCallback(
@@ -268,6 +274,9 @@ export const WorkspacePage: React.FC = () => {
       try {
         const data = (await querySubmit.submitQuestion(question, activeSessionId, selectedConnectionId)) as unknown;
         const record = data as Record<string, unknown>;
+        if (activeSessionId) {
+          queryClient.invalidateQueries({ queryKey: ['sessions', activeSessionId] });
+        }
         if (record && typeof record === 'object' && 'kind' in record && record.kind === 'result') {
           const result = data as QueryResult;
           setLocalTurns((prev) =>
@@ -319,7 +328,7 @@ export const WorkspacePage: React.FC = () => {
         }
       }
     },
-    [activeSessionId, querySubmit, selectedConnectionId, availableConnections]
+    [activeSessionId, querySubmit, selectedConnectionId, availableConnections, queryClient]
   );
 
   return (

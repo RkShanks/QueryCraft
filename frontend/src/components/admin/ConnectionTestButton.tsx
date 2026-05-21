@@ -83,7 +83,7 @@ export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
       </button>
 
       {isHealthyResult && testMutation.data && (
-        <div className="absolute top-full end-0 mt-1 z-50 flex items-center gap-2 text-sm text-green-500 bg-bg-card border border-green-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px]">
+        <div className="absolute top-full end-0 mt-1 z-50 flex items-center gap-2 text-sm text-green-500 bg-bg-card border border-green-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px] animate-fade-in">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>
             {t('admin.connections.testSuccess', {
@@ -94,7 +94,7 @@ export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
       )}
 
       {isErrorState && errorMessage && (
-        <div className="absolute top-full end-0 mt-1 z-50 flex items-start gap-2 text-sm text-red-500 bg-bg-card border border-red-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px]">
+        <div className="absolute top-full end-0 mt-1 z-50 flex items-start gap-2 text-sm text-red-500 bg-bg-card border border-red-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px] animate-fade-in">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>{errorMessage}</span>
         </div>
