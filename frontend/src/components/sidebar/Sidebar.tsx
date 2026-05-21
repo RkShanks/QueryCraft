@@ -71,6 +71,7 @@ export const Sidebar: React.FC = () => {
 
   const handleNewChat = () => {
     setActiveSessionId(null);
+    navigate('/');
   };
 
   const handleDeleteSession = (sessionId: string) => {
