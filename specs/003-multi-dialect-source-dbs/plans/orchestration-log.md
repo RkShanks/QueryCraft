@@ -115,3 +115,10 @@
 - **PR**: #90 open, clean, CI pass
 - **Completed Tasks**: T-464, T-465
 - **Notes**: Implemented mid-session DB switch metadata in `WorkspacePage`; turns store connection display name + database type at submit time, so prior turns keep original metadata after selector switch and new turns use current selection. Updated history list/detail to show user-facing connection display name + localized database type badge, not raw UUIDs. Backend history/session contracts now expose safe `database_connection_name` + `database_type` alongside internal `database_connection_id`; no host/port/username/credential/schema leakage. Added backend API/service tests and frontend history/workspace tests. Full frontend gates pass. Backend `pytest -q -m "not integration"` passes: 594 passed, 120 skipped, 69 deselected, one pre-existing `AsyncMock` warning. Chrome smoke: Arabic sign-in renders; live authenticated history/workspace smoke blocked by local `/api/v1/auth/me` 502, covered by component/API tests. No blockers remaining; merge PR #90.
+
+## Wave 14.7: Connection Error UX Review
+- **Status**: REVIEWED
+- **Branch**: `phase-3/wave-14.7-connection-error-ux`
+- **PR**: #91 open, CI pass, mergeState CLEAN
+- **Completed Tasks**: T-466
+- **Notes**: Code and tests look sound for inline localized error cards and safe fallback behavior. One review blocker remains in PR metadata: the PR body's TDD evidence lists the wrong RED commit for T-466 (`2cdcb28` from prior wave) instead of the actual RED commit (`d01307b`), so the required commit-triple evidence is inaccurate and should be corrected before merge.
