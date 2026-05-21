@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, require_active_user
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
+from app.repositories.connection_repository import ConnectionRepository
 from app.schemas.history import HistoryListResponse
 from app.services.history_service import HistoryService
 
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/history", tags=["History"])
 
 
 def _get_history_service(db: AsyncSession = Depends(get_db)) -> HistoryService:  # noqa: B008
-    return HistoryService(AcceptedQueryRepository(db))
+    return HistoryService(AcceptedQueryRepository(db), ConnectionRepository(db))
 
 
 @router.get("", response_model=HistoryListResponse)

@@ -125,6 +125,9 @@ export type AcceptedQuerySummary = {
      */
     generated_sql: string;
     accepted_at: string;
+    database_connection_id?: string | null;
+    database_connection_name?: string | null;
+    database_type?: DatabaseType | null;
 };
 
 export type RefinePrompt = {
@@ -166,7 +169,9 @@ export type AcceptedQueryDetail = {
     generated_sql: string;
     llm_provider: string;
     accepted_at: string;
-    database_connection_id: string;
+    database_connection_id?: string | null;
+    database_connection_name?: string | null;
+    database_type?: DatabaseType | null;
     result_columns?: Array<{ name: string; type: string }> | null;
     result_rows?: Array<Array<unknown>> | null;
     result_row_count?: number | null;
@@ -553,6 +558,9 @@ export type AttemptSummary = {
     result_columns?: Array<{ name: string; type: string }> | null;
     result_rows?: Array<Array<unknown>> | null;
     result_row_count?: number | null;
+    database_connection_id?: string | null;
+    database_connection_name?: string | null;
+    database_type?: DatabaseType | null;
 };
 
 export type SessionSummary = {
@@ -1010,4 +1018,3 @@ export type UpdateSessionConnectionErrors = {
 export type UpdateSessionConnectionResponses = {
     200: SessionDetail;
 };
-

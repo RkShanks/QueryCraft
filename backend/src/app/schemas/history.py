@@ -24,7 +24,9 @@ class AcceptedQueryDetail(BaseModel):
     generated_sql: str
     llm_provider: str
     accepted_at: str
-    database_connection_id: str
+    database_connection_id: str | None = None
+    database_connection_name: str | None = None
+    database_type: str | None = None
     result_columns: list | None = None
     result_rows: list | None = None
     result_row_count: int | None = None

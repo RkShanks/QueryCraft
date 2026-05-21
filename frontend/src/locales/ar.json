@@ -106,6 +106,7 @@
   "history.detail.databaseConnection": "اتصال قاعدة البيانات",
   "history.column.question": "السؤال",
   "history.column.sql": "SQL",
+  "history.column.connection": "الاتصال",
   "history.column.acceptedAt": "تم القبول",
   "history.loadMore": "تحميل المزيد",
   "history.loadingMore": "جارٍ تحميل المزيد...",

@@ -24,6 +24,12 @@ export const HistoryList: React.FC<HistoryListProps> = ({
   const { t } = useTranslation();
   const [rawFilter, setRawFilter] = useState('');
   const filter = useDebounce(rawFilter, FILTER_DEBOUNCE_MS);
+  const getDatabaseTypeLabel = (databaseType?: string | null) => {
+    if (!databaseType) return null;
+    const key = `query.result.databaseType.${databaseType}`;
+    const translated = t(key);
+    return translated === key ? databaseType : translated;
+  };
 
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -82,6 +88,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 {t('history.column.sql')}
               </th>
               <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {t('history.column.connection')}
+              </th>
+              <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {t('history.detail.acceptedAt')}
               </th>
             </tr>
@@ -107,6 +116,18 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-600 font-mono">
                   <code className="text-xs bg-gray-100 px-2 py-1 rounded">{item.generated_sql}</code>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {item.database_connection_name && item.database_type ? (
+                    <span className="history-list-connection-badge inline-flex items-center gap-2" data-testid="history-list-connection">
+                      <span>{item.database_connection_name}</span>
+                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                        {getDatabaseTypeLabel(item.database_type)}
+                      </span>
+                    </span>
+                  ) : (
+                    '-'
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '-'}

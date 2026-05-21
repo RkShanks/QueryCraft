@@ -15,6 +15,9 @@ class AttemptSummary(BaseModel):
     result_columns: list | None = None
     result_rows: list | None = None
     result_row_count: int | None = None
+    database_connection_id: str | None = None
+    database_connection_name: str | None = None
+    database_type: str | None = None
 
 
 class SessionSummary(BaseModel):

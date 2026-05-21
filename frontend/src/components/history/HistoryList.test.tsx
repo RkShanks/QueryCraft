@@ -13,6 +13,27 @@ const sample = [
   { id: '2', question_text: 'Top revenue', generated_sql: 'SELECT ... FROM payment', accepted_at: '2026-05-10T10:00:00Z' },
 ];
 
+const sampleWithConnection = [
+  {
+    id: '1',
+    question_text: 'Total customers?',
+    generated_sql: 'SELECT COUNT(*) FROM customer',
+    accepted_at: '2026-05-11T10:00:00Z',
+    database_connection_id: 'conn-pg-001',
+    database_connection_name: 'Production PG',
+    database_type: 'postgresql' as const,
+  },
+  {
+    id: '2',
+    question_text: 'Top revenue',
+    generated_sql: 'SELECT ... FROM payment',
+    accepted_at: '2026-05-10T10:00:00Z',
+    database_connection_id: 'conn-mysql-002',
+    database_connection_name: 'Warehouse MySQL',
+    database_type: 'mysql' as const,
+  },
+];
+
 describe('HistoryList', () => {
   it('renders items in reverse-chronological order (SC-006)', () => {
     setup(sample);
@@ -112,5 +133,23 @@ describe('HistoryList', () => {
     expect(screen.getByText('Top revenue')).toBeInTheDocument();
 
     vi.useRealTimers();
+  });
+
+  it('renders display name and database type badge when metadata is present (T-465)', () => {
+    setup(sampleWithConnection);
+    const rows = screen.getAllByTestId('history-row');
+    expect(rows[0]).toHaveTextContent('Production PG');
+    expect(rows[0]).toHaveTextContent('PostgreSQL');
+    expect(rows[0]).not.toHaveTextContent('conn-pg-001');
+    expect(rows[1]).toHaveTextContent('Warehouse MySQL');
+    expect(rows[1]).toHaveTextContent('MySQL');
+    expect(rows[1]).not.toHaveTextContent('conn-mysql-002');
+  });
+
+  it('does not render connection metadata badge when metadata is absent (T-465)', () => {
+    setup(sample);
+    const rows = screen.getAllByTestId('history-row');
+    expect(rows[0]).toHaveTextContent('-');
+    expect(rows[1]).toHaveTextContent('-');
   });
 });

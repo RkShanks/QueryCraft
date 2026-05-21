@@ -108,3 +108,10 @@
 - **PR**: #84 open
 - **Completed Tasks**: T-456, T-457
 - **Notes**: Added reusable `DatabaseSelector` dropdown in `frontend/src/components/chat/DatabaseSelector.tsx` with co-located tests. Accepts `UserConnection[]`, shows display name + database type badge, auto-selects single connection, localized empty state, accessible listbox behavior, closes on outside click. Uses `lucide-react` icons only, logical Tailwind directions in CSS (`inset-inline-start`, `margin-inline-start`), EN/AR i18n keys. Not yet wired into `WorkspacePage` — stays reusable for T-458/T-460 integration. All 6 frontend gates pass. Chrome MCP smoke on built app confirmed workspace renders cleanly.
+
+## Wave 14.6: Switch and History Metadata
+- **Status**: MERGE READY
+- **Branch**: `phase-3/wave-14.6-switch-history-metadata`
+- **PR**: #90 open, clean, CI pass
+- **Completed Tasks**: T-464, T-465
+- **Notes**: Implemented mid-session DB switch metadata in `WorkspacePage`; turns store connection display name + database type at submit time, so prior turns keep original metadata after selector switch and new turns use current selection. Updated history list/detail to show user-facing connection display name + localized database type badge, not raw UUIDs. Backend history/session contracts now expose safe `database_connection_name` + `database_type` alongside internal `database_connection_id`; no host/port/username/credential/schema leakage. Added backend API/service tests and frontend history/workspace tests. Full frontend gates pass. Backend `pytest -q -m "not integration"` passes: 594 passed, 120 skipped, 69 deselected, one pre-existing `AsyncMock` warning. Chrome smoke: Arabic sign-in renders; live authenticated history/workspace smoke blocked by local `/api/v1/auth/me` 502, covered by component/API tests. No blockers remaining; merge PR #90.
