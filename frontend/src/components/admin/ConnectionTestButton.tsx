@@ -51,7 +51,7 @@ export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [testMutation.isSuccess, testMutation.isError, testMutation.reset]);
+  }, [testMutation]);
 
   const isUnhealthyResult = testMutation.isSuccess && testMutation.data?.status === 'unhealthy';
   const isHealthyResult = testMutation.isSuccess && testMutation.data?.status === 'healthy';

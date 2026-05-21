@@ -70,7 +70,7 @@ const SettingsForm: React.FC<{
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [updateMutation.isSuccess, updateMutation.isError, updateMutation.reset]);
+  }, [updateMutation]);
 
   const showSuccess = updateMutation.isSuccess;
 

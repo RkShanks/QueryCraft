@@ -47,7 +47,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [refreshSchemaMutation.isSuccess, refreshSchemaMutation.isError, refreshSchemaMutation.reset]);
+  }, [refreshSchemaMutation]);
 
   const formatRefreshedAt = (isoString: string) => {
     try {

@@ -34,12 +34,9 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
       return () => clearTimeout(timer);
     }
   }, [
-    disableMutation.isError,
-    enableMutation.isError,
-    deleteMutation.isError,
-    disableMutation.reset,
-    enableMutation.reset,
-    deleteMutation.reset,
+    disableMutation,
+    enableMutation,
+    deleteMutation,
   ]);
 
   const isPending = disableMutation.isPending || enableMutation.isPending || deleteMutation.isPending;
