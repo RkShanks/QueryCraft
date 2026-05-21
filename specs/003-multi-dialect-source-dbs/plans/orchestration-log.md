@@ -122,3 +122,10 @@
 - **PR**: #91 open, CI pass, mergeState CLEAN
 - **Completed Tasks**: T-466
 - **Notes**: Code and tests look sound for inline localized error cards and safe fallback behavior. One review blocker remains in PR metadata: the PR body's TDD evidence lists the wrong RED commit for T-466 (`2cdcb28` from prior wave) instead of the actual RED commit (`d01307b`), so the required commit-triple evidence is inaccurate and should be corrected before merge.
+
+## Wave 14.8: i18n / RTL / a11y Review
+- **Status**: REVIEWED - METADATA BLOCKED
+- **Branch**: `phase-3/wave-14.8-i18n-rtl-a11y`
+- **PR**: #92 open, CI pass, mergeState CLEAN
+- **Completed Tasks**: T-467
+- **Notes**: Code scope is tight: added missing `query.error.noDatabaseSelected` keys in EN/AR, added `role="alert"` + `aria-live="polite"` to `PromptInput` warning, added locale parity/a11y tests, and marked T-467 complete. Review blocker: PR body is empty, so required Summary/T-ID/FR-SC/TDD/gates/Chrome/quirks/BLOCKED evidence is absent. Populate PR body before merge.
