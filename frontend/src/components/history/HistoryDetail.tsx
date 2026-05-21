@@ -10,6 +10,12 @@ export interface HistoryDetailProps {
 
 export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, error }) => {
   const { t } = useTranslation();
+  const getDatabaseTypeLabel = (databaseType?: string | null) => {
+    if (!databaseType) return null;
+    const key = `query.result.databaseType.${databaseType}`;
+    const translated = t(key);
+    return translated === key ? databaseType : translated;
+  };
 
   if (error) {
     return (
@@ -51,10 +57,13 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
 
   return (
     <article className="history-detail p-6 space-y-4" data-testid="history-detail">
-      {item.database_connection_id && (
+      {item.database_connection_name && item.database_type && (
         <div className="history-detail-meta" data-testid="history-detail-meta">
-          <span className="history-detail-meta-badge">
-            {item.database_connection_id}
+          <span className="history-detail-meta-badge inline-flex items-center gap-2">
+            <span>{item.database_connection_name}</span>
+            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+              {getDatabaseTypeLabel(item.database_type)}
+            </span>
           </span>
         </div>
       )}

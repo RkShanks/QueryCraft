@@ -78,6 +78,7 @@ async def get_session(
     session_id: uuid.UUID,
     session_repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
     query_repo: AcceptedQueryRepository = Depends(_get_accepted_query_repo),  # noqa: B008
+    connection_repo: ConnectionRepository = Depends(_get_connection_repo),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
 ):
     """GET /sessions/:id — get session detail with conversation history."""
@@ -89,6 +90,14 @@ async def get_session(
             detail={"error": "not_found", "message_key": "error.notFound"},
         )
     attempts = await query_repo.list_by_session(session_id, user_uuid)
+    connection_meta: dict[uuid.UUID, tuple[str, str]] = {}
+    for attempt in attempts:
+        if not attempt.database_connection_id or attempt.database_connection_id in connection_meta:
+            continue
+        conn = await connection_repo.get_by_id(attempt.database_connection_id)
+        if conn is not None:
+            database_type = getattr(conn.database_type, "value", conn.database_type)
+            connection_meta[attempt.database_connection_id] = (conn.display_name, database_type)
     return SessionDetail(
         id=str(sess.id),
         connection_id=str(sess.connection_id) if sess.connection_id else None,
@@ -107,6 +116,8 @@ async def get_session(
                 "result_rows": a.result_rows,
                 "result_row_count": a.result_row_count,
                 "database_connection_id": str(a.database_connection_id) if a.database_connection_id else None,
+                "database_connection_name": connection_meta.get(a.database_connection_id, (None, None))[0],
+                "database_type": connection_meta.get(a.database_connection_id, (None, None))[1],
             }
             for a in attempts
         ],

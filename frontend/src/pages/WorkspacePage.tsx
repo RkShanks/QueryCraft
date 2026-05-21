@@ -35,8 +35,10 @@ function buildHistoryTurn(a: AttemptSummary, connections: UserConnectionResponse
     sql: a.generated_sql,
     savedQueryId: a.id,
   };
-  // Look up connection metadata from available connections using database_connection_id
-  if (a.database_connection_id) {
+  if (a.database_connection_name && a.database_type) {
+    turn.connectionName = a.database_connection_name;
+    turn.databaseType = a.database_type;
+  } else if (a.database_connection_id) {
     const meta = getConnectionMeta(a.database_connection_id, connections);
     turn.connectionName = meta.name;
     turn.databaseType = meta.type;
