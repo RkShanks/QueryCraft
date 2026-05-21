@@ -10,7 +10,7 @@ const sample = {
   llm_provider: "openai",
   database_connection_id: "conn-1",
   database_connection_name: "Production PG",
-  database_type: "postgresql",
+  database_type: "postgresql" as const,
 };
 
 const sampleWithResult = {

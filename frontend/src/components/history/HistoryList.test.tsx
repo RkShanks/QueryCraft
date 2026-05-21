@@ -21,7 +21,7 @@ const sampleWithConnection = [
     accepted_at: '2026-05-11T10:00:00Z',
     database_connection_id: 'conn-pg-001',
     database_connection_name: 'Production PG',
-    database_type: 'postgresql',
+    database_type: 'postgresql' as const,
   },
   {
     id: '2',
@@ -30,7 +30,7 @@ const sampleWithConnection = [
     accepted_at: '2026-05-10T10:00:00Z',
     database_connection_id: 'conn-mysql-002',
     database_connection_name: 'Warehouse MySQL',
-    database_type: 'mysql',
+    database_type: 'mysql' as const,
   },
 ];
 
