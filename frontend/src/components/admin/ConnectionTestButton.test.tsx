@@ -307,4 +307,28 @@ describe('ConnectionTestButton', () => {
     expect(container.innerHTML).not.toContain('raw_driver_secret_password_crash');
     expect(container.innerHTML).not.toContain('error.raw_driver_secret_password_crash');
   });
+
+  it('calls reset after 5 seconds on success or error', () => {
+    vi.useFakeTimers();
+    vi.mocked(useConnections).mockReturnValue({
+      testMutation: {
+        ...defaultMutationState,
+        isSuccess: true,
+        data: {
+          status: 'healthy',
+          latency_ms: 45,
+          tested_at: '2026-05-19T20:00:00Z',
+        },
+      },
+    } as unknown as ReturnType<typeof useConnections>);
+
+    render(<ConnectionTestButton connectionId="test-id-123" />);
+
+    expect(mockReset).not.toHaveBeenCalled();
+    
+    vi.advanceTimersByTime(5000);
+    
+    expect(mockReset).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
 });
