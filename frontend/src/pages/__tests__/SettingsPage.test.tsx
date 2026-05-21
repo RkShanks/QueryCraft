@@ -129,4 +129,18 @@ describe('SettingsPage', () => {
     renderWithClient(<SettingsPage />);
     expect(screen.getByTestId('settings-error-msg')).toBeInTheDocument();
   });
+
+  it('calls reset after 5 seconds on success or error', () => {
+    vi.useFakeTimers();
+    const reset = vi.fn();
+    mockMutation({ isSuccess: true, reset });
+    renderWithClient(<SettingsPage />);
+
+    expect(reset).not.toHaveBeenCalled();
+    
+    vi.advanceTimersByTime(5000);
+    
+    expect(reset).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
 });

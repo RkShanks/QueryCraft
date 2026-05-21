@@ -236,4 +236,29 @@ describe('RefreshSchemaButton', () => {
     expect(container.innerHTML).not.toContain('driver_postgres_secret_raw_password_failed');
     expect(container.innerHTML).not.toContain('error.driver_postgres_secret_raw_password_failed');
   });
+
+  it('calls reset after 5 seconds on success or error', () => {
+    vi.useFakeTimers();
+    vi.mocked(useConnections).mockReturnValue({
+      refreshSchemaMutation: {
+        ...defaultMutationState,
+        isSuccess: true,
+        data: {
+          tables_count: 14,
+          columns_count: 52,
+          approximate_tokens: 350,
+          refreshed_at: '2026-05-19T20:30:00Z',
+        },
+      },
+    } as unknown as ReturnType<typeof useConnections>);
+
+    render(<RefreshSchemaButton connectionId="conn-123" />);
+
+    expect(mockReset).not.toHaveBeenCalled();
+    
+    vi.advanceTimersByTime(5000);
+    
+    expect(mockReset).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
 });
