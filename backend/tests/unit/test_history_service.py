@@ -24,8 +24,14 @@ class TestHistoryService:
         return repo
 
     @pytest.fixture
-    def service(self, mock_repo):
-        return HistoryService(mock_repo)
+    def mock_connection_repo(self):
+        repo = MagicMock()
+        repo.get_by_id = AsyncMock(return_value=None)
+        return repo
+
+    @pytest.fixture
+    def service(self, mock_repo, mock_connection_repo):
+        return HistoryService(mock_repo, mock_connection_repo)
 
     @pytest.mark.asyncio
     async def test_list_history_returns_items(self, service, mock_repo):
@@ -38,6 +44,7 @@ class TestHistoryService:
                     question_text="Q1",
                     generated_sql="S1",
                     accepted_at=mock_at,
+                    database_connection_id=None,
                 ),
             ],
             None,
@@ -47,6 +54,57 @@ class TestHistoryService:
         assert resp.items[0].id == "550e8400-e29b-41d4-a716-446655440000"
         assert resp.next_cursor is None
         assert resp.total == 0
+
+    @pytest.mark.asyncio
+    async def test_list_history_includes_connection_metadata(self, service, mock_repo, mock_connection_repo):
+        mock_at = MagicMock()
+        mock_at.isoformat.return_value = "2026-05-04T12:00:00Z"
+        mock_repo.list_by_user.return_value = (
+            [
+                MagicMock(
+                    id="550e8400-e29b-41d4-a716-446655440000",
+                    question_text="Q1",
+                    generated_sql="S1",
+                    accepted_at=mock_at,
+                    database_connection_id="550e8400-e29b-41d4-a716-446655440010",
+                ),
+            ],
+            None,
+        )
+        mock_connection_repo.get_by_id.return_value = MagicMock(
+            id="550e8400-e29b-41d4-a716-446655440010",
+            display_name="Production PG",
+            database_type="postgresql",
+        )
+
+        resp = await service.list_history("550e8400-e29b-41d4-a716-446655440001", cursor=None, limit=10)
+
+        assert resp.items[0].database_connection_id == "550e8400-e29b-41d4-a716-446655440010"
+        assert resp.items[0].database_connection_name == "Production PG"
+        assert resp.items[0].database_type == "postgresql"
+
+    @pytest.mark.asyncio
+    async def test_list_history_omits_connection_metadata_when_missing(self, service, mock_repo, mock_connection_repo):
+        mock_at = MagicMock()
+        mock_at.isoformat.return_value = "2026-05-04T12:00:00Z"
+        mock_repo.list_by_user.return_value = (
+            [
+                MagicMock(
+                    id="550e8400-e29b-41d4-a716-446655440000",
+                    question_text="Q1",
+                    generated_sql="S1",
+                    accepted_at=mock_at,
+                    database_connection_id=None,
+                ),
+            ],
+            None,
+        )
+
+        resp = await service.list_history("550e8400-e29b-41d4-a716-446655440001", cursor=None, limit=10)
+
+        assert resp.items[0].database_connection_id is None
+        assert resp.items[0].database_connection_name is None
+        assert resp.items[0].database_type is None
 
     @pytest.mark.asyncio
     async def test_get_detail_returns_entry(self, service, mock_repo):
@@ -65,6 +123,55 @@ class TestHistoryService:
             "550e8400-e29b-41d4-a716-446655440001",
         )
         assert detail.id == "550e8400-e29b-41d4-a716-446655440000"
+
+    @pytest.mark.asyncio
+    async def test_get_detail_includes_connection_metadata(self, service, mock_repo, mock_connection_repo):
+        mock_at = MagicMock()
+        mock_at.isoformat.return_value = "2026-05-04T12:00:00Z"
+        mock_repo.get_by_id.return_value = MagicMock(
+            id="550e8400-e29b-41d4-a716-446655440000",
+            question_text="Q1",
+            generated_sql="S1",
+            llm_provider="ollama",
+            accepted_at=mock_at,
+            database_connection_id="550e8400-e29b-41d4-a716-446655440001",
+        )
+        mock_connection_repo.get_by_id.return_value = MagicMock(
+            id="550e8400-e29b-41d4-a716-446655440001",
+            display_name="Production PG",
+            database_type="postgresql",
+        )
+
+        detail = await service.get_detail(
+            "550e8400-e29b-41d4-a716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440001",
+        )
+
+        assert detail.database_connection_id == "550e8400-e29b-41d4-a716-446655440001"
+        assert detail.database_connection_name == "Production PG"
+        assert detail.database_type == "postgresql"
+
+    @pytest.mark.asyncio
+    async def test_get_detail_omits_connection_metadata_when_missing(self, service, mock_repo, mock_connection_repo):
+        mock_at = MagicMock()
+        mock_at.isoformat.return_value = "2026-05-04T12:00:00Z"
+        mock_repo.get_by_id.return_value = MagicMock(
+            id="550e8400-e29b-41d4-a716-446655440000",
+            question_text="Q1",
+            generated_sql="S1",
+            llm_provider="ollama",
+            accepted_at=mock_at,
+            database_connection_id=None,
+        )
+
+        detail = await service.get_detail(
+            "550e8400-e29b-41d4-a716-446655440000",
+            "550e8400-e29b-41d4-a716-446655440001",
+        )
+
+        assert detail.database_connection_id is None
+        assert detail.database_connection_name is None
+        assert detail.database_type is None
 
     @pytest.mark.asyncio
     async def test_get_detail_not_found_raises_404(self, service, mock_repo):

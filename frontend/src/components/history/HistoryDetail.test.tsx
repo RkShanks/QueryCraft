@@ -9,6 +9,8 @@ const sample = {
   accepted_at: "2026-05-11T10:00:00Z",
   llm_provider: "openai",
   database_connection_id: "conn-1",
+  database_connection_name: "Production PG",
+  database_type: "postgresql",
 };
 
 const sampleWithResult = {
@@ -25,12 +27,14 @@ function setup(item: Partial<typeof sample> | null, opts: { isLoading?: boolean;
 }
 
 describe("HistoryDetail (FR-023, SC-009, T-465)", () => {
-  it("renders question, sql, llm_provider, database_connection_id, accepted_at when item is provided", () => {
+  it("renders question, sql, llm_provider, connection display name, database type, accepted_at when item is provided", () => {
     setup(sample);
     expect(screen.getByText(/total customers/i)).toBeInTheDocument();
     expect(screen.getByText(/SELECT COUNT/)).toBeInTheDocument();
     expect(screen.getByText("openai")).toBeInTheDocument();
-    expect(screen.getByText("conn-1")).toBeInTheDocument();
+    expect(screen.getByText("Production PG")).toBeInTheDocument();
+    expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
+    expect(screen.queryByText("conn-1")).not.toBeInTheDocument();
     // accepted_at is rendered in a human-readable format; just check the date portion appears
     expect(screen.getByText(/2026/)).toBeInTheDocument();
   });
@@ -69,14 +73,20 @@ describe("HistoryDetail (FR-023, SC-009, T-465)", () => {
     expect(codeEl?.textContent).toContain("SELECT COUNT(*)");
   });
 
-  it("renders connection metadata badge when database_connection_id is present (T-465)", () => {
+  it("renders connection metadata badge when user-facing metadata is present (T-465)", () => {
     setup(sample);
     expect(screen.getByTestId("history-detail-meta")).toBeInTheDocument();
-    expect(screen.getByTestId("history-detail-meta")).toHaveTextContent("conn-1");
+    expect(screen.getByTestId("history-detail-meta")).toHaveTextContent("Production PG");
+    expect(screen.getByTestId("history-detail-meta")).toHaveTextContent("PostgreSQL");
   });
 
-  it("does not render connection metadata badge when database_connection_id is absent (T-465)", () => {
-    const withoutConn = { ...sample, database_connection_id: undefined };
+  it("does not render connection metadata badge when metadata is absent (T-465)", () => {
+    const withoutConn = {
+      ...sample,
+      database_connection_id: undefined,
+      database_connection_name: undefined,
+      database_type: undefined,
+    };
     setup(withoutConn);
     expect(screen.queryByTestId("history-detail-meta")).not.toBeInTheDocument();
   });

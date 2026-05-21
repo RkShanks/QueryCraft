@@ -14,8 +14,24 @@ const sample = [
 ];
 
 const sampleWithConnection = [
-  { id: '1', question_text: 'Total customers?', generated_sql: 'SELECT COUNT(*) FROM customer', accepted_at: '2026-05-11T10:00:00Z', database_connection_id: 'conn-pg-001' },
-  { id: '2', question_text: 'Top revenue', generated_sql: 'SELECT ... FROM payment', accepted_at: '2026-05-10T10:00:00Z', database_connection_id: 'conn-mysql-002' },
+  {
+    id: '1',
+    question_text: 'Total customers?',
+    generated_sql: 'SELECT COUNT(*) FROM customer',
+    accepted_at: '2026-05-11T10:00:00Z',
+    database_connection_id: 'conn-pg-001',
+    database_connection_name: 'Production PG',
+    database_type: 'postgresql',
+  },
+  {
+    id: '2',
+    question_text: 'Top revenue',
+    generated_sql: 'SELECT ... FROM payment',
+    accepted_at: '2026-05-10T10:00:00Z',
+    database_connection_id: 'conn-mysql-002',
+    database_connection_name: 'Warehouse MySQL',
+    database_type: 'mysql',
+  },
 ];
 
 describe('HistoryList', () => {
@@ -119,17 +135,21 @@ describe('HistoryList', () => {
     vi.useRealTimers();
   });
 
-  it('renders connection metadata badge when database_connection_id is present (T-465)', () => {
+  it('renders display name and database type badge when metadata is present (T-465)', () => {
     setup(sampleWithConnection);
     const rows = screen.getAllByTestId('history-row');
-    expect(rows[0]).toHaveTextContent('conn-pg-001');
-    expect(rows[1]).toHaveTextContent('conn-mysql-002');
+    expect(rows[0]).toHaveTextContent('Production PG');
+    expect(rows[0]).toHaveTextContent('PostgreSQL');
+    expect(rows[0]).not.toHaveTextContent('conn-pg-001');
+    expect(rows[1]).toHaveTextContent('Warehouse MySQL');
+    expect(rows[1]).toHaveTextContent('MySQL');
+    expect(rows[1]).not.toHaveTextContent('conn-mysql-002');
   });
 
-  it('does not render connection metadata badge when database_connection_id is absent (T-465)', () => {
+  it('does not render connection metadata badge when metadata is absent (T-465)', () => {
     setup(sample);
     const rows = screen.getAllByTestId('history-row');
-    expect(rows[0]).not.toHaveTextContent('conn-');
-    expect(rows[1]).not.toHaveTextContent('conn-');
+    expect(rows[0]).toHaveTextContent('-');
+    expect(rows[1]).toHaveTextContent('-');
   });
 });
