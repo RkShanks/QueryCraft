@@ -234,7 +234,7 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Frontend Gates
 
-- [ ] T-469 Run frontend foundation gates and paste verbatim output:
+- [X] T-469 Run frontend foundation gates and paste verbatim output:
   - `cd frontend && npm run test -- --run`
   - `cd frontend && NODE_OPTIONS=--trace-warnings npm run test -- --run`
   - `cd frontend && npm run lint`
