@@ -195,6 +195,8 @@
   "error.queryExecutionFailed.title": "Query failed",
   "error.queryExecutionFailed.body": "The query could not be executed. Try rephrasing your question or selecting a different connection.",
   "error.queryExecutionFailed.action": "Try Again",
+  "query.error.noDatabaseSelected": "No database selected",
+  "query.error.noDatabaseSelectedMessage": "Please select a database connection before submitting a query.",
   "admin.connections.test": "Test Connection",
   "admin.connections.testing": "Testing...",
   "admin.connections.testSuccess": "Connection successful ({{latency}}ms)",

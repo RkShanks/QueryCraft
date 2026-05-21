@@ -101,6 +101,8 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         <div
           className="prompt-input-warning"
           data-testid="prompt-input-warning"
+          role="alert"
+          aria-live="polite"
         >
           {connections.length === 0
             ? t('query.input.warningNoConnections')

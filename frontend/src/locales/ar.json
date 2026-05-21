@@ -214,6 +214,8 @@
   "error.queryExecutionFailed.title": "فشل الاستعلام",
   "error.queryExecutionFailed.body": "تعذر تنفيذ الاستعلام. حاول إعادة صياغة سؤالك أو اختيار اتصال مختلف.",
   "error.queryExecutionFailed.action": "حاول مرة أخرى",
+  "query.error.noDatabaseSelected": "لم يتم اختيار قاعدة بيانات",
+  "query.error.noDatabaseSelectedMessage": "يرجى اختيار اتصال قاعدة بيانات قبل إرسال الاستعلام.",
   "admin.connections.test": "اختبار الاتصال",
   "admin.connections.testing": "جارٍ الاختبار...",
   "admin.connections.testSuccess": "تم الاتصال بنجاح ({{latency}} ملّي ثانية)",
