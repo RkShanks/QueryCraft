@@ -23,6 +23,25 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
   const { disableMutation, enableMutation, deleteMutation } = useConnections();
   const [showConfirm, setShowConfirm] = useState(false);
 
+  React.useEffect(() => {
+    const active = disableMutation.isError || enableMutation.isError || deleteMutation.isError;
+    if (active) {
+      const timer = setTimeout(() => {
+        disableMutation.reset();
+        enableMutation.reset();
+        deleteMutation.reset();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    disableMutation.isError,
+    enableMutation.isError,
+    deleteMutation.isError,
+    disableMutation.reset,
+    enableMutation.reset,
+    deleteMutation.reset,
+  ]);
+
   const isPending = disableMutation.isPending || enableMutation.isPending || deleteMutation.isPending;
   const isActionDisabled = disabled || isPending;
 

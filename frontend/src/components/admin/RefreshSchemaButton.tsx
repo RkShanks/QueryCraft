@@ -40,6 +40,15 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
     });
   };
 
+  React.useEffect(() => {
+    if (refreshSchemaMutation.isSuccess || refreshSchemaMutation.isError) {
+      const timer = setTimeout(() => {
+        refreshSchemaMutation.reset();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [refreshSchemaMutation.isSuccess, refreshSchemaMutation.isError, refreshSchemaMutation.reset]);
+
   const formatRefreshedAt = (isoString: string) => {
     try {
       const date = new Date(isoString);
