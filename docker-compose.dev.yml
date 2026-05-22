@@ -92,9 +92,49 @@ services:
     networks:
       - querycraft
 
+  mysql-source:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: sakila
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sakila_root_dev}
+      MYSQL_USER: ${MYSQL_USER:-sakila_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sakila_dev_pwd}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-source-data:/var/lib/mysql
+      - ./dbTest/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD:-sakila_root_dev}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - querycraft
+
+  mssql-source:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-AdventureWorks_dev_1433!}
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-source-data:/var/opt/mssql
+      - ./dbTest/mssql/backup:/var/opt/mssql/backup:ro
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD:-AdventureWorks_dev_1433!}\" -C -Q \"SELECT 1\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - querycraft
+
 volumes:
   platform-db-data:
   source-db-data:
+  mysql-source-data:
+  mssql-source-data:
 
 networks:
   querycraft:

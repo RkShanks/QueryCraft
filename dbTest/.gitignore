@@ -3,6 +3,12 @@
 init/01-schema.sql
 init/02-data.sql
 
+# MySQL Sakila files
+mysql/init/*.sql
+
+# MSSQL AdventureWorksLT files
+mssql/backup/*.bak
+
 # Local artefacts
 *.tmp
 *.bak
