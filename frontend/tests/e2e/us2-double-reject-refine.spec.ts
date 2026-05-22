@@ -12,18 +12,22 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { mockSubmitSuccess, mockReject, mockSubmitCustom } from './helpers/mock-backend';
+import { mockSubmitSuccess, mockReject, mockSubmitCustom, mockConnections } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
 
 async function signIn(page: Page) {
+  await mockConnections(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });
   await page.getByLabel(/username/i).fill(USERNAME);
   await page.getByLabel(/password/i).fill(PASSWORD);
   await page.getByRole('button', { name: /sign\s*in/i }).click();
   await expect(page).toHaveURL(/\/(ask)?\/?$/);
+  await page.goto('/ask');
+  await expect(page).toHaveURL(/\/ask/);
+  await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 }
 
 test.describe('US-2: double-reject → refine prompt → reset', () => {
@@ -50,7 +54,7 @@ test.describe('US-2: double-reject → refine prompt → reset', () => {
 
     // Step 1: submit first question
     await page.getByPlaceholder(/Ask a question/i).fill('How many actors?');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByRole('button', { name: /ask/i }).click();
     await expect(page.getByRole('table')).toBeVisible({ timeout: 5_000 });
 
     // Step 2: reject first result → auto-retry with last-retry indicator
@@ -70,7 +74,7 @@ test.describe('US-2: double-reject → refine prompt → reset', () => {
 
     // Step 5: type a NEW question and submit → fresh result (counter reset)
     await page.getByPlaceholder(/Ask a question/i).fill('How many customers?');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByRole('button', { name: /ask/i }).click();
     await expect(page.getByRole('table')).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('.sql-display pre')).toContainText('SELECT count(*) FROM customer');
 

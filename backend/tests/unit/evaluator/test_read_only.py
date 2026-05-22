@@ -9,7 +9,7 @@ from app.evaluator.schema_context import SchemaContext
 
 @pytest.fixture
 def rule() -> ReadOnlyRule:
-    return ReadOnlyRule()
+    return ReadOnlyRule(dialect="postgres")
 
 
 @pytest.mark.asyncio
@@ -163,10 +163,10 @@ class TestReadOnlyRuleDialectParameterization:
             assert passed is False, f"INSERT should fail with dialect={dialect}"
 
     @pytest.mark.asyncio
-    async def test_default_dialect_is_postgres(self):
-        """Default dialect is postgres for backward compatibility."""
-        rule = ReadOnlyRule()
-        assert rule.dialect == "postgres"
+    async def test_requires_explicit_dialect(self):
+        """Dialect must be explicitly provided (no default)."""
+        with pytest.raises(TypeError):
+            ReadOnlyRule()
 
     @pytest.mark.asyncio
     async def test_from_database_type_classmethod(self):

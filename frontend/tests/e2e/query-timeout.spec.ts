@@ -13,18 +13,22 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { mockSubmitTimeout, mockHistoryEmpty } from './helpers/mock-backend';
+import { mockSubmitTimeout, mockHistoryEmpty, mockConnections } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
 
 async function signIn(page: Page) {
+  await mockConnections(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });
   await page.getByLabel(/username/i).fill(USERNAME);
   await page.getByLabel(/password/i).fill(PASSWORD);
   await page.getByRole('button', { name: /sign\s*in/i }).click();
   await expect(page).toHaveURL(/\/(ask)?\/?$/);
+  await page.goto('/ask');
+  await expect(page).toHaveURL(/\/ask/);
+  await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 }
 
 test.describe('T-157: timeout displays message and writes no history', () => {
@@ -34,7 +38,7 @@ test.describe('T-157: timeout displays message and writes no history', () => {
     await signIn(page);
 
     await page.getByPlaceholder(/Ask a question/i).fill('Slow query?');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByRole('button', { name: /ask/i }).click();
 
     // Timeout banner should appear inside <main>
     const banner = page.locator('main').getByRole('alert');
@@ -48,8 +52,8 @@ test.describe('T-157: timeout displays message and writes no history', () => {
     await expect(page.getByRole('table')).not.toBeVisible();
 
     // Navigate to history and assert no new row was written
-    await page.getByRole('link', { name: /history/i }).click();
+    await page.getByTestId('sidebar-nav-history').click();
     await expect(page).toHaveURL(/\/history/);
-    await expect(page.getByText(/no accepted queries yet/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/no history yet/i)).toBeVisible({ timeout: 5_000 });
   });
 });

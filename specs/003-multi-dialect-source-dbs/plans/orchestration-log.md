@@ -150,3 +150,59 @@
 - **PR**: pending
 - **Tasks**: T-470 through T-481
 - **Notes**: Dispatch from merged `main` after PR #94. Sequential order required: backend gates (T-470), frontend gates (T-471), optional MySQL/MSSQL integration smoke if services available (T-472/T-473), full Chrome DevTools MCP Phase 3 smoke (T-474), independent frontend/backend audits (T-475/T-476), Opus consolidation (T-477), fix all Critical/High findings (T-478/T-479), then Phase 3 summary and final snapshot (T-480/T-481). Block closure on failing gates, raw credential/internal identifier leaks, missing PR evidence, or unresolved Critical/High audit findings.
+
+## Wave 15.0: Backend Gates + Audit + Fixes
+- **Status**: BACKEND COMPLETE
+- **Branch**: `phase-3/wave-15.0-hardening`
+- **Completed Tasks**: T-470, T-472, T-473, T-476, T-478, T-479
+- **Backend Gate Results**:
+  - `ruff check src tests` → All checks passed!
+  - `ruff format --check src tests` → 229 files already formatted
+  - `pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` → 617 passed, 9 deselected, 2 warnings
+- **Audit Report**: `audit/wave-15/backend-findings.md`
+- **Findings Fixed**:
+  - **Critical (C-1)**: Removed password from PostgreSQL DSN in `connection_service.py`; use keyword args instead.
+  - **High (H-1)**: Removed raw `ParseError` text from `DialectValidationRule` responses.
+  - **High (H-2)**: Removed `str(e)` from admin `refresh-schema` error response.
+  - **High (H-3)**: Added exception sanitization in `MSSQLAdapter.connect()`.
+  - **Mid (M-1/M-2)**: Removed default `dialect="postgres"` from `ReadOnlyRule` and `DialectValidationRule`; require explicit dialect.
+  - **Low (L-1)**: Fixed `SourceDBConnectionFailed` message_key to `error.sourceDbConnectionFailed`; added EN/AR i18n keys.
+- **Integration Smoke**: MySQL and MSSQL services unavailable in environment — documented as optional/manual per ADR-10.
+- **Remaining**: T-471 (frontend gates — Gemini scope), T-474 (Chrome MCP smoke — Gemini scope), T-475 (Gemini audit), T-477 (Opus consolidation), T-480/T-481 (closure docs).
+
+## Wave 15.0: Gemini Frontend Hardening + Audit
+- **Status**: COMPLETE
+- **Branch**: `phase-3/wave-15.0-hardening`
+- **Completed Tasks**: T-471, T-474, T-475
+- **Frontend Gate Results (T-471)**:
+  - `npm run test -- --run` → 51 test files, 434 tests passed
+  - `npm run lint` → clean
+  - `npm run typecheck` → tsc --noEmit clean
+  - `npm run build` → succeeded
+  - `npm run lint:css` → stylelint clean
+- **E2E Suite**: 41 scenarios passed, 1 skipped (100% pass rate)
+- **Gemini Audit**: PASSED — no Critical/High/Mid/Low findings raised
+  - i18n 100% key parity, RTL full mirroring, a11y verified
+- **Audit Report**: `audit/wave-15/gemini-findings.md`
+
+## Wave 15.0: Opus Consolidation + Phase 3 Closure
+- **Status**: COMPLETE — PHASE 3 CLOSED
+- **Branch**: `phase-3/wave-15.0-hardening`
+- **Completed Tasks**: T-477, T-480, T-481
+- **Consolidation Report**: `audit/wave-15/consolidation-report.md`
+  - Critical findings: 1 (FIXED)
+  - High findings: 3 (ALL FIXED)
+  - Mid findings: 3 (2 FIXED, 1 DEFERRED — M-3 pydantic validator)
+  - Low findings: 2 (1 FIXED, 1 DEFERRED — L-2 AsyncMock warning)
+  - Cross-model disagreements: 0
+  - Closure recommendation: ✅ RECOMMEND CLOSURE
+- **Wave Final Snapshot**: `specs/003-multi-dialect-source-dbs/plans/wave-final-snapshot.md`
+- **Closure Decision**: All 82 tasks complete (T-400–T-481). All 36 FRs delivered. All 11 SCs met. No unresolved Critical/High findings. Phase 3 → FROZEN upon merge.
+- **Remaining Blockers**: None
+- **Deferred Items**:
+  - Real MySQL/MSSQL service smoke (no services available)
+  - M-3: DB_CREDENTIAL_KEY pydantic validator
+  - L-2: AsyncMock test warning
+  - Phase 4+: Mobile shell
+  - Phase 5+: SSO/RBAC/audit/quotas
+

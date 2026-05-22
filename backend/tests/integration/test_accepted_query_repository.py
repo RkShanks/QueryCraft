@@ -25,15 +25,19 @@ class TestAcceptedQueryRepository:
 
     @pytest.fixture
     async def db_connection_id(self, db_session):
-        """Insert a database_connections row and return its UUID."""
+        """Insert a source_database_connections row and return its UUID."""
         result = await db_session.execute(
             text(
                 """
-                INSERT INTO database_connections (
-                    name, host, port, database_name, username,
-                    encrypted_password, ssl_mode
+                INSERT INTO source_database_connections (
+                    display_name, host, port, database_name, username,
+                    encrypted_password, database_type, lifecycle_state,
+                    health_status, schema_introspection_status
                 )
-                VALUES ('test_conn', 'localhost', 5432, 'test', 'user', 'enc', 'disable')
+                VALUES (
+                    'test_conn', 'localhost', 5432, 'test', 'user', 'enc',
+                    'postgresql', 'active', 'healthy', 'success'
+                )
                 RETURNING id
                 """
             )

@@ -22,7 +22,7 @@ class ReadOnlyRule:
 
     name = "read_only"
 
-    def __init__(self, dialect: str = "postgres") -> None:
+    def __init__(self, dialect: str) -> None:
         """Initialize with a sqlglot read dialect.
 
         Args:

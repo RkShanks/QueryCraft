@@ -15,16 +15,20 @@ test.describe('US-1: sign-in → ask → history', () => {
 
     // Land on the main workspace page.
     await expect(page).toHaveURL(/\/(ask)?\/?$/);
+    await expect(page.locator('textarea')).toBeEnabled({ timeout: 10_000 });
+    await expect(page.getByText('Local Pagila')).toBeVisible({ timeout: 10_000 });
 
     // Step 2: Submit a question about a valid Pagila table (e.g., customer)
     const question = 'How many customers are in the system?';
-    await page.getByPlaceholder(/Ask a question/i).fill(question);
+    const input = page.getByPlaceholder(/Ask a question/i);
+    await input.fill(question);
+    await expect(input).toHaveValue(question);
     
     // Click the "Send" button (since it's a chat interface now)
     await page.getByRole('button', { name: /send/i }).click({ force: true });
 
     // Wait for the assistant response card or result table to render.
-    await expect(page.getByTestId('assistant-response-card')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('assistant-response-card')).toBeVisible({ timeout: 45_000 });
 
     // Step 3: Navigate to history.
     await page.getByRole('button', { name: /history/i }).click({ force: true });

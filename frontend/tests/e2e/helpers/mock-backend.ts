@@ -1,5 +1,5 @@
 import type { Page, Route } from '@playwright/test';
-import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse } from '../../src/api/generated/types.gen';
+import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse } from '../../../src/api/generated/types.gen';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Playwright page.route() factories for US-2 frontend E2E isolation.
@@ -216,4 +216,23 @@ export const mockHistoryDetail = (page: Page, detail: Record<string, unknown>) =
       return;
     }
     await route.fallback();
+  });
+
+/** Intercept GET /api/v1/connections and return a single connection. */
+export const mockConnections = (page: Page) =>
+  page.route('**/api/v1/connections', async (route: Route) => {
+    console.log('[E2E MOCK] Intercepted /api/v1/connections');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        connections: [
+          {
+            id: 'conn-1',
+            display_name: 'Local Pagila',
+            database_type: 'postgresql',
+          },
+        ],
+      }),
+    });
   });

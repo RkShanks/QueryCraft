@@ -62,6 +62,7 @@ def test_env_vars(test_encryption_key: str) -> dict[str, str]:
         "SOURCE_DB_USER": "pagila_user",
         "SOURCE_DB_PASSWORD": "pagila_dev_pwd",
         "SOURCE_DB_SSL_MODE": "disable",
+        "DB_CREDENTIAL_KEY": "d1OQc28ErbKH8nnhjNbchX5y_1EyXcfclkK1hPjPqFY=",
     }
 
 

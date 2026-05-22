@@ -1,16 +1,18 @@
 import { test, expect } from '@playwright/test';
-import { mockHistoryList, mockHistoryDetail, mockHistoryEmpty } from './helpers/mock-backend';
+import { mockHistoryList, mockHistoryDetail, mockHistoryEmpty, mockConnections } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
 
 async function signIn(page: import('@playwright/test').Page) {
+  await mockConnections(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });
   await page.getByLabel(/username/i).fill(USERNAME);
   await page.getByLabel(/password/i).fill(PASSWORD);
   await page.getByRole('button', { name: /sign\s*in/i }).click();
   await expect(page).toHaveURL(/\/(ask)?\/?$/);
+  await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 }
 
 test.describe('History List + Detail (FR-021, FR-022, FR-023, SC-006, SC-007)', () => {
