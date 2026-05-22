@@ -22,27 +22,47 @@ These are pre-installed in the Docker image (see `backend/Dockerfile`). macOS us
 
 ## Local Source Database Setup
 
-QueryCraft ships with a local PostgreSQL source DB for query execution and smoke testing. The source DB is seeded from `dbTest/init/` and uses the Pagila sample schema/data.
+QueryCraft supports local test database containers for PostgreSQL (Pagila), MySQL (Sakila), and Microsoft SQL Server (AdventureWorksLT) to facilitate multi-dialect manual testing and integration checks.
 
-### 1. Load Pagila seed files
+### 1. Download database fixtures
 
-From repo root:
+From the repository root, run the setup script to download MySQL Sakila and MSSQL AdventureWorksLT fixtures, alongside the PostgreSQL Pagila seed files if you need them:
 
 ```bash
+# Download MySQL and MSSQL sample database fixtures
+./scripts/setup-source-dbs.sh
+
+# Download PostgreSQL Pagila seed files (if not already downloaded)
 cd dbTest/init
 curl -L -o 01-schema.sql https://raw.githubusercontent.com/devrimgunduz/pagila/master/pagila-schema.sql
 curl -L -o 02-data.sql https://raw.githubusercontent.com/devrimgunduz/pagila/master/pagila-data.sql
+cd ../..
 ```
 
-If you already downloaded them earlier, keep the filenames exactly as `01-schema.sql` and `02-data.sql` so Docker init picks them up in order.
+### 2. Start the database containers
 
-### 2. Start the source DB
+You can start specific source databases or all of them:
 
 ```bash
+# Start PostgreSQL source database
 docker compose -f docker-compose.dev.yml up -d postgres-source
+
+# Start MySQL source database
+docker compose -f docker-compose.dev.yml up -d mysql-source
+
+# Start MSSQL source database
+docker compose -f docker-compose.dev.yml up -d mssql-source
 ```
 
-The container runs the files in `dbTest/init/` during first boot and applies `03-grants.sql` for the read-only app role.
+### 3. Restore MSSQL Database
+
+For MSSQL, you must run the restore helper script after the container starts:
+
+```bash
+./scripts/restore-mssql.sh
+```
+
+See [dbTest/README.md](file:///home/avril/QueryCraft/dbTest/README.md) for detailed verification commands, connections parameters, and troubleshooting guides.
 
 ### 3. Verify the seed
 
