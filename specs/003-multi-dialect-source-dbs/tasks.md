@@ -278,7 +278,7 @@ Wave Final Reports MUST include red/green evidence per task.
 - [X] T-474 Full Chrome DevTools MCP smoke across all Phase 3 flows: login, admin DB management (CRUD/test/refresh/disable/enable/delete-guard), workspace DB selector, query flow with dialect verification, failure paths — both English and Arabic, RTL (FR-086, SC-032) — **Gemini scope, not backend**
 - [X] T-475 Gemini audit: frontend/browser UX, i18n completeness, RTL correctness, a11y — produce `audit/wave-15/gemini-findings.md` — **Gemini scope, not backend**
 - [X] T-476 Backend model audit: dialect/security, evaluator edge cases, credential leakage, schema isolation — produce `audit/wave-15/backend-findings.md` — **COMPLETE**: `audit/wave-15/backend-findings.md` produced
-- [ ] T-477 Opus consolidation: merge audit findings, severity triage, produce consolidation report in `audit/wave-15/consolidation-report.md` — **Opus scope, after Gemini audit**
+- [X] T-477 Opus consolidation: merge audit findings, severity triage, produce consolidation report in `audit/wave-15/consolidation-report.md` — **Opus scope, after Gemini audit** — **COMPLETE**: `audit/wave-15/consolidation-report.md` produced
 
 ### Critical/High Finding Fixes
 
@@ -287,8 +287,8 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Phase 3 Closure
 
-- [ ] T-480 Update `specs/003-multi-dialect-source-dbs/plans/orchestration-log.md` with Phase 3 summary (block on T-478, T-479)
-- [ ] T-481 Produce `specs/003-multi-dialect-source-dbs/plans/wave-final-snapshot.md` (block on T-480)
+- [X] T-480 Update `specs/003-multi-dialect-source-dbs/plans/orchestration-log.md` with Phase 3 summary (block on T-478, T-479) — **COMPLETE**: orchestration log updated
+- [X] T-481 Produce `specs/003-multi-dialect-source-dbs/plans/wave-final-snapshot.md` (block on T-480) — **COMPLETE**: `wave-final-snapshot.md` produced
 
 ---
 
