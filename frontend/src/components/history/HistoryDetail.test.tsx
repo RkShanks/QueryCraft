@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from 'react-router-dom';
 import { HistoryDetail } from "./HistoryDetail";
 
 const sample = {
@@ -22,7 +23,9 @@ const sampleWithResult = {
 
 function setup(item: Partial<typeof sample> | null, opts: { isLoading?: boolean; error?: Error | null } = {}) {
   return render(
-    <HistoryDetail item={item as typeof sample} isLoading={opts.isLoading} error={opts.error} />
+    <MemoryRouter>
+      <HistoryDetail item={item as typeof sample} isLoading={opts.isLoading} error={opts.error} />
+    </MemoryRouter>
   );
 }
 

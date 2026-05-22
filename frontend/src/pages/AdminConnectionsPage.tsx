@@ -1,18 +1,33 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConnections } from '../hooks/useConnections';
-import { Database, Plus, RefreshCw, Server, Power, PowerOff, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { Database, Plus, RefreshCw, Server, Power, PowerOff, CheckCircle2, XCircle, HelpCircle, X } from 'lucide-react';
 import { ConnectionForm } from '../components/admin/ConnectionForm';
 import { ConnectionTestButton } from '../components/admin/ConnectionTestButton';
 import { RefreshSchemaButton } from '../components/admin/RefreshSchemaButton';
 import { ConnectionActions } from '../components/admin/ConnectionActions';
 import type { ConnectionResponse, ConnectionCreate, ConnectionUpdate } from '../api/generated/types.gen';
 
+interface Toast {
+  id: string;
+  type: 'success' | 'error';
+  message: string;
+}
+
 export const AdminConnectionsPage: React.FC = () => {
   const { t } = useTranslation();
   const { listQuery, createMutation, updateMutation } = useConnections();
   const [isAdding, setIsAdding] = useState(false);
   const [editingConnection, setEditingConnection] = useState<ConnectionResponse | undefined>(undefined);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = (type: 'success' | 'error', message: string) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 5000);
+  };
 
   if (listQuery.isLoading) {
     return (
@@ -38,7 +53,12 @@ export const AdminConnectionsPage: React.FC = () => {
             createMutation.mutate(data as ConnectionCreate, {
               onSuccess: () => {
                 setIsAdding(false);
+                addToast('success', t('admin.connections.addSuccess') || 'Connection added successfully');
               },
+              onError: (err: unknown) => {
+                const apiErr = err as { message?: string };
+                addToast('error', apiErr?.message || t('admin.connections.addError') || 'Failed to add connection');
+              }
             });
           }}
           onCancel={() => setIsAdding(false)}
@@ -59,7 +79,12 @@ export const AdminConnectionsPage: React.FC = () => {
               {
                 onSuccess: () => {
                   setEditingConnection(undefined);
+                  addToast('success', t('admin.connections.updateSuccess') || 'Connection updated successfully');
                 },
+                onError: (err: unknown) => {
+                  const apiErr = err as { message?: string };
+                  addToast('error', apiErr?.message || t('admin.connections.updateError') || 'Failed to update connection');
+                }
               }
             );
           }}
@@ -75,7 +100,38 @@ export const AdminConnectionsPage: React.FC = () => {
     : ((listQuery.data as { connections?: ConnectionResponse[] } | undefined)?.connections) || [];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+      {/* Stacked global toast container */}
+      <div className="fixed top-6 end-6 z-50 flex flex-col gap-3 max-w-sm w-full select-none pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-2xl backdrop-blur-md animate-fade-in transition-all ${
+              t.type === 'success'
+                ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}
+          >
+            <div className="shrink-0 mt-0.5">
+              {t.type === 'success' ? (
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+              ) : (
+                <XCircle className="w-5 h-5 text-red-500" />
+              )}
+            </div>
+            <div className="flex-1 text-sm font-medium leading-relaxed">
+              {t.message}
+            </div>
+            <button
+              onClick={() => setToasts((prev) => prev.filter((item) => item.id !== t.id))}
+              className="shrink-0 text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
+            >
+              <X className="w-4 h-4 text-text-muted hover:text-text-primary" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-text-primary flex items-center gap-2">
@@ -85,7 +141,7 @@ export const AdminConnectionsPage: React.FC = () => {
         </div>
         <button
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors font-medium cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           {t('admin.connections.add')}
@@ -174,18 +230,26 @@ export const AdminConnectionsPage: React.FC = () => {
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => setEditingConnection(conn)}
-                        className="inline-flex items-center justify-center px-3 py-1.5 border border-border bg-transparent text-text-primary hover:bg-bg-elevated rounded-md text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-neon-cyan/20 select-none"
+                        className="inline-flex items-center justify-center px-3 py-1.5 border border-border bg-transparent text-text-primary hover:bg-bg-elevated rounded-md text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-neon-cyan/20 select-none cursor-pointer"
                       >
                         {t('common.edit')}
                       </button>
-                      <ConnectionTestButton connectionId={conn.id} />
+                      <ConnectionTestButton
+                        connectionId={conn.id}
+                        onSuccess={(msg) => addToast('success', msg)}
+                        onError={(msg) => addToast('error', msg)}
+                      />
                       <RefreshSchemaButton
                         connectionId={conn.id}
                         schemaLastRefreshedAt={conn.schema_last_refreshed_at}
+                        onSuccess={(msg) => addToast('success', msg)}
+                        onError={(msg) => addToast('error', msg)}
                       />
                       <ConnectionActions
                         connectionId={conn.id}
                         lifecycleState={conn.lifecycle_state as 'active' | 'disabled'}
+                        onSuccess={(msg) => addToast('success', msg)}
+                        onError={(msg) => addToast('error', msg)}
                       />
                     </div>
                   </td>

@@ -8,8 +8,8 @@ export interface RefreshSchemaButtonProps {
   connectionId: string;
   disabled?: boolean;
   schemaLastRefreshedAt?: string | null;
-  onSuccess?: () => void;
-  onError?: (error: unknown) => void;
+  onSuccess?: (message: string) => void;
+  onError?: (message: string) => void;
 }
 
 export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
@@ -27,14 +27,24 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
     if (disabled || refreshSchemaMutation.isPending) return;
 
     refreshSchemaMutation.mutate(connectionId, {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        const tablesCount = data?.tables_count;
+        const columnsCount = data?.columns_count;
+        const hasCounts = typeof tablesCount === 'number' && typeof columnsCount === 'number';
+        const succMsg = hasCounts
+          ? t('admin.connections.refreshSchemaSuccess', {
+              tables: tablesCount,
+              columns: columnsCount,
+            })
+          : t('admin.connections.schema.success');
         if (onSuccess) {
-          onSuccess();
+          onSuccess(succMsg);
         }
       },
       onError: (err) => {
+        const errMsg = t(getSafeConnectionErrorKey(err));
         if (onError) {
-          onError(err);
+          onError(errMsg);
         }
       },
     });
@@ -77,18 +87,47 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
   // Last refreshed timestamp from mutation data, fallback to prop
   const lastRefreshed = refreshSchemaMutation.data?.refreshed_at || schemaLastRefreshedAt;
 
+  // Choose styling class based on mutation status
+  let buttonClasses = "inline-flex items-center justify-center px-4 py-2 border rounded-md text-sm font-medium transition-all select-none";
+  if (refreshSchemaMutation.isPending) {
+    buttonClasses += " border-border bg-transparent text-text-primary opacity-50 cursor-not-allowed";
+  } else if (isSuccessState) {
+    buttonClasses += " border-green-500/30 bg-green-500/10 text-green-500 shadow-[0_0_12px_rgba(34,197,94,0.15)]";
+  } else if (isErrorState) {
+    buttonClasses += " border-red-500/30 bg-red-500/10 text-red-500 shadow-[0_0_12px_rgba(239,68,68,0.15)]";
+  } else {
+    buttonClasses += " border-border bg-transparent text-text-primary hover:bg-bg-elevated focus:outline-none focus:ring-2 focus:ring-neon-cyan/20 disabled:opacity-50 disabled:cursor-not-allowed";
+  }
+
   return (
     <div className="relative text-start">
       <button
         type="button"
         onClick={handleRefresh}
         disabled={disabled || refreshSchemaMutation.isPending}
-        className="inline-flex items-center justify-center px-4 py-2 border border-border bg-transparent text-text-primary hover:bg-bg-elevated rounded-md text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-neon-cyan/20 disabled:opacity-50 disabled:cursor-not-allowed select-none"
+        className={buttonClasses}
       >
         {refreshSchemaMutation.isPending ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin me-2" />
             {t('admin.connections.refreshingSchema')}
+          </>
+        ) : isSuccessState ? (
+          <>
+            <CheckCircle2 className="w-4 h-4 shrink-0 me-2" />
+            <span>
+              {hasCounts
+                ? t('admin.connections.refreshSchemaSuccess', {
+                    tables: tablesCount,
+                    columns: columnsCount,
+                  })
+                : t('admin.connections.schema.success')}
+            </span>
+          </>
+        ) : isErrorState && errorMessage ? (
+          <>
+            <AlertCircle className="w-4 h-4 shrink-0 me-2" />
+            <span className="text-xs text-start">{errorMessage}</span>
           </>
         ) : (
           <>
@@ -98,30 +137,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
         )}
       </button>
 
-      {isSuccessState && (
-        <div className="absolute top-full end-0 mt-1 z-50 flex flex-col gap-1 text-sm text-green-500 bg-bg-card border border-green-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px] animate-fade-in">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>
-              {hasCounts
-                ? t('admin.connections.refreshSchemaSuccess', {
-                    tables: tablesCount,
-                    columns: columnsCount,
-                  })
-                : t('admin.connections.schema.success')}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {isErrorState && errorMessage && (
-        <div className="absolute top-full end-0 mt-1 z-50 flex items-start gap-2 text-sm text-red-500 bg-bg-card border border-red-500/20 px-3 py-2 rounded-md shadow-lg transition-all select-none min-w-[240px] animate-fade-in">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
-      {lastRefreshed && (
+      {lastRefreshed && !refreshSchemaMutation.isPending && (
         <div className="text-xs text-text-muted select-none px-1 mt-1">
           {t('admin.connections.schema.refreshed', {
             time: formatRefreshedAt(lastRefreshed),

@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores/uiStore';
 import { useSessionDetail } from '../hooks/useSessions';
@@ -118,6 +119,25 @@ export const WorkspacePage: React.FC = () => {
     initialConnectionId: sessionDetail?.connection_id ?? null,
     availableConnections,
   });
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [loadedQuestion, setLoadedQuestion] = useState('');
+
+  const urlQuestion = searchParams.get('question');
+  const urlConnectionId = searchParams.get('connectionId');
+
+  useEffect(() => {
+    if (urlQuestion || urlConnectionId) {
+      if (urlConnectionId && urlConnectionId !== selectedConnectionId) {
+        setSelectedConnectionId(urlConnectionId);
+      }
+      if (urlQuestion) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLoadedQuestion(urlQuestion);
+      }
+      setSearchParams({}, { replace: true });
+    }
+  }, [urlQuestion, urlConnectionId, selectedConnectionId, setSelectedConnectionId, setSearchParams]);
 
   const [localTurns, setLocalTurns] = useState<ConversationTurn[]>([]);
   const [deletedSavedIds, setDeletedSavedIds] = useState<Set<string>>(new Set());
@@ -383,11 +403,15 @@ export const WorkspacePage: React.FC = () => {
         )}
       </div>
       <PromptInput
-        onSubmit={handleSubmit}
+        onSubmit={(text) => {
+          handleSubmit(text);
+          setLoadedQuestion('');
+        }}
         disabled={querySubmit.isSubmitting}
         connections={availableConnections}
         selectedConnectionId={selectedConnectionId}
         onSelectConnection={setSelectedConnectionId}
+        initialText={loadedQuestion}
       />
     </div>
   );
