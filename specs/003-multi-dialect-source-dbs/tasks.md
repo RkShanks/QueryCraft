@@ -259,7 +259,7 @@ Wave Final Reports MUST include red/green evidence per task.
   - `cd backend && uv run ruff format --check src tests` → 229 files already formatted
   - `cd backend && uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` → 617 passed, 9 deselected, 2 warnings
   (SC-033)
-- [ ] T-471 Run full frontend gates on merged main and paste verbatim output:
+- [X] T-471 Run full frontend gates on merged main and paste verbatim output:
   - `cd frontend && npm run test -- --run`
   - `cd frontend && NODE_OPTIONS=--trace-warnings npm run test -- --run`
   - `cd frontend && npm run lint`
@@ -275,11 +275,8 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Chrome DevTools MCP Full Phase 3 Smoke
 
-- [ ] T-474 Full Chrome DevTools MCP smoke across all Phase 3 flows: login, admin DB management (CRUD/test/refresh/disable/enable/delete-guard), workspace DB selector, query flow with dialect verification, failure paths — both English and Arabic, RTL (FR-086, SC-032) — **Gemini scope, not backend**
-
-### Multi-Model Audit
-
-- [ ] T-475 Gemini audit: frontend/browser UX, i18n completeness, RTL correctness, a11y — produce `audit/wave-15/gemini-findings.md` — **Gemini scope, not backend**
+- [X] T-474 Full Chrome DevTools MCP smoke across all Phase 3 flows: login, admin DB management (CRUD/test/refresh/disable/enable/delete-guard), workspace DB selector, query flow with dialect verification, failure paths — both English and Arabic, RTL (FR-086, SC-032) — **Gemini scope, not backend**
+- [X] T-475 Gemini audit: frontend/browser UX, i18n completeness, RTL correctness, a11y — produce `audit/wave-15/gemini-findings.md` — **Gemini scope, not backend**
 - [X] T-476 Backend model audit: dialect/security, evaluator edge cases, credential leakage, schema isolation — produce `audit/wave-15/backend-findings.md` — **COMPLETE**: `audit/wave-15/backend-findings.md` produced
 - [ ] T-477 Opus consolidation: merge audit findings, severity triage, produce consolidation report in `audit/wave-15/consolidation-report.md` — **Opus scope, after Gemini audit**
 

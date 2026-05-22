@@ -12,18 +12,22 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { mockSubmitEvaluatorRejected, mockSubmitTimeout, mockSubmitConcurrent } from './helpers/mock-backend';
+import { mockSubmitEvaluatorRejected, mockSubmitTimeout, mockSubmitConcurrent, mockConnections } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
 
 async function signIn(page: Page) {
+  await mockConnections(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });
   await page.getByLabel(/username/i).fill(USERNAME);
   await page.getByLabel(/password/i).fill(PASSWORD);
   await page.getByRole('button', { name: /sign\s*in/i }).click();
   await expect(page).toHaveURL(/\/(ask)?\/?$/);
+  await page.goto('/ask');
+  await expect(page).toHaveURL(/\/ask/);
+  await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 }
 
 test.describe('US-2: error-state rendering', () => {
@@ -32,7 +36,7 @@ test.describe('US-2: error-state rendering', () => {
     await signIn(page);
 
     await page.getByPlaceholder(/Ask a question/i).fill('Something unsafe?');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByRole('button', { name: /ask/i }).click();
 
     // The evaluator-rejection banner should appear inside main
     const banner = page.locator('main').getByRole('alert');
@@ -45,7 +49,7 @@ test.describe('US-2: error-state rendering', () => {
     await signIn(page);
 
     await page.getByPlaceholder(/Ask a question/i).fill('Slow query?');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByRole('button', { name: /ask/i }).click();
 
     const banner = page.locator('main').getByRole('alert');
     await expect(banner).toBeVisible({ timeout: 5_000 });
@@ -58,7 +62,7 @@ test.describe('US-2: error-state rendering', () => {
     await signIn(page);
 
     await page.getByPlaceholder(/Ask a question/i).fill('Concurrent?');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByRole('button', { name: /ask/i }).click();
 
     // The fixed toast alert at the top of the page
     const toast = page.locator('div[role="alert"]').filter({ hasText: /already being processed/i });

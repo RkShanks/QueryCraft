@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { ConnectionErrorCard } from '../components/chat/ConnectionErrorCard';
 import type { ConnectionErrorKind } from '../components/chat/ConnectionErrorCard';
+import { EvaluatorRejectionBanner } from '../components/query/EvaluatorRejectionBanner';
 import './WorkspacePage.css';
 
 interface ConversationTurn {
@@ -89,9 +90,41 @@ function mapApiErrorToConnectionErrorKind(err: Record<string, unknown>): Connect
       return 'noConnections';
     case 'query_execution_failed':
       return 'queryExecutionFailed';
+    case 'timeout':
+      return 'timeout';
     default:
       return null;
   }
+}
+
+function mapEvaluatorRejection(
+  rejection: EvaluatorRejection
+): { violations: Array<{ type: string; detail?: string }> } {
+  const typeMap: Record<string, string> = {
+    read_only: 'read_only',
+    ReadOnly: 'read_only',
+    single_statement: 'single_statement',
+    SingleStatement: 'single_statement',
+    schema_validation: 'schema_validation',
+    SchemaValidation: 'schema_validation',
+    unsafe_pattern: 'unsafe_pattern',
+    UnsafePattern: 'unsafe_pattern',
+  };
+
+  return {
+    violations: rejection.violations.map((v) => {
+      const type = typeMap[v.rule] || v.rule;
+      let detail: string | undefined;
+      if (type === 'schema_validation') {
+        detail = (v.message_params?.table || v.message_params?.column || v.message_params?.identifier) as string | undefined;
+      } else if (type === 'unsafe_pattern') {
+        detail = (v.message_params?.pattern || v.message_params?.name) as string | undefined;
+      } else if (type === 'syntax') {
+        detail = (v.message_params?.details || v.message_params?.error) as string | undefined;
+      }
+      return { type, detail };
+    }),
+  };
 }
 
 export const WorkspacePage: React.FC = () => {
@@ -100,6 +133,25 @@ export const WorkspacePage: React.FC = () => {
   const activeSessionId = useUIStore((state) => state.activeSessionId);
   const { data: sessionDetail, isLoading } = useSessionDetail(activeSessionId ?? '');
   const querySubmit = useQuerySubmit();
+
+  const [alert, setAlert] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    variant: 'default' | 'destructive' | 'success';
+  } | null>(null);
+
+  const showAlert = useCallback((
+    title: string,
+    description: string,
+    variant: 'default' | 'destructive' | 'success' = 'default'
+  ) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setAlert({ id, title, description, variant });
+    setTimeout(() => {
+      setAlert((prev) => (prev?.id === id ? null : prev));
+    }, 5000);
+  }, []);
 
   // Fetch available connections for T-460
   const { data: userConnectionsResponse } = useQuery({
@@ -323,32 +375,41 @@ export const WorkspacePage: React.FC = () => {
           setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, isLoading: false } : t)));
         }
       } catch (err: unknown) {
-        const apiErr = err as Record<string, unknown>;
+        const apiErr = (err && typeof err === 'object') ? (err as Record<string, unknown>) : {};
         if ('violations' in apiErr) {
           setLocalTurns((prev) =>
             prev.map((t) =>
-              t.id === turnId ? { ...t, isLoading: false, evaluatorRejection: apiErr as EvaluatorRejection } : t
+              t.id === turnId ? { ...t, isLoading: false, evaluatorRejection: apiErr as unknown as EvaluatorRejection } : t
             )
           );
         } else if ('kind' in apiErr && apiErr.kind === 'refine') {
           setLocalTurns((prev) =>
             prev.map((t) =>
-              t.id === turnId ? { ...t, isLoading: false, refinePrompt: apiErr as RefinePrompt } : t
+              t.id === turnId ? { ...t, isLoading: false, refinePrompt: apiErr as unknown as RefinePrompt } : t
             )
           );
         } else {
-          const connErr = mapApiErrorToConnectionErrorKind(apiErr);
-          if (connErr) {
-            setLocalTurns((prev) =>
-              prev.map((t) => (t.id === turnId ? { ...t, isLoading: false, connectionError: connErr } : t))
-            );
+          const code = (apiErr.error as string) || (apiErr.detail as Record<string, unknown>)?.error as string;
+          if (code === 'concurrent') {
+            setLocalTurns((prev) => prev.filter((t) => t.id !== turnId));
+            showAlert(t('query.error.concurrent'), '', 'destructive');
+          } else if (code === 'llm_unavailable' || code === 'llmUnavailable') {
+            setLocalTurns((prev) => prev.filter((t) => t.id !== turnId));
+            showAlert(t('query.error.llmUnavailable'), '', 'destructive');
           } else {
-            setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, isLoading: false } : t)));
+            const connErr = mapApiErrorToConnectionErrorKind(apiErr);
+            if (connErr) {
+              setLocalTurns((prev) =>
+                prev.map((t) => (t.id === turnId ? { ...t, isLoading: false, connectionError: connErr } : t))
+              );
+            } else {
+              setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, isLoading: false } : t)));
+            }
           }
         }
       }
     },
-    [activeSessionId, querySubmit, selectedConnectionId, availableConnections, queryClient]
+    [activeSessionId, querySubmit, selectedConnectionId, availableConnections, queryClient, showAlert, t]
   );
 
   return (
@@ -378,11 +439,11 @@ export const WorkspacePage: React.FC = () => {
                 ) : turn.connectionError ? (
                   <ConnectionErrorCard kind={turn.connectionError} />
                 ) : turn.evaluatorRejection ? (
-                  <div className="workspace-rejection-banner" data-testid="rejection-banner">
-                    <p>{t('query.evaluator.rejected')}</p>
+                  <div className="workspace-rejection-banner w-full" data-testid="rejection-banner">
+                    <EvaluatorRejectionBanner {...mapEvaluatorRejection(turn.evaluatorRejection)} />
                   </div>
                 ) : turn.refinePrompt ? (
-                  <div className="workspace-refine-banner" data-testid="refine-banner">
+                  <div className="workspace-refine-banner" data-testid="refine-banner" role="alert">
                     <p>{t('query.refine.message')}</p>
                   </div>
                 ) : (
@@ -413,6 +474,24 @@ export const WorkspacePage: React.FC = () => {
         onSelectConnection={setSelectedConnectionId}
         initialText={loadedQuestion}
       />
+      {alert && (
+        <div
+          role="alert"
+          className="fixed top-4 right-4 z-50 p-4 rounded-xl border border-red-500/20 bg-red-950/80 backdrop-blur-md text-red-200 shadow-2xl flex items-start gap-3 w-96 animate-in slide-in-from-top-4 duration-300"
+        >
+          <div className="flex-1">
+            <p className="font-semibold text-sm">{alert.title}</p>
+            {alert.description && <p className="text-sm opacity-90 mt-1">{alert.description}</p>}
+          </div>
+          <button
+            onClick={() => setAlert(null)}
+            className="text-current opacity-70 hover:opacity-100 transition-opacity"
+            aria-label={t('common.close')}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 };

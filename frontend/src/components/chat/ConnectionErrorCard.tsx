@@ -7,7 +7,8 @@ export type ConnectionErrorKind =
   | 'disabled'
   | 'unhealthy'
   | 'noSchema'
-  | 'queryExecutionFailed';
+  | 'queryExecutionFailed'
+  | 'timeout';
 
 interface ErrorConfig {
   icon: React.ReactNode;
@@ -56,6 +57,13 @@ const configMap: Record<ConnectionErrorKind, ErrorConfig> = {
     actionKey: 'error.queryExecutionFailed.action',
     severity: 'error',
   },
+  timeout: {
+    icon: <WifiOff className="w-5 h-5" aria-hidden="true" />,
+    titleKey: 'query.timeout.heading',
+    bodyKey: 'query.timeout.body',
+    actionKey: 'error.queryExecutionFailed.action',
+    severity: 'error',
+  },
 };
 
 const severityStyles: Record<ErrorConfig['severity'], string> = {
@@ -86,12 +94,12 @@ export const ConnectionErrorCard: React.FC<ConnectionErrorCardProps> = ({
   onAction,
 }) => {
   const { t } = useTranslation();
-  const cfg = configMap[kind] ?? {
+  const cfg = configMap[kind] ?? ({
     icon: <AlertCircle className="w-5 h-5" aria-hidden="true" />,
     titleKey: 'error.unknown.title',
     bodyKey: 'error.unknown.message',
     severity: 'error',
-  };
+  } as ErrorConfig);
 
   return (
     <div

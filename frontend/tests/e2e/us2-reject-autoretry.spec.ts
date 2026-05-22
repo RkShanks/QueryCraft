@@ -14,18 +14,22 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { mockSubmitSuccess, mockReject, mockAccept, mockHistoryList } from './helpers/mock-backend';
+import { mockSubmitSuccess, mockReject, mockAccept, mockHistoryList, mockConnections } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
 
 async function signIn(page: Page) {
+  await mockConnections(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });
   await page.getByLabel(/username/i).fill(USERNAME);
   await page.getByLabel(/password/i).fill(PASSWORD);
   await page.getByRole('button', { name: /sign\s*in/i }).click();
   await expect(page).toHaveURL(/\/(ask)?\/?$/);
+  await page.goto('/ask');
+  await expect(page).toHaveURL(/\/ask/);
+  await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 }
 
 test.describe('US-2: reject → auto-retry → accept', () => {
@@ -39,7 +43,7 @@ test.describe('US-2: reject → auto-retry → accept', () => {
 
     // Step 1: submit a question
     await page.getByPlaceholder(/Ask a question/i).fill('How many actors?');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByRole('button', { name: /ask/i }).click();
 
     // Step 2: first result appears
     await expect(page.getByRole('table')).toBeVisible({ timeout: 5_000 });
@@ -58,7 +62,7 @@ test.describe('US-2: reject → auto-retry → accept', () => {
     await expect(page.getByRole('alert').filter({ hasText: /success/i })).toBeVisible({ timeout: 5_000 });
 
     // Step 5: navigate to history and verify accepted query
-    await page.getByRole('link', { name: /history/i }).click();
+    await page.getByTestId('sidebar-nav-history').click();
     await expect(page).toHaveURL(/\/history/);
     await expect(page.getByText('How many actors?', { exact: false })).toBeVisible({ timeout: 5_000 });
   });

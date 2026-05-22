@@ -9,6 +9,8 @@ import { useQuerySubmit } from '../hooks/useQuerySubmit';
 import type { EvaluatorRejection } from '../api/generated/types.gen';
 import { History, Database, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { listUserConnections } from '../api/generated/sdk.gen';
 
 function mapEvaluatorRejection(
   rejection: EvaluatorRejection
@@ -78,11 +80,19 @@ export const AskQuestionPage: React.FC = () => {
     reset,
   } = useQuerySubmit();
 
+  const { data: userConnectionsResponse } = useQuery({
+    queryKey: ['userConnections'],
+    queryFn: () => listUserConnections({ throwOnError: true }).then((res) => res.data),
+  });
+
+  const availableConnections = userConnectionsResponse?.connections ?? [];
+  const connectionId = availableConnections[0]?.id ?? null;
+
   const handleQuestionSubmit = async (question: string) => {
     setQuestionInput(question);
     lastSubmittedQuestionRef.current = question;
     try {
-      await submitQuestion(question);
+      await submitQuestion(question, null, connectionId);
     } catch {
       // Error state is already managed by useQuerySubmit
     }
@@ -143,7 +153,7 @@ export const AskQuestionPage: React.FC = () => {
   const handleRetry = () => {
     const q = lastSubmittedQuestionRef.current;
     if (q) {
-      submitQuestion(q);
+      submitQuestion(q, null, connectionId);
     }
   };
 

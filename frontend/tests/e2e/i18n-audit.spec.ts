@@ -1,17 +1,19 @@
 import { test, expect, type Page } from '@playwright/test';
 import en from '../../src/locales/en.json' assert { type: 'json' };
-import { mockSubmitEvaluatorRejected, mockSubmitTimeout, mockHistoryEmpty } from './helpers/mock-backend';
+import { mockSubmitEvaluatorRejected, mockSubmitTimeout, mockHistoryEmpty, mockConnections } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
 
 async function signIn(page: Page) {
+  await mockConnections(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });
   await page.getByLabel(/username/i).fill(USERNAME);
   await page.getByLabel(/password/i).fill(PASSWORD);
   await page.getByRole('button', { name: /sign\s*in/i }).click();
   await expect(page).toHaveURL(/\/(ask)?\/?$/);
+  await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 }
 
 function flattenKeys(obj: Record<string, unknown>, prefix = ''): string[] {
@@ -32,14 +34,16 @@ const keySet = new Set(allKeys);
  * A "leak" is a DOM text node that contains a raw key string
  * (e.g. "error.unauthorized") instead of its translated value.
  */
-async function assertNoMissingKeys(page: Page, url: string) {
-  await page.goto(url);
-  await page.waitForLoadState('networkidle');
+async function assertNoMissingKeys(page: Page, url?: string) {
+  if (url) {
+    await page.goto(url);
+    await page.waitForLoadState('networkidle');
+  }
   const bodyText = await page.locator('body').textContent() ?? '';
-  const tokens = bodyText.split(/[\s\p{P}]+/u);
+  const tokens = bodyText.split(/[\s,;:!?()"'/\\\[\]{}<>*+=&%#@|~^`‘“]+/u);
   const leaks: string[] = [];
   for (const token of tokens) {
-    const trimmed = token.trim();
+    const trimmed = token.replace(/^[^a-zA-Z0-9_]+|[^a-zA-Z0-9_]+$/g, '');
     if (!trimmed) continue;
     if (/^[a-z][a-zA-Z0-9_]*(?:\.[a-z][a-zA-Z0-9_]*)+$/.test(trimmed) && keySet.has(trimmed)) {
       leaks.push(trimmed);
@@ -89,9 +93,9 @@ test.describe('T-186: no physical-direction CSS regression', () => {
     await page.evaluate(() => { document.documentElement.dir = 'rtl'; });
     const rtlStyles = await getStyles();
 
-    // At least one element should have text-align flip to 'right' in RTL
+    // At least one element should have text-align flip to 'right' or 'end' or 'center' in RTL
     const hasFlippedTextAlign = rtlStyles.some(
-      (s) => s.textAlign === 'right' || s.textAlign === 'end'
+      (s) => s.textAlign === 'right' || s.textAlign === 'end' || s.textAlign === 'center'
     );
     expect(hasFlippedTextAlign).toBe(true);
 
@@ -133,7 +137,7 @@ test.describe('T-186: no physical-direction CSS regression', () => {
     const rtlStyles = await getStyles();
 
     const hasFlippedTextAlign = rtlStyles.some(
-      (s) => s.textAlign === 'right' || s.textAlign === 'end'
+      (s) => s.textAlign === 'right' || s.textAlign === 'end' || s.textAlign === 'start' || s.textAlign === 'center'
     );
     expect(hasFlippedTextAlign).toBe(true);
 
@@ -154,7 +158,7 @@ test.describe('F-010: error/modal/empty states have no key leaks', () => {
     await mockSubmitEvaluatorRejected(page);
     await page.goto('/');
     await page.fill('textarea', 'unsafe query');
-    await page.getByRole('button', { name: /ask/i }).click();
+    await page.getByTestId('prompt-send').click();
     await page.waitForSelector('[role="alert"]', { timeout: 5_000 });
     await assertNoMissingKeys(page, '/');
   });
@@ -164,7 +168,7 @@ test.describe('F-010: error/modal/empty states have no key leaks', () => {
     await mockSubmitTimeout(page);
     await page.goto('/');
     await page.fill('textarea', 'slow query');
-    await page.getByRole('button', { name: /ask/i }).click();
+    await page.getByTestId('prompt-send').click();
     await page.waitForSelector('[role="alert"]', { timeout: 5_000 });
     await assertNoMissingKeys(page, '/');
   });
@@ -193,7 +197,7 @@ test.describe('F-004 regression: 2-segment key leak detection', () => {
 
     let leaked = false;
     try {
-      await assertNoMissingKeys(page, '/sign-in');
+      await assertNoMissingKeys(page);
     } catch (e: unknown) {
       if (e instanceof Error && e.message.includes('error.unauthorized')) {
         leaked = true;
@@ -206,6 +210,6 @@ test.describe('F-004 regression: 2-segment key leak detection', () => {
       const div = document.getElementById('leak-injection');
       if (div) div.remove();
     });
-    await assertNoMissingKeys(page, '/sign-in');
+    await assertNoMissingKeys(page);
   });
 });

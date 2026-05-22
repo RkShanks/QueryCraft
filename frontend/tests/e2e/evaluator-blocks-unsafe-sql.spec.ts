@@ -16,18 +16,21 @@ import { test, expect, type Page } from '@playwright/test';
 import {
   mockSubmitEvaluatorRejectedWithViolations,
   mockHistoryEmpty,
+  mockConnections,
 } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
 
 async function signIn(page: Page) {
+  await mockConnections(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });
   await page.getByLabel(/username/i).fill(USERNAME);
   await page.getByLabel(/password/i).fill(PASSWORD);
   await page.getByRole('button', { name: /sign\s*in/i }).click();
   await expect(page).toHaveURL(/\/(ask)?\/?$/);
+  await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 }
 
 /**
@@ -50,9 +53,9 @@ async function assertRejectionUI(
 
   if (opts.historyShouldBeEmpty) {
     // Navigate to history and assert no new row
-    await page.getByRole('link', { name: /history/i }).click();
+    await page.getByTestId('sidebar-nav-history').click();
     await expect(page).toHaveURL(/\/history/);
-    await expect(page.getByText(/no accepted queries yet/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/no history yet/i)).toBeVisible({ timeout: 5_000 });
   }
 }
 
@@ -75,7 +78,7 @@ test.describe('T-156: evaluator blocks unsafe SQL — full sweep', () => {
       await signIn(page);
 
       await page.getByPlaceholder(/Ask a question/i).fill(`Do a ${statement}`);
-      await page.getByRole('button', { name: /^ask$/i }).click();
+      await page.getByTestId('prompt-send').click();
 
       await assertRejectionUI(page, {
         expectedText: /Write operations are blocked/i,
@@ -96,7 +99,7 @@ test.describe('T-156: evaluator blocks unsafe SQL — full sweep', () => {
     await signIn(page);
 
     await page.getByPlaceholder(/Ask a question/i).fill('Query from fake table');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByTestId('prompt-send').click();
 
     await assertRejectionUI(page, {
       expectedText: /Schema mismatch: nonexistent_table/i,
@@ -115,7 +118,7 @@ test.describe('T-156: evaluator blocks unsafe SQL — full sweep', () => {
     await signIn(page);
 
     await page.getByPlaceholder(/Ask a question/i).fill('Select fake column');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByTestId('prompt-send').click();
 
     await assertRejectionUI(page, {
       expectedText: /Schema mismatch: customer/i,
@@ -134,7 +137,7 @@ test.describe('T-156: evaluator blocks unsafe SQL — full sweep', () => {
     await signIn(page);
 
     await page.getByPlaceholder(/Ask a question/i).fill('Run two selects');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByTestId('prompt-send').click();
 
     await assertRejectionUI(page, {
       expectedText: /Only one statement per query is allowed/i,
@@ -166,7 +169,7 @@ test.describe('T-156: evaluator blocks unsafe SQL — full sweep', () => {
       await signIn(page);
 
       await page.getByPlaceholder(/Ask a question/i).fill(`Use ${pattern}`);
-      await page.getByRole('button', { name: /^ask$/i }).click();
+      await page.getByTestId('prompt-send').click();
 
       await assertRejectionUI(page, {
         expectedText: new RegExp(`Unsafe pattern detected: ${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
@@ -197,7 +200,7 @@ test.describe('T-156: evaluator blocks unsafe SQL — full sweep', () => {
     await signIn(page);
 
     await page.getByPlaceholder(/Ask a question/i).fill('Bad query with many issues');
-    await page.getByRole('button', { name: /^ask$/i }).click();
+    await page.getByTestId('prompt-send').click();
 
     const banner = page.locator('main').getByRole('alert');
     await expect(banner).toBeVisible({ timeout: 5_000 });
