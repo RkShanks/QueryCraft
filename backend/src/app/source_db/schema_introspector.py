@@ -96,17 +96,39 @@ class SchemaIntrospector:
 
         tables = [dict(zip(tables_result.columns, row, strict=False)) for row in tables_result.rows]
         columns = [dict(zip(columns_result.columns, row, strict=False)) for row in columns_result.rows]
+
+        # For MSSQL, qualify table names with schema so the LLM sees "SalesLT.Customer"
+        if self._database_type == DatabaseType.MSSQL:
+            for t in tables:
+                t["table_name"] = f"{t['table_schema']}.{t['table_name']}"
+            for c in columns:
+                c["table_name"] = f"{c['table_schema']}.{c['table_name']}"
+
         return tables, columns
 
     async def _fetch_primary_keys(self, adapter: SourceDBAdapter) -> list[dict]:
         """Fetch primary key columns."""
         result = await adapter.execute(self._primary_keys_query())
-        return [dict(zip(result.columns, row, strict=False)) for row in result.rows]
+        rows = [dict(zip(result.columns, row, strict=False)) for row in result.rows]
+
+        if self._database_type == DatabaseType.MSSQL:
+            for r in rows:
+                r["table_name"] = f"{r['table_schema']}.{r['table_name']}"
+
+        return rows
 
     async def _fetch_foreign_keys(self, adapter: SourceDBAdapter) -> list[dict]:
         """Fetch foreign key columns."""
         result = await adapter.execute(self._foreign_keys_query())
-        return [dict(zip(result.columns, row, strict=False)) for row in result.rows]
+        rows = [dict(zip(result.columns, row, strict=False)) for row in result.rows]
+
+        if self._database_type == DatabaseType.MSSQL:
+            for r in rows:
+                r["table_name"] = f"{r['table_schema']}.{r['table_name']}"
+                if r.get("foreign_table_schema"):
+                    r["foreign_table_name"] = f"{r['foreign_table_schema']}.{r['foreign_table_name']}"
+
+        return rows
 
     async def _full_replace(self, entries: list[ConnectionSchemaEntry]) -> None:
         """Delete all existing entries and insert new ones."""
@@ -121,10 +143,10 @@ class SchemaIntrospector:
         """Return dialect-specific tables query."""
         if self._database_type == DatabaseType.MSSQL:
             return """
-                SELECT TABLE_NAME
+                SELECT TABLE_SCHEMA, TABLE_NAME
                 FROM INFORMATION_SCHEMA.TABLES
-                WHERE TABLE_TYPE = 'BASE TABLE'
-                ORDER BY TABLE_NAME
+                WHERE TABLE_TYPE = N'BASE TABLE'
+                ORDER BY TABLE_SCHEMA, TABLE_NAME
             """
         if self._database_type == DatabaseType.MYSQL:
             return """
@@ -146,9 +168,9 @@ class SchemaIntrospector:
         """Return dialect-specific columns query."""
         if self._database_type == DatabaseType.MSSQL:
             return """
-                SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE
+                SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE
                 FROM INFORMATION_SCHEMA.COLUMNS
-                ORDER BY TABLE_NAME, ORDINAL_POSITION
+                ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION
             """
         if self._database_type == DatabaseType.MYSQL:
             return """
@@ -169,13 +191,14 @@ class SchemaIntrospector:
         if self._database_type == DatabaseType.MSSQL:
             return """
                 SELECT
+                    KCU.TABLE_SCHEMA,
                     KCU.TABLE_NAME,
                     KCU.COLUMN_NAME
                 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS TC
                 JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU
                     ON TC.CONSTRAINT_NAME = KCU.CONSTRAINT_NAME
                 WHERE TC.CONSTRAINT_TYPE = 'PRIMARY KEY'
-                ORDER BY KCU.TABLE_NAME, KCU.ORDINAL_POSITION
+                ORDER BY KCU.TABLE_SCHEMA, KCU.TABLE_NAME, KCU.ORDINAL_POSITION
             """
         if self._database_type == DatabaseType.MYSQL:
             return """
@@ -206,8 +229,10 @@ class SchemaIntrospector:
         if self._database_type == DatabaseType.MSSQL:
             return """
                 SELECT
+                    KCU.TABLE_SCHEMA,
                     KCU.TABLE_NAME,
                     KCU.COLUMN_NAME,
+                    CCU.TABLE_SCHEMA AS foreign_table_schema,
                     CCU.TABLE_NAME AS foreign_table_name,
                     CCU.COLUMN_NAME AS foreign_column_name
                 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS TC
@@ -216,7 +241,7 @@ class SchemaIntrospector:
                 JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE CCU
                     ON TC.CONSTRAINT_NAME = CCU.CONSTRAINT_NAME
                 WHERE TC.CONSTRAINT_TYPE = 'FOREIGN KEY'
-                ORDER BY KCU.TABLE_NAME, KCU.ORDINAL_POSITION
+                ORDER BY KCU.TABLE_SCHEMA, KCU.TABLE_NAME, KCU.ORDINAL_POSITION
             """
         if self._database_type == DatabaseType.MYSQL:
             return """

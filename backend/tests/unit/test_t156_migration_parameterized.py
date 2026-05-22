@@ -8,7 +8,11 @@ single quotes (e.g. "O'Brien").
 import re
 from pathlib import Path
 
-MIGRATION_PATH = Path(__file__).parents[3] / "backend" / "alembic" / "versions" / "002_seed_admin_user.py"
+# Resolve migration file from repo root (works both in host checkout and /app container)
+# On host:  test is at backend/tests/unit/...  → parents[2] = backend/
+# In container: test is at /app/tests/unit/... → parents[2] = /app
+_repo_root = Path(__file__).resolve().parents[2]
+MIGRATION_PATH = _repo_root / "alembic" / "versions" / "002_seed_admin_user.py"
 
 
 def test_migration_has_no_f_string_sql():

@@ -232,48 +232,35 @@ class ConnectionService:
             raise ConnectionNotFoundError(connection_id)
 
         start = time.monotonic()
+        adapter = self._build_adapter(conn)
         try:
-            decrypted_password = self._credential_provider.decrypt(conn.encrypted_password)
-            # Build connection URL based on database type
-            if conn.database_type == DatabaseType.POSTGRESQL:
-                import asyncpg
+            healthy = await adapter.health_check()
+            latency_ms = (time.monotonic() - start) * 1000
 
-                conn_pg = await asyncpg.connect(
-                    host=conn.host,
-                    port=conn.port,
-                    database=conn.database_name,
-                    user=conn.username,
-                    password=decrypted_password,
-                    ssl=False if conn.ssl_mode == "disable" else conn.ssl_mode,
+            if healthy:
+                conn.health_status = HealthStatus.HEALTHY
+                conn.last_health_check_at = datetime.now(UTC)
+                conn.health_error_category = None
+                await self._repo.update(conn)
+
+                return ConnectionTestResult(
+                    status="healthy",
+                    latency_ms=round(latency_ms, 2),
+                    tested_at=datetime.now(UTC),
                 )
-                await conn_pg.execute("SELECT 1")
-                await conn_pg.close()
             else:
-                # For MySQL/MSSQL, we'd use the appropriate driver
-                # For now, mark as untested since drivers may not be installed
-                raise NotImplementedError(f"Health check not implemented for {conn.database_type.value}")
+                conn.health_status = HealthStatus.UNHEALTHY
+                conn.last_health_check_at = datetime.now(UTC)
+                conn.health_error_category = "unknown"
+                await self._repo.update(conn)
 
-            latency_ms = (time.monotonic() - start) * 1000
-
-            conn.health_status = HealthStatus.HEALTHY
-            conn.last_health_check_at = datetime.now(UTC)
-            conn.health_error_category = None
-            await self._repo.update(conn)
-
-            return ConnectionTestResult(
-                status="healthy",
-                latency_ms=round(latency_ms, 2),
-                tested_at=datetime.now(UTC),
-            )
-        except NotImplementedError:
-            latency_ms = (time.monotonic() - start) * 1000
-            return ConnectionTestResult(
-                status="unhealthy",
-                latency_ms=round(latency_ms, 2),
-                error_category="not_implemented",
-                message_key="error.connection_unhealthy",
-                tested_at=datetime.now(UTC),
-            )
+                return ConnectionTestResult(
+                    status="unhealthy",
+                    latency_ms=round(latency_ms, 2),
+                    error_category="unknown",
+                    message_key="error.connection_unknown",
+                    tested_at=datetime.now(UTC),
+                )
         except Exception as e:
             latency_ms = (time.monotonic() - start) * 1000
             error_category = self._classify_error(str(e))
@@ -290,6 +277,8 @@ class ConnectionService:
                 message_key=f"error.connection_{error_category}",
                 tested_at=datetime.now(UTC),
             )
+        finally:
+            await adapter.close()
 
     async def hard_delete(self, connection_id: uuid.UUID) -> None:
         """Hard-delete a connection only if unreferenced.
