@@ -39,8 +39,14 @@ Phases are sequential and **immutable** once snapshot.
 |---|---|---|---|
 | 1 | FROZEN | `specs/001-core-text-to-sql/` | Core text-to-SQL: 6 stories, 28 PRs, 224 tasks |
 | 2 | FROZEN | `specs/002-phase2-premium-ui-rtl/` | Premium UI + Arabic/RTL + backend hardening |
-| 3 | ACTIVE | `specs/003-multi-dialect-source-dbs/` | Multi-dialect SQL (PG/MySQL/MSSQL), admin DB management, schema introspection |
-| 4+ | DEFERRED | — | Mobile shell, multi-tenant |
+| 3 | FROZEN | `specs/003-multi-dialect-source-dbs/` | Multi-dialect SQL (PG/MySQL/MSSQL), admin DB management, schema introspection |
+| 4 | PLANNED | — | Arabic/RTL verification and polish on shipped surfaces |
+| 5 | PLANNED | — | SSO, RBAC, row/column security |
+| 6 | PLANNED | — | Audit log, quotas, injection detection |
+| 7 | PLANNED | — | Admin dashboard |
+| 8 | PLANNED | — | Scheduled reports and notifications |
+| 9 | PLANNED | — | Semantic search of accepted queries |
+| 10+ | DEFERRED | — | Mobile shell, multi-tenant foundation |
 
 ### Starting a new phase
 

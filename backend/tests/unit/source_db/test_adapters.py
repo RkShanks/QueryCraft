@@ -53,6 +53,9 @@ class FakeRecord:
     def values(self) -> list:
         return list(self._data.values())
 
+    def __iter__(self):
+        return iter(self._data.keys())
+
 
 class FakePGPool:
     """Fake asyncpg-like pool with async context manager support."""

@@ -71,3 +71,126 @@ docker compose exec postgres-source psql -U pagila_user -d source_analytics \
 ### Inv 5 (Read-Only Source DB) note
 
 The constitution and plan stipulate that the app must connect to the source DB with a role that has no data-modifying capability. The current `source_readonly` user is the cluster superuser, which violates this in practice. Chunk 3.4 (SourceDBConnector) should connect as `pagila_user` so the read-only invariant is enforced at the database engine level. The cluster superuser remains for migrations and admin operations.
+
+---
+
+# Multi-Dialect Test Databases Setup (MySQL & MSSQL)
+
+QueryCraft supports MySQL and Microsoft SQL Server (MSSQL) as source databases starting in Phase 3. Follow the instructions below to download, start, and verify the sample datasets for local manual testing.
+
+## Setup
+
+1. **Download sample databases:**
+   From the repository root, run the setup script to download MySQL Sakila and MSSQL AdventureWorksLT backup/fixtures:
+   ```bash
+   ./scripts/setup-source-dbs.sh
+   ```
+   This will:
+   - Create the directories `dbTest/mysql/init` and `dbTest/mssql/backup`.
+   - Download the official MySQL Sakila database files and place them under `dbTest/mysql/init/`.
+   - Generate `dbTest/mysql/init/03-grants.sql` to restrict application user privileges.
+   - Download Microsoft's official `AdventureWorksLT2022.bak` backup file under `dbTest/mssql/backup/`.
+
+2. **Start the database containers:**
+   Start the services:
+   ```bash
+   docker compose -f docker-compose.dev.yml up -d mysql-source mssql-source
+   ```
+
+3. **Restore the MSSQL AdventureWorksLT database:**
+   Run the restore helper script:
+   ```bash
+   ./scripts/restore-mssql.sh
+   ```
+   This script waits for the SQL Server container to become healthy, restores the database from the backup file, and configures the read-only application login/user.
+
+---
+
+## Verifying the Setup
+
+### 1. MySQL (Sakila Database)
+
+- **List tables:**
+  ```bash
+  docker compose -f docker-compose.dev.yml exec mysql-source mysql -u sakila_user -psakila_dev_pwd -e "SHOW TABLES IN sakila;"
+  ```
+  *(Should list 16 tables including `actor`, `customer`, `film`, etc.)*
+
+- **Count rows in `actor` table:**
+  ```bash
+  docker compose -f docker-compose.dev.yml exec mysql-source mysql -u sakila_user -psakila_dev_pwd -e "SELECT COUNT(*) FROM sakila.actor;"
+  ```
+  *(Should output `200`)*
+
+- **Verify read-only constraint:**
+  ```bash
+  docker compose -f docker-compose.dev.yml exec mysql-source mysql -u sakila_user -psakila_dev_pwd -e "INSERT INTO sakila.actor (first_name, last_name) VALUES ('TEST', 'USER');"
+  ```
+  *(Should fail with: `ERROR 1142 (42000): INSERT command denied to user 'sakila_user'@'...' for table 'actor'`)*
+
+### 2. MSSQL (AdventureWorksLT Database)
+
+- **List tables:**
+  ```bash
+  docker compose -f docker-compose.dev.yml exec mssql-source /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U adventureworks_user -P adventureworks_dev_pwd -C \
+    -Q "SELECT TABLE_SCHEMA, TABLE_NAME FROM AdventureWorksLT.INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';"
+  ```
+  *(Should list SalesLT tables including `Customer`, `Product`, `SalesOrderHeader`, etc.)*
+
+- **Count rows in `SalesLT.Customer` table:**
+  ```bash
+  docker compose -f docker-compose.dev.yml exec mssql-source /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U adventureworks_user -P adventureworks_dev_pwd -C \
+    -Q "SELECT COUNT(*) FROM AdventureWorksLT.SalesLT.Customer;"
+  ```
+  *(Should output `847`)*
+
+- **Verify read-only constraint:**
+  ```bash
+  docker compose -f docker-compose.dev.yml exec mssql-source /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U adventureworks_user -P adventureworks_dev_pwd -C \
+    -Q "INSERT INTO AdventureWorksLT.SalesLT.Customer (FirstName, LastName, PasswordHash, PasswordSalt, RowGuid) VALUES ('TEST', 'USER', 'abc', '123', NEWID());"
+  ```
+  *(Should fail with: `Msg 229, Level 14, State 5, Line 1... The INSERT permission was denied on the object 'Customer', database 'AdventureWorksLT', schema 'SalesLT'.`)*
+
+---
+
+## Connecting from QueryCraft Admin UI
+
+When adding or editing connections in the Admin Connections dashboard (`/admin/connections`), use the following parameters:
+
+| Field | MySQL Sakila | MSSQL AdventureWorksLT |
+|---|---|---|
+| **Display Name** | Sakila DB | AdventureWorks DB |
+| **Database Type** | `mysql` | `mssql` |
+| **Host** | `mysql-source` *(from inside docker)* or `localhost` *(from host)* | `mssql-source` *(from inside docker)* or `localhost` *(from host)* |
+| **Port** | `3306` | `1433` |
+| **Database Name** | `sakila` | `AdventureWorksLT` |
+| **Username** | `sakila_user` | `adventureworks_user` |
+| **Password** | `sakila_dev_pwd` | `adventureworks_dev_pwd` |
+
+> [!NOTE]
+> When QueryCraft connects from the backend docker container, it must resolve the hostnames via the Compose network (`mysql-source` or `mssql-source`). When connecting or querying from your local machine (outside docker), use `localhost`.
+
+---
+
+## Troubleshooting
+
+### MySQL Initialization Issues
+- The MySQL container executes initialization scripts under `/docker-entrypoint-initdb.d` **only when the volume is completely empty**.
+- If the import fails or you need to restart from scratch, purge the volume and restart:
+  ```bash
+  docker compose -f docker-compose.dev.yml down -v
+  docker compose -f docker-compose.dev.yml up -d mysql-source
+  ```
+
+### MSSQL Restore Issues
+- The SQL Server service must be healthy and running before the restore script can connect. Ensure you run `./scripts/restore-mssql.sh` after the service starts.
+- If you need to force a restore or reset the MSSQL database:
+  ```bash
+  docker compose -f docker-compose.dev.yml down -v
+  docker compose -f docker-compose.dev.yml up -d mssql-source
+  ./scripts/restore-mssql.sh
+  ```
+

@@ -41,7 +41,13 @@ class TestMessageKeys:
     @pytest.fixture(scope="class")
     def en_json_keys(self):
         """Load and flatten all keys from en.json."""
-        en_path = Path(__file__).parents[3] / "frontend" / "src" / "locales" / "en.json"
+        # Resolve from repo root (works in host checkout and /app container)
+        _repo_root = Path(__file__).resolve().parents[3]
+        en_path = _repo_root / "frontend" / "src" / "locales" / "en.json"
+        if not en_path.exists():
+            en_path = _repo_root / "src" / "locales" / "en.json"
+        if not en_path.exists():
+            pytest.skip("frontend en.json not available in this environment")
         with open(en_path, encoding="utf-8") as f:
             data = json.load(f)
 

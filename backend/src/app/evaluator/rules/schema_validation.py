@@ -77,10 +77,19 @@ class SchemaValidationRule:
             table_name = table.name
             if table_name in local_ctes:
                 continue
-            # Reject cross-schema access (Phase 1 only supports default schema)
-            if table.db:
-                return False, f"Cross-schema access not allowed: {table.db}.{table_name}"
             is_quoted = hasattr(table.this, "quoted") and table.this.quoted
+            # If a schema prefix is present, resolve the fully-qualified name only.
+            if table.db:
+                qualified = f"{table.db}.{table_name}"
+                found = self._find_table(schema, qualified, is_quoted)
+                if not found:
+                    return False, f"Unknown table: {qualified}"
+                # Update alias map so column validation uses the qualified name
+                alias_map[table_name] = qualified
+                alias_map[qualified] = qualified
+                if table.alias:
+                    alias_map[table.alias] = qualified
+                continue
             found = self._find_table(schema, table_name, is_quoted)
             if not found:
                 return False, f"Unknown table: {table_name}"

@@ -103,7 +103,7 @@ class PostgresAdapter:
             rows = await conn.fetch(sql, *params)
             if not rows:
                 return ExecuteResult(columns=[], rows=[])
-            columns = list(rows[0].keys())
+            columns = [c.lower() for c in rows[0]]
             row_tuples = [tuple(r.values()) for r in rows]
             return ExecuteResult(columns=columns, rows=row_tuples)
 
@@ -177,7 +177,7 @@ class MySQLAdapter:
             rows = await cursor.fetchall()
             if not rows:
                 return ExecuteResult(columns=[], rows=[])
-            columns = [d[0] for d in cursor.description] if cursor.description else []
+            columns = [d[0].lower() for d in cursor.description] if cursor.description else []
             row_tuples = [tuple(r) for r in rows]
             return ExecuteResult(columns=columns, rows=row_tuples)
 
@@ -253,7 +253,7 @@ class MSSQLAdapter:
             rows = await cur.fetchall()
             if not rows:
                 return ExecuteResult(columns=[], rows=[])
-            columns = [d[0] for d in cur.description] if cur.description else []
+            columns = [d[0].lower() for d in cur.description] if cur.description else []
             row_tuples = [tuple(r) for r in rows]
             return ExecuteResult(columns=columns, rows=row_tuples)
 

@@ -22,16 +22,43 @@ class FakeAdapterForIntrospection:
     async def execute(self, sql: str, params: tuple = ()) -> Any:
         self._executed_queries.append(sql)
         if "table_constraints" in sql and "PRIMARY KEY" in sql:
+            if self._dialect == DatabaseType.MSSQL:
+                return FakeExecuteResult(
+                    columns=["table_schema", "table_name", "column_name"],
+                    rows=[("dbo", "users", "id"), ("dbo", "orders", "id")],
+                )
             return FakeExecuteResult(
                 columns=["table_name", "column_name"],
                 rows=[("users", "id"), ("orders", "id")],
             )
         if "constraint_type = 'FOREIGN KEY'" in sql or "FOREIGN KEY" in sql:
+            if self._dialect == DatabaseType.MSSQL:
+                return FakeExecuteResult(
+                    columns=[
+                        "table_schema",
+                        "table_name",
+                        "column_name",
+                        "foreign_table_schema",
+                        "foreign_table_name",
+                        "foreign_column_name",
+                    ],
+                    rows=[("dbo", "orders", "user_id", "dbo", "users", "id")],
+                )
             return FakeExecuteResult(
                 columns=["table_name", "column_name", "foreign_table_name", "foreign_column_name"],
                 rows=[("orders", "user_id", "users", "id")],
             )
         if "columns" in sql.lower():
+            if self._dialect == DatabaseType.MSSQL:
+                return FakeExecuteResult(
+                    columns=["table_schema", "table_name", "column_name", "data_type"],
+                    rows=[
+                        ("dbo", "users", "id", "integer"),
+                        ("dbo", "users", "name", "varchar"),
+                        ("dbo", "orders", "id", "integer"),
+                        ("dbo", "orders", "user_id", "integer"),
+                    ],
+                )
             return FakeExecuteResult(
                 columns=["table_name", "column_name", "data_type"],
                 rows=[
@@ -42,6 +69,11 @@ class FakeAdapterForIntrospection:
                 ],
             )
         if "tables" in sql.lower():
+            if self._dialect == DatabaseType.MSSQL:
+                return FakeExecuteResult(
+                    columns=["table_schema", "table_name"],
+                    rows=[("dbo", "users"), ("dbo", "orders")],
+                )
             return FakeExecuteResult(
                 columns=["table_name"],
                 rows=[("users",), ("orders",)],

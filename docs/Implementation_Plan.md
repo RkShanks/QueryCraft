@@ -2,7 +2,7 @@
 
 **Phasing principles**
 - Each phase is a vertical slice (UI + API + storage + LLM where relevant), not a horizontal layer.
-- Phases 1–3 establish a working product; Phases 4–8 add the enterprise features.
+- Phases 1–3 establish the core product; Phase 4 verifies and polishes shipped UX; Phases 5–9 add enterprise features.
 - Hard dependencies are noted explicitly. Within a phase, scope stays narrow on purpose.
 - "Architecture supports this from day 1, but UX/features come later" is called out explicitly so nothing gets reworked later.
 
@@ -60,17 +60,18 @@ Cross-database joins. Read replicas. Connection pooling tuning UI.
 
 ---
 
-### Phase 4 — Arabic, RTL, and Cross-Language Querying
-**Goal:** A user can ask questions in Arabic (or any natural language) and the platform produces SQL in the dialect of their target database. UI fully supports RTL.
+### Phase 4 — Arabic, RTL, and Cross-Language Verification and Polish
+**Goal:** Close any remaining Arabic, RTL, and cross-language gaps across the shipped product. This phase is a verification/polish phase, not a major new feature phase. If no gaps remain, it becomes a pure regression and closure wave.
 
 **In scope**
-- Arabic UI translations across every screen built in Phases 1–3.
-- RTL layout activation when language is RTL.
-- The LLM accepts questions in any language and outputs SQL/result narration appropriately.
-- Localized error messages and validation feedback.
+- Verify Arabic UI translations across every screen built in Phases 1–3.
+- Verify RTL layout activation when language is RTL.
+- Verify the LLM can accept questions in any language and produce appropriate SQL/result narration.
+- Fix any missing Arabic strings, RTL regressions, localized error gaps, or browser-visible polish issues discovered in smoke/audit.
+- Preserve existing UI, evaluator, and dialect behavior while tightening edge cases.
 
 **Out of scope (deferred)**
-Voice input. Right-to-left chart axis flipping (charts can stay LTR for v1).
+Voice input. Right-to-left chart axis flipping (charts can stay LTR for v1). New major product surfaces.
 
 **Depends on:** Phases 1, 2 (the UI surfaces it has to translate). Doesn't strictly need Phase 3, but ordering it after 3 means the multi-dialect work is already done when Arabic users start using non-PG databases.
 
@@ -91,7 +92,7 @@ Voice input. Right-to-left chart axis flipping (charts can stay LTR for v1).
 **Out of scope (deferred)**
 Per-user permission overrides (forbidden by Constitution). Just-in-time role provisioning workflows.
 
-**Depends on:** Phases 1, 3. Replaces the provisional admin login from Phase 1.
+**Depends on:** Phases 1, 3, 4. Replaces the provisional admin login from Phase 1.
 
 ---
 
@@ -164,10 +165,25 @@ Recommendation feed. Auto-suggest queries based on partial input (could be a Pha
 
 ---
 
-## Suggested execution order
-1, 2, 3, 4, 5, 6, 7, 8, (optional) 9.
+### Phase 10+ — Mobile Shell and Multi-Tenant Foundation
+**Goal:** Add mobile shell and multi-tenant foundations only after the core enterprise roadmap above is complete.
 
-You could swap Phases 3 and 4 if Arabic users are higher priority than MS SQL Server / MySQL support. Everything else has hard dependencies that lock the order.
+**In scope**
+- Mobile shell / PWA experience.
+- Multi-tenant groundwork and tenant-aware routing.
+- Any platform primitives needed before a real multi-tenant rollout.
+
+**Out of scope (deferred)**
+Full rollout of multi-tenant policy, advanced mobile-specific product redesign, and any features that would destabilize Phases 1–9.
+
+**Depends on:** Phases 1–9.
+
+---
+
+## Suggested execution order
+1, 2, 3, 4, 5, 6, 7, 8, (optional) 9, 10+.
+
+Phase 4 is intentionally a verification/polish phase because Arabic and RTL support were largely delivered in earlier phases. Use it to close any remaining gaps, not to introduce a new major product slice.
 
 ---
 
