@@ -150,3 +150,22 @@
 - **PR**: pending
 - **Tasks**: T-470 through T-481
 - **Notes**: Dispatch from merged `main` after PR #94. Sequential order required: backend gates (T-470), frontend gates (T-471), optional MySQL/MSSQL integration smoke if services available (T-472/T-473), full Chrome DevTools MCP Phase 3 smoke (T-474), independent frontend/backend audits (T-475/T-476), Opus consolidation (T-477), fix all Critical/High findings (T-478/T-479), then Phase 3 summary and final snapshot (T-480/T-481). Block closure on failing gates, raw credential/internal identifier leaks, missing PR evidence, or unresolved Critical/High audit findings.
+
+## Wave 15.0: Backend Gates + Audit + Fixes
+- **Status**: BACKEND COMPLETE
+- **Branch**: `phase-3/wave-15.0-hardening`
+- **Completed Tasks**: T-470, T-472, T-473, T-476, T-478, T-479
+- **Backend Gate Results**:
+  - `ruff check src tests` → All checks passed!
+  - `ruff format --check src tests` → 229 files already formatted
+  - `pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` → 617 passed, 9 deselected, 2 warnings
+- **Audit Report**: `audit/wave-15/backend-findings.md`
+- **Findings Fixed**:
+  - **Critical (C-1)**: Removed password from PostgreSQL DSN in `connection_service.py`; use keyword args instead.
+  - **High (H-1)**: Removed raw `ParseError` text from `DialectValidationRule` responses.
+  - **High (H-2)**: Removed `str(e)` from admin `refresh-schema` error response.
+  - **High (H-3)**: Added exception sanitization in `MSSQLAdapter.connect()`.
+  - **Mid (M-1/M-2)**: Removed default `dialect="postgres"` from `ReadOnlyRule` and `DialectValidationRule`; require explicit dialect.
+  - **Low (L-1)**: Fixed `SourceDBConnectionFailed` message_key to `error.sourceDbConnectionFailed`; added EN/AR i18n keys.
+- **Integration Smoke**: MySQL and MSSQL services unavailable in environment — documented as optional/manual per ADR-10.
+- **Remaining**: T-471 (frontend gates — Gemini scope), T-474 (Chrome MCP smoke — Gemini scope), T-475 (Gemini audit), T-477 (Opus consolidation), T-480/T-481 (closure docs).
