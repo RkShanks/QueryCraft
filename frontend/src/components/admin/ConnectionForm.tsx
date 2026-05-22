@@ -281,7 +281,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2 bg-accent-cyan text-gray-900 hover:bg-opacity-90 rounded-md text-sm transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed select-none"
+            className="px-4 py-2 bg-neon-cyan text-gray-900 hover:bg-opacity-90 rounded-md text-sm transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed select-none"
           >
             {isSubmitting
               ? t('query.input.submitting')

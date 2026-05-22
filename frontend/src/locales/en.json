@@ -153,6 +153,7 @@
   "common.delete": "Delete",
   "common.edit": "Edit",
   "common.copy": "Copy",
+  "common.copied": "Copied",
   "common.regenerate": "Regenerate",
   "common.send": "Send",
   "query.sql.show": "Show SQL",

@@ -11,6 +11,9 @@ describe('ConnectionActions', () => {
   const mockDisableMutate = vi.fn();
   const mockEnableMutate = vi.fn();
   const mockDeleteMutate = vi.fn();
+  const mockDisableReset = vi.fn();
+  const mockEnableReset = vi.fn();
+  const mockDeleteReset = vi.fn();
 
   const defaultMutationState = {
     mutate: vi.fn(),
@@ -25,9 +28,9 @@ describe('ConnectionActions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useConnections).mockReturnValue({
-      disableMutation: { ...defaultMutationState, mutate: mockDisableMutate },
-      enableMutation: { ...defaultMutationState, mutate: mockEnableMutate },
-      deleteMutation: { ...defaultMutationState, mutate: mockDeleteMutate },
+      disableMutation: { ...defaultMutationState, mutate: mockDisableMutate, reset: mockDisableReset },
+      enableMutation: { ...defaultMutationState, mutate: mockEnableMutate, reset: mockEnableReset },
+      deleteMutation: { ...defaultMutationState, mutate: mockDeleteMutate, reset: mockDeleteReset },
     } as unknown as ReturnType<typeof useConnections>);
   });
 
@@ -212,5 +215,31 @@ describe('ConnectionActions', () => {
     const { container } = render(<ConnectionActions connectionId="conn-1" lifecycleState="active" />);
     expect(container.innerHTML).not.toContain('password');
     expect(container.innerHTML).not.toContain('secret');
+  });
+
+  it('calls reset on all action mutations after 5 seconds on error', () => {
+    vi.useFakeTimers();
+    vi.mocked(useConnections).mockReturnValue({
+      disableMutation: {
+        ...defaultMutationState,
+        mutate: mockDisableMutate,
+        reset: mockDisableReset,
+        isError: true,
+        error: { message_key: 'error.connection_already_active' },
+      },
+      enableMutation: { ...defaultMutationState, mutate: mockEnableMutate, reset: mockEnableReset },
+      deleteMutation: { ...defaultMutationState, mutate: mockDeleteMutate, reset: mockDeleteReset },
+    } as unknown as ReturnType<typeof useConnections>);
+
+    render(<ConnectionActions connectionId="conn-1" lifecycleState="active" />);
+
+    expect(mockDisableReset).not.toHaveBeenCalled();
+    
+    vi.advanceTimersByTime(5000);
+    
+    expect(mockDisableReset).toHaveBeenCalledTimes(1);
+    expect(mockEnableReset).toHaveBeenCalledTimes(1);
+    expect(mockDeleteReset).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
   });
 });

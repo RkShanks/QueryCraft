@@ -170,6 +170,7 @@
   "common.delete": "حذف",
   "common.edit": "تعديل",
   "common.copy": "نسخ",
+  "common.copied": "تم النسخ",
   "common.regenerate": "إعادة التوليد",
   "common.send": "إرسال",
 

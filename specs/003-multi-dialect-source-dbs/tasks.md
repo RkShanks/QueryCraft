@@ -230,11 +230,11 @@ Wave Final Reports MUST include red/green evidence per task.
 
 ### Chrome DevTools MCP Smoke
 
-- [ ] T-468 Chrome DevTools MCP smoke: selector interaction, first-query blocking, selected-DB query, switch mid-session, disabled/error paths, console errors, network checks, i18n, RTL (FR-086, SC-032)
+- [X] T-468 Chrome DevTools MCP smoke: selector interaction, first-query blocking, selected-DB query, switch mid-session, disabled/error paths, console errors, network checks, i18n, RTL (FR-086, SC-032)
 
 ### Frontend Gates
 
-- [ ] T-469 Run frontend foundation gates and paste verbatim output:
+- [X] T-469 Run frontend foundation gates and paste verbatim output:
   - `cd frontend && npm run test -- --run`
   - `cd frontend && NODE_OPTIONS=--trace-warnings npm run test -- --run`
   - `cd frontend && npm run lint`

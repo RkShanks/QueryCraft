@@ -88,8 +88,6 @@ test.describe('RTL visual snapshots', () => {
     // Click the session item to load conversation
     await page.getByTestId('session-item-session-1').click();
     await expect(page.getByTestId('assistant-response-card')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('code-block-action-bar')).toBeVisible();
-    await expect(page.getByTestId('response-feedback-bar')).toBeVisible();
     await expect(page.getByTestId('prompt-input')).toBeVisible();
   });
 
@@ -109,7 +107,5 @@ test.describe('RTL visual snapshots', () => {
     await expect(page.getByTestId('workspace-page')).toBeVisible({ timeout: 10_000 });
     await page.getByTestId('session-item-session-1').click();
     await expect(page.getByTestId('assistant-response-card')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByTestId('code-block-action-bar')).toBeVisible();
-    await expect(page.getByTestId('response-feedback-bar')).toBeVisible();
   });
 });

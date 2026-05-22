@@ -129,3 +129,10 @@
 - **PR**: #92 open, CI pass, mergeState CLEAN
 - **Completed Tasks**: T-467
 - **Notes**: Code scope is tight: added missing `query.error.noDatabaseSelected` keys in EN/AR, added `role="alert"` + `aria-live="polite"` to `PromptInput` warning, added locale parity/a11y tests, and marked T-467 complete. Review blocker: PR body is empty, so required Summary/T-ID/FR-SC/TDD/gates/Chrome/quirks/BLOCKED evidence is absent. Populate PR body before merge.
+
+## Wave 14.9: Full Frontend Smoke Fixes Branch Review
+- **Status**: BRANCH REVIEWED - PR REQUIRED
+- **Branch**: `phase-3/wave-14.9-full-frontend-smoke-fixes`
+- **PR**: none found for branch at review time
+- **Completed Tasks**: T-468, T-469 marked complete locally
+- **Notes**: Branch contains New Chat navigation fix, 5-second mutation alert reset coverage, stable admin action-cell layout hardening, history/workspace premium UI polish, E2E mock routing stabilization, CDP troubleshooting docs, and frontend gates/E2E evidence from implementer report. Current branch is ahead of origin by two commits and no GitHub PR exists yet, so Wave 14.9 cannot be merged or used as Wave 15 base until pushed and opened as PR. README update requested before Wave 15 to document latest database connection workflow and local source DB setup.

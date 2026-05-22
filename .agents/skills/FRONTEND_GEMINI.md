@@ -47,6 +47,6 @@ Use existing `lucide-react`. Only add a new icon library if lucide genuinely lac
 | React Hooks lint | Prefer event-handler updates over `useEffect` state sync. Reusable hooks may intentionally sync async props into local state only with guarded refs, a clear comment, and tests for late prop arrival. Never assign `ref.current` during render; update refs in `useEffect` or use a guarded render-phase reset when lint-safe. |
 | Async auto-select hooks | When auto-selecting from async inputs, test late-loaded canonical state so auto-select does not overwrite persisted/session state. Prop-driven sync must not trigger mutation/PATCH side effects. |
 | Stylelint during UI waves | Run `npm run lint:css`; fix pre-existing logical-direction issues; document in report |
-| Endpoint forwarding | Add endpoint/router test alongside service test when extending forwarded request fields |
-| Co-located tests | `Foo.test.tsx` next to `Foo.tsx`, not `__tests__/` dirs |
-| Playwright browsers | Auto-install via `postinstall` hook. For missing OS deps: `sudo npx playwright install --with-deps chromium` |
+| CDP Port / Playwright Driver lock | When the browser subagent fails with "CDP port not responsive" or ECONNREFUSED on port 9222, first kill zombie Playwright drivers: `pkill -9 -f run-driver || true`. Then, launch a dedicated headless Chrome instance listening on port 9222: `/usr/bin/google-chrome --headless=new --remote-debugging-port=9222 --remote-debugging-address=127.0.0.1 --no-sandbox --disable-gpu --disable-software-rasterizer --user-data-dir=/home/avril/QueryCraft/frontend/tmp/chrome-profile > /dev/null 2>&1 &`. This ensures the subagent connects instantly to a stable browser session. |
+
+

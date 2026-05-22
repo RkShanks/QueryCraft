@@ -63,6 +63,15 @@ const SettingsForm: React.FC<{
     updateMutation.mutate({ llm_context_cap: contextCap, max_regenerate_attempts: maxRegen });
   }, [contextCap, maxRegen, updateMutation, t]);
 
+  React.useEffect(() => {
+    if (updateMutation.isSuccess || updateMutation.isError) {
+      const timer = setTimeout(() => {
+        updateMutation.reset();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [updateMutation]);
+
   const showSuccess = updateMutation.isSuccess;
 
   return (

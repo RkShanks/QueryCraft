@@ -105,6 +105,7 @@ describe('Sidebar', () => {
 
     fireEvent.click(screen.getByTestId('sidebar-new-chat'));
     expect(useUIStore.getState().activeSessionId).toBeNull();
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   it('clicking session item sets active session', () => {

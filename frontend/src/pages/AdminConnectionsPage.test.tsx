@@ -142,4 +142,15 @@ describe('AdminConnectionsPage', () => {
     expect(screen.getByText('admin.connections.form.editTitle')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Prod DB')).toBeInTheDocument();
   });
+
+  it('action container cell uses a stable layout without flex-wrap', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useConnections).mockReturnValue(mockPopulatedUseConnections as any);
+    render(<AdminConnectionsPage />);
+    
+    const editButtons = screen.getAllByRole('button', { name: 'common.edit' });
+    const actionContainer = editButtons[0].parentElement;
+    expect(actionContainer).toBeInTheDocument();
+    expect(actionContainer?.className).not.toContain('flex-wrap');
+  });
 });

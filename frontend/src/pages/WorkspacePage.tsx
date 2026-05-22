@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores/uiStore';
 import { useSessionDetail } from '../hooks/useSessions';
@@ -119,6 +120,25 @@ export const WorkspacePage: React.FC = () => {
     availableConnections,
   });
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [loadedQuestion, setLoadedQuestion] = useState('');
+
+  const urlQuestion = searchParams.get('question');
+  const urlConnectionId = searchParams.get('connectionId');
+
+  useEffect(() => {
+    if (urlQuestion || urlConnectionId) {
+      if (urlConnectionId && urlConnectionId !== selectedConnectionId) {
+        setSelectedConnectionId(urlConnectionId);
+      }
+      if (urlQuestion) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLoadedQuestion(urlQuestion);
+      }
+      setSearchParams({}, { replace: true });
+    }
+  }, [urlQuestion, urlConnectionId, selectedConnectionId, setSelectedConnectionId, setSearchParams]);
+
   const [localTurns, setLocalTurns] = useState<ConversationTurn[]>([]);
   const [deletedSavedIds, setDeletedSavedIds] = useState<Set<string>>(new Set());
   const [renderedSessionId, setRenderedSessionId] = useState(activeSessionId);
@@ -156,7 +176,7 @@ export const WorkspacePage: React.FC = () => {
   );
 
   const allTurns: ConversationTurn[] = [
-    ...historyAttempts.map((a) => buildHistoryTurn(a, availableConnections)),
+    ...[...historyAttempts].reverse().map((a) => buildHistoryTurn(a, availableConnections)),
     ...dedupedLocalTurns,
   ];
 
@@ -183,11 +203,14 @@ export const WorkspacePage: React.FC = () => {
       try {
         await deleteHistoryEntry({ path: { query_id: savedQueryId } });
         queryClient.invalidateQueries({ queryKey: ['history'] });
+        if (activeSessionId) {
+          queryClient.invalidateQueries({ queryKey: ['sessions', activeSessionId] });
+        }
       } catch {
         // Silently ignore — turn is already removed from UI
       }
     },
-    [queryClient]
+    [queryClient, activeSessionId]
   );
 
   const handleRegenerate = useCallback(
@@ -208,6 +231,9 @@ export const WorkspacePage: React.FC = () => {
               refinePrompt: undefined,
               evaluatorRejection: undefined,
             });
+            if (activeSessionId) {
+              queryClient.invalidateQueries({ queryKey: ['sessions', activeSessionId] });
+            }
           } else if (data.kind === 'refine') {
             updateTurn(attemptId, {
               isLoading: false,
@@ -222,7 +248,7 @@ export const WorkspacePage: React.FC = () => {
         updateTurn(attemptId, { isLoading: false });
       }
     },
-    [querySubmit, updateTurn]
+    [querySubmit, updateTurn, queryClient, activeSessionId]
   );
 
   const handleSubmit = useCallback(
@@ -268,6 +294,9 @@ export const WorkspacePage: React.FC = () => {
       try {
         const data = (await querySubmit.submitQuestion(question, activeSessionId, selectedConnectionId)) as unknown;
         const record = data as Record<string, unknown>;
+        if (activeSessionId) {
+          queryClient.invalidateQueries({ queryKey: ['sessions', activeSessionId] });
+        }
         if (record && typeof record === 'object' && 'kind' in record && record.kind === 'result') {
           const result = data as QueryResult;
           setLocalTurns((prev) =>
@@ -319,7 +348,7 @@ export const WorkspacePage: React.FC = () => {
         }
       }
     },
-    [activeSessionId, querySubmit, selectedConnectionId, availableConnections]
+    [activeSessionId, querySubmit, selectedConnectionId, availableConnections, queryClient]
   );
 
   return (
@@ -374,11 +403,15 @@ export const WorkspacePage: React.FC = () => {
         )}
       </div>
       <PromptInput
-        onSubmit={handleSubmit}
+        onSubmit={(text) => {
+          handleSubmit(text);
+          setLoadedQuestion('');
+        }}
         disabled={querySubmit.isSubmitting}
         connections={availableConnections}
         selectedConnectionId={selectedConnectionId}
         onSelectConnection={setSelectedConnectionId}
+        initialText={loadedQuestion}
       />
     </div>
   );

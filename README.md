@@ -20,6 +20,52 @@ apt-get install -y unixodbc unixodbc-dev freetds-dev tdsodbc
 
 These are pre-installed in the Docker image (see `backend/Dockerfile`). macOS users can install via Homebrew: `brew install unixodbc freetds`.
 
+## Local Source Database Setup
+
+QueryCraft ships with a local PostgreSQL source DB for query execution and smoke testing. The source DB is seeded from `dbTest/init/` and uses the Pagila sample schema/data.
+
+### 1. Load Pagila seed files
+
+From repo root:
+
+```bash
+cd dbTest/init
+curl -L -o 01-schema.sql https://raw.githubusercontent.com/devrimgunduz/pagila/master/pagila-schema.sql
+curl -L -o 02-data.sql https://raw.githubusercontent.com/devrimgunduz/pagila/master/pagila-data.sql
+```
+
+If you already downloaded them earlier, keep the filenames exactly as `01-schema.sql` and `02-data.sql` so Docker init picks them up in order.
+
+### 2. Start the source DB
+
+```bash
+docker compose -f docker-compose.dev.yml up -d postgres-source
+```
+
+The container runs the files in `dbTest/init/` during first boot and applies `03-grants.sql` for the read-only app role.
+
+### 3. Verify the seed
+
+```bash
+docker compose exec postgres-source psql -U pagila_user -d source_analytics -c "SELECT count(*) FROM actor;"
+docker compose exec postgres-source psql -U pagila_user -d source_analytics -c "INSERT INTO actor (first_name, last_name) VALUES ('Devin', 'Test');"
+```
+
+The first command should return the expected row count. The second should fail with read-only permission denied.
+
+### 4. App connection values
+
+The backend reads source DB credentials from `.env`:
+
+- `SOURCE_DB_HOST`
+- `SOURCE_DB_PORT`
+- `SOURCE_DB_NAME`
+- `SOURCE_DB_USER`
+- `SOURCE_DB_PASSWORD`
+- `SOURCE_DB_SSL_MODE`
+
+The default local compose values in `.env.example` point at `postgres-source` on port `5432` with the Pagila readonly user.
+
 ## Monorepo Structure
 
 - `backend/`: FastAPI + SQLAlchemy 2.0 async + PostgreSQL backend
@@ -65,6 +111,39 @@ If you prefer to run the steps manually:
 2. `cd backend && uv sync --all-extras`
 3. `uv run pytest -q`
 4. `uv run uvicorn app.main:create_app --factory --reload`
+
+## Database Connections
+
+Database connections are managed from the admin UI under the Connections page.
+
+### Add a connection
+
+1. Open the app and sign in as an admin user.
+2. Open the sidebar `Connections` link.
+3. Click the `+` add button in the page header.
+4. Enter a display name, choose the database type, and fill host, port, database name, user, and password.
+5. Click `Test Connection` before saving.
+
+### Edit or disable a connection
+
+- Use the row actions to edit, disable, enable, or delete a connection.
+- `Test Connection` verifies reachability and auth.
+- `Refresh Schema` reloads introspected tables and columns.
+
+### Workspace usage
+
+- The workspace selector shows only active and healthy connections.
+- When only one usable connection exists, it auto-selects.
+- Queries always run against the selected connection.
+- History entries show the user-facing connection display name and database type, not raw IDs.
+
+### Smoke checklist
+
+- Workspace loads and selector is visible.
+- History list opens and returns with browser back/forward.
+- New Chat returns to `/` and clears the current session.
+- Admin connection status messages clear automatically after a short delay.
+- Arabic/RTL route renders correctly with localized labels.
 
 ## LLM Provider Configuration
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send } from '../icons';
 import './PromptInput.css';
@@ -12,6 +12,7 @@ interface PromptInputProps {
   connections: UserConnectionResponse[];
   selectedConnectionId: string | null;
   onSelectConnection: (id: string | null) => void;
+  initialText?: string;
 }
 
 export const PromptInput: React.FC<PromptInputProps> = ({
@@ -20,10 +21,18 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   connections,
   selectedConnectionId,
   onSelectConnection,
+  initialText = '',
 }) => {
   const { t } = useTranslation();
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (initialText) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setText(initialText);
+    }
+  }, [initialText]);
 
   const isPromptDisabled = connections.length === 0 || !selectedConnectionId || disabled;
 
