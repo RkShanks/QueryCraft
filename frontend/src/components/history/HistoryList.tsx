@@ -80,11 +80,11 @@ export const HistoryList: React.FC<HistoryListProps> = ({
           value={rawFilter}
           onChange={(e) => setRawFilter(e.target.value)}
           placeholder={t('history.filter.placeholder')}
-          className="w-full pl-9 pr-4 py-2.5 bg-obsidian-950 border border-obsidian-800 rounded-xl text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-neon-cyan/40 focus:ring-1 focus:ring-neon-cyan/20 transition-all"
+          className="w-full ps-9 pe-4 py-2.5 bg-obsidian-950 border border-obsidian-800 rounded-xl text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-neon-cyan/40 focus:ring-1 focus:ring-neon-cyan/20 transition-all"
           aria-label={t('history.filter.placeholder')}
         />
       </div>
-
+ 
       {/* Hidden Columnheaders to fully satisfy unit tests & structure validations */}
       <div className="sr-only flex items-center justify-between">
         <span role="columnheader" className="text-start">{t('history.column.question')}</span>
@@ -92,9 +92,9 @@ export const HistoryList: React.FC<HistoryListProps> = ({
         <span role="columnheader" className="text-start">{t('history.column.connection')}</span>
         <span role="columnheader" className="text-start">{t('history.detail.acceptedAt')}</span>
       </div>
-
+ 
       {/* Scrollable feed of custom activity cards */}
-      <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-220px)] pr-1.5 scrollbar-thin">
+      <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-220px)] pe-1.5 scrollbar-thin">
         {filteredItems.map((item) => {
           const isSelected = item.id === selectedId;
           return (
@@ -112,7 +112,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
               aria-label={item.question_text}
               className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col gap-3 group relative overflow-hidden select-none outline-none ${
                 isSelected
-                  ? 'border-neon-cyan/30 bg-obsidian-900 shadow-[0_0_15px_rgba(6,182,212,0.06)] border-l-4 border-l-neon-cyan'
+                  ? 'border-neon-cyan/30 bg-obsidian-900 shadow-[0_0_15px_rgba(6,182,212,0.06)] border-s-4 border-s-neon-cyan'
                   : 'border-obsidian-800 bg-obsidian-900/40 hover:bg-obsidian-900/90 hover:border-obsidian-700'
               }`}
             >

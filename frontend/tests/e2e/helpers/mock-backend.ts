@@ -148,7 +148,7 @@ export const mockAccept = (page: Page, summary?: AcceptedQuerySummary) =>
 
 /** Intercept GET /history exactly (not /history/{id}) and return a canned list. */
 export const mockHistoryList = (page: Page, history?: HistoryListResponse) =>
-  page.route(/\/history(?:\?.*)?$/, async (route: Route) => {
+  page.route(/\/api\/v1\/history(?:\?.*)?$/, async (route: Route) => {
     const body: HistoryListResponse = history ?? {
       items: [
         {
@@ -198,7 +198,7 @@ export const mockSubmitEvaluatorRejectedWithViolations = (
  * Intercept GET /history exactly (not /history/{id}) and return an empty list.
  */
 export const mockHistoryEmpty = (page: Page) =>
-  page.route(/\/history(?:\?.*)?$/, async (route: Route) => {
+  page.route(/\/api\/v1\/history(?:\?.*)?$/, async (route: Route) => {
     const body: HistoryListResponse = {
       items: [],
       total: 0,
@@ -209,7 +209,7 @@ export const mockHistoryEmpty = (page: Page) =>
 
 /** Intercept GET /history/{id} and return a single detail item. */
 export const mockHistoryDetail = (page: Page, detail: Record<string, unknown>) =>
-  page.route('**/history/*', async (route: Route) => {
+  page.route('**/api/v1/history/*', async (route: Route) => {
     const url = new URL(route.request().url());
     if (url.pathname.match(/\/history\/[^/]+$/)) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(detail) });
