@@ -1,5 +1,5 @@
 import type { Page, Route } from '@playwright/test';
-import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse } from '../../src/api/generated/types.gen';
+import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse } from '../../../src/api/generated/types.gen';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Playwright page.route() factories for US-2 frontend E2E isolation.
