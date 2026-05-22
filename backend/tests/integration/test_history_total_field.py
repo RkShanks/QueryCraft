@@ -13,7 +13,7 @@ async def seeded_history(async_engine_fixture, authenticated_client):
         row = result.fetchone()
         user_id = str(row.id)
 
-        result = await conn.execute(text("SELECT id FROM database_connections LIMIT 1"))
+        result = await conn.execute(text("SELECT id FROM source_database_connections LIMIT 1"))
         row = result.fetchone()
         db_conn_id = str(row.id) if row else "00000000-0000-0000-0000-000000000001"
 

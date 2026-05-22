@@ -62,6 +62,7 @@ def test_env_vars(test_encryption_key: str) -> dict[str, str]:
         "SOURCE_DB_USER": "pagila_user",
         "SOURCE_DB_PASSWORD": "pagila_dev_pwd",
         "SOURCE_DB_SSL_MODE": "disable",
+        "DB_CREDENTIAL_KEY": "test-fernet-key-for-unit-tests-1234567890",
     }
 
 
