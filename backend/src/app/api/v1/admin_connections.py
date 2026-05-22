@@ -229,7 +229,7 @@ async def refresh_schema(
         if hasattr(e, "message_key") and e.message_key == "error.introspection_failed":  # type: ignore[attr-defined]
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={"error": "introspection_failed", "message_key": "error.introspection_failed", "detail": str(e)},
+                detail={"error": "introspection_failed", "message_key": "error.introspection_failed"},
             ) from e
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

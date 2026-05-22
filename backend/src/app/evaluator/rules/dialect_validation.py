@@ -17,7 +17,7 @@ class DialectValidationRule:
 
     name = "dialect_validation"
 
-    def __init__(self, dialect: str = "postgres") -> None:
+    def __init__(self, dialect: str) -> None:
         """Initialize with a sqlglot read dialect.
 
         Args:
@@ -50,10 +50,10 @@ class DialectValidationRule:
 
         try:
             parsed = sqlglot.parse(sql.strip(), read=self.dialect)
-        except sqlglot.errors.ParseError as exc:
-            return False, f"SQL failed to parse as {self.dialect}: {exc}"
-        except Exception as exc:
-            return False, f"Unable to parse SQL for dialect '{self.dialect}': {exc}"
+        except sqlglot.errors.ParseError:
+            return False, f"SQL failed to parse as {self.dialect}"
+        except Exception:
+            return False, f"Unable to parse SQL for dialect '{self.dialect}'"
 
         if not parsed:
             return False, f"Empty result after parsing as {self.dialect}"

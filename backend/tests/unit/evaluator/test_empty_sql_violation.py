@@ -14,7 +14,7 @@ async def test_empty_sql_violation_identity(sql):
     evaluator = Evaluator(
         rules=[
             EmptySqlRule(),
-            ReadOnlyRule(),
+            ReadOnlyRule(dialect="postgres"),
             SingleStatementRule(),
         ]
     )

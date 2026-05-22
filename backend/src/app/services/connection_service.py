@@ -238,13 +238,14 @@ class ConnectionService:
             if conn.database_type == DatabaseType.POSTGRESQL:
                 import asyncpg
 
-                db_url = (
-                    f"postgresql://{conn.username}:{decrypted_password}@{conn.host}:{conn.port}/{conn.database_name}"
+                conn_pg = await asyncpg.connect(
+                    host=conn.host,
+                    port=conn.port,
+                    database=conn.database_name,
+                    user=conn.username,
+                    password=decrypted_password,
+                    ssl=False if conn.ssl_mode == "disable" else conn.ssl_mode,
                 )
-                if conn.ssl_mode != "disable":
-                    db_url += f"?ssl={conn.ssl_mode}"
-
-                conn_pg = await asyncpg.connect(db_url)
                 await conn_pg.execute("SELECT 1")
                 await conn_pg.close()
             else:

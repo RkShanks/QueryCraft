@@ -51,7 +51,7 @@ def service_with_real_evaluator(mock_deps):
         llm=mock_deps["llm"],
         evaluator=Evaluator(
             rules=[
-                ReadOnlyRule(),
+                ReadOnlyRule(dialect="postgres"),
                 SingleStatementRule(),
                 SchemaValidationRule(),
                 UnsafePatternRule(),

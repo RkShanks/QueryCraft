@@ -69,10 +69,10 @@ class TestDialectValidationRule:
         assert rule_mssql.dialect == "tsql"
 
     @pytest.mark.asyncio
-    async def test_default_dialect_is_postgres(self):
-        """Default dialect is postgres for backward compatibility."""
-        rule = DialectValidationRule()
-        assert rule.dialect == "postgres"
+    async def test_requires_explicit_dialect(self):
+        """Dialect must be explicitly provided (no default)."""
+        with pytest.raises(TypeError):
+            DialectValidationRule()
 
     @pytest.mark.asyncio
     async def test_tsql_limit_rejected(self):

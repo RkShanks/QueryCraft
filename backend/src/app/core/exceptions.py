@@ -121,7 +121,7 @@ class SourceDBConnectionFailed(SourceDBError):
     """Raised when the source-DB connection fails."""
 
     def __init__(self) -> None:
-        super().__init__("Source DB connection failed", message_key="error.llmUnavailable")
+        super().__init__("Source DB connection failed", message_key="error.sourceDbConnectionFailed")
 
 
 # ─── Attempt ───

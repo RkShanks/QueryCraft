@@ -58,7 +58,7 @@ async def _get_query_service(
         evaluator=Evaluator(
             rules=[
                 EmptySqlRule(),
-                ReadOnlyRule(),
+                ReadOnlyRule(dialect="postgres"),
                 SingleStatementRule(),
                 SchemaValidationRule(schema_context, dialect="postgres"),
                 UnsafePatternRule(),
