@@ -136,3 +136,17 @@
 - **PR**: none found for branch at review time
 - **Completed Tasks**: T-468, T-469 marked complete locally
 - **Notes**: Branch contains New Chat navigation fix, 5-second mutation alert reset coverage, stable admin action-cell layout hardening, history/workspace premium UI polish, E2E mock routing stabilization, CDP troubleshooting docs, and frontend gates/E2E evidence from implementer report. Current branch is ahead of origin by two commits and no GitHub PR exists yet, so Wave 14.9 cannot be merged or used as Wave 15 base until pushed and opened as PR. README update requested before Wave 15 to document latest database connection workflow and local source DB setup.
+
+## Wave 14.9: Full Frontend Smoke Fixes Merge
+- **Status**: MERGED
+- **Branch**: `phase-3/wave-14.9-full-frontend-smoke-fixes`
+- **PR**: #94 merged 2026-05-22
+- **Completed Tasks**: T-468, T-469
+- **Notes**: PR #94 merged cleanly to `main` with CI green. `main` now includes New Chat routing fix, transient mutation alerts, admin action-cell layout hardening, history/workspace visual polish, E2E/CDP stabilization, README source DB/admin workflow documentation, and frontend gate evidence. Wave 15 may proceed from updated `main`.
+
+## Wave 15.0: E2E Hardening, Audit, Phase 3 Closure Dispatch
+- **Status**: DISPATCHED
+- **Branch**: `phase-3/wave-15.0-hardening`
+- **PR**: pending
+- **Tasks**: T-470 through T-481
+- **Notes**: Dispatch from merged `main` after PR #94. Sequential order required: backend gates (T-470), frontend gates (T-471), optional MySQL/MSSQL integration smoke if services available (T-472/T-473), full Chrome DevTools MCP Phase 3 smoke (T-474), independent frontend/backend audits (T-475/T-476), Opus consolidation (T-477), fix all Critical/High findings (T-478/T-479), then Phase 3 summary and final snapshot (T-480/T-481). Block closure on failing gates, raw credential/internal identifier leaks, missing PR evidence, or unresolved Critical/High audit findings.
