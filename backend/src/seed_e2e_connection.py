@@ -1,4 +1,5 @@
 """Seed E2E connection inside platform database. Idempotent."""
+
 import asyncio
 import os
 import sys
@@ -10,8 +11,8 @@ from app.core.config import get_settings
 from app.db.models.database_connection import SourceDatabaseConnection
 from app.db.models.enums import DatabaseType
 from app.repositories.connection_repository import ConnectionRepository
-from app.services.connection_service import ConnectionService
 from app.schemas.connection import ConnectionCreate
+from app.services.connection_service import ConnectionService
 
 
 async def main() -> None:

@@ -40,7 +40,7 @@ async function assertNoMissingKeys(page: Page, url?: string) {
     await page.waitForLoadState('networkidle');
   }
   const bodyText = await page.locator('body').textContent() ?? '';
-  const tokens = bodyText.split(/[\s,;:!?()"'/\\\[\]{}<>*+=&%#@|~^`‘“]+/u);
+  const tokens = bodyText.split(/[\s,;:!?()"'/\\[\]{}<>*+=&%#@|~^`‘“]+/u);
   const leaks: string[] = [];
   for (const token of tokens) {
     const trimmed = token.replace(/^[^a-zA-Z0-9_]+|[^a-zA-Z0-9_]+$/g, '');
