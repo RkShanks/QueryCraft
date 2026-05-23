@@ -170,3 +170,104 @@ npm run lint:css
 > frontend@0.0.0 lint:css
 > stylelint "src/**/*.{css,scss}"
 ```
+
+---
+
+## 6. Post-Remediation Verification (Green State)
+
+Following TDD-compliant remediation of all 4 baseline findings (F-001 through F-004), the quality gates were rerun and verified as 100% green.
+
+### 6.1 Vitest Unit & Linter Test Suite (`npm run test -- --run`)
+**Command:** `npm run test -- --run`
+**Status:** **PASSED** (Exit Code 0)
+**Output:**
+```
+ RUN  v4.1.5 /home/avril/QueryCraft/frontend
+
+ ✓ src/hooks/useQuerySubmit.test.tsx (25 tests)
+ ✓ src/pages/AskQuestionPage.test.tsx (15 tests)
+ ✓ src/components/chat/__tests__/SqlCodeBlock.test.tsx (2 tests)
+ ✓ src/components/chat/ConnectionErrorCard.test.tsx (8 tests)
+ ✓ src/components/auth/SignInForm.test.tsx (3 tests)
+ ✓ src/hooks/useAuth.test.tsx (5 tests)
+ ✓ src/components/admin/RefreshSchemaButton.test.tsx (15 tests)
+ ✓ src/locales/wave14A11y.test.tsx (5 tests)
+ ✓ src/components/query/QueryInput.test.tsx (12 tests)
+ ✓ src/components/sidebar/__tests__/SidebarIntegration.test.tsx (5 tests)
+ ✓ src/pages/SignInPage.test.tsx (1 test)
+ ✓ src/components/query/RefinePromptBanner.test.tsx (4 tests)
+ ✓ src/components/query/TimeoutBanner.test.tsx (2 tests)
+ ✓ src/components/admin/ConnectionTestButton.test.tsx (18 tests)
+ ✓ src/hooks/useConnections.test.tsx (3 tests)
+ ✓ src/components/chat/DatabaseSelector.test.tsx (6 tests)
+ ✓ src/components/query/EvaluatorRejectionBanner.test.tsx (9 tests)
+ ✓ src/hooks/__tests__/useHistory.test.tsx (3 tests)
+ ✓ src/pages/__tests__/SettingsPage.test.tsx (11 tests)
+ ✓ src/components/history/HistoryDetail.test.tsx (9 tests)
+ ✓ src/components/chat/__tests__/PromptInput.test.tsx (9 tests)
+ ✓ src/pages/__tests__/WorkspacePageSelector.test.tsx (4 tests)
+ ✓ src/hooks/__tests__/useSessionsHooks.test.tsx (7 tests)
+ ✓ src/components/sidebar/__tests__/UndoToast.test.tsx (5 tests)
+ ✓ src/components/chat/__tests__/ChatComponents.test.tsx (11 tests)
+ ✓ src/__tests__/App.test.tsx (1 test)
+ ✓ src/pages/__tests__/WorkspacePageImplicitFeedback.test.tsx (1 test)
+ ✓ src/components/chat/AssistantResponseCard.test.tsx (4 tests)
+ ✓ src/locales/localeCoverage.test.ts (77 tests)
+ ✓ src/components/query/SqlDisplay.test.tsx (2 tests)
+ ✓ src/components/chat/__tests__/CodeBlockActionBar.test.tsx (3 tests)
+ ✓ src/components/chat/__tests__/ResponseFeedbackBar.test.tsx (7 tests)
+ ✓ tests/lint/no-physical-directions.test.ts (2 tests)
+ ✓ src/components/admin/connectionErrorMessages.test.ts (9 tests)
+ ✓ tests/lint/i18n-completeness.test.ts (2 tests)
+ ✓ tests/unit/i18n-key-completeness.test.ts (1 test)
+ ✓ src/stores/__tests__/uiStore.test.ts (5 tests)
+ ✓ src/pages/__tests__/WorkspacePageSubmit.test.tsx (12 tests)
+ ✓ tests/lint/no-physical-tailwind.test.ts (2 tests)
+
+ Test Files  51 passed (51)
+      Tests  435 passed (435)
+   Duration  7.86s
+```
+
+### 6.2 ESLint Static Analysis (`npm run lint`)
+**Command:** `npm run lint`
+**Status:** **PASSED** (Exit Code 0)
+**Output:**
+```
+> frontend@0.0.0 lint
+> eslint .
+```
+
+### 6.3 TypeScript Checks (`npm run typecheck`)
+**Command:** `npm run typecheck`
+**Status:** **PASSED** (Exit Code 0)
+**Output:**
+```
+> frontend@0.0.0 typecheck
+> tsc --noEmit
+```
+
+### 6.4 Production Build (`npm run build`)
+**Command:** `npm run build`
+**Status:** **PASSED** (Exit Code 0)
+**Output:**
+```
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+dist/assets/index-DXPJgXwW.js                                   520.75 kB │ gzip: 149.79 kB
+dist/assets/wasm-DiIFv9DE.js                                    622.32 kB │ gzip: 232.09 kB
+dist/assets/cpp-Bw-qV0P6.js                                     626.13 kB │ gzip:  48.10 kB
+dist/assets/emacs-lisp-D4W-_rAk.js                              779.87 kB │ gzip: 197.55 kB
+
+✓ built in 602ms
+```
+
+### 6.5 CSS Style Linting (`npm run lint:css`)
+**Command:** `npm run lint:css`
+**Status:** **PASSED** (Exit Code 0)
+**Output:**
+```
+> frontend@0.0.0 lint:css
+> stylelint "src/**/*.{css,scss}"
+```
