@@ -32,6 +32,13 @@ Phase 5 replaces the provisional auth model with production-grade identity and a
 - Q2: Should Phase 5 include quota enforcement given Constitution §11 lists Principle X as triggered at Phase 5? → **A: No quotas in Phase 5. Amend Constitution §11 to move Principle X trigger to Phase 6.** Quotas belong in Phase 6 roadmap. Constitutional amendment required before planning.
 - Q3: How should multi-group role resolution work when a user belongs to multiple SSO groups mapped to different roles? → **A: Admin-assigned priority order.** Admin assigns a numeric priority to each role. When a user matches multiple groups, the role with the highest priority (lowest number) wins. Deterministic, explicit, avoids over-permissioning, and supports messy enterprise group structures.
 
+### Session 2026-05-24 (clarify-2)
+
+- Q1: How are row filters expressed, validated, and parameterized? → **A: WHERE fragments validated at save; support `{user.*}` identity placeholders.** Admin authors SQL WHERE clause fragments per role per connection. At save time, the platform validates the fragment against the connection's schema (confirms referenced columns exist, rejects syntactically invalid or dangerous expressions like subqueries, function calls, UNION). Filters support `{user.email}`, `{user.subject_id}`, and `{user.role}` placeholders for dynamic row-level scoping at query time.
+- Q2: What tamper-evidence mechanism for the audit log? → **A: Chained hash.** Each audit log entry includes a hash of the previous entry's hash concatenated with the current entry's content. Admin can verify chain integrity on demand. Balances cryptographic tamper-detection with implementation simplicity for a single-tenant deployment.
+- Q3: What are the platform permissions that roles can grant? → **A: Fixed set.** `query.submit`, `query.history.view`, `admin.connections.manage`, `admin.roles.manage`, `admin.sso.manage`, `admin.audit.verify`. End-user roles get `query.*` permissions. Admin roles get all permissions. No free-text or extensible permission registry in Phase 5.
+- Q4: What prevents admin lockout if SSO is misconfigured or all roles are deleted? → **A: Built-in admin account is undeletable; local admin login always works regardless of SSO/role configuration state.** The provisioned admin from Phase 1 is a safety net that cannot be removed or locked out by SSO/role changes.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 26 — SSO Sign-In via OIDC (Priority: P0)
@@ -183,6 +190,8 @@ As a platform user with Arabic selected, all new Phase 5 surfaces (SSO sign-in, 
 - What happens when a user belongs to zero SSO groups? They are treated as unmapped and denied access.
 - What happens when the same SSO group is mapped to multiple roles? Configuration error. The admin UI prevents saving duplicate group mappings.
 - What happens when local login is attempted by a non-admin? Login is rejected with a localized error. No indication of whether the account exists.
+- What happens when an admin saves a row filter with invalid SQL or references a nonexistent column? The save is rejected with a localized validation error. The filter is not persisted. The admin must correct the fragment before saving.
+- What happens when the admin misconfigures SSO and locks out all SSO users? The built-in admin account always retains local login. The admin can fix SSO configuration via local login. No admin lockout is possible through SSO/role misconfiguration.
 
 ## Requirements *(mandatory)*
 
@@ -200,7 +209,7 @@ As a platform user with Arabic selected, all new Phase 5 surfaces (SSO sign-in, 
 
 #### Role Management
 
-- **FR-122**: Admin can create roles with: name, description, platform permissions (set of allowed actions), allowed source database tables/columns per connection, optional row filter rules per connection, and optional column masking rules per connection.
+- **FR-122**: Admin can create roles with: name, description, priority, platform permissions (from fixed set: `query.submit`, `query.history.view`, `admin.connections.manage`, `admin.roles.manage`, `admin.sso.manage`, `admin.audit.verify`), allowed source database tables/columns per connection, optional row filter rules per connection, and optional column masking rules per connection.
 - **FR-123**: Admin can edit existing roles. Changes take effect for affected users on their next query execution (no active session revocation required for role policy changes).
 - **FR-124**: Admin can delete roles. Users mapped to the deleted role are treated as unmapped on their next authentication.
 - **FR-125**: Admin can map SSO group claim values to platform roles. Each SSO group maps to exactly one role. Duplicate group mappings are prevented by validation.
@@ -208,11 +217,11 @@ As a platform user with Arabic selected, all new Phase 5 surfaces (SSO sign-in, 
 
 #### Authorization Enforcement
 
-- **FR-127**: Role permissions gate UI routes and API endpoints. Non-admin users cannot access admin routes or endpoints. Unauthorized API calls return a sanitized error.
+- **FR-127**: Role permissions gate UI routes and API endpoints. Each API endpoint and UI route requires one or more permissions from the fixed set (`query.submit`, `query.history.view`, `admin.connections.manage`, `admin.roles.manage`, `admin.sso.manage`, `admin.audit.verify`). Non-admin users cannot access admin routes or endpoints. Unauthorized API calls return a sanitized error.
 - **FR-128**: Schema introspection shown to the LLM prompt and to the user is filtered by the user's role. Only tables and columns the role permits are included.
 - **FR-129**: Query generation prompt sent to the LLM includes only role-allowed schema and columns. The LLM never receives unauthorized schema information.
 - **FR-130**: The evaluator blocks SQL that references tables or columns not in the user's role-allowed set. Blocked queries return a localized error before execution.
-- **FR-131**: Query execution applies row filters defined in the user's role. Row filters are enforced at the database query level for PostgreSQL, MySQL, and MSSQL source databases.
+- **FR-131**: Query execution applies row filters defined in the user's role. Row filters are SQL WHERE clause fragments authored by the admin, validated at save time against the connection's schema, and appended to generated SQL at query time. Filters support `{user.email}`, `{user.subject_id}`, and `{user.role}` identity placeholders that are resolved to the authenticated user's values at execution. Row filters are enforced at the database query level for PostgreSQL, MySQL, and MSSQL source databases. Dangerous expressions (subqueries, function calls, UNION) are rejected at save time.
 - **FR-132**: Query execution masks configured sensitive columns in the result set before data reaches the user. Masking works for all three supported database dialects.
 - **FR-133**: Result table displays a localized "column was masked" indicator on any column where masking was applied. The indicator is visible in both English and Arabic.
 - **FR-134**: Query history is scoped by user. Each user sees only their own accepted queries. No cross-user history leakage.
@@ -231,7 +240,7 @@ As a platform user with Arabic selected, all new Phase 5 surfaces (SSO sign-in, 
 #### Tamper-Evident Audit Log
 
 - **FR-140**: Every security-relevant action is written to a tamper-evident audit log: user logins (success and failure), SSO validation events, role assignments, role changes, query submissions, query validation outcomes, query executions, accepted/rejected decisions, admin configuration changes (SSO providers, roles, group mappings, connections), and unauthorized access attempts.
-- **FR-141**: Audit log entries are tamper-evident. Once written, entries cannot be modified or deleted through the application. The integrity of the log is verifiable.
+- **FR-141**: Audit log entries are tamper-evident via chained hashing. Each entry stores a hash computed from the previous entry's hash concatenated with the current entry's content. The chain starts from a known genesis hash. Once written, entries cannot be modified or deleted through the application. Admin can trigger an integrity verification that walks the chain and reports any breaks.
 - **FR-142**: Audit log entries are retained for a minimum of 24 months, consistent with Constitution IX.
 - **FR-143**: Audit log entries do not contain secrets, credentials, full tokens, or raw database passwords. Sensitive fields are redacted or omitted.
 - **FR-144**: Audit log is accessible to admin users only. No end user can view, search, or export audit entries. Full audit log search UI is deferred to Phase 7 (admin dashboard); Phase 5 provides the storage and write path only.
@@ -239,14 +248,15 @@ As a platform user with Arabic selected, all new Phase 5 surfaces (SSO sign-in, 
 #### Role Priority
 
 - **FR-145**: Each role has an admin-configurable priority (numeric, lower number = higher priority). When a user's SSO groups map to multiple roles, the role with the lowest priority number is assigned. Admin can reorder priorities at any time.
+- **FR-146**: The built-in admin account (provisioned in Phase 1) is undeletable and always retains local password login capability. SSO configuration changes, role deletions, and group mapping changes cannot lock out the built-in admin. This is the platform's safety net against misconfiguration.
 
 ### Key Entities
 
 - **SSO Provider Configuration**: Stores OIDC or SAML provider settings (issuer, client ID, encrypted client secret, metadata, certificates). One active provider per protocol.
-- **Role**: Name, description, priority (numeric), platform permissions, per-connection table/column allow-lists, per-connection row filter rules, per-connection column masking rules.
+- **Role**: Name, description, priority (numeric), platform permissions (subset of fixed set: `query.submit`, `query.history.view`, `admin.connections.manage`, `admin.roles.manage`, `admin.sso.manage`, `admin.audit.verify`), per-connection table/column allow-lists, per-connection row filter rules, per-connection column masking rules.
 - **SSO Group Mapping**: Maps an SSO group claim value to exactly one platform role.
 - **User Identity**: Represents an authenticated user. Links to SSO provider, SSO subject ID, mapped role, session metadata. Admin users retain local identity.
-- **Audit Log Entry**: Tamper-evident record of a platform action. Includes timestamp, actor identity, action type, affected resource, outcome, and sanitized context. No secrets stored.
+- **Audit Log Entry**: Tamper-evident record of a platform action. Includes timestamp, actor identity, action type, affected resource, outcome, sanitized context, and chained hash (hash of previous entry hash + current content). No secrets stored.
 
 ## Success Criteria *(mandatory)*
 
@@ -277,7 +287,7 @@ As a platform user with Arabic selected, all new Phase 5 surfaces (SSO sign-in, 
 - The platform is single-tenant. Multi-tenant support is deferred to Phase 10+.
 - One OIDC provider and one SAML provider can be configured at a time. Multiple simultaneous providers of the same protocol type are not required for v1.
 - SSO group claims are available in standard OIDC ID tokens (via `groups` or configurable claim name) and SAML assertions (via configurable attribute).
-- Row filters are expressed as SQL WHERE clause fragments that the platform appends to queries. The admin defines these per role per connection.
+- Row filters are expressed as SQL WHERE clause fragments that the admin authors per role per connection. At save time, the platform validates the fragment against the connection's schema (column existence, syntax, no dangerous expressions). Filters support `{user.email}`, `{user.subject_id}`, and `{user.role}` identity placeholders resolved at query time.
 - Column masking replaces sensitive column values in the result set with a placeholder (e.g., `***`) before sending to the frontend. The masking is applied post-query, not via database-level masking features.
 - Session management uses the existing session infrastructure from Phase 1, extended with SSO-specific claims (role, provider, subject ID).
 - Role policy changes are eventually consistent: they apply on next query, not retroactively to in-flight queries.
