@@ -20,7 +20,7 @@
 ## Wave 17.0 — Foundation: Contracts, Data Model, Auth Architecture
 
 **Branch**: `phase-5/wave-17.0-foundation-contracts`
-**Owner**: Backend Implementer (Qwen)
+**Owner**: Backend Implementer (Kimi ( opencode ))
 **Depends on**: Phase 4 FROZEN on `main`, T-600 complete
 **FRs**: FR-140, FR-141, FR-142, FR-143, FR-144, FR-145, FR-146
 **SCs**: SC-057, SC-059, SC-060, SC-061
@@ -95,7 +95,7 @@
 **FRs**: FR-115, FR-116, FR-117, FR-118, FR-119, FR-120, FR-121, FR-146
 **SCs**: SC-046, SC-047, SC-048, SC-056, SC-057
 
-### Backend — SSO Service (Owner: Qwen)
+### Backend — SSO Service (Owner: Kimi ( opencode ))
 
 - [ ] T-635 [US26] Write TDD tests for OIDC authorization code flow initiation (state/nonce generation, Redis storage, redirect URL) in `backend/tests/unit/test_sso_oidc_flow.py` — FR-117, SC-046
 - [ ] T-636 [US26] Write TDD tests for OIDC callback (ID token validation per S-001: issuer, audience, signature, expiry, nonce, state, replay protection) in `backend/tests/unit/test_sso_oidc_callback.py` — FR-117, FR-119, SC-046
@@ -108,33 +108,33 @@
 - [ ] T-643 [US30] Implement role resolution logic in `backend/src/app/services/sso_service.py`: resolve SSO groups → role via priority ordering, create/update `UserIdentity` on first login — FR-145, SC-062
 - [ ] T-644 [US26] Write TDD tests for replay protection (Redis nonce/assertion ID cache with TTL) in `backend/tests/unit/test_replay_protection.py` — FR-119
 
-### Backend — SSO Endpoints (Owner: Qwen)
+### Backend — SSO Endpoints (Owner: Kimi ( opencode ))
 
 - [ ] T-645 [US26] Implement SSO auth endpoints in `backend/src/app/api/v1/sso_auth.py`: `GET /auth/sso/providers` (public), `GET /auth/sso/oidc/login`, `GET /auth/sso/oidc/callback`, `GET /auth/sso/saml/login`, `POST /auth/sso/saml/callback` per api-contracts.md — FR-117, FR-118, FR-121
 - [ ] T-646 [US26] Register SSO auth router in `backend/src/app/main.py` — FR-117
 
-### Backend — Local Login Restriction (Owner: Qwen)
+### Backend — Local Login Restriction (Owner: Kimi ( opencode ))
 
 - [ ] T-647 [US26] Write TDD tests for local login restriction (admin-only, reject non-admin, generic error, no account existence leak) in `backend/tests/unit/test_local_login_restriction.py` — FR-120
 - [ ] T-648 [US26] Modify `POST /auth/sign-in` in `backend/src/app/api/v1/auth.py`: reject non-admin local login with generic 401 — FR-120
 
-### Backend — Admin SSO Config Endpoints (Owner: Qwen)
+### Backend — Admin SSO Config Endpoints (Owner: Kimi ( opencode ))
 
 - [ ] T-649 [US29] Write TDD tests for SSO provider CRUD endpoints (create OIDC, create SAML, update, delete, secret masking in responses, duplicate protocol rejection) in `backend/tests/unit/test_sso_admin_endpoints.py` — FR-115, FR-116
 - [ ] T-650 [US29] Implement SSO admin CRUD endpoints in `backend/src/app/api/v1/admin_sso.py`: `GET/POST /admin/sso/providers`, `PUT/DELETE /admin/sso/providers/{id}` per api-contracts.md, with `require_permission('admin.sso.manage')`, secret encryption via `app.core.encryption`, masked responses per S-003 — FR-115, FR-116
 - [ ] T-651 [US29] Register SSO admin router in `backend/src/app/main.py` — FR-115
 
-### Backend — Lockout Prevention (Owner: Qwen)
+### Backend — Lockout Prevention (Owner: Kimi ( opencode ))
 
 - [ ] T-652 [US26] Write TDD tests for built-in admin lockout prevention (undeletable user, undeletable role, local login always works, SSO changes cannot lock out admin) in `backend/tests/unit/test_admin_lockout_prevention.py` — FR-146, S-009
 - [ ] T-653 [US26] Implement lockout prevention guards in relevant services: reject delete of `is_builtin=true` user/role with 403 `error.builtinRoleProtected` — FR-146
 
-### Backend — SSO Audit Logging (Owner: Qwen)
+### Backend — SSO Audit Logging (Owner: Kimi ( opencode ))
 
 - [ ] T-654 [US26] Write TDD tests for SSO audit logging (login success, login failure, SSO validation events, SSO config changes) in `backend/tests/unit/test_sso_audit_logging.py` — FR-140
 - [ ] T-655 [US26] Add audit logging calls in SSO service and SSO admin endpoints for all SSO-related events — FR-140
 
-### Backend — Concurrent Session Limit (Owner: Qwen)
+### Backend — Concurrent Session Limit (Owner: Kimi ( opencode ))
 
 - [ ] T-656 [US26] Write TDD tests for concurrent session limit (max 5, oldest evicted on overflow) in `backend/tests/unit/test_concurrent_sessions.py` — FR-127, SC-057
 - [ ] T-657 [US26] Implement concurrent session limit in `backend/src/app/repositories/session_repository.py`: max sessions per user (configurable, default 5), evict oldest on overflow — FR-127, SC-057
@@ -182,7 +182,7 @@
 **FRs**: FR-122, FR-123, FR-124, FR-125, FR-126, FR-127, FR-145
 **SCs**: SC-048, SC-049, SC-056, SC-057, SC-062
 
-### Backend — Role CRUD (Owner: Qwen)
+### Backend — Role CRUD (Owner: Kimi ( opencode ))
 
 - [ ] T-671 [US28] Write TDD tests for role CRUD endpoints (create, read, update, delete, built-in role protection, duplicate name/priority rejection, permission validation) in `backend/tests/unit/test_role_endpoints.py` — FR-122, FR-123, FR-124
 - [ ] T-672 [US28] Create `RoleRepository` in `backend/src/app/repositories/role_repository.py`: CRUD operations, built-in protection, uniqueness checks — FR-122, FR-123, FR-124
@@ -190,23 +190,23 @@
 - [ ] T-674 [US28] Implement role CRUD endpoints in `backend/src/app/api/v1/admin_roles.py`: `GET/POST /admin/roles`, `GET/PUT/DELETE /admin/roles/{id}` per api-contracts.md with `require_permission('admin.roles.manage')` — FR-122, FR-123, FR-124
 - [ ] T-675 [US28] Register roles admin router in `backend/src/app/main.py` — FR-122
 
-### Backend — Group Mapping (Owner: Qwen)
+### Backend — Group Mapping (Owner: Kimi ( opencode ))
 
 - [ ] T-676 [US30] Write TDD tests for group mapping endpoints (create, list, delete, duplicate group rejection) in `backend/tests/unit/test_group_mapping_endpoints.py` — FR-125
 - [ ] T-677 [US30] Implement group mapping endpoints in `backend/src/app/api/v1/admin_sso.py` (extend): `GET/POST /admin/sso/group-mappings`, `DELETE /admin/sso/group-mappings/{id}` per api-contracts.md with `require_permission('admin.roles.manage')` — FR-125
 
-### Backend — Permission Gates (Owner: Qwen)
+### Backend — Permission Gates (Owner: Kimi ( opencode ))
 
 - [ ] T-678 [US28] Write TDD tests for permission gates on ALL admin endpoints (connections, roles, SSO, audit) and query endpoints in `backend/tests/unit/test_permission_gates_all.py`: verify 403 for missing permissions, no admin access for end users — FR-127, SC-049
 - [ ] T-679 [US28] Apply `require_permission()` dependency to all existing admin endpoints in `backend/src/app/api/v1/admin.py`, `admin_connections.py` — FR-127
 - [ ] T-680 [US28] Apply `require_permission('query.submit')` to query endpoints, `require_permission('query.history.view')` to history endpoints in `backend/src/app/api/v1/query.py`, `history.py` — FR-127
 
-### Backend — User Denial (Owner: Qwen)
+### Backend — User Denial (Owner: Kimi ( opencode ))
 
 - [ ] T-681 [US28] Write TDD tests for unmapped user denial (user with no role_id denied all API access) in `backend/tests/unit/test_unmapped_user_denial.py` — FR-126, SC-048
 - [ ] T-682 [US28] Implement unmapped user denial: middleware/dependency checks `role_id` is not null, returns 403 `error.forbidden` for unmapped users — FR-126
 
-### Backend — RBAC Audit Logging (Owner: Qwen)
+### Backend — RBAC Audit Logging (Owner: Kimi ( opencode ))
 
 - [ ] T-683 [US28] Write TDD tests for RBAC audit events (role create/update/delete, mapping changes, access denied) in `backend/tests/unit/test_rbac_audit_logging.py` — FR-140
 - [ ] T-684 [US28] Add audit logging calls to role CRUD and group mapping endpoints for all RBAC-related events — FR-140
@@ -251,60 +251,60 @@
 **FRs**: FR-128, FR-129, FR-130, FR-131, FR-132, FR-133, FR-134, FR-135, FR-136
 **SCs**: SC-050, SC-051, SC-052, SC-053, SC-056, SC-057
 
-### Backend — Schema Filtering (Owner: Qwen)
+### Backend — Schema Filtering (Owner: Kimi ( opencode ))
 
 - [ ] T-698 [US31] Write TDD tests for schema filtering service (filter `SchemaContext` by role policy, exclude unauthorized tables/columns) in `backend/tests/unit/test_schema_filtering.py` — FR-128, FR-129, SC-050
 - [ ] T-699 [US31] Implement `PolicyEnforcementService.filter_schema()` in `backend/src/app/services/policy_enforcement.py`: filter `SchemaContext` by role's `allowed_tables`/`allowed_columns` before LLM prompt construction per S-006 — FR-128, FR-129
 
-### Backend — Row Filter Validation (Owner: Qwen)
+### Backend — Row Filter Validation (Owner: Kimi ( opencode ))
 
 - [ ] T-700 [US31] Write TDD tests for row filter validation at save time (`sqlglot` AST parsing, column existence check, reject subqueries/functions/UNION/DML/comments, fail-closed on absent columns) in `backend/tests/unit/test_row_filter_validation.py` — FR-131, S-004
 - [ ] T-701 [US31] Implement row filter validation in `backend/src/app/services/policy_enforcement.py`: `validate_row_filter()` per S-004 — parse with `sqlglot`, reject dangerous expressions, validate column existence against connection schema, fail-closed — FR-131
 - [ ] T-702 [US31] Write TDD tests for `{user.*}` placeholder binding (email, subject_id, role) resolved to parameterized bind values in `backend/tests/unit/test_placeholder_binding.py` — FR-131, S-004
 
-### Backend — Row Filter Injection (Owner: Qwen)
+### Backend — Row Filter Injection (Owner: Kimi ( opencode ))
 
 - [ ] T-703 [US31] Write TDD tests for row filter injection at query time (`sqlglot` AST AND-conjunction into WHERE, cross-dialect identifier quoting for PG/MySQL/MSSQL) in `backend/tests/unit/test_row_filter_injection.py` — FR-131, SC-051
 - [ ] T-704 [US31] Implement row filter injection in `backend/src/app/services/policy_enforcement.py`: `apply_row_filters()` — parse generated SQL via `sqlglot`, inject filter via AST AND-conjunction, resolve `{user.*}` to parameterized values, transpile per dialect per S-005 — FR-131
 - [ ] T-705 [US31] Write TDD tests for schema drift guard (filter references column no longer in schema → block query, emit `policy.schema_mismatch` audit event, return `error.policySchemaConflict`) in `backend/tests/unit/test_schema_drift_guard.py` — FR-131, S-004, S-005
 
-### Backend — Column Masking (Owner: Qwen)
+### Backend — Column Masking (Owner: Kimi ( opencode ))
 
 - [ ] T-706 [US31] Write TDD tests for column masking service (replace values with `***`, add `masked: true` to `ColumnMeta`, works for all 3 dialects) in `backend/tests/unit/test_column_masking.py` — FR-132, SC-052
 - [ ] T-707 [US31] Implement column masking in `backend/src/app/services/policy_enforcement.py`: `apply_column_masks()` — post-query result replacement per ADR-19, set `masked` flag on `ColumnMeta` — FR-132, FR-133
 
-### Backend — Evaluator Extension (Owner: Qwen)
+### Backend — Evaluator Extension (Owner: Kimi ( opencode ))
 
 - [ ] T-708 [US31] Write TDD tests for evaluator authorization rule (check SQL table/column references against role-allowed schema, block if outside set, allow masked columns in WHERE) in `backend/tests/unit/test_evaluator_auth_rule.py` — FR-130, S-007, SC-050
 - [ ] T-709 [US31] Create evaluator authorization rule in `backend/src/app/evaluator/rules/role_authorization.py`: check SQL references against role policy, block disallowed with `error.queryBlockedPolicy`, allow masked columns per S-007 — FR-130
 - [ ] T-710 [US31] Register `RoleAuthorizationRule` in evaluator pipeline in `backend/src/app/evaluator/pipeline.py` — FR-130
 
-### Backend — Query Flow Integration (Owner: Qwen)
+### Backend — Query Flow Integration (Owner: Kimi ( opencode ))
 
 - [ ] T-711 [US31] Write TDD tests for integrated query flow (schema filter → LLM prompt → evaluator auth → row filter injection → execute → column mask → response) in `backend/tests/unit/test_query_flow_policy.py` — FR-128, FR-129, FR-130, FR-131, FR-132
 - [ ] T-712 [US31] Integrate policy enforcement into query service in `backend/src/app/services/query_service.py`: call `filter_schema()` before prompt, `apply_row_filters()` before execution, `apply_column_masks()` after execution — FR-128, FR-131, FR-132
 
-### Backend — Role Policy Test (Owner: Qwen)
+### Backend — Role Policy Test (Owner: Kimi ( opencode ))
 
 - [ ] T-713 [US28] Write TDD tests for role policy test endpoint (dry-run evaluation showing accessible/blocked tables, filters, masks) in `backend/tests/unit/test_policy_test_endpoint.py` — FR-136
 - [ ] T-714 [US28] Implement `POST /admin/roles/{id}/test-policy` in `backend/src/app/api/v1/admin_roles.py` per api-contracts.md — FR-136
 
-### Backend — Query History Scoping (Owner: Qwen)
+### Backend — Query History Scoping (Owner: Kimi ( opencode ))
 
 - [ ] T-715 [US32] Write TDD tests for query history scoping (user sees only own queries, no cross-user leakage) in `backend/tests/unit/test_history_scoping.py` — FR-134, SC-053
 - [ ] T-716 [US32] Modify `GET /history` in `backend/src/app/api/v1/history.py`: filter by `user_id = current_user.id` — FR-134
 
-### Backend — Accepted Query Rerun Revalidation (Owner: Qwen)
+### Backend — Accepted Query Rerun Revalidation (Owner: Kimi ( opencode ))
 
 - [ ] T-717 [US32] Write TDD tests for accepted-query rerun re-validation (role restricted since acceptance → block rerun) in `backend/tests/unit/test_rerun_revalidation.py` — FR-135, SC-053
 - [ ] T-718 [US32] Implement rerun re-validation in query service: re-check SQL against current role policy before execution — FR-135
 
-### Backend — Query/Policy Audit Logging (Owner: Qwen)
+### Backend — Query/Policy Audit Logging (Owner: Kimi ( opencode ))
 
 - [ ] T-719 [US31] Write TDD tests for query lifecycle audit events (submit, validate pass/fail, execute, accept, reject, policy block) in `backend/tests/unit/test_query_audit_logging.py` — FR-140
 - [ ] T-720 [US31] Add audit logging calls to query service for all query lifecycle events — FR-140
 
-### Backend — Cross-Dialect Enforcement Tests (Owner: Qwen)
+### Backend — Cross-Dialect Enforcement Tests (Owner: Kimi ( opencode ))
 
 - [ ] T-721 [US31] Write cross-dialect policy enforcement tests (row filters + column masks verified against PostgreSQL, MySQL, MSSQL via testcontainers where feasible) in `backend/tests/integration/test_cross_dialect_policy.py` — FR-131, FR-132, SC-051, SC-052
 
@@ -346,24 +346,24 @@
 **FRs**: FR-140, FR-141, FR-142, FR-143, FR-144
 **SCs**: SC-059, SC-060, SC-061, SC-056, SC-057
 
-### Backend — Audit Event Coverage (Owner: Qwen)
+### Backend — Audit Event Coverage (Owner: Kimi ( opencode ))
 
 - [ ] T-733 [US28] Write comprehensive TDD tests verifying ALL 21 audit action types emit entries (logins, SSO validation, queries, role CRUD, mapping changes, SSO config changes, connection changes, access denied, audit verification) in `backend/tests/unit/test_audit_event_coverage.py` — FR-140, SC-059
 - [ ] T-734 [US28] Review and add any missing audit logging calls across all services/endpoints to ensure complete coverage of all 21 action types — FR-140
 
-### Backend — Audit Immutability and Redaction (Owner: Qwen)
+### Backend — Audit Immutability and Redaction (Owner: Kimi ( opencode ))
 
 - [ ] T-735 [US28] Write TDD tests verifying audit entry immutability (application-level UPDATE/DELETE rejected) in `backend/tests/unit/test_audit_immutability_comprehensive.py` — FR-141, SC-060
 - [ ] T-736 [US28] Write TDD tests verifying no secrets/credentials/tokens in any audit entry context across all action types in `backend/tests/unit/test_audit_redaction_comprehensive.py` — FR-143, SC-061
 
-### Backend — Audit Verification Endpoint (Owner: Qwen)
+### Backend — Audit Verification Endpoint (Owner: Kimi ( opencode ))
 
 - [ ] T-737 [US28] Write TDD tests for audit verification endpoint (`POST /admin/audit/verify`) and status endpoint (`GET /admin/audit/status`) in `backend/tests/unit/test_audit_endpoints.py` — FR-141, FR-144
 - [ ] T-738 [US28] Implement audit endpoints in `backend/src/app/api/v1/admin_audit.py`: `POST /admin/audit/verify` (triggers chain walk, returns `VerificationResult`), `GET /admin/audit/status` (returns last verification + entry count) per api-contracts.md, with `require_permission('admin.audit.verify')` — FR-141, FR-144
 - [ ] T-739 [US28] Register audit admin router in `backend/src/app/main.py` — FR-144
 - [ ] T-740 [US28] Implement chain recovery behavior on broken chain (report `sequence_number` of first mismatch, no auto-repair, continue appending, log verification result as audit event) per S-008 — FR-141
 
-### Backend — Retention Config (Owner: Qwen)
+### Backend — Retention Config (Owner: Kimi ( opencode ))
 
 - [ ] T-741 [US28] Add `AUDIT_RETENTION_MONTHS` config setting (default 24) to `backend/src/app/core/config.py` — FR-142
 
@@ -423,13 +423,13 @@
 
 - [ ] T-761 [US33] Verify no raw IdP errors, UUIDs, hostnames, credentials, or internal schema details appear in any UI error message or browser-visible evidence across all Phase 5 screens — FR-139
 
-### Cross-Dialect Security Verification (Owner: Qwen)
+### Cross-Dialect Security Verification (Owner: Kimi ( opencode ))
 
 - [ ] T-762 [US31] Run cross-dialect policy enforcement verification: submit query as restricted role against PostgreSQL, verify row filters and column masks enforce correctly — FR-131, FR-132, SC-051, SC-052
 - [ ] T-763 [US31] Run cross-dialect policy enforcement verification: submit query as restricted role against MySQL, verify row filters and column masks enforce correctly — FR-131, FR-132, SC-051, SC-052
 - [ ] T-764 [US31] Run cross-dialect policy enforcement verification: submit query as restricted role against MSSQL, verify row filters and column masks enforce correctly — FR-131, FR-132, SC-051, SC-052
 
-### Security/Privacy Evidence (Owner: Qwen + Gemini)
+### Security/Privacy Evidence (Owner: Kimi ( opencode ) + Gemini)
 
 - [ ] T-765 Verify no secrets in any API response, UI rendering, or audit log entry — FR-143, SC-061
 - [ ] T-766 Verify no raw UUIDs exposed to end users in UI or error messages — FR-139
@@ -437,7 +437,7 @@
 - [ ] T-768 Verify no raw IdP/driver errors exposed to users (all errors are localized i18n keys) — FR-119, FR-139
 - [ ] T-769 Verify no unauthorized schema internals visible in UI or evidence — FR-128, FR-129
 
-### Final Backend Gate (Owner: Qwen)
+### Final Backend Gate (Owner: Kimi ( opencode ))
 
 - [ ] T-770 Run final backend foundation gates: `cd backend && uv run pytest -q -m "not integration"` + `uv run ruff check src tests` + `uv run ruff format --check src tests` — SC-057
 
@@ -477,7 +477,7 @@ All waves are strictly sequential. No parallel dispatch.
 
 ## Task Summary
 
-| Wave | Tasks | Range | Backend (Qwen) | Frontend (Gemini) | Orchestrator (Opus) |
+| Wave | Tasks | Range | Backend (Kimi ( opencode )) | Frontend (Gemini) | Orchestrator (Opus) |
 |------|-------|-------|-----------------|-------------------|---------------------|
 | Gov. | 1 | T-600 | 0 | 0 | 1 |
 | 17.0 | 34 | T-601 – T-634 | 34 | 0 | 0 |
