@@ -13,4 +13,10 @@ describe('SqlDisplay', () => {
     render(<SqlDisplay sql="SELECT 1;" />, { wrapper: createWrapper() });
     expect(screen.getByText(/generated sql/i)).toBeInTheDocument();
   });
+
+  it('should render the SQL pre block with dir="ltr"', () => {
+    render(<SqlDisplay sql="SELECT 1;" />, { wrapper: createWrapper() });
+    const pre = screen.getByText('SELECT 1;');
+    expect(pre).toHaveAttribute('dir', 'ltr');
+  });
 });

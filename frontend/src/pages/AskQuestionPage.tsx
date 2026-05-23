@@ -160,6 +160,7 @@ export const AskQuestionPage: React.FC = () => {
   const shownErrorRef = useRef<string | null>(null);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (!error) {
       shownErrorRef.current = null;
       return;
@@ -168,28 +169,26 @@ export const AskQuestionPage: React.FC = () => {
     if (shownErrorRef.current === errorKey) return;
     shownErrorRef.current = errorKey;
 
-    const timer = setTimeout(() => {
-      if (error.kind === 'concurrent') {
-        showAlert(
-          t('query.error.concurrent'),
-          '',
-          'destructive'
-        );
-      } else if (error.kind === 'llmUnavailable') {
-        showAlert(
-          t('query.error.llmUnavailable'),
-          '',
-          'destructive'
-        );
-      } else if (error.kind === 'connectionRequired') {
-        showAlert(
-          t('error.no_database_available'),
-          '',
-          'destructive'
-        );
-      }
-    }, 0);
-    return () => clearTimeout(timer);
+    if (error.kind === 'concurrent') {
+      showAlert(
+        t('query.error.concurrent'),
+        '',
+        'destructive'
+      );
+    } else if (error.kind === 'llmUnavailable') {
+      showAlert(
+        t('query.error.llmUnavailable'),
+        '',
+        'destructive'
+      );
+    } else if (error.kind === 'connectionRequired') {
+      showAlert(
+        t('error.no_database_available'),
+        '',
+        'destructive'
+      );
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [error, t, showAlert]);
 
   const alertStyles = {
