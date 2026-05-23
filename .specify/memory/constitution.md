@@ -297,7 +297,7 @@ Principles IV (Hostile Input), VI (Arabic+RTL), VII (Role-Appropriate Authentica
 | VI — Arabic + RTL | Phase 4 | First non-English user persona |
 | VII — Role-Appropriate Authentication (SSO + RBAC) | Phase 5 | First multi-user feature OR first SSO requirement |
 | IX — Tamper-evident Audit Log (24-month) | Phase 5 | First multi-user feature OR first persisted PII |
-| X — Token/Query/Cost quotas | Phase 5 | First multi-tenant boundary OR first paid user |
+| X — Token/Query/Cost quotas | Phase 6 | First multi-tenant boundary OR first paid user |
 
 Operating in production WITHOUT a principle past its trigger is a constitutional violation, not technical debt. Each phase's `plan.md` MUST verify all triggered principles are active before declaring the phase complete.
 
@@ -305,8 +305,9 @@ Operating in production WITHOUT a principle past its trigger is a constitutional
 
 ## Changelog
 
+- **v1.2.0** (2026-05-24) — Amended §11 phased commitment table: moved Principle X (Quotas) required phase from Phase 5 to Phase 6. Quotas are deferred to Phase 6 alongside hostile input detection. Rationale: Phase 5 scope (SSO/RBAC/row-column security + tamper-evident audit) is already substantial; quotas are more naturally paired with Phase 6's governance focus.
 - **v1.1.1** (2026-05-06) — Added Principle VII to §11 phased commitment table; resolves /speckit.analyze A3 (deferral was previously unauthorized).
 - **v1.1.0** (2026-05-06) — Added §11 Phased Rollout; permits Principles IV, VI, IX, X to defer per the phased plan in plan.md, with explicit trigger conditions for each phase.
 - **v1.0.0** (initial) — Original ten principles.
 
-**Version**: 1.1.1 | **Ratified**: 2026-05-02 | **Last Amended**: 2026-05-06
+**Version**: 1.2.0 | **Ratified**: 2026-05-02 | **Last Amended**: 2026-05-24
