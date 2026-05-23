@@ -477,7 +477,7 @@ export const WorkspacePage: React.FC = () => {
       {alert && (
         <div
           role="alert"
-          className="fixed top-4 right-4 z-50 p-4 rounded-xl border border-red-500/20 bg-red-950/80 backdrop-blur-md text-red-200 shadow-2xl flex items-start gap-3 w-96 animate-in slide-in-from-top-4 duration-300"
+          className="fixed top-4 end-4 z-50 p-4 rounded-xl border border-red-500/20 bg-red-950/80 backdrop-blur-md text-red-200 shadow-2xl flex items-start gap-3 w-96 animate-in slide-in-from-top-4 duration-300"
         >
           <div className="flex-1">
             <p className="font-semibold text-sm">{alert.title}</p>
