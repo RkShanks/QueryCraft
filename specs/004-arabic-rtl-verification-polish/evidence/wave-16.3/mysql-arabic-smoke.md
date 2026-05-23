@@ -23,6 +23,8 @@ FROM actor;
 * Standard MySQL syntax without `public.` schemas or PostgreSQL-specific quotes.
 * Clean SQL output without markdown markers or execution violations.
 
+> **Remediation Note (Backend Review)**: T-531 requires at least one MySQL dialect-specific marker (e.g. backtick identifiers `` `actor` `` or `` `sakila`.`actor` ``). The observed SQL (`FROM actor;`) contains no backticks. The generic syntax is valid MySQL but does not demonstrate dialect-specific generation. **Gemini follow-up required**: Re-run the MySQL smoke with the same Arabic prompt and confirm whether the generated SQL contains backtick identifiers, or document that the LLM consistently generates unquoted identifiers for this schema. If the LLM output never contains backticks for MySQL Sakila, this gap must be noted as a Phase 4 finding.
+
 ## Execution Result
 * **State**: `EXECUTED` (passed all evaluator rules).
 * **Result Columns**: `['actor_id', 'first_name', 'last_name', 'last_update']`

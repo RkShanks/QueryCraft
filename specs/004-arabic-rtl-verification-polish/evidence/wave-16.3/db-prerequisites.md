@@ -6,11 +6,13 @@ This document verifies that all three source database containers (PostgreSQL, My
 
 All three database containers are running healthy on the QueryCraft Docker network:
 
-| Container Name | Port | Database Name | Username | Health Status |
-|---|---|---|---|---|
-| `postgres-source` | 5432 | `source_analytics` | `pagila_user` | Healthy |
-| `mysql-source` | 3306 | `sakila` | `sakila_user` | Healthy |
-| `mssql-source` | 1433 | `AdventureWorksLT` | `adventureworks_user` | Healthy |
+| Container Name | Database Name | Health Status |
+|---|---|---|
+| `postgres-source` | `source_analytics` | Healthy |
+| `mysql-source` | `sakila` | Healthy |
+| `mssql-source` | `AdventureWorksLT` | Healthy |
+
+> Note: Internal connection parameters (ports, usernames, passwords, hostnames) are excluded per Phase 4 evidence rules.
 
 ## Admin UI Verification
 

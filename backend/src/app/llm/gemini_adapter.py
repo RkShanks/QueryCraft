@@ -1,5 +1,7 @@
 """Gemini LLM adapter implementing LLMProvider."""
 
+import re
+
 import httpx
 
 from app.llm.exceptions import LLMTimeout, LLMUnavailable
@@ -78,5 +80,8 @@ class GeminiAdapter:
             prompt += "\nAvoid generating these SQL variants:\n" + "\n".join(f"- {ex}" for ex in negative_examples)
         sql = await self.generate(prompt)
         if target_dialect and target_dialect.lower() in ("mysql", "tsql"):
-            sql = sql.replace("public.", "")
+            # Strip PostgreSQL default schema prefix only at word boundaries.
+            # This avoids accidental replacement inside string literals or
+            # compound words (e.g. "mypublic.table" stays intact).
+            sql = re.sub(r"\bpublic\.", "", sql)
         return sql

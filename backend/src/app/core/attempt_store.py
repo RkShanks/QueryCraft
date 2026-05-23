@@ -4,6 +4,7 @@ T-110: store_attempt, get_attempt, delete_attempt with session ownership
 validation (Inv 6) and 15-minute TTL.
 """
 
+import datetime
 import json
 from decimal import Decimal
 from typing import Any
@@ -13,8 +14,6 @@ from redis.asyncio import Redis
 
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation
 
-
-import datetime
 
 class _DecimalEncoder(json.JSONEncoder):
     """JSON encoder that converts Decimal to float and datetime/date/time to ISO string."""

@@ -103,7 +103,7 @@ class PostgresAdapter:
             rows = await conn.fetch(sql, *params)
             if not rows:
                 return ExecuteResult(columns=[], rows=[])
-            columns = [c.lower() for c in rows[0].keys()]
+            columns = [c.lower() for c in rows[0].keys()]  # noqa: SIM118
             row_tuples = [tuple(r.values()) for r in rows]
             return ExecuteResult(columns=columns, rows=row_tuples)
 
