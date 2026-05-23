@@ -183,7 +183,7 @@ As a platform user with Arabic selected, all new Phase 5 surfaces (SSO sign-in, 
 
 - What happens when the SSO provider is temporarily unreachable? The sign-in page shows a localized "identity provider unavailable" error. No internal URLs or timeouts are exposed.
 - What happens when a user's role is deleted while they have an active session? The session remains valid until expiry or next login. On next authentication, they are treated as unmapped (no access).
-- What happens when row filters reference columns that don't exist in a particular source database? The filter is skipped for that database with a warning logged internally. No error is shown to the user; queries proceed without that filter.
+- What happens when row filters reference columns that don't exist in a particular source database? At policy save time, the filter is rejected if it references columns absent in the connection's current schema. At query time, if schema drift has removed a column referenced by an active filter, the query is blocked before execution with a localized sanitized policy error. An internal audit event is emitted for the policy/schema mismatch. The platform never executes a query when a required row filter cannot be applied.
 - What happens when an admin tries to delete a role that has active users? Deletion succeeds. Active sessions are not terminated. Users are denied on next authentication.
 - What happens when the OIDC token refresh fails silently? The session expires at its natural TTL. The user is redirected to re-authenticate.
 - What happens when column masking is configured but the column is used in GROUP BY? The query executes; grouped results show masked values. The masking is applied to output display, not to SQL computation.

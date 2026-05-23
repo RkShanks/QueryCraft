@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/004-arabic-rtl-verification-polish/plan.md
+at specs/005-sso-rbac-row-column-security/plan.md
 <!-- SPECKIT END -->
 
 # QueryCraft — Agent Handoff
@@ -16,8 +16,8 @@ Bootstrap prompt: `"Continue work on RkShanks/QueryCraft. Read AGENTS.md first."
 
 - **Repo**: github.com/RkShanks/QueryCraft (single-tenant)
 - **Product**: Text-to-SQL — natural language → SQL → execute → results.
-- **Stack**: FastAPI (Python 3.11) · Postgres 15 · Redis 7 · React 19 · Tailwind v4 · Vite · TanStack Query · Playwright. LLM: Google Gemini (default), provider-agnostic interface.
-- **Constitution**: 10 principles in `.specify/memory/constitution.md`. Shipped: I/II/III/V/VI/VIII. Deferred to Phase 3+: IV/VII/IX/X.
+- **Stack**: FastAPI (Python 3.12) · Postgres 15 · Redis 7 · React 19 · Tailwind v4 · Vite · TanStack Query · Playwright. LLM: Google Gemini (default), provider-agnostic interface.
+- **Constitution**: 12 principles in `.specify/memory/constitution.md`. Shipped: I/II/III/V/VI/VII/VIII/IX. Deferred: IV (Phase 6), X (Phase 6).
 
 ## 2. Roles & Models
 
@@ -41,8 +41,8 @@ Phases are sequential and **immutable** once snapshot.
 | 2 | FROZEN | `specs/002-phase2-premium-ui-rtl/` | Premium UI + Arabic/RTL + backend hardening |
 | 3 | FROZEN | `specs/003-multi-dialect-source-dbs/` | Multi-dialect SQL (PG/MySQL/MSSQL), admin DB management, schema introspection |
 | 4 | FROZEN | `specs/004-arabic-rtl-verification-polish/` | Arabic/RTL verification and polish on shipped surfaces |
-| 5 | PLANNED | — | SSO, RBAC, row/column security |
-| 6 | PLANNED | — | Audit log, quotas, injection detection |
+| 5 | IN PROGRESS | `specs/005-sso-rbac-row-column-security/` | SSO, RBAC, row/column security, tamper-evident audit log |
+| 6 | PLANNED | — | Quotas, hostile input/injection detection, audit search/export hardening |
 | 7 | PLANNED | — | Admin dashboard |
 | 8 | PLANNED | — | Scheduled reports and notifications |
 | 9 | PLANNED | — | Semantic search of accepted queries |
