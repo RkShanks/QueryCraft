@@ -27,32 +27,32 @@
 **Branch**: `phase-4/wave-16.0-baseline-audit`
 **Goal**: Establish baseline state. Confirm no regressions from Phase 3 close.
 
-- [ ] T-500 [P] Run frontend foundation gates on `main` and capture verbatim output in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.0/frontend-gates.md`
+- [x] T-500 [P] Run frontend foundation gates on `main` and capture verbatim output in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.0/frontend-gates.md`
   - **Owner**: Gemini
   - **FRs**: —
   - **SCs**: SC-041
   - Commands: `cd frontend && npm run test -- --run && npm run lint && npm run typecheck && npm run build && npm run lint:css`
   - Paste full verbatim output. No summaries.
 
-- [ ] T-501 [P] Run i18n key parity audit: diff `frontend/src/locales/en.json` vs `frontend/src/locales/ar.json` keys and report count + any mismatches in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.0/i18n-parity.md`
+- [x] T-501 [P] Run i18n key parity audit: diff `frontend/src/locales/en.json` vs `frontend/src/locales/ar.json` keys and report count + any mismatches in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.0/i18n-parity.md`
   - **Owner**: Gemini
   - **FRs**: FR-096
   - **SCs**: SC-036
   - Extract all keys from both files. Report: total EN keys, total AR keys, keys in EN but not AR, keys in AR but not EN.
 
-- [ ] T-502 [P] Run physical CSS direction audit: grep for `left`/`right`/`margin-left`/`margin-right`/`padding-left`/`padding-right` in `frontend/src/` component stylesheets (exclude `node_modules`, test files, third-party) and report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.0/css-direction-audit.md`
+- [x] T-502 [P] Run physical CSS direction audit: grep for `left`/`right`/`margin-left`/`margin-right`/`padding-left`/`padding-right` in `frontend/src/` component stylesheets (exclude `node_modules`, test files, third-party) and report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.0/css-direction-audit.md`
   - **Owner**: Gemini
   - **FRs**: FR-098
   - **SCs**: SC-044, SC-045
   - Use grep/ripgrep. Report: file, line, property found, or clean confirmation.
 
-- [ ] T-503 Produce baseline audit report consolidating T-500, T-501, T-502 results in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.0/baseline-audit-report.md`
+- [x] T-503 Produce baseline audit report consolidating T-500, T-501, T-502 results in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.0/baseline-audit-report.md`
   - **Owner**: Gemini
   - **FRs**: FR-096, FR-098
   - **SCs**: SC-036, SC-041, SC-044, SC-045
   - Consolidate: key count, parity status, physical-CSS count, gate status. Document any findings for Wave 16.1/16.2.
 
-- [ ] T-504 Append Wave 16.0 dispatch + completion entry to `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md`
+- [x] T-504 Append Wave 16.0 dispatch + completion entry to `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md`
   - **Owner**: Opus
   - **FRs**: —
   - **SCs**: —
