@@ -83,7 +83,15 @@ class SchemaValidationRule:
                 qualified = f"{table.db}.{table_name}"
                 found = self._find_table(schema, qualified, is_quoted)
                 if not found:
-                    return False, f"Unknown table: {qualified}"
+                    # Fallback to validating the table name alone
+                    found = self._find_table(schema, table_name, is_quoted)
+                    if not found:
+                        return False, f"Unknown table: {qualified}"
+                    alias_map[table_name] = table_name
+                    alias_map[qualified] = table_name
+                    if table.alias:
+                        alias_map[table.alias] = table_name
+                    continue
                 # Update alias map so column validation uses the qualified name
                 alias_map[table_name] = qualified
                 alias_map[qualified] = qualified

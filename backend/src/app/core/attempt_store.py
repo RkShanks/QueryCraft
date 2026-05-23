@@ -14,12 +14,16 @@ from redis.asyncio import Redis
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation
 
 
+import datetime
+
 class _DecimalEncoder(json.JSONEncoder):
-    """JSON encoder that converts Decimal to float."""
+    """JSON encoder that converts Decimal to float and datetime/date/time to ISO string."""
 
     def default(self, obj: Any) -> Any:
         if isinstance(obj, Decimal):
             return float(obj)
+        if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+            return obj.isoformat()
         return super().default(obj)
 
 

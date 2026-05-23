@@ -17,6 +17,20 @@ _engine = None
 _session_factory = None
 
 
+import datetime
+import json
+from decimal import Decimal
+
+def custom_json_serializer(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
+
+def custom_json_dumps(obj):
+    return json.dumps(obj, default=custom_json_serializer)
+
 def get_async_engine():
     """Get or create the async SQLAlchemy engine (singleton)."""
     global _engine
@@ -28,6 +42,7 @@ def get_async_engine():
             pool_size=settings.DB_POOL_SIZE,
             max_overflow=settings.DB_MAX_OVERFLOW,
             pool_pre_ping=True,
+            json_serializer=custom_json_dumps,
         )
     return _engine
 

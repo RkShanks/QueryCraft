@@ -196,3 +196,44 @@ Evidence file structure: §1–§5 preserve original FAILED baseline (audit trai
 ### Orchestrator Decision
 - **Wave 16.2 merge status**: ✅ **UNBLOCKED** — ready for PR/merge.
 - **Next Wave**: Wave 16.3: Cross-Language DB Smoke
+
+---
+
+## Wave 16.3 — Cross-Language DB Smoke
+
+### Dispatch
+- **Date**: 2026-05-23
+- **Model**: Gemini (Frontend Implementer)
+- **T-IDs**: T-529 through T-535
+- **Branch**: `phase-4/wave-16.3-cross-language-smoke`
+
+### Completion (T-529–T-535)
+- **Date**: 2026-05-23
+- **Status**: ✅ **COMPLETE** — GATES GREEN
+
+### Evidence Files
+- [db-prerequisites.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/db-prerequisites.md)
+- [pg-arabic-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/pg-arabic-smoke.md)
+- [mysql-arabic-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/mysql-arabic-smoke.md)
+- [mssql-arabic-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/mssql-arabic-smoke.md)
+- [history-metadata-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/history-metadata-smoke.md)
+
+### Findings & Fixes Summary
+
+- **Gemini Model Migration & Stabilization**: Addressed free-tier rate-limiting and model availability by migrating from `gemini-3-flash-preview` to `gemini-2.5-flash`, an active, high-quota production model.
+- **SQL Markdown Stripping & Cleaning**: Handled the LLM markdown wrapping problem by implementing a server-side markdown strip in `GeminiAdapter.generate` to ensure raw SQL statements are correctly extracted.
+- **Schema-Qualification Evaluator Fallback**: Resolved `unknownTable` evaluator validation rejections on qualified table structures (e.g. `public.actor`) by adding a fallback mechanism to `SchemaValidationRule` (validating the base table name alone if the fully qualified table is not present in the ingested schema).
+- **Dialect-Aware Schema Cleanup**: Addressed LLM schema prefix hallucinations on non-PostgreSQL systems (e.g., prepending `public.` to MSSQL's `SalesLT.Customer`) by adding a dialect-aware cleanup mechanism in `GeminiAdapter.generate_sql` to strip `public.` prefixes for MySQL and MSSQL connections.
+- **Complex Type JSON Serialization**: Standardized database JSON serialization in `attempt_store.py` and `base.py` to properly convert complex structures like `Decimal`, `datetime`, `date`, and `time` to primitive floats and ISO string representations.
+- **E2E Smoke Verification**: Successfully executed the Playwright smoke testing suite (`wave_16_3_smoke.spec.ts`) against real PostgreSQL, MySQL, and MSSQL databases in Arabic, passing with 100% green status and capturing all required visual evidence.
+
+### Gate Results
+- `npx playwright test wave_16_3_smoke.spec.ts`: ✅ **ALL PASSED**
+- `npm run test` (Vitest): ✅ **ALL PASSED**
+- `npm run lint` (ESLint): ✅ **PASSED**
+- `npm run typecheck` (tsc): ✅ **PASSED**
+- `npm run build`: ✅ **PASSED**
+
+### Orchestrator Decision
+- **Wave 16.3 merge status**: ✅ **UNBLOCKED** — ready for PR/merge.
+- **Next Wave**: Wave 16.4: Final Audit + Closeout

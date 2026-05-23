@@ -103,7 +103,10 @@ class PostgresAdapter:
             rows = await conn.fetch(sql, *params)
             if not rows:
                 return ExecuteResult(columns=[], rows=[])
-            columns = [c.lower() for c in rows[0]]
+            print("PostgresAdapter.execute executing SQL:", sql)
+            print("PostgresAdapter.execute rows[0].keys():", list(rows[0].keys()))
+            print("PostgresAdapter.execute rows[0].keys() types:", [type(k) for k in rows[0].keys()])
+            columns = [c.lower() for c in rows[0].keys()]
             row_tuples = [tuple(r.values()) for r in rows]
             return ExecuteResult(columns=columns, rows=row_tuples)
 
