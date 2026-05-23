@@ -52,6 +52,11 @@ describe('Wave 14 i18n key coverage', () => {
     // Error fallback
     'error.unknown.title',
     'error.unknown.message',
+    // Connection form success/error toast keys
+    'admin.connections.addSuccess',
+    'admin.connections.addError',
+    'admin.connections.updateSuccess',
+    'admin.connections.updateError',
   ];
 
   it.each(requiredKeys)('has %s in en.json', (key) => {
