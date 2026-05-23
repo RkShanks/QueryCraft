@@ -65,11 +65,11 @@
 **Branch**: `phase-4/wave-16.1-i18n-error-polish`
 **Goal**: Close i18n parity gaps. Verify localized error messages. Chrome DevTools MCP smoke every surface in Arabic.
 
-- [ ] T-505 Fix any EN-only or AR-only i18n keys found in T-501 by adding missing translations to `frontend/src/locales/en.json` and/or `frontend/src/locales/ar.json`
+- [x] T-505 Fix any EN-only or AR-only i18n keys found in T-501 by adding missing translations to `frontend/src/locales/en.json` and/or `frontend/src/locales/ar.json`
   - **Owner**: Gemini
   - **FRs**: FR-095, FR-096
   - **SCs**: SC-036
-  - If T-501 found zero gaps, mark complete with note "zero gaps — no changes needed."
+  - Note: zero gaps — no changes needed.
 
 - [ ] T-506 [US20] Chrome DevTools MCP smoke: Sign-in page in Arabic — verify labels, placeholders, validation errors, submit button. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/sign-in-smoke.md`
   - **Owner**: Gemini
