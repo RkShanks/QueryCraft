@@ -212,40 +212,40 @@
 
 **Prerequisites**: All three source DB containers running. DBs registered in admin UI. Full app stack running.
 
-- [ ] T-529 [US22] Verify source DB containers are running (PostgreSQL Pagila, MySQL Sakila, MSSQL AdventureWorksLT) and registered in admin UI. Document status in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/db-prerequisites.md`
+- [x] T-529 [US22] Verify source DB containers are running (PostgreSQL Pagila, MySQL Sakila, MSSQL AdventureWorksLT) and registered in admin UI. Document status in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/db-prerequisites.md`
   - **Owner**: Gemini
   - **FRs**: FR-112
   - **SCs**: SC-038
   - No credentials or secrets in evidence. Confirm: container health, connection test success, schema introspected.
 
-- [ ] T-530 [US22] Arabic prompt smoke against PostgreSQL Pagila: submit Arabic question (e.g., "أظهر لي جميع الممثلين"), verify SQL uses PostgreSQL syntax (double-quote identifiers or `LIMIT`), query executes, results returned, response card shows connection name + type badge. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/pg-arabic-smoke.md`
+- [x] T-530 [US22] Arabic prompt smoke against PostgreSQL Pagila: submit Arabic question (e.g., "أظهر لي جميع الممثلين"), verify SQL uses PostgreSQL syntax (double-quote identifiers or `LIMIT`), query executes, results returned, response card shows connection name + type badge. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/pg-arabic-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-101, FR-102, FR-112
   - **SCs**: SC-038
   - Evidence: DB type, Arabic prompt intent, generated SQL (with dialect marker highlighted), execution result summary, response card metadata.
 
-- [ ] T-531 [US22] Arabic prompt smoke against MySQL Sakila: submit Arabic question, verify SQL uses MySQL syntax (backtick identifiers), query executes, results returned. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/mysql-arabic-smoke.md`
+- [x] T-531 [US22] Arabic prompt smoke against MySQL Sakila: submit Arabic question, verify SQL uses MySQL syntax (backtick identifiers), query executes, results returned. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/mysql-arabic-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-101, FR-102, FR-112
   - **SCs**: SC-038
 
-- [ ] T-532 [US22] Arabic prompt smoke against MSSQL AdventureWorksLT: submit Arabic question (e.g., "أظهر لي جميع العملاء"), verify SQL uses T-SQL syntax (bracket identifiers or `TOP`), query executes, results returned. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/mssql-arabic-smoke.md`
+- [x] T-532 [US22] Arabic prompt smoke against MSSQL AdventureWorksLT: submit Arabic question (e.g., "أظهر لي جميع العملاء"), verify SQL uses T-SQL syntax (bracket identifiers or `TOP`), query executes, results returned. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/mssql-arabic-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-101, FR-102, FR-112
   - **SCs**: SC-038
 
-- [ ] T-533 [US22] Verify history entries for Arabic-prompt queries show localized connection display name and database type badge, no raw UUIDs, no credential leaks. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/history-metadata-smoke.md`
+- [x] T-533 [US22] Verify history entries for Arabic-prompt queries show localized connection display name and database type badge, no raw UUIDs, no credential leaks. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/history-metadata-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-113, FR-114
   - **SCs**: SC-039
 
-- [ ] T-534 [US23] If any Arabic prompt is rejected by evaluator: verify retry hint/error message is in Arabic, no raw driver errors. Report appended to the relevant DB smoke file.
+- [x] T-534 [US23] If any Arabic prompt is rejected by evaluator: verify retry hint/error message is in Arabic, no raw driver errors. Report appended to the relevant DB smoke file.
   - **Owner**: Gemini
   - **FRs**: FR-103
   - **SCs**: SC-037
   - If no rejections occur, mark complete with "no rejections — not applicable."
 
-- [ ] T-535 Append Wave 16.3 dispatch + completion entry to `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md`
+- [x] T-535 Append Wave 16.3 dispatch + completion entry to `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md`
   - **Owner**: Opus
   - **FRs**: —
   - **SCs**: —
@@ -257,12 +257,12 @@
 **Branch**: `phase-4/wave-16.4-audit-closeout`
 **Goal**: Final audit pass. Produce closure artifacts. Freeze Phase 4.
 
-- [ ] T-536 Run final frontend foundation gates on merged `main` post all Phase 4 waves and capture verbatim output. Run backend gates only if backend code changed in Phase 4. Capture in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.4/final-gates.md`
+- [x] T-536 Run final frontend foundation gates on merged `main` post all Phase 4 waves and capture verbatim output. Run backend gates only if backend code changed in Phase 4. Capture in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.4/final-gates.md`
   - **Owner**: Gemini (frontend) / Qwen (backend, only if needed)
   - **FRs**: —
   - **SCs**: SC-041, SC-042
 
-- [ ] T-537 Consolidate all wave evidence (16.0–16.3), verify all FRs (FR-095–FR-114) and SCs (SC-036–SC-045) are covered, identify any Critical/High gaps, produce closure artifacts:
+- [x] T-537 Consolidate all wave evidence (16.0–16.3), verify all FRs (FR-095–FR-114) and SCs (SC-036–SC-045) are covered, identify any Critical/High gaps, produce closure artifacts:
   - `audit/wave-16/consolidation-report.md`
   - `specs/004-arabic-rtl-verification-polish/plans/wave-final-snapshot.md`
   - Append Phase 4 summary footer to `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md`

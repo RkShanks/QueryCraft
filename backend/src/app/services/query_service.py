@@ -31,6 +31,8 @@ def _sanitize_for_json(obj: Any) -> Any:
     """Recursively convert Decimal (and other non-JSON types) to JSON-safe values."""
     if isinstance(obj, Decimal):
         return float(obj)
+    if hasattr(obj, "isoformat"):
+        return obj.isoformat()
     if isinstance(obj, dict):
         return {k: _sanitize_for_json(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):

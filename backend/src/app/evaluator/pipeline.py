@@ -32,7 +32,6 @@ class Evaluator:
         self._pipeline = EvaluatorPipeline(rules) if rules else None
 
     async def evaluate(self, sql: str, schema: SchemaContext | None = None) -> EvaluatorResult:
-        """Check SQL safety."""
         if self._pipeline is not None:
             pipeline_result = await self._pipeline.run(sql, schema)
             if not pipeline_result.passed:

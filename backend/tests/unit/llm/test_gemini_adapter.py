@@ -76,3 +76,53 @@ async def test_generate_429_raises_llm_unavailable(adapter: GeminiAdapter):
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")
+
+
+def _fake_response(text: str) -> Response:
+    return Response(200, json={"candidates": [{"content": {"parts": [{"text": text}]}}]})
+
+
+@respx.mock
+async def test_generate_sql_mysql_strips_public_schema(adapter: GeminiAdapter):
+    """MySQL dialect strips public. schema prefix from generated SQL."""
+    respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
+        return_value=_fake_response("SELECT * FROM public.actor")
+    )
+
+    sql = await adapter.generate_sql("question", "schema", target_dialect="mysql")
+    assert "public." not in sql
+    assert "actor" in sql
+
+
+@respx.mock
+async def test_generate_sql_tsql_strips_public_schema(adapter: GeminiAdapter):
+    """TSQL dialect strips public. schema prefix from generated SQL."""
+    respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
+        return_value=_fake_response("SELECT * FROM public.Customer")
+    )
+
+    sql = await adapter.generate_sql("question", "schema", target_dialect="tsql")
+    assert "public." not in sql
+    assert "Customer" in sql
+
+
+@respx.mock
+async def test_generate_sql_postgres_preserves_public_schema(adapter: GeminiAdapter):
+    """PostgreSQL dialect preserves public. schema prefix."""
+    respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
+        return_value=_fake_response("SELECT * FROM public.actor")
+    )
+
+    sql = await adapter.generate_sql("question", "schema", target_dialect="postgres")
+    assert "public.actor" in sql
+
+
+@respx.mock
+async def test_generate_sql_does_not_strip_compound_public(adapter: GeminiAdapter):
+    """Cleanup must not touch 'public' when it is part of a larger word."""
+    respx.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent").mock(
+        return_value=_fake_response("SELECT * FROM mypublic.table")
+    )
+
+    sql = await adapter.generate_sql("question", "schema", target_dialect="mysql")
+    assert "mypublic.table" in sql

@@ -1,5 +1,7 @@
 """Gemini LLM adapter implementing LLMProvider."""
 
+import re
+
 import httpx
 
 from app.llm.exceptions import LLMTimeout, LLMUnavailable
@@ -37,7 +39,16 @@ class GeminiAdapter:
         try:
             response.raise_for_status()
             data = response.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+            text = raw_text.strip()
+            if text.startswith("```"):
+                lines = text.splitlines()
+                if lines[0].startswith("```"):
+                    lines = lines[1:]
+                if lines and lines[-1].startswith("```"):
+                    lines = lines[:-1]
+                text = "\n".join(lines).strip()
+            return text
         except (KeyError, IndexError, ValueError) as exc:
             raise LLMUnavailable(provider="gemini", message="Malformed response from provider") from exc
         except httpx.HTTPStatusError as exc:
@@ -67,4 +78,10 @@ class GeminiAdapter:
         prompt = build_prompt(question, schema_context, conversation_history, target_dialect=target_dialect)
         if negative_examples:
             prompt += "\nAvoid generating these SQL variants:\n" + "\n".join(f"- {ex}" for ex in negative_examples)
-        return await self.generate(prompt)
+        sql = await self.generate(prompt)
+        if target_dialect and target_dialect.lower() in ("mysql", "tsql"):
+            # Strip PostgreSQL default schema prefix only at word boundaries.
+            # This avoids accidental replacement inside string literals or
+            # compound words (e.g. "mypublic.table" stays intact).
+            sql = re.sub(r"\bpublic\.", "", sql)
+        return sql

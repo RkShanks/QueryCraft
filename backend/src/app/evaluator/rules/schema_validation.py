@@ -78,11 +78,23 @@ class SchemaValidationRule:
             if table_name in local_ctes:
                 continue
             is_quoted = hasattr(table.this, "quoted") and table.this.quoted
-            # If a schema prefix is present, resolve the fully-qualified name only.
+            # If a schema prefix is present, resolve the fully-qualified name first.
             if table.db:
                 qualified = f"{table.db}.{table_name}"
                 found = self._find_table(schema, qualified, is_quoted)
                 if not found:
+                    # Safer fallback: only allow unqualified match for PostgreSQL
+                    # default schema 'public'. Other schemas require exact match to
+                    # prevent cross-schema ambiguity (e.g. secret_schema.users).
+                    if table.db.lower() == "public":
+                        found = self._find_table(schema, table_name, is_quoted)
+                        if not found:
+                            return False, f"Unknown table: {qualified}"
+                        alias_map[table_name] = table_name
+                        alias_map[qualified] = table_name
+                        if table.alias:
+                            alias_map[table.alias] = table_name
+                        continue
                     return False, f"Unknown table: {qualified}"
                 # Update alias map so column validation uses the qualified name
                 alias_map[table_name] = qualified

@@ -15,11 +15,13 @@ from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation
 
 
 class _DecimalEncoder(json.JSONEncoder):
-    """JSON encoder that converts Decimal to float."""
+    """JSON encoder that converts Decimal to float and datetime/date/time to ISO string."""
 
     def default(self, obj: Any) -> Any:
         if isinstance(obj, Decimal):
             return float(obj)
+        if hasattr(obj, "isoformat"):
+            return obj.isoformat()
         return super().default(obj)
 
 

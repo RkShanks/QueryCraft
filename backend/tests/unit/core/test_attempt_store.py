@@ -4,6 +4,9 @@ Tests store_attempt, get_attempt, delete_attempt with session ownership,
 TTL expiry, and missing-key handling.
 """
 
+import json
+from datetime import date, datetime, time
+from decimal import Decimal
 from unittest.mock import AsyncMock
 
 import pytest
@@ -88,6 +91,46 @@ class TestAttemptStoreUnit:
 
         await delete_attempt("a1", redis)
         redis.delete.assert_awaited_once_with("attempt:a1")
+
+    async def test_store_attempt_serializes_decimal(self):
+        """Decimal values in executor_result are serialized as floats."""
+        redis = AsyncMock(spec=Redis)
+        redis.set = AsyncMock(return_value=True)
+
+        attempt = FakeAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            sql="SELECT 1",
+            question="q1",
+            executor_result={"rows": [[Decimal("10.50")]]},
+        )
+        await store_attempt(attempt, "s1", redis)
+
+        call_args = redis.set.call_args
+        stored = json.loads(call_args.args[1])
+        assert stored["executor_result"]["rows"][0][0] == 10.50
+
+    async def test_store_attempt_serializes_datetime(self):
+        """datetime/date/time values in executor_result are serialized as ISO strings."""
+        redis = AsyncMock(spec=Redis)
+        redis.set = AsyncMock(return_value=True)
+
+        attempt = FakeAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            sql="SELECT 1",
+            question="q1",
+            executor_result={
+                "rows": [[datetime(2026, 5, 23, 12, 0, 0), date(2026, 5, 23), time(12, 30, 0)]],
+            },
+        )
+        await store_attempt(attempt, "s1", redis)
+
+        call_args = redis.set.call_args
+        stored = json.loads(call_args.args[1])
+        assert stored["executor_result"]["rows"][0][0] == "2026-05-23T12:00:00"
+        assert stored["executor_result"]["rows"][0][1] == "2026-05-23"
+        assert stored["executor_result"]["rows"][0][2] == "12:30:00"
 
 
 @pytest.mark.integration

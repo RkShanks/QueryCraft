@@ -92,6 +92,24 @@ async def test_column_from_quoted_table_fails(rule, schema):
 
 
 @pytest.mark.asyncio
+async def test_public_schema_fallback_allowed(rule):
+    """public.table_name may fall back to table_name for PostgreSQL default schema."""
+    schema = SchemaContext(
+        tables=[
+            Table(
+                name="actor",
+                columns=[
+                    Column(name="actor_id", type="integer", primary_key=True),
+                    Column(name="first_name", type="text"),
+                ],
+            ),
+        ]
+    )
+    ok, msg = await rule.evaluate("SELECT actor_id FROM public.actor", schema)
+    assert ok, f"Expected public.actor fallback to pass, got: {msg}"
+
+
+@pytest.mark.asyncio
 async def test_cross_schema_access_blocked(rule):
     """SELECT * FROM secret_schema.users must be rejected even if 'users' exists in allowed schema."""
     schema = SchemaContext(
