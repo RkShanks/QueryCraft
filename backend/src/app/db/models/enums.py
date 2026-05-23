@@ -76,6 +76,7 @@ class AuditActionType(enum.StrEnum):
     ADMIN_CONFIG_CHANGE = "admin.config.change"
     ACCESS_DENIED = "access.denied"
     AUDIT_VERIFY = "audit.verify"
+    POLICY_SCHEMA_MISMATCH = "policy.schema_mismatch"
 
 
 class SchemaIntrospectionStatus(enum.StrEnum):

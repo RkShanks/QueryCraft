@@ -36,7 +36,7 @@ class TestSsoProtocolEnum:
 
 
 class TestAuditActionTypeEnum:
-    """T-604: AuditActionType enum — all 21 action types."""
+    """T-604: AuditActionType enum — all 22 action types."""
 
     def test_all_members_present(self):
         expected = {
@@ -61,6 +61,7 @@ class TestAuditActionTypeEnum:
             "admin.config.change",
             "access.denied",
             "audit.verify",
+            "policy.schema_mismatch",
         }
         actual = {m.value for m in AuditActionType}
         assert actual == expected

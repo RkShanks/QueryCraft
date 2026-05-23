@@ -132,7 +132,7 @@ Tamper-evident audit log with chained hashing.
 
 **No UPDATE/DELETE** through application. Append-only enforced by application layer.
 
-**Action types**: `auth.login.success`, `auth.login.failure`, `auth.logout`, `auth.sso.validation`, `query.submit`, `query.validate.pass`, `query.validate.fail`, `query.execute`, `query.accept`, `query.reject`, `role.create`, `role.update`, `role.delete`, `role.mapping.change`, `sso.config.change`, `connection.create`, `connection.update`, `connection.delete`, `admin.config.change`, `access.denied`, `audit.verify`.
+**Action types**: `auth.login.success`, `auth.login.failure`, `auth.logout`, `auth.sso.validation`, `query.submit`, `query.validate.pass`, `query.validate.fail`, `query.execute`, `query.accept`, `query.reject`, `role.create`, `role.update`, `role.delete`, `role.mapping.change`, `sso.config.change`, `connection.create`, `connection.update`, `connection.delete`, `admin.config.change`, `access.denied`, `audit.verify`, `policy.schema_mismatch`.
 
 **Retention**: 24 months minimum (Constitution IX). Cleanup via scheduled job (Phase 7+).
 
