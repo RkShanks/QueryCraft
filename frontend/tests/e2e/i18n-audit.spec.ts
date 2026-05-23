@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import en from '../../src/locales/en.json' assert { type: 'json' };
+import en from '../../src/locales/en.json' with { type: 'json' };
 import { mockSubmitEvaluatorRejected, mockSubmitTimeout, mockHistoryEmpty, mockConnections } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';

@@ -229,6 +229,20 @@ describe('WorkspacePage submit scenarios', () => {
       expect(screen.getByTestId('rejection-banner')).toBeInTheDocument();
     }, { timeout: 5000 });
   }, 10000);
+
+  it('shows concurrent error alert toast with logical layout class end-4 instead of physical right-4', async () => {
+    setSubmitScenario('concurrent');
+    renderWithClient(<WorkspacePage />);
+
+    await typeAndSubmit('Concurrent query?');
+
+    await waitFor(() => {
+      const alertEl = screen.getByRole('alert');
+      expect(alertEl).toBeInTheDocument();
+      expect(alertEl.className).toContain('end-4');
+      expect(alertEl.className).not.toContain('right-4');
+    }, { timeout: 5000 });
+  }, 10000);
 });
 
 describe('WorkspacePage multi-connection selection (T-460)', () => {

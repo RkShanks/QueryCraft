@@ -18,9 +18,9 @@ async function signIn(page: import('@playwright/test').Page) {
 test.describe('History List + Detail (FR-021, FR-022, FR-023, SC-006, SC-007)', () => {
   test('T-171: list renders in reverse-chrono order, filter narrows, row click shows detail', async ({ page }) => {
     const items = [
-      { id: '1', question_text: 'Customer count', generated_sql: 'SELECT COUNT(*) FROM customer', accepted_at: '2026-05-11T10:00:00Z', schema: 'public' },
-      { id: '2', question_text: 'Revenue top 10', generated_sql: 'SELECT * FROM payment LIMIT 10', accepted_at: '2026-05-10T10:00:00Z', schema: 'public' },
-      { id: '3', question_text: 'Recent rentals', generated_sql: "SELECT * FROM rental WHERE rental_date > now() - interval '7 days'", accepted_at: '2026-05-09T10:00:00Z', schema: 'public' },
+      { id: '1', question_text: 'Customer count', generated_sql: 'SELECT COUNT(*) FROM customer', accepted_at: '2026-05-11T10:00:00Z' },
+      { id: '2', question_text: 'Revenue top 10', generated_sql: 'SELECT * FROM payment LIMIT 10', accepted_at: '2026-05-10T10:00:00Z' },
+      { id: '3', question_text: 'Recent rentals', generated_sql: "SELECT * FROM rental WHERE rental_date > now() - interval '7 days'", accepted_at: '2026-05-09T10:00:00Z' },
     ];
 
     await signIn(page);
@@ -59,7 +59,7 @@ test.describe('History List + Detail (FR-021, FR-022, FR-023, SC-006, SC-007)', 
     await signIn(page);
     await mockHistoryList(page, {
       items: [
-        { id: '1', question_text: 'Accepted Q', generated_sql: 'SELECT 1', accepted_at: '2026-05-11T00:00:00Z', schema: 'public' },
+        { id: '1', question_text: 'Accepted Q', generated_sql: 'SELECT 1', accepted_at: '2026-05-11T00:00:00Z' },
       ],
       total: 1,
       next_cursor: null,

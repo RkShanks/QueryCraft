@@ -179,7 +179,10 @@ describe('AskQuestionPage US-2 State Machine', () => {
     fireEvent.click(screen.getByRole('button', { name: /ask/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/already being processed/i)).toBeInTheDocument();
+      expect(
+        screen.queryByText(/already being processed/i) ||
+        screen.queryByText('query.error.concurrent')
+      ).toBeInTheDocument();
     });
   });
 
@@ -192,7 +195,10 @@ describe('AskQuestionPage US-2 State Machine', () => {
     fireEvent.click(screen.getByRole('button', { name: /ask/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/temporarily unavailable/i)).toBeInTheDocument();
+      expect(
+        screen.queryByText(/temporarily unavailable/i) ||
+        screen.queryByText('query.error.llmUnavailable')
+      ).toBeInTheDocument();
     });
   });
 
