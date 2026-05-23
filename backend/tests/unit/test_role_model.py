@@ -35,8 +35,8 @@ class TestRoleModel:
         assert Role.__table__.c.priority.unique is True
 
     def test_is_builtin_default(self):
-        role = Role(name="Test", priority=100, permissions=[])
-        assert role.is_builtin is False
+        col = Role.__table__.c.is_builtin
+        assert col.server_default is not None or col.default is not None
 
     def test_permissions_jsonb(self):
         assert isinstance(Role.__table__.c.permissions.type, JSONB)

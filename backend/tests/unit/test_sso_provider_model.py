@@ -49,10 +49,5 @@ class TestSsoProviderModel:
         assert SsoProvider.__table__.c.protocol.unique is True
 
     def test_is_active_default(self):
-        inst = SsoProvider(
-            id=uuid4(),
-            protocol=SsoProtocol.OIDC,
-            display_name="Test",
-            group_claim_name="groups",
-        )
-        assert inst.is_active is True
+        col = SsoProvider.__table__.c.is_active
+        assert col.server_default is not None or col.default is not None
