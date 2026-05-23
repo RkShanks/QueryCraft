@@ -152,6 +152,7 @@ Evidence file structure: §1–§5 preserve original FAILED baseline (audit trai
 - `npm run lint`: ✅ PASSED
 - `npm run typecheck`: ✅ PASSED
 - `npm run build`: ✅ PASSED
+- `npm run lint:css`: ✅ PASSED
 
 ### Orchestrator Decision
 - **Wave 16.1 merge status**: ✅ **UNBLOCKED** — ready for PR/merge.
