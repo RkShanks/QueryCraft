@@ -35,7 +35,13 @@ The following items were deferred from Phase 3. Only items marked **[PULLED]** a
 
 ## Clarifications
 
-None yet. Phase 4 scope is narrowly defined as verification/polish of existing behavior. Clarification questions, if any, will arise during `/speckit.clarify`.
+### Session 2026-05-23 (clarify)
+
+- Q1: Should Phase 4 implementers write code fixes when smoke/audit finds gaps, or only produce a findings report? → A: Smoke + fix in same wave. Implementers fix discovered i18n/RTL/CSS/browser-visible polish gaps in the same wave that discovers them, with no new features. Fixes are bounded to Phase 4 scope. If a finding is larger than polish scope (e.g., new backend endpoint, new product surface, architectural change), mark it as out-of-scope/deferred and escalate to the orchestrator before implementation.
+- Q2: What exact evidence is required for Chrome DevTools MCP Arabic/RTL browser smoke? → A: Text report for every surface using the established format: route → action → expected → observed → console/network errors. Screenshots are required only for failures, unexpected behavior, visual ambiguity, or before/after proof of a UI fix. Clean-passing surfaces get text-only evidence.
+- Q3: Which real databases are required vs optional for cross-language Arabic prompt smoke? → A: All three are required for Phase 4 closure: PostgreSQL Pagila, MySQL Sakila, and MSSQL AdventureWorksLT. The fixtures exist locally via PR #96. Phase 3 deferred real MySQL/MSSQL smoke because services were unavailable; Phase 4 closes that deferred item cleanly. None are best-effort.
+- Q4: Should Arabic prompt verification check only successful execution, or also inspect generated SQL for dialect correctness? → A: Both. Verify execution succeeds AND inspect the generated SQL for at least one dialect-specific marker per database (e.g., backtick identifiers for MySQL, bracket identifiers or TOP for MSSQL, double-quote identifiers or LIMIT for PostgreSQL). This keeps the phase honest on Constitution VI without a full SQL conformance audit.
+- Q5: How to handle surfaces that may no longer exist (e.g., accept/reject/regenerate), when to run backend gates, and can Phase 4 close with zero code changes? → A: Pragmatic model. Surfaces confirmed absent are skipped and documented (note what replaced them if applicable). Backend foundation gates are required only when backend code changes are made; if Phase 4 is frontend-only or zero-code, backend gates are not required. Phase 4 may close with zero code changes if all smoke/audit criteria pass clean — a clean audit report with text evidence is a valid closure artifact.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -181,6 +187,7 @@ As a platform user on a mobile device with Arabic selected, the entire UI is usa
 - What happens when a database-type badge displays a technical identifier in Arabic mode? The badge text (e.g., "PostgreSQL", "MySQL", "MSSQL") is a technical brand name and remains as-is regardless of language. Only the surrounding UI labels are localized.
 - What happens when a connection display name is in English but the UI is Arabic? Display names are user-provided and remain as entered. The surrounding chrome (labels, headers, actions) must be in Arabic.
 - What happens when the user switches language mid-session? The UI re-renders in the selected language. Existing chat turns retain their content but UI chrome (headers, labels, metadata) updates to the new language.
+- What happens when a surface listed in the verification matrix no longer exists (e.g., accept/reject/regenerate buttons removed in a Phase 2/3 rework)? The implementer skips the surface, documents that it is absent, and notes what replaced it if applicable. Absent surfaces do not block Phase 4 closure.
 
 ## Requirements *(mandatory)*
 
@@ -200,7 +207,7 @@ As a platform user on a mobile device with Arabic selected, the entire UI is usa
 
 #### Cross-Language Query Behavior
 
-- **FR-101**: Arabic natural language prompts MUST produce correctly generated SQL in the target database dialect (PostgreSQL, MySQL, T-SQL) without dialect regression compared to English prompts.
+- **FR-101**: Arabic natural language prompts MUST produce correctly generated SQL in the target database dialect (PostgreSQL, MySQL, T-SQL) without dialect regression compared to English prompts. Verification MUST include both successful execution AND inspection of the generated SQL for at least one dialect-specific marker per database (e.g., backtick identifiers for MySQL, bracket identifiers or `TOP` for MSSQL, double-quote identifiers or `LIMIT` for PostgreSQL).
 - **FR-102**: The evaluator MUST handle Arabic prompts without rejecting them due to language-specific parsing issues. Dialect validation rules MUST be language-agnostic (they validate SQL structure, not prompt language).
 - **FR-103**: Error messages, retry hints, and refusal cards resulting from Arabic prompt submissions MUST be in Arabic when the UI language is Arabic.
 
@@ -223,7 +230,7 @@ As a platform user on a mobile device with Arabic selected, the entire UI is usa
 
 #### Multi-Dialect Arabic Prompts (Smoke)
 
-- **FR-112**: Arabic prompts MUST be tested against all three real local source databases (PostgreSQL Pagila, MySQL Sakila, MSSQL AdventureWorksLT) using the fixtures delivered in PR #96. SQL MUST generate in the correct dialect and execute successfully.
+- **FR-112**: Arabic prompts MUST be tested against all three real local source databases (PostgreSQL Pagila, MySQL Sakila, MSSQL AdventureWorksLT) using the fixtures delivered in PR #96. All three are required for Phase 4 closure — none are optional or best-effort. SQL MUST generate in the correct dialect, execute successfully, AND the implementer MUST inspect the generated SQL for at least one dialect-specific marker per database to confirm dialect correctness.
 - **FR-113**: History entries for Arabic-prompt queries MUST show localized connection display name and database type badge, not raw UUIDs or internal metadata.
 
 #### Security — No Metadata Leaks
@@ -243,12 +250,12 @@ No new entities are introduced in Phase 4. This phase operates on existing entit
 ### Measurable Outcomes
 
 - **SC-036**: i18n key parity is 100% (EN and AR have identical key sets). No missing keys in either language.
-- **SC-037**: Chrome DevTools MCP smoke passes for all listed surfaces (sign-in, workspace, database selector, prompt input, response cards, SQL display, history list, history detail, admin connections, add/edit form, test connection, refresh schema, disable/enable/delete) in Arabic/RTL mode — zero console errors related to missing keys, zero English fallback text visible.
-- **SC-038**: Arabic prompts work against PostgreSQL (Pagila), MySQL (Sakila), and MSSQL (AdventureWorksLT) without dialect regression. Correct SQL dialect is generated and executed for each.
+- **SC-037**: Chrome DevTools MCP smoke passes for all listed surfaces (sign-in, workspace, database selector, prompt input, response cards, SQL display, history list, history detail, admin connections, add/edit form, test connection, refresh schema, disable/enable/delete) in Arabic/RTL mode — zero console errors related to missing keys, zero English fallback text visible. Evidence format: structured text report per surface (route → action → expected → observed → console/network errors). Screenshots required only for failures, unexpected behavior, visual ambiguity, or before/after proof of a UI fix.
+- **SC-038**: Arabic prompts work against all three real local source databases — PostgreSQL (Pagila), MySQL (Sakila), and MSSQL (AdventureWorksLT) — without dialect regression. All three are required for closure; none are optional. Correct SQL dialect is generated (verified by at least one dialect-specific marker per DB) and executed successfully for each.
 - **SC-039**: Response cards, history entries, and admin surfaces show localized friendly metadata in Arabic mode — no raw UUID fallback, no credential leaks, no internal identifiers visible.
 - **SC-040**: Mobile RTL layout (≤768px) has no horizontal overflow or unusable controls on any shipped surface.
 - **SC-041**: All frontend foundation gates pass: `npm run test`, `npm run lint`, `npm run typecheck`, `npm run build`, `npm run lint:css`.
-- **SC-042**: Backend foundation gates pass if any backend changes are required: `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`.
+- **SC-042**: Backend foundation gates pass if any backend code changes are made during Phase 4: `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`. If Phase 4 is frontend-only or zero-code, backend gates are not required.
 - **SC-043**: All Critical/High audit findings from Phase 4 audit are resolved before Phase 4 closure.
 - **SC-044**: Zero physical directional CSS properties (`left`/`right`/`margin-left`/`margin-right`/`padding-left`/`padding-right`) exist in shipped component stylesheets.
 - **SC-045**: CSS audit produces a clean report or a documented exception list (e.g., third-party library styles that cannot be modified).
@@ -264,7 +271,8 @@ No new entities are introduced in Phase 4. This phase operates on existing entit
 - Connection display names are user-provided and remain as entered regardless of UI language.
 - Code (SQL) within code blocks always renders LTR regardless of UI language direction.
 - "Responsive" means the existing responsive breakpoints from Phases 1–3; no new mobile-specific layouts are designed.
-- If zero gaps are found during smoke/audit, Phase 4 closes with a clean audit report and no code changes beyond test evidence.
+- If zero gaps are found during smoke/audit, Phase 4 closes with a clean audit report and no code changes beyond test evidence. A clean audit report with structured text evidence is a valid closure artifact — no minimum code change count is required.
+- When smoke/audit discovers i18n/RTL/CSS/browser-visible polish gaps, implementers fix them in the same wave — no separate hardening wave. Fixes must stay within Phase 4 scope (no new features, no new backend endpoints, no architectural changes). Findings that exceed polish scope are marked out-of-scope/deferred and escalated to the orchestrator before implementation.
 - Chart axis flipping for RTL is explicitly out of scope (charts may stay LTR in v1).
 
 ## Explicitly Out of Scope
@@ -328,7 +336,7 @@ The following is the exhaustive list of UI surfaces that must be smoke-tested in
 | 5 | Warning/error banners | All banner variants |
 | 6 | Assistant response cards | Header, narration, SQL block, result table |
 | 7 | SQL/result display | Code block LTR, table headers localized |
-| 8 | Accept/reject/regenerate flows | If still present, button labels |
+| 8 | Accept/reject/regenerate flows | If still present, verify button labels. If removed/reworked, skip and document what replaced them. |
 | 9 | History list | Connection names, types, timestamps, empty state |
 | 10 | History detail | Full query detail view |
 | 11 | Admin connections page | Column headers, status indicators, empty state |
