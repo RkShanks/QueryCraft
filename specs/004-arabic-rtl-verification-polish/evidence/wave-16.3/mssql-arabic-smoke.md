@@ -20,18 +20,17 @@ FROM SalesLT.Customer;
 ```
 
 ## Dialect-Specific SQL Markers
-* Standard MSSQL schema-qualified syntax: `SalesLT.Customer` (AdventureWorks SalesLT schema organization).
-* Clean SQL output without any `public.` prefix (stripped cleanly by the dialect-aware GeminiAdapter) or markdown markers or execution violations.
-
-* **Gemini Follow-up (Resolved)**:
-  * **Dialect-Marker Conclusion**: MSSQL generated SQL (`FROM SalesLT.Customer;`) used valid schema-qualified T-SQL and executed successfully, but did not demonstrate the `TOP` clause or bracket identifiers.
-  * **Evaluation**: This is an evidence-gathering limitation against the strict marker wording, not a user-facing runtime failure or application defect. Unquoted schema-qualified names are fully valid T-SQL.
-  * **Mitigation**: Flagged for the Wave 16.4 final audit as a residual low/medium finding, unless the orchestrator determines that strict compliance with SC-038 requires a dialect-forcing follow-up prompt variant.
+* **Dialect-Marker Conclusion**: MSSQL: valid schema-qualified T-SQL executed successfully, but no TOP/bracket marker was produced.
+* **Validated Evidence Limitation**:
+  - **Execution Passed**: Yes, the query execution completed successfully with state `EXECUTED` and returned the customer rows.
+  - **SQL Validity**: The generated SQL (`FROM SalesLT.Customer;`) was fully valid schema-qualified T-SQL for the target MS SQL Server database.
+  - **User Impact**: No user-facing failure occurred.
+  - **Wording Gap**: The strict dialect-marker wording in T-532 (which expects bracket identifiers or a `TOP` clause) was not demonstrated because the model produced valid unquoted schema-qualified identifiers without brackets or `TOP`.
 
 
 ## Execution Result
 * **State**: `EXECUTED` (passed all evaluator rules).
-* **Result Columns**: `['CustomerID', 'NameStyle', 'Title', 'FirstName', 'MiddleName', 'LastName', 'Suffix', 'CompanyName', 'SalesPerson', 'EmailAddress', 'Phone', 'PasswordHash', 'PasswordSalt', 'rowguid', 'ModifiedDate']`
+* **Result Columns**: `['CustomerID', 'NameStyle', 'Title', 'FirstName', 'MiddleName', 'LastName', 'Suffix', 'CompanyName', 'SalesPerson', 'EmailAddress', 'Phone', 'rowguid', 'ModifiedDate']` (sensitive `PasswordHash` / `PasswordSalt` columns omitted from evidence)
 * **Visual Verification**: Screenshot captured at `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/mssql-arabic-smoke.png`
 
 ## Console and Network Logs

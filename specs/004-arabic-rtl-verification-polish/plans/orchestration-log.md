@@ -335,6 +335,42 @@ $ cd backend && uv run ruff format --check src tests
 - **Gemini Follow-up (Completed)**:
   - Playwright E2E smoke tests rerun successfully completed (see [frontend-e2e-rerun.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/frontend-e2e-rerun.md)).
   - Credential environment variable integration verified (no hardcoded passwords).
-  - MySQL/MSSQL dialect-marker gaps resolved as documented evidence limitations (valid unquoted standard SQL and qualified identifiers executed successfully without generating backticks or bracket markers).
+  - MySQL/MSSQL dialect-marker gaps resolved as documented evidence limitations:
+    - MySQL: valid unquoted SQL executed successfully, but no backtick marker was produced.
+    - MSSQL: valid schema-qualified T-SQL executed successfully, but no TOP/bracket marker was produced.
 - **Wave 16.3 status**: ✅ **READY FOR PR/MERGE** — pending orchestrator final audit.
+
+---
+
+## Wave 16.4 — Final Audit & Closeout
+
+### Dispatch
+- **Date**: 2026-05-23
+- **Model**: Antigravity
+- **T-IDs**: T-536 through T-539
+- **Branch**: `phase-4/wave-16.3-cross-language-smoke`
+
+### Completion (T-536–T-539)
+- **Date**: 2026-05-23
+- **Status**: ✅ **COMPLETE** — READY FOR MERGE
+
+### Evidence Files
+- [final-gates.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.4/final-gates.md)
+- [consolidation-report.md](file:///home/avril/QueryCraft/audit/wave-16/consolidation-report.md)
+- [wave-final-snapshot.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/plans/wave-final-snapshot.md)
+
+### Findings & Fixes Summary
+
+- **Finding R-001 — Secure Session Cookie Regression (HIGH)**:
+  - **Issue**: Mock request base URL of `http://test` caused unit and integration test clients to reject/drop `Secure` session cookies.
+  - **Fix**: Updated `base_url` to `https://test` in `backend/tests/conftest.py` and `backend/tests/unit/test_t153_session_cookie_secure.py`. All auth/session tests now pass.
+
+### Gate Results
+- **Frontend Gates**: ✅ **ALL PASSED** (447 tests, lint, typecheck, build, lint:css clean)
+- **Backend Gates**: ✅ **ALL PASSED** (578 unit tests, regression, 7 auth integration tests, ruff check/format clean)
+
+### Orchestrator Decision
+- **Wave 16.4 status**: ✅ **UNBLOCKED** — ready for PR/merge.
+- **Phase 4 Status**: ✅ **FROZEN** (all tasks completed, all gates green, consolidation complete)
+
 

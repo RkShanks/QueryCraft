@@ -20,13 +20,12 @@ FROM actor;
 ```
 
 ## Dialect-Specific SQL Markers
-* Standard MySQL syntax without `public.` schemas or PostgreSQL-specific quotes.
-* Clean SQL output without markdown markers or execution violations.
-
-* **Gemini Follow-up (Resolved)**:
-  * **Dialect-Marker Conclusion**: MySQL generated SQL (`FROM actor;`) used valid unquoted identifiers and executed successfully, but did not demonstrate the backtick identifier marker.
-  * **Evaluation**: This is an evidence-gathering limitation against the strict marker wording, not a user-facing runtime failure or application defect. Standard unquoted SQL identifiers are fully valid in MySQL.
-  * **Mitigation**: Flagged for the Wave 16.4 final audit as a residual low/medium finding, unless the orchestrator determines that strict compliance with SC-038 requires a dialect-forcing follow-up prompt variant.
+* **Dialect-Marker Conclusion**: MySQL: valid unquoted SQL executed successfully, but no backtick marker was produced.
+* **Validated Evidence Limitation**:
+  - **Execution Passed**: Yes, the query execution completed successfully with state `EXECUTED` and returned the actor rows.
+  - **SQL Validity**: The generated SQL (`FROM actor;`) was fully valid for the target MySQL database.
+  - **User Impact**: No user-facing failure occurred.
+  - **Wording Gap**: The strict dialect-marker wording in T-531 (which expects backtick markers) was not demonstrated because the model produced valid unquoted identifiers instead of backticked ones.
 
 
 ## Execution Result

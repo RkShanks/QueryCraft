@@ -40,7 +40,7 @@ Phases are sequential and **immutable** once snapshot.
 | 1 | FROZEN | `specs/001-core-text-to-sql/` | Core text-to-SQL: 6 stories, 28 PRs, 224 tasks |
 | 2 | FROZEN | `specs/002-phase2-premium-ui-rtl/` | Premium UI + Arabic/RTL + backend hardening |
 | 3 | FROZEN | `specs/003-multi-dialect-source-dbs/` | Multi-dialect SQL (PG/MySQL/MSSQL), admin DB management, schema introspection |
-| 4 | PLANNED | — | Arabic/RTL verification and polish on shipped surfaces |
+| 4 | FROZEN | `specs/004-arabic-rtl-verification-polish/` | Arabic/RTL verification and polish on shipped surfaces |
 | 5 | PLANNED | — | SSO, RBAC, row/column security |
 | 6 | PLANNED | — | Audit log, quotas, injection detection |
 | 7 | PLANNED | — | Admin dashboard |
@@ -69,7 +69,8 @@ Phases are sequential and **immutable** once snapshot.
 | Devin skill (legacy) | `.devin/skills/querycraft-dev/SKILL.md` |
 | Phase 1 (FROZEN) | `specs/001-core-text-to-sql/` |
 | Phase 2 (FROZEN) | `specs/002-phase2-premium-ui-rtl/` |
-| Phase 3 (ACTIVE) | `specs/003-multi-dialect-source-dbs/` |
+| Phase 3 (FROZEN) | `specs/003-multi-dialect-source-dbs/` |
+| Phase 4 (FROZEN) | `specs/004-arabic-rtl-verification-polish/` |
 | Orchestration log | `specs/<phase>/plans/orchestration-log.md` |
 | Audit findings | `audit/wave-<N>/{gemini,opus}-findings.md` |
 
