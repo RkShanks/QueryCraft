@@ -34,19 +34,19 @@
 
 ### ORM Models
 
-- [ ] T-605 [US29] Write TDD tests for `SsoProvider` model CRUD in `backend/tests/unit/test_sso_provider_model.py` — FR-115, FR-116
-- [ ] T-606 [US29] Create `SsoProvider` ORM model in `backend/src/app/db/models/sso_provider.py` per data-model.md — FR-115, FR-116
-- [ ] T-607 [US28] Write TDD tests for `Role` model CRUD in `backend/tests/unit/test_role_model.py` — FR-122, FR-145
-- [ ] T-608 [US28] Create `Role` ORM model in `backend/src/app/db/models/role.py` per data-model.md — FR-122, FR-145
-- [ ] T-609 [US31] Write TDD tests for `RoleConnectionPolicy` model CRUD in `backend/tests/unit/test_role_connection_policy_model.py` — FR-128, FR-131, FR-132
-- [ ] T-610 [US31] Create `RoleConnectionPolicy` ORM model in `backend/src/app/db/models/role_connection_policy.py` per data-model.md — FR-128, FR-131, FR-132
-- [ ] T-611 [US30] Write TDD tests for `SsoGroupMapping` model CRUD in `backend/tests/unit/test_sso_group_mapping_model.py` — FR-125
-- [ ] T-612 [US30] Create `SsoGroupMapping` ORM model in `backend/src/app/db/models/sso_group_mapping.py` per data-model.md — FR-125
-- [ ] T-613 [US26] Write TDD tests for `UserIdentity` model CRUD in `backend/tests/unit/test_user_identity_model.py` — FR-117, FR-118
-- [ ] T-614 [US26] Create `UserIdentity` ORM model in `backend/src/app/db/models/user_identity.py` per data-model.md — FR-117, FR-118
-- [ ] T-615 [US28] Write TDD tests for `AuditLogEntry` model (append-only, chained hash) in `backend/tests/unit/test_audit_log_entry_model.py` — FR-140, FR-141
-- [ ] T-616 [US28] Create `AuditLogEntry` ORM model in `backend/src/app/db/models/audit_log_entry.py` per data-model.md — FR-140, FR-141
-- [ ] T-617 [US28] Update `backend/src/app/db/models/__init__.py` to export all new models — FR-140
+- [x] T-605 [US29] Write TDD tests for `SsoProvider` model CRUD in `backend/tests/unit/test_sso_provider_model.py` — FR-115, FR-116
+- [x] T-606 [US29] Create `SsoProvider` ORM model in `backend/src/app/db/models/sso_provider.py` per data-model.md — FR-115, FR-116
+- [x] T-607 [US28] Write TDD tests for `Role` model CRUD in `backend/tests/unit/test_role_model.py` — FR-122, FR-145
+- [x] T-608 [US28] Create `Role` ORM model in `backend/src/app/db/models/role.py` per data-model.md — FR-122, FR-145
+- [x] T-609 [US31] Write TDD tests for `RoleConnectionPolicy` model CRUD in `backend/tests/unit/test_role_connection_policy_model.py` — FR-128, FR-131, FR-132
+- [x] T-610 [US31] Create `RoleConnectionPolicy` ORM model in `backend/src/app/db/models/role_connection_policy.py` per data-model.md — FR-128, FR-131, FR-132
+- [x] T-611 [US30] Write TDD tests for `SsoGroupMapping` model CRUD in `backend/tests/unit/test_sso_group_mapping_model.py` — FR-125
+- [x] T-612 [US30] Create `SsoGroupMapping` ORM model in `backend/src/app/db/models/sso_group_mapping.py` per data-model.md — FR-125
+- [x] T-613 [US26] Write TDD tests for `UserIdentity` model CRUD in `backend/tests/unit/test_user_identity_model.py` — FR-117, FR-118
+- [x] T-614 [US26] Create `UserIdentity` ORM model in `backend/src/app/db/models/user_identity.py` per data-model.md — FR-117, FR-118
+- [x] T-615 [US28] Write TDD tests for `AuditLogEntry` model (append-only, chained hash) in `backend/tests/unit/test_audit_log_entry_model.py` — FR-140, FR-141
+- [x] T-616 [US28] Create `AuditLogEntry` ORM model in `backend/src/app/db/models/audit_log_entry.py` per data-model.md — FR-140, FR-141
+- [x] T-617 [US28] Update `backend/src/app/db/models/__init__.py` to export all new models — FR-140
 
 ### Migration
 
