@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
 
-const USERNAME = 'admin';
-const PASSWORD = 'Avril142';
+const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
+const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
 
 const EVIDENCE_DIR = path.resolve('../specs/004-arabic-rtl-verification-polish/evidence/wave-16.3');
 
