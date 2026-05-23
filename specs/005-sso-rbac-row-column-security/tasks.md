@@ -27,10 +27,10 @@
 
 ### Enums and Constants
 
-- [ ] T-601 [US28] Create `Permission` enum with fixed set (`query.submit`, `query.history.view`, `admin.connections.manage`, `admin.roles.manage`, `admin.sso.manage`, `admin.audit.verify`) in `backend/src/app/db/models/enums.py` — FR-122, FR-127
-- [ ] T-602 [US28] Create `AuthProvider` enum (`local`, `oidc`, `saml`) in `backend/src/app/db/models/enums.py` — FR-117, FR-118
-- [ ] T-603 [US28] Create `SsoProtocol` enum (`oidc`, `saml`) in `backend/src/app/db/models/enums.py` — FR-115, FR-116
-- [ ] T-604 [US28] Create `AuditActionType` enum (all 21 action types from data-model.md) in `backend/src/app/db/models/enums.py` — FR-140
+- [x] T-601 [US28] Create `Permission` enum with fixed set (`query.submit`, `query.history.view`, `admin.connections.manage`, `admin.roles.manage`, `admin.sso.manage`, `admin.audit.verify`) in `backend/src/app/db/models/enums.py` — FR-122, FR-127
+- [x] T-602 [US28] Create `AuthProvider` enum (`local`, `oidc`, `saml`) in `backend/src/app/db/models/enums.py` — FR-117, FR-118
+- [x] T-603 [US28] Create `SsoProtocol` enum (`oidc`, `saml`) in `backend/src/app/db/models/enums.py` — FR-115, FR-116
+- [x] T-604 [US28] Create `AuditActionType` enum (all 21 action types from data-model.md) in `backend/src/app/db/models/enums.py` — FR-140
 
 ### ORM Models
 
