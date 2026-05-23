@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/003-multi-dialect-source-dbs/plan.md
+at specs/004-arabic-rtl-verification-polish/plan.md
 <!-- SPECKIT END -->
 
 # QueryCraft — Agent Handoff
