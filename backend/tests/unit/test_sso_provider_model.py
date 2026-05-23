@@ -2,7 +2,6 @@
 
 from uuid import uuid4
 
-from sqlalchemy import Boolean, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from app.db.models.enums import SsoProtocol

@@ -2,8 +2,8 @@
 
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Integer, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from app.db.models.role import Role
 

@@ -2,8 +2,7 @@
 
 from uuid import uuid4
 
-from sqlalchemy import String
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from app.db.models.enums import AuthProvider
 from app.db.models.user_identity import UserIdentity
@@ -35,6 +34,6 @@ class TestUserIdentityModel:
         assert "users" in fk_tables
 
     def test_unique_provider_subject(self):
-        constraints = [c for c in UserIdentity.__table__.constraints if hasattr(c, 'columns')]
-        uc_names = {c.name for c in constraints if 'unique' in str(type(c)).lower()}
+        constraints = [c for c in UserIdentity.__table__.constraints if hasattr(c, "columns")]
+        uc_names = {c.name for c in constraints if "unique" in str(type(c)).lower()}
         assert any("provider_subject" in (name or "") for name in uc_names)

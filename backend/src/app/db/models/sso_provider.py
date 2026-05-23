@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,19 +29,11 @@ class SsoProvider(Base):
         String, nullable=True, server_default=text("'openid email profile groups'")
     )
     redirect_uri: Mapped[str | None] = mapped_column(String, nullable=True)
-    group_claim_name: Mapped[str] = mapped_column(
-        String, nullable=False, server_default=text("'groups'")
-    )
+    group_claim_name: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'groups'"))
     saml_entity_id: Mapped[str | None] = mapped_column(String, nullable=True)
     saml_metadata_url: Mapped[str | None] = mapped_column(String, nullable=True)
     encrypted_saml_metadata_xml: Mapped[str | None] = mapped_column(String, nullable=True)
     encrypted_saml_certificate: Mapped[str | None] = mapped_column(String, nullable=True)
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=True, server_default=text("true")
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()")
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("now()")
-    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))

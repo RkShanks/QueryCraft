@@ -2,8 +2,7 @@
 
 from uuid import uuid4
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from app.db.models.role_connection_policy import RoleConnectionPolicy
 
@@ -37,7 +36,7 @@ class TestRoleConnectionPolicyModel:
         assert "source_database_connections" in fk_tables
 
     def test_unique_role_connection(self):
-        constraints = [c for c in RoleConnectionPolicy.__table__.constraints if hasattr(c, 'columns')]
-        uc_names = {c.name for c in constraints if 'unique' in str(type(c)).lower()}
+        constraints = [c for c in RoleConnectionPolicy.__table__.constraints if hasattr(c, "columns")]
+        uc_names = {c.name for c in constraints if "unique" in str(type(c)).lower()}
         # There should be a unique constraint on (role_id, connection_id)
         assert any("role_id_connection_id" in (name or "") for name in uc_names)
