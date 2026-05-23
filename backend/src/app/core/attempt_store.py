@@ -4,7 +4,6 @@ T-110: store_attempt, get_attempt, delete_attempt with session ownership
 validation (Inv 6) and 15-minute TTL.
 """
 
-import datetime
 import json
 from decimal import Decimal
 from typing import Any
@@ -21,7 +20,7 @@ class _DecimalEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         if isinstance(obj, Decimal):
             return float(obj)
-        if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+        if hasattr(obj, "isoformat"):
             return obj.isoformat()
         return super().default(obj)
 

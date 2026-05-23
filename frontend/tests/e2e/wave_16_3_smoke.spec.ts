@@ -56,9 +56,9 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
     await page.screenshot({ path: path.join(EVIDENCE_DIR, 'pg-arabic-smoke.png'), fullPage: true });
     console.log('PostgreSQL smoke test completed successfully.');
 
-    // Add a 10-second delay to prevent rate limits
-    console.log('Waiting 10 seconds to avoid rate limits...');
-    await page.waitForTimeout(10000);
+    // Add a 25-second delay to prevent rate limits
+    console.log('Waiting 25 seconds to avoid rate limits...');
+    await page.waitForTimeout(25000);
 
     // --- MySQL Sakila Smoke Test ---
     console.log('Starting MySQL Sakila smoke test...');
@@ -96,9 +96,9 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
     await page.screenshot({ path: path.join(EVIDENCE_DIR, 'mysql-arabic-smoke.png'), fullPage: true });
     console.log('MySQL smoke test completed successfully.');
 
-    // Add a 10-second delay to prevent rate limits
-    console.log('Waiting 10 seconds to avoid rate limits...');
-    await page.waitForTimeout(10000);
+    // Add a 25-second delay to prevent rate limits
+    console.log('Waiting 25 seconds to avoid rate limits...');
+    await page.waitForTimeout(25000);
 
     // --- MSSQL AdventureWorks Smoke Test ---
     console.log('Starting MSSQL AdventureWorks smoke test...');

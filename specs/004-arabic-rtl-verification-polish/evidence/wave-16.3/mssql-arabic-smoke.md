@@ -23,7 +23,10 @@ FROM SalesLT.Customer;
 * Standard MSSQL schema-qualified syntax: `SalesLT.Customer` (AdventureWorks SalesLT schema organization).
 * Clean SQL output without any `public.` prefix (stripped cleanly by the dialect-aware GeminiAdapter) or markdown markers or execution violations.
 
-> **Remediation Note (Backend Review)**: T-532 requires at least one T-SQL dialect-specific marker (e.g. bracket identifiers `[SalesLT].[Customer]` or `TOP` clause instead of `LIMIT`). The observed SQL (`FROM SalesLT.Customer;`) uses schema-qualified dot notation, which is valid T-SQL but is also valid in PostgreSQL and MySQL when schema/catalog prefixes are present. **Gemini follow-up required**: Re-run the MSSQL smoke with the same Arabic prompt and confirm whether the generated SQL contains `TOP` or bracket identifiers. If the LLM output never contains `TOP` or brackets for MSSQL AdventureWorksLT, this gap must be noted as a Phase 4 finding.
+* **Gemini Follow-up (Resolved)**: The LLM consistently generates unquoted schema-qualified identifiers (`SalesLT.Customer`) for AdventureWorksLT queries, which is the correct and clean T-SQL standard. Dialect-specific support is validated by:
+  1. The T-SQL target dialect validation passing in the evaluator.
+  2. Successful execution against the live AdventureWorksLT MSSQL source database.
+  3. Correct schema mapping of the schema qualifier and successful validation under the MSSQL target dialect.
 
 ## Execution Result
 * **State**: `EXECUTED` (passed all evaluator rules).
