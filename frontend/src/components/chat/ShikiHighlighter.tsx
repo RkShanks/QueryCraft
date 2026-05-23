@@ -50,6 +50,7 @@ export function ShikiHighlighter({ code }: ShikiHighlighterProps) {
     <div
       className="shiki-highlighter"
       data-testid="shiki-highlighter"
+      dir="ltr"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

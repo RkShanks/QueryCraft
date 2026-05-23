@@ -147,58 +147,58 @@
 **Branch**: `phase-4/wave-16.2-rtl-responsive-polish`
 **Goal**: Verify RTL layout. Fix physical CSS regressions. Verify mobile responsive RTL. Accessibility spot-check.
 
-- [ ] T-519 [US21] Chrome DevTools MCP smoke: Verify `dir="rtl"` on root element, text flows right-to-left, navigation/sidebar mirrored to right side across all surfaces. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/rtl-layout-smoke.md`
+- [x] T-519 [US21] Chrome DevTools MCP smoke: Verify `dir="rtl"` on root element, text flows right-to-left, navigation/sidebar mirrored to right side across all surfaces. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/rtl-layout-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-097, FR-099
   - **SCs**: SC-037
   - Cover: sign-in, workspace, admin, history, forms, dropdowns, modals.
 
-- [ ] T-520 [P] [US21] Chrome DevTools MCP smoke: Verify SQL code blocks remain LTR while surrounding card chrome (headers, narration, metadata) is RTL. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/sql-block-direction-smoke.md`
+- [x] T-520 [P] [US21] Chrome DevTools MCP smoke: Verify SQL code blocks remain LTR while surrounding card chrome (headers, narration, metadata) is RTL. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/sql-block-direction-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-100
   - **SCs**: SC-037
 
-- [ ] T-521 [P] [US21] Fix any physical CSS direction properties found in T-502: swap `left`→`start`, `right`→`end`, `margin-left`→`ms-`, `margin-right`→`me-`, `padding-left`→`ps-`, `padding-right`→`pe-` in component stylesheets under `frontend/src/`
+- [x] T-521 [P] [US21] Fix any physical CSS direction properties found in T-502: swap `left`→`start`, `right`→`end`, `margin-left`→`ms-`, `margin-right`→`me-`, `padding-left`→`ps-`, `padding-right`→`pe-` in component stylesheets under `frontend/src/`
   - **Owner**: Gemini
   - **FRs**: FR-098
   - **SCs**: SC-044, SC-045
-  - If T-502 found zero physical directions, mark complete with "zero physical CSS — no changes needed."
+  - Zero physical CSS — verified clean.
 
-- [ ] T-522 [US25] Chrome DevTools MCP mobile emulation smoke (iPhone SE, Pixel 7) in Arabic across all surfaces: verify no horizontal overflow, all controls tappable, database selector/prompt/admin list/history functional. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/mobile-rtl-smoke.md`
+- [x] T-522 [US25] Chrome DevTools MCP mobile emulation smoke (iPhone SE, Pixel 7) in Arabic across all surfaces: verify no horizontal overflow, all controls tappable, database selector/prompt/admin list/history functional. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/mobile-rtl-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-110, FR-111
   - **SCs**: SC-040
   - Screenshot only for overflow or unusable controls.
 
-- [ ] T-523 [US25] Fix any responsive overflow, layout issues, or unusable controls at mobile breakpoints found in T-522 in affected component files under `frontend/src/`
+- [x] T-523 [US25] Fix any responsive overflow, layout issues, or unusable controls at mobile breakpoints found in T-522 in affected component files under `frontend/src/`
   - **Owner**: Gemini
   - **FRs**: FR-110, FR-111
   - **SCs**: SC-040
-  - If no issues found, mark complete with "zero responsive gaps — no changes needed."
+  - Table overflow container resolved with overflow-x-auto.
 
-- [ ] T-524 [US24] Accessibility spot-check in Arabic/RTL: verify tab order follows RTL logical sequence, all interactive elements have Arabic `aria-label` or visible Arabic text, `aria-live` regions announce status changes. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/a11y-smoke.md`
+- [x] T-524 [US24] Accessibility spot-check in Arabic/RTL: verify tab order follows RTL logical sequence, all interactive elements have Arabic `aria-label` or visible Arabic text, `aria-live` regions announce status changes. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/a11y-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-107, FR-108, FR-109
   - **SCs**: SC-037
   - Cover: sign-in form, workspace prompt, database selector, response cards, history, admin connections.
 
-- [ ] T-525 [US24] Fix any accessibility gaps found in T-524: add/fix `aria-label` in Arabic, `aria-live` regions, or tab order issues in affected component files under `frontend/src/`
+- [x] T-525 [US24] Fix any accessibility gaps found in T-524: add/fix `aria-label` in Arabic, `aria-live` regions, or tab order issues in affected component files under `frontend/src/`
   - **Owner**: Gemini
   - **FRs**: FR-107, FR-108, FR-109
   - **SCs**: SC-037
-  - If no gaps found, mark complete with "zero a11y gaps — no changes needed."
+  - Gaps checked and addressed; screen-reader alerts verify state transitions.
 
-- [ ] T-526 Run updated CSS direction audit post-fixes (if any CSS changed) and confirm zero physical directions. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/css-direction-audit-post.md`
+- [x] T-526 Run updated CSS direction audit post-fixes (if any CSS changed) and confirm zero physical directions. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/css-direction-audit-post.md`
   - **Owner**: Gemini
   - **FRs**: FR-098
   - **SCs**: SC-044, SC-045
 
-- [ ] T-527 Run frontend foundation gates post-fixes and capture verbatim output in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/frontend-gates.md`
+- [x] T-527 Run frontend foundation gates post-fixes and capture verbatim output in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/frontend-gates.md`
   - **Owner**: Gemini
   - **FRs**: —
   - **SCs**: SC-041
 
-- [ ] T-528 Append Wave 16.2 dispatch + completion entry to `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md`
+- [x] T-528 Append Wave 16.2 dispatch + completion entry to `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md`
   - **Owner**: Opus
   - **FRs**: —
   - **SCs**: —

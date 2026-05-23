@@ -154,8 +154,9 @@ export const AdminConnectionsPage: React.FC = () => {
           <p className="text-text-secondary text-lg mb-4">{t('admin.connections.empty')}</p>
         </div>
       ) : (
-        <div className="overflow-visible rounded-lg border border-border bg-bg-card shadow-sm">
+        <div className="overflow-x-auto rounded-lg border border-border bg-bg-card shadow-sm">
           <table className="w-full text-start text-sm text-text-secondary">
+
             <thead className="text-xs text-text-primary uppercase bg-bg-elevated border-b border-border">
               <tr>
                 <th className="px-6 py-4 font-medium text-start">{t('admin.connections.column.name')}</th>

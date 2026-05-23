@@ -12,7 +12,7 @@ export const SqlDisplay: React.FC<SqlDisplayProps> = ({ sql }) => {
       <div className="flex justify-between items-center mb-2 text-gray-400 text-xs uppercase tracking-wider">
         <span>{t('query.result.sqlHeading')}</span>
       </div>
-      <pre className="whitespace-pre-wrap break-all">{sql}</pre>
+      <pre className="whitespace-pre-wrap break-all" dir="ltr">{sql}</pre>
     </div>
   );
 };
