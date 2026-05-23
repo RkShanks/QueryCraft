@@ -77,67 +77,65 @@
   - **SCs**: SC-037
   - Format: route → action → expected → observed → console/network errors. Screenshot only if failure.
 
-- [ ] T-507 [P] [US20] Chrome DevTools MCP smoke: Workspace `/ask` page in Arabic — prompt placeholder, submit, warning banners, database selector labels, type badges, empty state. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/workspace-smoke.md`
+- [x] T-507 [P] [US20] Chrome DevTools MCP smoke: Workspace `/ask` page in Arabic — prompt placeholder, submit, warning banners, database selector labels, type badges, empty state. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/workspace-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-095, FR-106
   - **SCs**: SC-037
 
-- [ ] T-508 [P] [US20] Chrome DevTools MCP smoke: Assistant response cards in Arabic — header, narration labels, SQL block, result table headers. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/response-cards-smoke.md`
+- [x] T-508 [P] [US20] Chrome DevTools MCP smoke: Assistant response cards in Arabic — header, narration labels, SQL block, result table headers. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/response-cards-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-095, FR-100
   - **SCs**: SC-037
 
-- [ ] T-509 [P] [US20] Chrome DevTools MCP smoke: History list and history detail in Arabic — labels, timestamps, badges, empty state. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/history-smoke.md`
+- [x] T-509 [P] [US20] Chrome DevTools MCP smoke: History list and history detail in Arabic — labels, timestamps, badges, empty state. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/history-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-095, FR-113
   - **SCs**: SC-037, SC-039
 
-- [ ] T-510 [P] [US20] Chrome DevTools MCP smoke: Admin connections page in Arabic — column headers, status indicators, empty state. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/admin-connections-smoke.md`
+- [x] T-510 [P] [US20] Chrome DevTools MCP smoke: Admin connections page in Arabic — column headers, status indicators, empty state. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/admin-connections-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-095
   - **SCs**: SC-037
 
-- [ ] T-511 [P] [US20] Chrome DevTools MCP smoke: Add/edit connection forms in Arabic — all field labels, type selector, port default. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/connection-forms-smoke.md`
+- [x] T-511 [P] [US20] Chrome DevTools MCP smoke: Add/edit connection forms in Arabic — all field labels, type selector, port default. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/connection-forms-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-095
   - **SCs**: SC-037
 
-- [ ] T-512 [P] [US20] Chrome DevTools MCP smoke: Test connection / refresh schema / disable-enable / delete actions in Arabic — button labels, loading/success/failure states, confirmation dialogs, blocked-delete error. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/admin-actions-smoke.md`
+- [x] T-512 [P] [US20] Chrome DevTools MCP smoke: Test connection / refresh schema / disable-enable / delete actions in Arabic — button labels, loading/success/failure states, confirmation dialogs, blocked-delete error. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/admin-actions-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-095, FR-106
   - **SCs**: SC-037
 
-- [ ] T-513 [US20] Chrome DevTools MCP smoke: Accept/reject/regenerate flows — if present, verify labels in Arabic; if absent, document what replaced them. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/accept-reject-smoke.md`
+- [x] T-513 [US20] Chrome DevTools MCP smoke: Accept/reject/regenerate flows — if present, verify labels in Arabic; if absent, document what replaced them. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/accept-reject-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-095
   - **SCs**: SC-037
 
-- [ ] T-514 [US23] Trigger error scenarios in Arabic and verify localized messages: invalid sign-in credentials, empty form submission, invalid connection details, unreachable host, failed introspection, query execution failure, disabled connection query attempt, no-connections state. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/error-scenarios-smoke.md`
+- [x] T-514 [US23] Trigger error scenarios in Arabic and verify localized messages: invalid sign-in credentials, empty form submission, invalid connection details, unreachable host, failed introspection, query execution failure, disabled connection query attempt, no-connections state. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/error-scenarios-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-104, FR-105, FR-106, FR-114
   - **SCs**: SC-037, SC-039
   - Verify: no raw i18n keys, no English fallback, no UUID/hostname/driver/credential leaks.
 
-- [ ] T-515 Fix any missing translations, English fallback text, or raw key leaks found during T-506–T-514 in `frontend/src/locales/en.json`, `frontend/src/locales/ar.json`, and/or error display components
+- [x] T-515 Fix any missing translations, English fallback text, or raw key leaks found during T-506–T-514 in `frontend/src/locales/en.json`, `frontend/src/locales/ar.json`, and/or error display components
   - **Owner**: Gemini
   - **FRs**: FR-095, FR-096, FR-103, FR-104, FR-105, FR-106
   - **SCs**: SC-036, SC-037, SC-039
-  - If no issues found, mark complete with note "zero gaps — no changes needed."
-  - Code fix boundary: i18n keys and error display only. No new endpoints or components.
+  - Fixed `admin.connections.addSuccess`, `admin.connections.addError`, `admin.connections.updateSuccess`, and `admin.connections.updateError` missing translations in both locales.
 
-- [ ] T-516 Run frontend foundation gates post-fixes (if any code changed in T-505/T-515) and capture verbatim output in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/frontend-gates.md`
+- [x] T-516 Run frontend foundation gates post-fixes (if any code changed in T-505/T-515) and capture verbatim output in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/frontend-gates.md`
   - **Owner**: Gemini
   - **FRs**: —
   - **SCs**: SC-041
-  - If no code changes: copy T-500 gate output and note "no code changes — baseline gates still valid."
 
-- [ ] T-517 Run backend foundation gates only if backend code changed in this wave; capture output in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/backend-gates.md`
+- [x] T-517 Run backend foundation gates only if backend code changed in this wave; capture output in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/backend-gates.md`
   - **Owner**: Qwen
   - **FRs**: —
   - **SCs**: SC-042
-  - If no backend changes: mark complete with "no backend changes — gates not required."
+  - Note: no backend changes — gates not required.
 
-- [ ] T-518 Append Wave 16.1 dispatch + completion entry to `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md`
+- [x] T-518 Append Wave 16.1 dispatch + completion entry to `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md`
   - **Owner**: Opus
   - **FRs**: —
   - **SCs**: —
