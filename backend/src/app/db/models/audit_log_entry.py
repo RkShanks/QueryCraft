@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, String, text
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String, event, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,3 +34,10 @@ class AuditLogEntry(Base):
     context: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     prev_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     row_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+@event.listens_for(AuditLogEntry, "before_update")
+@event.listens_for(AuditLogEntry, "before_delete")
+def _reject_audit_mutation(mapper, connection, target):
+    """Application-layer immutability guard."""
+    raise RuntimeError("Audit log entries are immutable")
