@@ -13,12 +13,18 @@ The parity audit validates that every localization key defined in `en.json` exis
 
 | Metric | value |
 | --- | --- |
-| **Total Keys in `en.json`** | 261 |
-| **Total Keys in `ar.json`** | 261 |
+| **Total Keys in `en.json`** | 265 |
+| **Total Keys in `ar.json`** | 265 |
 | **Keys in English missing in Arabic** | 0 |
 | **Keys in Arabic missing in English** | 0 |
 | **Empty or Whitespace-Only Translations in `ar.json`** | 0 |
-| **Key Parity Synchronisation** | **100% Match (zero gaps — no changes needed)** |
+| **Key Parity Synchronisation** | **100% Match (zero gaps)** |
+
+### Added Keys in Wave 16.1:
+- `admin.connections.addSuccess`
+- `admin.connections.addError`
+- `admin.connections.updateSuccess`
+- `admin.connections.updateError`
 
 ## 3. Local Validation & Test Coverage
 
@@ -36,4 +42,4 @@ Two distinct automated test suites in the frontend repository continuously enfor
 
 ## 4. Key Parity Status Summary
 
-The Wave 16.1 i18n key parity is **perfectly aligned** (261 out of 261 keys fully mapped in both English and Arabic). No keys are missing or extra. All translation targets are defined and verified.
+The Wave 16.1 i18n key parity is **perfectly aligned** (265 out of 265 keys fully mapped in both English and Arabic). No keys are missing or extra. All translation targets are defined and verified.

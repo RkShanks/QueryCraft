@@ -156,6 +156,6 @@ Evidence file structure: §1–§5 preserve original FAILED baseline (audit trai
 
 ### Orchestrator Decision
 - **Wave 16.1 merge status**: ✅ **UNBLOCKED** — ready for PR/merge.
-- **Next Wave**: Wave 16.2 (MySQL/MSSQL connection setup & validation).
+- **Next Wave**: Wave 16.2: RTL/Responsive Polish
 
 
