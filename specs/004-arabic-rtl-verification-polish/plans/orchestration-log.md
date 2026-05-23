@@ -114,3 +114,48 @@ Evidence file structure: §1–§5 preserve original FAILED baseline (audit trai
 - **Kimi**: IDLE — no backend/API/security findings.
 - **Next step**: PR and merge Wave 16.0 to `main`. Then dispatch Wave 16.1 to Gemini.
 
+---
+
+## Wave 16.1 — i18n/Error Polish
+
+### Dispatch
+- **Date**: 2026-05-23
+- **Model**: Gemini (Frontend Implementer)
+- **T-IDs**: T-505 through T-518
+- **Branch**: `phase-4/wave-16.1-i18n-error-polish`
+
+### Completion (T-505–T-518)
+- **Date**: 2026-05-23
+- **Status**: ✅ **COMPLETE** — GATES GREEN
+
+### Evidence Files
+- [workspace-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/workspace-smoke.md)
+- [response-cards-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/response-cards-smoke.md)
+- [history-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/history-smoke.md)
+- [admin-connections-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/admin-connections-smoke.md)
+- [connection-forms-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/connection-forms-smoke.md)
+- [admin-actions-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/admin-actions-smoke.md)
+- [accept-reject-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/accept-reject-smoke.md)
+- [error-scenarios-smoke.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/error-scenarios-smoke.md)
+- [frontend-gates.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/frontend-gates.md)
+- [backend-gates.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/backend-gates.md)
+
+### Findings & Fixes Summary
+
+- **Missing Toast Keys (T-515)**: Discovered that `AdminConnectionsPage.tsx` success/error toast notifications (e.g. `admin.connections.updateSuccess`) were displaying raw keys in Arabic due to missing keys in `ar.json` and `en.json`.
+- **TDD Remediation**: Added `admin.connections.addSuccess`, `admin.connections.addError`, `admin.connections.updateSuccess`, and `admin.connections.updateError` to `en.json` and `ar.json`.
+- **Coverage Assertions**: Updated `frontend/src/locales/localeCoverage.test.ts` to include these keys in the required key coverage check.
+- **Verification**: Verified using Vitest and Chrome DevTools MCP browser smoke agent that toast messages are correctly localized in Arabic ("تم تحديث الاتصال بنجاح", etc.) and all gates pass cleanly.
+
+### Gate Results
+- `npm run test`: ✅ 443/443 passed
+- `npm run lint`: ✅ PASSED
+- `npm run typecheck`: ✅ PASSED
+- `npm run build`: ✅ PASSED
+- `npm run lint:css`: ✅ PASSED
+
+### Orchestrator Decision
+- **Wave 16.1 merge status**: ✅ **UNBLOCKED** — ready for PR/merge.
+- **Next Wave**: Wave 16.2: RTL/Responsive Polish
+
+

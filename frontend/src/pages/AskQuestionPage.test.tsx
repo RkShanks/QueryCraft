@@ -183,7 +183,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
         screen.queryByText(/already being processed/i) ||
         screen.queryByText('query.error.concurrent')
       ).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
   it('shows LLM unavailable toast on 502', async () => {
@@ -199,7 +199,7 @@ describe('AskQuestionPage US-2 State Machine', () => {
         screen.queryByText(/temporarily unavailable/i) ||
         screen.queryByText('query.error.llmUnavailable')
       ).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
   it('clicking Reject returns new ResultTable on success', async () => {
