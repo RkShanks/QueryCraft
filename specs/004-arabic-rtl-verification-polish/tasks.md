@@ -71,7 +71,7 @@
   - **SCs**: SC-036
   - Note: zero gaps — no changes needed.
 
-- [ ] T-506 [US20] Chrome DevTools MCP smoke: Sign-in page in Arabic — verify labels, placeholders, validation errors, submit button. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/sign-in-smoke.md`
+- [x] T-506 [US20] Chrome DevTools MCP smoke: Sign-in page in Arabic — verify labels, placeholders, validation errors, submit button. Report in `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/sign-in-smoke.md`
   - **Owner**: Gemini
   - **FRs**: FR-095, FR-104
   - **SCs**: SC-037
