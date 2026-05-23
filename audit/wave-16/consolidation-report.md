@@ -6,7 +6,7 @@
 - **Wave**: 16.4 — Final Audit & Closeout
 - **Branch**: `phase-4/wave-16.3-cross-language-smoke`
 - **Merge base**: `200dd48`
-- **HEAD**: `7c8f078`
+- **HEAD**: `20e7eb6` (closeout commit before pre-merge verification cleanups)
 - **Date**: 2026-05-23
 
 ---
@@ -19,7 +19,7 @@
 | Wave 16.0 CSS Direction Audit | `specs/004-arabic-rtl-verification-polish/evidence/wave-16.0/css-direction-audit.md` | ✅ Reviewed |
 | Wave 16.1 i18n Smoke Evidence | `specs/004-arabic-rtl-verification-polish/evidence/wave-16.1/` (All 8 files) | ✅ Verified |
 | Wave 16.2 RTL/a11y/Mobile Smoke | `specs/004-arabic-rtl-verification-polish/evidence/wave-16.2/` (All 6 files) | ✅ Verified |
-| Wave 16.3 DB Smoke Reports | `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/` (All 5 files) | ✅ Verified |
+| Wave 16.3 DB Smoke Reports | `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/` (DB smoke, backend gates, and E2E rerun evidence) | ✅ Verified |
 | Wave 16.3 Backend Remediation | `specs/004-arabic-rtl-verification-polish/plans/orchestration-log.md` (§ Wave 16.3 Backend) | ✅ Verified |
 | Wave 16.4 Final Gates | `specs/004-arabic-rtl-verification-polish/evidence/wave-16.4/final-gates.md` | ✅ Verified |
 | Tasks.md Checklist | All tasks marked complete (`[x]`) | ✅ Verified |

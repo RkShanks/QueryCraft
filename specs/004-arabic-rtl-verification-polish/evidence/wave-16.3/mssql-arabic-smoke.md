@@ -30,7 +30,7 @@ FROM SalesLT.Customer;
 
 ## Execution Result
 * **State**: `EXECUTED` (passed all evaluator rules).
-* **Result Columns**: `['CustomerID', 'NameStyle', 'Title', 'FirstName', 'MiddleName', 'LastName', 'Suffix', 'CompanyName', 'SalesPerson', 'EmailAddress', 'Phone', 'rowguid', 'ModifiedDate']` (sensitive `PasswordHash` / `PasswordSalt` columns omitted from evidence)
+* **Result Columns**: `['CustomerID', 'NameStyle', 'Title', 'FirstName', 'MiddleName', 'LastName', 'Suffix', 'CompanyName', 'SalesPerson', 'EmailAddress', 'Phone', 'rowguid', 'ModifiedDate']` (sensitive password-related columns omitted from evidence)
 * **Visual Verification**: Screenshot captured at `specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/mssql-arabic-smoke.png`
 
 ## Console and Network Logs

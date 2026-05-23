@@ -252,7 +252,7 @@ Evidence file structure: §1–§5 preserve original FAILED baseline (audit trai
 
 #### Finding 1 — Hardcoded Credentials in E2E Test (CRITICAL)
 - **File**: `frontend/tests/e2e/wave_16_3_smoke.spec.ts`
-- **Issue**: Hardcoded `USERNAME = 'admin'` and `PASSWORD = 'Avril142'` committed to repo.
+- **Issue**: Hardcoded E2E username/password committed to repo.
 - **Fix**: Replaced with `process.env.E2E_TEST_USERNAME ?? 'e2e_user'` and `process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123'`, consistent with all other E2E test files in `frontend/tests/e2e/`.
 - **Status**: ✅ **FIXED**
 
@@ -347,10 +347,10 @@ $ cd backend && uv run ruff format --check src tests
 ### Dispatch
 - **Date**: 2026-05-23
 - **Model**: Antigravity
-- **T-IDs**: T-536 through T-539
+- **T-IDs**: T-536 through T-537
 - **Branch**: `phase-4/wave-16.3-cross-language-smoke`
 
-### Completion (T-536–T-539)
+### Completion (T-536–T-537)
 - **Date**: 2026-05-23
 - **Status**: ✅ **COMPLETE** — READY FOR MERGE
 
@@ -371,6 +371,4 @@ $ cd backend && uv run ruff format --check src tests
 
 ### Orchestrator Decision
 - **Wave 16.4 status**: ✅ **UNBLOCKED** — ready for PR/merge.
-- **Phase 4 Status**: ✅ **FROZEN** (all tasks completed, all gates green, consolidation complete)
-
-
+- **Phase 4 Status**: ✅ **FROZEN candidate** (all tasks completed, all gates green, consolidation complete; becomes immutable on merge to `main`)

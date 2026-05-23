@@ -1,7 +1,7 @@
 # Wave Final Snapshot — Phase 4: Arabic, RTL, and Cross-Language Verification and Polish
 
 **Phase**: 4
-**Status**: COMPLETE — ready for merge and FROZEN
+**Status**: COMPLETE — ready for merge; FROZEN on merge to `main`
 **Date**: 2026-05-23
 **Spec**: `specs/004-arabic-rtl-verification-polish/spec.md`
 **Plan**: `specs/004-arabic-rtl-verification-polish/plan.md`
@@ -70,7 +70,7 @@ Phase 4 verified and polished all Arabic UI translations, RTL layout responsiven
 
 ### Wave 16.4 — Final Audit & Closeout
 - **Branch**: `phase-4/wave-16.3-cross-language-smoke` (stabilization branch)
-- **Tasks**: T-536 – T-539 (4 tasks, all complete)
+- **Tasks**: T-536 – T-537 (2 tasks, all complete)
 - **Capabilities delivered**:
   - Secure session cookie test suite authentication failures fixed.
   - Final backend and frontend verification gates completed and passed.
