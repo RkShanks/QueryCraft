@@ -372,3 +372,24 @@ $ cd backend && uv run ruff format --check src tests
 ### Orchestrator Decision
 - **Wave 16.4 status**: ✅ **UNBLOCKED** — ready for PR/merge.
 - **Phase 4 Status**: ✅ **FROZEN candidate** (all tasks completed, all gates green, consolidation complete; becomes immutable on merge to `main`)
+
+---
+
+## Phase 4 PR Closeout
+
+### PR Created
+- **Date**: 2026-05-23
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/100
+- **Branch**: `phase-4/wave-16.3-cross-language-smoke`
+- **Final Commit SHA**: `b8edd3d684e616d3ecc886f1eb8b8bf175cc8d4b`
+- **Status**: MERGED (PR #100 merged to main)
+
+### Gate Summary
+- **Frontend Gates**: ✅ PASS — Vitest 447/447, ESLint clean, typecheck clean, build success, CSS logical-property lint clean.
+- **Backend Gates**: ✅ PASS — unit/regression/auth integration tests passed, Ruff check/format clean.
+- **Database Smoke & E2E**: ✅ PASS — Playwright cross-language smoke rerun passed against real PostgreSQL, MySQL, and MSSQL.
+
+### Reviewer Attention Points
+- **Dialect-marker evidence limitation**: MySQL and MSSQL generated valid unquoted SQL that executed successfully, but did not emit explicit backticks, brackets, or `TOP`; documented as an evidence limitation, not a runtime defect.
+- **Phase boundary**: Phase 4 is now officially **FROZEN** following the merge of PR #100.
+
