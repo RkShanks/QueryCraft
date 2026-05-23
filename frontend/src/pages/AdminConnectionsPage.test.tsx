@@ -153,4 +153,14 @@ describe('AdminConnectionsPage', () => {
     expect(actionContainer).toBeInTheDocument();
     expect(actionContainer?.className).not.toContain('flex-wrap');
   });
+
+  it('table container uses overflow-x-auto to prevent horizontal layout issues', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useConnections).mockReturnValue(mockPopulatedUseConnections as any);
+    const { container } = render(<AdminConnectionsPage />);
+    const tableContainer = container.querySelector('table')?.parentElement;
+    expect(tableContainer?.className).toContain('overflow-x-auto');
+    expect(tableContainer?.className).not.toContain('overflow-visible');
+  });
 });
+
