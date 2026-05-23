@@ -24,7 +24,7 @@ Bootstrap prompt: `"Continue work on RkShanks/QueryCraft. Read AGENTS.md first."
 | Role | Model | Reads on bootstrap |
 |---|---|---|
 | **Orchestrator** | Opus 4.6 | `AGENTS.md` → `.agents/ORCHESTRATOR.md` |
-| **Backend Implementer** | Qwen 3.6 Plus (opencode) | `AGENTS.md` → `.agents/IMPLEMENTER.md` → `.agents/skills/BACKEND_QWEN.md` → `.agents/skills/TDD.md` → `.agents/skills/KARPATHY.md` |
+| **Backend Implementer** | Kimi (opencode) | `AGENTS.md` → `.agents/IMPLEMENTER.md` → `.agents/skills/BACKEND_QWEN.md` → `.agents/skills/TDD.md` → `.agents/skills/KARPATHY.md` |
 | **Frontend Implementer** | Gemini (Chrome DevTools MCP) | `AGENTS.md` → `.agents/IMPLEMENTER.md` → `.agents/skills/FRONTEND_GEMINI.md` → `.agents/skills/TDD.md` → `.agents/skills/KARPATHY.md` |
 
 **Orchestrator** never writes product code. Orchestrator: drafts speckit inputs, reviews PRs, triggers audits, updates orchestration log, rolls quirks into skill files.
