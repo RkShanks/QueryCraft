@@ -332,5 +332,9 @@ $ cd backend && uv run ruff format --check src tests
 - **Backend findings**: All 8 findings addressed. 0 remaining.
 - **Critical/High findings**: 0 remaining.
 - **Backend gates**: All pass.
-- **Frontend E2E gate status**: Credentials fixed. Full E2E verification requires Gemini re-run of `wave_16_3_smoke.spec.ts` with environment variables to confirm no regression.
-- **Wave 16.3 merge status**: ✅ **UNBLOCKED** — pending Gemini follow-up on MySQL/MSSQL dialect markers in evidence (non-blocking for merge).
+- **Gemini Follow-up (Completed)**:
+  - Playwright E2E smoke tests rerun successfully completed (see [frontend-e2e-rerun.md](file:///home/avril/QueryCraft/specs/004-arabic-rtl-verification-polish/evidence/wave-16.3/frontend-e2e-rerun.md)).
+  - Credential environment variable integration verified (no hardcoded passwords).
+  - MySQL/MSSQL dialect-marker gaps resolved as documented evidence limitations (valid unquoted standard SQL and qualified identifiers executed successfully without generating backticks or bracket markers).
+- **Wave 16.3 status**: ✅ **READY FOR PR/MERGE** — pending orchestrator final audit.
+

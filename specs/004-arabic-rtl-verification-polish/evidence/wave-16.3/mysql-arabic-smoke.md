@@ -23,10 +23,11 @@ FROM actor;
 * Standard MySQL syntax without `public.` schemas or PostgreSQL-specific quotes.
 * Clean SQL output without markdown markers or execution violations.
 
-* **Gemini Follow-up (Resolved)**: The LLM consistently generates unquoted table names (`actor`) for simple select-all requests. Since unquoted identifiers are valid standard SQL and fully supported by MySQL, this is correct and optimal behavior. Dialect-specific support is validated by:
-  1. The MySQL target dialect validation passing in the evaluator.
-  2. Successful execution against the live Sakila MySQL source database.
-  3. The system's ability to cleanly parse and validate MySQL-specific identifiers if they are generated or supplied.
+* **Gemini Follow-up (Resolved)**:
+  * **Dialect-Marker Conclusion**: MySQL generated SQL (`FROM actor;`) used valid unquoted identifiers and executed successfully, but did not demonstrate the backtick identifier marker.
+  * **Evaluation**: This is an evidence-gathering limitation against the strict marker wording, not a user-facing runtime failure or application defect. Standard unquoted SQL identifiers are fully valid in MySQL.
+  * **Mitigation**: Flagged for the Wave 16.4 final audit as a residual low/medium finding, unless the orchestrator determines that strict compliance with SC-038 requires a dialect-forcing follow-up prompt variant.
+
 
 ## Execution Result
 * **State**: `EXECUTED` (passed all evaluator rules).
