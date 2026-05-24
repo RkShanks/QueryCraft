@@ -50,15 +50,15 @@
 
 ### Migration
 
-- [ ] T-618 Write Alembic migration `007_phase5_sso_rbac_security.py` in `backend/src/app/db/migrations/versions/`: create all new tables, modify `users` table (add `role_id`, `is_builtin`, `auth_provider`; make `password_hash` nullable), seed built-in admin role + genesis audit entry per data-model.md migration notes — FR-145, FR-146, FR-141
+- [x] T-618 Write Alembic migration `007_phase5_sso_rbac_security.py` in `backend/src/app/db/migrations/versions/`: create all new tables, modify `users` table (add `role_id`, `is_builtin`, `auth_provider`; make `password_hash` nullable), seed built-in admin role + genesis audit entry per data-model.md migration notes — FR-145, FR-146, FR-141
 
 ### Audit Service
 
-- [ ] T-619 [US28] Write TDD tests for `AuditService` (log entry creation, chained hashing, genesis entry, canonical JSON, secret redaction) in `backend/tests/unit/test_audit_service.py` — FR-140, FR-141, FR-143, SC-059, SC-061
-- [ ] T-620 [US28] Implement `AuditService` in `backend/src/app/services/audit_service.py`: `log()` with SHA-256 chained hashing (canonical JSON, sorted keys, ISO 8601 UTC microseconds), `verify_chain()` returning `VerificationResult`, genesis handling, `SELECT ... FOR UPDATE` serialization — FR-140, FR-141, FR-142, FR-143
-- [ ] T-621 [US28] Write TDD tests for audit chain verification (intact chain, broken chain detection, first break reporting) in `backend/tests/unit/test_audit_chain_verification.py` — FR-141, SC-060
-- [ ] T-622 [US28] Write TDD tests for audit entry immutability (application-layer UPDATE/DELETE prevention) in `backend/tests/unit/test_audit_immutability.py` — FR-141, SC-060
-- [ ] T-623 [US28] Write TDD tests for audit secret redaction (no secrets, credentials, full tokens in entries) in `backend/tests/unit/test_audit_redaction.py` — FR-143, SC-061
+- [x] T-619 [US28] Write TDD tests for `AuditService` (log entry creation, chained hashing, genesis entry, canonical JSON, secret redaction) in `backend/tests/unit/test_audit_service.py` — FR-140, FR-141, FR-143, SC-059, SC-061
+- [x] T-620 [US28] Implement `AuditService` in `backend/src/app/services/audit_service.py`: `log()` with SHA-256 chained hashing (canonical JSON, sorted keys, ISO 8601 UTC microseconds), `verify_chain()` returning `VerificationResult`, genesis handling, `SELECT ... FOR UPDATE` serialization — FR-140, FR-141, FR-142, FR-143
+- [x] T-621 [US28] Write TDD tests for audit chain verification (intact chain, broken chain detection, first break reporting) in `backend/tests/unit/test_audit_chain_verification.py` — FR-141, SC-060
+- [x] T-622 [US28] Write TDD tests for audit entry immutability (application-layer UPDATE/DELETE prevention) in `backend/tests/unit/test_audit_immutability.py` — FR-141, SC-060
+- [x] T-623 [US28] Write TDD tests for audit secret redaction (no secrets, credentials, full tokens in entries) in `backend/tests/unit/test_audit_redaction.py` — FR-143, SC-061
 
 ### Permission Middleware
 
