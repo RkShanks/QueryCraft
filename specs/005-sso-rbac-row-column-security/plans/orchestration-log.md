@@ -302,3 +302,40 @@
 - T-654-T-655: SSO login/audit events.
 - T-656-T-657: concurrent session limit tests and enforcement.
 - T-658: Wave 17.1 backend gate.
+
+---
+
+## Wave 17.1d — Admin Lockout Prevention
+
+### Dispatch
+- **Date**: 2026-05-24
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-652 through T-653
+- **Branch**: `phase-5/wave-17.1d-admin-lockout-prevention`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/111
+
+### Scope
+- Built-in admin lockout prevention guards.
+- `BuiltinProtectedError` exception with `message_key: "error.builtinRoleProtected"`.
+- `UserRepository.delete`: rejects deletion of `is_builtin=true` users.
+- `RoleRepository.delete`: rejects deletion of `is_builtin=true` roles.
+- `RoleRepository.update`: rejects core property changes (name, permissions, is_builtin, priority) on built-in roles; allows description updates.
+- i18n key `error.builtinRoleProtected` added to `en.json` and `ar.json`.
+- AuthService tests verify built-in admin login works regardless of SSO/role state.
+- Error sanitization: no raw UUIDs, DB errors, stack traces in user-facing responses.
+
+### Gates
+- Full unit gate: `811 passed, 58 skipped, 9 deselected, 2 warnings in 9.35s`
+- Ruff check: `All checks passed!`
+- Ruff format: `278 files already formatted`
+
+### Security Notes
+- Built-in user/role deletion blocked at repository layer before DB flush.
+- `BuiltinProtectedError` carries `resource_type` and `resource_id` in `extra` only; message is generic and localized.
+- API layer can map `BuiltinProtectedError` to HTTP 403 with `error.builtinRoleProtected` message_key.
+- Local admin login remains functional; `AuthService.sign_in` checks `role="admin"` and `auth_provider="local"`.
+
+### Remaining Wave 17.1 Work
+- T-654-T-655: SSO login/audit events.
+- T-656-T-657: concurrent session limit tests and enforcement.
+- T-658: Wave 17.1 backend gate.
