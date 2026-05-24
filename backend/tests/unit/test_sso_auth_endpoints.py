@@ -271,7 +271,9 @@ class TestOidcCallbackEndpoint:
 
         assert isinstance(response, RedirectResponse)
         cookie_header = response.headers.get("set-cookie", "")
-        assert "session_id=" in cookie_header, "Cookie must be on the returned RedirectResponse, not a separate response object"
+        assert "session_id=" in cookie_header, (
+            "Cookie must be on the returned RedirectResponse, not a separate response object"
+        )
 
     @pytest.mark.asyncio
     async def test_validation_error_redirects_with_sso_error(self):
@@ -416,7 +418,9 @@ class TestSamlCallbackEndpoint:
 
         assert isinstance(response, RedirectResponse)
         cookie_header = response.headers.get("set-cookie", "")
-        assert "session_id=" in cookie_header, "Cookie must be on the returned RedirectResponse, not a separate response object"
+        assert "session_id=" in cookie_header, (
+            "Cookie must be on the returned RedirectResponse, not a separate response object"
+        )
 
     @pytest.mark.asyncio
     async def test_validation_error_redirects_with_sso_error(self):
