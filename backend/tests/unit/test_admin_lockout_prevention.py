@@ -14,14 +14,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, status
-from sqlalchemy import select
 
 from app.core.exceptions import QueryCraftError
 from app.db.models.role import Role
 from app.db.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -65,8 +63,14 @@ def _make_builtin_role():
     role.name = "Built-in Admin"
     role.description = "System administrator"
     role.priority = 0
-    role.permissions = ["query.submit", "query.history.view", "admin.connections.manage",
-                        "admin.roles.manage", "admin.sso.manage", "admin.audit.verify"]
+    role.permissions = [
+        "query.submit",
+        "query.history.view",
+        "admin.connections.manage",
+        "admin.roles.manage",
+        "admin.sso.manage",
+        "admin.audit.verify",
+    ]
     role.is_builtin = True
     return role
 
@@ -140,7 +144,6 @@ class TestUserRepositoryDeleteBuiltinProtection:
     @pytest.mark.asyncio
     async def test_delete_builtin_user_raises_builtin_protected_error(self):
         from app.core.exceptions import BuiltinProtectedError
-        from app.repositories.user_repository import UserRepository
 
         mock_session = AsyncMock()
         builtin_user = _make_builtin_user()
@@ -155,7 +158,6 @@ class TestUserRepositoryDeleteBuiltinProtection:
 
     @pytest.mark.asyncio
     async def test_delete_regular_user_succeeds(self):
-        from app.repositories.user_repository import UserRepository
 
         mock_session = AsyncMock()
         regular_user = _make_regular_user()
@@ -170,7 +172,6 @@ class TestUserRepositoryDeleteBuiltinProtection:
 
     @pytest.mark.asyncio
     async def test_delete_nonexistent_user_returns_false(self):
-        from app.repositories.user_repository import UserRepository
 
         mock_session = AsyncMock()
         mock_session.execute.return_value = FakeResult(None)
@@ -415,7 +416,7 @@ class TestLockoutErrorSanitization:
 
         exc = BuiltinProtectedError()
         assert "Traceback" not in str(exc)
-        assert "File \"" not in str(exc)
+        assert 'File "' not in str(exc)
 
     def test_builtin_protected_error_has_message_key(self):
         from app.core.exceptions import BuiltinProtectedError
@@ -447,7 +448,9 @@ async def test_builtin_admin_user_exists_in_db(db_session):
     """Verify the seeded built-in admin user has is_builtin=true."""
     from sqlalchemy import text
 
-    result = await db_session.execute(text("SELECT username, is_builtin, auth_provider FROM users WHERE username = 'admin'"))
+    result = await db_session.execute(
+        text("SELECT username, is_builtin, auth_provider FROM users WHERE username = 'admin'")
+    )
     row = result.fetchone()
     assert row is not None
     assert row.is_builtin is True

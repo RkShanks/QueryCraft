@@ -129,8 +129,8 @@
 
 ### Backend — Lockout Prevention (Owner: Kimi ( opencode ))
 
-- [ ] T-652 [US26] Write TDD tests for built-in admin lockout prevention (undeletable user, undeletable role, local login always works, SSO changes cannot lock out admin) in `backend/tests/unit/test_admin_lockout_prevention.py` — FR-146, S-009
-- [ ] T-653 [US26] Implement lockout prevention guards in relevant services: reject delete of `is_builtin=true` user/role with 403 `error.builtinRoleProtected` — FR-146
+- [x] T-652 [US26] Write TDD tests for built-in admin lockout prevention (undeletable user, undeletable role, local login always works, SSO changes cannot lock out admin) in `backend/tests/unit/test_admin_lockout_prevention.py` — FR-146, S-009
+- [x] T-653 [US26] Implement lockout prevention guards in relevant services: reject delete of `is_builtin=true` user/role with 403 `error.builtinRoleProtected` — FR-146
 
 ### Backend — SSO Audit Logging (Owner: Kimi ( opencode ))
 
