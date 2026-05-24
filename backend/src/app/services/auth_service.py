@@ -28,13 +28,42 @@ class AuthService:
         self._settings = settings or get_settings()
 
     async def sign_in(self, username: str, password: str) -> tuple[UserProfile, str]:
-        """Authenticate user and create a Redis-backed session."""
+        """Authenticate user and create a Redis-backed session.
+
+        Phase 5 (FR-120): Local password login is admin-only.
+        - SSO users (auth_provider != 'local') are rejected with generic 401.
+        - Non-admin local users are rejected with generic 401.
+        - Generic error prevents account existence or auth-provider leak.
+        """
         user = await self._repo.get_by_username(username)
-        if user is None or not verify_password(password, user.password_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-            )
+
+        _unauthorized = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+
+        if user is None:
+            raise _unauthorized
+
+        # Phase 5: only local admin users may use local password login
+        auth_provider = getattr(user, "auth_provider", "local")
+        if isinstance(auth_provider, str):
+            auth_provider = auth_provider
+        else:
+            auth_provider = "local"
+
+        if auth_provider != "local":
+            raise _unauthorized
+
+        if user.password_hash is None or not verify_password(password, user.password_hash):
+            raise _unauthorized
+
+        # Non-admin local users are also rejected (admin-only local login)
+        user_role = getattr(user, "role", "")
+        if not isinstance(user_role, str):
+            user_role = ""
+        if user_role != "admin":
+            raise _unauthorized
 
         session_id = os.urandom(32).hex()
 
