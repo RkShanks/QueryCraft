@@ -167,7 +167,7 @@ async def list_providers(
         ) from None
 
 
-@router.post("/providers")
+@router.post("/providers", status_code=status.HTTP_201_CREATED)
 async def create_provider(
     request: Request,
     body: SsoProviderCreate,
@@ -290,7 +290,7 @@ async def update_provider(
         ) from None
 
 
-@router.delete("/providers/{provider_id}")
+@router.delete("/providers/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_provider(
     request: Request,
     provider_id: str,

@@ -16,7 +16,8 @@ from datetime import UTC, datetime
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
+from httpx import ASGITransport, AsyncClient
 
 from app.db.models.enums import SsoProtocol
 from app.db.models.sso_provider import SsoProvider
@@ -574,3 +575,162 @@ class TestDeleteProvider:
             )
         detail_str = str(exc.value.detail)
         assert "secret table leak" not in detail_str
+
+
+# ── Route-Level Tests (T-649 review fix) ──────────────────────────────────
+
+
+class TestRouteLevelStatusCodes:
+    """Verify router-level status codes via actual FastAPI app wiring."""
+
+    def _build_app(self, session=None):
+        """Build isolated FastAPI app with router, exception handler, and optional session."""
+        from fastapi.responses import JSONResponse
+
+        from app.api.v1.admin_sso import router
+        from app.core.dependencies import get_db
+
+        app = FastAPI()
+        app.include_router(router, prefix="/api/v1")
+
+        async def override_db():
+            return AsyncMock()
+
+        app.dependency_overrides[get_db] = override_db
+
+        @app.exception_handler(HTTPException)
+        async def _http_exc_handler(request, exc):
+            if isinstance(exc.detail, dict):
+                return JSONResponse(status_code=exc.status_code, content=exc.detail)
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"error": "error", "message_key": str(exc.detail)},
+            )
+
+        if session is not None:
+            from starlette.middleware.base import BaseHTTPMiddleware
+
+            class InjectSessionMiddleware(BaseHTTPMiddleware):
+                async def dispatch(self, request, call_next):
+                    request.state.session = session
+                    return await call_next(request)
+
+            app.add_middleware(InjectSessionMiddleware)
+
+        return app
+
+    @pytest.mark.asyncio
+    async def test_post_returns_201(self):
+        from app.core.dependencies import get_db
+
+        app = self._build_app(session={"permissions": ["admin.sso.manage"]})
+
+        # Configure mock DB: first execute (duplicate check) returns empty,
+        # second execute (insert) returns a mock result
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([]),  # no duplicate
+                FakeResult([MagicMock()]),  # insert RETURNING
+            ]
+        )
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+        mock_db.add = MagicMock()
+
+        app.dependency_overrides[get_db] = lambda: mock_db
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/sso/providers",
+                json={
+                    "protocol": "oidc",
+                    "display_name": "Test",
+                    "issuer_url": "https://idp.example.com",
+                    "client_id": "client-123",
+                    "client_secret": "secret",
+                },
+                headers={"origin": "http://test"},
+            )
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_delete_returns_204(self):
+        app = self._build_app(session={"permissions": ["admin.sso.manage"]})
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.delete(
+                f"/api/v1/admin/sso/providers/{uuid.uuid4()}",
+                headers={"origin": "http://test"},
+            )
+        assert response.status_code == 204
+
+    @pytest.mark.asyncio
+    async def test_post_returns_401_without_session(self):
+        app = self._build_app()
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/sso/providers",
+                json={
+                    "protocol": "oidc",
+                    "display_name": "Test",
+                    "issuer_url": "https://idp.example.com",
+                    "client_id": "client-123",
+                    "client_secret": "secret",
+                },
+                headers={"origin": "http://test"},
+            )
+        assert response.status_code == 401
+        data = response.json()
+        assert data["error"] == "unauthorized"
+        assert data["message_key"] == "error.unauthorized"
+
+    @pytest.mark.asyncio
+    async def test_post_returns_403_with_wrong_permission(self):
+        app = self._build_app(session={"permissions": ["query.submit"]})
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/sso/providers",
+                json={
+                    "protocol": "oidc",
+                    "display_name": "Test",
+                    "issuer_url": "https://idp.example.com",
+                    "client_id": "client-123",
+                    "client_secret": "secret",
+                },
+                headers={"origin": "http://test"},
+            )
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
+
+    @pytest.mark.asyncio
+    async def test_router_registered_in_main_app(self):
+        """Verify /api/v1/admin/sso/providers path exists in main app."""
+        from app.main import create_app
+
+        app = create_app()
+        paths = [route.path for route in app.routes if hasattr(route, "path")]
+        assert "/api/v1/admin/sso/providers" in paths
+
+    @pytest.mark.asyncio
+    async def test_get_list_returns_401_without_session(self):
+        app = self._build_app()
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get(
+                "/api/v1/admin/sso/providers",
+                headers={"origin": "http://test"},
+            )
+        assert response.status_code == 401
+        data = response.json()
+        assert data["error"] == "unauthorized"
+        assert data["message_key"] == "error.unauthorized"
