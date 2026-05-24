@@ -1,14 +1,13 @@
 """Tests for AuditService (T-619)."""
 
 from datetime import datetime
-from uuid import uuid4
 
 import pytest
-from app.services.audit_service import AuditService, VerificationResult
 from sqlalchemy import select
 
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType
+from app.services.audit_service import AuditService, VerificationResult
 
 
 @pytest.mark.asyncio
@@ -19,7 +18,6 @@ class TestAuditService:
         entry = await AuditService.log(
             db_session,
             action=AuditActionType.QUERY_SUBMIT,
-            actor_id=uuid4(),
             actor_identity="alice",
             resource_type="query",
             resource_id="q-1",
@@ -95,7 +93,6 @@ class TestAuditService:
             action=AuditActionType.QUERY_SUBMIT,
             actor_identity="bob",
         )
-        await db_session.commit()
         result = await db_session.execute(
             select(AuditLogEntry).where(AuditLogEntry.sequence_number == entry.sequence_number)
         )

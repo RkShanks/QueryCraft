@@ -107,10 +107,7 @@ class AuditService:
 
         # Acquire next sequence number with row-level lock
         result = await session.execute(
-            text(
-                "SELECT sequence_number FROM audit_log_entries "
-                "ORDER BY sequence_number DESC LIMIT 1 FOR UPDATE"
-            )
+            text("SELECT sequence_number FROM audit_log_entries ORDER BY sequence_number DESC LIMIT 1 FOR UPDATE")
         )
         last_seq = result.scalar_one_or_none()
         next_seq: int = (last_seq or 0) + 1
@@ -151,9 +148,7 @@ class AuditService:
     @staticmethod
     async def verify_chain(session: AsyncSession) -> VerificationResult:
         """Walk the audit chain and verify integrity."""
-        result = await session.execute(
-            select(AuditLogEntry).order_by(AuditLogEntry.sequence_number.asc())
-        )
+        result = await session.execute(select(AuditLogEntry).order_by(AuditLogEntry.sequence_number.asc()))
         entries = result.scalars().all()
         entries_checked = len(entries)
         verified_at = datetime.now(UTC)
