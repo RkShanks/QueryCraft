@@ -10,13 +10,14 @@ Handles:
 Security:
 - State/nonce/request_id stored in Redis with TTL = session timeout
 - Replay protection: consumed state/assertion ID deleted from Redis
-- ID token validation: issuer, audience, signature, expiry, nonce
-- Assertion validation: issuer, audience, signature, timestamps
+- ID token validation: issuer, audience, signature (JWKS), expiry, nonce
+- Assertion validation: issuer (IdP), audience (SP), signature, timestamps
 - All user-facing errors sanitized (no raw tokens, certs, UUIDs, hostnames)
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import secrets
@@ -24,6 +25,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
+import httpx
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -70,10 +72,12 @@ class SsoService:
         nonce = secrets.token_urlsafe(32)
 
         ttl = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
-        stored = json.dumps({
-            "nonce": nonce,
-            "provider_id": str(provider.id),
-        })
+        stored = json.dumps(
+            {
+                "nonce": nonce,
+                "provider_id": str(provider.id),
+            }
+        )
         await self._redis.set(f"sso:oidc:state:{state}", stored, ex=ttl)
 
         params = {
@@ -99,7 +103,12 @@ class SsoService:
             raise SsoValidationError("SSO session expired or invalid")
 
         stored = json.loads(raw)
+        stored_provider_id = stored.get("provider_id", "")
         expected_nonce = stored["nonce"]
+
+        # Provider binding: stored provider_id must match callback provider
+        if stored_provider_id and stored_provider_id != str(provider.id):
+            raise SsoValidationError("SSO provider mismatch")
 
         # Consume state immediately (replay protection)
         await self._redis.delete(f"sso:oidc:state:{state}")
@@ -130,9 +139,11 @@ class SsoService:
     ) -> tuple[dict, str]:
         """Exchange authorization code for ID token; return (claims, access_token).
 
-        Uses authlib OIDC client.  Override in tests.
+        Explicitly fetches JWKS from well-known endpoint, validates signature,
+        and decodes claims.  Override in tests.
         """
         from authlib.integrations.httpx_client import AsyncOAuth2Client
+        from authlib.jose import jwt
 
         decrypted_secret = ""
         if provider.encrypted_client_secret:
@@ -141,17 +152,17 @@ class SsoService:
                 self._settings.PLATFORM_ENCRYPTION_KEY,
             )
 
+        token_endpoint = f"{provider.issuer_url}/token"
         client = AsyncOAuth2Client(
             client_id=provider.client_id or "",
             client_secret=decrypted_secret,
             scope=provider.scopes or "openid email profile groups",
             redirect_uri=provider.redirect_uri or "",
-            token_endpoint=f"{provider.issuer_url}/token",
         )
 
         try:
             token = await client.fetch_token(
-                url=client.token_endpoint,
+                url=token_endpoint,
                 code=code,
                 grant_type="authorization_code",
             )
@@ -162,13 +173,19 @@ class SsoService:
         if not id_token:
             raise SsoValidationError("SSO token response missing ID token")
 
-        # Validate signature and decode claims via authlib JWT
-        from authlib.jose import jwt
-
+        # Explicit JWKS fetch
+        jwks_url = f"{provider.issuer_url}/.well-known/jwks.json"
         try:
-            # Fetch JWKS from issuer
-            jwks_url = f"{provider.issuer_url}/.well-known/jwks.json"
-            claims_obj = jwt.decode(id_token, jwks_url)
+            async with httpx.AsyncClient() as http_client:
+                jwks_resp = await http_client.get(jwks_url, timeout=10.0)
+                jwks_resp.raise_for_status()
+                jwks = jwks_resp.json()
+        except Exception as exc:
+            raise SsoValidationError("SSO ID token signature validation failed") from exc
+
+        # Validate signature and decode claims
+        try:
+            claims_obj = jwt.decode(id_token, jwks)
             claims_obj.validate()
             claims_dict = dict(claims_obj)
         except Exception as exc:
@@ -226,10 +243,9 @@ class SsoService:
         stored = json.dumps({"provider_id": str(provider.id)})
         await self._redis.set(f"sso:saml:request:{request_id}", stored, ex=ttl)
 
-        import base64
-        import zlib
-
-        encoded_request = base64.b64encode(zlib.compress(authn_request_xml.encode("utf-8"))).decode("utf-8")
+        encoded_request = base64.b64encode(__import__("zlib").compress(authn_request_xml.encode("utf-8"))).decode(
+            "utf-8"
+        )
         params = {
             "SAMLRequest": encoded_request,
             "RelayState": request_id,
@@ -238,29 +254,38 @@ class SsoService:
         return redirect_url
 
     def _build_saml_authn_request(self, provider: SsoProvider, request_id: str) -> str:
-        """Build SAML AuthnRequest XML. Override in tests."""
+        """Build SAML AuthnRequest XML using public python3-saml API.
+
+        Derives SP callback URL from BASE_URL config if available,
+        otherwise falls back to a placeholder that must be configured.
+        """
         from onelogin.saml2.auth import OneLogin_Saml2_Auth
 
-        # Minimal request dict for python3-saml
+        base_url = self._settings.BASE_URL or "https://app.example.com"
+        acs_url = f"{base_url}/api/v1/auth/sso/saml/callback"
+
         req = {
-            "https": "on",
-            "http_host": "app.example.com",
+            "https": "on" if base_url.startswith("https://") else "off",
+            "http_host": base_url.replace("https://", "").replace("http://", ""),
             "script_name": "/",
-            "server_port": "443",
+            "server_port": "443" if base_url.startswith("https://") else "80",
             "get_data": {},
             "post_data": {},
         }
+
+        # IdP entity ID comes from metadata URL host if no explicit config
+        idp_entity_id = self._get_idp_entity_id(provider)
 
         settings_dict = {
             "sp": {
                 "entityId": provider.saml_entity_id,
                 "assertionConsumerService": {
-                    "url": "https://app.example.com/api/v1/auth/sso/saml/callback",
+                    "url": acs_url,
                     "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
                 },
             },
             "idp": {
-                "entityId": provider.saml_entity_id or "",
+                "entityId": idp_entity_id,
                 "singleSignOnService": {
                     "url": self._get_idp_sso_url(provider),
                     "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
@@ -270,14 +295,35 @@ class SsoService:
         }
 
         auth = OneLogin_Saml2_Auth(req, settings_dict)
-        auth.login(return_to="", force_authn=False, is_passive=False, set_nameid_policy=True)
-        # login() redirects; we want the request XML instead
-        # Use internal method to get the request
-        saml_request = auth._OneLogin_Saml2_Auth__build_request(
-            auth._OneLogin_Saml2_Auth__last_request_id,
-            "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
-        )
-        return saml_request
+        # Use public API to generate login URL; extract the AuthnRequest from it
+        login_url = auth.login(return_to="")
+        # Parse the SAMLRequest parameter from the redirect URL
+        from urllib.parse import parse_qs, urlparse
+
+        parsed = urlparse(login_url)
+        query = parse_qs(parsed.query)
+        encoded_request = query.get("SAMLRequest", [""])[0]
+        if not encoded_request:
+            # Fallback: use internal method if public API doesn't expose it
+            # This is a known limitation of python3-saml's public API.
+            # We wrap it with a clear comment and test coverage.
+            saml_request = auth._OneLogin_Saml2_Auth__build_request(
+                auth._OneLogin_Saml2_Auth__last_request_id,
+                "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+            )
+            return saml_request
+        # Decode and return the XML
+        compressed = base64.b64decode(encoded_request)
+        return __import__("zlib").decompress(compressed).decode("utf-8")
+
+    def _get_idp_entity_id(self, provider: SsoProvider) -> str:
+        """Return IdP entity ID from metadata or configuration."""
+        if provider.saml_metadata_url:
+            # Derive IdP entity ID from metadata URL (common convention)
+            return provider.saml_metadata_url.rstrip("/").replace("/metadata", "")
+        # If no metadata URL, we cannot determine IdP entity ID reliably.
+        # This is a configuration error for production.
+        return ""
 
     def _get_idp_sso_url(self, provider: SsoProvider) -> str:
         """Return IdP SSO URL from metadata or configuration. Override in tests."""
@@ -304,6 +350,13 @@ class SsoService:
         raw = await self._redis.get(f"sso:saml:request:{request_id}")
         if raw is None:
             raise SsoValidationError("SSO session expired or invalid")
+
+        stored = json.loads(raw)
+        stored_provider_id = stored.get("provider_id", "")
+
+        # Provider binding: stored provider_id must match callback provider
+        if stored_provider_id and stored_provider_id != str(provider.id):
+            raise SsoValidationError("SSO provider mismatch")
 
         # Consume request ID (replay protection for request)
         await self._redis.delete(f"sso:saml:request:{request_id}")
@@ -344,27 +397,32 @@ class SsoService:
         """Parse and validate SAMLResponse XML; return attribute dict. Override in tests."""
         from onelogin.saml2.auth import OneLogin_Saml2_Auth
 
+        base_url = self._settings.BASE_URL or "https://app.example.com"
+        acs_url = f"{base_url}/api/v1/auth/sso/saml/callback"
+
         req = {
-            "https": "on",
-            "http_host": "app.example.com",
+            "https": "on" if base_url.startswith("https://") else "off",
+            "http_host": base_url.replace("https://", "").replace("http://", ""),
             "script_name": "/",
-            "server_port": "443",
+            "server_port": "443" if base_url.startswith("https://") else "80",
             "get_data": {},
             "post_data": {
                 "SAMLResponse": saml_response,
             },
         }
 
+        idp_entity_id = self._get_idp_entity_id(provider)
+
         settings_dict = {
             "sp": {
                 "entityId": provider.saml_entity_id,
                 "assertionConsumerService": {
-                    "url": "https://app.example.com/api/v1/auth/sso/saml/callback",
+                    "url": acs_url,
                     "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
                 },
             },
             "idp": {
-                "entityId": provider.saml_entity_id or "",
+                "entityId": idp_entity_id,
                 "singleSignOnService": {
                     "url": self._get_idp_sso_url(provider),
                     "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
@@ -379,7 +437,6 @@ class SsoService:
         if errors:
             raise SsoValidationError("SSO assertion validation failed")
 
-        auth.get_attributes()
         return {
             "subject_id": auth.get_nameid(),
             "email": auth.get_attribute("email")[0] if auth.get_attribute("email") else "",
@@ -393,12 +450,20 @@ class SsoService:
         }
 
     def _validate_saml_assertion(self, attrs: dict, provider: SsoProvider) -> None:
-        """Validate SAML assertion attributes per S-002."""
+        """Validate SAML assertion attributes per S-002.
+
+        Issuer must match IdP entity ID (not SP entity ID).
+        Audience must match SP entity ID.
+        """
         now = datetime.now(UTC)
 
         issuer = attrs.get("issuer")
-        expected_issuer = provider.saml_metadata_url or provider.saml_entity_id or ""
-        if issuer and expected_issuer and not expected_issuer.startswith(issuer.rstrip("/")):
+        expected_issuer = self._get_idp_entity_id(provider)
+
+        if not expected_issuer:
+            raise SsoValidationError("SSO provider configuration incomplete")
+
+        if issuer != expected_issuer:
             raise SsoValidationError("SSO issuer validation failed")
 
         audience = attrs.get("audience")
