@@ -266,5 +266,6 @@
   "query.result.databaseType.mssql": "MS SQL Server",
   "error.validation.oidcRequiredFields": "Issuer URL, client ID, and client secret are required for OIDC providers.",
   "error.validation.samlRequiredFields": "Entity ID, metadata URL or XML, and certificate are required for SAML providers.",
-  "error.conflict.duplicateProtocol": "A provider for this protocol already exists."
+  "error.conflict.duplicateProtocol": "A provider for this protocol already exists.",
+  "error.builtinRoleProtected": "This built-in user or role is protected and cannot be modified or deleted."
 }

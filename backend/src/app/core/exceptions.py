@@ -194,6 +194,27 @@ class SchemaTokenLimitExceeded(SchemaError):
         self.limit = limit
 
 
+# ─── RBAC / Lockout Prevention ───
+
+
+class BuiltinProtectedError(QueryCraftError):
+    """Raised when an attempt is made to delete or modify a built-in user/role.
+
+    Built-in admin account and role are safety nets against lockout.
+    They cannot be deleted and core properties cannot be modified.
+    """
+
+    def __init__(self, resource_type: str = "", resource_id: str = ""):
+        super().__init__(
+            "Built-in user or role is protected and cannot be modified or deleted",
+            message_key="error.builtinRoleProtected",
+            resource_type=resource_type,
+            resource_id=resource_id,
+        )
+        self.resource_type = resource_type
+        self.resource_id = resource_id
+
+
 # ─── Backward-compatible aliases (US-1 names) ───
 
 EvaluatorRejectionError = EvaluatorRejected

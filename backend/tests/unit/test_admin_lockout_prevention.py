@@ -332,9 +332,9 @@ class TestAuthServiceBuiltinAdminLoginAlwaysWorks:
         mock_redis = AsyncMock()
         mock_redis.set.return_value = True
 
-        svc = AuthService(mock_repo, mock_redis)
-
-        profile, session_id = await svc.sign_in("admin", "admin123")
+        with patch("app.services.auth_service.verify_password", return_value=True):
+            svc = AuthService(mock_repo, mock_redis)
+            profile, session_id = await svc.sign_in("admin", "admin123")
 
         assert profile.username == "admin"
         assert session_id is not None
@@ -350,9 +350,9 @@ class TestAuthServiceBuiltinAdminLoginAlwaysWorks:
         mock_redis = AsyncMock()
         mock_redis.set.return_value = True
 
-        svc = AuthService(mock_repo, mock_redis)
-
-        profile, session_id = await svc.sign_in("admin", "admin123")
+        with patch("app.services.auth_service.verify_password", return_value=True):
+            svc = AuthService(mock_repo, mock_redis)
+            profile, session_id = await svc.sign_in("admin", "admin123")
 
         assert profile.username == "admin"
         assert profile.auth_provider == "local"
@@ -369,9 +369,9 @@ class TestAuthServiceBuiltinAdminLoginAlwaysWorks:
         mock_redis = AsyncMock()
         mock_redis.set.return_value = True
 
-        svc = AuthService(mock_repo, mock_redis)
-
-        profile, session_id = await svc.sign_in("admin", "admin123")
+        with patch("app.services.auth_service.verify_password", return_value=True):
+            svc = AuthService(mock_repo, mock_redis)
+            profile, session_id = await svc.sign_in("admin", "admin123")
 
         assert "admin.sso.manage" in profile.permissions
         assert "admin.roles.manage" in profile.permissions
@@ -387,9 +387,9 @@ class TestAuthServiceBuiltinAdminLoginAlwaysWorks:
         mock_redis = AsyncMock()
         mock_redis.set.return_value = True
 
-        svc = AuthService(mock_repo, mock_redis)
-
-        profile, session_id = await svc.sign_in("admin", "admin123")
+        with patch("app.services.auth_service.verify_password", return_value=True):
+            svc = AuthService(mock_repo, mock_redis)
+            profile, session_id = await svc.sign_in("admin", "admin123")
 
         assert profile.username == "admin"
         assert profile.permissions == []

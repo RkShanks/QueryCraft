@@ -285,5 +285,6 @@
   "query.result.databaseType.mssql": "MS SQL Server",
   "error.validation.oidcRequiredFields": "عنوان URL للمصدر، معرف العميل، وسر العميل مطلوبة لمزودي OIDC.",
   "error.validation.samlRequiredFields": "معرف الكيان، عنوان URL للبيانات الوصفية أو XML، والشهادة مطلوبة لمزودي SAML.",
-  "error.conflict.duplicateProtocol": "يوجد مزود لهذا البروتوكول بالفعل."
+  "error.conflict.duplicateProtocol": "يوجد مزود لهذا البروتوكول بالفعل.",
+  "error.builtinRoleProtected": "هذا المستخدم أو الدور المدمج محمي ولا يمكن تعديله أو حذفه."
 }
