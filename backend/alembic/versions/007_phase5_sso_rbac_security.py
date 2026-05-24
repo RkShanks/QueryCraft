@@ -13,7 +13,9 @@ Phase 5 migration:
 
 from __future__ import annotations
 
+import hashlib
 import json
+from datetime import datetime, timezone
 from typing import Sequence, Union
 
 from alembic import op
@@ -34,6 +36,25 @@ PERMISSIONS_JSON = json.dumps([
     "admin.sso.manage",
     "admin.audit.verify",
 ])
+
+
+def _make_genesis_hash() -> tuple[datetime, str]:
+    """Compute the genesis audit entry row_hash using canonical JSON."""
+    ts = datetime.now(timezone.utc)
+    payload = {
+        "sequence_number": 1,
+        "timestamp": ts.isoformat(),
+        "actor_id": None,
+        "actor_identity": "system",
+        "action_type": "admin.config.change",
+        "resource_type": "audit",
+        "resource_id": None,
+        "outcome": "success",
+        "context": {"note": "Phase 5 audit genesis"},
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    row_hash = hashlib.sha256(f"{canonical}GENESIS".encode("utf-8")).hexdigest()
+    return ts, row_hash
 
 
 def upgrade() -> None:
@@ -201,6 +222,36 @@ def upgrade() -> None:
         )
     )
 
+    # ------------------------------------------------------------------
+    # 4. Seed genesis audit log entry
+    # ------------------------------------------------------------------
+    genesis_ts, genesis_hash = _make_genesis_hash()
+    op.execute(
+        sa.text(
+            """
+            INSERT INTO audit_log_entries (
+                sequence_number, timestamp, actor_identity, action_type,
+                resource_type, outcome, context, prev_hash, row_hash
+            )
+            VALUES (
+                1,
+                :timestamp,
+                'system',
+                'admin.config.change',
+                'audit',
+                'success',
+                (:context)::jsonb,
+                'GENESIS',
+                :row_hash
+            )
+            ON CONFLICT (sequence_number) DO NOTHING
+            """
+        ).bindparams(
+            timestamp=genesis_ts,
+            context=json.dumps({"note": "Phase 5 audit genesis"}),
+            row_hash=genesis_hash,
+        )
+    )
 
 
 def downgrade() -> None:

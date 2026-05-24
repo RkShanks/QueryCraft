@@ -47,3 +47,32 @@
 - **Status**: COMPLETE
 - **Date**: 2026-05-24
 - **Evidence**: This orchestration log created with Phase 5 metadata, prior phase status, wave structure, and dispatch order.
+
+---
+
+## Wave 17.0a — Foundation Models
+
+### Dispatch
+- **Date**: 2026-05-24
+- **Model**: Qwen/Kimi Backend Implementer
+- **T-IDs**: T-601 through T-617
+- **Branch**: `phase-5/wave-17.0a-foundation-models`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/101
+
+### Review & Merge
+- **Date**: 2026-05-24
+- **Status**: MERGED
+- **Final HEAD**: `5aff092`
+- **Tasks Completed**: T-601 through T-617
+- **Gates**: Backend unit gate passed; Ruff check passed; Ruff format check passed; CI passed.
+
+### Review Finding Resolved
+- **Finding**: `AuditActionType` omitted `policy.schema_mismatch`, required by Phase 5 fail-closed row-filter schema drift plan.
+- **Resolution**: Added `POLICY_SCHEMA_MISMATCH = "policy.schema_mismatch"`, updated enum test, data model, and task wording from 21 to 22 audit action types.
+
+### Quirk Captured
+- SQLAlchemy 2 `default` / `server_default` do not populate normal ORM instance attributes at `__init__`; tests should inspect column metadata or flush/refresh instead.
+
+### Orchestrator Decision
+- **Wave 17.0a status**: COMPLETE — merged to `main`.
+- **Next dispatch**: Wave 17.0b, T-618 through T-623, backend only.

@@ -43,6 +43,7 @@ cd backend && uv run ruff format --check src tests
 | `get_settings()` cache | Call `get_settings.cache_clear()` after `monkeypatch.setenv`, before reading settings |
 | Schemathesis + OpenAPI 3.1 | Add `schemathesis.experimental.OPEN_API_3_1.enable()` at module top |
 | ruff SIM105 | Use `contextlib.suppress(Exception)`, never bare `try/except/pass` |
+| SQLAlchemy 2 defaults | `mapped_column(default=..., server_default=...)` does not populate normal ORM instance attrs at `__init__`; tests should inspect column metadata or flush/refresh |
 
 ## sqlglot AST Quirks
 
