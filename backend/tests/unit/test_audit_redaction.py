@@ -1,9 +1,9 @@
 """Tests for audit secret redaction (T-623)."""
 
 import pytest
-from app.services.audit_service import AuditService
 
 from app.db.models.enums import AuditActionType
+from app.services.audit_service import AuditService
 
 
 @pytest.mark.asyncio
