@@ -312,7 +312,7 @@
 - **Model**: Kimi (opencode) Backend Implementer
 - **T-IDs**: T-652 through T-653
 - **Branch**: `phase-5/wave-17.1d-admin-lockout-prevention`
-- **PR**: (pending)
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/111
 
 ### Scope
 - Built-in admin lockout prevention guards.
@@ -325,9 +325,9 @@
 - Error sanitization: no raw UUIDs, DB errors, stack traces in user-facing responses.
 
 ### Gates
-- Full unit gate: (pending)
-- Ruff check: (pending)
-- Ruff format: (pending)
+- Full unit gate: `811 passed, 58 skipped, 9 deselected, 2 warnings in 9.35s`
+- Ruff check: `All checks passed!`
+- Ruff format: `278 files already formatted`
 
 ### Security Notes
 - Built-in user/role deletion blocked at repository layer before DB flush.
