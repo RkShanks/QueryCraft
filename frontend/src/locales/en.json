@@ -263,5 +263,8 @@
   "databaseSelector.empty": "No database connections available",
   "query.result.databaseType.postgresql": "PostgreSQL",
   "query.result.databaseType.mysql": "MySQL",
-  "query.result.databaseType.mssql": "MS SQL Server"
+  "query.result.databaseType.mssql": "MS SQL Server",
+  "error.validation.oidcRequiredFields": "Issuer URL, client ID, and client secret are required for OIDC providers.",
+  "error.validation.samlRequiredFields": "Entity ID, metadata URL or XML, and certificate are required for SAML providers.",
+  "error.conflict.duplicateProtocol": "A provider for this protocol already exists."
 }

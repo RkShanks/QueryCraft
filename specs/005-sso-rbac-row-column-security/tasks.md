@@ -123,9 +123,9 @@
 
 ### Backend — Admin SSO Config Endpoints (Owner: Kimi ( opencode ))
 
-- [ ] T-649 [US29] Write TDD tests for SSO provider CRUD endpoints (create OIDC, create SAML, update, delete, secret masking in responses, duplicate protocol rejection) in `backend/tests/unit/test_sso_admin_endpoints.py` — FR-115, FR-116
-- [ ] T-650 [US29] Implement SSO admin CRUD endpoints in `backend/src/app/api/v1/admin_sso.py`: `GET/POST /admin/sso/providers`, `PUT/DELETE /admin/sso/providers/{id}` per api-contracts.md, with `require_permission('admin.sso.manage')`, secret encryption via `app.core.encryption`, masked responses per S-003 — FR-115, FR-116
-- [ ] T-651 [US29] Register SSO admin router in `backend/src/app/main.py` — FR-115
+- [x] T-649 [US29] Write TDD tests for SSO provider CRUD endpoints (create OIDC, create SAML, update, delete, secret masking in responses, duplicate protocol rejection) in `backend/tests/unit/test_sso_admin_endpoints.py` — FR-115, FR-116
+- [x] T-650 [US29] Implement SSO admin CRUD endpoints in `backend/src/app/api/v1/admin_sso.py`: `GET/POST /admin/sso/providers`, `PUT/DELETE /admin/sso/providers/{id}` per api-contracts.md, with `require_permission('admin.sso.manage')`, secret encryption via `app.core.encryption`, masked responses per S-003 — FR-115, FR-116
+- [x] T-651 [US29] Register SSO admin router in `backend/src/app/main.py` — FR-115
 
 ### Backend — Lockout Prevention (Owner: Kimi ( opencode ))
 

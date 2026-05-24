@@ -264,3 +264,41 @@
 
 ### Next Dispatch Constraint
 - Dispatch Wave 17.1c as a backend-only PR for 2-4 tasks max before frontend Wave 17.1 surfaces. Recommended next slice: T-649 through T-651 (admin SSO provider CRUD + router registration).
+
+---
+
+## Wave 17.1c — Admin SSO Provider CRUD
+
+### Dispatch
+- **Date**: 2026-05-24
+- **Model**: GLM Backend Implementer
+- **T-IDs**: T-649 through T-651
+- **Branch**: `phase-5/wave-17.1c-admin-sso-crud`
+- **PR**: (pending)
+
+### Scope
+- Admin SSO provider CRUD endpoints: `GET/POST /admin/sso/providers`, `PUT/DELETE /admin/sso/providers/{id}`.
+- Permission enforcement via `admin.sso.manage`.
+- Secret encryption at rest (AES-256-GCM) and masking in responses (`●●●●●●●●`).
+- Duplicate protocol rejection (409).
+- Required field validation for OIDC and SAML (422).
+- Error sanitization: no raw secrets, UUIDs, hostnames, DB errors, stack traces.
+- Router registration in `main.py`.
+- i18n keys added to `en.json` and `ar.json` for validation errors.
+
+### Gates
+- Full unit gate: `781 passed, 56 skipped, 9 deselected, 1 warning`
+- Ruff check: `All checks passed!`
+- Ruff format: clean
+
+### Security Notes
+- Secrets encrypted with `PLATFORM_ENCRYPTION_KEY` via `app.core.encryption.encrypt()`.
+- Responses never return decrypted secrets; masked fields always show `●●●●●●●●`.
+- All DB exceptions caught and sanitized to generic `error.internal`.
+- 404/409 errors use generic message keys without leaking UUIDs or internal state.
+
+### Remaining Wave 17.1 Work
+- T-652-T-653: built-in admin lockout prevention tests and implementation.
+- T-654-T-655: SSO login/audit events.
+- T-656-T-657: concurrent session limit tests and enforcement.
+- T-658: Wave 17.1 backend gate.

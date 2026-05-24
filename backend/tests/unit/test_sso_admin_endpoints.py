@@ -12,19 +12,15 @@ Tests:
 """
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies.permissions import require_permission
-from app.core.encryption import decrypt, encrypt
-from app.db.models.enums import Permission, SsoProtocol
+from app.db.models.enums import SsoProtocol
 from app.db.models.sso_provider import SsoProvider
 from app.schemas.sso import SsoProviderCreate, SsoProviderUpdate
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -64,8 +60,8 @@ def _make_oidc_provider():
     p.encrypted_saml_metadata_xml = None
     p.encrypted_saml_certificate = None
     p.is_active = True
-    p.created_at = datetime.now(timezone.utc)
-    p.updated_at = datetime.now(timezone.utc)
+    p.created_at = datetime.now(UTC)
+    p.updated_at = datetime.now(UTC)
     return p
 
 
@@ -85,8 +81,8 @@ def _make_saml_provider():
     p.encrypted_saml_metadata_xml = "encrypted-metadata"
     p.encrypted_saml_certificate = "encrypted-cert"
     p.is_active = True
-    p.created_at = datetime.now(timezone.utc)
-    p.updated_at = datetime.now(timezone.utc)
+    p.created_at = datetime.now(UTC)
+    p.updated_at = datetime.now(UTC)
     return p
 
 
@@ -217,12 +213,15 @@ class TestCreateProvider:
         from app.api.v1.admin_sso import create_provider
 
         mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(side_effect=[
-            FakeResult([]),  # no existing provider for this protocol
-            FakeResult([MagicMock()]),  # RETURNING result
-        ])
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([]),  # no existing provider for this protocol
+                FakeResult([MagicMock()]),  # RETURNING result
+            ]
+        )
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
+        mock_db.add = MagicMock()
 
         request = MagicMock()
         request.state.session = {"permissions": ["admin.sso.manage"]}
@@ -241,7 +240,7 @@ class TestCreateProvider:
         with patch("app.api.v1.admin_sso.encrypt", return_value="encrypted-value") as mock_encrypt:
             result = await create_provider(request=request, body=body, db=mock_db)
 
-        mock_encrypt.assert_called_once_with("super-secret", pytest.any)
+        mock_encrypt.assert_called_once_with("super-secret", ANY)
         assert result["protocol"] == "oidc"
         assert result["client_secret_masked"] == "●●●●●●●●"
         assert "client_secret" not in result
@@ -251,12 +250,15 @@ class TestCreateProvider:
         from app.api.v1.admin_sso import create_provider
 
         mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(side_effect=[
-            FakeResult([]),
-            FakeResult([MagicMock()]),
-        ])
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([]),
+                FakeResult([MagicMock()]),
+            ]
+        )
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
+        mock_db.add = MagicMock()
 
         request = MagicMock()
         request.state.session = {"permissions": ["admin.sso.manage"]}
@@ -290,14 +292,20 @@ class TestCreateProvider:
         request = MagicMock()
         request.state.session = {"permissions": ["admin.sso.manage"]}
 
-        body = SsoProviderCreate(protocol="oidc", display_name="Duplicate")
+        body = SsoProviderCreate(
+            protocol="oidc",
+            display_name="Duplicate",
+            issuer_url="https://idp.example.com",
+            client_id="client-123",
+            client_secret="secret",
+        )
 
         with pytest.raises(HTTPException) as exc:
             await create_provider(request=request, body=body, db=mock_db)
         assert exc.value.status_code == 409
         detail = exc.value.detail
         assert detail["error"] == "conflict"
-        assert "protocol" in detail["message_key"]
+        assert "duplicateProtocol" in detail["message_key"]
         # No raw UUIDs or internal details leaked
         assert "uuid" not in str(detail).lower()
 
@@ -397,7 +405,7 @@ class TestUpdateProvider:
                 db=mock_db,
             )
 
-        mock_encrypt.assert_called_once_with("new-secret", pytest.any)
+        mock_encrypt.assert_called_once_with("new-secret", ANY)
         assert result["display_name"] == "Updated"
         assert result["client_secret_masked"] == "●●●●●●●●"
 
@@ -424,7 +432,7 @@ class TestUpdateProvider:
                 db=mock_db,
             )
 
-        mock_encrypt.assert_called_once_with("new-cert", pytest.any)
+        mock_encrypt.assert_called_once_with("new-cert", ANY)
         assert result["saml_certificate_masked"] == "●●●●●●●●"
 
     @pytest.mark.asyncio
