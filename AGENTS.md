@@ -24,12 +24,12 @@ Bootstrap prompt: `"Continue work on RkShanks/QueryCraft. Read AGENTS.md first."
 | Role | Model | Reads on bootstrap |
 |---|---|---|
 | **Orchestrator** | Opus 4.6 | `AGENTS.md` → `.agents/ORCHESTRATOR.md` |
-| **Backend Implementer** | Kimi (opencode) | `AGENTS.md` → `.agents/IMPLEMENTER.md` → `.agents/skills/BACKEND_QWEN.md` → `.agents/skills/TDD.md` → `.agents/skills/KARPATHY.md` |
+| **Backend Implementer** | Kimi/GLM (opencode) | `AGENTS.md` → `.agents/skills/BACKEND_IMPLEMENTER.md` → `.agents/skills/KARPATHY.md` |
 | **Frontend Implementer** | Gemini (Chrome DevTools MCP) | `AGENTS.md` → `.agents/IMPLEMENTER.md` → `.agents/skills/FRONTEND_GEMINI.md` → `.agents/skills/TDD.md` → `.agents/skills/KARPATHY.md` |
 
 **Orchestrator** never writes product code. Orchestrator: drafts speckit inputs, reviews PRs, triggers audits, updates orchestration log, rolls quirks into skill files.
 
-**Implementers** follow `.agents/IMPLEMENTER.md` (Steps 0–8, TDD-mandatory commit triple, foundation gates). Each reads their role-specific skill for stack-specific rules and quirks.
+**Implementers** follow their role skill for protocol, TDD-mandatory commit triple, foundation gates, and stack-specific quirks.
 
 ## 3. Phase Boundaries
 
@@ -61,9 +61,10 @@ Phases are sequential and **immutable** once snapshot.
 |---|---|
 | This file | `AGENTS.md` |
 | Orchestrator playbook | `.agents/ORCHESTRATOR.md` |
-| Implementer protocol | `.agents/IMPLEMENTER.md` |
+| Implementer protocol (legacy/source) | `.agents/IMPLEMENTER.md` |
 | Frontend skill (Gemini) | `.agents/skills/FRONTEND_GEMINI.md` |
-| Backend skill (Qwen) | `.agents/skills/BACKEND_QWEN.md` |
+| Backend implementer skill (combined) | `.agents/skills/BACKEND_IMPLEMENTER.md` |
+| Backend skill (legacy/source) | `.agents/skills/BACKEND_QWEN.md` |
 | TDD skill | `.agents/skills/TDD.md` → `.agents/skills/tdd/` |
 | Karpathy guidelines | `.agents/skills/KARPATHY.md` |
 | Devin skill (legacy) | `.devin/skills/querycraft-dev/SKILL.md` |
