@@ -113,8 +113,8 @@
 
 ### Backend — SSO Endpoints (Owner: Kimi ( opencode ))
 
-- [ ] T-645 [US26] Implement SSO auth endpoints in `backend/src/app/api/v1/sso_auth.py`: `GET /auth/sso/providers` (public), `GET /auth/sso/oidc/login`, `GET /auth/sso/oidc/callback`, `GET /auth/sso/saml/login`, `POST /auth/sso/saml/callback` per api-contracts.md — FR-117, FR-118, FR-121
-- [ ] T-646 [US26] Register SSO auth router in `backend/src/app/main.py` — FR-117
+- [x] T-645 [US26] Implement SSO auth endpoints in `backend/src/app/api/v1/sso_auth.py`: `GET /auth/sso/providers` (public), `GET /auth/sso/oidc/login`, `GET /auth/sso/oidc/callback`, `GET /auth/sso/saml/login`, `POST /auth/sso/saml/callback` per api-contracts.md — FR-117, FR-118, FR-121
+- [x] T-646 [US26] Register SSO auth router in `backend/src/app/main.py` — FR-117
 
 ### Backend — Local Login Restriction (Owner: Kimi ( opencode ))
 
