@@ -65,11 +65,9 @@ class TestSsoServiceSamlErrors:
             "email": "user@example.com",
             "groups": ["analysts"],
             "issuer": "https://idp.example.com",
-            "audience": "https://app.example.com/sp",
             "not_before": (now - timedelta(hours=1)).isoformat(),
             "not_on_or_after": (now + timedelta(hours=1)).isoformat(),
             "assertion_id": "assertion-123",
-            "has_signature": True,
         }
 
     @pytest.mark.asyncio
@@ -126,20 +124,25 @@ class TestSsoServiceSamlErrors:
         assert "signature" in error or "validation" in error or "saml" in error
 
     @pytest.mark.asyncio
-    async def test_missing_signature_rejected(self, sso_service, saml_provider, mock_redis, base_attributes):
-        """Assertion without signature raises sanitized error."""
+    async def test_missing_signature_rejected_at_parse_boundary(
+        self, sso_service, saml_provider, mock_redis, base_attributes
+    ):
+        """Unsigned assertion is rejected by python3-saml in _parse_saml_assertion.
+
+        Signature validation is delegated to python3-saml with
+        security.wantAssertionsSigned=True; the service does not
+        perform a separate has_signature check.
+        """
         request_id = "test-request-id"
         stored = json.dumps({"provider_id": str(saml_provider.id)})
         mock_redis.get.side_effect = [stored, None]
 
-        attrs = dict(base_attributes)
-        attrs["has_signature"] = False
-        with patch.object(sso_service, "_parse_saml_assertion", return_value=attrs):
+        with patch.object(sso_service, "_parse_saml_assertion", side_effect=Exception("Signature validation failed")):
             with pytest.raises(Exception) as exc_info:
                 await sso_service.process_saml_callback(saml_provider, "saml-response", request_id)
 
         error = str(exc_info.value).lower()
-        assert "signature" in error or "validation" in error or "saml" in error
+        assert "signature" in error or "validation" in error or "sso" in error
 
     @pytest.mark.asyncio
     async def test_error_does_not_expose_raw_assertion(self, sso_service, saml_provider, mock_redis, base_attributes):

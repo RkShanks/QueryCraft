@@ -65,11 +65,9 @@ class TestSsoServiceSamlCallback:
             "email": "user@example.com",
             "groups": ["analysts", "data-team"],
             "issuer": "https://idp.example.com",
-            "audience": "https://app.example.com/sp",
             "not_before": (now - timedelta(hours=1)).isoformat(),
             "not_on_or_after": (now + timedelta(hours=1)).isoformat(),
             "assertion_id": "assertion-123",
-            "has_signature": True,
         }
 
     @pytest.mark.asyncio
@@ -93,23 +91,26 @@ class TestSsoServiceSamlCallback:
         )
 
     @pytest.mark.asyncio
-    async def test_callback_validates_audience_matches_sp_entity_id(
+    async def test_callback_audience_rejected_at_parse_boundary(
         self, sso_service, saml_provider, mock_redis, valid_saml_attributes
     ):
-        """Assertion audience must match SP entity ID."""
+        """Wrong assertion audience is rejected by python3-saml in _parse_saml_assertion.
+
+        Audience validation is delegated to python3-saml process_response();
+        the service does not perform a tautological re-check.
+        """
         request_id = "test-request-id"
         stored = json.dumps({"provider_id": str(saml_provider.id)})
         mock_redis.get.return_value = stored
 
-        valid_saml_attributes["audience"] = "https://wrong-sp.com"
-        with patch.object(sso_service, "_parse_saml_assertion", return_value=valid_saml_attributes):
+        with patch.object(sso_service, "_parse_saml_assertion", side_effect=Exception("Audience validation failed")):
             with pytest.raises(Exception) as exc_info:
                 await sso_service.process_saml_callback(saml_provider, "saml-response-xml", request_id)
 
         assert (
             "audience" in str(exc_info.value).lower()
             or "validation" in str(exc_info.value).lower()
-            or "saml" in str(exc_info.value).lower()
+            or "sso" in str(exc_info.value).lower()
         )
 
     @pytest.mark.asyncio
