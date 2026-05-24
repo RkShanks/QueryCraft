@@ -3,7 +3,6 @@
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import select
 
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType
