@@ -441,7 +441,12 @@ class SsoService:
         }
 
         auth = OneLogin_Saml2_Auth(req, settings_dict)
-        auth.process_response()
+        try:
+            auth.process_response()
+        except Exception as exc:
+            # Sanitize raw python3-saml exceptions (may contain XML, certs, hostnames)
+            raise SsoValidationError("SSO assertion validation failed") from exc
+
         errors = auth.get_errors()
         if errors:
             raise SsoValidationError("SSO assertion validation failed")
