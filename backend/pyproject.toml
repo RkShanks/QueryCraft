@@ -28,6 +28,7 @@ dependencies = [
     "aioodbc>=0.5.0,<1.0.0",
     "authlib>=1.3.0,<2.0.0",
     "python3-saml>=1.16.0,<2.0.0",
+    "python-multipart>=0.0.29",
 ]
 
 [project.optional-dependencies]

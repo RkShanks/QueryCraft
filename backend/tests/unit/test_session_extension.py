@@ -36,7 +36,10 @@ class TestSessionExtension:
 
     @pytest.fixture
     def user_with_role(self):
-        """Return a mock user with role relationship populated."""
+        """Return a mock admin user with role relationship populated.
+
+        Local login is admin-only (FR-120), so test users must be admins.
+        """
         from app.core.security import hash_password
 
         role = MagicMock()
@@ -48,7 +51,7 @@ class TestSessionExtension:
         user.id = "550e8400-e29b-41d4-a716-446655440000"
         user.username = "analyst1"
         user.display_name = "Analyst One"
-        user.role = "analyst"
+        user.role = "admin"
         user.role_id = "role-uuid-1234"
         user.auth_provider = "local"
         user.password_hash = hash_password("secret")
@@ -129,7 +132,7 @@ class TestSessionExtension:
         assert session["user_id"] == "550e8400-e29b-41d4-a716-446655440000"
         assert session["username"] == "analyst1"
         assert session["display_name"] == "Analyst One"
-        assert session["role"] == "analyst"
+        assert session["role"] == "admin"
         assert "created_at" in session
         assert "last_activity" in session
 

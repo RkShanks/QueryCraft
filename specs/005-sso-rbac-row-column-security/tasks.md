@@ -109,17 +109,17 @@
   - PR-105 fix-3: Sanitized python3-saml boundary — `process_response()` wrapped in try/except, re-raises `SsoValidationError` from original exception.
 - [x] T-642 [US30] Write TDD tests for role resolution from SSO group claims (single group, multi-group priority ordering, no matching group) in `backend/tests/unit/test_role_resolution.py` — FR-145, SC-062
 - [x] T-643 [US30] Implement role resolution logic in `backend/src/app/services/sso_service.py`: resolve SSO groups → role via priority ordering, create/update `UserIdentity` on first login — FR-145, SC-062
-- [ ] T-644 [US26] Write TDD tests for replay protection (Redis nonce/assertion ID cache with TTL) in `backend/tests/unit/test_replay_protection.py` — FR-119
+- [x] T-644 [US26] Write TDD tests for replay protection (Redis nonce/assertion ID cache with TTL) in `backend/tests/unit/test_replay_protection.py` — FR-119
 
 ### Backend — SSO Endpoints (Owner: Kimi ( opencode ))
 
-- [ ] T-645 [US26] Implement SSO auth endpoints in `backend/src/app/api/v1/sso_auth.py`: `GET /auth/sso/providers` (public), `GET /auth/sso/oidc/login`, `GET /auth/sso/oidc/callback`, `GET /auth/sso/saml/login`, `POST /auth/sso/saml/callback` per api-contracts.md — FR-117, FR-118, FR-121
-- [ ] T-646 [US26] Register SSO auth router in `backend/src/app/main.py` — FR-117
+- [x] T-645 [US26] Implement SSO auth endpoints in `backend/src/app/api/v1/sso_auth.py`: `GET /auth/sso/providers` (public), `GET /auth/sso/oidc/login`, `GET /auth/sso/oidc/callback`, `GET /auth/sso/saml/login`, `POST /auth/sso/saml/callback` per api-contracts.md — FR-117, FR-118, FR-121
+- [x] T-646 [US26] Register SSO auth router in `backend/src/app/main.py` — FR-117
 
 ### Backend — Local Login Restriction (Owner: Kimi ( opencode ))
 
-- [ ] T-647 [US26] Write TDD tests for local login restriction (admin-only, reject non-admin, generic error, no account existence leak) in `backend/tests/unit/test_local_login_restriction.py` — FR-120
-- [ ] T-648 [US26] Modify `POST /auth/sign-in` in `backend/src/app/api/v1/auth.py`: reject non-admin local login with generic 401 — FR-120
+- [x] T-647 [US26] Write TDD tests for local login restriction (admin-only, reject non-admin, generic error, no account existence leak) in `backend/tests/unit/test_local_login_restriction.py` — FR-120
+- [x] T-648 [US26] Modify `POST /auth/sign-in` in `backend/src/app/api/v1/auth.py`: reject non-admin local login with generic 401 — FR-120
 
 ### Backend — Admin SSO Config Endpoints (Owner: Kimi ( opencode ))
 

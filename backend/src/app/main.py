@@ -257,7 +257,17 @@ def create_app() -> FastAPI:
         )
 
     # Register v1 router stubs
-    from app.api.v1 import admin, admin_connections, auth, connections, feedback, history, query, sessions  # noqa: F401
+    from app.api.v1 import (
+        admin,
+        admin_connections,
+        auth,
+        connections,
+        feedback,
+        history,
+        query,
+        sessions,
+        sso_auth,
+    )  # noqa: F401
 
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(query.router, prefix="/api/v1")
@@ -267,5 +277,6 @@ def create_app() -> FastAPI:
     app.include_router(connections.router, prefix="/api/v1")
     app.include_router(sessions.router, prefix="/api/v1")
     app.include_router(feedback.router, prefix="/api/v1")
+    app.include_router(sso_auth.router, prefix="/api/v1")
 
     return app
