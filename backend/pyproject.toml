@@ -49,9 +49,10 @@ filterwarnings = [
     "ignore::DeprecationWarning",
 ]
 markers = [
-    "contract: Schemathesis contract tests (run on demand)",
+    "unit: Fast unit tests with no external service dependencies",
     "integration: Integration tests requiring external services",
     "acceptance: End-to-end acceptance tests using full app stack",
+    "contract: Schemathesis contract tests (run on demand)",
     "lifecycle: Tests that opt into lifecycle invariant state leak detection",
 ]
 

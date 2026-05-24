@@ -318,6 +318,11 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     A test with ``@pytest.mark.lifecycle(...)`` that does not request
     ``lifecycle_aware`` in its fixture graph is a no-op and probably a bug.
     Fail clearly at collection time.
+
+    Also auto-mark tests by directory for unambiguous gate taxonomy:
+    tests/unit/ → unit, tests/integration/ → integration,
+    tests/contract/ → contract, tests/acceptance/ → acceptance,
+    tests/lifecycle/ → lifecycle.
     """
     for item in items:
         marker = item.get_closest_marker("lifecycle")
@@ -330,3 +335,18 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
                 "'lifecycle_aware' fixture. Add lifecycle_aware as a parameter "
                 "or use @pytest.mark.usefixtures('lifecycle_aware')."
             )
+
+    _DIR_MARKERS: dict[str, str] = {
+        "/tests/unit/": "unit",
+        "/tests/integration/": "integration",
+        "/tests/contract/": "contract",
+        "/tests/acceptance/": "acceptance",
+        "/tests/lifecycle/": "lifecycle",
+    }
+    for item in items:
+        path_str = str(item.path)
+        for dir_fragment, marker_name in _DIR_MARKERS.items():
+            if dir_fragment in path_str:
+                if not item.get_closest_marker(marker_name):
+                    item.add_marker(marker_name)
+                break
