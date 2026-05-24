@@ -282,5 +282,8 @@
   "databaseSelector.empty": "لا توجد اتصالات قواعد بيانات متاحة",
   "query.result.databaseType.postgresql": "PostgreSQL",
   "query.result.databaseType.mysql": "MySQL",
-  "query.result.databaseType.mssql": "MS SQL Server"
+  "query.result.databaseType.mssql": "MS SQL Server",
+  "error.validation.oidcRequiredFields": "عنوان URL للمصدر، معرف العميل، وسر العميل مطلوبة لمزودي OIDC.",
+  "error.validation.samlRequiredFields": "معرف الكيان، عنوان URL للبيانات الوصفية أو XML، والشهادة مطلوبة لمزودي SAML.",
+  "error.conflict.duplicateProtocol": "يوجد مزود لهذا البروتوكول بالفعل."
 }
