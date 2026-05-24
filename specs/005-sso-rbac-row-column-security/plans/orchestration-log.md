@@ -76,3 +76,97 @@
 ### Orchestrator Decision
 - **Wave 17.0a status**: COMPLETE — merged to `main`.
 - **Next dispatch**: Wave 17.0b, T-618 through T-623, backend only.
+
+---
+
+## Wave 17.0b — Audit Service & Migration
+
+### Dispatch
+- **Date**: 2026-05-24
+- **Model**: Qwen/Kimi Backend Implementer
+- **T-IDs**: T-618 through T-623
+- **Branch**: `phase-5/wave-17.0b-audit-migration`
+- **PR**: Merged to `main`
+
+### Review & Merge
+- **Status**: MERGED
+- **Tasks Completed**: T-618 through T-623
+- **Gates**: Backend unit gate passed; Ruff check passed; Ruff format check passed; CI passed.
+
+### Quirk Captured
+- SQLAlchemy 2 `default` / `server_default` do not populate normal ORM instance attributes at `__init__`; tests should inspect column metadata or flush/refresh instead.
+
+---
+
+## Wave 17.0c — Permission Middleware, Schemas, Session Extension
+
+### Dispatch
+- **Date**: 2026-05-24
+- **Model**: Qwen/Kimi Backend Implementer
+- **T-IDs**: T-624 through T-633
+- **Branch**: Merged to `main`
+
+### Review & Merge
+- **Status**: MERGED
+- **Tasks Completed**: T-624 through T-633
+- **Gates**: Backend unit gate passed; Ruff check passed; Ruff format check passed; CI passed.
+
+---
+
+## Wave 17.0d — Test Taxonomy Hardening
+
+### Dispatch
+- **Date**: 2026-05-24
+- **Model**: Qwen/Kimi Backend Implementer
+- **T-IDs**: T-634
+- **Branch**: Merged to `main`
+
+### Review & Merge
+- **Status**: MERGED
+- **Tasks Completed**: T-634
+- **Gates**: Backend unit gate passed; Ruff check passed; Ruff format check passed; CI passed.
+
+---
+
+## Wave 17.1a — SSO Service Backend (OIDC/SAML + Role Resolution)
+
+### Dispatch
+- **Date**: 2026-05-24
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-635 through T-643
+- **Branch**: `phase-5/wave-17.1a-sso-service-backend`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/105
+
+### Scope
+- OIDC authorization code flow: state/nonce generation, Redis storage, redirect URL, ID token validation (issuer, audience, signature via JWKS, expiry, nonce, replay protection).
+- SAML AuthnRequest flow: request ID generation, Redis storage, redirect URL, assertion validation (issuer, audience, signature, timestamps, replay protection).
+- Role resolution: SSO group mappings + admin priority ordering (lowest priority number wins), user identity create/update.
+- Explicitly NOT included: SSO API endpoints (T-644+), local login restriction, admin SSO CRUD, frontend, Wave 17.2+ RBAC gates.
+
+### Review Findings & Fixes
+1. **Fix-1**: OIDC explicit JWKS fetch via `httpx.AsyncClient.get()`, SAML SP/IdP entity separation, provider binding, `BASE_URL` config.
+2. **Fix-2**: SAML `wantAssertionsSigned=True`, fail-closed `_get_idp_sso_url`/`_get_idp_entity_id`, removed tautological audience re-check, removed fake `has_signature`.
+3. **Fix-3**: Sanitized python3-saml boundary — `process_response()` wrapped in try/except, re-raises `SsoValidationError("SSO assertion validation failed")` from original exception. Added `test_sso_saml_boundary.py` with 6 tests proving settings include `wantAssertionsSigned=True`, SP `entityId` matches provider, and both `process_response()` and `get_errors()` exceptions are sanitized.
+
+### Merge
+- **Date**: 2026-05-24
+- **Status**: MERGED
+- **Final HEAD**: `be572eff95a0ebff058a09d16c37ed113ad38bc4`
+- **Tasks Completed**: T-635 through T-643
+- **Gates**:
+  - Full unit gate: `774 passed, 9 deselected, 1 warning in 12.83s`
+  - Focused SAML tests: `36 passed`
+  - Focused OIDC tests: `38 passed`
+  - Role+provider tests: `15 passed`
+  - Ruff check: `All checks passed!`
+  - Ruff format: `270 files already formatted`
+  - CI: `backend-test` SUCCESS, `frontend-test` SUCCESS
+
+### Security Notes
+- `SsoValidationError` wraps all user-facing SSO errors; message never contains raw tokens, certs, UUIDs, hostnames, assertion XML.
+- Replay cache uses Redis; TTL = session idle timeout (28800s).
+- Clock skew tolerance: `timedelta(seconds=30)` for both OIDC exp and SAML NotBefore/NotOnOrAfter.
+- `python3-saml` private API fallback (`_OneLogin_Saml2_Auth__build_request`) documented with comment; wrapped in public-API-first try/except.
+
+### Next Dispatch
+- Wave 17.1b: T-644 (replay protection tests), T-645-T-646 (SSO endpoints), T-647-T-648 (local login restriction), T-649-T-651 (admin SSO CRUD), T-652-T-653 (lockout prevention), T-654-T-655 (SSO audit logging), T-656-T-657 (concurrent session limit), T-658 (Wave 17.1 backend gate).
