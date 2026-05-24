@@ -37,11 +37,29 @@ class AuthService:
             )
 
         session_id = os.urandom(32).hex()
+
+        # Resolve role-derived fields from user.role_obj if available
+        role_id = str(user.role_id) if user.role_id else None
+        role_name = None
+        permissions: list[str] = []
+        if getattr(user, "role_obj", None) is not None:
+            role_name = user.role_obj.name
+            permissions = list(user.role_obj.permissions) if user.role_obj.permissions else []
+
+        auth_provider = getattr(user, "auth_provider", "local")
+        # Local users: subject_id defaults to username
+        subject_id = username if auth_provider == "local" else getattr(user, "subject_id", username)
+
         session_data = {
             "user_id": str(user.id),
             "username": user.username,
             "display_name": user.display_name,
             "role": user.role,
+            "role_id": role_id,
+            "role_name": role_name,
+            "permissions": permissions,
+            "auth_provider": auth_provider,
+            "subject_id": subject_id,
             "created_at": time.time(),
             "last_activity": time.time(),
         }
@@ -57,6 +75,10 @@ class AuthService:
             username=user.username,
             display_name=user.display_name,
             role=user.role,
+            role_id=role_id,
+            role_name=role_name,
+            permissions=permissions,
+            auth_provider=auth_provider,
         )
         return profile, session_id
 
@@ -85,9 +107,14 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"error": "unauthorized", "message_key": "error.unauthorized"},
             )
+        # Prefer session data for Phase 5 fields (source of truth for active session)
         return UserProfile(
             id=str(user.id),
             username=user.username,
             display_name=user.display_name,
             role=user.role,
+            role_id=data.get("role_id"),
+            role_name=data.get("role_name"),
+            permissions=data.get("permissions", []),
+            auth_provider=data.get("auth_provider", "local"),
         )
