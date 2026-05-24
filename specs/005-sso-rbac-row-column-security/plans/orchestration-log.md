@@ -173,14 +173,57 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1a
+## Wave 17.1b — SSO Endpoints, Replay Tests, Local Login Restriction
+
+### Dispatch
+- **Date**: 2026-05-24
+- **Model**: GLM Backend Implementer
+- **T-IDs**: T-644 through T-648
+- **Branch**: `phase-5/wave-17.1b-sso-endpoints-login-replay`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/108
+
+### Scope
+- Replay-protection tests for OIDC state, SAML request ID, and SAML assertion ID cache TTL.
+- Public SSO auth endpoints: provider list, OIDC login/callback, SAML login/callback.
+- SSO auth router registration.
+- Local password login restriction: admin-only local login; non-admin local and SSO users get generic 401.
+- Explicitly NOT included: admin SSO CRUD, built-in admin lockout guards, SSO audit logging, concurrent session limit, frontend UI.
+
+### Review Findings & Fixes
+1. **Fix-1**: OIDC/SAML callback cookies were initially set on FastAPI's injected `Response` and lost when returning a new `RedirectResponse`. Fixed by setting `SessionMiddleware` cookie on the returned redirect response; tests assert `Set-Cookie` on the redirect with `HttpOnly`, `SameSite=strict`, and `Secure`.
+2. **Fix-2**: SAML ACS POST was initially blocked by `OriginValidatorMiddleware`. Fixed with a narrow bypass for exactly `/api/v1/auth/sso/saml/callback`; tests prove ACS POST without Origin passes while other state-changing POSTs without Origin still fail with 403.
+
+### Merge
+- **Date**: 2026-05-24
+- **Status**: MERGED
+- **Final HEAD**: `9743b145ad06d169b573bf9d334c38737afdc0fe`
+- **Tasks Completed**: T-644 through T-648
+- **Gates**:
+  - Full unit gate: `817 passed, 9 deselected, 1 warning in 11.82s`
+  - Focused review gate: `47 passed`
+  - Ruff check: `All checks passed!`
+  - Ruff format: `274 files already formatted`
+  - CI: `backend-test` SUCCESS, `frontend-test` SUCCESS
+
+### Security Notes
+- SSO endpoint errors redirect only with safe codes: `sso_validation_failed`, `sso_no_role`, `sso_provider_unavailable`, `sso_not_configured`.
+- Local login rejections use generic 401 `error.unauthorized`; no account existence or auth-provider leak.
+- Public provider listing returns only protocol, display name, and login URL; no secrets, certs, metadata, client IDs, UUIDs, or host internals.
+- SAML ACS origin bypass is path-exact and applies only to the IdP callback endpoint.
+
+### Prompt Constraint Captured
+- GLM context is large but should still receive smaller prompts: limit future GLM prompts to 2-4 implementation tasks per prompt.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.1b
 
 ### Status
 - **Date**: 2026-05-24
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1a complete and merged; Wave 17.1b not dispatched yet.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105.
-- **Docs PR**: #106 records orchestration progress through this checkpoint.
+- **Current point**: Wave 17.1b complete and merged; Wave 17.1c not dispatched yet.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108.
+- **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d:
@@ -197,6 +240,12 @@
   - Provider-bound OIDC state and SAML request replay protection.
   - SSO group to role resolution by priority.
   - UserIdentity create/update and Redis session creation.
+- Wave 17.1b backend SSO endpoint/local login slice is complete:
+  - Replay-protection tests for OIDC/SAML flows.
+  - Public SSO provider list and login/callback endpoints.
+  - SSO callback session cookies on returned redirects.
+  - Path-exact SAML ACS origin bypass.
+  - Admin-only local password login with generic 401 rejection.
 
 ### Review Decisions Locked
 - OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
@@ -204,11 +253,9 @@
 - SAML paths fail closed when IdP metadata URL/XML-derived settings are unavailable.
 - `SsoValidationError` is the user-facing SSO error boundary; raw tokens, certs, UUIDs, hostnames, assertion XML, and parser/security details stay out of user-facing messages.
 - Backend fast gate remains `uv run pytest tests/unit -q -m "not integration"`.
+- GLM prompts should be constrained to 2-4 implementation tasks per prompt.
 
 ### Remaining Wave 17.1 Work
-- T-644: focused replay-protection tests.
-- T-645-T-646: SSO auth endpoints and router registration.
-- T-647-T-648: local login restriction to admin-only local accounts.
 - T-649-T-651: admin SSO provider CRUD and secret masking.
 - T-652-T-653: built-in admin lockout prevention tests and implementation.
 - T-654-T-655: SSO login/audit events.
@@ -216,4 +263,4 @@
 - T-658: Wave 17.1 backend gate.
 
 ### Next Dispatch Constraint
-- Dispatch Wave 17.1b as a backend-only PR before frontend Wave 17.1 surfaces, because endpoints/admin CRUD/local-login behavior must exist before UI integration.
+- Dispatch Wave 17.1c as a backend-only PR for 2-4 tasks max before frontend Wave 17.1 surfaces. Recommended next slice: T-649 through T-651 (admin SSO provider CRUD + router registration).
