@@ -16,7 +16,7 @@ Security:
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter, Depends, Form, Query, Response
+from fastapi import APIRouter, Depends, Form, Query
 from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -145,7 +145,6 @@ async def oidc_login(
 async def oidc_callback(
     code: str = Query(...),
     state: str = Query(...),
-    response: Response = None,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
 ):
@@ -157,8 +156,9 @@ async def oidc_callback(
 
     try:
         profile, session_id = await sso_service.process_oidc_callback(provider, state, code)
+        response = RedirectResponse(url="/", status_code=302)
         SessionMiddleware.set_cookie(response, session_id, secure=True)
-        return RedirectResponse(url="/", status_code=302)
+        return response
     except SsoValidationError as exc:
         logger.warning("oidc_callback_failed", error=exc.message)
         return _error_redirect(_map_sso_error(exc))
@@ -187,7 +187,6 @@ async def saml_login(
 async def saml_callback(
     SAMLResponse: str = Form(...),  # noqa: N803
     RelayState: str = Form(...),  # noqa: N803
-    response: Response = None,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
 ):
@@ -199,8 +198,9 @@ async def saml_callback(
 
     try:
         profile, session_id = await sso_service.process_saml_callback(provider, SAMLResponse, RelayState)
+        response = RedirectResponse(url="/", status_code=302)
         SessionMiddleware.set_cookie(response, session_id, secure=True)
-        return RedirectResponse(url="/", status_code=302)
+        return response
     except SsoValidationError as exc:
         logger.warning("saml_callback_failed", error=exc.message)
         return _error_redirect(_map_sso_error(exc))

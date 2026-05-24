@@ -138,9 +138,11 @@ class OriginValidatorMiddleware:
     """Validates Origin header on state-changing requests (POST/PUT/PATCH/DELETE).
 
     GET/HEAD/OPTIONS bypass the check (R-007).
+    SAML ACS POST bypasses the check (IdP callbacks have no same-origin Origin).
     """
 
     SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+    SAML_ACS_PATH = "/api/v1/auth/sso/saml/callback"
 
     def __init__(self, app, allowed_origins: list[str]):
         self.app = app
@@ -158,16 +160,18 @@ class OriginValidatorMiddleware:
         method = request.method.upper()
 
         if method not in self.SAFE_METHODS:
-            origin = request.headers.get("origin")
-            if not origin or origin not in self.allowed_origins:
-                response = JSONResponse(
-                    status_code=403,
-                    content={
-                        "error": "forbidden",
-                        "message_key": "error.forbidden",
-                    },
-                )
-                await response(scope, receive, send)
-                return
+            path = scope.get("path", "")
+            if path != self.SAML_ACS_PATH:
+                origin = request.headers.get("origin")
+                if not origin or origin not in self.allowed_origins:
+                    response = JSONResponse(
+                        status_code=403,
+                        content={
+                            "error": "forbidden",
+                            "message_key": "error.forbidden",
+                        },
+                    )
+                    await response(scope, receive, send)
+                    return
 
         await self.app(scope, receive, send)

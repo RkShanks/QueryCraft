@@ -231,7 +231,6 @@ class TestOidcCallbackEndpoint:
                 response = await oidc_callback(
                     code="auth-code",
                     state="test-state",
-                    response=MagicMock(),
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
@@ -266,7 +265,6 @@ class TestOidcCallbackEndpoint:
                 response = await oidc_callback(
                     code="auth-code",
                     state="test-state",
-                    response=MagicMock(),
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
@@ -282,14 +280,12 @@ class TestOidcCallbackEndpoint:
         oidc = _make_oidc_provider()
         mock_sso_service = AsyncMock()
         mock_sso_service.process_oidc_callback = AsyncMock(side_effect=SsoValidationError("SSO token expired"))
-        mock_response = MagicMock()
 
         with patch("app.api.v1.sso_auth._get_oidc_provider", new_callable=AsyncMock, return_value=oidc):
             with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
                 response = await oidc_callback(
                     code="auth-code",
                     state="test-state",
-                    response=mock_response,
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
@@ -310,14 +306,12 @@ class TestOidcCallbackEndpoint:
         mock_sso_service.process_oidc_callback = AsyncMock(
             side_effect=SsoValidationError("SSO user has no assigned role")
         )
-        mock_response = MagicMock()
 
         with patch("app.api.v1.sso_auth._get_oidc_provider", new_callable=AsyncMock, return_value=oidc):
             with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
                 response = await oidc_callback(
                     code="auth-code",
                     state="test-state",
-                    response=mock_response,
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
@@ -382,7 +376,6 @@ class TestSamlCallbackEndpoint:
                 response = await saml_callback(
                     SAMLResponse="base64-saml-response",
                     RelayState="request-id-1",
-                    response=MagicMock(),
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
@@ -417,7 +410,6 @@ class TestSamlCallbackEndpoint:
                 response = await saml_callback(
                     SAMLResponse="base64-saml-response",
                     RelayState="request-id-1",
-                    response=MagicMock(),
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
@@ -441,7 +433,6 @@ class TestSamlCallbackEndpoint:
                 response = await saml_callback(
                     SAMLResponse="base64-saml-response",
                     RelayState="request-id-1",
-                    response=MagicMock(),
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
@@ -468,7 +459,6 @@ class TestSamlCallbackEndpoint:
                 response = await saml_callback(
                     SAMLResponse="<samlp:Response><Assertion>secret-xml</Assertion></samlp:Response>",
                     RelayState="request-id-1",
-                    response=MagicMock(),
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
