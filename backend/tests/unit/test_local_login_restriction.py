@@ -10,7 +10,7 @@ Tests for:
 - Built-in admin always works regardless of SSO configuration
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException

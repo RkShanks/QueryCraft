@@ -9,7 +9,6 @@ Tests for:
 - All errors sanitized (no raw tokens, certs, UUIDs, hostnames, assertion XML)
 """
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -187,7 +186,9 @@ class TestOidcLoginEndpoint:
         oidc = _make_oidc_provider()
         mock_redis = AsyncMock()
         mock_sso_service = AsyncMock()
-        mock_sso_service.initiate_oidc_login = AsyncMock(side_effect=SsoValidationError("SSO provider configuration incomplete"))
+        mock_sso_service.initiate_oidc_login = AsyncMock(
+            side_effect=SsoValidationError("SSO provider configuration incomplete")
+        )
 
         with patch("app.api.v1.sso_auth._get_oidc_provider", new_callable=AsyncMock, return_value=oidc):
             with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
@@ -196,7 +197,11 @@ class TestOidcLoginEndpoint:
         assert response.status_code == 302
         location = response.headers["location"]
         assert "error=" in location
-        assert "sso_provider_unavailable" in location or "sso_validation_failed" in location or "sso_not_configured" in location
+        assert (
+            "sso_provider_unavailable" in location
+            or "sso_validation_failed" in location
+            or "sso_not_configured" in location
+        )
 
 
 class TestOidcCallbackEndpoint:
@@ -223,7 +228,13 @@ class TestOidcCallbackEndpoint:
 
         with patch("app.api.v1.sso_auth._get_oidc_provider", new_callable=AsyncMock, return_value=oidc):
             with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
-                response = await oidc_callback(code="auth-code", state="test-state", response=mock_response, db=AsyncMock(), redis=AsyncMock())
+                response = await oidc_callback(
+                    code="auth-code",
+                    state="test-state",
+                    response=mock_response,
+                    db=AsyncMock(),
+                    redis=AsyncMock(),
+                )
 
         mock_response.set_cookie.assert_called_once()
         call_kwargs = mock_response.set_cookie.call_args[1]
@@ -243,7 +254,13 @@ class TestOidcCallbackEndpoint:
 
         with patch("app.api.v1.sso_auth._get_oidc_provider", new_callable=AsyncMock, return_value=oidc):
             with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
-                response = await oidc_callback(code="auth-code", state="test-state", response=mock_response, db=AsyncMock(), redis=AsyncMock())
+                response = await oidc_callback(
+                    code="auth-code",
+                    state="test-state",
+                    response=mock_response,
+                    db=AsyncMock(),
+                    redis=AsyncMock(),
+                )
 
         assert response.status_code == 302
         location = response.headers["location"]
@@ -258,12 +275,20 @@ class TestOidcCallbackEndpoint:
 
         oidc = _make_oidc_provider()
         mock_sso_service = AsyncMock()
-        mock_sso_service.process_oidc_callback = AsyncMock(side_effect=SsoValidationError("SSO user has no assigned role"))
+        mock_sso_service.process_oidc_callback = AsyncMock(
+            side_effect=SsoValidationError("SSO user has no assigned role")
+        )
         mock_response = MagicMock()
 
         with patch("app.api.v1.sso_auth._get_oidc_provider", new_callable=AsyncMock, return_value=oidc):
             with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
-                response = await oidc_callback(code="auth-code", state="test-state", response=mock_response, db=AsyncMock(), redis=AsyncMock())
+                response = await oidc_callback(
+                    code="auth-code",
+                    state="test-state",
+                    response=mock_response,
+                    db=AsyncMock(),
+                    redis=AsyncMock(),
+                )
 
         assert response.status_code == 302
         assert "sso_no_role" in response.headers["location"]
@@ -343,7 +368,9 @@ class TestSamlCallbackEndpoint:
 
         saml = _make_saml_provider()
         mock_sso_service = AsyncMock()
-        mock_sso_service.process_saml_callback = AsyncMock(side_effect=SsoValidationError("SSO assertion replay detected"))
+        mock_sso_service.process_saml_callback = AsyncMock(
+            side_effect=SsoValidationError("SSO assertion replay detected")
+        )
         mock_response = MagicMock()
 
         with patch("app.api.v1.sso_auth._get_saml_provider", new_callable=AsyncMock, return_value=saml):

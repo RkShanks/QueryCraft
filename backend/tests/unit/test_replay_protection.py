@@ -61,9 +61,7 @@ class TestOidcReplayProtection:
             return SsoService(mock_db, mock_redis)
 
     @pytest.mark.asyncio
-    async def test_oidc_state_stored_with_session_timeout_ttl(
-        self, sso_service, oidc_provider, mock_redis
-    ):
+    async def test_oidc_state_stored_with_session_timeout_ttl(self, sso_service, oidc_provider, mock_redis):
         """OIDC state is stored in Redis with TTL = session idle timeout."""
         with patch("app.services.sso_service.secrets.token_urlsafe", side_effect=["state-1", "nonce-1"]):
             await sso_service.initiate_oidc_login(oidc_provider)
@@ -110,9 +108,7 @@ class TestOidcReplayProtection:
         assert "session" in str(exc_info.value).lower() or "expir" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_oidc_provider_binding_prevents_cross_provider_replay(
-        self, sso_service, oidc_provider, mock_redis
-    ):
+    async def test_oidc_provider_binding_prevents_cross_provider_replay(self, sso_service, oidc_provider, mock_redis):
         """State bound to one provider cannot be used with a different provider."""
         state = "state-bound"
         other_provider = MagicMock(spec=SsoProvider)
@@ -173,9 +169,7 @@ class TestSamlReplayProtection:
             return SsoService(mock_db, mock_redis)
 
     @pytest.mark.asyncio
-    async def test_saml_request_id_stored_with_session_timeout_ttl(
-        self, sso_service, saml_provider, mock_redis
-    ):
+    async def test_saml_request_id_stored_with_session_timeout_ttl(self, sso_service, saml_provider, mock_redis):
         """SAML request ID is stored in Redis with TTL = session idle timeout."""
         with patch("app.services.sso_service.secrets.token_urlsafe", return_value="req-id-1"):
             with patch.object(sso_service, "_build_saml_authn_request", return_value="<AuthnRequest/>"):
@@ -189,9 +183,7 @@ class TestSamlReplayProtection:
         assert ttl == 28800
 
     @pytest.mark.asyncio
-    async def test_saml_request_id_consumed_on_callback(
-        self, sso_service, saml_provider, mock_redis
-    ):
+    async def test_saml_request_id_consumed_on_callback(self, sso_service, saml_provider, mock_redis):
         """SAML request ID is deleted from Redis after first callback."""
         request_id = "req-id-consumed"
         stored = json.dumps({"provider_id": str(saml_provider.id)})
@@ -225,9 +217,7 @@ class TestSamlReplayProtection:
         assert "session" in str(exc_info.value).lower() or "expir" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_saml_assertion_id_cached_with_correct_ttl(
-        self, sso_service, saml_provider, mock_redis
-    ):
+    async def test_saml_assertion_id_cached_with_correct_ttl(self, sso_service, saml_provider, mock_redis):
         """SAML assertion ID is cached in Redis with TTL = session idle timeout."""
         request_id = "req-id-1"
         stored = json.dumps({"provider_id": str(saml_provider.id)})
@@ -248,8 +238,7 @@ class TestSamlReplayProtection:
                 await sso_service.process_saml_callback(saml_provider, "saml-resp", request_id)
 
         assertion_set_calls = [
-            c for c in mock_redis.set.call_args_list
-            if c[0][0] == "sso:saml:assertion:assertion-unique-1"
+            c for c in mock_redis.set.call_args_list if c[0][0] == "sso:saml:assertion:assertion-unique-1"
         ]
         assert len(assertion_set_calls) == 1
         call = assertion_set_calls[0]
@@ -280,9 +269,7 @@ class TestSamlReplayProtection:
         assert "replay" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_saml_provider_binding_prevents_cross_provider_replay(
-        self, sso_service, saml_provider, mock_redis
-    ):
+    async def test_saml_provider_binding_prevents_cross_provider_replay(self, sso_service, saml_provider, mock_redis):
         """Request ID bound to one provider cannot be used with a different provider."""
         request_id = "req-id-bound"
         stored = json.dumps({"provider_id": str(saml_provider.id)})
@@ -303,9 +290,7 @@ class TestSamlReplayProtection:
         assert "mismatch" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_saml_assertion_without_id_still_succeeds(
-        self, sso_service, saml_provider, mock_redis
-    ):
+    async def test_saml_assertion_without_id_still_succeeds(self, sso_service, saml_provider, mock_redis):
         """SAML assertion with no assertion_id skips replay cache but still succeeds."""
         request_id = "req-id-no-assert"
         stored = json.dumps({"provider_id": str(saml_provider.id)})
@@ -323,9 +308,7 @@ class TestSamlReplayProtection:
         with patch.object(sso_service, "_parse_saml_assertion", return_value=attrs):
             with patch.object(sso_service, "_resolve_role_and_create_session", new_callable=AsyncMock) as mock_resolve:
                 mock_resolve.return_value = ({"user_id": "u1"}, "session-id")
-                profile, session_id = await sso_service.process_saml_callback(
-                    saml_provider, "saml-resp", request_id
-                )
+                profile, session_id = await sso_service.process_saml_callback(saml_provider, "saml-resp", request_id)
 
         assert profile is not None
         assert session_id == "session-id"

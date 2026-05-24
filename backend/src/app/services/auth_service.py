@@ -47,10 +47,7 @@ class AuthService:
 
         # Phase 5: only local admin users may use local password login
         auth_provider = getattr(user, "auth_provider", "local")
-        if isinstance(auth_provider, str):
-            auth_provider = auth_provider
-        else:
-            auth_provider = "local"
+        auth_provider = auth_provider if isinstance(auth_provider, str) else "local"
 
         if auth_provider != "local":
             raise _unauthorized

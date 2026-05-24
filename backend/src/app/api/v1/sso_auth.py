@@ -16,15 +16,12 @@ Security:
 from __future__ import annotations
 
 import structlog
-from urllib.parse import urlencode
-
 from fastapi import APIRouter, Depends, Form, Query, Response
 from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis
 from app.core.security import SessionMiddleware
 from app.db.models.enums import SsoProtocol
@@ -114,7 +111,7 @@ async def list_providers(
     providers = await _get_active_providers(db)
     result = []
     for p in providers:
-        login_url = f"/api/v1/auth/sso/oidc/login" if p.protocol == SsoProtocol.OIDC else f"/api/v1/auth/sso/saml/login"
+        login_url = "/api/v1/auth/sso/oidc/login" if p.protocol == SsoProtocol.OIDC else "/api/v1/auth/sso/saml/login"
         result.append(
             SsoProviderPublic(
                 protocol=p.protocol,
