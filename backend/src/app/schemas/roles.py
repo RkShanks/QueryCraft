@@ -11,9 +11,9 @@ class ConnectionPolicyItem(BaseModel):
     """Single connection policy within a role."""
 
     connection_id: str
-    allowed_tables: list[dict] = []
-    row_filters: list[dict] = []
-    column_masks: list[dict] = []
+    allowed_tables: list[dict] = Field(default_factory=list)
+    row_filters: list[dict] = Field(default_factory=list)
+    column_masks: list[dict] = Field(default_factory=list)
 
 
 class RoleResponse(BaseModel):
@@ -23,9 +23,9 @@ class RoleResponse(BaseModel):
     name: str
     description: str | None = None
     priority: int
-    permissions: list[str] = []
+    permissions: list[str] = Field(default_factory=list)
     is_builtin: bool = False
-    group_mappings: list[dict] = []
+    group_mappings: list[dict] = Field(default_factory=list)
     connection_policy_count: int = 0
     created_at: str
     updated_at: str
@@ -38,10 +38,10 @@ class RoleDetailResponse(BaseModel):
     name: str
     description: str | None = None
     priority: int
-    permissions: list[str] = []
+    permissions: list[str] = Field(default_factory=list)
     is_builtin: bool = False
-    group_mappings: list[dict] = []
-    connection_policies: list[dict] = []
+    group_mappings: list[dict] = Field(default_factory=list)
+    connection_policies: list[dict] = Field(default_factory=list)
     created_at: str
     updated_at: str
 
@@ -52,9 +52,9 @@ class RoleCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
     priority: int = Field(..., ge=0)
-    permissions: list[str] = []
-    group_mappings: list[str] = []
-    connection_policies: list[ConnectionPolicyItem] = []
+    permissions: list[str] = Field(default_factory=list)
+    group_mappings: list[str] = Field(default_factory=list)
+    connection_policies: list[ConnectionPolicyItem] = Field(default_factory=list)
 
 
 class RoleUpdate(BaseModel):
@@ -78,9 +78,9 @@ class PolicyTestRequest(BaseModel):
 class PolicyTestResponse(BaseModel):
     """Result of a policy dry-run test."""
 
-    accessible_tables: list[str] = []
-    accessible_columns: dict[str, list[str]] = {}
-    blocked_tables: list[str] = []
-    applicable_row_filters: list[dict] = []
-    masked_columns: dict[str, list[str]] = {}
+    accessible_tables: list[str] = Field(default_factory=list)
+    accessible_columns: dict[str, list[str]] = Field(default_factory=dict)
+    blocked_tables: list[str] = Field(default_factory=list)
+    applicable_row_filters: list[dict] = Field(default_factory=list)
+    masked_columns: dict[str, list[str]] = Field(default_factory=dict)
     would_be_allowed: bool = True

@@ -11,11 +11,14 @@ Adds:
 - Phase 5 endpoint stubs (for future wave implementation)
 """
 
+from pathlib import Path
+
 import yaml
 
-SPEC_PATH = "/home/avril/QueryCraft/specs/001-core-text-to-sql/contracts/openapi.yaml"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SPEC_PATH = REPO_ROOT / "specs/001-core-text-to-sql/contracts/openapi.yaml"
 
-with open(SPEC_PATH) as f:
+with SPEC_PATH.open() as f:
     spec = yaml.safe_load(f)
 
 # 1. Extend UserProfile schema
@@ -486,7 +489,7 @@ for path, methods in phase5_paths.items():
         spec["paths"][path][method] = definition
 
 # Write back
-with open(SPEC_PATH, "w") as f:
+with SPEC_PATH.open("w") as f:
     yaml.dump(spec, f, sort_keys=False, allow_unicode=True, default_flow_style=False)
 
 print(f"Updated {SPEC_PATH} with Phase 5 schemas and endpoints.")
