@@ -25,12 +25,11 @@ jobs:
         working-directory: backend
         run: uv run ruff check src tests
 
-      # Integration tests require live postgres-source (pagila) + redis on localhost:5434/6379.
-      # CI workflow currently lacks service containers; full integration coverage is tracked as
-      # a Polish-cluster task. Local dev/test runs everything with `docker compose up`.
+      # Fast gate: unit tests excluding service-dependent integration-marked tests.
+      # Integration/acceptance/contract tests run locally with `docker compose up`.
       - name: Run Pytest
         working-directory: backend
-        run: uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"
+        run: uv run pytest tests/unit -q -m "not integration"
 
   frontend-test:
     runs-on: ubuntu-latest

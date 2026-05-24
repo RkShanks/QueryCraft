@@ -12,17 +12,19 @@ Qwen owns **all backend T-IDs**: FastAPI, SQLAlchemy, Alembic, services, OpenAPI
 ## Tooling
 
 - **Always** `uv sync --extra dev` — plain `uv sync` strips pytest/ruff.
-- Run pytest from `backend/`: `cd backend && uv run pytest -q -m "not integration"`.
+- Run CI-equivalent pytest from `backend/`: `cd backend && uv run pytest tests/unit -q -m "not integration"`.
 - Run ruff from `backend/`: `cd backend && uv run ruff check src tests`.
 - Scratch files → `<repo>/tmp/` (gitignored), never `~/`.
 
 ## Backend Gates
 
 ```bash
-cd backend && uv run pytest -q -m "not integration"
+cd backend && uv run pytest tests/unit -q -m "not integration"
 cd backend && uv run ruff check src tests
 cd backend && uv run ruff format --check src tests
 ```
+
+Integration, acceptance, and contract tests require live services or full app fixtures. The fast gate runs only `tests/unit` and excludes any test explicitly marked `integration` (some service-dependent tests live under `tests/unit` for organizational reasons).
 
 ## Alembic Rules
 

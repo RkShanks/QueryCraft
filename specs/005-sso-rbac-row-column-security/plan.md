@@ -400,7 +400,7 @@ cd frontend && npm run lint:css
 
 ### Backend (all waves with backend changes)
 ```bash
-cd backend && uv run pytest -q -m "not integration"
+cd backend && uv run pytest tests/unit -q -m "not integration"
 cd backend && uv run ruff check src tests
 cd backend && uv run ruff format --check src tests
 ```
