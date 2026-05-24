@@ -118,8 +118,8 @@
 
 ### Backend — Local Login Restriction (Owner: Kimi ( opencode ))
 
-- [ ] T-647 [US26] Write TDD tests for local login restriction (admin-only, reject non-admin, generic error, no account existence leak) in `backend/tests/unit/test_local_login_restriction.py` — FR-120
-- [ ] T-648 [US26] Modify `POST /auth/sign-in` in `backend/src/app/api/v1/auth.py`: reject non-admin local login with generic 401 — FR-120
+- [x] T-647 [US26] Write TDD tests for local login restriction (admin-only, reject non-admin, generic error, no account existence leak) in `backend/tests/unit/test_local_login_restriction.py` — FR-120
+- [x] T-648 [US26] Modify `POST /auth/sign-in` in `backend/src/app/api/v1/auth.py`: reject non-admin local login with generic 401 — FR-120
 
 ### Backend — Admin SSO Config Endpoints (Owner: Kimi ( opencode ))
 
