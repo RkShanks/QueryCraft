@@ -12,6 +12,7 @@ Tests for:
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi.responses import RedirectResponse
 
 from app.db.models.enums import SsoProtocol
 from app.db.models.sso_provider import SsoProvider
@@ -224,24 +225,55 @@ class TestOidcCallbackEndpoint:
         }
         mock_sso_service = AsyncMock()
         mock_sso_service.process_oidc_callback = AsyncMock(return_value=(profile, "session-id-123"))
-        mock_response = MagicMock()
 
         with patch("app.api.v1.sso_auth._get_oidc_provider", new_callable=AsyncMock, return_value=oidc):
             with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
                 response = await oidc_callback(
                     code="auth-code",
                     state="test-state",
-                    response=mock_response,
+                    response=MagicMock(),
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
 
-        mock_response.set_cookie.assert_called_once()
-        call_kwargs = mock_response.set_cookie.call_args[1]
-        assert call_kwargs["key"] == "session_id"
-        assert call_kwargs["value"] == "session-id-123"
-        assert call_kwargs["httponly"] is True
         assert response.status_code == 302
+        cookie_header = response.headers.get("set-cookie", "")
+        assert "session_id=session-id-123" in cookie_header
+        assert "HttpOnly" in cookie_header
+        assert "SameSite=strict" in cookie_header
+        assert "Secure" in cookie_header
+
+    @pytest.mark.asyncio
+    async def test_success_cookie_on_redirect_not_on_separate_response(self):
+        from app.api.v1.sso_auth import oidc_callback
+
+        oidc = _make_oidc_provider()
+        profile = {
+            "user_id": "user-uuid",
+            "username": "user@example.com",
+            "display_name": "User",
+            "role_id": "role-uuid",
+            "role_name": "Analyst",
+            "permissions": ["query.submit"],
+            "auth_provider": "oidc",
+            "subject_id": "sub-1",
+        }
+        mock_sso_service = AsyncMock()
+        mock_sso_service.process_oidc_callback = AsyncMock(return_value=(profile, "session-id-123"))
+
+        with patch("app.api.v1.sso_auth._get_oidc_provider", new_callable=AsyncMock, return_value=oidc):
+            with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
+                response = await oidc_callback(
+                    code="auth-code",
+                    state="test-state",
+                    response=MagicMock(),
+                    db=AsyncMock(),
+                    redis=AsyncMock(),
+                )
+
+        assert isinstance(response, RedirectResponse)
+        cookie_header = response.headers.get("set-cookie", "")
+        assert "session_id=" in cookie_header, "Cookie must be on the returned RedirectResponse, not a separate response object"
 
     @pytest.mark.asyncio
     async def test_validation_error_redirects_with_sso_error(self):
@@ -344,23 +376,55 @@ class TestSamlCallbackEndpoint:
         }
         mock_sso_service = AsyncMock()
         mock_sso_service.process_saml_callback = AsyncMock(return_value=(profile, "session-id-456"))
-        mock_response = MagicMock()
 
         with patch("app.api.v1.sso_auth._get_saml_provider", new_callable=AsyncMock, return_value=saml):
             with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
                 response = await saml_callback(
                     SAMLResponse="base64-saml-response",
                     RelayState="request-id-1",
-                    response=mock_response,
+                    response=MagicMock(),
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
 
-        mock_response.set_cookie.assert_called_once()
-        call_kwargs = mock_response.set_cookie.call_args[1]
-        assert call_kwargs["key"] == "session_id"
-        assert call_kwargs["value"] == "session-id-456"
         assert response.status_code == 302
+        cookie_header = response.headers.get("set-cookie", "")
+        assert "session_id=session-id-456" in cookie_header
+        assert "HttpOnly" in cookie_header
+        assert "SameSite=strict" in cookie_header
+        assert "Secure" in cookie_header
+
+    @pytest.mark.asyncio
+    async def test_success_cookie_on_redirect_not_on_separate_response(self):
+        from app.api.v1.sso_auth import saml_callback
+
+        saml = _make_saml_provider()
+        profile = {
+            "user_id": "user-uuid",
+            "username": "user@example.com",
+            "display_name": "User",
+            "role_id": "role-uuid",
+            "role_name": "Analyst",
+            "permissions": ["query.submit"],
+            "auth_provider": "saml",
+            "subject_id": "sub-1",
+        }
+        mock_sso_service = AsyncMock()
+        mock_sso_service.process_saml_callback = AsyncMock(return_value=(profile, "session-id-456"))
+
+        with patch("app.api.v1.sso_auth._get_saml_provider", new_callable=AsyncMock, return_value=saml):
+            with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
+                response = await saml_callback(
+                    SAMLResponse="base64-saml-response",
+                    RelayState="request-id-1",
+                    response=MagicMock(),
+                    db=AsyncMock(),
+                    redis=AsyncMock(),
+                )
+
+        assert isinstance(response, RedirectResponse)
+        cookie_header = response.headers.get("set-cookie", "")
+        assert "session_id=" in cookie_header, "Cookie must be on the returned RedirectResponse, not a separate response object"
 
     @pytest.mark.asyncio
     async def test_validation_error_redirects_with_sso_error(self):
@@ -371,14 +435,13 @@ class TestSamlCallbackEndpoint:
         mock_sso_service.process_saml_callback = AsyncMock(
             side_effect=SsoValidationError("SSO assertion replay detected")
         )
-        mock_response = MagicMock()
 
         with patch("app.api.v1.sso_auth._get_saml_provider", new_callable=AsyncMock, return_value=saml):
             with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
                 response = await saml_callback(
                     SAMLResponse="base64-saml-response",
                     RelayState="request-id-1",
-                    response=mock_response,
+                    response=MagicMock(),
                     db=AsyncMock(),
                     redis=AsyncMock(),
                 )
@@ -389,3 +452,29 @@ class TestSamlCallbackEndpoint:
         raw_forbidden = ["replay detected", "assertion-xml", "certificate"]
         for word in raw_forbidden:
             assert word not in location
+
+    @pytest.mark.asyncio
+    async def test_saml_callback_no_assertion_xml_in_redirect(self):
+        from app.api.v1.sso_auth import saml_callback
+
+        saml = _make_saml_provider()
+        mock_sso_service = AsyncMock()
+        mock_sso_service.process_saml_callback = AsyncMock(
+            side_effect=SsoValidationError("SSO assertion validation failed")
+        )
+
+        with patch("app.api.v1.sso_auth._get_saml_provider", new_callable=AsyncMock, return_value=saml):
+            with patch("app.api.v1.sso_auth.SsoService", return_value=mock_sso_service):
+                response = await saml_callback(
+                    SAMLResponse="<samlp:Response><Assertion>secret-xml</Assertion></samlp:Response>",
+                    RelayState="request-id-1",
+                    response=MagicMock(),
+                    db=AsyncMock(),
+                    redis=AsyncMock(),
+                )
+
+        assert response.status_code == 302
+        location = response.headers["location"]
+        assert "Assertion" not in location
+        assert "secret-xml" not in location
+        assert "samlp" not in location
