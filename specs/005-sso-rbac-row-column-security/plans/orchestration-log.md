@@ -170,3 +170,50 @@
 
 ### Next Dispatch
 - Wave 17.1b: T-644 (replay protection tests), T-645-T-646 (SSO endpoints), T-647-T-648 (local login restriction), T-649-T-651 (admin SSO CRUD), T-652-T-653 (lockout prevention), T-654-T-655 (SSO audit logging), T-656-T-657 (concurrent session limit), T-658 (Wave 17.1 backend gate).
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.1a
+
+### Status
+- **Date**: 2026-05-24
+- **Phase**: Phase 5 remains IN PROGRESS.
+- **Current point**: Wave 17.1a complete and merged; Wave 17.1b not dispatched yet.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105.
+- **Docs PR**: #106 records orchestration progress through this checkpoint.
+
+### Completed Scope Through This Point
+- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d:
+  - Foundation models and enums.
+  - Migration and tamper-evident audit service foundation.
+  - Permission dependency, Phase 5 schemas, extended auth/session profile, OpenAPI update.
+  - Backend test taxonomy hardening and fast-gate simplification.
+- Wave 17.1a backend SSO service slice is complete:
+  - OIDC authorization-code initiation and callback validation.
+  - Explicit OIDC JWKS fetch and signature validation.
+  - SAML AuthnRequest/callback service wrapper with fail-closed metadata behavior.
+  - SAML signed-assertion requirement via python3-saml settings.
+  - Sanitized python3-saml boundary errors.
+  - Provider-bound OIDC state and SAML request replay protection.
+  - SSO group to role resolution by priority.
+  - UserIdentity create/update and Redis session creation.
+
+### Review Decisions Locked
+- OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
+- SAML `saml_entity_id` is SP entity ID; IdP issuer is derived from IdP metadata configuration.
+- SAML paths fail closed when IdP metadata URL/XML-derived settings are unavailable.
+- `SsoValidationError` is the user-facing SSO error boundary; raw tokens, certs, UUIDs, hostnames, assertion XML, and parser/security details stay out of user-facing messages.
+- Backend fast gate remains `uv run pytest tests/unit -q -m "not integration"`.
+
+### Remaining Wave 17.1 Work
+- T-644: focused replay-protection tests.
+- T-645-T-646: SSO auth endpoints and router registration.
+- T-647-T-648: local login restriction to admin-only local accounts.
+- T-649-T-651: admin SSO provider CRUD and secret masking.
+- T-652-T-653: built-in admin lockout prevention tests and implementation.
+- T-654-T-655: SSO login/audit events.
+- T-656-T-657: concurrent session limit tests and enforcement.
+- T-658: Wave 17.1 backend gate.
+
+### Next Dispatch Constraint
+- Dispatch Wave 17.1b as a backend-only PR before frontend Wave 17.1 surfaces, because endpoints/admin CRUD/local-login behavior must exist before UI integration.
