@@ -14,9 +14,13 @@ class SignInRequest(BaseModel):
 
 
 class UserProfile(BaseModel):
-    """GET /auth/me response."""
+    """GET /auth/me response — extended for Phase 5 SSO/RBAC."""
 
     id: str
     username: str
     display_name: str
-    role: str
+    role: str  # deprecated, kept for backward compatibility
+    role_id: str | None = None
+    role_name: str | None = None
+    permissions: list[str] = []
+    auth_provider: str = "local"

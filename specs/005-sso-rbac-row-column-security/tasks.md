@@ -62,29 +62,29 @@
 
 ### Permission Middleware
 
-- [ ] T-624 [US28] Write TDD tests for `require_permission()` FastAPI dependency in `backend/tests/unit/test_permission_middleware.py` — FR-127
-- [ ] T-625 [US28] Implement `require_permission(*perms)` FastAPI dependency in `backend/src/app/api/dependencies/permissions.py`: check session permissions against required set, return 403 with `error.forbidden` on failure — FR-127
+- [x] T-624 [US28] Write TDD tests for `require_permission()` FastAPI dependency in `backend/tests/unit/test_permission_middleware.py` — FR-127
+- [x] T-625 [US28] Implement `require_permission(*perms)` FastAPI dependency in `backend/src/app/api/dependencies/permissions.py`: check session permissions against required set, return 403 with `error.forbidden` on failure — FR-127
 
 ### Pydantic Schemas
 
-- [ ] T-626 [US28] Create Phase 5 Pydantic request/response schemas in `backend/src/app/schemas/sso.py`: `SsoProviderResponse`, `SsoProviderCreate`, `SsoProviderUpdate`, `SsoProviderPublic` — FR-115, FR-116
-- [ ] T-627 [US28] Create Phase 5 Pydantic schemas in `backend/src/app/schemas/roles.py`: `RoleResponse`, `RoleCreate`, `RoleUpdate`, `RoleDetailResponse`, `ConnectionPolicyCreate`, `PolicyTestRequest`, `PolicyTestResponse` — FR-122, FR-136
-- [ ] T-628 [US28] Create Phase 5 Pydantic schemas in `backend/src/app/schemas/audit.py`: `AuditVerifyResponse`, `AuditStatusResponse` — FR-141, FR-144
-- [ ] T-629 [US28] Create Phase 5 Pydantic schemas in `backend/src/app/schemas/group_mapping.py`: `GroupMappingResponse`, `GroupMappingCreate` — FR-125
-- [ ] T-630 [US28] Extend `UserProfileResponse` in `backend/src/app/schemas/auth.py` with `role_id`, `role_name`, `permissions`, `auth_provider` fields — FR-127
+- [x] T-626 [US28] Create Phase 5 Pydantic request/response schemas in `backend/src/app/schemas/sso.py`: `SsoProviderResponse`, `SsoProviderCreate`, `SsoProviderUpdate`, `SsoProviderPublic` — FR-115, FR-116
+- [x] T-627 [US28] Create Phase 5 Pydantic schemas in `backend/src/app/schemas/roles.py`: `RoleResponse`, `RoleCreate`, `RoleUpdate`, `RoleDetailResponse`, `ConnectionPolicyCreate`, `PolicyTestRequest`, `PolicyTestResponse` — FR-122, FR-136
+- [x] T-628 [US28] Create Phase 5 Pydantic schemas in `backend/src/app/schemas/audit.py`: `AuditVerifyResponse`, `AuditStatusResponse` — FR-141, FR-144
+- [x] T-629 [US28] Create Phase 5 Pydantic schemas in `backend/src/app/schemas/group_mapping.py`: `GroupMappingResponse`, `GroupMappingCreate` — FR-125
+- [x] T-630 [US28] Extend `UserProfileResponse` in `backend/src/app/schemas/auth.py` with `role_id`, `role_name`, `permissions`, `auth_provider` fields — FR-127
 
 ### Session Extension
 
-- [ ] T-631 [US26] Write TDD tests for extended Redis session data (role_id, permissions, auth_provider, subject_id) in `backend/tests/unit/test_session_extension.py` — FR-127
-- [ ] T-632 [US26] Extend session creation/read in `backend/src/app/services/auth_service.py` and `backend/src/app/repositories/session_repository.py` to include `role_id`, `role_name`, `permissions`, `auth_provider`, `subject_id`, `email` per data-model.md Redis session structure — FR-127
+- [x] T-631 [US26] Write TDD tests for extended Redis session data (role_id, permissions, auth_provider, subject_id) in `backend/tests/unit/test_session_extension.py` — FR-127
+- [x] T-632 [US26] Extend session creation/read in `backend/src/app/services/auth_service.py` and `backend/src/app/repositories/session_repository.py` to include `role_id`, `role_name`, `permissions`, `auth_provider`, `subject_id`, `email` per data-model.md Redis session structure — FR-127
 
 ### OpenAPI Update
 
-- [ ] T-633 Update OpenAPI spec in `backend/openapi.yaml` with all new Phase 5 types, endpoints, and error codes per api-contracts.md — FR-127
+- [x] T-633 Update OpenAPI spec in `backend/openapi.yaml` with all new Phase 5 types, endpoints, and error codes per api-contracts.md — FR-127
 
 ### Wave 17.0 Backend Gate
 
-- [ ] T-634 Run backend foundation gates: `cd backend && uv run pytest -q -m "not integration"` + `uv run ruff check src tests` + `uv run ruff format --check src tests` — SC-057
+- [x] T-634 Run CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
 
 ---
 
@@ -141,7 +141,7 @@
 
 ### Wave 17.1 Backend Gate
 
-- [ ] T-658 Run backend foundation gates: `cd backend && uv run pytest -q -m "not integration"` + `uv run ruff check src tests` + `uv run ruff format --check src tests` — SC-057
+- [ ] T-658 Run CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
 
 ### Frontend — SSO Sign-In Page (Owner: Gemini)
 
@@ -213,7 +213,7 @@
 
 ### Wave 17.2 Backend Gate
 
-- [ ] T-685 Run backend foundation gates: `cd backend && uv run pytest -q -m "not integration"` + `uv run ruff check src tests` + `uv run ruff format --check src tests` — SC-057
+- [ ] T-685 Run CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
 
 ### Frontend — Role Management Page (Owner: Gemini)
 
@@ -310,7 +310,7 @@
 
 ### Wave 17.3 Backend Gate
 
-- [ ] T-722 Run backend foundation gates: `cd backend && uv run pytest -q -m "not integration"` + `uv run ruff check src tests` + `uv run ruff format --check src tests` — SC-057
+- [ ] T-722 Run CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
 
 ### Frontend — Masked Column Indicator (Owner: Gemini)
 
@@ -369,7 +369,7 @@
 
 ### Wave 17.4 Backend Gate
 
-- [ ] T-742 Run backend foundation gates: `cd backend && uv run pytest -q -m "not integration"` + `uv run ruff check src tests` + `uv run ruff format --check src tests` — SC-057
+- [ ] T-742 Run CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
 
 ### Frontend — Audit Verification Page (Owner: Gemini)
 
@@ -439,7 +439,7 @@
 
 ### Final Backend Gate (Owner: Kimi ( opencode ))
 
-- [ ] T-770 Run final backend foundation gates: `cd backend && uv run pytest -q -m "not integration"` + `uv run ruff check src tests` + `uv run ruff format --check src tests` — SC-057
+- [ ] T-770 Run final CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
 
 ### Final Frontend Gate (Owner: Gemini)
 

@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: "QueryCraft \u2014 Text-to-SQL Analytics Platform API"
+  title: QueryCraft — Text-to-SQL Analytics Platform API
   version: 1.0.0
   description: 'Phase 1 + Phase 2 API contract.
 
@@ -29,6 +29,12 @@ tags:
   description: Feedback on query results
 - name: Admin
   description: Administrative operations
+- name: SSO
+  description: SSO authentication and configuration
+- name: Roles
+  description: Role-based access control management
+- name: Audit
+  description: Tamper-evident audit log verification
 paths:
   /auth/sign-in:
     post:
@@ -90,7 +96,8 @@ paths:
       tags:
       - Auth
       summary: Get the current user profile
-      description: Returns the authenticated user's profile. Used by the frontend to check session validity.
+      description: Returns the authenticated user's profile. Used by the frontend
+        to check session validity.
       security:
       - sessionCookie: []
       responses:
@@ -218,7 +225,8 @@ paths:
       tags:
       - Query
       summary: Reject the current query result and trigger one auto-retry
-      description: 'Discards the current attempt, provides it as negative context to the
+      description: 'Discards the current attempt, provides it as negative context
+        to the
 
         LLM, and generates a new SQL attempt. If this is the second
 
@@ -344,7 +352,8 @@ paths:
       tags:
       - History
       summary: List accepted queries in reverse-chronological order
-      description: 'Returns the user''s accepted query history using cursor-based pagination.
+      description: 'Returns the user''s accepted query history using cursor-based
+        pagination.
 
         Pass the `next_cursor` from a previous response to fetch the next page.
 
@@ -361,7 +370,8 @@ paths:
         required: false
         schema:
           type: string
-        description: Opaque cursor from a previous response's `next_cursor`. Omit for the first page.
+        description: Opaque cursor from a previous response's `next_cursor`. Omit
+          for the first page.
       - name: limit
         in: query
         required: false
@@ -424,7 +434,8 @@ paths:
       tags:
       - History
       summary: Delete a single saved query result
-      description: Removes an accepted query from history. Does not cascade to session entries.
+      description: Removes an accepted query from history. Does not cascade to session
+        entries.
       security:
       - sessionCookie: []
       parameters:
@@ -455,7 +466,8 @@ paths:
       tags:
       - Sessions
       summary: Create a new empty session
-      description: Creates a new chat session for the authenticated user. Returns the session ID.
+      description: Creates a new chat session for the authenticated user. Returns
+        the session ID.
       security:
       - sessionCookie: []
       responses:
@@ -476,7 +488,8 @@ paths:
       tags:
       - Sessions
       summary: List sessions for the current user
-      description: Returns all chat sessions for the authenticated user, sorted by last activity descending.
+      description: Returns all chat sessions for the authenticated user, sorted by
+        last activity descending.
       security:
       - sessionCookie: []
       responses:
@@ -532,7 +545,8 @@ paths:
       tags:
       - Sessions
       summary: Delete a session
-      description: Deletes a chat session and cascade deletes all associated accepted queries.
+      description: Deletes a chat session and cascade deletes all associated accepted
+        queries.
       security:
       - sessionCookie: []
       parameters:
@@ -563,7 +577,8 @@ paths:
       tags:
       - Connections
       summary: List available database connections for the current user
-      description: Returns active, healthy, and introspected connections that can be used for querying.
+      description: Returns active, healthy, and introspected connections that can
+        be used for querying.
       security:
       - sessionCookie: []
       responses:
@@ -587,7 +602,8 @@ paths:
       tags:
       - Sessions
       summary: Update the database connection for a session
-      description: Changes which database connection a session uses for queries. Validates the connection is active, healthy, and introspected.
+      description: Changes which database connection a session uses for queries. Validates
+        the connection is active, healthy, and introspected.
       security:
       - sessionCookie: []
       parameters:
@@ -634,7 +650,8 @@ paths:
       tags:
       - Feedback
       summary: Update feedback on an accepted query
-      description: Sets the user feedback (thumbs up/down) for a specific accepted query attempt.
+      description: Sets the user feedback (thumbs up/down) for a specific accepted
+        query attempt.
       security:
       - sessionCookie: []
       parameters:
@@ -681,7 +698,8 @@ paths:
       tags:
       - Admin
       summary: Get admin settings
-      description: Returns current application settings including LLM context cap and regenerate attempts.
+      description: Returns current application settings including LLM context cap
+        and regenerate attempts.
       security:
       - sessionCookie: []
       responses:
@@ -748,7 +766,8 @@ paths:
       tags:
       - Admin
       summary: Force a schema introspection cache refresh
-      description: 'Clears the cached schema metadata for the source database and performs
+      description: 'Clears the cached schema metadata for the source database and
+        performs
 
         a fresh introspection. Returns the updated schema statistics. If the
 
@@ -983,6 +1002,183 @@ paths:
                 $ref: '#/components/schemas/ConnectionTestResult'
         '404':
           description: Connection not found
+  /auth/sso/providers:
+    get:
+      operationId: listSsoProviders
+      tags:
+      - SSO
+      summary: List configured SSO providers
+      description: Public endpoint returning available SSO providers for sign-in page.
+      responses:
+        '200':
+          description: List of SSO providers.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SsoProviderPublic'
+  /admin/sso/providers:
+    get:
+      operationId: listAdminSsoProviders
+      tags:
+      - SSO
+      summary: List SSO providers (admin)
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: List of SSO providers with secrets masked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SsoProviderResponse'
+        '403':
+          description: Missing admin.sso.manage permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: createSsoProvider
+      tags:
+      - SSO
+      summary: Create SSO provider
+      security:
+      - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SsoProviderCreate'
+      responses:
+        '201':
+          description: Provider created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SsoProviderResponse'
+        '403':
+          description: Missing admin.sso.manage permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Provider for this protocol already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/roles:
+    get:
+      operationId: listRoles
+      tags:
+      - Roles
+      summary: List roles
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: List of roles.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoleResponse'
+        '403':
+          description: Missing admin.roles.manage permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: createRole
+      tags:
+      - Roles
+      summary: Create role
+      security:
+      - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleCreate'
+      responses:
+        '201':
+          description: Role created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleResponse'
+        '403':
+          description: Missing admin.roles.manage permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate name, priority, or group mapping.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/audit/verify:
+    post:
+      operationId: verifyAuditChain
+      tags:
+      - Audit
+      summary: Verify audit chain integrity
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: Verification result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditVerifyResponse'
+        '403':
+          description: Missing admin.audit.verify permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/audit/status:
+    get:
+      operationId: getAuditStatus
+      tags:
+      - Audit
+      summary: Get audit log status
+      security:
+      - sessionCookie: []
+      responses:
+        '200':
+          description: Audit status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditStatusResponse'
+        '403':
+          description: Missing admin.audit.verify permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
     sessionCookie:
@@ -998,7 +1194,8 @@ components:
       type: apiKey
       in: header
       name: X-Admin-Key
-      description: Admin endpoint authentication; configured via ADMIN_API_KEY env var.
+      description: Admin endpoint authentication; configured via ADMIN_API_KEY env
+        var.
   schemas:
     SignInRequest:
       type: object
@@ -1031,6 +1228,25 @@ components:
           type: string
         role:
           type: string
+        role_id:
+          type: string
+          format: uuid
+          nullable: true
+        role_name:
+          type: string
+          nullable: true
+        permissions:
+          type: array
+          items:
+            type: string
+          default: []
+        auth_provider:
+          type: string
+          enum:
+          - local
+          - oidc
+          - saml
+          default: local
     SubmitQuestionRequest:
       type: object
       required:
@@ -1046,7 +1262,8 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Chat session ID for follow-up context. Null for first message (lazy session creation).
+          description: Chat session ID for follow-up context. Null for first message
+            (lazy session creation).
         connection_id:
           type: string
           format: uuid
@@ -1076,7 +1293,8 @@ components:
         session_id:
           type: string
           nullable: true
-          description: Chat session ID this result belongs to. Null for legacy unsessioned results.
+          description: Chat session ID this result belongs to. Null for legacy unsessioned
+            results.
         question:
           type: string
         generated_sql:
@@ -1090,7 +1308,8 @@ components:
           items:
             type: array
             items: {}
-          description: Array of row arrays. Each inner array corresponds to the column order.
+          description: Array of row arrays. Each inner array corresponds to the column
+            order.
         row_count:
           type: integer
           description: Total number of rows returned.
@@ -1099,12 +1318,14 @@ components:
           description: 1 for first attempt, 2 for auto-retry.
         is_last_auto_retry:
           type: boolean
-          description: True if this is the last automatic retry (attempt 2). UI shows indicator.
+          description: True if this is the last automatic retry (attempt 2). UI shows
+            indicator.
         accepted_query_id:
           type: string
           format: uuid
           nullable: true
-          description: ID of the auto-saved AcceptedQuery row. Present when submit/regenerate succeeded.
+          description: ID of the auto-saved AcceptedQuery row. Present when submit/regenerate
+            succeeded.
     ColumnMeta:
       type: object
       required:
@@ -1129,7 +1350,8 @@ components:
           type: object
           nullable: true
           additionalProperties: true
-          description: Key-value map for interpolated values in the i18n template. Null if no params needed.
+          description: Key-value map for interpolated values in the i18n template.
+            Null if no params needed.
         violations:
           type: array
           items:
@@ -1142,7 +1364,8 @@ components:
       properties:
         rule:
           type: string
-          description: Machine-readable rule identifier (e.g., "read_only_check", "schema_validation").
+          description: Machine-readable rule identifier (e.g., "read_only_check",
+            "schema_validation").
         message_key:
           type: string
           description: i18n key for the violation message (e.g., "evaluator.violation.dataModifying").
@@ -1270,7 +1493,8 @@ components:
           description: 1 for thumbs up, -1 for thumbs down.
         saved:
           type: boolean
-          description: Mark the query as saved. Defaults to true when feedback is set.
+          description: Mark the query as saved. Defaults to true when feedback is
+            set.
     FeedbackResponse:
       type: object
       required:
@@ -1293,10 +1517,12 @@ components:
       properties:
         llm_context_cap:
           type: integer
-          description: Number of previous conversation turns to include as context (0-10).
+          description: Number of previous conversation turns to include as context
+            (0-10).
         max_regenerate_attempts:
           type: integer
-          description: Maximum number of regenerate attempts allowed per query including the original.
+          description: Maximum number of regenerate attempts allowed per query including
+            the original.
     UpdateAdminSettingsRequest:
       type: object
       required:
@@ -1306,11 +1532,13 @@ components:
           type: integer
           minimum: 0
           maximum: 10
-          description: Number of previous conversation turns to include as context (0-10).
+          description: Number of previous conversation turns to include as context
+            (0-10).
         max_regenerate_attempts:
           type: integer
           minimum: 1
-          description: Maximum number of regenerate attempts allowed per query including the original.
+          description: Maximum number of regenerate attempts allowed per query including
+            the original.
     UpdateAdminSettingsResponse:
       type: object
       required:
@@ -1363,8 +1591,8 @@ components:
           type: string
         generated_sql:
           type: string
-          description: The full evaluator-passed, user-accepted SQL. Included to enable client-side filtering across question
-            text and SQL per FR-022.
+          description: The full evaluator-passed, user-accepted SQL. Included to enable
+            client-side filtering across question text and SQL per FR-022.
         accepted_at:
           type: string
           format: date-time
@@ -1387,7 +1615,8 @@ components:
           type: object
           nullable: true
           additionalProperties: true
-          description: Key-value map for interpolated values in the i18n template. Null if no params needed.
+          description: Key-value map for interpolated values in the i18n template.
+            Null if no params needed.
         should_refine:
           type: boolean
           description: Always true. Signals the frontend to show the refine UI.
@@ -1403,7 +1632,8 @@ components:
         total:
           type: integer
           nullable: true
-          description: Total count of items matching filter; populated only on first-page requests (no cursor) for performance.
+          description: Total count of items matching filter; populated only on first-page
+            requests (no cursor) for performance.
         next_cursor:
           type: string
           nullable: true
@@ -1461,12 +1691,20 @@ components:
           description: Machine-readable error code.
         message_key:
           type: string
-          description: i18n key for the user-facing error message. The frontend translates via i18next.
+          description: i18n key for the user-facing error message. The frontend translates
+            via i18next.
         message_params:
           type: object
           nullable: true
           additionalProperties: true
           description: Key-value map for interpolated values in the i18n template.
+      description: '
+
+
+        Phase 5 error codes: forbidden, sso_no_role, sso_validation_failed, sso_provider_unavailable,
+        sso_not_configured, local_login_admin_only, role_not_found, duplicate_group_mapping,
+        query_blocked_policy, filter_validation_failed, policy_schema_conflict, audit_chain_broken,
+        builtin_role_protected.'
     ValidationErrorResponse:
       type: object
       required:
@@ -1501,7 +1739,8 @@ components:
                 type: object
                 nullable: true
                 additionalProperties: true
-                description: 'Key-value map for interpolated values (e.g., {"max": 2000}).'
+                description: 'Key-value map for interpolated values (e.g., {"max":
+                  2000}).'
     ConnectionListResponse:
       type: object
       required:
@@ -1738,6 +1977,399 @@ components:
         last_activity_at:
           type: string
           format: date-time
+    SsoProviderPublic:
+      type: object
+      required:
+      - protocol
+      - display_name
+      - login_url
+      properties:
+        protocol:
+          type: string
+          enum:
+          - oidc
+          - saml
+        display_name:
+          type: string
+        login_url:
+          type: string
+    SsoProviderResponse:
+      type: object
+      required:
+      - id
+      - protocol
+      - display_name
+      - is_active
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        protocol:
+          type: string
+          enum:
+          - oidc
+          - saml
+        display_name:
+          type: string
+        issuer_url:
+          type: string
+          nullable: true
+        client_id:
+          type: string
+          nullable: true
+        client_secret_masked:
+          type: string
+          default: ●●●●●●●●
+        scopes:
+          type: string
+          default: openid email profile groups
+        redirect_uri:
+          type: string
+          nullable: true
+        group_claim_name:
+          type: string
+          default: groups
+        saml_entity_id:
+          type: string
+          nullable: true
+        saml_metadata_url:
+          type: string
+          nullable: true
+        saml_metadata_xml_masked:
+          type: string
+          default: ●●●●●●●●
+        saml_certificate_masked:
+          type: string
+          default: ●●●●●●●●
+        is_active:
+          type: boolean
+          default: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    SsoProviderCreate:
+      type: object
+      required:
+      - protocol
+      - display_name
+      properties:
+        protocol:
+          type: string
+          enum:
+          - oidc
+          - saml
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        issuer_url:
+          type: string
+          nullable: true
+        client_id:
+          type: string
+          nullable: true
+        client_secret:
+          type: string
+          nullable: true
+          writeOnly: true
+        scopes:
+          type: string
+          default: openid email profile groups
+        redirect_uri:
+          type: string
+          nullable: true
+        group_claim_name:
+          type: string
+          default: groups
+        saml_entity_id:
+          type: string
+          nullable: true
+        saml_metadata_url:
+          type: string
+          nullable: true
+        saml_metadata_xml:
+          type: string
+          nullable: true
+          writeOnly: true
+        saml_certificate:
+          type: string
+          nullable: true
+          writeOnly: true
+    SsoProviderUpdate:
+      type: object
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          nullable: true
+        issuer_url:
+          type: string
+          nullable: true
+        client_id:
+          type: string
+          nullable: true
+        client_secret:
+          type: string
+          nullable: true
+          writeOnly: true
+        scopes:
+          type: string
+          nullable: true
+        redirect_uri:
+          type: string
+          nullable: true
+        group_claim_name:
+          type: string
+          nullable: true
+        saml_entity_id:
+          type: string
+          nullable: true
+        saml_metadata_url:
+          type: string
+          nullable: true
+        saml_metadata_xml:
+          type: string
+          nullable: true
+          writeOnly: true
+        saml_certificate:
+          type: string
+          nullable: true
+          writeOnly: true
+        is_active:
+          type: boolean
+          nullable: true
+    RoleResponse:
+      type: object
+      required:
+      - id
+      - name
+      - priority
+      - permissions
+      - is_builtin
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        priority:
+          type: integer
+        permissions:
+          type: array
+          items:
+            type: string
+          default: []
+        is_builtin:
+          type: boolean
+          default: false
+        group_mappings:
+          type: array
+          items:
+            type: object
+          default: []
+        connection_policy_count:
+          type: integer
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RoleDetailResponse:
+      allOf:
+      - $ref: '#/components/schemas/RoleResponse'
+      - type: object
+        properties:
+          connection_policies:
+            type: array
+            items:
+              type: object
+            default: []
+    RoleCreate:
+      type: object
+      required:
+      - name
+      - priority
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+        priority:
+          type: integer
+          minimum: 0
+        permissions:
+          type: array
+          items:
+            type: string
+          default: []
+        group_mappings:
+          type: array
+          items:
+            type: string
+          default: []
+        connection_policies:
+          type: array
+          items:
+            type: object
+          default: []
+    RoleUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          nullable: true
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+        priority:
+          type: integer
+          minimum: 0
+          nullable: true
+        permissions:
+          type: array
+          items:
+            type: string
+          nullable: true
+        group_mappings:
+          type: array
+          items:
+            type: string
+          nullable: true
+        connection_policies:
+          type: array
+          items:
+            type: object
+          nullable: true
+    PolicyTestRequest:
+      type: object
+      required:
+      - question
+      - connection_id
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        connection_id:
+          type: string
+          format: uuid
+    PolicyTestResponse:
+      type: object
+      required:
+      - would_be_allowed
+      properties:
+        accessible_tables:
+          type: array
+          items:
+            type: string
+          default: []
+        accessible_columns:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          default: {}
+        blocked_tables:
+          type: array
+          items:
+            type: string
+          default: []
+        applicable_row_filters:
+          type: array
+          items:
+            type: object
+          default: []
+        masked_columns:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          default: {}
+        would_be_allowed:
+          type: boolean
+          default: true
+    GroupMappingResponse:
+      type: object
+      required:
+      - id
+      - sso_group_value
+      - role_id
+      - role_name
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        sso_group_value:
+          type: string
+        role_id:
+          type: string
+          format: uuid
+        role_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    GroupMappingCreate:
+      type: object
+      required:
+      - sso_group_value
+      - role_id
+      properties:
+        sso_group_value:
+          type: string
+        role_id:
+          type: string
+          format: uuid
+    AuditVerifyResponse:
+      type: object
+      required:
+      - verified
+      - entries_checked
+      - verified_at
+      properties:
+        verified:
+          type: boolean
+        entries_checked:
+          type: integer
+        first_break_at:
+          type: integer
+          nullable: true
+        verified_at:
+          type: string
+          format: date-time
+    AuditStatusResponse:
+      type: object
+      required:
+      - total_entries
+      properties:
+        total_entries:
+          type: integer
+        last_verification:
+          type: object
+          nullable: true
   /admin/connections:
     get:
       operationId: listAdminConnections
