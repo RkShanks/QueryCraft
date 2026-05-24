@@ -317,19 +317,24 @@ class SsoService:
         return __import__("zlib").decompress(compressed).decode("utf-8")
 
     def _get_idp_entity_id(self, provider: SsoProvider) -> str:
-        """Return IdP entity ID from metadata or configuration."""
+        """Return IdP entity ID from metadata URL.
+
+        Raises SsoValidationError if metadata URL is not configured.
+        """
         if provider.saml_metadata_url:
             # Derive IdP entity ID from metadata URL (common convention)
             return provider.saml_metadata_url.rstrip("/").replace("/metadata", "")
-        # If no metadata URL, we cannot determine IdP entity ID reliably.
-        # This is a configuration error for production.
-        return ""
+        raise SsoValidationError("SSO provider configuration incomplete")
 
     def _get_idp_sso_url(self, provider: SsoProvider) -> str:
-        """Return IdP SSO URL from metadata or configuration. Override in tests."""
+        """Return IdP SSO URL from metadata URL.
+
+        Raises SsoValidationError if metadata URL is not configured.
+        No hardcoded fallback — fail closed.
+        """
         if provider.saml_metadata_url:
             return provider.saml_metadata_url.replace("/metadata", "/sso")
-        return "https://idp.example.com/saml/sso"
+        raise SsoValidationError("SSO provider configuration incomplete")
 
     def _decrypt_saml_certificate(self, provider: SsoProvider) -> str:
         """Decrypt SAML certificate for signature validation."""
@@ -429,6 +434,10 @@ class SsoService:
                 },
                 "x509cert": self._decrypt_saml_certificate(provider),
             },
+            "security": {
+                "wantAssertionsSigned": True,
+                "wantMessagesSigned": False,
+            },
         }
 
         auth = OneLogin_Saml2_Auth(req, settings_dict)
@@ -442,33 +451,25 @@ class SsoService:
             "email": auth.get_attribute("email")[0] if auth.get_attribute("email") else "",
             "groups": auth.get_attribute(provider.group_claim_name) or [],
             "issuer": auth.get_issuer(),
-            "audience": provider.saml_entity_id,
             "not_before": auth.get_session_not_on_or_after(),
             "not_on_or_after": auth.get_session_not_on_or_after(),
             "assertion_id": auth.get_last_assertion_id(),
-            "has_signature": True,
         }
 
     def _validate_saml_assertion(self, attrs: dict, provider: SsoProvider) -> None:
         """Validate SAML assertion attributes per S-002.
 
-        Issuer must match IdP entity ID (not SP entity ID).
-        Audience must match SP entity ID.
+        Signature and audience are already enforced by python3-saml
+        process_response() with security.wantAssertionsSigned=True.
+        This method validates issuer, timestamps, and replay.
         """
         now = datetime.now(UTC)
 
         issuer = attrs.get("issuer")
         expected_issuer = self._get_idp_entity_id(provider)
 
-        if not expected_issuer:
-            raise SsoValidationError("SSO provider configuration incomplete")
-
         if issuer != expected_issuer:
             raise SsoValidationError("SSO issuer validation failed")
-
-        audience = attrs.get("audience")
-        if audience != provider.saml_entity_id:
-            raise SsoValidationError("SSO audience validation failed")
 
         not_before_str = attrs.get("not_before")
         if not_before_str:
@@ -481,9 +482,6 @@ class SsoService:
             not_on_or_after = datetime.fromisoformat(not_on_or_after_str.replace("Z", "+00:00"))
             if not_on_or_after < now - self._clock_skew_tolerance:
                 raise SsoValidationError("SSO assertion expired")
-
-        if not attrs.get("has_signature", False):
-            raise SsoValidationError("SSO assertion missing signature")
 
     # ------------------------------------------------------------------
     # Role resolution
