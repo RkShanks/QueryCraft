@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     SOURCE_DB_SSL_MODE: str = "disable"
 
     # ─── Application ───
+    BASE_URL: str = ""
     QUERY_TIMEOUT_SECONDS: int = 30
     MAX_QUESTION_LENGTH: int = 2000
     SESSION_IDLE_TIMEOUT_HOURS: int = 8

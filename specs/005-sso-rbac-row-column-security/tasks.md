@@ -97,15 +97,15 @@
 
 ### Backend — SSO Service (Owner: Kimi ( opencode ))
 
-- [ ] T-635 [US26] Write TDD tests for OIDC authorization code flow initiation (state/nonce generation, Redis storage, redirect URL) in `backend/tests/unit/test_sso_oidc_flow.py` — FR-117, SC-046
-- [ ] T-636 [US26] Write TDD tests for OIDC callback (ID token validation per S-001: issuer, audience, signature, expiry, nonce, state, replay protection) in `backend/tests/unit/test_sso_oidc_callback.py` — FR-117, FR-119, SC-046
-- [ ] T-637 [US26] Write TDD tests for OIDC error cases (expired token, bad signature, wrong audience, missing nonce, replayed nonce) in `backend/tests/unit/test_sso_oidc_errors.py` — FR-119
-- [ ] T-638 [US27] Write TDD tests for SAML AuthnRequest initiation in `backend/tests/unit/test_sso_saml_flow.py` — FR-118, SC-047
-- [ ] T-639 [US27] Write TDD tests for SAML callback (assertion validation per S-002: issuer, audience, signature, timestamps, replay) in `backend/tests/unit/test_sso_saml_callback.py` — FR-118, FR-119, SC-047
-- [ ] T-640 [US27] Write TDD tests for SAML error cases (expired assertion, replayed assertion, invalid signature, missing signature) in `backend/tests/unit/test_sso_saml_errors.py` — FR-119
-- [ ] T-641 [US26] Implement `SsoService` in `backend/src/app/services/sso_service.py`: OIDC flow via Authlib (authorization code + ID token validation per S-001), SAML flow via python3-saml (AuthnRequest + assertion validation per S-002), behind `SsoProvider` protocol — FR-117, FR-118, FR-119
-- [ ] T-642 [US30] Write TDD tests for role resolution from SSO group claims (single group, multi-group priority ordering, no matching group) in `backend/tests/unit/test_role_resolution.py` — FR-145, SC-062
-- [ ] T-643 [US30] Implement role resolution logic in `backend/src/app/services/sso_service.py`: resolve SSO groups → role via priority ordering, create/update `UserIdentity` on first login — FR-145, SC-062
+- [x] T-635 [US26] Write TDD tests for OIDC authorization code flow initiation (state/nonce generation, Redis storage, redirect URL) in `backend/tests/unit/test_sso_oidc_flow.py` — FR-117, SC-046
+- [x] T-636 [US26] Write TDD tests for OIDC callback (ID token validation per S-001: issuer, audience, signature, expiry, nonce, state, replay protection) in `backend/tests/unit/test_sso_oidc_callback.py` — FR-117, FR-119, SC-046
+- [x] T-637 [US26] Write TDD tests for OIDC error cases (expired token, bad signature, wrong audience, missing nonce, replayed nonce) in `backend/tests/unit/test_sso_oidc_errors.py` — FR-119
+- [x] T-638 [US27] Write TDD tests for SAML AuthnRequest initiation in `backend/tests/unit/test_sso_saml_flow.py` — FR-118, SC-047
+- [x] T-639 [US27] Write TDD tests for SAML callback (assertion validation per S-002: issuer, audience, signature, timestamps, replay) in `backend/tests/unit/test_sso_saml_callback.py` — FR-118, FR-119, SC-047
+- [x] T-640 [US27] Write TDD tests for SAML error cases (expired assertion, replayed assertion, invalid signature, missing signature) in `backend/tests/unit/test_sso_saml_errors.py` — FR-119
+- [x] T-641 [US26] Implement `SsoService` in `backend/src/app/services/sso_service.py`: OIDC flow via Authlib (authorization code + ID token validation per S-001), SAML flow via python3-saml (AuthnRequest + assertion validation per S-002), behind `SsoProvider` protocol — FR-117, FR-118, FR-119
+- [x] T-642 [US30] Write TDD tests for role resolution from SSO group claims (single group, multi-group priority ordering, no matching group) in `backend/tests/unit/test_role_resolution.py` — FR-145, SC-062
+- [x] T-643 [US30] Implement role resolution logic in `backend/src/app/services/sso_service.py`: resolve SSO groups → role via priority ordering, create/update `UserIdentity` on first login — FR-145, SC-062
 - [ ] T-644 [US26] Write TDD tests for replay protection (Redis nonce/assertion ID cache with TTL) in `backend/tests/unit/test_replay_protection.py` — FR-119
 
 ### Backend — SSO Endpoints (Owner: Kimi ( opencode ))
