@@ -70,7 +70,7 @@ Before gates/push, identify every module that imports/extends what you changed â
 Run against committed tree. **Paste verbatim output** in report â€” no summaries.
 
 ```bash
-cd backend && uv run pytest tests/unit -q
+cd backend && uv run pytest tests/unit -q -m "not integration"
 cd backend && uv run ruff check src tests
 cd backend && uv run ruff format --check src tests
 cd ../frontend && npm run test -- --run

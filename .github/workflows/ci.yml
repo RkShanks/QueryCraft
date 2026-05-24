@@ -25,11 +25,11 @@ jobs:
         working-directory: backend
         run: uv run ruff check src tests
 
-      # Fast gate: only unit tests (no live services required).
+      # Fast gate: unit tests excluding service-dependent integration-marked tests.
       # Integration/acceptance/contract tests run locally with `docker compose up`.
       - name: Run Pytest
         working-directory: backend
-        run: uv run pytest tests/unit -q
+        run: uv run pytest tests/unit -q -m "not integration"
 
   frontend-test:
     runs-on: ubuntu-latest

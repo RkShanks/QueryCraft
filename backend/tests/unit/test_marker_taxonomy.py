@@ -51,3 +51,10 @@ class TestMarkerTaxonomy:
         """tests/contract files are auto-marked 'contract'."""
         output = _run_pytest_subprocess(["tests/contract/", "-m", "contract", "-q"])
         assert "test_" in output, output
+
+    def test_integration_marked_tests_in_unit_dir_excluded_by_not_integration(self):
+        """Explicit @pytest.mark.integration under tests/unit is excluded by -m 'not integration'."""
+        output = _run_pytest_subprocess(["tests/unit/source_db/test_connector.py", "-m", "not integration", "-q"])
+        # Quiet collect-only shows count only; verify integration test names absent
+        assert "test_select_as_pagila_user" not in output, output
+        assert "test_insert_fails_for_pagila_user" not in output, output
