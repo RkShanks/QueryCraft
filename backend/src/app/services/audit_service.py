@@ -30,24 +30,26 @@ class VerificationResult:
 # Secret redaction helpers
 # ---------------------------------------------------------------------------
 
-_SENSITIVE_KEYS: set[str] = {
+_SENSITIVE_TOKENS: set[str] = {
     "password",
     "secret",
     "token",
     "apikey",
     "credential",
-    "clientsecret",
-    "accesstoken",
-    "refreshtoken",
     "certificate",
     "privatekey",
+    "assertion",
+    "samlresponse",
+    "authorization",
     "encryptionkey",
+    "bearer",
+    "jwt",
 }
 
 
 def _is_sensitive_key(key: str) -> bool:
     normalized = key.lower().replace("_", "").replace("-", "")
-    return normalized in _SENSITIVE_KEYS
+    return any(token in normalized for token in _SENSITIVE_TOKENS)
 
 
 def _redact_value(value: Any) -> Any:
