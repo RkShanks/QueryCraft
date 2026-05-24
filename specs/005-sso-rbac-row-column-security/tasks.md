@@ -109,7 +109,7 @@
   - PR-105 fix-3: Sanitized python3-saml boundary — `process_response()` wrapped in try/except, re-raises `SsoValidationError` from original exception.
 - [x] T-642 [US30] Write TDD tests for role resolution from SSO group claims (single group, multi-group priority ordering, no matching group) in `backend/tests/unit/test_role_resolution.py` — FR-145, SC-062
 - [x] T-643 [US30] Implement role resolution logic in `backend/src/app/services/sso_service.py`: resolve SSO groups → role via priority ordering, create/update `UserIdentity` on first login — FR-145, SC-062
-- [ ] T-644 [US26] Write TDD tests for replay protection (Redis nonce/assertion ID cache with TTL) in `backend/tests/unit/test_replay_protection.py` — FR-119
+- [x] T-644 [US26] Write TDD tests for replay protection (Redis nonce/assertion ID cache with TTL) in `backend/tests/unit/test_replay_protection.py` — FR-119
 
 ### Backend — SSO Endpoints (Owner: Kimi ( opencode ))
 
