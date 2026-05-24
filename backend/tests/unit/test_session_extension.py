@@ -61,10 +61,10 @@ class TestSessionExtension:
         mock_repo.get_by_username.return_value = user_with_role
         profile, session_id = await service.sign_in("analyst1", "secret")
         call_args = mock_redis.set.await_args
-        session_data = call_args[0][0]  # first positional arg is key
-        # Actually redis.set(key, value, ex=...), so value is second arg
+        # redis.set(key, value, ex=...), so value is second arg
         raw_value = call_args[0][1]
         import json
+
         session = json.loads(raw_value)
         assert session["role_id"] == "role-uuid-1234"
 
@@ -76,6 +76,7 @@ class TestSessionExtension:
         call_args = mock_redis.set.await_args
         raw_value = call_args[0][1]
         import json
+
         session = json.loads(raw_value)
         assert session["role_name"] == "Analyst"
 
@@ -87,6 +88,7 @@ class TestSessionExtension:
         call_args = mock_redis.set.await_args
         raw_value = call_args[0][1]
         import json
+
         session = json.loads(raw_value)
         assert session["permissions"] == ["query.submit", "query.history.view"]
 
@@ -98,6 +100,7 @@ class TestSessionExtension:
         call_args = mock_redis.set.await_args
         raw_value = call_args[0][1]
         import json
+
         session = json.loads(raw_value)
         assert session["auth_provider"] == "local"
 
@@ -109,6 +112,7 @@ class TestSessionExtension:
         call_args = mock_redis.set.await_args
         raw_value = call_args[0][1]
         import json
+
         session = json.loads(raw_value)
         assert session["subject_id"] == "analyst1"
 
@@ -120,6 +124,7 @@ class TestSessionExtension:
         call_args = mock_redis.set.await_args
         raw_value = call_args[0][1]
         import json
+
         session = json.loads(raw_value)
         assert session["user_id"] == "550e8400-e29b-41d4-a716-446655440000"
         assert session["username"] == "analyst1"
@@ -132,18 +137,21 @@ class TestSessionExtension:
     async def test_get_me_returns_extended_profile(self, service, mock_repo, mock_redis, user_with_role):
         """get_me returns UserProfile with role_id, role_name, permissions, auth_provider."""
         import json
-        mock_redis.get.return_value = json.dumps({
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "username": "analyst1",
-            "display_name": "Analyst One",
-            "role": "analyst",
-            "role_id": "role-uuid-1234",
-            "role_name": "Analyst",
-            "permissions": ["query.submit", "query.history.view"],
-            "auth_provider": "local",
-            "subject_id": "analyst1",
-            "email": "analyst1@example.com",
-        })
+
+        mock_redis.get.return_value = json.dumps(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "username": "analyst1",
+                "display_name": "Analyst One",
+                "role": "analyst",
+                "role_id": "role-uuid-1234",
+                "role_name": "Analyst",
+                "permissions": ["query.submit", "query.history.view"],
+                "auth_provider": "local",
+                "subject_id": "analyst1",
+                "email": "analyst1@example.com",
+            }
+        )
         mock_repo.get_by_id.return_value = user_with_role
         profile = await service.get_me("session-123")
         assert profile.role_id == "role-uuid-1234"
@@ -155,6 +163,7 @@ class TestSessionExtension:
     async def test_get_me_user_without_role(self, service, mock_repo, mock_redis):
         """User with no role_id returns None for role fields."""
         import json
+
         user_no_role = MagicMock()
         user_no_role.id = "550e8400-e29b-41d4-a716-446655440000"
         user_no_role.username = "unmapped"
@@ -164,17 +173,19 @@ class TestSessionExtension:
         user_no_role.auth_provider = "oidc"
         user_no_role.role_obj = None
 
-        mock_redis.get.return_value = json.dumps({
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "username": "unmapped",
-            "display_name": "Unmapped User",
-            "role": "user",
-            "role_id": None,
-            "role_name": None,
-            "permissions": [],
-            "auth_provider": "oidc",
-            "subject_id": "sso-subject-123",
-        })
+        mock_redis.get.return_value = json.dumps(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "username": "unmapped",
+                "display_name": "Unmapped User",
+                "role": "user",
+                "role_id": None,
+                "role_name": None,
+                "permissions": [],
+                "auth_provider": "oidc",
+                "subject_id": "sso-subject-123",
+            }
+        )
         mock_repo.get_by_id.return_value = user_no_role
         profile = await service.get_me("session-123")
         assert profile.role_id is None
@@ -186,18 +197,21 @@ class TestSessionExtension:
     async def test_profile_response_does_not_expose_password_hash(self, service, mock_repo, mock_redis, user_with_role):
         """UserProfile must never contain password_hash or other secrets."""
         import json
-        mock_redis.get.return_value = json.dumps({
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "username": "analyst1",
-            "display_name": "Analyst One",
-            "role": "analyst",
-            "role_id": "role-uuid-1234",
-            "role_name": "Analyst",
-            "permissions": ["query.submit"],
-            "auth_provider": "local",
-            "subject_id": "analyst1",
-            "password_hash": "should_not_appear",  # simulate old session with this field
-        })
+
+        mock_redis.get.return_value = json.dumps(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "username": "analyst1",
+                "display_name": "Analyst One",
+                "role": "analyst",
+                "role_id": "role-uuid-1234",
+                "role_name": "Analyst",
+                "permissions": ["query.submit"],
+                "auth_provider": "local",
+                "subject_id": "analyst1",
+                "password_hash": "should_not_appear",  # simulate old session with this field
+            }
+        )
         mock_repo.get_by_id.return_value = user_with_role
         profile = await service.get_me("session-123")
         profile_dict = profile.model_dump()

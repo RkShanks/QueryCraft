@@ -38,17 +38,27 @@ class AuthService:
 
         session_id = os.urandom(32).hex()
 
+        def _real_str_attr(obj, attr, default):
+            val = getattr(obj, attr, default)
+            return val if isinstance(val, str) else default
+
         # Resolve role-derived fields from user.role_obj if available
-        role_id = str(user.role_id) if user.role_id else None
+        _role_id = getattr(user, "role_id", None)
+        role_id = str(_role_id) if isinstance(_role_id, (uuid.UUID, str)) else None
         role_name = None
         permissions: list[str] = []
-        if getattr(user, "role_obj", None) is not None:
-            role_name = user.role_obj.name
-            permissions = list(user.role_obj.permissions) if user.role_obj.permissions else []
+        role_obj = getattr(user, "role_obj", None)
+        if role_obj is not None:
+            _name = getattr(role_obj, "name", None)
+            if isinstance(_name, str):
+                role_name = _name
+            _perms = getattr(role_obj, "permissions", None)
+            if isinstance(_perms, (list, tuple, set)):
+                permissions = list(_perms)
 
-        auth_provider = getattr(user, "auth_provider", "local")
+        auth_provider = _real_str_attr(user, "auth_provider", "local")
         # Local users: subject_id defaults to username
-        subject_id = username if auth_provider == "local" else getattr(user, "subject_id", username)
+        subject_id = username if auth_provider == "local" else _real_str_attr(user, "subject_id", username)
 
         session_data = {
             "user_id": str(user.id),
