@@ -357,7 +357,7 @@
 - **Model**: Kimi (opencode) Backend Implementer
 - **T-IDs**: T-654 through T-655
 - **Branch**: `phase-5/wave-17.1e-sso-audit-logging`
-- **PR**: (pending)
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/112
 
 ### Scope
 - TDD tests for SSO audit logging: login success/failure (OIDC + SAML), SSO validation events, admin SSO config changes (create/update/delete).
