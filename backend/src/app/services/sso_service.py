@@ -18,6 +18,7 @@ Security:
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import os
 import secrets
@@ -38,6 +39,7 @@ from app.db.models.sso_group_mapping import SsoGroupMapping
 from app.db.models.sso_provider import SsoProvider
 from app.db.models.user import User
 from app.db.models.user_identity import UserIdentity
+from app.repositories.session_repository import SessionRepository
 from app.services.audit_service import AuditService
 
 
@@ -245,6 +247,10 @@ class SsoService:
             # Audit failure: revoke the session we just created so the login
             # cannot be used without an audit trail.
             await self._redis.delete(f"session:{session_id}")
+            user_id = str(profile.get("user_id", ""))
+            if user_id:
+                with contextlib.suppress(Exception):
+                    await self._redis.zrem(f"user_sessions:{user_id}", session_id)
             raise
 
         return profile, session_id
@@ -602,6 +608,10 @@ class SsoService:
             # Audit failure: revoke the session we just created so the login
             # cannot be used without an audit trail.
             await self._redis.delete(f"session:{session_id}")
+            user_id = str(profile.get("user_id", ""))
+            if user_id:
+                with contextlib.suppress(Exception):
+                    await self._redis.zrem(f"user_sessions:{user_id}", session_id)
             raise
 
         return profile, session_id
@@ -802,6 +812,17 @@ class SsoService:
             f"session:{session_id}",
             json.dumps(session_data),
             ex=ttl,
+        )
+
+        # Enforce concurrent session limit per user (FR-127, S-010)
+        max_sessions = getattr(self._settings, "MAX_CONCURRENT_SESSIONS_PER_USER", 5)
+        await SessionRepository.enforce_concurrent_session_limit(
+            self._redis,
+            str(user.id),
+            session_id,
+            session_data["created_at"],
+            max_sessions,
+            ttl,
         )
 
         profile = {

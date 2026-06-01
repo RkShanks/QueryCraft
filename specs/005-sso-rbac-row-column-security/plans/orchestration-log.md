@@ -216,14 +216,14 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1e
+## Current Wave Checkpoint — Through Wave 17.1f
 
 ### Status
 - **Date**: 2026-06-01
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1e complete and ready for merge/review; Wave 17.1f not dispatched yet.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111.
-- **Current/open PR**: #112 (Wave 17.1e — SSO audit logging).
+- **Current point**: Wave 17.1f complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112.
+- **Current/open PR**: #113 (Wave 17.1f — Concurrent Session Limit).
 - **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
 
 ### Completed Scope Through This Point
@@ -264,6 +264,13 @@
   - Audit context redaction: no raw tokens, certs, assertion XML, secrets, hostnames, UUIDs.
   - Admin SSO mutation+audit atomic: audit entry in same transaction as provider mutation.
   - SSO login session cleanup on audit failure: Redis session revoked if `auth.login.success` audit fails.
+- Wave 17.1f concurrent session limit slice is complete:
+  - Max 5 concurrent sessions per user (configurable via `MAX_CONCURRENT_SESSIONS_PER_USER`).
+  - Oldest session eviction on overflow via Redis sorted set (`user_sessions:{user_id}`).
+  - Applies to local admin login (`AuthService.sign_in`) and SSO login (`SsoService._resolve_role_and_create_session`).
+  - Built-in admin login guarantee preserved: eviction happens, login never blocked.
+  - `AuthService.sign_out` cleans up user session index.
+  - SSO audit-failure cleanup regression fixed: audit failure removes both `session:{id}` and `user_sessions:{user_id}` member.
 
 ### Review Decisions Locked
 - OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
@@ -276,11 +283,11 @@
 - SSO login cannot leave an unaudited session: Redis session is deleted if `auth.login.success` audit fails.
 
 ### Remaining Wave 17.1 Work
-- T-656-T-657: concurrent session limit tests and enforcement.
-- T-658: Wave 17.1 backend gate.
+- None. Wave 17.1 backend is complete.
 
 ### Next Dispatch Constraint
-- Dispatch Wave 17.1f as a backend-only PR for T-656 through T-658 (concurrent session limit + backend gate) before frontend Wave 17.1 surfaces.
+- Merge Wave 17.1f PR #113 to `main`.
+- Dispatch Wave 17.1 frontend work (T-659–T-670) after backend merge.
 
 ---
 
@@ -394,3 +401,45 @@
 ### Remaining Wave 17.1 Work
 - T-656-T-657: concurrent session limit tests and enforcement.
 - T-658: Wave 17.1 backend gate.
+
+---
+
+## Wave 17.1f — Concurrent Session Limit
+
+### Dispatch
+- **Date**: 2026-06-01
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-656 through T-658
+- **Branch**: `phase-5/wave-17.1f-concurrent-session-limit`
+- **PR**: (pending)
+
+### Scope
+- TDD tests for concurrent session limit: max 5 per user (configurable), oldest evicted on overflow.
+- Applies to both local admin login (`AuthService.sign_in`) and SSO login (`SsoService._resolve_role_and_create_session`).
+- Built-in admin login guarantee preserved: limit evicts oldest, never blocks login.
+- Session eviction sanitized: no raw session IDs, user UUIDs, usernames, or auth-provider details in user-facing errors.
+- `SessionRepository.enforce_concurrent_session_limit`: shared static helper using Redis sorted set (`user_sessions:{user_id}`) with score = `created_at`.
+- `AuthService.sign_out`: cleans up user session index via `zrem`.
+- `Settings.MAX_CONCURRENT_SESSIONS_PER_USER`: default 5, <=0 disables enforcement.
+
+### Gates
+- Full unit gate: `847 passed, 61 skipped, 9 deselected, 12 warnings in 12.17s`
+- Ruff check: `All checks passed!`
+- Ruff format: `280 files already formatted`
+
+### Security Notes
+- Oldest-session eviction uses Redis sorted set (score = creation timestamp). No user data in eviction response.
+- `sign_out` reads session data to discover `user_id` for index cleanup; any parse error is silently swallowed to prevent data leakage.
+- `enforce_concurrent_session_limit` guards against mocked settings values (converts to `int`, falls back to 5).
+
+### Review Decisions Locked
+- Session limit enforcement is eviction-based, not blocking. Login always succeeds; oldest sessions are removed.
+- Shared `SessionRepository.enforce_concurrent_session_limit` static method to avoid duplication between AuthService and SsoService.
+- `MAX_CONCURRENT_SESSIONS_PER_USER <= 0` disables limit entirely (backward-compatible).
+
+### Remaining Wave 17.1 Work
+- None. Wave 17.1 backend is complete.
+
+### Next Steps
+- Merge this PR to `main`.
+- Dispatch Wave 17.1 frontend work (T-659–T-670) after backend merge.

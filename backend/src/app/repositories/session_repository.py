@@ -3,6 +3,7 @@
 import uuid
 from datetime import UTC, datetime
 
+from redis.asyncio import Redis
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -107,3 +108,51 @@ class SessionRepository:
         await self._session.flush()
         await self._session.refresh(session)
         return session
+
+    # ------------------------------------------------------------------
+    # Concurrent session limit enforcement (FR-127, S-010)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def enforce_concurrent_session_limit(
+        redis: Redis,
+        user_id: str,
+        new_session_id: str,
+        created_at: float,
+        max_sessions: int,
+        session_ttl_seconds: int,
+    ) -> None:
+        """Add new session to user index and evict oldest if over limit.
+
+        Uses a Redis sorted set keyed by user_id with score = created_at timestamp.
+        Oldest sessions (lowest score) are evicted first when count exceeds
+        ``max_sessions``.  A limit <= 0 disables enforcement.
+
+        This is a static helper so both AuthService and SsoService can share
+        the same eviction logic without duplicating code.
+        """
+        # Guard against mocked / missing settings values in tests
+        try:
+            max_sessions = int(max_sessions)
+        except Exception:
+            max_sessions = 5
+        if max_sessions <= 0:
+            return
+
+        user_index_key = f"user_sessions:{user_id}"
+
+        # Add new session to sorted set (score = creation time)
+        await redis.zadd(user_index_key, {new_session_id: created_at})
+        # Refresh TTL on index to match session TTL
+        await redis.expire(user_index_key, session_ttl_seconds)
+
+        # Count current sessions for this user
+        current_count = await redis.zcard(user_index_key)
+        overflow = int(current_count) - max_sessions
+        if overflow > 0:
+            # Fetch oldest overflow session IDs before removing
+            oldest_ids = await redis.zrange(user_index_key, 0, overflow - 1)
+            if oldest_ids:
+                for sid in oldest_ids:
+                    await redis.delete(f"session:{sid}")
+                await redis.zrem(user_index_key, *oldest_ids)
