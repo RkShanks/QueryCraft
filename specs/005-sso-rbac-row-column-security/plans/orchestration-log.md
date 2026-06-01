@@ -216,13 +216,13 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1b
+## Current Wave Checkpoint — Through Wave 17.1d
 
 ### Status
 - **Date**: 2026-05-24
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1b complete and merged; Wave 17.1c not dispatched yet.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108.
+- **Current point**: Wave 17.1d complete and merged; Wave 17.1e not dispatched yet.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111.
 - **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
 
 ### Completed Scope Through This Point
@@ -246,6 +246,16 @@
   - SSO callback session cookies on returned redirects.
   - Path-exact SAML ACS origin bypass.
   - Admin-only local password login with generic 401 rejection.
+- Wave 17.1c admin SSO provider CRUD slice is complete:
+  - Admin SSO provider CRUD endpoints.
+  - `admin.sso.manage` permission enforcement.
+  - Secret encryption at rest and masked responses.
+  - Duplicate protocol and required-field validation.
+- Wave 17.1d admin lockout prevention slice is complete:
+  - Built-in user/role deletion blocked at repository layer.
+  - Built-in role core property changes blocked.
+  - Built-in admin local login guarantee covered by tests.
+  - `error.builtinRoleProtected` i18n key added in EN/AR.
 
 ### Review Decisions Locked
 - OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
@@ -256,14 +266,12 @@
 - GLM prompts should be constrained to 2-4 implementation tasks per prompt.
 
 ### Remaining Wave 17.1 Work
-- T-649-T-651: admin SSO provider CRUD and secret masking.
-- T-652-T-653: built-in admin lockout prevention tests and implementation.
 - T-654-T-655: SSO login/audit events.
 - T-656-T-657: concurrent session limit tests and enforcement.
 - T-658: Wave 17.1 backend gate.
 
 ### Next Dispatch Constraint
-- Dispatch Wave 17.1c as a backend-only PR for 2-4 tasks max before frontend Wave 17.1 surfaces. Recommended next slice: T-649 through T-651 (admin SSO provider CRUD + router registration).
+- Dispatch Wave 17.1e as a backend-only PR for 2 tasks max before frontend Wave 17.1 surfaces. Recommended next slice: T-654 through T-655 (SSO audit logging).
 
 ---
 
