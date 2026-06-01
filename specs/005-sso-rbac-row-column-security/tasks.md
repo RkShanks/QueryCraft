@@ -154,27 +154,27 @@
 
 ### Frontend — Admin SSO Config Page (Owner: Gemini)
 
-- [ ] T-662 [US29] Write TDD tests for SSO config page (OIDC form, SAML form, secret masking display, validation errors, CRUD operations) in `frontend/src/pages/AdminSsoPage.test.tsx` — FR-115, FR-116
-- [ ] T-663 [US29] Create admin SSO config page `frontend/src/pages/AdminSsoPage.tsx`: OIDC provider form (issuer, client ID, secret, scopes, redirect URI, group claim), SAML provider form (entity ID, metadata URL/XML, certificate), secret masking (`●●●●●●●●`), validation error display — FR-115, FR-116
-- [ ] T-664 [US29] Create `useAdminSso` hook in `frontend/src/hooks/useAdminSso.ts` for SSO provider CRUD via TanStack Query — FR-115, FR-116
+- [x] T-662 [US29] Write TDD tests for SSO config page (OIDC form, SAML form, secret masking display, validation errors, CRUD operations) in `frontend/src/pages/AdminSsoPage.test.tsx` — FR-115, FR-116
+- [x] T-663 [US29] Create admin SSO config page `frontend/src/pages/AdminSsoPage.tsx`: OIDC provider form (issuer, client ID, secret, scopes, redirect URI, group claim), SAML provider form (entity ID, metadata URL/XML, certificate), secret masking (`●●●●●●●●`), validation error display — FR-115, FR-116
+- [x] T-664 [US29] Create `useAdminSso` hook in `frontend/src/hooks/useAdminSso.ts` for SSO provider CRUD via TanStack Query — FR-115, FR-116
 
 ### Frontend — i18n for Wave 17.1 (Owner: Gemini)
 
-- [ ] T-665 [US33] Add all Wave 17.1 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: SSO sign-in labels, SSO error messages, SSO config page labels, all new `error.*` keys per api-contracts.md error codes — FR-137, FR-139
-- [ ] T-666 [US33] Verify 100% EN/AR key parity for Wave 17.1 keys via `frontend/src/locales/localeCoverage.test.ts` — FR-137, SC-054
+- [x] T-665 [US33] Add all Wave 17.1 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: SSO sign-in labels, SSO error messages, SSO config page labels, all new `error.*` keys per api-contracts.md error codes — FR-137, FR-139
+- [x] T-666 [US33] Verify 100% EN/AR key parity for Wave 17.1 keys via `frontend/src/locales/localeCoverage.test.ts` — FR-137, SC-054
 
 ### Frontend — Routing (Owner: Gemini)
 
-- [ ] T-667 [US29] Add `/admin/sso` route to `frontend/src/App.tsx` with permission guard — FR-115
+- [x] T-667 [US29] Add `/admin/sso` route to `frontend/src/App.tsx` with permission guard — FR-115
 
 ### Frontend — Browser Evidence (Owner: Gemini)
 
 - [x] T-668 [US26] Chrome DevTools MCP: verify SSO sign-in page renders provider buttons, error messages display correctly, Arabic/RTL layout correct — FR-121, SC-055
-- [ ] T-669 [US29] Chrome DevTools MCP: verify admin SSO config page renders OIDC/SAML forms, secret masking works, Arabic/RTL correct — FR-115, SC-055
+- [x] T-669 [US29] Chrome DevTools MCP: verify admin SSO config page renders OIDC/SAML forms, secret masking works, Arabic/RTL correct — FR-115, SC-055
 
 ### Wave 17.1 Frontend Gate
 
-- [ ] T-670 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
+- [x] T-670 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
 
 ---
 

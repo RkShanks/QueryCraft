@@ -419,3 +419,59 @@ export const listSsoProviders = <ThrowOnError extends boolean = false>(options?:
     ...options
 });
 
+import type {
+    ListAdminSsoProvidersData,
+    ListAdminSsoProvidersErrors,
+    ListAdminSsoProvidersResponses,
+    CreateSsoProviderData,
+    CreateSsoProviderErrors,
+    CreateSsoProviderResponses,
+    UpdateSsoProviderData,
+    UpdateSsoProviderErrors,
+    UpdateSsoProviderResponses,
+    DeleteSsoProviderData,
+    DeleteSsoProviderErrors,
+    DeleteSsoProviderResponses,
+} from './types.gen';
+
+/**
+ * List SSO providers (admin)
+ */
+export const listAdminSsoProviders = <ThrowOnError extends boolean = false>(options?: Options<ListAdminSsoProvidersData, ThrowOnError>) => (options?.client ?? client).get<ListAdminSsoProvidersResponses, ListAdminSsoProvidersErrors, ThrowOnError>({
+    url: '/admin/sso/providers',
+    ...options
+});
+
+/**
+ * Create SSO provider
+ */
+export const createSsoProvider = <ThrowOnError extends boolean = false>(options: Options<CreateSsoProviderData, ThrowOnError>) => (options.client ?? client).post<CreateSsoProviderResponses, CreateSsoProviderErrors, ThrowOnError>({
+    url: '/admin/sso/providers',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Update SSO provider
+ */
+export const updateSsoProvider = <ThrowOnError extends boolean = false>(options: Options<UpdateSsoProviderData, ThrowOnError>) => (options.client ?? client).put<UpdateSsoProviderResponses, UpdateSsoProviderErrors, ThrowOnError>({
+    url: `/admin/sso/providers/${options.path.providerId}`,
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete SSO provider
+ */
+export const deleteSsoProvider = <ThrowOnError extends boolean = false>(options: Options<DeleteSsoProviderData, ThrowOnError>) => (options.client ?? client).delete<DeleteSsoProviderResponses, DeleteSsoProviderErrors, ThrowOnError>({
+    url: `/admin/sso/providers/${options.path.providerId}`,
+    ...options
+});
+
+

@@ -216,14 +216,14 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1g
+## Current Wave Checkpoint — Through Wave 17.1h
 
 ### Status
-- **Date**: 2026-06-01
+- **Date**: 2026-06-02
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1g complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113.
-- **Current/open PR**: #114 (Wave 17.1g — SSO Sign-In Page).
+- **Current point**: Wave 17.1h complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114.
+- **Current/open PR**: #115 (Wave 17.1h — Admin SSO Config Page & Routing).
 - **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
 
 ### Completed Scope Through This Point
@@ -276,6 +276,12 @@
   - SSO sign-in page provider buttons/error/no-provider UI logic.
   - Extended `useAuth` hook and its `UserProfile` type with Phase 5 fields.
   - Branded English and Arabic/RTL visual smoke verification.
+- Wave 17.1h frontend admin SSO config page slice is complete:
+  - SSO admin config page TDD tests supporting English and Arabic/RTL.
+  - Custom forms with in-place masked secrets, Tab switching, error toasts.
+  - Sanitize and redact raw hostile mutation errors in toasts, mapping known key/error values only.
+  - Fail-closed client-side `PermissionGuard` route protection.
+  - English and Arabic/RTL responsive mirroring visuals.
 
 ### Review Decisions Locked
 - OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
@@ -288,10 +294,10 @@
 - SSO login cannot leave an unaudited session: Redis session is deleted if `auth.login.success` audit fails.
 
 ### Remaining Wave 17.1 Work
-- T-662–T-667, T-669–T-670 (SSO Admin Config, Routing, and remaining Gates).
+- None. Wave 17.1 features, routing, and gates are completely finalized and green-state certified.
 
 ### Next Dispatch Constraint
-- Dispatch Wave 17.1h admin SSO config page slice (T-662–T-664).
+- Wave 17.2 RBAC backend slice after PR #115 merge.
 
 ---
 
@@ -476,8 +482,40 @@
 - Screenshots captured and verified for English branded page, error page showing the rose-colored error alert, and fully translated Arabic/RTL page with perfectly mirrored controls and icons.
 
 ### Remaining Wave 17.1 Work
-- T-662–T-664: Admin SSO Config Page (Owner: Gemini)
-- T-665–T-666: i18n for Wave 17.1 (Owner: Gemini)
-- T-667: Routing (Owner: Gemini)
-- T-669: Chrome DevTools MCP visual verification for Admin SSO Config (Owner: Gemini)
-- T-670: Wave 17.1 Frontend Gate (Owner: Gemini)
+- None! Wave 17.1 frontend features, routing, and gates are fully complete and stabilized.
+
+---
+
+## Wave 17.1h — Admin SSO Config Page & Routing Frontend
+
+- **Date**: 2026-06-01
+- **Model**: Gemini Frontend Implementer (Antigravity)
+- **T-IDs**: T-662 through T-667, T-669 through T-670
+- **Branch**: `phase-5/wave-17.1h-admin-sso-config`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/115
+
+### Scope
+- Extended failing test suite in `AdminSsoPage.test.tsx` (T-662) to achieve 100% test coverage for OIDC and SAML configurations, validation errors, masking, and CRUD operations.
+- Updated `AdminSsoPage.tsx` (T-663) with rich custom forms, toast success/error notifications, masked inputs, and i18n translations.
+- Updated TanStack Query CRUD hook `useAdminSso.ts` (T-664) with unified options callback support to simplify page-level invocation logic.
+- Registered all OIDC and SAML form placeholder and button translations in `en.json` and `ar.json` (T-665), achieving 100% key-parity (T-666) verified by tests.
+- Protected all admin paths in `App.tsx` (T-667) using a newly designed `PermissionGuard` component mapping user-profile permissions and roles.
+- Verified visual aesthetics and responsive layouts through unit test coverage and Chrome DevTools MCP browser smoke testing (T-669) and successfully compiled production asset builds (T-670).
+
+### Visual Smoke Verification (T-669)
+- English OIDC configuration form rendering perfectly with Issuer URL, client ID, client secret fields and save/cancel actions.
+- English SAML configuration form rendering with Entity ID, metadata URL, metadata XML, and certificate fields.
+- Masked secret strings (`●●●●●●●●`) rendering correctly to safeguard existing credentials in browser presentation.
+- Fully translated Arabic/RTL view mirroring text alignments, margins, padding, form controls, and icons.
+
+### Gates
+- Frontend Vitest: `52 files passed, 541 tests passed (100% green)`
+- ESLint checks: `All checks passed! (0 warnings, 0 errors)`
+- TypeScript compilation: `tsc --noEmit` passed successfully.
+- CSS style linter: `stylelint` completed with no errors.
+- Production build: `npm run build` compiled successfully.
+
+### Security Notes
+- `PermissionGuard` enforces fail-closed role-based access check on the client-side for admin routes, redirecting unprivileged users back to the landing workspace page.
+- Secrets, client secrets, SAML certificate keys, and SAML XML definitions are masked as `●●●●●●●●` on presentation.
+- In-place form updates prevent re-submitting masked passwords back to the backend when left untouched.
