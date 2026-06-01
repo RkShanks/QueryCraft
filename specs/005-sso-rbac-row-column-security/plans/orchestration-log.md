@@ -501,7 +501,45 @@
 - Audit logging for role create/update/delete via `AuditService.log()` with redacted context.
 
 ### Remaining Wave 17.2 Backend Work
-- T-676/T-677: Group mapping endpoints (create, list, delete).
+- T-678/T-680: Permission gates across all existing admin and query endpoints.
+- T-681/T-682: Unmapped user denial.
+- T-683/T-684: RBAC audit logging coverage.
+- T-685: Wave 17.2 backend gate.
+
+---
+
+## Wave 17.2b — Group Mapping Endpoints
+
+### Dispatch
+- **Date**: 2026-06-02
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-676, T-677
+- **Branch**: `phase-5/wave-17.2b-group-mapping-endpoints`
+- **PR**: (pending)
+
+### Scope
+- T-676: TDD tests for group mapping endpoints (`tests/unit/test_group_mapping_endpoints.py`): permission enforcement (admin.roles.manage, NOT admin.sso.manage), list, create, delete, duplicate group rejection (409), missing role validation (404), error sanitization.
+- T-677: Implemented group mapping endpoints in `backend/src/app/api/v1/admin_sso.py`:
+  - `GET /admin/sso/group-mappings` — list all mappings with role names.
+  - `POST /admin/sso/group-mappings` — create mapping, duplicate check, role existence validation.
+  - `DELETE /admin/sso/group-mappings/{id}` — delete mapping, 404 if missing.
+- Audit logging via `AuditActionType.ROLE_MAPPING_CHANGE` for create and delete.
+- Added i18n keys `error.conflict.duplicateGroupMapping` to `en.json` and `ar.json`.
+
+### Gates
+- Full unit gate: `904 passed, 61 skipped, 9 deselected, 12 warnings in 10.96s`
+- Focused group mapping tests: `23 passed`
+- Ruff check: `All checks passed!`
+- Ruff format: `284 files already formatted`
+
+### Security Notes
+- Group mapping endpoints enforce `require_permission(Permission.ADMIN_ROLES_MANAGE)` — admin.sso.manage does NOT grant access.
+- Duplicate SSO group value returns 409 with sanitized localized key `error.conflict.duplicateGroupMapping`; no raw UUIDs or DB internals leaked.
+- Missing referenced role returns 404 with `error.notFound`; no UUIDs leaked.
+- All exceptions caught and sanitized to generic `error.internal` with no stack traces or DB errors exposed.
+- Audit logging for mapping create/delete via `AuditService.log()` with redacted context.
+
+### Remaining Wave 17.2 Backend Work
 - T-678/T-680: Permission gates across all existing admin and query endpoints.
 - T-681/T-682: Unmapped user denial.
 - T-683/T-684: RBAC audit logging coverage.
