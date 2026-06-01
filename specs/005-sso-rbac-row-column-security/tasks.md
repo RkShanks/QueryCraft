@@ -148,9 +148,9 @@
 
 ### Frontend — SSO Sign-In Page (Owner: Gemini)
 
-- [ ] T-659 [US26] Write TDD tests for SSO sign-in page (provider list rendering, SSO button clicks, error code→i18n mapping, no-provider message, RTL layout) in `frontend/src/pages/SignInPage.test.tsx` (extend existing) — FR-121, FR-119
-- [ ] T-660 [US26] Update `frontend/src/pages/SignInPage.tsx`: add "Sign in with SSO" button(s) from `GET /auth/sso/providers`, display error codes from redirect query params as localized messages, show `error.ssoNotConfigured` when no providers — FR-121, FR-119
-- [ ] T-661 [US26] Extend `useAuth` hook in `frontend/src/hooks/useAuth.ts`: add `UserProfile` fields (`permissions`, `role_name`, `auth_provider`), add SSO provider fetch — FR-127
+- [x] T-659 [US26] Write TDD tests for SSO sign-in page (provider list rendering, SSO button clicks, error code→i18n mapping, no-provider message, RTL layout) in `frontend/src/pages/SignInPage.test.tsx` (extend existing) — FR-121, FR-119
+- [x] T-660 [US26] Update `frontend/src/pages/SignInPage.tsx`: add "Sign in with SSO" button(s) from `GET /auth/sso/providers`, display error codes from redirect query params as localized messages, show `error.ssoNotConfigured` when no providers — FR-121, FR-119
+- [x] T-661 [US26] Extend `useAuth` hook in `frontend/src/hooks/useAuth.ts`: add `UserProfile` fields (`permissions`, `role_name`, `auth_provider`), add SSO provider fetch — FR-127
 
 ### Frontend — Admin SSO Config Page (Owner: Gemini)
 
@@ -169,7 +169,7 @@
 
 ### Frontend — Browser Evidence (Owner: Gemini)
 
-- [ ] T-668 [US26] Chrome DevTools MCP: verify SSO sign-in page renders provider buttons, error messages display correctly, Arabic/RTL layout correct — FR-121, SC-055
+- [x] T-668 [US26] Chrome DevTools MCP: verify SSO sign-in page renders provider buttons, error messages display correctly, Arabic/RTL layout correct — FR-121, SC-055
 - [ ] T-669 [US29] Chrome DevTools MCP: verify admin SSO config page renders OIDC/SAML forms, secret masking works, Arabic/RTL correct — FR-115, SC-055
 
 ### Wave 17.1 Frontend Gate
