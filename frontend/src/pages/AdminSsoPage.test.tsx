@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { AdminSsoPage } from './AdminSsoPage';
 import { useAdminSso } from '../hooks/useAdminSso';
 
@@ -225,5 +225,117 @@ describe('AdminSsoPage', () => {
     await waitFor(() => {
       expect(mockMutations.deleteMutation.mutate).toHaveBeenCalledWith('oidc-123');
     });
+  });
+
+  it('SAML create without certificate shows validation error and does not mutate', async () => {
+    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>);
+    render(<AdminSsoPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'admin.sso.addSaml' }));
+
+    fireEvent.change(screen.getByLabelText('admin.sso.form.displayName'), { target: { value: 'My SAML' } });
+    fireEvent.change(screen.getByLabelText('admin.sso.form.samlEntityId'), { target: { value: 'saml-entity-id' } });
+    fireEvent.change(screen.getByLabelText('admin.sso.form.samlMetadataUrl'), { target: { value: 'https://metadata.com' } });
+    // Left Certificate blank!
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('error.validation.samlRequiredFields')).toBeInTheDocument();
+    });
+    expect(mockMutations.createMutation.mutate).not.toHaveBeenCalled();
+  });
+
+  it('SAML create with certificate calls create mutation with saml_certificate', async () => {
+    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>);
+    render(<AdminSsoPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'admin.sso.addSaml' }));
+
+    fireEvent.change(screen.getByLabelText('admin.sso.form.displayName'), { target: { value: 'My SAML' } });
+    fireEvent.change(screen.getByLabelText('admin.sso.form.samlEntityId'), { target: { value: 'saml-entity-id' } });
+    fireEvent.change(screen.getByLabelText('admin.sso.form.samlMetadataUrl'), { target: { value: 'https://metadata.com' } });
+    fireEvent.change(screen.getByLabelText('admin.sso.form.samlCertificate'), { target: { value: 'BEGIN CERTIFICATE...' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
+
+    await waitFor(() => {
+      expect(mockMutations.createMutation.mutate).toHaveBeenCalledWith(expect.objectContaining({
+        protocol: 'saml',
+        display_name: 'My SAML',
+        saml_entity_id: 'saml-entity-id',
+        saml_metadata_url: 'https://metadata.com',
+        saml_certificate: 'BEGIN CERTIFICATE...',
+      }));
+    });
+  });
+
+  it('sanitizes hostile create error containing raw secret and renders localized fallback instead', async () => {
+    let capturedOnCreateError: ((err: unknown) => void) | undefined;
+
+    vi.mocked(useAdminSso).mockImplementation((opts: unknown) => {
+      const options = opts as { onCreateError?: (err: unknown) => void };
+      capturedOnCreateError = options.onCreateError;
+      return mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>;
+    });
+
+    render(<AdminSsoPage />);
+    expect(capturedOnCreateError).toBeDefined();
+
+    // Trigger error callback with hostile raw message containing sensitive leaked info
+    const hostileError = {
+      message: 'Database query failed: User table not found on internal-db-host-99.internal.corp (traceback uuid-1234-abcd-5678-secret-xyz)',
+      body: {
+        detail: 'Stack trace: at line 45 cert = secret-key-data'
+      }
+    };
+
+    act(() => {
+      capturedOnCreateError!(hostileError);
+    });
+
+    // Verify toast shows localized fallback key and DOES NOT leak internal host/uuid/trace/secret info
+    expect(screen.getByText('admin.sso.addError')).toBeInTheDocument();
+    expect(screen.queryByText(/internal-db-host-99/)).toBeNull();
+    expect(screen.queryByText(/uuid-1234/i)).toBeNull();
+    expect(screen.queryByText(/secret-key-data/i)).toBeNull();
+  });
+
+  it('renders translated text for allowed backend error keys in update/delete', async () => {
+    let capturedOnUpdateError: ((err: unknown) => void) | undefined;
+    let capturedOnDeleteError: ((err: unknown) => void) | undefined;
+
+    vi.mocked(useAdminSso).mockImplementation((opts: unknown) => {
+      const options = opts as {
+        onUpdateError?: (err: unknown) => void;
+        onDeleteError?: (err: unknown) => void;
+      };
+      capturedOnUpdateError = options.onUpdateError;
+      capturedOnDeleteError = options.onDeleteError;
+      return mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>;
+    });
+
+    render(<AdminSsoPage />);
+
+    // 1. Allowed backend error key on update (e.g. duplicateProtocol)
+    act(() => {
+      capturedOnUpdateError!({
+        body: {
+          message_key: 'error.conflict.duplicateProtocol'
+        }
+      });
+    });
+    expect(screen.getByText('error.conflict.duplicateProtocol')).toBeInTheDocument();
+
+    // 2. Hostile delete error is sanitized and falls back to delete error label
+    act(() => {
+      capturedOnDeleteError!({
+        detail: {
+          error: 'Hostile database stack trace: uuid-123-unauthorized-internal'
+        }
+      });
+    });
+    expect(screen.getByText('admin.sso.deleteError')).toBeInTheDocument();
+    expect(screen.queryByText(/Hostile database/i)).toBeNull();
   });
 });

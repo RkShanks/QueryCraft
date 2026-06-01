@@ -297,7 +297,7 @@
   "admin.sso.form.clientSecretPlaceholder": "●●●●●●●●",
   "admin.sso.form.scopes": "Scopes",
   "admin.sso.form.redirectUri": "Redirect URI",
-  "admin.sso.form.redirectUriPlaceholder": "https://app.example.com/api/v1/auth/sso/oidc/callback",
+  "admin.sso.form.redirectUriPlaceholder": "OIDC redirect URI",
   "admin.sso.form.samlEntityId": "Entity ID",
   "admin.sso.form.samlMetadataUrl": "Metadata URL",
   "admin.sso.form.samlMetadataXml": "Metadata XML",

@@ -316,7 +316,7 @@
   "admin.sso.form.clientSecretPlaceholder": "●●●●●●●●",
   "admin.sso.form.scopes": "النطاقات (Scopes)",
   "admin.sso.form.redirectUri": "عنوان URL لإعادة التوجيه",
-  "admin.sso.form.redirectUriPlaceholder": "https://app.example.com/api/v1/auth/sso/oidc/callback",
+  "admin.sso.form.redirectUriPlaceholder": "عنوان URI لإعادة توجيه OIDC",
   "admin.sso.form.samlEntityId": "معرف الكيان (Entity ID)",
   "admin.sso.form.samlMetadataUrl": "عنوان URL للبيانات الوصفية",
   "admin.sso.form.samlMetadataXml": "بيانات وصفية XML",

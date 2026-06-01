@@ -10,6 +10,43 @@ interface Toast {
   message: string;
 }
 
+const ALLOWED_ERROR_KEYS = new Set([
+  'error.validation.oidcRequiredFields',
+  'error.validation.samlRequiredFields',
+  'error.conflict.duplicateProtocol',
+  'error.forbidden',
+  'error.unauthorized'
+]);
+
+function extractErrorKey(err: unknown): string | null {
+  if (!err || typeof err !== 'object') {
+    return null;
+  }
+  const obj = err as Record<string, unknown>;
+
+  // 1. Direct message_key or error
+  if (typeof obj.message_key === 'string' && obj.message_key) return obj.message_key;
+  if (typeof obj.error === 'string' && obj.error) return obj.error;
+
+  // 2. Direct detail (can be object or string)
+  if (obj.detail) {
+    if (typeof obj.detail === 'string' && obj.detail.startsWith('error.')) {
+      return obj.detail;
+    } else if (typeof obj.detail === 'object') {
+      const key = extractErrorKey(obj.detail);
+      if (key) return key;
+    }
+  }
+
+  // 3. Direct body
+  if (obj.body && typeof obj.body === 'object') {
+    const key = extractErrorKey(obj.body);
+    if (key) return key;
+  }
+
+  return null;
+}
+
 export const AdminSsoPage: React.FC = () => {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -22,29 +59,34 @@ export const AdminSsoPage: React.FC = () => {
     }, 5000);
   };
 
+  const getErrorMessage = (err: unknown, fallbackKey: string): string => {
+    const key = extractErrorKey(err);
+    if (key && ALLOWED_ERROR_KEYS.has(key)) {
+      return t(key);
+    }
+    return t(fallbackKey);
+  };
+
   const { listQuery, createMutation, updateMutation, deleteMutation } = useAdminSso({
     onCreateSuccess: () => {
       addToast('success', t('admin.sso.addSuccess') || 'SSO provider configured successfully');
       handleCancel();
     },
     onCreateError: (err: unknown) => {
-      const apiErr = err as { message?: string };
-      addToast('error', apiErr?.message || t('admin.sso.addError') || 'Failed to configure SSO provider');
+      addToast('error', getErrorMessage(err, 'admin.sso.addError'));
     },
     onUpdateSuccess: () => {
       addToast('success', t('admin.sso.updateSuccess') || 'SSO provider updated successfully');
       handleCancel();
     },
     onUpdateError: (err: unknown) => {
-      const apiErr = err as { message?: string };
-      addToast('error', apiErr?.message || t('admin.sso.updateError') || 'Failed to update SSO provider');
+      addToast('error', getErrorMessage(err, 'admin.sso.updateError'));
     },
     onDeleteSuccess: () => {
       addToast('success', t('admin.sso.deleteSuccess') || 'SSO provider deleted successfully');
     },
     onDeleteError: (err: unknown) => {
-      const apiErr = err as { message?: string };
-      addToast('error', apiErr?.message || t('admin.sso.deleteError') || 'Failed to delete SSO provider');
+      addToast('error', getErrorMessage(err, 'admin.sso.deleteError'));
     },
   });
 
@@ -121,7 +163,7 @@ export const AdminSsoPage: React.FC = () => {
         return;
       }
     } else {
-      if (!displayName || !samlEntityId || (!samlMetadataUrl && !samlMetadataXml)) {
+      if (!displayName || !samlEntityId || (!samlMetadataUrl && !samlMetadataXml) || !samlCertificate) {
         setValidationError('error.validation.samlRequiredFields');
         return;
       }
