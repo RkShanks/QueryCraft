@@ -10,6 +10,7 @@ from redis.asyncio import Redis
 
 from app.core.config import Settings, get_settings
 from app.core.security import verify_password
+from app.repositories.session_repository import SessionRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import UserProfile
 
@@ -106,6 +107,9 @@ class AuthService:
             ex=ttl_seconds,
         )
 
+        # Enforce concurrent session limit per user (FR-127, S-010)
+        await self._enforce_concurrent_session_limit(str(user.id), session_id, session_data["created_at"])
+
         profile = UserProfile(
             id=str(user.id),
             username=user.username,
@@ -118,8 +122,36 @@ class AuthService:
         )
         return profile, session_id
 
+    async def _enforce_concurrent_session_limit(
+        self,
+        user_id: str,
+        new_session_id: str,
+        created_at: float,
+    ) -> None:
+        """Delegate to shared SessionRepository eviction logic."""
+        max_sessions = getattr(self._settings, "MAX_CONCURRENT_SESSIONS_PER_USER", 5)
+        ttl_seconds = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
+        await SessionRepository.enforce_concurrent_session_limit(
+            self._redis,
+            user_id,
+            new_session_id,
+            created_at,
+            max_sessions,
+            ttl_seconds,
+        )
+
     async def sign_out(self, session_id: str) -> None:
-        """Delete the session from Redis."""
+        """Delete the session from Redis and clean up user index."""
+        # Remove from user session index first (need to discover user_id)
+        raw = await self._redis.get(f"session:{session_id}")
+        if raw:
+            try:
+                data = json.loads(raw)
+                user_id = data.get("user_id")
+                if user_id:
+                    await self._redis.zrem(f"user_sessions:{user_id}", session_id)
+            except Exception:
+                pass  # sanitize — never leak raw session content
         await self._redis.delete(f"session:{session_id}")
 
     async def get_me(self, session_id: str) -> UserProfile:

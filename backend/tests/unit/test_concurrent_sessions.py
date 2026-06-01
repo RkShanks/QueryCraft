@@ -150,20 +150,22 @@ class TestAuthServiceConcurrentSessions:
         admin_user.role_obj.permissions = ["query.submit"]
         mock_repo.get_by_username.return_value = admin_user
 
-        mock_redis.zcard.return_value = 5
+        mock_redis.zcard.return_value = 6  # 5 existing + 1 new after zadd
         mock_redis.zrange.return_value = ["oldest-session-id"]
 
         profile, session_id = await service.sign_in("admin", "secret")
         assert profile is not None
-        # Should evict overflow = zcard + 1 - max = 5 + 1 - 5 = 1 oldest
-        mock_redis.zremrangebyrank.assert_awaited_once()
-        zrem_args = mock_redis.zremrangebyrank.call_args
-        assert zrem_args[0][0].startswith("user_sessions:")
-        assert zrem_args[0][1] == 0
-        assert zrem_args[0][2] == 0  # remove rank 0 (oldest)
+        # Should evict overflow = 6 - 5 = 1 oldest
+        # Implementation uses zrange(0, 0) -> zrem -> delete
+        mock_redis.zrange.assert_awaited()
+        zrange_calls = [c for c in mock_redis.zrange.call_args_list if "user_sessions:" in str(c[0][0])]
+        assert len(zrange_calls) >= 1
         # Session key also deleted
         delete_calls = [c for c in mock_redis.delete.call_args_list if "session:" in str(c[0][0])]
         assert any("oldest-session-id" in str(c[0]) for c in delete_calls)
+        # Removed from user index
+        zrem_calls = [c for c in mock_redis.zrem.call_args_list if "oldest-session-id" in str(c[0])]
+        assert len(zrem_calls) >= 1
 
     @pytest.mark.asyncio
     async def test_sign_in_over_limit_evicts_multiple_oldest(self, service, mock_repo, mock_redis):
@@ -174,14 +176,17 @@ class TestAuthServiceConcurrentSessions:
         admin_user.role_obj.permissions = ["query.submit"]
         mock_repo.get_by_username.return_value = admin_user
 
-        mock_redis.zcard.return_value = 7
+        mock_redis.zcard.return_value = 8  # 7 existing + 1 new after zadd
         mock_redis.zrange.return_value = ["s1", "s2", "s3"]
 
         profile, session_id = await service.sign_in("admin", "secret")
         assert profile is not None
-        zrem_args = mock_redis.zremrangebyrank.call_args
-        # Evict 7 + 1 - 5 = 3 oldest
-        assert zrem_args[0][2] == 2  # rank 0 through 2 = 3 items
+        # Evict 8 - 5 = 3 oldest
+        zrange_calls = [c for c in mock_redis.zrange.call_args_list if "user_sessions:" in str(c[0][0])]
+        assert len(zrange_calls) >= 1
+        zrange_args = zrange_calls[-1][0]
+        assert zrange_args[1] == 0
+        assert zrange_args[2] == 2  # rank 0 through 2 = 3 items
 
     @pytest.mark.asyncio
     async def test_builtin_admin_always_allowed_despite_limit(self, service, mock_repo, mock_redis):
@@ -192,14 +197,15 @@ class TestAuthServiceConcurrentSessions:
         admin_user.role_obj.permissions = ["query.submit", "admin.sso.manage"]
         mock_repo.get_by_username.return_value = admin_user
 
-        mock_redis.zcard.return_value = 5
+        mock_redis.zcard.return_value = 6  # 5 existing + 1 new after zadd
         mock_redis.zrange.return_value = ["old-session"]
 
         profile, session_id = await service.sign_in("admin", "secret")
         assert profile.username == "admin"
         assert session_id is not None
         # Eviction happened, not a hard block
-        mock_redis.zremrangebyrank.assert_awaited_once()
+        zrange_calls = [c for c in mock_redis.zrange.call_args_list if "user_sessions:" in str(c[0][0])]
+        assert len(zrange_calls) >= 1
 
     @pytest.mark.asyncio
     async def test_eviction_does_not_leak_session_id_in_response(self, service, mock_repo, mock_redis):
@@ -229,7 +235,7 @@ class TestAuthServiceConcurrentSessions:
         admin_user.role_obj.permissions = ["query.submit"]
         mock_repo.get_by_username.return_value = admin_user
 
-        mock_redis.zcard.return_value = 5
+        mock_redis.zcard.return_value = 6  # 5 existing + 1 new after zadd
         mock_redis.zrange.return_value = ["old-session"]
         # Even if Redis delete fails, error should be sanitized
         mock_redis.delete.side_effect = RuntimeError("Redis connection lost")
@@ -240,7 +246,7 @@ class TestAuthServiceConcurrentSessions:
         error_str = str(exc_info.value)
         assert "old-session" not in error_str
         assert "550e8400" not in error_str  # user UUID
-        assert "admin" not in error_str.lower() or "unauthorized" in error_str.lower()
+        assert "admin" not in error_str.lower() or "internal" in error_str.lower()
 
     @pytest.mark.asyncio
     async def test_custom_max_sessions_setting_respected(self, mock_repo, mock_redis):
@@ -255,17 +261,23 @@ class TestAuthServiceConcurrentSessions:
         admin_user.role_obj.permissions = ["query.submit"]
         mock_repo.get_by_username.return_value = admin_user
 
-        mock_redis.zcard.return_value = 3
+        mock_redis.zcard.return_value = 4  # 3 existing + 1 new after zadd
         mock_redis.zrange.return_value = ["oldest"]
 
         profile, session_id = await svc.sign_in("admin", "secret")
         assert profile is not None
-        zrem_args = mock_redis.zremrangebyrank.call_args
-        assert zrem_args[0][2] == 0  # evict 1 (3 + 1 - 3 = 1)
+        zrange_calls = [c for c in mock_redis.zrange.call_args_list if "user_sessions:" in str(c[0][0])]
+        assert len(zrange_calls) >= 1
+        zrange_args = zrange_calls[-1][0]
+        assert zrange_args[1] == 0
+        assert zrange_args[2] == 0  # evict 1 (4 - 3 = 1)
 
     @pytest.mark.asyncio
     async def test_sign_out_removes_from_user_index(self, service, mock_repo, mock_redis):
         """sign_out deletes session key and removes from user session index."""
+        mock_redis.get.return_value = json.dumps(
+            {"user_id": "550e8400-e29b-41d4-a716-446655440000", "username": "admin"}
+        )
         await service.sign_out("session-abc")
         # Delete the session key
         mock_redis.delete.assert_any_await("session:session-abc")
@@ -389,7 +401,7 @@ class TestSsoServiceConcurrentSessions:
         user.role_id = role.id
         user.auth_provider = "oidc"
 
-        mock_redis.zcard.return_value = 5
+        mock_redis.zcard.return_value = 6  # 5 existing + 1 new after zadd
         mock_redis.zrange.return_value = ["oldest-sso-session"]
 
         with patch.object(sso_service, "resolve_role_from_groups", new_callable=AsyncMock) as mock_resolve_role:
@@ -410,13 +422,12 @@ class TestSsoServiceConcurrentSessions:
                 )
 
         assert profile is not None
-        mock_redis.zremrangebyrank.assert_awaited_once()
-        zrem_args = mock_redis.zremrangebyrank.call_args
-        assert zrem_args[0][0].startswith("user_sessions:")
-        assert zrem_args[0][1] == 0
-        assert zrem_args[0][2] == 0
+        zrange_calls = [c for c in mock_redis.zrange.call_args_list if "user_sessions:" in str(c[0][0])]
+        assert len(zrange_calls) >= 1
         delete_calls = [c for c in mock_redis.delete.call_args_list if "oldest-sso-session" in str(c[0])]
         assert len(delete_calls) >= 1
+        zrem_calls = [c for c in mock_redis.zrem.call_args_list if "oldest-sso-session" in str(c[0])]
+        assert len(zrem_calls) >= 1
 
     @pytest.mark.asyncio
     async def test_sso_login_under_limit_no_eviction(self, sso_service, oidc_provider, mock_db, mock_redis):
@@ -454,7 +465,9 @@ class TestSsoServiceConcurrentSessions:
                 )
 
         assert profile is not None
-        mock_redis.zremrangebyrank.assert_not_called()
+        # No zrange/zrem/delete for eviction should happen
+        zrange_calls = [c for c in mock_redis.zrange.call_args_list if "user_sessions:" in str(c[0][0])]
+        assert len(zrange_calls) == 0
 
     @pytest.mark.asyncio
     async def test_sso_eviction_does_not_leak_sensitive_data(self, sso_service, oidc_provider, mock_db, mock_redis):
@@ -472,7 +485,7 @@ class TestSsoServiceConcurrentSessions:
         user.role_id = role.id
         user.auth_provider = "oidc"
 
-        mock_redis.zcard.return_value = 5
+        mock_redis.zcard.return_value = 6  # 5 existing + 1 new after zadd
         mock_redis.zrange.return_value = ["leaky-session-id"]
         mock_redis.delete.side_effect = RuntimeError("Redis failure")
 
@@ -524,8 +537,8 @@ class TestSsoServiceConcurrentSessions:
         user.role_id = role.id
         user.auth_provider = "oidc"
 
-        mock_redis.zcard.return_value = 2
-        mock_redis.zrange.return_value = ["old1", "old2"]
+        mock_redis.zcard.return_value = 3  # 2 existing + 1 new after zadd
+        mock_redis.zrange.return_value = ["old1"]
 
         with patch.object(sso_service, "resolve_role_from_groups", new_callable=AsyncMock) as mock_resolve_role:
             mock_resolve_role.return_value = role
@@ -545,10 +558,11 @@ class TestSsoServiceConcurrentSessions:
                 )
 
         assert profile is not None
-        zrem_args = mock_redis.zremrangebyrank.call_args
-        # 2 + 1 - 2 = 1, but wait: zcard=2, max=2, so overflow = 2+1-2 = 1
-        # Actually if max=2 and we have 2, we need to evict 1 to make room
-        assert zrem_args[0][2] == 0  # evict 1 oldest
+        zrange_calls = [c for c in mock_redis.zrange.call_args_list if "user_sessions:" in str(c[0][0])]
+        assert len(zrange_calls) >= 1
+        zrange_args = zrange_calls[-1][0]
+        assert zrange_args[1] == 0
+        assert zrange_args[2] == 0  # evict 1 oldest
 
 
 # ---------------------------------------------------------------------------
@@ -588,6 +602,9 @@ class TestSessionIndexCleanup:
     @pytest.mark.asyncio
     async def test_sign_out_deletes_session_and_index_entry(self, service, mock_redis):
         """sign_out removes session key and zrem from user index."""
+        mock_redis.get.return_value = json.dumps(
+            {"user_id": "550e8400-e29b-41d4-a716-446655440000", "username": "admin"}
+        )
         await service.sign_out("session-to-delete")
         mock_redis.delete.assert_any_await("session:session-to-delete")
         # zrem should be called for the user index
@@ -654,10 +671,13 @@ class TestConcurrentSessionConfig:
         admin_user.role_obj.permissions = ["query.submit"]
         mock_repo.get_by_username.return_value = admin_user
 
-        mock_redis.zcard.return_value = 1
+        mock_redis.zcard.return_value = 2  # 1 existing + 1 new after zadd
         mock_redis.zrange.return_value = ["only-old-session"]
 
         profile, session_id = await svc.sign_in("admin", "secret")
         assert profile is not None
-        zrem_args = mock_redis.zremrangebyrank.call_args
-        assert zrem_args[0][2] == 0  # evict 1 (1 + 1 - 1 = 1)
+        zrange_calls = [c for c in mock_redis.zrange.call_args_list if "user_sessions:" in str(c[0][0])]
+        assert len(zrange_calls) >= 1
+        zrange_args = zrange_calls[-1][0]
+        assert zrange_args[1] == 0
+        assert zrange_args[2] == 0  # evict 1 (2 - 1 = 1)
