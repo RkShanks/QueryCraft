@@ -216,14 +216,14 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1f
+## Current Wave Checkpoint — Through Wave 17.1g
 
 ### Status
 - **Date**: 2026-06-01
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1f complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112.
-- **Current/open PR**: #113 (Wave 17.1f — Concurrent Session Limit).
+- **Current point**: Wave 17.1g complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113.
+- **Current/open PR**: #114 (Wave 17.1g — SSO Sign-In Page).
 - **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
 
 ### Completed Scope Through This Point
@@ -271,6 +271,11 @@
   - Built-in admin login guarantee preserved: eviction happens, login never blocked.
   - `AuthService.sign_out` cleans up user session index.
   - SSO audit-failure cleanup regression fixed: audit failure removes both `session:{id}` and `user_sessions:{user_id}` member.
+- Wave 17.1g frontend SSO sign-in page slice is complete:
+  - SSO sign-in page TDD tests supporting English and Arabic/RTL.
+  - SSO sign-in page provider buttons/error/no-provider UI logic.
+  - Extended `useAuth` hook and its `UserProfile` type with Phase 5 fields.
+  - Branded English and Arabic/RTL visual smoke verification.
 
 ### Review Decisions Locked
 - OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
@@ -283,11 +288,10 @@
 - SSO login cannot leave an unaudited session: Redis session is deleted if `auth.login.success` audit fails.
 
 ### Remaining Wave 17.1 Work
-- None. Wave 17.1 backend is complete.
+- T-662–T-667, T-669–T-670 (SSO Admin Config, Routing, and remaining Gates).
 
 ### Next Dispatch Constraint
-- Merge Wave 17.1f PR #113 to `main`.
-- Dispatch Wave 17.1 frontend work (T-659–T-670) after backend merge.
+- Dispatch Wave 17.1h admin SSO config page slice (T-662–T-664).
 
 ---
 
@@ -453,7 +457,7 @@
 - **Model**: Gemini Frontend Implementer
 - **T-IDs**: T-659, T-660, T-661, T-668
 - **Branch**: `phase-5/wave-17.1g-sso-signin-page`
-- **PR**: (pending)
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/114
 
 ### Scope
 - TDD tests for SSO sign-in page in `frontend/src/pages/SignInPage.test.tsx` (extended existing to test branded layout, provider buttons rendering, redirect to provider login URL on click, error alert when no providers are configured, and displaying mapped error messages from query parameters).

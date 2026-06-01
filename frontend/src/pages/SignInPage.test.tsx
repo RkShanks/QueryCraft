@@ -8,8 +8,55 @@ import { server } from '../test/server';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+const mockLanguageState = { language: 'en' };
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: any) => {
+      // Direct translations mapping for English/Arabic
+      let val: string;
+      if (mockLanguageState.language === 'ar') {
+        if (key === 'app.title') val = 'QueryCraft';
+        else if (key === 'app.subtitle') val = 'منصة تحليلات النص إلى SQL';
+        else if (key === 'auth.signIn.title') val = 'تسجيل الدخول';
+        else if (key === 'error.ssoNotConfigured') val = 'لم يتم تكوين SSO بعد.';
+        else if (key === 'error.ssoNoRole') val = 'لا توجد أدوار مخصصة لمجموعات SSO الخاصة بك.';
+        else if (key === 'common.or') val = 'أو';
+        else val = options?.defaultValue ?? key;
+      } else {
+        if (key === 'app.title') val = 'QueryCraft';
+        else if (key === 'app.subtitle') val = 'Text-to-SQL Analytics Platform';
+        else if (key === 'auth.signIn.title') val = 'Sign In';
+        else if (key === 'error.ssoNotConfigured') val = 'SSO is not configured.';
+        else if (key === 'error.ssoNoRole') val = "User SSO groups don't map to any role.";
+        else if (key === 'common.or') val = 'Or';
+        else val = options?.defaultValue ?? key;
+      }
+
+      if (options && typeof options === 'object') {
+        val = val.replace(/\{\{(\w+)\}\}/g, (_, match) => String(options[match] ?? `{{${match}}}`));
+      }
+      return val;
+    },
+    i18n: {
+      changeLanguage: (lng: string) => {
+        mockLanguageState.language = lng;
+        return Promise.resolve();
+      },
+      language: mockLanguageState.language,
+    },
+  }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  },
+}));
+
 describe('SignInPage', () => {
   beforeEach(() => {
+    // Reset language to default English before each test
+    mockLanguageState.language = 'en';
+
     // Add default mocks for /api/v1/auth/me to return 401 (unauthenticated)
     // and /api/v1/auth/sso/providers to return empty list by default.
     // Uses wildcard matching to avoid origin-mismatch issues.
@@ -32,6 +79,22 @@ describe('SignInPage', () => {
     expect(screen.getByRole('heading', { name: /QueryCraft/i, level: 1 })).toBeInTheDocument();
     expect(screen.getByText(/Text-to-SQL Analytics Platform/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Sign In/i, level: 2 })).toBeInTheDocument();
+  });
+
+  it('sets dir="rtl" and renders Arabic localized text when language is ar', async () => {
+    mockLanguageState.language = 'ar';
+
+    render(<SignInPage />, { wrapper: createWrapper() });
+
+    // Wait for the page to finish loading and show Arabic heading
+    await screen.findByRole('heading', { name: 'تسجيل الدخول' });
+
+    // Assert that the root component container has dir="rtl"
+    const rootContainer = screen.getByRole('heading', { name: 'تسجيل الدخول' }).closest('[dir]');
+    expect(rootContainer).toHaveAttribute('dir', 'rtl');
+
+    // Assert that Arabic warning is displayed
+    expect(screen.getByText('لم يتم تكوين SSO بعد.')).toBeInTheDocument();
   });
 
   describe('SSO Sign-In Flows', () => {

@@ -1,5 +1,6 @@
 {
   "common.close": "إغلاق",
+  "common.or": "أو",
 
   "app.title": "QueryCraft",
   "app.subtitle": "منصة تحليلات النص إلى SQL",

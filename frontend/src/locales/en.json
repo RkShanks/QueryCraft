@@ -1,5 +1,6 @@
 {
   "common.close": "Close",
+  "common.or": "Or",
   "app.title": "QueryCraft",
   "app.subtitle": "Text-to-SQL Analytics Platform",
   "nav.signIn": "Sign In",
