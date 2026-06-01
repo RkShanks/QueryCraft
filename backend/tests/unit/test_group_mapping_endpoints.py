@@ -297,6 +297,24 @@ class TestCreateGroupMapping:
         assert "secret-idp.internal" not in detail_str
         assert "DB error" not in detail_str
 
+    @pytest.mark.asyncio
+    async def test_create_invalid_role_id_returns_sanitized_404(self):
+        """Invalid role_id UUID must not leak raw input in response."""
+        from app.api.v1.admin_sso import create_group_mapping
+
+        request = MagicMock()
+        request.state.session = {"permissions": ["admin.roles.manage"]}
+
+        body = GroupMappingCreate(sso_group_value="analysts", role_id="not-a-uuid")
+
+        with pytest.raises(HTTPException) as exc:
+            await create_group_mapping(request=request, body=body, db=AsyncMock())
+        assert exc.value.status_code == 404
+        detail = exc.value.detail
+        assert detail["error"] == "not_found"
+        assert detail["message_key"] == "error.notFound"
+        assert "not-a-uuid" not in str(detail).lower()
+
 
 # ── DELETE /admin/sso/group-mappings/{id} ──────────────────────────────────
 
@@ -363,6 +381,26 @@ class TestDeleteGroupMapping:
             )
         detail_str = str(exc.value.detail)
         assert "secret table leak" not in detail_str
+
+    @pytest.mark.asyncio
+    async def test_delete_invalid_mapping_id_returns_sanitized_404(self):
+        """Invalid mapping_id UUID must not leak raw input in response."""
+        from app.api.v1.admin_sso import delete_group_mapping
+
+        request = MagicMock()
+        request.state.session = {"permissions": ["admin.roles.manage"]}
+
+        with pytest.raises(HTTPException) as exc:
+            await delete_group_mapping(
+                request=request,
+                mapping_id="not-a-uuid",
+                db=AsyncMock(),
+            )
+        assert exc.value.status_code == 404
+        detail = exc.value.detail
+        assert detail["error"] == "not_found"
+        assert detail["message_key"] == "error.notFound"
+        assert "not-a-uuid" not in str(detail).lower()
 
 
 # ── Route-Level Tests ───────────────────────────────────────────────────────
@@ -598,6 +636,39 @@ class TestRouteLevelStatusCodes:
         data = response.json()
         assert data["error"] == "not_found"
         assert data["message_key"] == "error.notFound"
+
+    @pytest.mark.asyncio
+    async def test_post_invalid_role_id_returns_sanitized_404(self):
+        app = self._build_app(session={"permissions": ["admin.roles.manage"]})
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/sso/group-mappings",
+                json={"sso_group_value": "analysts", "role_id": "not-a-uuid"},
+                headers={"origin": "http://test"},
+            )
+        assert response.status_code == 404
+        data = response.json()
+        assert data["error"] == "not_found"
+        assert data["message_key"] == "error.notFound"
+        assert "not-a-uuid" not in str(data).lower()
+
+    @pytest.mark.asyncio
+    async def test_delete_invalid_mapping_id_returns_sanitized_404(self):
+        app = self._build_app(session={"permissions": ["admin.roles.manage"]})
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.delete(
+                "/api/v1/admin/sso/group-mappings/not-a-uuid",
+                headers={"origin": "http://test"},
+            )
+        assert response.status_code == 404
+        data = response.json()
+        assert data["error"] == "not_found"
+        assert data["message_key"] == "error.notFound"
+        assert "not-a-uuid" not in str(data).lower()
 
     @pytest.mark.asyncio
     async def test_router_registered_in_main_app(self):

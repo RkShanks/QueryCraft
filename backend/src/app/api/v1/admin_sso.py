@@ -5,6 +5,7 @@ Secrets encrypted at rest via AES-256-GCM (``app.core.encryption``).
 Responses mask secrets as ``●●●●●●●●`` per S-003.
 """
 
+import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -437,6 +438,14 @@ async def create_group_mapping(
     await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
 
     try:
+        role_uuid = uuid.UUID(body.role_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "not_found", "message_key": "error.notFound"},
+        ) from None
+
+    try:
         # Duplicate group value check
         dup_result = await db.execute(
             select(SsoGroupMapping).where(SsoGroupMapping.sso_group_value == body.sso_group_value)
@@ -448,7 +457,7 @@ async def create_group_mapping(
             )
 
         # Validate referenced role exists
-        role_result = await db.execute(select(Role).where(Role.id == body.role_id))
+        role_result = await db.execute(select(Role).where(Role.id == role_uuid))
         role = role_result.scalar_one_or_none()
         if role is None:
             raise HTTPException(
@@ -458,7 +467,7 @@ async def create_group_mapping(
 
         mapping = SsoGroupMapping(
             sso_group_value=body.sso_group_value,
-            role_id=body.role_id,
+            role_id=role_uuid,
         )
         db.add(mapping)
         await db.flush()
@@ -474,7 +483,7 @@ async def create_group_mapping(
             outcome="success",
             context={
                 "sso_group_value": body.sso_group_value,
-                "role_id": str(body.role_id),
+                "role_id": str(role_uuid),
                 "action": "create",
             },
         )
@@ -501,7 +510,15 @@ async def delete_group_mapping(
     await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
 
     try:
-        result = await db.execute(select(SsoGroupMapping).where(SsoGroupMapping.id == mapping_id))
+        mapping_uuid = uuid.UUID(mapping_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "not_found", "message_key": "error.notFound"},
+        ) from None
+
+    try:
+        result = await db.execute(select(SsoGroupMapping).where(SsoGroupMapping.id == mapping_uuid))
         mapping = result.scalar_one_or_none()
         if mapping is None:
             raise HTTPException(
