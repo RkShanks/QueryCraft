@@ -212,10 +212,9 @@ async def create_provider(
         )
 
         db.add(provider)
-        await db.commit()
-        await db.refresh(provider)
+        await db.flush()
 
-        # Audit log: SSO config change
+        # Audit log: SSO config change (must succeed before commit)
         session = getattr(request.state, "session", {}) or {}
         await AuditService.log(
             db,
@@ -231,6 +230,8 @@ async def create_provider(
             },
         )
 
+        await db.commit()
+        await db.refresh(provider)
         return _provider_to_response(provider)
 
     except HTTPException:
@@ -292,11 +293,9 @@ async def update_provider(
             provider.is_active = body.is_active
 
         provider.updated_at = datetime.now(UTC)
+        await db.flush()
 
-        await db.commit()
-        await db.refresh(provider)
-
-        # Audit log: SSO config change
+        # Audit log: SSO config change (must succeed before commit)
         session = getattr(request.state, "session", {}) or {}
         await AuditService.log(
             db,
@@ -312,6 +311,8 @@ async def update_provider(
             },
         )
 
+        await db.commit()
+        await db.refresh(provider)
         return _provider_to_response(provider)
 
     except HTTPException:
@@ -344,11 +345,7 @@ async def delete_provider(
                 },
             )
 
-        await db.delete(provider)
-        await db.commit()
-
-        # Audit log: SSO config change
-        session = getattr(request.state, "session", {}) or {}
+        # Capture provider data before deletion for audit log
         try:
             audit_context = {
                 "protocol": str(provider.protocol),
@@ -358,6 +355,10 @@ async def delete_provider(
         except Exception:
             audit_context = {"action": "delete"}
 
+        await db.delete(provider)
+
+        # Audit log: SSO config change (must succeed before commit)
+        session = getattr(request.state, "session", {}) or {}
         await AuditService.log(
             db,
             action=AuditActionType.SSO_CONFIG_CHANGE,
@@ -368,6 +369,7 @@ async def delete_provider(
             context=audit_context,
         )
 
+        await db.commit()
         return None
 
     except HTTPException:

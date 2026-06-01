@@ -227,19 +227,25 @@ class SsoService:
             )
             raise
 
-        # Log successful login
-        await AuditService.log(
-            self._db,
-            action=AuditActionType.AUTH_LOGIN_SUCCESS,
-            actor_identity=email or subject_id,
-            resource_type="user",
-            resource_id=str(profile.get("user_id", "")),
-            outcome="success",
-            context=self._safe_audit_context(
-                auth_provider="oidc",
-                role_name=profile.get("role_name"),
-            ),
-        )
+        # Log successful login (must succeed; if it fails, clean up the Redis session)
+        try:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_SUCCESS,
+                actor_identity=email or subject_id,
+                resource_type="user",
+                resource_id=str(profile.get("user_id", "")),
+                outcome="success",
+                context=self._safe_audit_context(
+                    auth_provider="oidc",
+                    role_name=profile.get("role_name"),
+                ),
+            )
+        except Exception:
+            # Audit failure: revoke the session we just created so the login
+            # cannot be used without an audit trail.
+            await self._redis.delete(f"session:{session_id}")
+            raise
 
         return profile, session_id
 
@@ -578,19 +584,25 @@ class SsoService:
             )
             raise
 
-        # Log successful login
-        await AuditService.log(
-            self._db,
-            action=AuditActionType.AUTH_LOGIN_SUCCESS,
-            actor_identity=email or subject_id,
-            resource_type="user",
-            resource_id=str(profile.get("user_id", "")),
-            outcome="success",
-            context=self._safe_audit_context(
-                auth_provider="saml",
-                role_name=profile.get("role_name"),
-            ),
-        )
+        # Log successful login (must succeed; if it fails, clean up the Redis session)
+        try:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_SUCCESS,
+                actor_identity=email or subject_id,
+                resource_type="user",
+                resource_id=str(profile.get("user_id", "")),
+                outcome="success",
+                context=self._safe_audit_context(
+                    auth_provider="saml",
+                    role_name=profile.get("role_name"),
+                ),
+            )
+        except Exception:
+            # Audit failure: revoke the session we just created so the login
+            # cannot be used without an audit trail.
+            await self._redis.delete(f"session:{session_id}")
+            raise
 
         return profile, session_id
 

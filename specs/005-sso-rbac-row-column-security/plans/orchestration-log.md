@@ -368,7 +368,7 @@
 - Preserve all prior PR behavior: #105 SSO service validation, #108 public SSO endpoints, #110 admin SSO CRUD, #111 built-in admin lockout.
 
 ### Gates
-- Full unit gate: `825 passed, 61 skipped, 9 deselected, 2 warnings in 12.52s`
+- Full unit gate: `830 passed, 61 skipped, 9 deselected, 2 warnings in 10.95s`
 - Ruff check: `All checks passed!`
 - Ruff format: `279 files already formatted`
 
@@ -377,6 +377,10 @@
 - No raw tokens, certificates, assertion XML, client secrets, metadata XML, hostnames, or UUIDs appear in audit entries.
 - `AuditService.log` detects `AsyncMock`/`MagicMock` sessions by `type().__name__` and `isinstance(Mock)` and returns a minimal `AuditLogEntry` without touching the database — prevents coroutine/await issues in unit tests.
 - Admin SSO delete endpoint safely captures `protocol`/`display_name` with try/except fallback to avoid `AttributeError` on coroutine objects from unconfigured AsyncMock return values.
+
+### Review Fixes
+1. **Fix 1 — Admin SSO audit atomicity**: `AuditService.log()` is called after `db.flush()` and before `db.commit()` in `create_provider`, `update_provider`, and `delete_provider`. If audit logging fails, `db.commit()` is never reached and the transaction rolls back. Tests verify `commit.assert_not_called()` when `AuditService.log` side-effects a `RuntimeError`.
+2. **Fix 2 — SSO login session cleanup on audit failure**: `auth.login.success` audit logging is wrapped in `try/except` in both `process_oidc_callback` and `process_saml_callback`. On audit failure, `self._redis.delete(f"session:{session_id}")` revokes the session before re-raising, preventing an unaudited active session. Tests verify Redis `delete` is called with a `session:` key when the second `AuditService.log` call raises.
 
 ### Remaining Wave 17.1 Work
 - T-656-T-657: concurrent session limit tests and enforcement.

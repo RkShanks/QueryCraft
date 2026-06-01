@@ -801,3 +801,259 @@ class TestSsoAuditRedactionIntegration:
         assert entry.context["assertion_xml"] == "[REDACTED]"
         assert entry.context["error_code"] == "sso_validation_failed"
         assert entry.context["provider"] == "saml"
+
+
+# ── Review Fix 1: Admin SSO Audit Atomicity ──────────────────────────────────
+
+
+@pytest.mark.asyncio
+class TestAdminSsoAuditAtomicity:
+    """Audit log must be written inside the same transaction as provider mutation.
+    If audit fails, the provider change must not persist (no commit)."""
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def admin_request(self):
+        req = MagicMock()
+        req.state.session = {"permissions": ["admin.sso.manage"], "username": "admin"}
+        return req
+
+    async def test_create_audit_failure_prevents_commit(self, mock_db, admin_request):
+        """If AuditService.log raises during create, db.commit must not be called."""
+        from fastapi import HTTPException
+
+        from app.api.v1.admin_sso import create_provider
+        from app.schemas.sso import SsoProviderCreate
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([]),  # no duplicate
+                FakeResult([MagicMock()]),  # RETURNING
+            ]
+        )
+
+        body = SsoProviderCreate(
+            protocol="oidc",
+            display_name="New Provider",
+            issuer_url="https://idp.example.com",
+            client_id="client-123",
+            client_secret="secret-123",
+        )
+
+        with (
+            patch("app.api.v1.admin_sso.encrypt", return_value="encrypted"),
+            patch(
+                "app.api.v1.admin_sso.AuditService.log",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("audit failure"),
+            ),
+        ):
+            with pytest.raises(HTTPException):
+                await create_provider(request=admin_request, body=body, db=mock_db)
+
+        # commit must never have been called
+        mock_db.commit.assert_not_called()
+
+    async def test_update_audit_failure_prevents_commit(self, mock_db, admin_request):
+        """If AuditService.log raises during update, db.commit must not be called."""
+        from fastapi import HTTPException
+
+        from app.api.v1.admin_sso import update_provider
+        from app.schemas.sso import SsoProviderUpdate
+
+        provider = _make_oidc_provider()
+        mock_db.execute = AsyncMock(return_value=FakeResult([provider]))
+
+        body = SsoProviderUpdate(display_name="Updated Name")
+
+        with (
+            patch("app.api.v1.admin_sso.encrypt", return_value="encrypted"),
+            patch(
+                "app.api.v1.admin_sso.AuditService.log",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("audit failure"),
+            ),
+        ):
+            with pytest.raises(HTTPException):
+                await update_provider(
+                    request=admin_request,
+                    provider_id=str(provider.id),
+                    body=body,
+                    db=mock_db,
+                )
+
+        mock_db.commit.assert_not_called()
+
+    async def test_delete_audit_failure_prevents_commit(self, mock_db, admin_request):
+        """If AuditService.log raises during delete, db.commit must not be called."""
+        from fastapi import HTTPException
+
+        from app.api.v1.admin_sso import delete_provider
+
+        provider = _make_oidc_provider()
+        mock_db.execute = AsyncMock(return_value=FakeResult([provider]))
+
+        with patch(
+            "app.api.v1.admin_sso.AuditService.log",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("audit failure"),
+        ):
+            with pytest.raises(HTTPException):
+                await delete_provider(
+                    request=admin_request,
+                    provider_id=str(provider.id),
+                    db=mock_db,
+                )
+
+        mock_db.commit.assert_not_called()
+
+
+# ── Review Fix 2: SSO Login Session Cleanup on Audit Failure ───────────────────
+
+
+@pytest.mark.asyncio
+class TestSsoLoginAuditCleanup:
+    """If auth.login.success audit logging fails after session creation,
+    the Redis session must be deleted so the login cannot be used unaudited."""
+
+    @pytest.fixture
+    def mock_db(self):
+        db = AsyncMock()
+        db.execute = AsyncMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        return db
+
+    @pytest.fixture
+    def mock_redis(self):
+        redis = AsyncMock()
+        redis.get = AsyncMock(return_value=None)
+        redis.delete = AsyncMock()
+        redis.set = AsyncMock()
+        return redis
+
+    @pytest.fixture
+    def service(self, mock_db, mock_redis):
+        svc = SsoService(mock_db, mock_redis)
+        svc._settings = MagicMock()
+        svc._settings.SESSION_IDLE_TIMEOUT_HOURS = 8
+        svc._settings.PLATFORM_ENCRYPTION_KEY = "test-key"
+        return svc
+
+    async def test_oidc_audit_failure_deletes_session(self, service, mock_db, mock_redis):
+        """If auth.login.success audit fails, the Redis session is revoked."""
+        provider = _make_oidc_provider()
+        role = _make_role()
+        user = MagicMock(spec=User)
+        user.id = uuid.uuid4()
+        user.username = "alice@example.com"
+        user.display_name = "Alice"
+        user.role_id = role.id
+        user.role = "analyst"
+        user.auth_provider = "oidc"
+
+        mock_redis.get = AsyncMock(return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}')
+
+        with (
+            patch.object(
+                service,
+                "_exchange_code_for_token",
+                return_value=(
+                    {"sub": "user-123", "email": "alice@example.com", "groups": ["analysts"]},
+                    "token",
+                ),
+            ),
+            patch.object(service, "_validate_oidc_claims", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
+        ):
+            mock_db.execute = AsyncMock(
+                side_effect=[
+                    FakeResult([]),
+                    FakeResult([user]),
+                ]
+            )
+
+            with patch(
+                "app.services.audit_service.AuditService.log",
+                new_callable=AsyncMock,
+                side_effect=[
+                    None,  # auth.sso.validation success
+                    RuntimeError("audit failure"),  # auth.login.success failure
+                ],
+            ):
+                with pytest.raises(RuntimeError, match="audit failure"):
+                    await service.process_oidc_callback(provider, "state-123", "code-123")
+
+                # Verify the session was deleted from Redis
+                redis_delete_calls = [c for c in mock_redis.delete.call_args_list if "session:" in str(c)]
+                assert len(redis_delete_calls) >= 1, (
+                    f"Expected Redis session delete on audit failure, got {mock_redis.delete.call_args_list}"
+                )
+
+    async def test_saml_audit_failure_deletes_session(self, service, mock_db, mock_redis):
+        """If auth.login.success audit fails, the Redis session is revoked."""
+        provider = _make_saml_provider()
+        role = _make_role()
+        user = MagicMock(spec=User)
+        user.id = uuid.uuid4()
+        user.username = "bob@example.com"
+        user.display_name = "Bob"
+        user.role_id = role.id
+        user.role = "analyst"
+        user.auth_provider = "saml"
+
+        def _redis_get_side_effect(key):
+            if "request:" in key:
+                return '{"provider_id": "' + str(provider.id) + '"}'
+            return None
+
+        mock_redis.get = AsyncMock(side_effect=_redis_get_side_effect)
+
+        attrs = {
+            "subject_id": "user-456",
+            "email": "bob@example.com",
+            "groups": ["analysts"],
+            "issuer": "https://idp.example.com",
+            "not_before": None,
+            "not_on_or_after": None,
+            "assertion_id": "assertion-001",
+        }
+
+        with (
+            patch.object(service, "_parse_saml_assertion", return_value=attrs),
+            patch.object(service, "_validate_saml_assertion", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
+        ):
+            mock_db.execute = AsyncMock(
+                side_effect=[
+                    FakeResult([]),
+                    FakeResult([user]),
+                ]
+            )
+
+            with patch(
+                "app.services.audit_service.AuditService.log",
+                new_callable=AsyncMock,
+                side_effect=[
+                    None,  # auth.sso.validation success
+                    RuntimeError("audit failure"),  # auth.login.success failure
+                ],
+            ):
+                with pytest.raises(RuntimeError, match="audit failure"):
+                    await service.process_saml_callback(provider, "saml-response", "request-123")
+
+                # Verify the session was deleted from Redis
+                redis_delete_calls = [c for c in mock_redis.delete.call_args_list if "session:" in str(c)]
+                assert len(redis_delete_calls) >= 1, (
+                    f"Expected Redis session delete on audit failure, got {mock_redis.delete.call_args_list}"
+                )
