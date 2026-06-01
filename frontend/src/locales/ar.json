@@ -290,6 +290,7 @@
   "error.conflict.duplicateProtocol": "يوجد مزود لهذا البروتوكول بالفعل.",
   "error.conflict.duplicateName": "يوجد دور بهذا الاسم بالفعل.",
   "error.conflict.duplicatePriority": "يوجد دور بهذه الأولوية بالفعل.",
+  "error.conflict.duplicateGroupMapping": "مجموعة SSO هذه مخصصة لدور بالفعل.",
   "error.builtinRoleProtected": "هذا المستخدم أو الدور المدمج محمي ولا يمكن تعديله أو حذفه.",
   "error.ssoNoRole": "لا توجد أدوار مخصصة لمجموعات SSO الخاصة بك.",
   "error.ssoValidationFailed": "فشل التحقق من صحة SSO.",

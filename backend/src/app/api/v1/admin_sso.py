@@ -11,11 +11,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.permissions import require_permission
 from app.core.config import get_settings
 from app.core.dependencies import get_db
 from app.core.encryption import encrypt
-from app.db.models.enums import AuditActionType, SsoProtocol
+from app.db.models.enums import AuditActionType, Permission, SsoProtocol
+from app.db.models.role import Role
+from app.db.models.sso_group_mapping import SsoGroupMapping
 from app.db.models.sso_provider import SsoProvider
+from app.schemas.group_mapping import GroupMappingCreate
 from app.schemas.sso import SsoProviderCreate, SsoProviderUpdate
 from app.services.audit_service import AuditService
 
@@ -372,6 +376,165 @@ async def delete_provider(
         await db.commit()
         return None
 
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal", "message_key": "error.internal"},
+        ) from None
+
+
+# ── Group Mapping Endpoints (T-677) ─────────────────────────────────────────
+# Permission: admin.roles.manage (NOT admin.sso.manage) per FR-125.
+
+
+def _mapping_to_response(mapping: SsoGroupMapping, role_name: str) -> dict:
+    return {
+        "id": str(mapping.id),
+        "sso_group_value": mapping.sso_group_value,
+        "role_id": str(mapping.role_id),
+        "role_name": role_name,
+        "created_at": mapping.created_at.isoformat() if mapping.created_at else None,
+    }
+
+
+@router.get("/group-mappings")
+async def list_group_mappings(
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """GET /admin/sso/group-mappings — list all SSO group-to-role mappings."""
+    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
+
+    try:
+        result = await db.execute(select(SsoGroupMapping))
+        mappings = result.scalars().all()
+
+        # Resolve role names in one query
+        role_ids = {m.role_id for m in mappings}
+        roles_result = await db.execute(select(Role).where(Role.id.in_(role_ids)))
+        roles = roles_result.scalars().all()
+        role_names = {str(r.id): r.name for r in roles}
+
+        return {"mappings": [_mapping_to_response(m, role_names.get(str(m.role_id), "")) for m in mappings]}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal", "message_key": "error.internal"},
+        ) from None
+
+
+@router.post("/group-mappings", status_code=status.HTTP_201_CREATED)
+async def create_group_mapping(
+    request: Request,
+    body: GroupMappingCreate,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """POST /admin/sso/group-mappings — create a new group-to-role mapping."""
+    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
+
+    try:
+        # Duplicate group value check
+        dup_result = await db.execute(
+            select(SsoGroupMapping).where(SsoGroupMapping.sso_group_value == body.sso_group_value)
+        )
+        if dup_result.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": "conflict", "message_key": "error.conflict.duplicateGroupMapping"},
+            )
+
+        # Validate referenced role exists
+        role_result = await db.execute(select(Role).where(Role.id == body.role_id))
+        role = role_result.scalar_one_or_none()
+        if role is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "not_found", "message_key": "error.notFound"},
+            )
+
+        mapping = SsoGroupMapping(
+            sso_group_value=body.sso_group_value,
+            role_id=body.role_id,
+        )
+        db.add(mapping)
+        await db.flush()
+
+        # Audit log
+        session = getattr(request.state, "session", {}) or {}
+        await AuditService.log(
+            db,
+            action=AuditActionType.ROLE_MAPPING_CHANGE,
+            actor_identity=session.get("username"),
+            resource_type="sso_group_mapping",
+            resource_id=str(mapping.id),
+            outcome="success",
+            context={
+                "sso_group_value": body.sso_group_value,
+                "role_id": str(body.role_id),
+                "action": "create",
+            },
+        )
+
+        await db.commit()
+        await db.refresh(mapping)
+        return _mapping_to_response(mapping, role.name)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal", "message_key": "error.internal"},
+        ) from None
+
+
+@router.delete("/group-mappings/{mapping_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_group_mapping(
+    request: Request,
+    mapping_id: str,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """DELETE /admin/sso/group-mappings/{id} — remove a group-to-role mapping."""
+    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
+
+    try:
+        result = await db.execute(select(SsoGroupMapping).where(SsoGroupMapping.id == mapping_id))
+        mapping = result.scalar_one_or_none()
+        if mapping is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "not_found", "message_key": "error.notFound"},
+            )
+
+        # Capture data before deletion for audit log
+        try:
+            audit_context = {
+                "sso_group_value": mapping.sso_group_value,
+                "role_id": str(mapping.role_id),
+                "action": "delete",
+            }
+        except Exception:
+            audit_context = {"action": "delete"}
+
+        await db.delete(mapping)
+
+        # Audit log
+        session = getattr(request.state, "session", {}) or {}
+        await AuditService.log(
+            db,
+            action=AuditActionType.ROLE_MAPPING_CHANGE,
+            actor_identity=session.get("username"),
+            resource_type="sso_group_mapping",
+            resource_id=mapping_id,
+            outcome="success",
+            context=audit_context,
+        )
+
+        await db.commit()
+        return None
     except HTTPException:
         raise
     except Exception:

@@ -12,7 +12,7 @@ Tests:
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI, HTTPException
