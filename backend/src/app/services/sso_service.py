@@ -18,6 +18,7 @@ Security:
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import os
 import secrets
@@ -246,6 +247,10 @@ class SsoService:
             # Audit failure: revoke the session we just created so the login
             # cannot be used without an audit trail.
             await self._redis.delete(f"session:{session_id}")
+            user_id = str(profile.get("user_id", ""))
+            if user_id:
+                with contextlib.suppress(Exception):
+                    await self._redis.zrem(f"user_sessions:{user_id}", session_id)
             raise
 
         return profile, session_id
@@ -603,6 +608,10 @@ class SsoService:
             # Audit failure: revoke the session we just created so the login
             # cannot be used without an audit trail.
             await self._redis.delete(f"session:{session_id}")
+            user_id = str(profile.get("user_id", ""))
+            if user_id:
+                with contextlib.suppress(Exception):
+                    await self._redis.zrem(f"user_sessions:{user_id}", session_id)
             raise
 
         return profile, session_id

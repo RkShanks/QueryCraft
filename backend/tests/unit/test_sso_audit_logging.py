@@ -999,6 +999,11 @@ class TestSsoLoginAuditCleanup:
                 assert len(redis_delete_calls) >= 1, (
                     f"Expected Redis session delete on audit failure, got {mock_redis.delete.call_args_list}"
                 )
+                # Verify user session index cleaned up
+                zrem_calls = [c for c in mock_redis.zrem.call_args_list if "user_sessions:" in str(c[0][0])]
+                assert len(zrem_calls) >= 1, (
+                    f"Expected user_sessions zrem on audit failure, got {mock_redis.zrem.call_args_list}"
+                )
 
     async def test_saml_audit_failure_deletes_session(self, service, mock_db, mock_redis):
         """If auth.login.success audit fails, the Redis session is revoked."""
@@ -1056,4 +1061,9 @@ class TestSsoLoginAuditCleanup:
                 redis_delete_calls = [c for c in mock_redis.delete.call_args_list if "session:" in str(c)]
                 assert len(redis_delete_calls) >= 1, (
                     f"Expected Redis session delete on audit failure, got {mock_redis.delete.call_args_list}"
+                )
+                # Verify user session index cleaned up
+                zrem_calls = [c for c in mock_redis.zrem.call_args_list if "user_sessions:" in str(c[0][0])]
+                assert len(zrem_calls) >= 1, (
+                    f"Expected user_sessions zrem on audit failure, got {mock_redis.zrem.call_args_list}"
                 )

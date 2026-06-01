@@ -144,7 +144,7 @@
 
 ### Wave 17.1 Backend Gate
 
-- [ ] T-658 Run CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
+- [x] T-658 Run CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
 
 ### Frontend — SSO Sign-In Page (Owner: Gemini)
 

@@ -216,14 +216,14 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1e
+## Current Wave Checkpoint — Through Wave 17.1f
 
 ### Status
 - **Date**: 2026-06-01
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1e complete and ready for merge/review; Wave 17.1f not dispatched yet.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111.
-- **Current/open PR**: #112 (Wave 17.1e — SSO audit logging).
+- **Current point**: Wave 17.1f complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112.
+- **Current/open PR**: #113 (Wave 17.1f — Concurrent Session Limit).
 - **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
 
 ### Completed Scope Through This Point
@@ -264,6 +264,13 @@
   - Audit context redaction: no raw tokens, certs, assertion XML, secrets, hostnames, UUIDs.
   - Admin SSO mutation+audit atomic: audit entry in same transaction as provider mutation.
   - SSO login session cleanup on audit failure: Redis session revoked if `auth.login.success` audit fails.
+- Wave 17.1f concurrent session limit slice is complete:
+  - Max 5 concurrent sessions per user (configurable via `MAX_CONCURRENT_SESSIONS_PER_USER`).
+  - Oldest session eviction on overflow via Redis sorted set (`user_sessions:{user_id}`).
+  - Applies to local admin login (`AuthService.sign_in`) and SSO login (`SsoService._resolve_role_and_create_session`).
+  - Built-in admin login guarantee preserved: eviction happens, login never blocked.
+  - `AuthService.sign_out` cleans up user session index.
+  - SSO audit-failure cleanup regression fixed: audit failure removes both `session:{id}` and `user_sessions:{user_id}` member.
 
 ### Review Decisions Locked
 - OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
@@ -276,11 +283,11 @@
 - SSO login cannot leave an unaudited session: Redis session is deleted if `auth.login.success` audit fails.
 
 ### Remaining Wave 17.1 Work
-- T-656-T-657: concurrent session limit tests and enforcement.
-- T-658: Wave 17.1 backend gate.
+- None. Wave 17.1 backend is complete.
 
 ### Next Dispatch Constraint
-- Dispatch Wave 17.1f as a backend-only PR for T-656 through T-658 (concurrent session limit + backend gate) before frontend Wave 17.1 surfaces.
+- Merge Wave 17.1f PR #113 to `main`.
+- Dispatch Wave 17.1 frontend work (T-659–T-670) after backend merge.
 
 ---
 
