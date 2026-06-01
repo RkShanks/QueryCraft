@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { SignInPage } from './SignInPage';
