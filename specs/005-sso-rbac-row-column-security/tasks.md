@@ -187,11 +187,11 @@
 
 ### Backend — Role CRUD (Owner: Kimi ( opencode ))
 
-- [ ] T-671 [US28] Write TDD tests for role CRUD endpoints (create, read, update, delete, built-in role protection, duplicate name/priority rejection, permission validation) in `backend/tests/unit/test_role_endpoints.py` — FR-122, FR-123, FR-124
-- [ ] T-672 [US28] Create `RoleRepository` in `backend/src/app/repositories/role_repository.py`: CRUD operations, built-in protection, uniqueness checks — FR-122, FR-123, FR-124
-- [ ] T-673 [US28] Create `RoleService` in `backend/src/app/services/role_service.py`: role CRUD with validation, built-in role guard, audit logging — FR-122, FR-123, FR-124
-- [ ] T-674 [US28] Implement role CRUD endpoints in `backend/src/app/api/v1/admin_roles.py`: `GET/POST /admin/roles`, `GET/PUT/DELETE /admin/roles/{id}` per api-contracts.md with `require_permission('admin.roles.manage')` — FR-122, FR-123, FR-124
-- [ ] T-675 [US28] Register roles admin router in `backend/src/app/main.py` — FR-122
+- [x] T-671 [US28] Write TDD tests for role CRUD endpoints (create, read, update, delete, built-in role protection, duplicate name/priority rejection, permission validation) in `backend/tests/unit/test_role_endpoints.py` — FR-122, FR-123, FR-124
+- [x] T-672 [US28] Create `RoleRepository` in `backend/src/app/repositories/role_repository.py`: CRUD operations, built-in protection, uniqueness checks — FR-122, FR-123, FR-124
+- [x] T-673 [US28] Create `RoleService` in `backend/src/app/services/role_service.py`: role CRUD with validation, built-in role guard, audit logging — FR-122, FR-123, FR-124
+- [x] T-674 [US28] Implement role CRUD endpoints in `backend/src/app/api/v1/admin_roles.py`: `GET/POST /admin/roles`, `GET/PUT/DELETE /admin/roles/{id}` per api-contracts.md with `require_permission('admin.roles.manage')` — FR-122, FR-123, FR-124
+- [x] T-675 [US28] Register roles admin router in `backend/src/app/main.py` — FR-122
 
 ### Backend — Group Mapping (Owner: Kimi ( opencode ))
 

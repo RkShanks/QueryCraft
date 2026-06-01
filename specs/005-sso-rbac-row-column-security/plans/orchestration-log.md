@@ -519,3 +519,43 @@
 - `PermissionGuard` enforces fail-closed role-based access check on the client-side for admin routes, redirecting unprivileged users back to the landing workspace page.
 - Secrets, client secrets, SAML certificate keys, and SAML XML definitions are masked as `●●●●●●●●` on presentation.
 - In-place form updates prevent re-submitting masked passwords back to the backend when left untouched.
+
+---
+
+## Wave 17.2a — Role CRUD Backend Slice
+
+### Dispatch
+- **Date**: 2026-06-02
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-671 through T-675
+- **Branch**: `phase-5/wave-17.2a-role-crud`
+- **PR**: (pending)
+
+### Scope
+- T-671: TDD tests for role CRUD endpoints (`tests/unit/test_role_endpoints.py`): create, read, update, delete, built-in role protection, duplicate name/priority rejection, permission validation.
+- T-672: Extended `RoleRepository` (`backend/src/app/repositories/role_repository.py`) with `list_all`, `get_by_name`, `get_by_priority`, `create`.
+- T-673: Created `RoleService` (`backend/src/app/services/role_service.py`) with CRUD, permission validation, duplicate checks, built-in guard, audit logging.
+- T-674: Implemented role CRUD endpoints (`backend/src/app/api/v1/admin_roles.py`): `GET/POST /admin/roles`, `GET/PUT/DELETE /admin/roles/{id}` with `require_permission('admin.roles.manage')`.
+- T-675: Registered `admin_roles` router in `backend/src/app/main.py`.
+- Added i18n keys `error.validation.invalidPermissions`, `error.conflict.duplicateName`, `error.conflict.duplicatePriority` to `en.json` and `ar.json`.
+
+### Gates
+- Full unit gate: `881 passed, 61 skipped, 9 deselected, 12 warnings in 10.63s`
+- Ruff check: `All checks passed!`
+- Ruff format: `283 files already formatted`
+
+### Security Notes
+- All endpoints enforce `require_permission(Permission.ADMIN_ROLES_MANAGE)`.
+- Built-in role core fields (name, permissions, priority, is_builtin) cannot be modified; returns 403 `error.builtinRoleProtected`.
+- Built-in roles cannot be deleted; returns 403 `error.builtinRoleProtected`.
+- Duplicate name and duplicate priority return 409 with sanitized localized keys; no raw UUIDs or DB internals leaked.
+- Invalid permissions return 422 with localized key `error.validation.invalidPermissions`.
+- All exceptions caught and sanitized to generic `error.internal` with no stack traces or DB errors exposed.
+- Audit logging for role create/update/delete via `AuditService.log()` with redacted context.
+
+### Remaining Wave 17.2 Backend Work
+- T-676/T-677: Group mapping endpoints (create, list, delete).
+- T-678/T-680: Permission gates across all existing admin and query endpoints.
+- T-681/T-682: Unmapped user denial.
+- T-683/T-684: RBAC audit logging coverage.
+- T-685: Wave 17.2 backend gate.
