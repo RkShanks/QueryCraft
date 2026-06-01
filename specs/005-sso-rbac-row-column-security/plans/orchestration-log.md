@@ -216,14 +216,14 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1f
+## Current Wave Checkpoint — Through Wave 17.1g
 
 ### Status
 - **Date**: 2026-06-01
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1f complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112.
-- **Current/open PR**: #113 (Wave 17.1f — Concurrent Session Limit).
+- **Current point**: Wave 17.1g complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113.
+- **Current/open PR**: #114 (Wave 17.1g — SSO Sign-In Page).
 - **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
 
 ### Completed Scope Through This Point
@@ -271,6 +271,11 @@
   - Built-in admin login guarantee preserved: eviction happens, login never blocked.
   - `AuthService.sign_out` cleans up user session index.
   - SSO audit-failure cleanup regression fixed: audit failure removes both `session:{id}` and `user_sessions:{user_id}` member.
+- Wave 17.1g frontend SSO sign-in page slice is complete:
+  - SSO sign-in page TDD tests supporting English and Arabic/RTL.
+  - SSO sign-in page provider buttons/error/no-provider UI logic.
+  - Extended `useAuth` hook and its `UserProfile` type with Phase 5 fields.
+  - Branded English and Arabic/RTL visual smoke verification.
 
 ### Review Decisions Locked
 - OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
@@ -283,11 +288,10 @@
 - SSO login cannot leave an unaudited session: Redis session is deleted if `auth.login.success` audit fails.
 
 ### Remaining Wave 17.1 Work
-- None. Wave 17.1 backend is complete.
+- T-662–T-667, T-669–T-670 (SSO Admin Config, Routing, and remaining Gates).
 
 ### Next Dispatch Constraint
-- Merge Wave 17.1f PR #113 to `main`.
-- Dispatch Wave 17.1 frontend work (T-659–T-670) after backend merge.
+- Dispatch Wave 17.1h admin SSO config page slice (T-662–T-664).
 
 ---
 
@@ -438,8 +442,42 @@
 - `MAX_CONCURRENT_SESSIONS_PER_USER <= 0` disables limit entirely (backward-compatible).
 
 ### Remaining Wave 17.1 Work
-- None. Wave 17.1 backend is complete.
+- Wave 17.1g frontend SSO sign-in page is complete.
+- Remaining tasks: T-662–T-667, T-669–T-670 (SSO Admin Config, Routing, and remaining Gates).
 
 ### Next Steps
-- Merge this PR to `main`.
-- Dispatch Wave 17.1 frontend work (T-659–T-670) after backend merge.
+- Merge backend PR #113.
+- Merge frontend Wave 17.1g PR to `main` or proceed to next frontend tasks.
+
+---
+
+## Wave 17.1g — SSO Sign-in Page Frontend
+
+- **Date**: 2026-06-01
+- **Model**: Gemini Frontend Implementer
+- **T-IDs**: T-659, T-660, T-661, T-668
+- **Branch**: `phase-5/wave-17.1g-sso-signin-page`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/114
+
+### Scope
+- TDD tests for SSO sign-in page in `frontend/src/pages/SignInPage.test.tsx` (extended existing to test branded layout, provider buttons rendering, redirect to provider login URL on click, error alert when no providers are configured, and displaying mapped error messages from query parameters).
+- Implemented SSO Sign-In button list rendering from `GET /auth/sso/providers` and error parameters mapping (`?error=...`) in `frontend/src/pages/SignInPage.tsx`.
+- Extended `useAuth` hook and its `UserProfile` type with Phase 5 fields (`permissions`, `role_name`, `auth_provider`) in `frontend/src/hooks/useAuth.ts`.
+- Verified premium layout, OIDC/SAML login buttons, and warning/error alerts via Chrome DevTools MCP browser smoke test in both English and Arabic (RTL).
+
+### Gates
+- Vitest suite: `5 passed (100% green)` for `SignInPage.test.tsx`, all `451 passed` for full frontend suite.
+- ESLint check: `All checks passed!`
+- Typecheck (TypeScript compiler): `tsc --noEmit` passed.
+- Production build: `npm run build` succeeded.
+- CSS style linter: `npm run lint:css` passed.
+
+### Visual Smoke Verification
+- Screenshots captured and verified for English branded page, error page showing the rose-colored error alert, and fully translated Arabic/RTL page with perfectly mirrored controls and icons.
+
+### Remaining Wave 17.1 Work
+- T-662–T-664: Admin SSO Config Page (Owner: Gemini)
+- T-665–T-666: i18n for Wave 17.1 (Owner: Gemini)
+- T-667: Routing (Owner: Gemini)
+- T-669: Chrome DevTools MCP visual verification for Admin SSO Config (Owner: Gemini)
+- T-670: Wave 17.1 Frontend Gate (Owner: Gemini)

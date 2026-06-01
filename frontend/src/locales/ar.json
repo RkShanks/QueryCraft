@@ -1,5 +1,6 @@
 {
   "common.close": "إغلاق",
+  "common.or": "أو",
 
   "app.title": "QueryCraft",
   "app.subtitle": "منصة تحليلات النص إلى SQL",
@@ -286,5 +287,9 @@
   "error.validation.oidcRequiredFields": "عنوان URL للمصدر، معرف العميل، وسر العميل مطلوبة لمزودي OIDC.",
   "error.validation.samlRequiredFields": "معرف الكيان، عنوان URL للبيانات الوصفية أو XML، والشهادة مطلوبة لمزودي SAML.",
   "error.conflict.duplicateProtocol": "يوجد مزود لهذا البروتوكول بالفعل.",
-  "error.builtinRoleProtected": "هذا المستخدم أو الدور المدمج محمي ولا يمكن تعديله أو حذفه."
+  "error.builtinRoleProtected": "هذا المستخدم أو الدور المدمج محمي ولا يمكن تعديله أو حذفه.",
+  "error.ssoNoRole": "لا توجد أدوار مخصصة لمجموعات SSO الخاصة بك.",
+  "error.ssoValidationFailed": "فشل التحقق من صحة SSO.",
+  "error.ssoProviderUnavailable": "مزود SSO غير متوفر حالياً.",
+  "error.ssoNotConfigured": "لم يتم تكوين SSO بعد."
 }

@@ -1,5 +1,6 @@
 {
   "common.close": "Close",
+  "common.or": "Or",
   "app.title": "QueryCraft",
   "app.subtitle": "Text-to-SQL Analytics Platform",
   "nav.signIn": "Sign In",
@@ -267,5 +268,9 @@
   "error.validation.oidcRequiredFields": "Issuer URL, client ID, and client secret are required for OIDC providers.",
   "error.validation.samlRequiredFields": "Entity ID, metadata URL or XML, and certificate are required for SAML providers.",
   "error.conflict.duplicateProtocol": "A provider for this protocol already exists.",
-  "error.builtinRoleProtected": "This built-in user or role is protected and cannot be modified or deleted."
+  "error.builtinRoleProtected": "This built-in user or role is protected and cannot be modified or deleted.",
+  "error.ssoNoRole": "User SSO groups don't map to any role.",
+  "error.ssoValidationFailed": "SSO validation failed.",
+  "error.ssoProviderUnavailable": "SSO provider is unavailable.",
+  "error.ssoNotConfigured": "SSO is not configured."
 }
