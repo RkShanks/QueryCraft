@@ -18,12 +18,12 @@ import pytest
 from app.db.models.enums import AuthProvider, SsoProtocol
 from app.db.models.sso_provider import SsoProvider
 from app.services.auth_service import AuthService
-from app.services.sso_service import SsoService, SsoValidationError
-
+from app.services.sso_service import SsoService
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_session_data(
     user_id="550e8400-e29b-41d4-a716-446655440000",
@@ -76,6 +76,7 @@ def _make_user(
 # ---------------------------------------------------------------------------
 # AuthService concurrent session limit tests
 # ---------------------------------------------------------------------------
+
 
 class TestAuthServiceConcurrentSessions:
     """AuthService.sign_in must enforce max concurrent sessions per user."""
@@ -289,6 +290,7 @@ class TestAuthServiceConcurrentSessions:
 # ---------------------------------------------------------------------------
 # SsoService concurrent session limit tests
 # ---------------------------------------------------------------------------
+
 
 class TestSsoServiceConcurrentSessions:
     """SsoService._resolve_role_and_create_session must enforce max concurrent sessions."""
@@ -569,6 +571,7 @@ class TestSsoServiceConcurrentSessions:
 # SessionMiddleware / sign_out user index cleanup tests
 # ---------------------------------------------------------------------------
 
+
 class TestSessionIndexCleanup:
     """sign_out and session expiry must clean up user session index."""
 
@@ -615,6 +618,7 @@ class TestSessionIndexCleanup:
 # ---------------------------------------------------------------------------
 # Config / edge case tests
 # ---------------------------------------------------------------------------
+
 
 class TestConcurrentSessionConfig:
     """Configuration and edge cases for concurrent session limit."""

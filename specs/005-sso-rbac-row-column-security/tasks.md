@@ -139,8 +139,8 @@
 
 ### Backend — Concurrent Session Limit (Owner: Kimi ( opencode ))
 
-- [ ] T-656 [US26] Write TDD tests for concurrent session limit (max 5, oldest evicted on overflow) in `backend/tests/unit/test_concurrent_sessions.py` — FR-127, SC-057
-- [ ] T-657 [US26] Implement concurrent session limit in `backend/src/app/repositories/session_repository.py`: max sessions per user (configurable, default 5), evict oldest on overflow — FR-127, SC-057
+- [x] T-656 [US26] Write TDD tests for concurrent session limit (max 5, oldest evicted on overflow) in `backend/tests/unit/test_concurrent_sessions.py` — FR-127, SC-057
+- [x] T-657 [US26] Implement concurrent session limit in `backend/src/app/repositories/session_repository.py`: max sessions per user (configurable, default 5), evict oldest on overflow — FR-127, SC-057
 
 ### Wave 17.1 Backend Gate
 

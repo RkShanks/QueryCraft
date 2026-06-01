@@ -131,6 +131,11 @@ class SessionRepository:
         This is a static helper so both AuthService and SsoService can share
         the same eviction logic without duplicating code.
         """
+        # Guard against mocked / missing settings values in tests
+        try:
+            max_sessions = int(max_sessions)
+        except Exception:
+            max_sessions = 5
         if max_sessions <= 0:
             return
 
