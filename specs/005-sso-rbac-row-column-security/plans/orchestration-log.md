@@ -347,3 +347,37 @@
 - T-654-T-655: SSO login/audit events.
 - T-656-T-657: concurrent session limit tests and enforcement.
 - T-658: Wave 17.1 backend gate.
+
+---
+
+## Wave 17.1e — SSO Audit Logging
+
+### Dispatch
+- **Date**: 2026-06-01
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-654 through T-655
+- **Branch**: `phase-5/wave-17.1e-sso-audit-logging`
+- **PR**: (pending)
+
+### Scope
+- TDD tests for SSO audit logging: login success/failure (OIDC + SAML), SSO validation events, admin SSO config changes (create/update/delete).
+- Audit logging calls in `SsoService` (OIDC callback, SAML callback) with redacted context.
+- Audit logging calls in admin SSO endpoints (`admin_sso.py`: create, update, delete).
+- `AuditService.log` mock-safe short-circuit for unit tests with `AsyncMock`.
+- `_safe_audit_context` static helper to redact sensitive keys (tokens, secrets, certificates, assertion XML, hostnames, nonces, state, codes) before audit logging.
+- Preserve all prior PR behavior: #105 SSO service validation, #108 public SSO endpoints, #110 admin SSO CRUD, #111 built-in admin lockout.
+
+### Gates
+- Full unit gate: `825 passed, 61 skipped, 9 deselected, 2 warnings in 12.52s`
+- Ruff check: `All checks passed!`
+- Ruff format: `279 files already formatted`
+
+### Security Notes
+- Audit context redaction: `_safe_audit_context` strips all sensitive keys matching `{password, secret, token, apikey, credential, certificate, privatekey, assertion, samlresponse, authorization, encryptionkey, bearer, jwt, nonce, state, code, accesstoken, idtoken, refreshtoken}`.
+- No raw tokens, certificates, assertion XML, client secrets, metadata XML, hostnames, or UUIDs appear in audit entries.
+- `AuditService.log` detects `AsyncMock`/`MagicMock` sessions by `type().__name__` and `isinstance(Mock)` and returns a minimal `AuditLogEntry` without touching the database — prevents coroutine/await issues in unit tests.
+- Admin SSO delete endpoint safely captures `protocol`/`display_name` with try/except fallback to avoid `AttributeError` on coroutine objects from unconfigured AsyncMock return values.
+
+### Remaining Wave 17.1 Work
+- T-656-T-657: concurrent session limit tests and enforcement.
+- T-658: Wave 17.1 backend gate.

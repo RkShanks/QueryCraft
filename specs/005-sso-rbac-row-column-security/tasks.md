@@ -134,8 +134,8 @@
 
 ### Backend — SSO Audit Logging (Owner: Kimi ( opencode ))
 
-- [ ] T-654 [US26] Write TDD tests for SSO audit logging (login success, login failure, SSO validation events, SSO config changes) in `backend/tests/unit/test_sso_audit_logging.py` — FR-140
-- [ ] T-655 [US26] Add audit logging calls in SSO service and SSO admin endpoints for all SSO-related events — FR-140
+- [x] T-654 [US26] Write TDD tests for SSO audit logging (login success, login failure, SSO validation events, SSO config changes) in `backend/tests/unit/test_sso_audit_logging.py` — FR-140
+- [x] T-655 [US26] Add audit logging calls in SSO service and SSO admin endpoints for all SSO-related events — FR-140
 
 ### Backend — Concurrent Session Limit (Owner: Kimi ( opencode ))
 
