@@ -216,88 +216,35 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1h
+## Current Wave Checkpoint — Through Wave 17.2a
 
 ### Status
 - **Date**: 2026-06-02
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1h complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114.
-- **Current/open PR**: #115 (Wave 17.1h — Admin SSO Config Page & Routing).
-- **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
+- **Current point**: Wave 17.2a complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115.
+- **Current/open PR**: #116 (Wave 17.2a — Role CRUD Backend Slice).
 
 ### Completed Scope Through This Point
-- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d:
-  - Foundation models and enums.
-  - Migration and tamper-evident audit service foundation.
-  - Permission dependency, Phase 5 schemas, extended auth/session profile, OpenAPI update.
-  - Backend test taxonomy hardening and fast-gate simplification.
-- Wave 17.1a backend SSO service slice is complete:
-  - OIDC authorization-code initiation and callback validation.
-  - Explicit OIDC JWKS fetch and signature validation.
-  - SAML AuthnRequest/callback service wrapper with fail-closed metadata behavior.
-  - SAML signed-assertion requirement via python3-saml settings.
-  - Sanitized python3-saml boundary errors.
-  - Provider-bound OIDC state and SAML request replay protection.
-  - SSO group to role resolution by priority.
-  - UserIdentity create/update and Redis session creation.
-- Wave 17.1b backend SSO endpoint/local login slice is complete:
-  - Replay-protection tests for OIDC/SAML flows.
-  - Public SSO provider list and login/callback endpoints.
-  - SSO callback session cookies on returned redirects.
-  - Path-exact SAML ACS origin bypass.
-  - Admin-only local password login with generic 401 rejection.
-- Wave 17.1c admin SSO provider CRUD slice is complete:
-  - Admin SSO provider CRUD endpoints.
-  - `admin.sso.manage` permission enforcement.
-  - Secret encryption at rest and masked responses.
-  - Duplicate protocol and required-field validation.
-- Wave 17.1d admin lockout prevention slice is complete:
-  - Built-in user/role deletion blocked at repository layer.
-  - Built-in role core property changes blocked.
-  - Built-in admin local login guarantee covered by tests.
-  - `error.builtinRoleProtected` i18n key added in EN/AR.
-- Wave 17.1e SSO audit logging slice is complete:
-  - SSO login success/failure audit events (OIDC + SAML).
-  - SSO validation events audit logging.
-  - Admin SSO config change audit logging (create/update/delete).
-  - Audit context redaction: no raw tokens, certs, assertion XML, secrets, hostnames, UUIDs.
-  - Admin SSO mutation+audit atomic: audit entry in same transaction as provider mutation.
-  - SSO login session cleanup on audit failure: Redis session revoked if `auth.login.success` audit fails.
-- Wave 17.1f concurrent session limit slice is complete:
-  - Max 5 concurrent sessions per user (configurable via `MAX_CONCURRENT_SESSIONS_PER_USER`).
-  - Oldest session eviction on overflow via Redis sorted set (`user_sessions:{user_id}`).
-  - Applies to local admin login (`AuthService.sign_in`) and SSO login (`SsoService._resolve_role_and_create_session`).
-  - Built-in admin login guarantee preserved: eviction happens, login never blocked.
-  - `AuthService.sign_out` cleans up user session index.
-  - SSO audit-failure cleanup regression fixed: audit failure removes both `session:{id}` and `user_sessions:{user_id}` member.
-- Wave 17.1g frontend SSO sign-in page slice is complete:
-  - SSO sign-in page TDD tests supporting English and Arabic/RTL.
-  - SSO sign-in page provider buttons/error/no-provider UI logic.
-  - Extended `useAuth` hook and its `UserProfile` type with Phase 5 fields.
-  - Branded English and Arabic/RTL visual smoke verification.
-- Wave 17.1h frontend admin SSO config page slice is complete:
-  - SSO admin config page TDD tests supporting English and Arabic/RTL.
-  - Custom forms with in-place masked secrets, Tab switching, error toasts.
-  - Sanitize and redact raw hostile mutation errors in toasts, mapping known key/error values only.
-  - Fail-closed client-side `PermissionGuard` route protection.
-  - English and Arabic/RTL responsive mirroring visuals.
+- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
+- Wave 17.1a-h backend and frontend SSO features are complete.
+- Wave 17.2a role CRUD backend slice is complete:
+  - `GET /admin/roles` and `POST /admin/roles` (no trailing slash).
+  - `GET /admin/roles/{id}`, `PUT /admin/roles/{id}`, `DELETE /admin/roles/{id}`.
+  - `RoleRepository` extended with `list_all`, `get_by_name`, `get_by_priority`, `create`.
+  - `RoleService` with permission validation, duplicate checks, built-in guard, audit logging.
+  - All errors sanitized; no raw UUIDs, DB errors, stack traces, or permission internals leaked.
+  - i18n keys added to `en.json` and `ar.json`.
 
-### Review Decisions Locked
-- OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
-- SAML `saml_entity_id` is SP entity ID; IdP issuer is derived from IdP metadata configuration.
-- SAML paths fail closed when IdP metadata URL/XML-derived settings are unavailable.
-- `SsoValidationError` is the user-facing SSO error boundary; raw tokens, certs, UUIDs, hostnames, assertion XML, and parser/security details stay out of user-facing messages.
-- Backend fast gate remains `uv run pytest tests/unit -q -m "not integration"`.
-- GLM prompts should be constrained to 2-4 implementation tasks per prompt.
-- Audit logging must be atomic with the mutation it records: `AuditService.log()` before `db.commit()`.
-- SSO login cannot leave an unaudited session: Redis session is deleted if `auth.login.success` audit fails.
-
-### Remaining Wave 17.1 Work
-- None. Wave 17.1 features, routing, and gates are completely finalized and green-state certified.
+### Remaining Wave 17.2 Backend Work
+- T-676/T-677: Group mapping endpoints.
+- T-678/T-680: Permission gates across all endpoints.
+- T-681/T-682: Unmapped user denial.
+- T-683/T-684: RBAC audit logging coverage.
+- T-685: Wave 17.2 backend gate.
 
 ### Next Dispatch Constraint
-- Wave 17.2 RBAC backend slice after PR #115 merge.
+- Wave 17.2b group mapping endpoints (T-676-T-677) after PR #116 merge.
 
 ---
 
@@ -519,3 +466,43 @@
 - `PermissionGuard` enforces fail-closed role-based access check on the client-side for admin routes, redirecting unprivileged users back to the landing workspace page.
 - Secrets, client secrets, SAML certificate keys, and SAML XML definitions are masked as `●●●●●●●●` on presentation.
 - In-place form updates prevent re-submitting masked passwords back to the backend when left untouched.
+
+---
+
+## Wave 17.2a — Role CRUD Backend Slice
+
+### Dispatch
+- **Date**: 2026-06-02
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-671 through T-675
+- **Branch**: `phase-5/wave-17.2a-role-crud`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/116
+
+### Scope
+- T-671: TDD tests for role CRUD endpoints (`tests/unit/test_role_endpoints.py`): create, read, update, delete, built-in role protection, duplicate name/priority rejection, permission validation.
+- T-672: Extended `RoleRepository` (`backend/src/app/repositories/role_repository.py`) with `list_all`, `get_by_name`, `get_by_priority`, `create`.
+- T-673: Created `RoleService` (`backend/src/app/services/role_service.py`) with CRUD, permission validation, duplicate checks, built-in guard, audit logging.
+- T-674: Implemented role CRUD endpoints (`backend/src/app/api/v1/admin_roles.py`): `GET/POST /admin/roles`, `GET/PUT/DELETE /admin/roles/{id}` with `require_permission('admin.roles.manage')`.
+- T-675: Registered `admin_roles` router in `backend/src/app/main.py`.
+- Added i18n keys `error.validation.invalidPermissions`, `error.conflict.duplicateName`, `error.conflict.duplicatePriority` to `en.json` and `ar.json`.
+
+### Gates
+- Full unit gate: `881 passed, 61 skipped, 9 deselected, 12 warnings in 10.63s`
+- Ruff check: `All checks passed!`
+- Ruff format: `283 files already formatted`
+
+### Security Notes
+- All endpoints enforce `require_permission(Permission.ADMIN_ROLES_MANAGE)`.
+- Built-in role core fields (name, permissions, priority, is_builtin) cannot be modified; returns 403 `error.builtinRoleProtected`.
+- Built-in roles cannot be deleted; returns 403 `error.builtinRoleProtected`.
+- Duplicate name and duplicate priority return 409 with sanitized localized keys; no raw UUIDs or DB internals leaked.
+- Invalid permissions return 422 with localized key `error.validation.invalidPermissions`.
+- All exceptions caught and sanitized to generic `error.internal` with no stack traces or DB errors exposed.
+- Audit logging for role create/update/delete via `AuditService.log()` with redacted context.
+
+### Remaining Wave 17.2 Backend Work
+- T-676/T-677: Group mapping endpoints (create, list, delete).
+- T-678/T-680: Permission gates across all existing admin and query endpoints.
+- T-681/T-682: Unmapped user denial.
+- T-683/T-684: RBAC audit logging coverage.
+- T-685: Wave 17.2 backend gate.

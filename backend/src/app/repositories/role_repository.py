@@ -15,10 +15,32 @@ class RoleRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
+    async def list_all(self) -> list[Role]:
+        """Fetch all roles ordered by priority."""
+        result = await self._session.execute(select(Role).order_by(Role.priority))
+        return result.scalars().all()
+
     async def get_by_id(self, role_id: uuid.UUID) -> Role | None:
         """Fetch a role by primary key UUID."""
         result = await self._session.execute(select(Role).where(Role.id == role_id))
         return result.scalar_one_or_none()
+
+    async def get_by_name(self, name: str) -> Role | None:
+        """Fetch a role by exact name match."""
+        result = await self._session.execute(select(Role).where(Role.name == name))
+        return result.scalar_one_or_none()
+
+    async def get_by_priority(self, priority: int) -> Role | None:
+        """Fetch a role by exact priority match."""
+        result = await self._session.execute(select(Role).where(Role.priority == priority))
+        return result.scalar_one_or_none()
+
+    async def create(self, **kwargs) -> Role:
+        """Create a new role and flush to generate defaults."""
+        role = Role(**kwargs)
+        self._session.add(role)
+        await self._session.flush()
+        return role
 
     async def delete(self, role_id: uuid.UUID) -> bool:
         """Delete a role by ID.
@@ -39,7 +61,7 @@ class RoleRepository:
     async def update(self, role_id: uuid.UUID, fields: dict) -> Role | None:
         """Update a role by ID.
 
-        Core properties (name, permissions, is_builtin) of built-in roles
+        Core properties (name, permissions, is_builtin, priority) of built-in roles
         are protected. Description updates are allowed.
 
         Raises:

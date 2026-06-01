@@ -260,6 +260,7 @@ def create_app() -> FastAPI:
     from app.api.v1 import (
         admin,
         admin_connections,
+        admin_roles,
         admin_sso,
         auth,
         connections,
@@ -276,6 +277,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router, prefix="/api/v1")
     app.include_router(admin_connections.router, prefix="/api/v1")
     app.include_router(admin_sso.router, prefix="/api/v1")
+    app.include_router(admin_roles.router, prefix="/api/v1")
     app.include_router(connections.router, prefix="/api/v1")
     app.include_router(sessions.router, prefix="/api/v1")
     app.include_router(feedback.router, prefix="/api/v1")
