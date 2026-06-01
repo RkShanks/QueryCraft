@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { AdminSsoPage } from './AdminSsoPage';
-import { useAdminSso } from '../hooks/useAdminSso';
+import { AdminSsoPage } from './AdminSsoPage.tsx';
+import { useAdminSso } from '../hooks/useAdminSso.ts';
 
 vi.mock('../hooks/useAdminSso', () => ({
   useAdminSso: vi.fn(),
