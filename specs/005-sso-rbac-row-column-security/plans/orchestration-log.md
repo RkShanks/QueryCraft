@@ -216,38 +216,6 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2a
-
-### Status
-- **Date**: 2026-06-02
-- **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2a complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115.
-- **Current/open PR**: #116 (Wave 17.2a — Role CRUD Backend Slice).
-
-### Completed Scope Through This Point
-- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
-- Wave 17.1a-h backend and frontend SSO features are complete.
-- Wave 17.2a role CRUD backend slice is complete:
-  - `GET /admin/roles` and `POST /admin/roles` (no trailing slash).
-  - `GET /admin/roles/{id}`, `PUT /admin/roles/{id}`, `DELETE /admin/roles/{id}`.
-  - `RoleRepository` extended with `list_all`, `get_by_name`, `get_by_priority`, `create`.
-  - `RoleService` with permission validation, duplicate checks, built-in guard, audit logging.
-  - All errors sanitized; no raw UUIDs, DB errors, stack traces, or permission internals leaked.
-  - i18n keys added to `en.json` and `ar.json`.
-
-### Remaining Wave 17.2 Backend Work
-- T-676/T-677: Group mapping endpoints.
-- T-678/T-680: Permission gates across all endpoints.
-- T-681/T-682: Unmapped user denial.
-- T-683/T-684: RBAC audit logging coverage.
-- T-685: Wave 17.2 backend gate.
-
-### Next Dispatch Constraint
-- Wave 17.2b group mapping endpoints (T-676-T-677) after PR #116 merge.
-
----
-
 ## Wave 17.1c — Admin SSO Provider CRUD
 
 ### Dispatch
