@@ -71,7 +71,7 @@ describe('AdminSsoPage', () => {
   });
 
   it('renders title and empty state when no providers exist', () => {
-    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as any);
+    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
 
     expect(screen.getByText('admin.sso.title')).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe('AdminSsoPage', () => {
     vi.mocked(useAdminSso).mockReturnValue({
       listQuery: { isLoading: true, data: undefined, isError: false },
       ...mockMutations,
-    } as any);
+    } as unknown as ReturnType<typeof useAdminSso>);
 
     render(<AdminSsoPage />);
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
@@ -92,14 +92,14 @@ describe('AdminSsoPage', () => {
     vi.mocked(useAdminSso).mockReturnValue({
       listQuery: { isLoading: false, data: undefined, isError: true },
       ...mockMutations,
-    } as any);
+    } as unknown as ReturnType<typeof useAdminSso>);
 
     render(<AdminSsoPage />);
     expect(screen.getByText('admin.sso.loadError')).toBeInTheDocument();
   });
 
   it('renders configured providers and masks secrets', () => {
-    vi.mocked(useAdminSso).mockReturnValue(mockPopulatedProviders as any);
+    vi.mocked(useAdminSso).mockReturnValue(mockPopulatedProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
 
     // Check OIDC Provider details
@@ -115,7 +115,7 @@ describe('AdminSsoPage', () => {
   });
 
   it('shows OIDC creation form when adding an OIDC provider', () => {
-    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as any);
+    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
 
     const addOidcButton = screen.getByRole('button', { name: 'admin.sso.addOidc' });
@@ -129,7 +129,7 @@ describe('AdminSsoPage', () => {
   });
 
   it('shows SAML creation form when adding a SAML provider', () => {
-    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as any);
+    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
 
     const addSamlButton = screen.getByRole('button', { name: 'admin.sso.addSaml' });
@@ -143,7 +143,7 @@ describe('AdminSsoPage', () => {
   });
 
   it('performs OIDC creation and calls mutate with form data', async () => {
-    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as any);
+    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'admin.sso.addOidc' }));
@@ -167,7 +167,7 @@ describe('AdminSsoPage', () => {
   });
 
   it('shows validation errors for missing required OIDC fields', async () => {
-    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as any);
+    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'admin.sso.addOidc' }));
@@ -180,7 +180,7 @@ describe('AdminSsoPage', () => {
   });
 
   it('shows validation errors for missing required SAML fields', async () => {
-    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as any);
+    vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
 
     fireEvent.click(screen.getByRole('button', { name: 'admin.sso.addSaml' }));
@@ -193,7 +193,7 @@ describe('AdminSsoPage', () => {
   });
 
   it('allows updating a provider and calls update mutation', async () => {
-    vi.mocked(useAdminSso).mockReturnValue(mockPopulatedProviders as any);
+    vi.mocked(useAdminSso).mockReturnValue(mockPopulatedProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
 
     const editButtons = screen.getAllByRole('button', { name: 'common.edit' });
@@ -216,7 +216,7 @@ describe('AdminSsoPage', () => {
   });
 
   it('allows deleting a provider and calls delete mutation', async () => {
-    vi.mocked(useAdminSso).mockReturnValue(mockPopulatedProviders as any);
+    vi.mocked(useAdminSso).mockReturnValue(mockPopulatedProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
 
     const deleteButtons = screen.getAllByRole('button', { name: 'common.delete' });

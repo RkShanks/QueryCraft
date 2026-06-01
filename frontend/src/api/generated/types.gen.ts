@@ -1047,3 +1047,130 @@ export type ListSsoProvidersErrors = {
 export type ListSsoProvidersResponses = {
     200: ListSsoProvidersResponse;
 };
+
+export type SsoProviderResponse = {
+    id: string;
+    protocol: 'oidc' | 'saml';
+    display_name: string;
+    issuer_url?: string;
+    client_id?: string;
+    client_secret_masked?: string;
+    scopes?: string;
+    redirect_uri?: string;
+    group_claim_name?: string;
+    saml_entity_id?: string;
+    saml_metadata_url?: string;
+    saml_metadata_xml_masked?: string;
+    saml_certificate_masked?: string;
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
+};
+
+export type SsoProviderCreate = {
+    protocol: 'oidc' | 'saml';
+    display_name: string;
+    issuer_url?: string;
+    client_id?: string;
+    client_secret?: string;
+    scopes?: string;
+    redirect_uri?: string;
+    group_claim_name?: string;
+    saml_entity_id?: string;
+    saml_metadata_url?: string;
+    saml_metadata_xml?: string;
+    saml_certificate?: string;
+};
+
+export type SsoProviderUpdate = {
+    display_name?: string;
+    issuer_url?: string;
+    client_id?: string;
+    client_secret?: string;
+    scopes?: string;
+    redirect_uri?: string;
+    group_claim_name?: string;
+    saml_entity_id?: string;
+    saml_metadata_url?: string;
+    saml_metadata_xml?: string;
+    saml_certificate?: string;
+    is_active?: boolean;
+};
+
+export type ListAdminSsoProvidersResponse = {
+    providers: SsoProviderResponse[];
+};
+
+export type ListAdminSsoProvidersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/sso/providers';
+};
+
+export type ListAdminSsoProvidersErrors = {
+    401?: ErrorResponse;
+    403?: ErrorResponse;
+};
+
+export type ListAdminSsoProvidersResponses = {
+    200: ListAdminSsoProvidersResponse;
+};
+
+export type CreateSsoProviderData = {
+    body: SsoProviderCreate;
+    path?: never;
+    query?: never;
+    url: '/admin/sso/providers';
+};
+
+export type CreateSsoProviderErrors = {
+    401?: ErrorResponse;
+    403?: ErrorResponse;
+    409?: ErrorResponse;
+    422?: ErrorResponse;
+};
+
+export type CreateSsoProviderResponses = {
+    201: SsoProviderResponse;
+};
+
+export type UpdateSsoProviderData = {
+    body: SsoProviderUpdate;
+    path: {
+        providerId: string;
+    };
+    query?: never;
+    url: '/admin/sso/providers/{providerId}';
+};
+
+export type UpdateSsoProviderErrors = {
+    401?: ErrorResponse;
+    403?: ErrorResponse;
+    404?: ErrorResponse;
+    422?: ErrorResponse;
+};
+
+export type UpdateSsoProviderResponses = {
+    200: SsoProviderResponse;
+};
+
+export type DeleteSsoProviderData = {
+    body?: never;
+    path: {
+        providerId: string;
+    };
+    query?: never;
+    url: '/admin/sso/providers/{providerId}';
+};
+
+export type DeleteSsoProviderErrors = {
+    401?: ErrorResponse;
+    403?: ErrorResponse;
+    404?: ErrorResponse;
+};
+
+export type DeleteSsoProviderResponses = {
+    204: void;
+};
+

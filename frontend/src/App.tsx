@@ -12,7 +12,9 @@ import HistoryPage from './pages/HistoryPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminConnectionsPage } from './pages/AdminConnectionsPage';
+import { AdminSsoPage } from './pages/AdminSsoPage';
 import { AppShell } from './components/shell/AppShell';
+
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading } = useCurrentUser();
@@ -25,6 +27,30 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   }
   if (!user) {
     return <Navigate to="/sign-in" replace />;
+  }
+  return <>{children}</>;
+}
+
+function PermissionGuard({ children, permission }: { children: React.ReactNode; permission: string }) {
+  const { data: response, isLoading } = useCurrentUser();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+  const user = response?.data;
+  if (!user) {
+    return <Navigate to="/sign-in" replace />;
+  }
+  const hasPermission =
+    user.role === 'admin' ||
+    user.role_name === 'admin' ||
+    user.permissions?.includes(permission);
+
+  if (!hasPermission) {
+    return <Navigate to="/" replace />;
   }
   return <>{children}</>;
 }
@@ -103,11 +129,24 @@ function App() {
             path="/admin/connections"
             element={
               <AuthenticatedLayout>
-                <AdminConnectionsPage />
+                <PermissionGuard permission="admin.connections.manage">
+                  <AdminConnectionsPage />
+                </PermissionGuard>
+              </AuthenticatedLayout>
+            }
+          />
+          <Route
+            path="/admin/sso"
+            element={
+              <AuthenticatedLayout>
+                <PermissionGuard permission="admin.sso.manage">
+                  <AdminSsoPage />
+                </PermissionGuard>
               </AuthenticatedLayout>
             }
           />
           <Route path="*" element={<RootRedirect />} />
+
         </Routes>
       </BrowserRouter>
     </QueryProvider>
