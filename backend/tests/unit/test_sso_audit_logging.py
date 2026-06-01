@@ -12,20 +12,17 @@ Covers:
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
 
-from app.db.models.enums import AuditActionType, AuthProvider, SsoProtocol
+from app.db.models.enums import AuditActionType, SsoProtocol
 from app.db.models.role import Role
 from app.db.models.sso_provider import SsoProvider
 from app.db.models.user import User
 from app.db.models.user_identity import UserIdentity
 from app.services.audit_service import AuditService
 from app.services.sso_service import SsoService, SsoValidationError
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -148,17 +145,20 @@ class TestSsoServiceOidcAuditLogging:
         identity.email = "alice@example.com"
 
         # Redis state lookup
-        mock_redis.get = AsyncMock(
-            return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}'
-        )
+        mock_redis.get = AsyncMock(return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}')
 
         # Patch exchange + validation + role resolution to avoid real IdP
-        with patch.object(
-            service, "_exchange_code_for_token", return_value=({"sub": "user-123", "email": "alice@example.com", "groups": ["analysts"]}, "access-token")
-        ), patch.object(
-            service, "_validate_oidc_claims", return_value=None
-        ), patch.object(
-            service, "resolve_role_from_groups", return_value=role
+        with (
+            patch.object(
+                service,
+                "_exchange_code_for_token",
+                return_value=(
+                    {"sub": "user-123", "email": "alice@example.com", "groups": ["analysts"]},
+                    "access-token",
+                ),
+            ),
+            patch.object(service, "_validate_oidc_claims", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
         ):
             # DB returns no existing identity → creates new user
             mock_db.execute = AsyncMock(
@@ -173,25 +173,30 @@ class TestSsoServiceOidcAuditLogging:
 
                 # Assert audit.log was called with auth.login.success
                 mock_audit.assert_called()
-                calls = [c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_LOGIN_SUCCESS]
+                calls = [
+                    c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_LOGIN_SUCCESS
+                ]
                 assert len(calls) >= 1, f"Expected auth.login.success audit call, got {mock_audit.call_args_list}"
 
     async def test_oidc_callback_failure_logs_login_failure(self, service, mock_db, mock_redis):
         """On OIDC validation failure, audit log records auth.login.failure."""
         provider = _make_oidc_provider()
 
-        mock_redis.get = AsyncMock(
-            return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}'
-        )
+        mock_redis.get = AsyncMock(return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}')
 
-        with patch.object(
-            service, "_exchange_code_for_token", side_effect=SsoValidationError("SSO token exchange failed")
-        ), patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as mock_audit:
+        with (
+            patch.object(
+                service, "_exchange_code_for_token", side_effect=SsoValidationError("SSO token exchange failed")
+            ),
+            patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as mock_audit,
+        ):
             with pytest.raises(SsoValidationError):
                 await service.process_oidc_callback(provider, "state-123", "code-123")
 
             mock_audit.assert_called()
-            calls = [c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_LOGIN_FAILURE]
+            calls = [
+                c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_LOGIN_FAILURE
+            ]
             assert len(calls) >= 1, f"Expected auth.login.failure audit call, got {mock_audit.call_args_list}"
 
     async def test_oidc_callback_validation_event_logged(self, service, mock_db, mock_redis):
@@ -206,16 +211,19 @@ class TestSsoServiceOidcAuditLogging:
         user.role = "analyst"
         user.auth_provider = "oidc"
 
-        mock_redis.get = AsyncMock(
-            return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}'
-        )
+        mock_redis.get = AsyncMock(return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}')
 
-        with patch.object(
-            service, "_exchange_code_for_token", return_value=({"sub": "user-123", "email": "alice@example.com", "groups": ["analysts"]}, "access-token")
-        ), patch.object(
-            service, "_validate_oidc_claims", return_value=None
-        ), patch.object(
-            service, "resolve_role_from_groups", return_value=role
+        with (
+            patch.object(
+                service,
+                "_exchange_code_for_token",
+                return_value=(
+                    {"sub": "user-123", "email": "alice@example.com", "groups": ["analysts"]},
+                    "access-token",
+                ),
+            ),
+            patch.object(service, "_validate_oidc_claims", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
         ):
             mock_db.execute = AsyncMock(
                 side_effect=[
@@ -228,8 +236,14 @@ class TestSsoServiceOidcAuditLogging:
                 await service.process_oidc_callback(provider, "state-123", "code-123")
 
                 mock_audit.assert_called()
-                validation_calls = [c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_SSO_VALIDATION]
-                assert len(validation_calls) >= 1, f"Expected auth.sso.validation audit call, got {mock_audit.call_args_list}"
+                validation_calls = [
+                    c
+                    for c in mock_audit.call_args_list
+                    if c.kwargs.get("action") == AuditActionType.AUTH_SSO_VALIDATION
+                ]
+                assert len(validation_calls) >= 1, (
+                    f"Expected auth.sso.validation audit call, got {mock_audit.call_args_list}"
+                )
 
     async def test_oidc_audit_context_no_raw_tokens(self, service, mock_db, mock_redis):
         """Audit context must not contain raw ID tokens, access tokens, or secrets."""
@@ -243,16 +257,19 @@ class TestSsoServiceOidcAuditLogging:
         user.role = "analyst"
         user.auth_provider = "oidc"
 
-        mock_redis.get = AsyncMock(
-            return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}'
-        )
+        mock_redis.get = AsyncMock(return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}')
 
-        with patch.object(
-            service, "_exchange_code_for_token", return_value=({"sub": "user-123", "email": "alice@example.com", "groups": ["analysts"]}, "access-token-xyz")
-        ), patch.object(
-            service, "_validate_oidc_claims", return_value=None
-        ), patch.object(
-            service, "resolve_role_from_groups", return_value=role
+        with (
+            patch.object(
+                service,
+                "_exchange_code_for_token",
+                return_value=(
+                    {"sub": "user-123", "email": "alice@example.com", "groups": ["analysts"]},
+                    "access-token-xyz",
+                ),
+            ),
+            patch.object(service, "_validate_oidc_claims", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
         ):
             mock_db.execute = AsyncMock(
                 side_effect=[
@@ -269,7 +286,9 @@ class TestSsoServiceOidcAuditLogging:
                     # No raw tokens in context
                     for key in ["id_token", "access_token", "token", "code", "client_secret", "nonce", "state"]:
                         if key in ctx:
-                            assert ctx[key] == "[REDACTED]" or "[REDACTED]" in str(ctx[key]), f"Raw {key} found in audit context: {ctx}"
+                            assert ctx[key] == "[REDACTED]" or "[REDACTED]" in str(ctx[key]), (
+                                f"Raw {key} found in audit context: {ctx}"
+                            )
 
     async def test_oidc_audit_context_no_hostname_or_uuid_leak(self, service, mock_db, mock_redis):
         """Audit context must not leak issuer hostname or provider UUID."""
@@ -283,16 +302,16 @@ class TestSsoServiceOidcAuditLogging:
         user.role = "analyst"
         user.auth_provider = "oidc"
 
-        mock_redis.get = AsyncMock(
-            return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}'
-        )
+        mock_redis.get = AsyncMock(return_value='{"nonce": "test-nonce", "provider_id": "' + str(provider.id) + '"}')
 
-        with patch.object(
-            service, "_exchange_code_for_token", return_value=({"sub": "user-123", "email": "alice@example.com", "groups": ["analysts"]}, "token")
-        ), patch.object(
-            service, "_validate_oidc_claims", return_value=None
-        ), patch.object(
-            service, "resolve_role_from_groups", return_value=role
+        with (
+            patch.object(
+                service,
+                "_exchange_code_for_token",
+                return_value=({"sub": "user-123", "email": "alice@example.com", "groups": ["analysts"]}, "token"),
+            ),
+            patch.object(service, "_validate_oidc_claims", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
         ):
             mock_db.execute = AsyncMock(
                 side_effect=[
@@ -358,9 +377,12 @@ class TestSsoServiceSamlAuditLogging:
         user.role = "analyst"
         user.auth_provider = "saml"
 
-        mock_redis.get = AsyncMock(
-            return_value='{"provider_id": "' + str(provider.id) + '"}'
-        )
+        def _redis_get_side_effect(key):
+            if "request:" in key:
+                return '{"provider_id": "' + str(provider.id) + '"}'
+            return None
+
+        mock_redis.get = AsyncMock(side_effect=_redis_get_side_effect)
 
         attrs = {
             "subject_id": "user-456",
@@ -372,12 +394,10 @@ class TestSsoServiceSamlAuditLogging:
             "assertion_id": "assertion-001",
         }
 
-        with patch.object(
-            service, "_parse_saml_assertion", return_value=attrs
-        ), patch.object(
-            service, "_validate_saml_assertion", return_value=None
-        ), patch.object(
-            service, "resolve_role_from_groups", return_value=role
+        with (
+            patch.object(service, "_parse_saml_assertion", return_value=attrs),
+            patch.object(service, "_validate_saml_assertion", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
         ):
             mock_db.execute = AsyncMock(
                 side_effect=[
@@ -390,25 +410,37 @@ class TestSsoServiceSamlAuditLogging:
                 await service.process_saml_callback(provider, "saml-response-xml", "request-123")
 
                 mock_audit.assert_called()
-                success_calls = [c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_LOGIN_SUCCESS]
-                assert len(success_calls) >= 1, f"Expected auth.login.success audit call, got {mock_audit.call_args_list}"
+                success_calls = [
+                    c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_LOGIN_SUCCESS
+                ]
+                assert len(success_calls) >= 1, (
+                    f"Expected auth.login.success audit call, got {mock_audit.call_args_list}"
+                )
 
     async def test_saml_callback_failure_logs_login_failure(self, service, mock_db, mock_redis):
         """On SAML validation failure, audit log records auth.login.failure."""
         provider = _make_saml_provider()
 
-        mock_redis.get = AsyncMock(
-            return_value='{"provider_id": "' + str(provider.id) + '"}'
-        )
+        def _redis_get_side_effect(key):
+            if "request:" in key:
+                return '{"provider_id": "' + str(provider.id) + '"}'
+            return None
 
-        with patch.object(
-            service, "_parse_saml_assertion", side_effect=SsoValidationError("SSO assertion validation failed")
-        ), patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as mock_audit:
+        mock_redis.get = AsyncMock(side_effect=_redis_get_side_effect)
+
+        with (
+            patch.object(
+                service, "_parse_saml_assertion", side_effect=SsoValidationError("SSO assertion validation failed")
+            ),
+            patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as mock_audit,
+        ):
             with pytest.raises(SsoValidationError):
                 await service.process_saml_callback(provider, "bad-xml", "request-123")
 
             mock_audit.assert_called()
-            failure_calls = [c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_LOGIN_FAILURE]
+            failure_calls = [
+                c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_LOGIN_FAILURE
+            ]
             assert len(failure_calls) >= 1, f"Expected auth.login.failure audit call, got {mock_audit.call_args_list}"
 
     async def test_saml_callback_validation_event_logged(self, service, mock_db, mock_redis):
@@ -423,9 +455,12 @@ class TestSsoServiceSamlAuditLogging:
         user.role = "analyst"
         user.auth_provider = "saml"
 
-        mock_redis.get = AsyncMock(
-            return_value='{"provider_id": "' + str(provider.id) + '"}'
-        )
+        def _redis_get_side_effect(key):
+            if "request:" in key:
+                return '{"provider_id": "' + str(provider.id) + '"}'
+            return None
+
+        mock_redis.get = AsyncMock(side_effect=_redis_get_side_effect)
 
         attrs = {
             "subject_id": "user-456",
@@ -437,12 +472,10 @@ class TestSsoServiceSamlAuditLogging:
             "assertion_id": "assertion-001",
         }
 
-        with patch.object(
-            service, "_parse_saml_assertion", return_value=attrs
-        ), patch.object(
-            service, "_validate_saml_assertion", return_value=None
-        ), patch.object(
-            service, "resolve_role_from_groups", return_value=role
+        with (
+            patch.object(service, "_parse_saml_assertion", return_value=attrs),
+            patch.object(service, "_validate_saml_assertion", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
         ):
             mock_db.execute = AsyncMock(
                 side_effect=[
@@ -455,8 +488,14 @@ class TestSsoServiceSamlAuditLogging:
                 await service.process_saml_callback(provider, "saml-response-xml", "request-123")
 
                 mock_audit.assert_called()
-                validation_calls = [c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.AUTH_SSO_VALIDATION]
-                assert len(validation_calls) >= 1, f"Expected auth.sso.validation audit call, got {mock_audit.call_args_list}"
+                validation_calls = [
+                    c
+                    for c in mock_audit.call_args_list
+                    if c.kwargs.get("action") == AuditActionType.AUTH_SSO_VALIDATION
+                ]
+                assert len(validation_calls) >= 1, (
+                    f"Expected auth.sso.validation audit call, got {mock_audit.call_args_list}"
+                )
 
     async def test_saml_audit_context_no_assertion_xml(self, service, mock_db, mock_redis):
         """Audit context must not contain raw SAML assertion XML."""
@@ -470,9 +509,12 @@ class TestSsoServiceSamlAuditLogging:
         user.role = "analyst"
         user.auth_provider = "saml"
 
-        mock_redis.get = AsyncMock(
-            return_value='{"provider_id": "' + str(provider.id) + '"}'
-        )
+        def _redis_get_side_effect(key):
+            if "request:" in key:
+                return '{"provider_id": "' + str(provider.id) + '"}'
+            return None
+
+        mock_redis.get = AsyncMock(side_effect=_redis_get_side_effect)
 
         attrs = {
             "subject_id": "user-456",
@@ -484,12 +526,10 @@ class TestSsoServiceSamlAuditLogging:
             "assertion_id": "assertion-001",
         }
 
-        with patch.object(
-            service, "_parse_saml_assertion", return_value=attrs
-        ), patch.object(
-            service, "_validate_saml_assertion", return_value=None
-        ), patch.object(
-            service, "resolve_role_from_groups", return_value=role
+        with (
+            patch.object(service, "_parse_saml_assertion", return_value=attrs),
+            patch.object(service, "_validate_saml_assertion", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
         ):
             mock_db.execute = AsyncMock(
                 side_effect=[
@@ -519,9 +559,12 @@ class TestSsoServiceSamlAuditLogging:
         user.role = "analyst"
         user.auth_provider = "saml"
 
-        mock_redis.get = AsyncMock(
-            return_value='{"provider_id": "' + str(provider.id) + '"}'
-        )
+        def _redis_get_side_effect(key):
+            if "request:" in key:
+                return '{"provider_id": "' + str(provider.id) + '"}'
+            return None
+
+        mock_redis.get = AsyncMock(side_effect=_redis_get_side_effect)
 
         attrs = {
             "subject_id": "user-456",
@@ -533,12 +576,10 @@ class TestSsoServiceSamlAuditLogging:
             "assertion_id": "assertion-001",
         }
 
-        with patch.object(
-            service, "_parse_saml_assertion", return_value=attrs
-        ), patch.object(
-            service, "_validate_saml_assertion", return_value=None
-        ), patch.object(
-            service, "resolve_role_from_groups", return_value=role
+        with (
+            patch.object(service, "_parse_saml_assertion", return_value=attrs),
+            patch.object(service, "_validate_saml_assertion", return_value=None),
+            patch.object(service, "resolve_role_from_groups", return_value=role),
         ):
             mock_db.execute = AsyncMock(
                 side_effect=[
@@ -600,12 +641,16 @@ class TestAdminSsoAuditLogging:
             client_secret="secret-123",
         )
 
-        with patch("app.api.v1.admin_sso.encrypt", return_value="encrypted"), \
-             patch("app.api.v1.admin_sso.AuditService.log", new_callable=AsyncMock) as mock_audit:
+        with (
+            patch("app.api.v1.admin_sso.encrypt", return_value="encrypted"),
+            patch("app.api.v1.admin_sso.AuditService.log", new_callable=AsyncMock) as mock_audit,
+        ):
             await create_provider(request=admin_request, body=body, db=mock_db)
 
             mock_audit.assert_called()
-            config_calls = [c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.SSO_CONFIG_CHANGE]
+            config_calls = [
+                c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.SSO_CONFIG_CHANGE
+            ]
             assert len(config_calls) >= 1, f"Expected sso.config.change audit call, got {mock_audit.call_args_list}"
 
     async def test_update_provider_logs_sso_config_change(self, mock_db, admin_request):
@@ -618,8 +663,10 @@ class TestAdminSsoAuditLogging:
 
         body = SsoProviderUpdate(display_name="Updated Name")
 
-        with patch("app.api.v1.admin_sso.encrypt", return_value="encrypted"), \
-             patch("app.api.v1.admin_sso.AuditService.log", new_callable=AsyncMock) as mock_audit:
+        with (
+            patch("app.api.v1.admin_sso.encrypt", return_value="encrypted"),
+            patch("app.api.v1.admin_sso.AuditService.log", new_callable=AsyncMock) as mock_audit,
+        ):
             await update_provider(
                 request=admin_request,
                 provider_id=str(provider.id),
@@ -628,7 +675,9 @@ class TestAdminSsoAuditLogging:
             )
 
             mock_audit.assert_called()
-            config_calls = [c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.SSO_CONFIG_CHANGE]
+            config_calls = [
+                c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.SSO_CONFIG_CHANGE
+            ]
             assert len(config_calls) >= 1, f"Expected sso.config.change audit call, got {mock_audit.call_args_list}"
 
     async def test_delete_provider_logs_sso_config_change(self, mock_db, admin_request):
@@ -646,7 +695,9 @@ class TestAdminSsoAuditLogging:
             )
 
             mock_audit.assert_called()
-            config_calls = [c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.SSO_CONFIG_CHANGE]
+            config_calls = [
+                c for c in mock_audit.call_args_list if c.kwargs.get("action") == AuditActionType.SSO_CONFIG_CHANGE
+            ]
             assert len(config_calls) >= 1, f"Expected sso.config.change audit call, got {mock_audit.call_args_list}"
 
     async def test_admin_audit_context_no_secrets(self, mock_db, admin_request):
@@ -669,15 +720,19 @@ class TestAdminSsoAuditLogging:
             client_secret="super-secret-value",
         )
 
-        with patch("app.api.v1.admin_sso.encrypt", return_value="encrypted"), \
-             patch("app.api.v1.admin_sso.AuditService.log", new_callable=AsyncMock) as mock_audit:
+        with (
+            patch("app.api.v1.admin_sso.encrypt", return_value="encrypted"),
+            patch("app.api.v1.admin_sso.AuditService.log", new_callable=AsyncMock) as mock_audit,
+        ):
             await create_provider(request=admin_request, body=body, db=mock_db)
 
             for call in mock_audit.call_args_list:
                 ctx = call.kwargs.get("context", {})
                 ctx_str = str(ctx)
                 assert "super-secret-value" not in ctx_str, f"Raw secret leaked in audit context: {ctx}"
-                assert "client_secret" not in ctx_str or "[REDACTED]" in ctx_str, f"Unredacted client_secret in audit context: {ctx}"
+                assert "client_secret" not in ctx_str or "[REDACTED]" in ctx_str, (
+                    f"Unredacted client_secret in audit context: {ctx}"
+                )
 
 
 # ── Audit Redaction Integration ──────────────────────────────────────────────

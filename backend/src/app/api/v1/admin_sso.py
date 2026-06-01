@@ -14,9 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.dependencies import get_db
 from app.core.encryption import encrypt
-from app.db.models.enums import SsoProtocol
+from app.db.models.enums import AuditActionType, SsoProtocol
 from app.db.models.sso_provider import SsoProvider
 from app.schemas.sso import SsoProviderCreate, SsoProviderUpdate
+from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/admin/sso", tags=["Admin SSO"])
 
@@ -214,6 +215,22 @@ async def create_provider(
         await db.commit()
         await db.refresh(provider)
 
+        # Audit log: SSO config change
+        session = getattr(request.state, "session", {}) or {}
+        await AuditService.log(
+            db,
+            action=AuditActionType.SSO_CONFIG_CHANGE,
+            actor_identity=session.get("username"),
+            resource_type="sso_provider",
+            resource_id=str(provider.id),
+            outcome="success",
+            context={
+                "protocol": str(body.protocol),
+                "display_name": body.display_name,
+                "action": "create",
+            },
+        )
+
         return _provider_to_response(provider)
 
     except HTTPException:
@@ -279,6 +296,22 @@ async def update_provider(
         await db.commit()
         await db.refresh(provider)
 
+        # Audit log: SSO config change
+        session = getattr(request.state, "session", {}) or {}
+        await AuditService.log(
+            db,
+            action=AuditActionType.SSO_CONFIG_CHANGE,
+            actor_identity=session.get("username"),
+            resource_type="sso_provider",
+            resource_id=str(provider.id),
+            outcome="success",
+            context={
+                "protocol": str(provider.protocol),
+                "display_name": provider.display_name,
+                "action": "update",
+            },
+        )
+
         return _provider_to_response(provider)
 
     except HTTPException:
@@ -313,6 +346,27 @@ async def delete_provider(
 
         await db.delete(provider)
         await db.commit()
+
+        # Audit log: SSO config change
+        session = getattr(request.state, "session", {}) or {}
+        try:
+            audit_context = {
+                "protocol": str(provider.protocol),
+                "display_name": provider.display_name,
+                "action": "delete",
+            }
+        except Exception:
+            audit_context = {"action": "delete"}
+
+        await AuditService.log(
+            db,
+            action=AuditActionType.SSO_CONFIG_CHANGE,
+            actor_identity=session.get("username"),
+            resource_type="sso_provider",
+            resource_id=provider_id,
+            outcome="success",
+            context=audit_context,
+        )
 
         return None
 
