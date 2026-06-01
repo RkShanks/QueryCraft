@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { signIn, getMe, signOut } from '../api/generated/sdk.gen';
+import { signIn, getMe, signOut, listSsoProviders } from '../api/generated/sdk.gen';
 import type { SignInData } from '../api/generated/types.gen';
 
 export const useSignIn = () => {
@@ -27,6 +27,17 @@ export const useSignOut = () => {
     onSuccess: () => {
       queryClient.clear();
     },
+  });
+};
+
+export const useSsoProviders = () => {
+  return useQuery({
+    queryKey: ['ssoProviders'],
+    queryFn: async () => {
+      const response = await listSsoProviders({ throwOnError: true });
+      return response.data?.providers ?? [];
+    },
+    retry: false,
   });
 };
 

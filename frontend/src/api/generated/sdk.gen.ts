@@ -314,6 +314,9 @@ import type {
     UpdateSessionConnectionData,
     UpdateSessionConnectionErrors,
     UpdateSessionConnectionResponses,
+    ListSsoProvidersData,
+    ListSsoProvidersErrors,
+    ListSsoProvidersResponses,
 } from './types.gen';
 
 /**
@@ -406,5 +409,13 @@ export const updateSessionConnection = <ThrowOnError extends boolean = false>(op
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * List configured SSO providers
+ */
+export const listSsoProviders = <ThrowOnError extends boolean = false>(options?: Options<ListSsoProvidersData, ThrowOnError>) => (options?.client ?? client).get<ListSsoProvidersResponses, ListSsoProvidersErrors, ThrowOnError>({
+    url: '/auth/sso/providers',
+    ...options
 });
 

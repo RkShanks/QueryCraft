@@ -1,15 +1,23 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { SignInPage } from './SignInPage';
 import { createWrapper } from '../test/utils';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/server';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 describe('SignInPage', () => {
-  beforeAll(() => {
+  beforeEach(() => {
+    // Add default mocks for /api/v1/auth/me to return 401 (unauthenticated)
+    // and /api/v1/auth/sso/providers to return empty list by default.
+    // Uses wildcard matching to avoid origin-mismatch issues.
     server.use(
-      http.get('/api/v1/auth/me', () => {
+      http.get('*/api/v1/auth/me', () => {
         return new HttpResponse(null, { status: 401 });
+      }),
+      http.get('*/api/v1/auth/sso/providers', () => {
+        return HttpResponse.json({ providers: [] });
       })
     );
   });
@@ -31,9 +39,9 @@ describe('SignInPage', () => {
 
     beforeAll(() => {
       originalLocation = window.location;
-      mockLocation = new URL('http://localhost/sign-in');
+      mockLocation = new URL('http://localhost:3000/sign-in');
       delete (window as any).location;
-      window.location = {
+      (window as any).location = {
         ...originalLocation,
         assign: vi.fn(),
         replace: vi.fn(),
@@ -53,16 +61,16 @@ describe('SignInPage', () => {
     });
 
     afterEach(() => {
-      mockLocation = new URL('http://localhost/sign-in');
+      mockLocation = new URL('http://localhost:3000/sign-in');
     });
 
     afterAll(() => {
-      window.location = originalLocation;
+      (window as any).location = originalLocation;
     });
 
     it('renders SSO provider buttons when configured', async () => {
       server.use(
-        http.get('/api/v1/auth/sso/providers', () => {
+        http.get('*/api/v1/auth/sso/providers', () => {
           return HttpResponse.json({
             providers: [
               {
@@ -92,7 +100,7 @@ describe('SignInPage', () => {
 
     it('redirects to provider login URL on click', async () => {
       server.use(
-        http.get('/api/v1/auth/sso/providers', () => {
+        http.get('*/api/v1/auth/sso/providers', () => {
           return HttpResponse.json({
             providers: [
               {
@@ -110,12 +118,12 @@ describe('SignInPage', () => {
       const oidcButton = await screen.findByRole('button', { name: /Sign in with Corporate OIDC/i });
       oidcButton.click();
 
-      expect(window.location.href).toBe('http://localhost/api/v1/auth/sso/oidc/login');
+      expect(window.location.href).toContain('/api/v1/auth/sso/oidc/login');
     });
 
     it('renders error alert when no SSO providers are configured', async () => {
       server.use(
-        http.get('/api/v1/auth/sso/providers', () => {
+        http.get('*/api/v1/auth/sso/providers', () => {
           return HttpResponse.json({ providers: [] });
         })
       );
@@ -127,16 +135,21 @@ describe('SignInPage', () => {
     });
 
     it('displays mapped error message from query parameter', async () => {
-      // Setup URL search param
-      mockLocation = new URL('http://localhost/sign-in?error=sso_no_role');
+      const testQueryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+          },
+        },
+      });
 
-      server.use(
-        http.get('/api/v1/auth/sso/providers', () => {
-          return HttpResponse.json({ providers: [] });
-        })
+      render(
+        <MemoryRouter initialEntries={['/sign-in?error=sso_no_role']}>
+          <QueryClientProvider client={testQueryClient}>
+            <SignInPage />
+          </QueryClientProvider>
+        </MemoryRouter>
       );
-
-      render(<SignInPage />, { wrapper: createWrapper() });
 
       const errorText = await screen.findByText(/User SSO groups don't map to any role/i);
       expect(errorText).toBeInTheDocument();

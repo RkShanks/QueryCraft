@@ -14,6 +14,10 @@ export type UserProfile = {
     username: string;
     display_name: string;
     role: string;
+    role_id?: string | null;
+    role_name?: string | null;
+    permissions?: string[];
+    auth_provider?: 'local' | 'oidc' | 'saml';
 };
 
 export type SubmitQuestionRequest = {
@@ -1017,4 +1021,29 @@ export type UpdateSessionConnectionErrors = {
 
 export type UpdateSessionConnectionResponses = {
     200: SessionDetail;
+};
+
+export type SsoProviderPublic = {
+    protocol: 'oidc' | 'saml';
+    display_name: string;
+    login_url: string;
+};
+
+export type ListSsoProvidersResponse = {
+    providers: SsoProviderPublic[];
+};
+
+export type ListSsoProvidersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/sso/providers';
+};
+
+export type ListSsoProvidersErrors = {
+    401?: ErrorResponse;
+};
+
+export type ListSsoProvidersResponses = {
+    200: ListSsoProvidersResponse;
 };
