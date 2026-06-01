@@ -69,7 +69,7 @@ def _validate_permissions(permissions: list[str] | None) -> None:
         raise ValueError(f"Invalid permissions: {', '.join(invalid)}")
 
 
-@router.get("/")
+@router.get("")
 async def list_roles(
     request: Request,
     db: AsyncSession = Depends(get_db),  # noqa: B008
@@ -121,7 +121,7 @@ async def list_roles(
         ) from None
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_role(
     request: Request,
     body: RoleCreate,
