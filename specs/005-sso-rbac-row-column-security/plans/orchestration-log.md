@@ -216,38 +216,6 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2a
-
-### Status
-- **Date**: 2026-06-02
-- **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2a complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115.
-- **Current/open PR**: #116 (Wave 17.2a — Role CRUD Backend Slice).
-
-### Completed Scope Through This Point
-- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
-- Wave 17.1a-h backend and frontend SSO features are complete.
-- Wave 17.2a role CRUD backend slice is complete:
-  - `GET /admin/roles` and `POST /admin/roles` (no trailing slash).
-  - `GET /admin/roles/{id}`, `PUT /admin/roles/{id}`, `DELETE /admin/roles/{id}`.
-  - `RoleRepository` extended with `list_all`, `get_by_name`, `get_by_priority`, `create`.
-  - `RoleService` with permission validation, duplicate checks, built-in guard, audit logging.
-  - All errors sanitized; no raw UUIDs, DB errors, stack traces, or permission internals leaked.
-  - i18n keys added to `en.json` and `ar.json`.
-
-### Remaining Wave 17.2 Backend Work
-- T-676/T-677: Group mapping endpoints.
-- T-678/T-680: Permission gates across all endpoints.
-- T-681/T-682: Unmapped user denial.
-- T-683/T-684: RBAC audit logging coverage.
-- T-685: Wave 17.2 backend gate.
-
-### Next Dispatch Constraint
-- Wave 17.2b group mapping endpoints (T-676-T-677) after PR #116 merge.
-
----
-
 ## Wave 17.1c — Admin SSO Provider CRUD
 
 ### Dispatch
@@ -501,7 +469,81 @@
 - Audit logging for role create/update/delete via `AuditService.log()` with redacted context.
 
 ### Remaining Wave 17.2 Backend Work
-- T-676/T-677: Group mapping endpoints (create, list, delete).
+- T-678/T-680: Permission gates across all existing admin and query endpoints.
+- T-681/T-682: Unmapped user denial.
+- T-683/T-684: RBAC audit logging coverage.
+- T-685: Wave 17.2 backend gate.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.2b
+
+### Status
+- **Date**: 2026-06-02
+- **Phase**: Phase 5 remains IN PROGRESS.
+- **Current point**: Wave 17.2b complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116.
+- **Current/open PR**: #117 (Wave 17.2b — Group Mapping Endpoints).
+
+### Completed Scope Through This Point
+- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
+- Wave 17.1a-h backend and frontend SSO features are complete.
+- Wave 17.2a role CRUD backend slice is complete.
+- Wave 17.2b group mapping endpoints are complete:
+  - `GET /admin/sso/group-mappings` and `POST /admin/sso/group-mappings`.
+  - `DELETE /admin/sso/group-mappings/{id}`.
+  - UUID validation for `role_id` and `mapping_id` with sanitized 404 on invalid input.
+  - Duplicate group mapping rejection (409), role existence validation (404).
+  - Permission: `admin.roles.manage` (admin.sso.manage does NOT grant access).
+  - i18n key `error.conflict.duplicateGroupMapping` added to `en.json` and `ar.json`.
+
+### Remaining Wave 17.2 Backend Work
+- T-678/T-680: Permission gates across all existing admin and query endpoints.
+- T-681/T-682: Unmapped user denial.
+- T-683/T-684: RBAC audit logging coverage.
+- T-685: Wave 17.2 backend gate.
+
+### Next Dispatch Constraint
+- Wave 17.2c permission gates (T-678-T-680) after PR #117 merge.
+
+---
+
+## Wave 17.2b — Group Mapping Endpoints
+
+### Dispatch
+- **Date**: 2026-06-02
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-676, T-677
+- **Branch**: `phase-5/wave-17.2b-group-mapping-endpoints`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/117
+
+### Scope
+- T-676: TDD tests for group mapping endpoints (`tests/unit/test_group_mapping_endpoints.py`): permission enforcement (admin.roles.manage, NOT admin.sso.manage), list, create, delete, duplicate group rejection (409), missing role validation (404), error sanitization.
+- T-677: Implemented group mapping endpoints in `backend/src/app/api/v1/admin_sso.py`:
+  - `GET /admin/sso/group-mappings` — list all mappings with role names.
+  - `POST /admin/sso/group-mappings` — create mapping, duplicate check, role existence validation.
+  - `DELETE /admin/sso/group-mappings/{id}` — delete mapping, 404 if missing.
+- Audit logging via `AuditActionType.ROLE_MAPPING_CHANGE` for create and delete.
+- Added i18n keys `error.conflict.duplicateGroupMapping` to `en.json` and `ar.json`.
+
+### Gates
+- Full unit gate: `908 passed, 61 skipped, 9 deselected, 12 warnings in 11.54s`
+- Focused group mapping tests: `27 passed`
+- Ruff check: `All checks passed!`
+- Ruff format: `284 files already formatted`
+
+### Security Notes
+- Group mapping endpoints enforce `require_permission(Permission.ADMIN_ROLES_MANAGE)` — admin.sso.manage does NOT grant access.
+- Duplicate SSO group value returns 409 with sanitized localized key `error.conflict.duplicateGroupMapping`; no raw UUIDs or DB internals leaked.
+- Missing referenced role returns 404 with `error.notFound`; no UUIDs leaked.
+- All exceptions caught and sanitized to generic `error.internal` with no stack traces or DB errors exposed.
+- Audit logging for mapping create/delete via `AuditService.log()` with redacted context.
+
+### Review Fixes
+- **Fix 1 — UUID validation**: `body.role_id` in POST and `mapping_id` in DELETE are converted via `uuid.UUID(...)` before DB use. Invalid UUIDs return sanitized 404 `error.notFound` without leaking raw input.
+- Tests added for invalid `role_id` POST and invalid `mapping_id` DELETE; assert raw invalid value does not appear in response.
+
+### Remaining Wave 17.2 Backend Work
 - T-678/T-680: Permission gates across all existing admin and query endpoints.
 - T-681/T-682: Unmapped user denial.
 - T-683/T-684: RBAC audit logging coverage.

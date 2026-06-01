@@ -271,6 +271,7 @@
   "error.conflict.duplicateProtocol": "A provider for this protocol already exists.",
   "error.conflict.duplicateName": "A role with this name already exists.",
   "error.conflict.duplicatePriority": "A role with this priority already exists.",
+  "error.conflict.duplicateGroupMapping": "This SSO group is already mapped to a role.",
   "error.builtinRoleProtected": "This built-in user or role is protected and cannot be modified or deleted.",
   "error.ssoNoRole": "User SSO groups don't map to any role.",
   "error.ssoValidationFailed": "SSO validation failed.",

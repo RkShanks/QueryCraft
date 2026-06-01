@@ -195,8 +195,8 @@
 
 ### Backend — Group Mapping (Owner: Kimi ( opencode ))
 
-- [ ] T-676 [US30] Write TDD tests for group mapping endpoints (create, list, delete, duplicate group rejection) in `backend/tests/unit/test_group_mapping_endpoints.py` — FR-125
-- [ ] T-677 [US30] Implement group mapping endpoints in `backend/src/app/api/v1/admin_sso.py` (extend): `GET/POST /admin/sso/group-mappings`, `DELETE /admin/sso/group-mappings/{id}` per api-contracts.md with `require_permission('admin.roles.manage')` — FR-125
+- [x] T-676 [US30] Write TDD tests for group mapping endpoints (create, list, delete, duplicate group rejection) in `backend/tests/unit/test_group_mapping_endpoints.py` — FR-125
+- [x] T-677 [US30] Implement group mapping endpoints in `backend/src/app/api/v1/admin_sso.py` (extend): `GET/POST /admin/sso/group-mappings`, `DELETE /admin/sso/group-mappings/{id}` per api-contracts.md with `require_permission('admin.roles.manage')` — FR-125
 
 ### Backend — Permission Gates (Owner: Kimi ( opencode ))
 
