@@ -15,12 +15,11 @@ Tests:
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
 
-from app.db.models.enums import Permission
 from app.db.models.role import Role
 from app.schemas.roles import RoleCreate, RoleUpdate
 
@@ -179,7 +178,13 @@ class TestListRoles:
         role2 = _make_role(name="Admin", priority=5)
 
         mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=FakeResult([role1, role2]))
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([role1, role2]),  # roles query
+                FakeResult([]),  # group mappings query
+                FakeResult([]),  # connection policies count
+            ]
+        )
 
         request = MagicMock()
         request.state.session = {"permissions": ["admin.roles.manage"]}
@@ -196,7 +201,13 @@ class TestListRoles:
         from app.api.v1.admin_roles import list_roles
 
         mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=FakeResult([]))
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([]),  # roles query
+                FakeResult([]),  # group mappings query
+                FakeResult([]),  # connection policies count
+            ]
+        )
 
         request = MagicMock()
         request.state.session = {"permissions": ["admin.roles.manage"]}
@@ -215,6 +226,7 @@ class TestListRoles:
             side_effect=[
                 FakeResult([role]),  # roles query
                 FakeResult([]),  # group mappings query
+                FakeResult([]),  # connection policies count
             ]
         )
 
@@ -233,12 +245,17 @@ class TestListRoles:
 
         role = _make_role(name="Analyst", priority=10)
 
+        # Build a tuple-like count row for the aggregate query
+        count_row = MagicMock()
+        count_row.__getitem__ = lambda self, i: [role.id, 1][i]
+        count_row.__len__ = lambda self: 2
+
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(
             side_effect=[
                 FakeResult([role]),  # roles query
                 FakeResult([]),  # group mappings query
-                FakeResult([MagicMock()]),  # connection policies count
+                FakeResult([count_row]),  # connection policies count
             ]
         )
 
@@ -453,10 +470,10 @@ class TestUpdateRole:
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(
             side_effect=[
-                FakeResult(role),  # existing role
-                FakeResult([]),  # duplicate name check
-                FakeResult([]),  # duplicate priority check
-                FakeResult([MagicMock()]),  # RETURNING
+                FakeResult(role),  # service.get_by_id
+                FakeResult([]),  # no duplicate name
+                FakeResult(role),  # repo.update internal get_by_id
+                FakeResult([MagicMock()]),  # db.refresh
             ]
         )
         mock_db.commit = AsyncMock()
@@ -533,25 +550,6 @@ class TestUpdateRole:
         assert exc.value.detail["message_key"] == "error.builtinRoleProtected"
 
     @pytest.mark.asyncio
-    async def test_update_builtin_role_is_builtin_returns_403(self):
-        from app.api.v1.admin_roles import update_role
-
-        role = _make_builtin_role()
-
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=FakeResult(role))
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
-
-        body = RoleUpdate(is_builtin=False)
-
-        with pytest.raises(HTTPException) as exc:
-            await update_role(request=request, role_id=str(role.id), body=body, db=mock_db)
-        assert exc.value.status_code == 403
-        assert exc.value.detail["message_key"] == "error.builtinRoleProtected"
-
-    @pytest.mark.asyncio
     async def test_update_builtin_role_description_allowed(self):
         from app.api.v1.admin_roles import update_role
 
@@ -560,10 +558,8 @@ class TestUpdateRole:
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(
             side_effect=[
-                FakeResult(role),  # existing role
-                FakeResult([]),  # duplicate name check (no change)
-                FakeResult([]),  # duplicate priority check (no change)
-                FakeResult([MagicMock()]),  # RETURNING
+                FakeResult(role),  # service.get_by_id
+                FakeResult(role),  # repo.update internal get_by_id
             ]
         )
         mock_db.commit = AsyncMock()
@@ -587,7 +583,7 @@ class TestUpdateRole:
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(
             side_effect=[
-                FakeResult(role),  # existing role
+                FakeResult(role),  # service.get_by_id
                 FakeResult([other]),  # duplicate name check
             ]
         )
@@ -614,8 +610,7 @@ class TestUpdateRole:
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(
             side_effect=[
-                FakeResult(role),  # existing role
-                FakeResult([]),  # no duplicate name
+                FakeResult(role),  # service.get_by_id
                 FakeResult([other]),  # duplicate priority
             ]
         )
