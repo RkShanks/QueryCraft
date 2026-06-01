@@ -216,13 +216,14 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1d
+## Current Wave Checkpoint — Through Wave 17.1e
 
 ### Status
-- **Date**: 2026-05-24
+- **Date**: 2026-06-01
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1d complete and merged; Wave 17.1e not dispatched yet.
+- **Current point**: Wave 17.1e complete and ready for merge/review; Wave 17.1f not dispatched yet.
 - **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111.
+- **Current/open PR**: #112 (Wave 17.1e — SSO audit logging).
 - **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
 
 ### Completed Scope Through This Point
@@ -256,6 +257,13 @@
   - Built-in role core property changes blocked.
   - Built-in admin local login guarantee covered by tests.
   - `error.builtinRoleProtected` i18n key added in EN/AR.
+- Wave 17.1e SSO audit logging slice is complete:
+  - SSO login success/failure audit events (OIDC + SAML).
+  - SSO validation events audit logging.
+  - Admin SSO config change audit logging (create/update/delete).
+  - Audit context redaction: no raw tokens, certs, assertion XML, secrets, hostnames, UUIDs.
+  - Admin SSO mutation+audit atomic: audit entry in same transaction as provider mutation.
+  - SSO login session cleanup on audit failure: Redis session revoked if `auth.login.success` audit fails.
 
 ### Review Decisions Locked
 - OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
@@ -264,14 +272,15 @@
 - `SsoValidationError` is the user-facing SSO error boundary; raw tokens, certs, UUIDs, hostnames, assertion XML, and parser/security details stay out of user-facing messages.
 - Backend fast gate remains `uv run pytest tests/unit -q -m "not integration"`.
 - GLM prompts should be constrained to 2-4 implementation tasks per prompt.
+- Audit logging must be atomic with the mutation it records: `AuditService.log()` before `db.commit()`.
+- SSO login cannot leave an unaudited session: Redis session is deleted if `auth.login.success` audit fails.
 
 ### Remaining Wave 17.1 Work
-- T-654-T-655: SSO login/audit events.
 - T-656-T-657: concurrent session limit tests and enforcement.
 - T-658: Wave 17.1 backend gate.
 
 ### Next Dispatch Constraint
-- Dispatch Wave 17.1e as a backend-only PR for 2 tasks max before frontend Wave 17.1 surfaces. Recommended next slice: T-654 through T-655 (SSO audit logging).
+- Dispatch Wave 17.1f as a backend-only PR for T-656 through T-658 (concurrent session limit + backend gate) before frontend Wave 17.1 surfaces.
 
 ---
 
@@ -305,7 +314,7 @@
 - All DB exceptions caught and sanitized to generic `error.internal`.
 - 404/409 errors use generic message keys without leaking UUIDs or internal state.
 
-### Remaining Wave 17.1 Work
+### Remaining Wave 17.1 Work (at time of 17.1c dispatch)
 - T-652-T-653: built-in admin lockout prevention tests and implementation.
 - T-654-T-655: SSO login/audit events.
 - T-656-T-657: concurrent session limit tests and enforcement.
@@ -343,7 +352,7 @@
 - API layer can map `BuiltinProtectedError` to HTTP 403 with `error.builtinRoleProtected` message_key.
 - Local admin login remains functional; `AuthService.sign_in` checks `role="admin"` and `auth_provider="local"`.
 
-### Remaining Wave 17.1 Work
+### Remaining Wave 17.1 Work (at time of 17.1d dispatch)
 - T-654-T-655: SSO login/audit events.
 - T-656-T-657: concurrent session limit tests and enforcement.
 - T-658: Wave 17.1 backend gate.
