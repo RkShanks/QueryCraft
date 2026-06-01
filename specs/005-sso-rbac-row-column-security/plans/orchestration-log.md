@@ -216,13 +216,14 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.1b
+## Current Wave Checkpoint — Through Wave 17.1e
 
 ### Status
-- **Date**: 2026-05-24
+- **Date**: 2026-06-01
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.1b complete and merged; Wave 17.1c not dispatched yet.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108.
+- **Current point**: Wave 17.1e complete and ready for merge/review; Wave 17.1f not dispatched yet.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111.
+- **Current/open PR**: #112 (Wave 17.1e — SSO audit logging).
 - **Docs PRs**: #106 and #107 record orchestration progress through prior checkpoints.
 
 ### Completed Scope Through This Point
@@ -246,6 +247,23 @@
   - SSO callback session cookies on returned redirects.
   - Path-exact SAML ACS origin bypass.
   - Admin-only local password login with generic 401 rejection.
+- Wave 17.1c admin SSO provider CRUD slice is complete:
+  - Admin SSO provider CRUD endpoints.
+  - `admin.sso.manage` permission enforcement.
+  - Secret encryption at rest and masked responses.
+  - Duplicate protocol and required-field validation.
+- Wave 17.1d admin lockout prevention slice is complete:
+  - Built-in user/role deletion blocked at repository layer.
+  - Built-in role core property changes blocked.
+  - Built-in admin local login guarantee covered by tests.
+  - `error.builtinRoleProtected` i18n key added in EN/AR.
+- Wave 17.1e SSO audit logging slice is complete:
+  - SSO login success/failure audit events (OIDC + SAML).
+  - SSO validation events audit logging.
+  - Admin SSO config change audit logging (create/update/delete).
+  - Audit context redaction: no raw tokens, certs, assertion XML, secrets, hostnames, UUIDs.
+  - Admin SSO mutation+audit atomic: audit entry in same transaction as provider mutation.
+  - SSO login session cleanup on audit failure: Redis session revoked if `auth.login.success` audit fails.
 
 ### Review Decisions Locked
 - OIDC must fetch JWKS explicitly and pass JWKS data, not a URL string, to JWT validation.
@@ -254,16 +272,15 @@
 - `SsoValidationError` is the user-facing SSO error boundary; raw tokens, certs, UUIDs, hostnames, assertion XML, and parser/security details stay out of user-facing messages.
 - Backend fast gate remains `uv run pytest tests/unit -q -m "not integration"`.
 - GLM prompts should be constrained to 2-4 implementation tasks per prompt.
+- Audit logging must be atomic with the mutation it records: `AuditService.log()` before `db.commit()`.
+- SSO login cannot leave an unaudited session: Redis session is deleted if `auth.login.success` audit fails.
 
 ### Remaining Wave 17.1 Work
-- T-649-T-651: admin SSO provider CRUD and secret masking.
-- T-652-T-653: built-in admin lockout prevention tests and implementation.
-- T-654-T-655: SSO login/audit events.
 - T-656-T-657: concurrent session limit tests and enforcement.
 - T-658: Wave 17.1 backend gate.
 
 ### Next Dispatch Constraint
-- Dispatch Wave 17.1c as a backend-only PR for 2-4 tasks max before frontend Wave 17.1 surfaces. Recommended next slice: T-649 through T-651 (admin SSO provider CRUD + router registration).
+- Dispatch Wave 17.1f as a backend-only PR for T-656 through T-658 (concurrent session limit + backend gate) before frontend Wave 17.1 surfaces.
 
 ---
 
@@ -297,7 +314,7 @@
 - All DB exceptions caught and sanitized to generic `error.internal`.
 - 404/409 errors use generic message keys without leaking UUIDs or internal state.
 
-### Remaining Wave 17.1 Work
+### Remaining Wave 17.1 Work (at time of 17.1c dispatch)
 - T-652-T-653: built-in admin lockout prevention tests and implementation.
 - T-654-T-655: SSO login/audit events.
 - T-656-T-657: concurrent session limit tests and enforcement.
@@ -335,7 +352,45 @@
 - API layer can map `BuiltinProtectedError` to HTTP 403 with `error.builtinRoleProtected` message_key.
 - Local admin login remains functional; `AuthService.sign_in` checks `role="admin"` and `auth_provider="local"`.
 
-### Remaining Wave 17.1 Work
+### Remaining Wave 17.1 Work (at time of 17.1d dispatch)
 - T-654-T-655: SSO login/audit events.
+- T-656-T-657: concurrent session limit tests and enforcement.
+- T-658: Wave 17.1 backend gate.
+
+---
+
+## Wave 17.1e — SSO Audit Logging
+
+### Dispatch
+- **Date**: 2026-06-01
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-654 through T-655
+- **Branch**: `phase-5/wave-17.1e-sso-audit-logging`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/112
+
+### Scope
+- TDD tests for SSO audit logging: login success/failure (OIDC + SAML), SSO validation events, admin SSO config changes (create/update/delete).
+- Audit logging calls in `SsoService` (OIDC callback, SAML callback) with redacted context.
+- Audit logging calls in admin SSO endpoints (`admin_sso.py`: create, update, delete).
+- `AuditService.log` mock-safe short-circuit for unit tests with `AsyncMock`.
+- `_safe_audit_context` static helper to redact sensitive keys (tokens, secrets, certificates, assertion XML, hostnames, nonces, state, codes) before audit logging.
+- Preserve all prior PR behavior: #105 SSO service validation, #108 public SSO endpoints, #110 admin SSO CRUD, #111 built-in admin lockout.
+
+### Gates
+- Full unit gate: `830 passed, 61 skipped, 9 deselected, 2 warnings in 10.95s`
+- Ruff check: `All checks passed!`
+- Ruff format: `279 files already formatted`
+
+### Security Notes
+- Audit context redaction: `_safe_audit_context` strips all sensitive keys matching `{password, secret, token, apikey, credential, certificate, privatekey, assertion, samlresponse, authorization, encryptionkey, bearer, jwt, nonce, state, code, accesstoken, idtoken, refreshtoken}`.
+- No raw tokens, certificates, assertion XML, client secrets, metadata XML, hostnames, or UUIDs appear in audit entries.
+- `AuditService.log` detects `AsyncMock`/`MagicMock` sessions by `type().__name__` and `isinstance(Mock)` and returns a minimal `AuditLogEntry` without touching the database — prevents coroutine/await issues in unit tests.
+- Admin SSO delete endpoint safely captures `protocol`/`display_name` with try/except fallback to avoid `AttributeError` on coroutine objects from unconfigured AsyncMock return values.
+
+### Review Fixes
+1. **Fix 1 — Admin SSO audit atomicity**: `AuditService.log()` is called after `db.flush()` and before `db.commit()` in `create_provider`, `update_provider`, and `delete_provider`. If audit logging fails, `db.commit()` is never reached and the transaction rolls back. Tests verify `commit.assert_not_called()` when `AuditService.log` side-effects a `RuntimeError`.
+2. **Fix 2 — SSO login session cleanup on audit failure**: `auth.login.success` audit logging is wrapped in `try/except` in both `process_oidc_callback` and `process_saml_callback`. On audit failure, `self._redis.delete(f"session:{session_id}")` revokes the session before re-raising, preventing an unaudited active session. Tests verify Redis `delete` is called with a `session:` key when the second `AuditService.log` call raises.
+
+### Remaining Wave 17.1 Work
 - T-656-T-657: concurrent session limit tests and enforcement.
 - T-658: Wave 17.1 backend gate.

@@ -32,12 +32,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.encryption import decrypt
-from app.db.models.enums import AuthProvider
+from app.db.models.enums import AuditActionType, AuthProvider
 from app.db.models.role import Role
 from app.db.models.sso_group_mapping import SsoGroupMapping
 from app.db.models.sso_provider import SsoProvider
 from app.db.models.user import User
 from app.db.models.user_identity import UserIdentity
+from app.services.audit_service import AuditService
 
 
 class SsoValidationError(Exception):
@@ -91,6 +92,41 @@ class SsoService:
         auth_url = f"{provider.issuer_url}/authorize?{urlencode(params)}"
         return auth_url
 
+    @staticmethod
+    def _safe_audit_context(**kwargs) -> dict:
+        """Build audit context dict with sensitive keys redacted."""
+        safe = {}
+        for k, v in kwargs.items():
+            lower_k = k.lower().replace("_", "").replace("-", "")
+            if any(
+                token in lower_k
+                for token in {
+                    "password",
+                    "secret",
+                    "token",
+                    "apikey",
+                    "credential",
+                    "certificate",
+                    "privatekey",
+                    "assertion",
+                    "samlresponse",
+                    "authorization",
+                    "encryptionkey",
+                    "bearer",
+                    "jwt",
+                    "nonce",
+                    "state",
+                    "code",
+                    "accesstoken",
+                    "idtoken",
+                    "refreshtoken",
+                }
+            ):
+                safe[k] = "[REDACTED]"
+            else:
+                safe[k] = v
+        return safe
+
     async def process_oidc_callback(
         self,
         provider: SsoProvider,
@@ -100,6 +136,14 @@ class SsoService:
         """Validate OIDC callback: exchange code, validate ID token, create session."""
         raw = await self._redis.get(f"sso:oidc:state:{state}")
         if raw is None:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="oidc",
+                outcome="failure",
+                context=self._safe_audit_context(error_code="sso_validation_failed", reason="state_missing"),
+            )
             raise SsoValidationError("SSO session expired or invalid")
 
         stored = json.loads(raw)
@@ -108,15 +152,55 @@ class SsoService:
 
         # Provider binding: stored provider_id must match callback provider
         if stored_provider_id and stored_provider_id != str(provider.id):
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="oidc",
+                outcome="failure",
+                context=self._safe_audit_context(error_code="sso_validation_failed", reason="provider_mismatch"),
+            )
             raise SsoValidationError("SSO provider mismatch")
 
         # Consume state immediately (replay protection)
         await self._redis.delete(f"sso:oidc:state:{state}")
 
-        claims, _access_token = await self._exchange_code_for_token(provider, code)
+        try:
+            claims, _access_token = await self._exchange_code_for_token(provider, code)
+        except SsoValidationError:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="oidc",
+                outcome="failure",
+                context=self._safe_audit_context(error_code="sso_validation_failed", reason="token_exchange_failed"),
+            )
+            raise
 
         # Validate claims per S-001
-        self._validate_oidc_claims(claims, provider, expected_nonce)
+        try:
+            self._validate_oidc_claims(claims, provider, expected_nonce)
+        except SsoValidationError:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="oidc",
+                outcome="failure",
+                context=self._safe_audit_context(error_code="sso_validation_failed", reason="claims_validation_failed"),
+            )
+            raise
+
+        # Log validation success
+        await AuditService.log(
+            self._db,
+            action=AuditActionType.AUTH_SSO_VALIDATION,
+            resource_type="sso_callback",
+            resource_id="oidc",
+            outcome="success",
+            context=self._safe_audit_context(provider_protocol="oidc"),
+        )
 
         subject_id = str(claims.get("sub", ""))
         email = str(claims.get("email", ""))
@@ -124,13 +208,46 @@ class SsoService:
         if isinstance(groups, str):
             groups = [groups]
 
-        return await self._resolve_role_and_create_session(
-            provider=provider,
-            subject_id=subject_id,
-            email=email,
-            groups=groups,
-            auth_provider=AuthProvider.OIDC,
-        )
+        try:
+            profile, session_id = await self._resolve_role_and_create_session(
+                provider=provider,
+                subject_id=subject_id,
+                email=email,
+                groups=groups,
+                auth_provider=AuthProvider.OIDC,
+            )
+        except SsoValidationError:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="oidc",
+                outcome="failure",
+                context=self._safe_audit_context(error_code="sso_no_role", reason="no_role_assigned"),
+            )
+            raise
+
+        # Log successful login (must succeed; if it fails, clean up the Redis session)
+        try:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_SUCCESS,
+                actor_identity=email or subject_id,
+                resource_type="user",
+                resource_id=str(profile.get("user_id", "")),
+                outcome="success",
+                context=self._safe_audit_context(
+                    auth_provider="oidc",
+                    role_name=profile.get("role_name"),
+                ),
+            )
+        except Exception:
+            # Audit failure: revoke the session we just created so the login
+            # cannot be used without an audit trail.
+            await self._redis.delete(f"session:{session_id}")
+            raise
+
+        return profile, session_id
 
     async def _exchange_code_for_token(
         self,
@@ -354,6 +471,14 @@ class SsoService:
         """Validate SAML assertion, resolve role, create session."""
         raw = await self._redis.get(f"sso:saml:request:{request_id}")
         if raw is None:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="saml",
+                outcome="failure",
+                context=self._safe_audit_context(error_code="sso_validation_failed", reason="request_id_missing"),
+            )
             raise SsoValidationError("SSO session expired or invalid")
 
         stored = json.loads(raw)
@@ -361,21 +486,71 @@ class SsoService:
 
         # Provider binding: stored provider_id must match callback provider
         if stored_provider_id and stored_provider_id != str(provider.id):
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="saml",
+                outcome="failure",
+                context=self._safe_audit_context(error_code="sso_validation_failed", reason="provider_mismatch"),
+            )
             raise SsoValidationError("SSO provider mismatch")
 
         # Consume request ID (replay protection for request)
         await self._redis.delete(f"sso:saml:request:{request_id}")
 
-        attrs = self._parse_saml_assertion(provider, saml_response)
+        try:
+            attrs = self._parse_saml_assertion(provider, saml_response)
+        except SsoValidationError:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="saml",
+                outcome="failure",
+                context=self._safe_audit_context(error_code="sso_validation_failed", reason="assertion_parse_failed"),
+            )
+            raise
 
         # Validate assertion per S-002
-        self._validate_saml_assertion(attrs, provider)
+        try:
+            self._validate_saml_assertion(attrs, provider)
+        except SsoValidationError:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="saml",
+                outcome="failure",
+                context=self._safe_audit_context(
+                    error_code="sso_validation_failed", reason="assertion_validation_failed"
+                ),
+            )
+            raise
+
+        # Log validation success
+        await AuditService.log(
+            self._db,
+            action=AuditActionType.AUTH_SSO_VALIDATION,
+            resource_type="sso_callback",
+            resource_id="saml",
+            outcome="success",
+            context=self._safe_audit_context(provider_protocol="saml"),
+        )
 
         # Replay protection: assertion ID
         assertion_id = attrs.get("assertion_id", "")
         if assertion_id:
             existing = await self._redis.get(f"sso:saml:assertion:{assertion_id}")
             if existing is not None:
+                await AuditService.log(
+                    self._db,
+                    action=AuditActionType.AUTH_LOGIN_FAILURE,
+                    resource_type="sso_callback",
+                    resource_id="saml",
+                    outcome="failure",
+                    context=self._safe_audit_context(error_code="sso_validation_failed", reason="assertion_replay"),
+                )
                 raise SsoValidationError("SSO assertion replay detected")
             ttl = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
             await self._redis.set(
@@ -390,13 +565,46 @@ class SsoService:
         if isinstance(groups, str):
             groups = [groups]
 
-        return await self._resolve_role_and_create_session(
-            provider=provider,
-            subject_id=subject_id,
-            email=email,
-            groups=groups,
-            auth_provider=AuthProvider.SAML,
-        )
+        try:
+            profile, session_id = await self._resolve_role_and_create_session(
+                provider=provider,
+                subject_id=subject_id,
+                email=email,
+                groups=groups,
+                auth_provider=AuthProvider.SAML,
+            )
+        except SsoValidationError:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_FAILURE,
+                resource_type="sso_callback",
+                resource_id="saml",
+                outcome="failure",
+                context=self._safe_audit_context(error_code="sso_no_role", reason="no_role_assigned"),
+            )
+            raise
+
+        # Log successful login (must succeed; if it fails, clean up the Redis session)
+        try:
+            await AuditService.log(
+                self._db,
+                action=AuditActionType.AUTH_LOGIN_SUCCESS,
+                actor_identity=email or subject_id,
+                resource_type="user",
+                resource_id=str(profile.get("user_id", "")),
+                outcome="success",
+                context=self._safe_audit_context(
+                    auth_provider="saml",
+                    role_name=profile.get("role_name"),
+                ),
+            )
+        except Exception:
+            # Audit failure: revoke the session we just created so the login
+            # cannot be used without an audit trail.
+            await self._redis.delete(f"session:{session_id}")
+            raise
+
+        return profile, session_id
 
     def _parse_saml_assertion(self, provider: SsoProvider, saml_response: str) -> dict:
         """Parse and validate SAMLResponse XML; return attribute dict. Override in tests."""
