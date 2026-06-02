@@ -21,7 +21,10 @@ async def test_patch_settings_binds_both_params():
     req.max_regenerate_attempts = 3
 
     request = MagicMock(spec=Request)
-    request.state.session = {"user_id": "admin"}
+    request.state.session = {
+        "user_id": "admin",
+        "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    }
 
     captured_params = []
 

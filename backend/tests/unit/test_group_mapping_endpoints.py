@@ -71,7 +71,7 @@ class TestPermissionEnforcement:
         from app.api.v1.admin_sso import list_group_mappings
 
         request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
 
         with pytest.raises(HTTPException) as exc:
             await list_group_mappings(request=request, db=AsyncMock())
@@ -86,7 +86,7 @@ class TestPermissionEnforcement:
         from app.api.v1.admin_sso import list_group_mappings
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         with pytest.raises(HTTPException) as exc:
             await list_group_mappings(request=request, db=AsyncMock())
@@ -97,7 +97,7 @@ class TestPermissionEnforcement:
         from app.api.v1.admin_sso import create_group_mapping
 
         request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
 
         with pytest.raises(HTTPException) as exc:
             await create_group_mapping(
@@ -112,7 +112,7 @@ class TestPermissionEnforcement:
         from app.api.v1.admin_sso import delete_group_mapping
 
         request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
 
         with pytest.raises(HTTPException) as exc:
             await delete_group_mapping(
@@ -145,7 +145,10 @@ class TestListGroupMappings:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         result = await list_group_mappings(request=request, db=mock_db)
 
@@ -170,7 +173,10 @@ class TestListGroupMappings:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         result = await list_group_mappings(request=request, db=mock_db)
         assert result["mappings"] == []
@@ -183,7 +189,10 @@ class TestListGroupMappings:
         mock_db.execute = AsyncMock(side_effect=Exception("DB leak: secret_table=group_mappings"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await list_group_mappings(request=request, db=mock_db)
@@ -220,7 +229,11 @@ class TestCreateGroupMapping:
         mock_db.add = MagicMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"], "username": "admin"}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id=str(role.id))
 
@@ -241,7 +254,10 @@ class TestCreateGroupMapping:
         mock_db.execute = AsyncMock(return_value=FakeResult([existing]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id=str(uuid.uuid4()))
 
@@ -267,7 +283,10 @@ class TestCreateGroupMapping:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id=str(uuid.uuid4()))
 
@@ -287,7 +306,10 @@ class TestCreateGroupMapping:
         mock_db.execute = AsyncMock(side_effect=Exception("DB error: host=secret-idp.internal"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id=str(uuid.uuid4()))
 
@@ -303,7 +325,10 @@ class TestCreateGroupMapping:
         from app.api.v1.admin_sso import create_group_mapping
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id="not-a-uuid")
 
@@ -332,7 +357,11 @@ class TestDeleteGroupMapping:
         mock_db.commit = AsyncMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"], "username": "admin"}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
 
         result = await delete_group_mapping(
             request=request,
@@ -349,7 +378,10 @@ class TestDeleteGroupMapping:
         mock_db.execute = AsyncMock(return_value=FakeResult([]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await delete_group_mapping(
@@ -371,7 +403,10 @@ class TestDeleteGroupMapping:
         mock_db.execute = AsyncMock(side_effect=Exception("DB error: secret table leak"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await delete_group_mapping(
@@ -388,7 +423,10 @@ class TestDeleteGroupMapping:
         from app.api.v1.admin_sso import delete_group_mapping
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await delete_group_mapping(
@@ -438,7 +476,10 @@ class TestRouteLevelStatusCodes:
 
             class InjectSessionMiddleware(BaseHTTPMiddleware):
                 async def dispatch(self, request, call_next):
-                    request.state.session = session
+                    _sess = dict(session)
+                    if "role_id" not in _sess:
+                        _sess["role_id"] = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    request.state.session = _sess
                     return await call_next(request)
 
             app.add_middleware(InjectSessionMiddleware)

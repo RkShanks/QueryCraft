@@ -470,14 +470,14 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2c
+## Current Wave Checkpoint — Through Wave 17.2d
 
 ### Status
 - **Date**: 2026-06-02
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2c complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117.
-- **Current/open PR**: #118 (Wave 17.2c — Permission Gates).
+- **Current point**: Wave 17.2d complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118.
+- **Current/open PR**: #119 (Wave 17.2d — Unmapped User Denial).
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -491,14 +491,69 @@
   - `history.py` list/detail/delete require `query.history.view`.
   - Existing `admin_roles.py` (`admin.roles.manage`) and `admin_sso.py` (`admin.sso.manage` for providers, `admin.roles.manage` for group mappings) permissions preserved — no regression.
   - 39 TDD tests in `test_permission_gates_all.py` verify 401/403 behavior, error sanitization, and dependency ordering.
+- Wave 17.2d unmapped user denial is complete:
+  - `require_permission()` checks `role_id` is present and non-empty before checking permissions.
+  - Session with `role_id=None`, missing `role_id`, or empty string `role_id` → 403 `error.forbidden`.
+  - 12 TDD tests in `test_unmapped_user_denial.py` verify direct dependency and route-level behavior.
+  - Regression sweep: added `role_id` to all existing session mocks across 8 test files to preserve prior test behavior.
 
 ### Remaining Wave 17.2 Backend Work
-- T-681/T-682: Unmapped user denial.
 - T-683/T-684: RBAC audit logging coverage.
 - T-685: Wave 17.2 backend gate.
 
 ### Next Dispatch Constraint
-- Wave 17.2d unmapped user denial (T-681-T-682) after PR merge.
+- Wave 17.2e RBAC audit logging (T-683-T-684) after PR #119 merge.
+
+---
+
+## Wave 17.2d — Unmapped User Denial
+
+### Dispatch
+- **Date**: 2026-06-02
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-681, T-682
+- **Branch**: `phase-5/wave-17.2d-unmapped-user-denial`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/119
+
+### Scope
+- T-681: TDD tests for unmapped user denial (`tests/unit/test_unmapped_user_denial.py`): 12 tests covering:
+  - `role_id=None` → 403
+  - Missing `role_id` key → 403
+  - Empty string `role_id` → 403
+  - Error sanitization (no UUIDs, usernames, role_id leaked)
+  - Valid `role_id` + correct permission → 200
+  - Valid `role_id` + wrong permission → 403 (existing behavior)
+  - Route-level: unmapped user GET /history → 403 before `require_active_user` runs
+  - Route-level: unmapped user GET /admin/settings → 403
+  - Route-level: unmapped user POST /query/submit with invalid body → 403 (not 422)
+  - Route-level: unmapped user does not trigger `require_active_user` override raising 503
+  - Route-level: mapped user with correct permission → 200
+- T-682: Implemented unmapped user denial in `require_permission()` (`backend/src/app/api/dependencies/permissions.py`):
+  - Added `role_id` check before permission comparison
+  - `role_id` must be present and non-empty string
+  - Returns sanitized 403 `error.forbidden` on failure
+- Regression sweep: added `role_id` to session mocks in 8 existing test files to preserve prior behavior:
+  - `test_permission_middleware.py`, `test_permission_gates_all.py`, `test_role_endpoints.py`, `test_group_mapping_endpoints.py`, `test_sso_admin_endpoints.py`, `test_admin_connections.py`, `test_history_metadata.py`, `test_admin_settings_unit.py`
+
+### Gates
+- Full unit gate: `959 passed, 61 skipped, 9 deselected, 12 warnings in 13.47s`
+- Focused unmapped user tests: `12 passed`
+- Ruff check: `All checks passed!`
+- Ruff format: `286 files already formatted`
+- `git diff --check`: clean
+
+### Security Notes
+- Unmapped users (no `role_id` in session) are denied at the permission dependency layer before any endpoint body or service dependency executes.
+- 403 responses are sanitized: no `role_id` value, UUIDs, usernames, group names, provider data, role internals, SQL, stack traces, or credentials leaked.
+- Built-in admin behavior preserved: local admin login creates session with valid `role_id` from `User.role_obj`.
+- SSO login already creates session with `role_id` from resolved role.
+
+### Review Fixes
+- None.
+
+### Remaining Wave 17.2 Backend Work
+- T-683/T-684: RBAC audit logging coverage.
+- T-685: Wave 17.2 backend gate.
 
 ---
 

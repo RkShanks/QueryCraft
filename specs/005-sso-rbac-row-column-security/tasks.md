@@ -206,8 +206,8 @@
 
 ### Backend — User Denial (Owner: Kimi ( opencode ))
 
-- [ ] T-681 [US28] Write TDD tests for unmapped user denial (user with no role_id denied all API access) in `backend/tests/unit/test_unmapped_user_denial.py` — FR-126, SC-048
-- [ ] T-682 [US28] Implement unmapped user denial: middleware/dependency checks `role_id` is not null, returns 403 `error.forbidden` for unmapped users — FR-126
+- [x] T-681 [US28] Write TDD tests for unmapped user denial (user with no role_id denied all API access) in `backend/tests/unit/test_unmapped_user_denial.py` — FR-126, SC-048
+- [x] T-682 [US28] Implement unmapped user denial: `require_permission()` dependency checks `role_id` is present and non-empty, returns 403 `error.forbidden` for unmapped users — FR-126
 
 ### Backend — RBAC Audit Logging (Owner: Kimi ( opencode ))
 

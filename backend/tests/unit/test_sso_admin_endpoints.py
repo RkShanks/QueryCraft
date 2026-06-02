@@ -98,7 +98,7 @@ class TestPermissionEnforcement:
         from app.api.v1.admin_sso import list_providers
 
         request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
 
         with pytest.raises(HTTPException) as exc:
             await list_providers(request=request, db=AsyncMock())
@@ -112,7 +112,7 @@ class TestPermissionEnforcement:
         from app.api.v1.admin_sso import create_provider
 
         request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
 
         with pytest.raises(HTTPException) as exc:
             await create_provider(
@@ -127,7 +127,7 @@ class TestPermissionEnforcement:
         from app.api.v1.admin_sso import update_provider
 
         request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
 
         with pytest.raises(HTTPException) as exc:
             await update_provider(
@@ -143,7 +143,7 @@ class TestPermissionEnforcement:
         from app.api.v1.admin_sso import delete_provider
 
         request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
 
         with pytest.raises(HTTPException) as exc:
             await delete_provider(
@@ -171,7 +171,7 @@ class TestListProviders:
         mock_db.execute = AsyncMock(return_value=FakeResult([oidc, saml]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         result = await list_providers(request=request, db=mock_db)
 
@@ -197,7 +197,7 @@ class TestListProviders:
         mock_db.execute = AsyncMock(return_value=FakeResult([]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         result = await list_providers(request=request, db=mock_db)
         assert result["providers"] == []
@@ -225,7 +225,7 @@ class TestCreateProvider:
         mock_db.add = MagicMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderCreate(
             protocol="oidc",
@@ -262,7 +262,7 @@ class TestCreateProvider:
         mock_db.add = MagicMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderCreate(
             protocol="saml",
@@ -291,7 +291,7 @@ class TestCreateProvider:
         mock_db.execute = AsyncMock(return_value=FakeResult([existing]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderCreate(
             protocol="oidc",
@@ -318,7 +318,7 @@ class TestCreateProvider:
         mock_db.execute = AsyncMock(return_value=FakeResult([]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderCreate(
             protocol="oidc",
@@ -338,7 +338,7 @@ class TestCreateProvider:
         mock_db.execute = AsyncMock(return_value=FakeResult([]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderCreate(
             protocol="saml",
@@ -358,7 +358,7 @@ class TestCreateProvider:
         mock_db.execute = AsyncMock(side_effect=Exception("DB connection failed: secret=abc123"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderCreate(
             protocol="oidc",
@@ -394,7 +394,7 @@ class TestUpdateProvider:
         mock_db.refresh = AsyncMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderUpdate(display_name="Updated", client_secret="new-secret")
 
@@ -421,7 +421,7 @@ class TestUpdateProvider:
         mock_db.refresh = AsyncMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderUpdate(saml_certificate="new-cert")
 
@@ -444,7 +444,7 @@ class TestUpdateProvider:
         mock_db.execute = AsyncMock(return_value=FakeResult([]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderUpdate(display_name="Updated")
 
@@ -471,7 +471,7 @@ class TestUpdateProvider:
         mock_db.refresh = AsyncMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderUpdate(display_name="Updated Only")
 
@@ -495,7 +495,7 @@ class TestUpdateProvider:
         mock_db.execute = AsyncMock(side_effect=Exception("DB error: host=secret-idp.internal"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         body = SsoProviderUpdate(display_name="Updated")
 
@@ -527,7 +527,7 @@ class TestDeleteProvider:
         mock_db.commit = AsyncMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         result = await delete_provider(
             request=request,
@@ -544,7 +544,7 @@ class TestDeleteProvider:
         mock_db.execute = AsyncMock(return_value=FakeResult([]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         with pytest.raises(HTTPException) as exc:
             await delete_provider(
@@ -565,7 +565,7 @@ class TestDeleteProvider:
         mock_db.execute = AsyncMock(side_effect=Exception("DB error: secret table leak"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
+        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
         with pytest.raises(HTTPException) as exc:
             await delete_provider(

@@ -28,6 +28,7 @@ class TestRequirePermission:
         """User with exact required permission passes."""
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
             "permissions": ["query.submit"],
         }
         dep = require_permission(Permission.QUERY_SUBMIT)
@@ -39,6 +40,7 @@ class TestRequirePermission:
         """User with one of multiple required permissions passes."""
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
             "permissions": ["query.submit", "query.history.view"],
         }
         dep = require_permission(Permission.QUERY_SUBMIT, Permission.ADMIN_ROLES_MANAGE)
@@ -89,6 +91,7 @@ class TestRequirePermission:
         """Admin user with all permissions passes any check."""
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
             "permissions": [
                 "query.submit",
                 "query.history.view",
@@ -111,6 +114,7 @@ class TestRequirePermission:
         """Permission enum values resolve to string for comparison."""
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
             "permissions": ["admin.sso.manage"],
         }
         dep = require_permission(Permission.ADMIN_SSO_MANAGE)

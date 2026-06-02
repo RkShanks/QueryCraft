@@ -34,6 +34,13 @@ def require_permission(*perms: Permission):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"error": "unauthorized", "message_key": "error.unauthorized"},
             )
+        # Unmapped user denial: role_id must be present and non-empty (FR-126, SC-048)
+        role_id = session.get("role_id")
+        if role_id is None or (isinstance(role_id, str) and not role_id.strip()):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"error": "forbidden", "message_key": "error.forbidden"},
+            )
         user_perms = set(session.get("permissions", []))
         if not (user_perms & required):
             raise HTTPException(
