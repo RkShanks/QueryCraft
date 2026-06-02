@@ -6,10 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.permissions import require_permission
 from app.api.dependencies.validation import validate_body
 from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis, require_active_user
 from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
+from app.db.models.enums import Permission
 from app.evaluator.pipeline import Evaluator
 from app.evaluator.rules.dialect_validation import DialectValidationRule
 from app.evaluator.rules.empty_sql import EmptySqlRule
@@ -192,12 +194,15 @@ async def submit_question(
 ):
     """POST /query/submit — ask a question.
 
+    Requires ``query.submit`` permission.
+
     Response shapes:
     - 200 → QueryResult (returned directly)
     - 422 → EvaluatorRejection (raised as HTTPException, unwrapped by global handler)
     response_model is intentionally omitted because the endpoint returns
     discriminated union shapes; openapi.yaml remains the source of truth.
     """
+    await require_permission(Permission.QUERY_SUBMIT)(request)
     stripped = req.question.strip()
     if not stripped:
         raise HTTPException(
@@ -234,9 +239,12 @@ async def accept_query(
 ):
     """POST /query/accept — persist the current result.
 
+    Requires ``query.submit`` permission.
+
     High 2: database_connection_id is now resolved inside QueryService.accept_query
     via _get_database_connection_id() on the same request-scoped DB session.
     """
+    await require_permission(Permission.QUERY_SUBMIT)(request)
     return await service.accept_query(
         http_session_id=request.state.session_id,
         user_id=user_id,
@@ -252,7 +260,11 @@ async def reject_query(
     user_id: str = Depends(require_active_user),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
-    """POST /query/reject — reject current result and trigger auto-retry."""
+    """POST /query/reject — reject current result and trigger auto-retry.
+
+    Requires ``query.submit`` permission.
+    """
+    await require_permission(Permission.QUERY_SUBMIT)(request)
     try:
         return await service.reject_query(
             attempt_id=req.attempt_id,
@@ -277,7 +289,11 @@ async def regenerate_query(
     user_id: str = Depends(require_active_user),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
 ):
-    """POST /query/regenerate — regenerate SQL with negative context."""
+    """POST /query/regenerate — regenerate SQL with negative context.
+
+    Requires ``query.submit`` permission.
+    """
+    await require_permission(Permission.QUERY_SUBMIT)(request)
     try:
         return await service.regenerate_query(
             attempt_id=req.attempt_id,

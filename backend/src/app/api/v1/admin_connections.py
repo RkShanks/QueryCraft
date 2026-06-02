@@ -6,11 +6,13 @@ CRUD, lifecycle (disable/enable), health test, hard-delete guard.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.permissions import require_permission
 from app.core.config import get_settings
-from app.core.dependencies import get_db, require_admin_user
+from app.core.dependencies import get_db
+from app.db.models.enums import Permission
 from app.repositories.connection_repository import ConnectionRepository
 from app.schemas.connection import (
     ConnectionCreate,
@@ -38,10 +40,14 @@ def _get_connection_service(
 
 @router.get("", response_model=list[ConnectionResponse])
 async def list_connections(
-    _: str = Depends(require_admin_user),  # noqa: B008
+    request: Request,
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """GET /admin/connections — list all source database connections."""
+    """GET /admin/connections — list all source database connections.
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         connections = await service.list_all()
         return connections
@@ -54,11 +60,15 @@ async def list_connections(
 
 @router.post("", response_model=ConnectionResponse, status_code=status.HTTP_201_CREATED)
 async def create_connection(
+    request: Request,
     req: ConnectionCreate,
-    _: str = Depends(require_admin_user),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """POST /admin/connections — create a new source database connection."""
+    """POST /admin/connections — create a new source database connection.
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         return await service.create(req)
     except Exception as e:
@@ -70,11 +80,15 @@ async def create_connection(
 
 @router.get("/{connection_id}", response_model=ConnectionResponse)
 async def get_connection(
+    request: Request,
     connection_id: uuid.UUID,
-    _: str = Depends(require_admin_user),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """GET /admin/connections/{id} — get a connection by ID."""
+    """GET /admin/connections/{id} — get a connection by ID.
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         return await service.get_by_id(connection_id)
     except ConnectionNotFoundError:
@@ -91,12 +105,16 @@ async def get_connection(
 
 @router.put("/{connection_id}", response_model=ConnectionResponse)
 async def update_connection(
+    request: Request,
     connection_id: uuid.UUID,
     req: ConnectionUpdate,
-    _: str = Depends(require_admin_user),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """PUT /admin/connections/{id} — update an existing connection."""
+    """PUT /admin/connections/{id} — update an existing connection.
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         return await service.update(connection_id, req)
     except ConnectionNotFoundError:
@@ -113,11 +131,15 @@ async def update_connection(
 
 @router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_connection(
+    request: Request,
     connection_id: uuid.UUID,
-    _: str = Depends(require_admin_user),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """DELETE /admin/connections/{id} — hard-delete a connection (blocked if referenced)."""
+    """DELETE /admin/connections/{id} — hard-delete a connection (blocked if referenced).
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         await service.hard_delete(connection_id)
     except ConnectionNotFoundError:
@@ -139,11 +161,15 @@ async def delete_connection(
 
 @router.post("/{connection_id}/disable", response_model=ConnectionResponse)
 async def disable_connection(
+    request: Request,
     connection_id: uuid.UUID,
-    _: str = Depends(require_admin_user),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """POST /admin/connections/{id}/disable — disable an active connection."""
+    """POST /admin/connections/{id}/disable — disable an active connection.
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         return await service.disable(connection_id)
     except ConnectionNotFoundError:
@@ -165,11 +191,15 @@ async def disable_connection(
 
 @router.post("/{connection_id}/enable", response_model=ConnectionResponse)
 async def enable_connection(
+    request: Request,
     connection_id: uuid.UUID,
-    _: str = Depends(require_admin_user),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """POST /admin/connections/{id}/enable — re-enable a disabled connection."""
+    """POST /admin/connections/{id}/enable — re-enable a disabled connection.
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         return await service.enable(connection_id)
     except ConnectionNotFoundError:
@@ -191,11 +221,15 @@ async def enable_connection(
 
 @router.post("/{connection_id}/test", response_model=ConnectionTestResult)
 async def test_connection(
+    request: Request,
     connection_id: uuid.UUID,
-    _: str = Depends(require_admin_user),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """POST /admin/connections/{id}/test — test a connection's health."""
+    """POST /admin/connections/{id}/test — test a connection's health.
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         return await service.test_connection(connection_id)
     except ConnectionNotFoundError:
@@ -212,11 +246,15 @@ async def test_connection(
 
 @router.post("/{connection_id}/refresh-schema")
 async def refresh_schema(
+    request: Request,
     connection_id: uuid.UUID,
-    _: str = Depends(require_admin_user),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """POST /admin/connections/{id}/refresh-schema — trigger schema introspection."""
+    """POST /admin/connections/{id}/refresh-schema — trigger schema introspection.
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         result = await service.refresh_schema(connection_id)
         return result
@@ -239,11 +277,15 @@ async def refresh_schema(
 
 @router.get("/{connection_id}/schema")
 async def get_schema(
+    request: Request,
     connection_id: uuid.UUID,
-    _: str = Depends(require_admin_user),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
-    """GET /admin/connections/{id}/schema — get introspected schema summary."""
+    """GET /admin/connections/{id}/schema — get introspected schema summary.
+
+    Requires ``admin.connections.manage`` permission.
+    """
+    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     try:
         result = await service.get_schema_summary(connection_id)
         return result
