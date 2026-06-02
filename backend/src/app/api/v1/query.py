@@ -187,6 +187,7 @@ async def _build_query_service_for_connection(
 @router.post("/submit")
 async def submit_question(
     request: Request,
+    _session: dict = Depends(require_permission(Permission.QUERY_SUBMIT)),  # noqa: B008
     req: SubmitQuestionRequest = Depends(validate_body(SubmitQuestionRequest)),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
@@ -202,7 +203,6 @@ async def submit_question(
     response_model is intentionally omitted because the endpoint returns
     discriminated union shapes; openapi.yaml remains the source of truth.
     """
-    await require_permission(Permission.QUERY_SUBMIT)(request)
     stripped = req.question.strip()
     if not stripped:
         raise HTTPException(
@@ -233,6 +233,7 @@ async def submit_question(
 @router.post("/accept", status_code=status.HTTP_201_CREATED)
 async def accept_query(
     request: Request,
+    _session: dict = Depends(require_permission(Permission.QUERY_SUBMIT)),  # noqa: B008
     req: AcceptQueryRequest = Depends(validate_body(AcceptQueryRequest)),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
@@ -244,7 +245,6 @@ async def accept_query(
     High 2: database_connection_id is now resolved inside QueryService.accept_query
     via _get_database_connection_id() on the same request-scoped DB session.
     """
-    await require_permission(Permission.QUERY_SUBMIT)(request)
     return await service.accept_query(
         http_session_id=request.state.session_id,
         user_id=user_id,
@@ -256,6 +256,7 @@ async def accept_query(
 @router.post("/reject", response_model=QueryResult | RefinePrompt)
 async def reject_query(
     request: Request,
+    _session: dict = Depends(require_permission(Permission.QUERY_SUBMIT)),  # noqa: B008
     req: RejectQueryRequest = Depends(validate_body(RejectQueryRequest)),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
@@ -264,7 +265,6 @@ async def reject_query(
 
     Requires ``query.submit`` permission.
     """
-    await require_permission(Permission.QUERY_SUBMIT)(request)
     try:
         return await service.reject_query(
             attempt_id=req.attempt_id,
@@ -285,6 +285,7 @@ async def reject_query(
 @router.post("/regenerate", response_model=QueryResult | RefinePrompt)
 async def regenerate_query(
     request: Request,
+    _session: dict = Depends(require_permission(Permission.QUERY_SUBMIT)),  # noqa: B008
     req: RegenerateQueryRequest = Depends(validate_body(RegenerateQueryRequest)),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
     service: QueryService = Depends(_get_query_service),  # noqa: B008
@@ -293,7 +294,6 @@ async def regenerate_query(
 
     Requires ``query.submit`` permission.
     """
-    await require_permission(Permission.QUERY_SUBMIT)(request)
     try:
         return await service.regenerate_query(
             attempt_id=req.attempt_id,

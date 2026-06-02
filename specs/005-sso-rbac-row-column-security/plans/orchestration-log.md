@@ -476,8 +476,8 @@
 - **Date**: 2026-06-02
 - **Phase**: Phase 5 remains IN PROGRESS.
 - **Current point**: Wave 17.2c complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116.
-- **Current/open PR**: (Wave 17.2c — Permission Gates).
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117.
+- **Current/open PR**: #118 (Wave 17.2c — Permission Gates).
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -509,18 +509,18 @@
 - **Model**: Kimi (opencode) Backend Implementer
 - **T-IDs**: T-678, T-679, T-680
 - **Branch**: `phase-5/wave-17.2c-permission-gates`
-- **PR**: (pending)
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/118
 
 ### Scope
-- T-678: TDD tests for permission gates on all existing admin and query/history endpoints (`tests/unit/test_permission_gates_all.py`): 44 tests covering 401 for missing session, 403 for wrong permissions, sanitized error responses.
-- T-679: Applied `require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)` to all endpoints in `admin.py` (GET/PUT /admin/settings) and `admin_connections.py` (list, create, get, update, delete, disable, enable, test, refresh-schema, get-schema).
-- T-680: Applied `require_permission(Permission.QUERY_SUBMIT)` to query.py endpoints (submit, accept, reject, regenerate) and `require_permission(Permission.QUERY_HISTORY_VIEW)` to history.py endpoints (list, detail, delete).
+- T-678: TDD tests for permission gates on all existing admin and query/history endpoints (`tests/unit/test_permission_gates_all.py`): 38 tests covering direct dependency checks, route-level 401/403 behavior, and error sanitization.
+- T-679: Applied `require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)` as `Depends()` to all endpoints in `admin.py` (GET/PUT /admin/settings) and `admin_connections.py` (list, create, get, update, delete, disable, enable, test, refresh-schema, get-schema).
+- T-680: Applied `require_permission(Permission.QUERY_SUBMIT)` and `require_permission(Permission.QUERY_HISTORY_VIEW)` as `Depends()` to query.py and history.py endpoints.
 - Updated existing unit tests that use FastAPI dependency injection to patch `require_permission` where needed.
 - Preserved existing admin_roles.py (`admin.roles.manage`) and admin_sso.py (`admin.sso.manage` for providers, `admin.roles.manage` for group mappings) permissions — no regression.
 
 ### Gates
-- Full unit gate: `952 passed, 61 skipped, 9 deselected, 12 warnings in 11.40s`
-- Focused permission gates tests: `44 passed`
+- Full unit gate: `946 passed, 61 skipped, 9 deselected, 12 warnings in 11.21s`
+- Focused permission gates tests: `38 passed`
 - Ruff check: `All checks passed!`
 - Ruff format: `285 files already formatted`
 - `git diff --check`: clean
@@ -531,6 +531,15 @@
 - Missing session returns 401 `error.unauthorized`; wrong permission returns 403 `error.forbidden`.
 - No raw UUIDs, permission internals, DB errors, SQL, stack traces, source DB details, hostnames, usernames, or tokens in user-facing errors.
 - Built-in admin local login behavior preserved (admin gets all permissions via role resolution).
+
+### Review Fixes
+- **Fix 1 — Permission checks moved to `Depends()`**: RBAC checks were inside endpoint bodies, meaning FastAPI resolved body validation and service dependencies before permission was checked. Moved to `Depends(require_permission(Permission.X))` signatures so wrong-permission requests return 403 before body validation or expensive service deps execute.
+- **Fix 2 — Route-level TestClient coverage**: Added 6 route-level tests using ASGI `TestClient` with session injection middleware proving:
+  - Invalid body + wrong permission → 403 (not 422) on POST /admin/connections and POST /query/submit.
+  - POST /query/accept with wrong permission → 403 without running `_get_query_service`.
+  - GET /history, GET /admin/settings with wrong permission → 403.
+  - No session → 401.
+- **Fix 3 — Updated existing unit tests**: Patched `require_permission` in `test_admin_connections.py`, `test_history_metadata.py`, `test_admin_settings_unit.py` to use `side_effect` returning callable dependencies instead of `return_value=AsyncMock()`.
 
 ### Remaining Wave 17.2 Backend Work
 - T-681/T-682: Unmapped user denial.

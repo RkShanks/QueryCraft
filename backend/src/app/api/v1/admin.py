@@ -91,14 +91,13 @@ async def refresh_schema(
 
 @router.get("/settings")
 async def get_settings_admin(
-    request: Request,
+    _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """GET /admin/settings — retrieve admin settings via session cookie.
 
     Requires ``admin.connections.manage`` permission.
     """
-    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     keys = ["llm_context_cap", "max_regenerate_attempts"]
     result = await db.execute(select(AppConfig).where(AppConfig.key.in_(keys)))
     rows = {row.key: int(row.value) for row in result.scalars().all()}
@@ -109,15 +108,14 @@ async def get_settings_admin(
 
 @router.patch("/settings")
 async def update_settings_admin(
-    request: Request,
     req: UpdateAdminSettingsRequest,
+    _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """PATCH /admin/settings — update admin settings via session cookie.
 
     Requires ``admin.connections.manage`` permission.
     """
-    await require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)(request)
     await db.execute(
         text(
             """
