@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 from cryptography.fernet import Fernet
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
@@ -232,8 +232,10 @@ class TestAdminConnectionSchemaRealDependencyPath:
     @pytest.mark.asyncio
     async def test_refresh_schema_via_real_dependency(self):
         """Test that refresh-schema works when service is constructed via FastAPI deps."""
+        from fastapi.responses import JSONResponse
+        from starlette.middleware.base import BaseHTTPMiddleware
+
         from app.api.v1.admin_connections import _get_connection_service, router
-        from app.core.dependencies import require_admin_user
         from app.services.connection_service import ConnectionService
 
         conn_id = uuid4()
@@ -249,13 +251,22 @@ class TestAdminConnectionSchemaRealDependencyPath:
         async def override_service():
             return mock_service
 
-        async def override_admin():
-            return "admin"
+        class SessionInjectionMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                request.state.session = {"permissions": ["admin.connections.manage"]}
+                return await call_next(request)
 
         app = FastAPI()
+        app.add_middleware(SessionInjectionMiddleware)
+
+        @app.exception_handler(HTTPException)
+        async def _http_exception_handler(request, exc):
+            if isinstance(exc.detail, dict):
+                return JSONResponse(status_code=exc.status_code, content=exc.detail)
+            return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
+
         app.include_router(router, prefix="/api/v1")
         app.dependency_overrides[_get_connection_service] = override_service
-        app.dependency_overrides[require_admin_user] = override_admin
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -268,8 +279,10 @@ class TestAdminConnectionSchemaRealDependencyPath:
     @pytest.mark.asyncio
     async def test_refresh_schema_not_found_via_real_dependency(self):
         """Test that refresh-schema returns 404 when connection not found."""
+        from fastapi.responses import JSONResponse
+        from starlette.middleware.base import BaseHTTPMiddleware
+
         from app.api.v1.admin_connections import _get_connection_service, router
-        from app.core.dependencies import require_admin_user
         from app.services.connection_service import ConnectionNotFoundError, ConnectionService
 
         conn_id = uuid4()
@@ -279,13 +292,22 @@ class TestAdminConnectionSchemaRealDependencyPath:
         async def override_service():
             return mock_service
 
-        async def override_admin():
-            return "admin"
+        class SessionInjectionMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                request.state.session = {"permissions": ["admin.connections.manage"]}
+                return await call_next(request)
 
         app = FastAPI()
+        app.add_middleware(SessionInjectionMiddleware)
+
+        @app.exception_handler(HTTPException)
+        async def _http_exception_handler(request, exc):
+            if isinstance(exc.detail, dict):
+                return JSONResponse(status_code=exc.status_code, content=exc.detail)
+            return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
+
         app.include_router(router, prefix="/api/v1")
         app.dependency_overrides[_get_connection_service] = override_service
-        app.dependency_overrides[require_admin_user] = override_admin
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:

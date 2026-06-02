@@ -31,11 +31,11 @@ async def test_patch_settings_binds_both_params():
 
     db.execute = _capture_execute
 
-    with patch("app.api.v1.admin.require_admin_user", return_value="admin"):
+    mock_checker = AsyncMock(return_value={})
+    with patch("app.api.v1.admin.require_permission", return_value=mock_checker):
         await update_settings_admin(
-            request=request,
             req=req,
-            _="admin",
+            _session={"permissions": ["admin.connections.manage"]},
             db=db,
         )
 
