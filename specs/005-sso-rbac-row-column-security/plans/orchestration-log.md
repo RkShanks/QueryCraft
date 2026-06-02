@@ -490,7 +490,7 @@
   - `query.py` submit/accept/reject/regenerate require `query.submit`.
   - `history.py` list/detail/delete require `query.history.view`.
   - Existing `admin_roles.py` (`admin.roles.manage`) and `admin_sso.py` (`admin.sso.manage` for providers, `admin.roles.manage` for group mappings) permissions preserved — no regression.
-  - 44 TDD tests in `test_permission_gates_all.py` verify 401/403 behavior and error sanitization.
+  - 39 TDD tests in `test_permission_gates_all.py` verify 401/403 behavior, error sanitization, and dependency ordering.
 
 ### Remaining Wave 17.2 Backend Work
 - T-681/T-682: Unmapped user denial.

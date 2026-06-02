@@ -24,8 +24,8 @@ def _get_history_service(db: AsyncSession = Depends(get_db)) -> HistoryService: 
 async def list_history(
     cursor: str | None = None,
     limit: int = Query(default=100, ge=1, le=1000),
-    user_id: str = Depends(require_active_user),  # noqa: B008
     _session: dict = Depends(require_permission(Permission.QUERY_HISTORY_VIEW)),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """GET /history — list accepted queries.
@@ -42,8 +42,8 @@ async def list_history(
 @router.get("/{query_id}")
 async def get_history_entry(
     query_id: uuid.UUID,
-    user_id: str = Depends(require_active_user),  # noqa: B008
     _session: dict = Depends(require_permission(Permission.QUERY_HISTORY_VIEW)),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """GET /history/{id} — single accepted query detail.
@@ -56,8 +56,8 @@ async def get_history_entry(
 @router.delete("/{query_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_history_entry(
     query_id: uuid.UUID,
-    user_id: str = Depends(require_active_user),  # noqa: B008
     _session: dict = Depends(require_permission(Permission.QUERY_HISTORY_VIEW)),  # noqa: B008
+    user_id: str = Depends(require_active_user),  # noqa: B008
     service: HistoryService = Depends(_get_history_service),  # noqa: B008
 ):
     """DELETE /history/{id} — delete a single saved query result.

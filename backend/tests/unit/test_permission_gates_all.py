@@ -588,6 +588,33 @@ class TestRouteLevelPermissionGates:
             assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
+    async def test_get_history_wrong_permission_does_not_run_require_active_user(self):
+        """Wrong-permission GET /history returns 403 before require_active_user executes."""
+        from app.api.v1.history import router
+        from app.core.dependencies import require_active_user
+
+        app = _make_app_with_session({"permissions": ["query.submit"]})
+        app.include_router(router, prefix="/api/v1")
+
+        async def override_active_user():
+            raise HTTPException(
+                status_code=503,
+                detail={"error": "dependency_ran", "message_key": "dependency.ran"},
+            )
+
+        app.dependency_overrides[require_active_user] = override_active_user
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/history")
+            assert response.status_code == 403
+            data = response.json()
+            assert data["error"] == "forbidden"
+            assert data["message_key"] == "error.forbidden"
+            assert "dependency_ran" not in str(data)
+            assert "dependency.ran" not in str(data)
+
+    @pytest.mark.asyncio
     async def test_no_session_returns_401(self):
         """No session returns 401 at route level."""
         from app.api.v1.history import router
