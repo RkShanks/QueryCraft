@@ -38,13 +38,14 @@ async def test_submit_endpoint_forwards_chat_session_id():
     )
 
     with patch("app.api.v1.query._build_query_service_for_connection", new=AsyncMock(return_value=mock_service)):
-        result = await submit_question(
-            request=request,
-            req=req,
-            user_id="550e8400-e29b-41d4-a716-446655440000",
-            db=AsyncMock(),
-            redis=AsyncMock(),
-        )
+        with patch("app.api.v1.query.require_permission", return_value=AsyncMock()):
+            result = await submit_question(
+                request=request,
+                req=req,
+                user_id="550e8400-e29b-41d4-a716-446655440000",
+                db=AsyncMock(),
+                redis=AsyncMock(),
+            )
 
     mock_service.submit_question.assert_awaited_once()
     call_kwargs = mock_service.submit_question.await_args.kwargs
@@ -71,13 +72,14 @@ async def test_submit_endpoint_forwards_none_chat_session_id_for_new_chat():
     req = SubmitQuestionRequest(question="New question", connection_id=conn_id)
 
     with patch("app.api.v1.query._build_query_service_for_connection", new=AsyncMock(return_value=mock_service)):
-        result = await submit_question(
-            request=request,
-            req=req,
-            user_id="550e8400-e29b-41d4-a716-446655440000",
-            db=AsyncMock(),
-            redis=AsyncMock(),
-        )
+        with patch("app.api.v1.query.require_permission", return_value=AsyncMock()):
+            result = await submit_question(
+                request=request,
+                req=req,
+                user_id="550e8400-e29b-41d4-a716-446655440000",
+                db=AsyncMock(),
+                redis=AsyncMock(),
+            )
 
     mock_service.submit_question.assert_awaited_once()
     call_kwargs = mock_service.submit_question.await_args.kwargs

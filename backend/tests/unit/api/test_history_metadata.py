@@ -1,6 +1,6 @@
 """History API metadata response tests (T-465)."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -48,9 +48,10 @@ class TestHistoryMetadata:
         app.dependency_overrides[_get_history_service] = override_service
         app.dependency_overrides[require_active_user] = override_user
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get("/api/v1/history")
+        with patch("app.api.v1.history.require_permission", return_value=AsyncMock()):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get("/api/v1/history")
 
         assert response.status_code == 200
         item = response.json()["items"][0]
@@ -60,6 +61,8 @@ class TestHistoryMetadata:
 
     @pytest.mark.asyncio
     async def test_history_detail_response_includes_connection_display_metadata(self):
+        from unittest.mock import patch
+
         from app.api.v1.history import _get_history_service, router
         from app.core.dependencies import require_active_user
 
@@ -89,9 +92,10 @@ class TestHistoryMetadata:
         app.dependency_overrides[_get_history_service] = override_service
         app.dependency_overrides[require_active_user] = override_user
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get(f"/api/v1/history/{uuid4()}")
+        with patch("app.api.v1.history.require_permission", return_value=AsyncMock()):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get(f"/api/v1/history/{uuid4()}")
 
         assert response.status_code == 200
         detail = response.json()

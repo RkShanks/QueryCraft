@@ -27,13 +27,14 @@ class TestSubmitWithConnectionId:
         req = SubmitQuestionRequest(question="Show me users", connection_id=conn_id)
 
         with patch("app.api.v1.query._build_query_service_for_connection", new=AsyncMock(return_value=mock_service)):
-            result = await submit_question(
-                request=request,
-                req=req,
-                user_id=str(uuid4()),
-                db=AsyncMock(),
-                redis=AsyncMock(),
-            )
+            with patch("app.api.v1.query.require_permission", return_value=AsyncMock()):
+                result = await submit_question(
+                    request=request,
+                    req=req,
+                    user_id=str(uuid4()),
+                    db=AsyncMock(),
+                    redis=AsyncMock(),
+                )
 
         mock_service.submit_question.assert_awaited_once()
         call_kwargs = mock_service.submit_question.await_args.kwargs
@@ -204,12 +205,13 @@ class TestRetryExhaustion:
 
         req = RegenerateQueryRequest(attempt_id=str(uuid4()))
 
-        result = await regenerate_query(
-            request=request,
-            req=req,
-            user_id=str(uuid4()),
-            service=mock_service,
-        )
+        with patch("app.api.v1.query.require_permission", return_value=AsyncMock()):
+            result = await regenerate_query(
+                request=request,
+                req=req,
+                user_id=str(uuid4()),
+                service=mock_service,
+            )
 
         assert result.kind == "refine"
         assert result.should_refine is True

@@ -468,43 +468,74 @@
 - All exceptions caught and sanitized to generic `error.internal` with no stack traces or DB errors exposed.
 - Audit logging for role create/update/delete via `AuditService.log()` with redacted context.
 
-### Remaining Wave 17.2 Backend Work
-- T-678/T-680: Permission gates across all existing admin and query endpoints.
-- T-681/T-682: Unmapped user denial.
-- T-683/T-684: RBAC audit logging coverage.
-- T-685: Wave 17.2 backend gate.
-
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2b
+## Current Wave Checkpoint — Through Wave 17.2c
 
 ### Status
 - **Date**: 2026-06-02
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2b complete and ready for review/merge.
+- **Current point**: Wave 17.2c complete and ready for review/merge.
 - **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116.
-- **Current/open PR**: #117 (Wave 17.2b — Group Mapping Endpoints).
+- **Current/open PR**: (Wave 17.2c — Permission Gates).
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
 - Wave 17.1a-h backend and frontend SSO features are complete.
 - Wave 17.2a role CRUD backend slice is complete.
-- Wave 17.2b group mapping endpoints are complete:
-  - `GET /admin/sso/group-mappings` and `POST /admin/sso/group-mappings`.
-  - `DELETE /admin/sso/group-mappings/{id}`.
-  - UUID validation for `role_id` and `mapping_id` with sanitized 404 on invalid input.
-  - Duplicate group mapping rejection (409), role existence validation (404).
-  - Permission: `admin.roles.manage` (admin.sso.manage does NOT grant access).
-  - i18n key `error.conflict.duplicateGroupMapping` added to `en.json` and `ar.json`.
+- Wave 17.2b group mapping endpoints are complete.
+- Wave 17.2c permission gates are complete:
+  - `admin.py` settings endpoints require `admin.connections.manage`.
+  - `admin_connections.py` all endpoints require `admin.connections.manage`.
+  - `query.py` submit/accept/reject/regenerate require `query.submit`.
+  - `history.py` list/detail/delete require `query.history.view`.
+  - Existing `admin_roles.py` (`admin.roles.manage`) and `admin_sso.py` (`admin.sso.manage` for providers, `admin.roles.manage` for group mappings) permissions preserved — no regression.
+  - 44 TDD tests in `test_permission_gates_all.py` verify 401/403 behavior and error sanitization.
 
 ### Remaining Wave 17.2 Backend Work
-- T-678/T-680: Permission gates across all existing admin and query endpoints.
 - T-681/T-682: Unmapped user denial.
 - T-683/T-684: RBAC audit logging coverage.
 - T-685: Wave 17.2 backend gate.
 
 ### Next Dispatch Constraint
-- Wave 17.2c permission gates (T-678-T-680) after PR #117 merge.
+- Wave 17.2d unmapped user denial (T-681-T-682) after PR merge.
+
+---
+
+## Wave 17.2c — Permission Gates
+
+### Dispatch
+- **Date**: 2026-06-02
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-678, T-679, T-680
+- **Branch**: `phase-5/wave-17.2c-permission-gates`
+- **PR**: (pending)
+
+### Scope
+- T-678: TDD tests for permission gates on all existing admin and query/history endpoints (`tests/unit/test_permission_gates_all.py`): 44 tests covering 401 for missing session, 403 for wrong permissions, sanitized error responses.
+- T-679: Applied `require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)` to all endpoints in `admin.py` (GET/PUT /admin/settings) and `admin_connections.py` (list, create, get, update, delete, disable, enable, test, refresh-schema, get-schema).
+- T-680: Applied `require_permission(Permission.QUERY_SUBMIT)` to query.py endpoints (submit, accept, reject, regenerate) and `require_permission(Permission.QUERY_HISTORY_VIEW)` to history.py endpoints (list, detail, delete).
+- Updated existing unit tests that use FastAPI dependency injection to patch `require_permission` where needed.
+- Preserved existing admin_roles.py (`admin.roles.manage`) and admin_sso.py (`admin.sso.manage` for providers, `admin.roles.manage` for group mappings) permissions — no regression.
+
+### Gates
+- Full unit gate: `952 passed, 61 skipped, 9 deselected, 12 warnings in 11.40s`
+- Focused permission gates tests: `44 passed`
+- Ruff check: `All checks passed!`
+- Ruff format: `285 files already formatted`
+- `git diff --check`: clean
+
+### Security Notes
+- All admin endpoints now enforce RBAC permissions via `require_permission()` dependency.
+- Query endpoints require `query.submit`; history endpoints require `query.history.view`.
+- Missing session returns 401 `error.unauthorized`; wrong permission returns 403 `error.forbidden`.
+- No raw UUIDs, permission internals, DB errors, SQL, stack traces, source DB details, hostnames, usernames, or tokens in user-facing errors.
+- Built-in admin local login behavior preserved (admin gets all permissions via role resolution).
+
+### Remaining Wave 17.2 Backend Work
+- T-681/T-682: Unmapped user denial.
+- T-683/T-684: RBAC audit logging coverage.
+- T-685: Wave 17.2 backend gate.
 
 ---
 
@@ -544,7 +575,6 @@
 - Tests added for invalid `role_id` POST and invalid `mapping_id` DELETE; assert raw invalid value does not appear in response.
 
 ### Remaining Wave 17.2 Backend Work
-- T-678/T-680: Permission gates across all existing admin and query endpoints.
 - T-681/T-682: Unmapped user denial.
 - T-683/T-684: RBAC audit logging coverage.
 - T-685: Wave 17.2 backend gate.

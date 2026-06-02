@@ -200,9 +200,9 @@
 
 ### Backend — Permission Gates (Owner: Kimi ( opencode ))
 
-- [ ] T-678 [US28] Write TDD tests for permission gates on ALL admin endpoints (connections, roles, SSO, audit) and query endpoints in `backend/tests/unit/test_permission_gates_all.py`: verify 403 for missing permissions, no admin access for end users — FR-127, SC-049
-- [ ] T-679 [US28] Apply `require_permission()` dependency to all existing admin endpoints in `backend/src/app/api/v1/admin.py`, `admin_connections.py` — FR-127
-- [ ] T-680 [US28] Apply `require_permission('query.submit')` to query endpoints, `require_permission('query.history.view')` to history endpoints in `backend/src/app/api/v1/query.py`, `history.py` — FR-127
+- [x] T-678 [US28] Write TDD tests for permission gates on ALL admin endpoints (connections, roles, SSO, audit) and query endpoints in `backend/tests/unit/test_permission_gates_all.py`: verify 403 for missing permissions, no admin access for end users — FR-127, SC-049
+- [x] T-679 [US28] Apply `require_permission()` dependency to all existing admin endpoints in `backend/src/app/api/v1/admin.py`, `admin_connections.py` — FR-127
+- [x] T-680 [US28] Apply `require_permission('query.submit')` to query endpoints, `require_permission('query.history.view')` to history endpoints in `backend/src/app/api/v1/query.py`, `history.py` — FR-127
 
 ### Backend — User Denial (Owner: Kimi ( opencode ))
 
