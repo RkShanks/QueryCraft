@@ -612,7 +612,10 @@ class TestRouteLevelStatusCodes:
 
             class InjectSessionMiddleware(BaseHTTPMiddleware):
                 async def dispatch(self, request, call_next):
-                    request.state.session = session
+                    _sess = dict(session)
+                    if "role_id" not in _sess:
+                        _sess["role_id"] = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    request.state.session = _sess
                     return await call_next(request)
 
             app.add_middleware(InjectSessionMiddleware)

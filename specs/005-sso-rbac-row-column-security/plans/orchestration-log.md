@@ -494,7 +494,7 @@
 - Wave 17.2d unmapped user denial is complete:
   - `require_permission()` checks `role_id` is present and non-empty before checking permissions.
   - Session with `role_id=None`, missing `role_id`, or empty string `role_id` → 403 `error.forbidden`.
-  - 12 TDD tests in `test_unmapped_user_denial.py` verify direct dependency and route-level behavior.
+  - 18 TDD tests in `test_unmapped_user_denial.py` verify direct dependency, route-level behavior, non-string role_id rejection, and admin_sso provider endpoint coverage.
   - Regression sweep: added `role_id` to all existing session mocks across 8 test files to preserve prior test behavior.
 
 ### Remaining Wave 17.2 Backend Work
@@ -516,10 +516,11 @@
 - **PR**: https://github.com/RkShanks/QueryCraft/pull/119
 
 ### Scope
-- T-681: TDD tests for unmapped user denial (`tests/unit/test_unmapped_user_denial.py`): 12 tests covering:
+- T-681: TDD tests for unmapped user denial (`tests/unit/test_unmapped_user_denial.py`): 18 tests covering:
   - `role_id=None` → 403
   - Missing `role_id` key → 403
   - Empty string `role_id` → 403
+  - Non-string `role_id` (dict, list, int, bool) → 403 (fail-closed)
   - Error sanitization (no UUIDs, usernames, role_id leaked)
   - Valid `role_id` + correct permission → 200
   - Valid `role_id` + wrong permission → 403 (existing behavior)
@@ -528,28 +529,32 @@
   - Route-level: unmapped user POST /query/submit with invalid body → 403 (not 422)
   - Route-level: unmapped user does not trigger `require_active_user` override raising 503
   - Route-level: mapped user with correct permission → 200
+  - Route-level: unmapped user GET /admin/sso/providers → 403 (admin_sso provider endpoints)
 - T-682: Implemented unmapped user denial in `require_permission()` (`backend/src/app/api/dependencies/permissions.py`):
   - Added `role_id` check before permission comparison
-  - `role_id` must be present and non-empty string
+  - `role_id` must be a non-empty string (fail-closed: rejects None, missing, empty, dict, list, int, bool)
   - Returns sanitized 403 `error.forbidden` on failure
-- Regression sweep: added `role_id` to session mocks in 8 existing test files to preserve prior behavior:
-  - `test_permission_middleware.py`, `test_permission_gates_all.py`, `test_role_endpoints.py`, `test_group_mapping_endpoints.py`, `test_sso_admin_endpoints.py`, `test_admin_connections.py`, `test_history_metadata.py`, `test_admin_settings_unit.py`
+- Fixed `admin_sso.py` `_check_permission()` to also enforce `role_id` is a non-empty string (previously only checked permissions, allowing unmapped sessions with correct permission to pass).
+- Regression sweep: added `role_id` to session mocks in 9 existing test files to preserve prior behavior:
+  - `test_permission_middleware.py`, `test_permission_gates_all.py`, `test_role_endpoints.py`, `test_group_mapping_endpoints.py`, `test_sso_admin_endpoints.py`, `test_sso_audit_logging.py`, `test_admin_connections.py`, `test_history_metadata.py`, `test_admin_settings_unit.py`
 
 ### Gates
-- Full unit gate: `959 passed, 61 skipped, 9 deselected, 12 warnings in 13.47s`
-- Focused unmapped user tests: `12 passed`
+- Full unit gate: `965 passed, 61 skipped, 9 deselected, 12 warnings in 11.71s`
+- Focused unmapped user tests: `18 passed`
 - Ruff check: `All checks passed!`
 - Ruff format: `286 files already formatted`
 - `git diff --check`: clean
 
 ### Security Notes
-- Unmapped users (no `role_id` in session) are denied at the permission dependency layer before any endpoint body or service dependency executes.
+- Unmapped users (no valid string `role_id` in session) are denied at the permission dependency layer before any endpoint body or service dependency executes.
 - 403 responses are sanitized: no `role_id` value, UUIDs, usernames, group names, provider data, role internals, SQL, stack traces, or credentials leaked.
 - Built-in admin behavior preserved: local admin login creates session with valid `role_id` from `User.role_obj`.
 - SSO login already creates session with `role_id` from resolved role.
 
 ### Review Fixes
-- None.
+- **Fix 1 — `admin_sso.py` provider endpoints denied unmapped sessions**: `_check_permission()` only checked `admin.sso.manage` permission but not `role_id`. Repro: session with `permissions=["admin.sso.manage"]` and missing `role_id` got 200 from `GET /admin/sso/providers`. Fixed by adding `role_id` validation to `_check_permission()`: must be a non-empty string.
+- **Fix 2 — `require_permission()` accepted non-string `role_id` values**: `role_id={}`, `[]`, `42`, `True` all passed the `isinstance(role_id, str)` check. Fixed by requiring `isinstance(role_id, str) and role_id.strip()` — fail-closed on any non-string or empty value.
+- **Fix 3 — Regression sweep extended**: Added `role_id` to `test_sso_audit_logging.py` fixtures (`admin_request`) which were missed in the first sweep.
 
 ### Remaining Wave 17.2 Backend Work
 - T-683/T-684: RBAC audit logging coverage.

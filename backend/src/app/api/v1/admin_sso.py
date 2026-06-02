@@ -28,12 +28,18 @@ router = APIRouter(prefix="/admin/sso", tags=["Admin SSO"])
 
 
 def _check_permission(request: Request) -> None:
-    """Verify request has ``admin.sso.manage`` permission."""
+    """Verify request has ``admin.sso.manage`` permission and a mapped role."""
     session = getattr(request.state, "session", None)
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    role_id = session.get("role_id")
+    if not isinstance(role_id, str) or not role_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "forbidden", "message_key": "error.forbidden"},
         )
     user_perms = set(session.get("permissions", []))
     if "admin.sso.manage" not in user_perms:

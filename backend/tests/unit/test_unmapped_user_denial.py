@@ -315,3 +315,110 @@ class TestUnmappedUserRouteLevel:
             response = await client.get("/api/v1/history")
             # 200 from service means permission gate passed
             assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_get_admin_sso_providers_unmapped_user_returns_403(self):
+        """GET /admin/sso/providers with missing role_id returns 403."""
+        from app.api.v1.admin_sso import router
+
+        app = _make_app_with_session(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "permissions": ["admin.sso.manage"],
+            }
+        )
+        app.include_router(router, prefix="/api/v1")
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/admin/sso/providers")
+            assert response.status_code == 403
+            data = response.json()
+            assert data["error"] == "forbidden"
+            assert data["message_key"] == "error.forbidden"
+
+
+class TestNonStringRoleId:
+    """Non-string role_id values must be rejected (fail-closed)."""
+
+    @pytest.mark.asyncio
+    async def test_dict_role_id_returns_403(self):
+        """dict role_id is treated as unmapped."""
+        request = _make_request(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "role_id": {},
+                "permissions": ["query.submit"],
+            }
+        )
+        dep = require_permission(Permission.QUERY_SUBMIT)
+        with pytest.raises(HTTPException) as exc:
+            await dep(request)
+        assert exc.value.status_code == 403
+        detail = exc.value.detail
+        assert detail["error"] == "forbidden"
+        assert detail["message_key"] == "error.forbidden"
+
+    @pytest.mark.asyncio
+    async def test_list_role_id_returns_403(self):
+        """list role_id is treated as unmapped."""
+        request = _make_request(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "role_id": [],
+                "permissions": ["query.submit"],
+            }
+        )
+        dep = require_permission(Permission.QUERY_SUBMIT)
+        with pytest.raises(HTTPException) as exc:
+            await dep(request)
+        assert exc.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_int_role_id_returns_403(self):
+        """int role_id is treated as unmapped."""
+        request = _make_request(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "role_id": 42,
+                "permissions": ["query.submit"],
+            }
+        )
+        dep = require_permission(Permission.QUERY_SUBMIT)
+        with pytest.raises(HTTPException) as exc:
+            await dep(request)
+        assert exc.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_bool_role_id_returns_403(self):
+        """bool role_id is treated as unmapped."""
+        request = _make_request(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "role_id": True,
+                "permissions": ["query.submit"],
+            }
+        )
+        dep = require_permission(Permission.QUERY_SUBMIT)
+        with pytest.raises(HTTPException) as exc:
+            await dep(request)
+        assert exc.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_403_does_not_expose_non_string_role_id(self):
+        """403 response must not leak the non-string role_id value."""
+        request = _make_request(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "role_id": {"nested": "dict"},
+                "permissions": [],
+            }
+        )
+        dep = require_permission(Permission.QUERY_SUBMIT)
+        with pytest.raises(HTTPException) as exc:
+            await dep(request)
+        detail_str = str(exc.value.detail).lower()
+        assert "nested" not in detail_str
+        assert "dict" not in detail_str
+        assert "role_id" not in detail_str
+        assert set(exc.value.detail.keys()) == {"error", "message_key"}
