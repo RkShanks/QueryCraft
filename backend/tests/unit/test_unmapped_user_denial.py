@@ -337,6 +337,104 @@ class TestUnmappedUserRouteLevel:
             assert data["error"] == "forbidden"
             assert data["message_key"] == "error.forbidden"
 
+    @pytest.mark.asyncio
+    async def test_get_admin_roles_unmapped_user_returns_403(self):
+        """GET /admin/roles with missing role_id returns 403 before get_db runs."""
+        from app.api.v1.admin_roles import router
+
+        app = _make_app_with_session(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "permissions": ["admin.roles.manage"],
+            }
+        )
+        app.include_router(router, prefix="/api/v1")
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/admin/roles")
+            assert response.status_code == 403
+            data = response.json()
+            assert data["error"] == "forbidden"
+            assert data["message_key"] == "error.forbidden"
+
+    @pytest.mark.asyncio
+    async def test_get_admin_sso_group_mappings_unmapped_user_returns_403(self):
+        """GET /admin/sso/group-mappings with missing role_id returns 403."""
+        from app.api.v1.admin_sso import router
+
+        app = _make_app_with_session(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "permissions": ["admin.roles.manage"],
+            }
+        )
+        app.include_router(router, prefix="/api/v1")
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/admin/sso/group-mappings")
+            assert response.status_code == 403
+            data = response.json()
+            assert data["error"] == "forbidden"
+            assert data["message_key"] == "error.forbidden"
+
+    @pytest.mark.asyncio
+    async def test_post_admin_roles_unmapped_user_invalid_body_returns_403(self):
+        """POST /admin/roles with missing role_id + invalid body returns 403, not 422."""
+        from app.api.v1.admin_roles import router
+
+        app = _make_app_with_session(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "permissions": ["admin.roles.manage"],
+            }
+        )
+        app.include_router(router, prefix="/api/v1")
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/roles",
+                json={"invalid": "data"},
+            )
+            assert response.status_code == 403
+            data = response.json()
+            assert data["error"] == "forbidden"
+            assert data["message_key"] == "error.forbidden"
+
+    @pytest.mark.asyncio
+    async def test_admin_roles_unmapped_user_does_not_run_get_db(self):
+        """GET /admin/roles unmapped user returns 403 before get_db dependency executes."""
+        from app.api.v1.admin_roles import router
+        from app.core.dependencies import get_db
+
+        app = _make_app_with_session(
+            {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
+                "permissions": ["admin.roles.manage"],
+            }
+        )
+        app.include_router(router, prefix="/api/v1")
+
+        async def override_get_db():
+            raise HTTPException(
+                status_code=503,
+                detail={"error": "dependency_ran", "message_key": "dependency.ran"},
+            )
+
+        app.dependency_overrides[get_db] = override_get_db
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/admin/roles")
+            assert response.status_code == 403
+            data = response.json()
+            assert data["error"] == "forbidden"
+            assert data["message_key"] == "error.forbidden"
+            assert "dependency_ran" not in str(data)
+            assert "dependency.ran" not in str(data)
+
 
 class TestNonStringRoleId:
     """Non-string role_id values must be rejected (fail-closed)."""

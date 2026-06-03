@@ -93,68 +93,77 @@ def _make_saml_provider():
 class TestPermissionEnforcement:
     """All admin SSO endpoints require admin.sso.manage permission."""
 
+    def _make_app(self, session_data: dict | None):
+        from fastapi.responses import JSONResponse
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        from app.api.v1.admin_sso import router
+
+        class SessionInjectionMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                request.state.session = session_data
+                return await call_next(request)
+
+        async def _http_exc_handler(request, exc):
+            if isinstance(exc.detail, dict):
+                return JSONResponse(status_code=exc.status_code, content=exc.detail)
+            return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
+
+        app = FastAPI()
+        app.add_middleware(SessionInjectionMiddleware)
+        app.add_exception_handler(HTTPException, _http_exc_handler)
+        app.include_router(router, prefix="/api/v1")
+        return app
+
     @pytest.mark.asyncio
     async def test_get_providers_requires_admin_sso_manage(self):
-        from app.api.v1.admin_sso import list_providers
-
-        request = MagicMock()
-        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await list_providers(request=request, db=AsyncMock())
-        assert exc.value.status_code == 403
-        detail = exc.value.detail
-        assert detail["error"] == "forbidden"
-        assert detail["message_key"] == "error.forbidden"
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/admin/sso/providers")
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_create_provider_requires_admin_sso_manage(self):
-        from app.api.v1.admin_sso import create_provider
-
-        request = MagicMock()
-        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await create_provider(
-                request=request,
-                body=SsoProviderCreate(protocol="oidc", display_name="Test"),
-                db=AsyncMock(),
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/sso/providers",
+                json={"protocol": "oidc", "display_name": "Test"},
             )
-        assert exc.value.status_code == 403
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_update_provider_requires_admin_sso_manage(self):
-        from app.api.v1.admin_sso import update_provider
-
-        request = MagicMock()
-        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await update_provider(
-                request=request,
-                provider_id=str(uuid.uuid4()),
-                body=SsoProviderUpdate(),
-                db=AsyncMock(),
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.put(
+                "/api/v1/admin/sso/providers/test-id",
+                json={},
             )
-        assert exc.value.status_code == 403
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_delete_provider_requires_admin_sso_manage(self):
-        from app.api.v1.admin_sso import delete_provider
-
-        request = MagicMock()
-        request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await delete_provider(
-                request=request,
-                provider_id=str(uuid.uuid4()),
-                db=AsyncMock(),
-            )
-        assert exc.value.status_code == 403
-
-
-# ── GET /admin/sso/providers ──────────────────────────────────────────────
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.delete("/api/v1/admin/sso/providers/test-id")
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
 
 class TestListProviders:
@@ -173,7 +182,7 @@ class TestListProviders:
         request = MagicMock()
         request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
-        result = await list_providers(request=request, db=mock_db)
+        result = await list_providers(_session=request.state.session, db=mock_db)
 
         providers = result["providers"]
         assert len(providers) == 2
@@ -199,7 +208,7 @@ class TestListProviders:
         request = MagicMock()
         request.state.session = {"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]}
 
-        result = await list_providers(request=request, db=mock_db)
+        result = await list_providers(_session=request.state.session, db=mock_db)
         assert result["providers"] == []
 
 
@@ -239,7 +248,7 @@ class TestCreateProvider:
         )
 
         with patch("app.api.v1.admin_sso.encrypt", return_value="encrypted-value") as mock_encrypt:
-            result = await create_provider(request=request, body=body, db=mock_db)
+            result = await create_provider(request=request, _session=request.state.session, body=body, db=mock_db)
 
         mock_encrypt.assert_called_once_with("super-secret", ANY)
         assert result["protocol"] == "oidc"
@@ -275,7 +284,7 @@ class TestCreateProvider:
         )
 
         with patch("app.api.v1.admin_sso.encrypt", return_value="encrypted-value") as mock_encrypt:
-            result = await create_provider(request=request, body=body, db=mock_db)
+            result = await create_provider(request=request, _session=request.state.session, body=body, db=mock_db)
 
         assert mock_encrypt.call_count == 2
         assert result["protocol"] == "saml"
@@ -302,7 +311,7 @@ class TestCreateProvider:
         )
 
         with pytest.raises(HTTPException) as exc:
-            await create_provider(request=request, body=body, db=mock_db)
+            await create_provider(request=request, _session=request.state.session, body=body, db=mock_db)
         assert exc.value.status_code == 409
         detail = exc.value.detail
         assert detail["error"] == "conflict"
@@ -327,7 +336,7 @@ class TestCreateProvider:
         )
 
         with pytest.raises(HTTPException) as exc:
-            await create_provider(request=request, body=body, db=mock_db)
+            await create_provider(request=request, _session=request.state.session, body=body, db=mock_db)
         assert exc.value.status_code == 422
 
     @pytest.mark.asyncio
@@ -347,7 +356,7 @@ class TestCreateProvider:
         )
 
         with pytest.raises(HTTPException) as exc:
-            await create_provider(request=request, body=body, db=mock_db)
+            await create_provider(request=request, _session=request.state.session, body=body, db=mock_db)
         assert exc.value.status_code == 422
 
     @pytest.mark.asyncio
@@ -369,7 +378,7 @@ class TestCreateProvider:
         )
 
         with pytest.raises(HTTPException) as exc:
-            await create_provider(request=request, body=body, db=mock_db)
+            await create_provider(request=request, _session=request.state.session, body=body, db=mock_db)
         assert exc.value.status_code in (400, 422, 500)
         detail_str = str(exc.value.detail)
         assert "my-secret" not in detail_str

@@ -714,7 +714,7 @@ class TestPermissionMatrix:
             assert "_session" in sig.parameters, f"{ep.__name__} missing _session"
 
     def test_admin_roles_uses_admin_roles_manage(self):
-        """admin_roles.py endpoints use ADMIN_ROLES_MANAGE (preserved, no regression)."""
+        """admin_roles.py endpoints use ADMIN_ROLES_MANAGE via Depends()."""
         import inspect
 
         from app.api.v1 import admin_roles
@@ -728,10 +728,10 @@ class TestPermissionMatrix:
         ]
         for ep in endpoints:
             sig = inspect.signature(ep)
-            assert "request" in sig.parameters, f"{ep.__name__} missing request (admin_roles uses inline checks)"
+            assert "_session" in sig.parameters, f"{ep.__name__} missing _session (admin_roles uses Depends())"
 
     def test_admin_sso_providers_uses_admin_sso_manage(self):
-        """admin_sso.py provider endpoints use ADMIN_SSO_MANAGE (preserved, no regression)."""
+        """admin_sso.py provider endpoints use ADMIN_SSO_MANAGE via Depends()."""
         import inspect
 
         from app.api.v1 import admin_sso
@@ -744,10 +744,10 @@ class TestPermissionMatrix:
         ]
         for ep in endpoints:
             sig = inspect.signature(ep)
-            assert "request" in sig.parameters, f"{ep.__name__} missing request (admin_sso providers use inline checks)"
+            assert "_session" in sig.parameters, f"{ep.__name__} missing _session (admin_sso providers use Depends())"
 
     def test_admin_sso_group_mappings_uses_admin_roles_manage(self):
-        """admin_sso.py group mapping endpoints use ADMIN_ROLES_MANAGE (preserved, no regression)."""
+        """admin_sso.py group mapping endpoints use ADMIN_ROLES_MANAGE via Depends()."""
         import inspect
 
         from app.api.v1 import admin_sso
@@ -759,6 +759,6 @@ class TestPermissionMatrix:
         ]
         for ep in endpoints:
             sig = inspect.signature(ep)
-            assert "request" in sig.parameters, (
-                f"{ep.__name__} missing request (admin_sso group mappings use inline checks)"
+            assert "_session" in sig.parameters, (
+                f"{ep.__name__} missing _session (admin_sso group mappings use Depends())"
             )
