@@ -100,11 +100,21 @@ class RoleService:
         if existing is None:
             raise ValueError("not_found")
 
-        # Built-in protection is handled in repository; re-raise with clear semantics
+        # Built-in protection: log access.denied before raising
         if getattr(existing, "is_builtin", False):
             protected_fields = {"name", "permissions", "is_builtin", "priority"}
             attempted_protected = protected_fields.intersection(fields.keys())
             if attempted_protected:
+                if db_session is not None:
+                    await AuditService.log(
+                        db_session,
+                        action=AuditActionType.ACCESS_DENIED,
+                        actor_identity=actor_identity,
+                        resource_type="role",
+                        resource_id=str(role_id),
+                        outcome="denied",
+                        context={"reason": "builtin_protected"},
+                    )
                 raise BuiltinProtectedError(resource_type="role", resource_id=str(role_id))
 
         if "name" in fields and fields["name"] is not None:
@@ -152,6 +162,20 @@ class RoleService:
         existing = await self._repo.get_by_id(role_id)
         if existing is None:
             raise ValueError("not_found")
+
+        # Built-in protection: log access.denied before raising
+        if getattr(existing, "is_builtin", False):
+            if db_session is not None:
+                await AuditService.log(
+                    db_session,
+                    action=AuditActionType.ACCESS_DENIED,
+                    actor_identity=actor_identity,
+                    resource_type="role",
+                    resource_id=str(role_id),
+                    outcome="denied",
+                    context={"reason": "builtin_protected"},
+                )
+            raise BuiltinProtectedError(resource_type="role", resource_id=str(role_id))
 
         result = await self._repo.delete(role_id)
         if not result:
