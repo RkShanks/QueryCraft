@@ -703,7 +703,7 @@
 - **Model**: Kimi (opencode) Backend Implementer
 - **T-IDs**: T-698, T-699
 - **Branch**: `phase-5/wave-17.3a-schema-filtering`
-- **PR**: https://github.com/RkShanks/QueryCraft/pull/123
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/124
 
 ### Scope
 - T-698: TDD tests for `PolicyEnforcementService.filter_schema()` in
@@ -766,7 +766,7 @@
 - **Phase**: Phase 5 remains IN PROGRESS.
 - **Current point**: Wave 17.3a schema filtering complete and ready for review/merge.
 - **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123.
-- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/123 (Wave 17.3a — Schema Filtering)
+- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/124 (Wave 17.3a — Schema Filtering)
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
