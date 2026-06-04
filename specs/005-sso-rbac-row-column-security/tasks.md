@@ -227,9 +227,9 @@
 
 ### Frontend — Permission-Based Route Guards (Owner: Gemini)
 
-- [ ] T-690 [US28] Write TDD tests for permission-based route guards (admin nav hidden for non-admin, routes redirect unauthorized users) in `frontend/src/components/auth/PermissionGuard.test.tsx` — FR-127
-- [ ] T-691 [US28] Create `PermissionGuard` component in `frontend/src/components/auth/PermissionGuard.tsx`: wrap admin routes, check `permissions` from `useAuth`, redirect or hide — FR-127
-- [ ] T-692 [US28] Update `frontend/src/App.tsx`: wrap admin routes (`/admin/*`) with `PermissionGuard`, add `/admin/roles` route — FR-127
+- [x] T-690 [US28] Write TDD tests for permission-based route guards (admin nav hidden for non-admin, routes redirect unauthorized users) in `frontend/src/components/auth/PermissionGuard.test.tsx` — FR-127
+- [x] T-691 [US28] Create `PermissionGuard` component in `frontend/src/components/auth/PermissionGuard.tsx`: wrap admin routes, check `permissions` from `useAuth`, redirect or hide — FR-127
+- [x] T-692 [US28] Update `frontend/src/App.tsx`: wrap admin routes (`/admin/*`) with `PermissionGuard`, add `/admin/roles` route — FR-127
 
 ### Frontend — i18n for Wave 17.2 (Owner: Gemini)
 
