@@ -684,4 +684,4 @@
 - T-697: Wave 17.2 frontend gate.
 
 ### Next Dispatch Constraint
-- Wave 17.2 closeout and Wave 17.3 Backend dispatch.
+- Wave 17.2 frontend gate T-697.
