@@ -238,12 +238,12 @@
 
 ### Frontend — Browser Evidence (Owner: Gemini)
 
-- [ ] T-695 [US28] Chrome DevTools MCP: verify role management page renders list/create/edit/delete, Arabic/RTL layout correct — FR-122, SC-055
-- [ ] T-696 [US30] Chrome DevTools MCP: verify group mapping editor renders within role form, Arabic/RTL correct — FR-125, SC-055
+- [x] T-695 [US28] Chrome DevTools MCP: verify role management page renders list/create/edit/delete, Arabic/RTL layout correct — FR-122, SC-055
+- [x] T-696 [US30] Chrome DevTools MCP: verify group mapping editor renders within role form, Arabic/RTL correct — FR-125, SC-055
 
 ### Wave 17.2 Frontend Gate
 
-- [ ] T-697 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
+- [x] T-697 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
 
 ---
 
