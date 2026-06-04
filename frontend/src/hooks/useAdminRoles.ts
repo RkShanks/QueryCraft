@@ -59,10 +59,35 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: RoleCreateData) =>
-      client.post({ url: '/admin/roles', body: data, throwOnError: true }).then((res) => res.data),
+    mutationFn: async (data: RoleCreateData) => {
+      const res = await client.post({
+        url: '/admin/roles',
+        body: {
+          name: data.name,
+          description: data.description,
+          priority: data.priority,
+          permissions: data.permissions,
+        },
+        throwOnError: true,
+      });
+      const createdRole = res.data as Role;
+
+      if (data.group_mappings && data.group_mappings.length > 0) {
+        await Promise.all(
+          data.group_mappings.map((group) =>
+            client.post({
+              url: '/admin/sso/group-mappings',
+              body: { sso_group_value: group, role_id: createdRole.id },
+              throwOnError: true,
+            })
+          )
+        );
+      }
+      return createdRole;
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminRoles'] });
+      queryClient.invalidateQueries({ queryKey: ['adminGroupMappings'] });
       options?.onCreateSuccess?.(data);
     },
     onError: (err) => {
@@ -71,10 +96,57 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: RoleUpdateData }) =>
-      client.put({ url: `/admin/roles/${id}`, body: data, throwOnError: true }).then((res) => res.data),
+    mutationFn: async ({
+      id,
+      data,
+      existingMappings = [],
+    }: {
+      id: string;
+      data: RoleUpdateData;
+      existingMappings?: Array<{ id: string; sso_group_value: string }>;
+    }) => {
+      const res = await client.put({
+        url: `/admin/roles/${id}`,
+        body: {
+          name: data.name,
+          description: data.description,
+          priority: data.priority,
+          permissions: data.permissions,
+        },
+        throwOnError: true,
+      });
+      const updatedRole = res.data as Role;
+
+      if (data.group_mappings) {
+        const newGroups = data.group_mappings;
+        const existingGroupNames = existingMappings.map((em) => em.sso_group_value);
+
+        const groupsToAdd = newGroups.filter((g) => !existingGroupNames.includes(g));
+        const mappingsToDelete = existingMappings.filter(
+          (em) => !newGroups.includes(em.sso_group_value)
+        );
+
+        await Promise.all([
+          ...groupsToAdd.map((group) =>
+            client.post({
+              url: '/admin/sso/group-mappings',
+              body: { sso_group_value: group, role_id: id },
+              throwOnError: true,
+            })
+          ),
+          ...mappingsToDelete.map((mapping) =>
+            client.delete({
+              url: `/admin/sso/group-mappings/${mapping.id}`,
+              throwOnError: true,
+            })
+          ),
+        ]);
+      }
+      return updatedRole;
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminRoles'] });
+      queryClient.invalidateQueries({ queryKey: ['adminGroupMappings'] });
       options?.onUpdateSuccess?.(data);
     },
     onError: (err) => {

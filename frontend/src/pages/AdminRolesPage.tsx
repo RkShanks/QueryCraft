@@ -157,7 +157,11 @@ export const AdminRolesPage: React.FC = () => {
         permissions: selectedPermissions,
         group_mappings: mappedGroups,
       };
-      updateMutation.mutate({ id: editingRole.id, data: updateData });
+      updateMutation.mutate({
+        id: editingRole.id,
+        data: updateData,
+        existingMappings: editingRole.group_mappings,
+      });
     } else {
       const createData: RoleCreateData = {
         name,
