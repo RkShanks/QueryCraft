@@ -30,7 +30,7 @@ const mockEmptyRoles = {
 };
 
 const mockCustomRole = {
-  id: 'role-123',
+  id: '123',
   name: 'Analyst',
   description: 'Read-only analyst role',
   priority: 10,
@@ -45,7 +45,7 @@ const mockCustomRole = {
 };
 
 const mockBuiltinRole = {
-  id: 'role-admin',
+  id: 'admin',
   name: 'Super Admin',
   description: 'Built-in administrator role',
   priority: 0,
@@ -150,7 +150,7 @@ describe('AdminRolesPage', () => {
     fireEvent.change(screen.getByLabelText('admin.roles.form.priority'), { target: { value: '25' } });
 
     // Select a permission
-    const querySubmitCheckbox = screen.getByLabelText('admin.roles.permissions.query.submit');
+    const querySubmitCheckbox = screen.getByLabelText('admin.roles.permissions.query.submit', { exact: false });
     fireEvent.click(querySubmitCheckbox);
 
     // Add inline group mapping
@@ -200,7 +200,7 @@ describe('AdminRolesPage', () => {
 
     await waitFor(() => {
       expect(mockMutations.updateMutation.mutate).toHaveBeenCalledWith(expect.objectContaining({
-        id: 'role-123',
+        id: '123',
         data: expect.objectContaining({
           description: 'Updated description',
         }),
@@ -237,7 +237,7 @@ describe('AdminRolesPage', () => {
     expect(confirmSpy).toHaveBeenCalledWith('admin.roles.deleteConfirm');
 
     await waitFor(() => {
-      expect(mockMutations.deleteMutation.mutate).toHaveBeenCalledWith('role-123');
+      expect(mockMutations.deleteMutation.mutate).toHaveBeenCalledWith('123');
     });
   });
 
