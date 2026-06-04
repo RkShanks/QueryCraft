@@ -59,11 +59,7 @@ class PolicyEnforcementService:
             if allowed_cols is None:
                 continue
 
-            kept_columns: list[Column] = [
-                column
-                for column in table.columns
-                if column.name.lower() in allowed_cols
-            ]
+            kept_columns: list[Column] = [column for column in table.columns if column.name.lower() in allowed_cols]
             filtered_tables.append(
                 Table(
                     name=table.name,
