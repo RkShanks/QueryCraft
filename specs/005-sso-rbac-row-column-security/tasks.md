@@ -233,8 +233,8 @@
 
 ### Frontend — i18n for Wave 17.2 (Owner: Gemini)
 
-- [ ] T-693 [US33] Add all Wave 17.2 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: role management labels, group mapping labels, permission names, validation messages — FR-137
-- [ ] T-694 [US33] Verify 100% EN/AR key parity for Wave 17.2 keys via locale coverage test — FR-137, SC-054
+- [x] T-693 [US28] Add all Wave 17.2 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: role management labels, group mapping labels, permission names, validation messages — FR-137
+- [x] T-694 [US28] Verify 100% EN/AR key parity for Wave 17.2 keys via locale coverage test — FR-137, SC-054
 
 ### Frontend — Browser Evidence (Owner: Gemini)
 
