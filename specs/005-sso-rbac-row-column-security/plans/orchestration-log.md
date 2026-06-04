@@ -593,14 +593,47 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2e
+## Wave 17.2f — Backend Foundation Gate
+
+### Dispatch
+- **Date**: 2026-06-04
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-685
+- **Branch**: `phase-5/wave-17.2f-backend-gate`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/121
+
+### Scope
+- T-685: Run CI-equivalent backend foundation gates (no code changes expected).
+  - `cd backend && python3 -m ruff check src tests`
+  - `cd backend && python3 -m pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"`
+  - `cd backend && python3 -m ruff format --check src tests`
+  - `git diff --check`
+
+### Gates
+- Ruff check: `All checks passed!`
+- Ruff format: `287 files already formatted`
+- Full unit gate: `1034 passed, 61 skipped, 9 deselected, 12 warnings in 13.50s`
+- `git diff --check`: clean
+- No code changes required; all gates green on `main` post PR #120 merge.
+
+### Security Notes
+- Gate confirms PR #120 audit atomicity fix (commit-before-403 in `admin_roles.update_role/delete_role`) is in main.
+- Gate confirms PR #118/#119 permission ordering preserved: `require_permission()` runs before body/DB deps, fail-closed on non-string `role_id`.
+- 9 deselected tests are infrastructure-dependent (pagila DB on port 5433, session cookie secure test env) — pre-existing, not from this gate.
+
+### Remaining Wave 17.2 Backend Work
+- None — T-685 complete. Frontend work (T-686..T-696) and frontend gate (T-697) remain.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.2f (Backend Gate)
 
 ### Status
 - **Date**: 2026-06-04
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2e complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119.
-- **Current/open PR**: #120 (Wave 17.2e — RBAC Audit Logging).
+- **Current point**: Wave 17.2f backend gate complete and ready for merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120.
+- **Current/open PR**: #121 (Wave 17.2f — Backend Gate).
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -609,14 +642,13 @@
 - Wave 17.2b group mapping endpoints are complete.
 - Wave 17.2c permission gates are complete.
 - Wave 17.2d unmapped user denial is complete.
-- Wave 17.2e RBAC audit logging is complete:
-  - `RoleService.update_role()` logs `access.denied` before `BuiltinProtectedError` on built-in role update.
-  - `RoleService.delete_role()` logs `access.denied` before `BuiltinProtectedError` on built-in role delete.
-  - `admin_roles.py` `update_role` and `delete_role` endpoints commit the audit row before raising 403.
-  - 17 TDD tests verify all RBAC audit events including atomicity, redaction, and endpoint commit-before-403 ordering.
+- Wave 17.2e RBAC audit logging is complete (PR #120 merged with audit persistence-before-403 fix).
+- Wave 17.2f backend foundation gate is complete: 1034 passed, 61 skipped, 9 deselected, 12 warnings. Ruff check + format clean.
 
-### Remaining Wave 17.2 Backend Work
-- T-685: Wave 17.2 backend gate.
+### Remaining Wave 17.2 Work
+- T-686..T-696: Frontend role management, permission guards, i18n, browser evidence.
+- T-697: Wave 17.2 frontend gate.
 
 ### Next Dispatch Constraint
-- Wave 17.2 backend gate (T-685) after PR #120 merge.
+- Frontend implementer (Gemini) next for Wave 17.2 frontend work.
+- T-697 (frontend gate) must pass before Wave 17.2 close.
