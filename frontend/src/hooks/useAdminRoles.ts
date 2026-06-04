@@ -39,12 +39,12 @@ export interface GroupMapping {
 }
 
 export interface UseAdminRolesOptions {
-  onCreateSuccess?: (data: any) => void;
-  onCreateError?: (error: any) => void;
-  onUpdateSuccess?: (data: any) => void;
-  onUpdateError?: (error: any) => void;
-  onDeleteSuccess?: (data: any) => void;
-  onDeleteError?: (error: any) => void;
+  onCreateSuccess?: (data: unknown) => void;
+  onCreateError?: (error: unknown) => void;
+  onUpdateSuccess?: (data: unknown) => void;
+  onUpdateError?: (error: unknown) => void;
+  onDeleteSuccess?: (data: unknown) => void;
+  onDeleteError?: (error: unknown) => void;
 }
 
 export const useAdminRoles = (options?: UseAdminRolesOptions) => {

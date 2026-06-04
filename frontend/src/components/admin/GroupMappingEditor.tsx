@@ -65,7 +65,7 @@ export const GroupMappingEditor: React.FC<GroupMappingEditorProps> = ({ groups, 
                 type="button"
                 onClick={(e) => handleRemove(e, group)}
                 className="text-gray-400 hover:text-red-400 p-0.5 rounded-full hover:bg-gray-700 transition-colors"
-                aria-label={`${t('common.remove')} ${group}`}
+                aria-label={t('common.delete')}
               >
                 <X className="w-3.5 h-3.5" />
               </button>

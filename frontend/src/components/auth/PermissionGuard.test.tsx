@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, local/no-inline-user-strings */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
