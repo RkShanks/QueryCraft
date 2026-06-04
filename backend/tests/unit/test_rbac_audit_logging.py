@@ -14,6 +14,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from app.core.exceptions import BuiltinProtectedError
@@ -341,6 +342,128 @@ class TestAuditAtomicity:
                 )
 
 
+# ── Built-in Role Audit Persistence ─────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+class TestBuiltinRoleAuditPersistence:
+    """Built-in role protection denial audit rows must commit before 403."""
+
+    async def test_builtin_role_update_denial_commits_audit_before_403(self):
+        """PUT built-in role with protected field: audit commits, then 403."""
+        from app.api.v1.admin_roles import update_role
+
+        role = _make_role(name="Admin", priority=0, is_builtin=True)
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=FakeResult(role))
+        mock_db.commit = AsyncMock()
+
+        request = MagicMock()
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin@example.com",
+        }
+
+        body = MagicMock()
+        body.name = "Hacked"
+        body.description = None
+        body.priority = None
+        body.permissions = None
+
+        with patch("app.services.role_service.AuditService.log", new_callable=AsyncMock) as mock_audit:
+            with pytest.raises(HTTPException) as exc:
+                await update_role(request=request, role_id=str(role.id), body=body, db=mock_db)
+            assert exc.value.status_code == 403
+            mock_audit.assert_awaited_once()
+            mock_db.commit.assert_awaited_once()
+
+    async def test_builtin_role_delete_denial_commits_audit_before_403(self):
+        """DELETE built-in role: audit commits, then 403."""
+        from app.api.v1.admin_roles import delete_role
+
+        role = _make_role(name="Admin", priority=0, is_builtin=True)
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=FakeResult(role))
+        mock_db.commit = AsyncMock()
+
+        request = MagicMock()
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin@example.com",
+        }
+
+        with patch("app.services.role_service.AuditService.log", new_callable=AsyncMock) as mock_audit:
+            with pytest.raises(HTTPException) as exc:
+                await delete_role(request=request, role_id=str(role.id), db=mock_db)
+            assert exc.value.status_code == 403
+            mock_audit.assert_awaited_once()
+            mock_db.commit.assert_awaited_once()
+
+    async def test_audit_failure_blocks_builtin_role_update_403(self):
+        """If AuditService.log raises on built-in update, 500 not 403."""
+        from app.api.v1.admin_roles import update_role
+
+        role = _make_role(name="Admin", priority=0, is_builtin=True)
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=FakeResult(role))
+        mock_db.commit = AsyncMock()
+
+        request = MagicMock()
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin@example.com",
+        }
+
+        body = MagicMock()
+        body.name = "Hacked"
+        body.description = None
+        body.priority = None
+        body.permissions = None
+
+        with patch(
+            "app.services.role_service.AuditService.log",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("Audit DB unavailable"),
+        ):
+            with pytest.raises(HTTPException) as exc:
+                await update_role(request=request, role_id=str(role.id), body=body, db=mock_db)
+            assert exc.value.status_code == 500
+            mock_db.commit.assert_not_awaited()
+
+    async def test_audit_failure_blocks_builtin_role_delete_403(self):
+        """If AuditService.log raises on built-in delete, 500 not 403."""
+        from app.api.v1.admin_roles import delete_role
+
+        role = _make_role(name="Admin", priority=0, is_builtin=True)
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=FakeResult(role))
+        mock_db.commit = AsyncMock()
+
+        request = MagicMock()
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin@example.com",
+        }
+
+        with patch(
+            "app.services.role_service.AuditService.log",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("Audit DB unavailable"),
+        ):
+            with pytest.raises(HTTPException) as exc:
+                await delete_role(request=request, role_id=str(role.id), db=mock_db)
+            assert exc.value.status_code == 500
+            mock_db.commit.assert_not_awaited()
+
+
 # ── Group Mapping Endpoint Audit Logging ────────────────────────────────────
 
 
@@ -350,7 +473,7 @@ class TestGroupMappingAuditLogging:
 
     def _build_app(self, session=None):
         """Build isolated FastAPI app with router, exception handler, and optional session."""
-        from fastapi import FastAPI, HTTPException
+        from fastapi import FastAPI
         from fastapi.responses import JSONResponse
         from starlette.middleware.base import BaseHTTPMiddleware
 
