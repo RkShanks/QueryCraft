@@ -759,38 +759,125 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3a (Schema Filtering)
+## Wave 17.3b — Row Filter Validation
+
+### Dispatch
+- **Date**: 2026-06-05
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-700, T-701
+- **Branch**: `phase-5/wave-17.3b-row-filter-validation`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/125
+
+### Scope
+- T-700: TDD tests for `PolicyEnforcementService.validate_row_filter()` in
+  `backend/tests/unit/test_row_filter_validation.py`.
+- T-701: Implement `PolicyEnforcementService.validate_row_filter()` in
+  `backend/src/app/services/policy_enforcement.py`.
+
+### Behavior
+- Static method: `validate_row_filter(filter_sql, schema, table_name, dialect="postgres") -> None`.
+- Wraps fragment as `SELECT 1 WHERE <filter>` and parses with sqlglot.
+- Raises `ValueError("filter_validation_failed")` on any failure.
+- Constant error message — no leak of fragment, schema, or driver internals.
+- Input `SchemaContext` never mutated.
+
+### Validation Steps (short-circuit, in order)
+1. Must be a non-empty string after strip.
+2. No SQL comments outside string literals (`--`, `/*`).
+3. Target table must exist in `SchemaContext` (case-insensitive).
+4. Placeholder pre-processing: `{user.email}`, `{user.subject_id}`, `{user.role}`
+   replaced with sentinel identifiers (`__ph_user_<key>__`).
+   Any other `{user.X}` or `{other.X}` rejected immediately.
+5. Parse: `sqlglot.parse(wrapped, read=dialect)`. Chained exception suppressed
+   via `raise ... from None` to avoid leaking sqlglot internals.
+6. Must be exactly one non-null `exp.Select` statement.
+7. Reject dangerous top-level nodes (Insert/Update/Delete/Merge/Create/Drop/
+   Alter/TruncateTable/Command/Copy/Set).
+8. Reject set operations (Union/Intersect/Except) anywhere in the tree.
+9. Reject nested SELECTs (subqueries). Outer wrapper and CTEs skipped.
+10. Reject function calls. `exp.Func` catches `Anonymous` + special nodes
+    like `CurrentUser`; boolean/comparison/arithmetic operators excluded
+    by name (`_NON_FUNCTION_OPS` denylist).
+11. Validate every `Column` reference exists in target table (case-insensitive).
+    Placeholder sentinels (starting with `__ph_user_`) skipped.
+
+### Gates
+- `tests/unit/test_row_filter_validation.py`: 41 passed in 0.22s
+- `tests/unit -q -m "not integration"` (excluding 4 pre-existing audit-chain
+  failures identical on `main`): 1103 passed, 9 deselected, 12 warnings in 14.22s
+- `ruff check src tests`: All checks passed!
+- `ruff format --check src tests`: 290 files already formatted
+- `git diff --check`: clean
+- Pre-existing audit failures (NOT from this work, confirmed on `main` at
+  `b9a7004`): same 4 as Wave 17.3a — `test_audit_service` and
+  `test_audit_chain_verification` chain-state tests.
+
+### TDD Evidence
+- T-700 RED: `3e8ad34` — `test(T-700): TDD tests for PolicyEnforcementService.validate_row_filter`
+  (41 collection errors).
+- T-701 GREEN: `d0d44db` — `feat(T-701): implement PolicyEnforcementService.validate_row_filter`
+  (41/41 pass).
+- Format fix: `91d5f15` — `style: apply ruff format to test_row_filter_validation.py` (still 41/41).
+
+### Security Notes
+- Fail-closed: empty/whitespace/garbage/missing-table/nonexistent-column all reject.
+- No leak: constant `filter_validation_failed` error; chained sqlglot exception
+  suppressed with `from None`.
+- Comment detection: scans raw input for `--` and `/*` outside string literals.
+  sqlglot strips comments during parse, so AST alone cannot detect them.
+- Function detection: `exp.Func` is the universal base class; boolean/comparison/
+  arithmetic operators are excluded by explicit name denylist to avoid
+  false positives on `AND`/`OR`/`=`/`>`/etc.
+- Placeholder pre-processing: sentinels start with `__ph_user_` and are
+  excluded from column existence checks, so a filter like
+  `region = {user.role}` does not require a real `role` column.
+- Case-insensitive column matching aligns with existing `SchemaContext.find_table`
+  / `find_column` (Postgres identifier folding). No surprise authorization
+  differences across capitalizations.
+
+### Remaining Wave 17.3 Work
+- T-702..T-705: Placeholder binding, injection hardening, schema drift guard.
+- T-706..T-707: Column masking.
+- T-708..T-710: Evaluator rule.
+- T-711..T-712: Query flow integration.
+- T-713..T-714: Role policy test endpoint.
+- T-715..T-721: History/rerun/audit/cross-dialect.
+- T-722: Wave 17.3 backend gate.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.3b (Row Filter Validation)
 
 ### Status
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.3a schema filtering complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123.
-- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/124 (Wave 17.3a — Schema Filtering)
+- **Current point**: Wave 17.3b row filter validation complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124.
+- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/125 (Wave 17.3b — Row Filter Validation)
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
 - Wave 17.1a-h backend and frontend SSO features are complete.
-- Wave 17.2a role CRUD backend slice is complete.
-- Wave 17.2b group mapping endpoints are complete.
-- Wave 17.2c permission gates are complete.
-- Wave 17.2d unmapped user denial is complete.
-- Wave 17.2e RBAC audit logging is complete.
-- Wave 17.2f backend foundation gate is complete.
-- Wave 17.2g frontend role management, permission guards, and group mappings persistence is complete.
-- Wave 17.2h frontend gate is complete.
-- Wave 17.3a schema filtering is complete:
-  - `PolicyEnforcementService.filter_schema()` filters `SchemaContext` by role policy
-    before LLM prompt construction per S-006.
-  - 19 TDD tests cover table/column filtering, fail-closed, unknown entries,
-    metadata preservation, immutability, case-insensitive matching, and no-leak.
+- Wave 17.2a-h role management, group mapping, permission gates, and gates are complete.
+- Wave 17.3a schema filtering is complete.
+- Wave 17.3b row filter validation is complete:
+  - `PolicyEnforcementService.validate_row_filter()` validates admin-authored
+    WHERE fragments at save time per S-004 / FR-131.
+  - 41 TDD tests cover valid filters, placeholders, invalid SQL, missing table,
+    nonexistent/cross-table columns, subqueries, function calls (including
+    `current_user`), set operations, DML/DDL multi-statements, comments,
+    unknown placeholders, case-insensitive matching, immutability, and
+    sanitized error messages.
 
 ### Remaining Wave 17.3 Work
-- T-700..T-721: Remaining backend policy enforcement (row filters, column masks,
-  evaluator rule, query flow integration, role policy test endpoint, history/rerun/audit,
-  cross-dialect).
+- T-702..T-705: Placeholder binding, injection hardening, schema drift guard.
+- T-706..T-707: Column masking.
+- T-708..T-710: Evaluator rule.
+- T-711..T-712: Query flow integration.
+- T-713..T-714: Role policy test endpoint.
+- T-715..T-721: History/rerun/audit/cross-dialect.
 - T-722: Wave 17.3 backend gate.
 
 ### Next Dispatch Constraint
-- Continue Wave 17.3 backend policy enforcement (T-700+).
+- Continue Wave 17.3 backend policy enforcement (T-702+).
 - T-722 (backend gate) must pass before Wave 17.3 close.
