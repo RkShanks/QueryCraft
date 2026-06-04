@@ -243,7 +243,7 @@
 
 ### Wave 17.2 Frontend Gate
 
-- [ ] T-697 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
+- [x] T-697 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
 
 ---
 
