@@ -18,7 +18,8 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
+from httpx import ASGITransport, AsyncClient
 
 from app.db.models.role import Role
 from app.schemas.roles import RoleCreate, RoleUpdate
@@ -88,80 +89,85 @@ def _make_builtin_role():
 class TestPermissionEnforcement:
     """All role admin endpoints require admin.roles.manage permission."""
 
+    def _make_app(self, session_data: dict | None):
+        from fastapi.responses import JSONResponse
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        from app.api.v1.admin_roles import router
+
+        class SessionInjectionMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                request.state.session = session_data
+                return await call_next(request)
+
+        async def _http_exc_handler(request, exc):
+            if isinstance(exc.detail, dict):
+                return JSONResponse(status_code=exc.status_code, content=exc.detail)
+            return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
+
+        app = FastAPI()
+        app.add_middleware(SessionInjectionMiddleware)
+        app.add_exception_handler(HTTPException, _http_exc_handler)
+        app.include_router(router, prefix="/api/v1")
+        return app
+
     @pytest.mark.asyncio
     async def test_list_roles_requires_admin_roles_manage(self):
-        from app.api.v1.admin_roles import list_roles
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await list_roles(request=request, db=AsyncMock())
-        assert exc.value.status_code == 403
-        detail = exc.value.detail
-        assert detail["error"] == "forbidden"
-        assert detail["message_key"] == "error.forbidden"
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/admin/roles")
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_create_role_requires_admin_roles_manage(self):
-        from app.api.v1.admin_roles import create_role
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await create_role(
-                request=request,
-                body=RoleCreate(name="Test", priority=10, permissions=[]),
-                db=AsyncMock(),
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/roles",
+                json={"name": "Test", "priority": 10, "permissions": []},
             )
-        assert exc.value.status_code == 403
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_get_role_requires_admin_roles_manage(self):
-        from app.api.v1.admin_roles import get_role
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await get_role(
-                request=request,
-                role_id=str(uuid.uuid4()),
-                db=AsyncMock(),
-            )
-        assert exc.value.status_code == 403
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get(f"/api/v1/admin/roles/{uuid.uuid4()}")
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_update_role_requires_admin_roles_manage(self):
-        from app.api.v1.admin_roles import update_role
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await update_role(
-                request=request,
-                role_id=str(uuid.uuid4()),
-                body=RoleUpdate(),
-                db=AsyncMock(),
-            )
-        assert exc.value.status_code == 403
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.put(f"/api/v1/admin/roles/{uuid.uuid4()}", json={})
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_delete_role_requires_admin_roles_manage(self):
-        from app.api.v1.admin_roles import delete_role
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await delete_role(
-                request=request,
-                role_id=str(uuid.uuid4()),
-                db=AsyncMock(),
-            )
-        assert exc.value.status_code == 403
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.delete(f"/api/v1/admin/roles/{uuid.uuid4()}")
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
 
 # ── GET /admin/roles ───────────────────────────────────────────────────────
@@ -187,9 +193,12 @@ class TestListRoles:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
-        result = await list_roles(request=request, db=mock_db)
+        result = await list_roles(_session=request.state.session, db=mock_db)
 
         roles = result["roles"]
         assert len(roles) == 2
@@ -210,9 +219,12 @@ class TestListRoles:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
-        result = await list_roles(request=request, db=mock_db)
+        result = await list_roles(_session=request.state.session, db=mock_db)
         assert result["roles"] == []
 
     @pytest.mark.asyncio
@@ -231,9 +243,12 @@ class TestListRoles:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
-        result = await list_roles(request=request, db=mock_db)
+        result = await list_roles(_session=request.state.session, db=mock_db)
 
         roles = result["roles"]
         assert len(roles) == 1
@@ -260,9 +275,12 @@ class TestListRoles:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
-        result = await list_roles(request=request, db=mock_db)
+        result = await list_roles(_session=request.state.session, db=mock_db)
 
         roles = result["roles"]
         assert roles[0]["connection_policy_count"] == 1
@@ -291,7 +309,11 @@ class TestCreateRole:
         mock_db.add = MagicMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"], "username": "admin"}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
 
         body = RoleCreate(
             name="Analyst",
@@ -315,7 +337,10 @@ class TestCreateRole:
         mock_db.execute = AsyncMock(return_value=FakeResult([existing]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleCreate(
             name="Analyst",
@@ -345,7 +370,10 @@ class TestCreateRole:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleCreate(
             name="New Role",
@@ -368,7 +396,10 @@ class TestCreateRole:
         mock_db.execute = AsyncMock(return_value=FakeResult([]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleCreate(
             name="Bad Role",
@@ -391,7 +422,10 @@ class TestCreateRole:
         mock_db.execute = AsyncMock(side_effect=Exception("DB error: uuid=550e8400-e29b-41d4-a716-446655440000"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleCreate(
             name="Test",
@@ -429,9 +463,12 @@ class TestGetRole:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
-        result = await get_role(request=request, role_id=str(role.id), db=mock_db)
+        result = await get_role(_session=request.state.session, role_id=str(role.id), db=mock_db)
 
         assert result["id"] == str(role.id)
         assert result["name"] == "Analyst"
@@ -445,10 +482,13 @@ class TestGetRole:
         mock_db.execute = AsyncMock(return_value=FakeResult(None))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
-            await get_role(request=request, role_id=str(uuid.uuid4()), db=mock_db)
+            await get_role(_session=request.state.session, role_id=str(uuid.uuid4()), db=mock_db)
         assert exc.value.status_code == 404
         detail = exc.value.detail
         assert detail["error"] == "not_found"
@@ -480,7 +520,11 @@ class TestUpdateRole:
         mock_db.refresh = AsyncMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"], "username": "admin"}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
 
         body = RoleUpdate(name="Updated Analyst", description="Updated desc")
 
@@ -499,7 +543,10 @@ class TestUpdateRole:
         mock_db.execute = AsyncMock(return_value=FakeResult(role))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleUpdate(name="Hacked Admin")
 
@@ -521,7 +568,10 @@ class TestUpdateRole:
         mock_db.execute = AsyncMock(return_value=FakeResult(role))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleUpdate(permissions=[])
 
@@ -540,7 +590,10 @@ class TestUpdateRole:
         mock_db.execute = AsyncMock(return_value=FakeResult(role))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleUpdate(priority=99)
 
@@ -566,7 +619,11 @@ class TestUpdateRole:
         mock_db.refresh = AsyncMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"], "username": "admin"}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
 
         body = RoleUpdate(description="Updated description")
 
@@ -589,7 +646,10 @@ class TestUpdateRole:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleUpdate(name="Existing")
 
@@ -616,7 +676,10 @@ class TestUpdateRole:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleUpdate(priority=20)
 
@@ -637,7 +700,10 @@ class TestUpdateRole:
         mock_db.execute = AsyncMock(return_value=FakeResult(role))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleUpdate(permissions=["invalid.permission"])
 
@@ -655,7 +721,10 @@ class TestUpdateRole:
         mock_db.execute = AsyncMock(return_value=FakeResult(None))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleUpdate(name="Updated")
 
@@ -671,7 +740,10 @@ class TestUpdateRole:
         mock_db.execute = AsyncMock(side_effect=Exception("DB error: uuid=550e8400-e29b-41d4-a716-446655440000"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = RoleUpdate(name="Updated")
 
@@ -699,7 +771,11 @@ class TestDeleteRole:
         mock_db.commit = AsyncMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"], "username": "admin"}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
 
         result = await delete_role(request=request, role_id=str(role.id), db=mock_db)
         assert result is None
@@ -716,7 +792,10 @@ class TestDeleteRole:
         mock_db.execute = AsyncMock(return_value=FakeResult(role))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await delete_role(request=request, role_id=str(role.id), db=mock_db)
@@ -733,7 +812,10 @@ class TestDeleteRole:
         mock_db.execute = AsyncMock(return_value=FakeResult(None))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await delete_role(request=request, role_id=str(uuid.uuid4()), db=mock_db)
@@ -749,7 +831,10 @@ class TestDeleteRole:
         mock_db.execute = AsyncMock(side_effect=Exception("DB error: uuid=550e8400-e29b-41d4-a716-446655440000"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await delete_role(request=request, role_id=str(uuid.uuid4()), db=mock_db)

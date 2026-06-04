@@ -618,7 +618,11 @@ class TestAdminSsoAuditLogging:
     @pytest.fixture
     def admin_request(self):
         req = MagicMock()
-        req.state.session = {"permissions": ["admin.sso.manage"], "user_id": "admin-uuid"}
+        req.state.session = {
+            "permissions": ["admin.sso.manage"],
+            "user_id": "admin-uuid",
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        }
         return req
 
     async def test_create_provider_logs_sso_config_change(self, mock_db, admin_request):
@@ -824,7 +828,11 @@ class TestAdminSsoAuditAtomicity:
     @pytest.fixture
     def admin_request(self):
         req = MagicMock()
-        req.state.session = {"permissions": ["admin.sso.manage"], "username": "admin"}
+        req.state.session = {
+            "permissions": ["admin.sso.manage"],
+            "username": "admin",
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        }
         return req
 
     async def test_create_audit_failure_prevents_commit(self, mock_db, admin_request):

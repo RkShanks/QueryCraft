@@ -48,7 +48,10 @@ class TestHistoryMetadata:
 
         class SessionInjectionMiddleware(BaseHTTPMiddleware):
             async def dispatch(self, request, call_next):
-                request.state.session = {"permissions": ["query.history.view"]}
+                request.state.session = {
+                    "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "permissions": ["query.history.view"],
+                }
                 return await call_next(request)
 
         app = FastAPI()
@@ -105,7 +108,10 @@ class TestHistoryMetadata:
 
         class SessionInjectionMiddleware(BaseHTTPMiddleware):
             async def dispatch(self, request, call_next):
-                request.state.session = {"permissions": ["query.history.view"]}
+                request.state.session = {
+                    "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "permissions": ["query.history.view"],
+                }
                 return await call_next(request)
 
         app = FastAPI()

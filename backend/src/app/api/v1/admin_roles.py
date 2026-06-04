@@ -71,11 +71,10 @@ def _validate_permissions(permissions: list[str] | None) -> None:
 
 @router.get("")
 async def list_roles(
-    request: Request,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """GET /admin/roles — list all roles."""
-    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
 
     try:
         repo = RoleRepository(db)
@@ -125,10 +124,10 @@ async def list_roles(
 async def create_role(
     request: Request,
     body: RoleCreate,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """POST /admin/roles — create a new role."""
-    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
 
     try:
         _validate_permissions(body.permissions)
@@ -188,12 +187,11 @@ async def create_role(
 
 @router.get("/{role_id}")
 async def get_role(
-    request: Request,
     role_id: str,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """GET /admin/roles/{id} — get role detail."""
-    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
 
     try:
         role_uuid = uuid.UUID(role_id)
@@ -246,10 +244,10 @@ async def update_role(
     request: Request,
     role_id: str,
     body: RoleUpdate,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """PUT /admin/roles/{id} — update a role."""
-    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
 
     try:
         _validate_permissions(body.permissions)
@@ -332,10 +330,10 @@ async def update_role(
 async def delete_role(
     request: Request,
     role_id: str,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """DELETE /admin/roles/{id} — remove a role."""
-    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
 
     try:
         role_uuid = uuid.UUID(role_id)

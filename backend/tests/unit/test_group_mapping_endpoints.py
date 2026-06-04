@@ -66,64 +66,75 @@ def _make_mapping(mapping_id=None, group_value="analysts", role_id=None):
 class TestPermissionEnforcement:
     """All group mapping endpoints require admin.roles.manage permission."""
 
+    def _make_app(self, session_data: dict | None):
+        from fastapi.responses import JSONResponse
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        from app.api.v1.admin_sso import router
+
+        class SessionInjectionMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                request.state.session = session_data
+                return await call_next(request)
+
+        async def _http_exc_handler(request, exc):
+            if isinstance(exc.detail, dict):
+                return JSONResponse(status_code=exc.status_code, content=exc.detail)
+            return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
+
+        app = FastAPI()
+        app.add_middleware(SessionInjectionMiddleware)
+        app.add_exception_handler(HTTPException, _http_exc_handler)
+        app.include_router(router, prefix="/api/v1")
+        return app
+
     @pytest.mark.asyncio
     async def test_list_mappings_requires_admin_roles_manage(self):
-        from app.api.v1.admin_sso import list_group_mappings
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await list_group_mappings(request=request, db=AsyncMock())
-        assert exc.value.status_code == 403
-        detail = exc.value.detail
-        assert detail["error"] == "forbidden"
-        assert detail["message_key"] == "error.forbidden"
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/admin/sso/group-mappings")
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_list_mappings_rejects_admin_sso_manage(self):
         """admin.sso.manage does NOT grant access to group mappings."""
-        from app.api.v1.admin_sso import list_group_mappings
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["admin.sso.manage"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await list_group_mappings(request=request, db=AsyncMock())
-        assert exc.value.status_code == 403
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["admin.sso.manage"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/v1/admin/sso/group-mappings")
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_create_mapping_requires_admin_roles_manage(self):
-        from app.api.v1.admin_sso import create_group_mapping
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await create_group_mapping(
-                request=request,
-                body=GroupMappingCreate(sso_group_value="analysts", role_id=str(uuid.uuid4())),
-                db=AsyncMock(),
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/sso/group-mappings",
+                json={"sso_group_value": "analysts", "role_id": str(uuid.uuid4())},
             )
-        assert exc.value.status_code == 403
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
     async def test_delete_mapping_requires_admin_roles_manage(self):
-        from app.api.v1.admin_sso import delete_group_mapping
-
-        request = MagicMock()
-        request.state.session = {"permissions": ["query.submit"]}
-
-        with pytest.raises(HTTPException) as exc:
-            await delete_group_mapping(
-                request=request,
-                mapping_id=str(uuid.uuid4()),
-                db=AsyncMock(),
-            )
-        assert exc.value.status_code == 403
-
-
-# ── GET /admin/sso/group-mappings ──────────────────────────────────────────
+        app = self._make_app({"role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "permissions": ["query.submit"]})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.delete(f"/api/v1/admin/sso/group-mappings/{uuid.uuid4()}")
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
 
 
 class TestListGroupMappings:
@@ -145,9 +156,12 @@ class TestListGroupMappings:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
-        result = await list_group_mappings(request=request, db=mock_db)
+        result = await list_group_mappings(_session=request.state.session, db=mock_db)
 
         mappings = result["mappings"]
         assert len(mappings) == 1
@@ -170,9 +184,12 @@ class TestListGroupMappings:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
-        result = await list_group_mappings(request=request, db=mock_db)
+        result = await list_group_mappings(_session=request.state.session, db=mock_db)
         assert result["mappings"] == []
 
     @pytest.mark.asyncio
@@ -183,10 +200,13 @@ class TestListGroupMappings:
         mock_db.execute = AsyncMock(side_effect=Exception("DB leak: secret_table=group_mappings"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
-            await list_group_mappings(request=request, db=mock_db)
+            await list_group_mappings(_session=request.state.session, db=mock_db)
         assert exc.value.status_code == 500
         detail_str = str(exc.value.detail)
         assert "secret_table" not in detail_str
@@ -220,11 +240,15 @@ class TestCreateGroupMapping:
         mock_db.add = MagicMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"], "username": "admin"}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id=str(role.id))
 
-        result = await create_group_mapping(request=request, body=body, db=mock_db)
+        result = await create_group_mapping(request=request, _session=request.state.session, body=body, db=mock_db)
 
         assert result["sso_group_value"] == "analysts"
         assert result["role_id"] == str(role.id)
@@ -241,12 +265,15 @@ class TestCreateGroupMapping:
         mock_db.execute = AsyncMock(return_value=FakeResult([existing]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id=str(uuid.uuid4()))
 
         with pytest.raises(HTTPException) as exc:
-            await create_group_mapping(request=request, body=body, db=mock_db)
+            await create_group_mapping(request=request, _session=request.state.session, body=body, db=mock_db)
         assert exc.value.status_code == 409
         detail = exc.value.detail
         assert detail["error"] == "conflict"
@@ -267,12 +294,15 @@ class TestCreateGroupMapping:
         )
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id=str(uuid.uuid4()))
 
         with pytest.raises(HTTPException) as exc:
-            await create_group_mapping(request=request, body=body, db=mock_db)
+            await create_group_mapping(request=request, _session=request.state.session, body=body, db=mock_db)
         assert exc.value.status_code == 404
         detail = exc.value.detail
         assert detail["error"] == "not_found"
@@ -287,12 +317,15 @@ class TestCreateGroupMapping:
         mock_db.execute = AsyncMock(side_effect=Exception("DB error: host=secret-idp.internal"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id=str(uuid.uuid4()))
 
         with pytest.raises(HTTPException) as exc:
-            await create_group_mapping(request=request, body=body, db=mock_db)
+            await create_group_mapping(request=request, _session=request.state.session, body=body, db=mock_db)
         detail_str = str(exc.value.detail)
         assert "secret-idp.internal" not in detail_str
         assert "DB error" not in detail_str
@@ -303,12 +336,15 @@ class TestCreateGroupMapping:
         from app.api.v1.admin_sso import create_group_mapping
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         body = GroupMappingCreate(sso_group_value="analysts", role_id="not-a-uuid")
 
         with pytest.raises(HTTPException) as exc:
-            await create_group_mapping(request=request, body=body, db=AsyncMock())
+            await create_group_mapping(request=request, _session=request.state.session, body=body, db=AsyncMock())
         assert exc.value.status_code == 404
         detail = exc.value.detail
         assert detail["error"] == "not_found"
@@ -332,7 +368,11 @@ class TestDeleteGroupMapping:
         mock_db.commit = AsyncMock()
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"], "username": "admin"}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
 
         result = await delete_group_mapping(
             request=request,
@@ -349,7 +389,10 @@ class TestDeleteGroupMapping:
         mock_db.execute = AsyncMock(return_value=FakeResult([]))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await delete_group_mapping(
@@ -371,7 +414,10 @@ class TestDeleteGroupMapping:
         mock_db.execute = AsyncMock(side_effect=Exception("DB error: secret table leak"))
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await delete_group_mapping(
@@ -388,7 +434,10 @@ class TestDeleteGroupMapping:
         from app.api.v1.admin_sso import delete_group_mapping
 
         request = MagicMock()
-        request.state.session = {"permissions": ["admin.roles.manage"]}
+        request.state.session = {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+        }
 
         with pytest.raises(HTTPException) as exc:
             await delete_group_mapping(
@@ -438,7 +487,10 @@ class TestRouteLevelStatusCodes:
 
             class InjectSessionMiddleware(BaseHTTPMiddleware):
                 async def dispatch(self, request, call_next):
-                    request.state.session = session
+                    _sess = dict(session)
+                    if "role_id" not in _sess:
+                        _sess["role_id"] = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    request.state.session = _sess
                     return await call_next(request)
 
             app.add_middleware(InjectSessionMiddleware)

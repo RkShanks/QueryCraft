@@ -253,7 +253,10 @@ class TestAdminConnectionSchemaRealDependencyPath:
 
         class SessionInjectionMiddleware(BaseHTTPMiddleware):
             async def dispatch(self, request, call_next):
-                request.state.session = {"permissions": ["admin.connections.manage"]}
+                request.state.session = {
+                    "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "permissions": ["admin.connections.manage"],
+                }
                 return await call_next(request)
 
         app = FastAPI()
@@ -294,7 +297,10 @@ class TestAdminConnectionSchemaRealDependencyPath:
 
         class SessionInjectionMiddleware(BaseHTTPMiddleware):
             async def dispatch(self, request, call_next):
-                request.state.session = {"permissions": ["admin.connections.manage"]}
+                request.state.session = {
+                    "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "permissions": ["admin.connections.manage"],
+                }
                 return await call_next(request)
 
         app = FastAPI()

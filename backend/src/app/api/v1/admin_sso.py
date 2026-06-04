@@ -28,12 +28,18 @@ router = APIRouter(prefix="/admin/sso", tags=["Admin SSO"])
 
 
 def _check_permission(request: Request) -> None:
-    """Verify request has ``admin.sso.manage`` permission."""
+    """Verify request has ``admin.sso.manage`` permission and a mapped role."""
     session = getattr(request.state, "session", None)
     if session is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    role_id = session.get("role_id")
+    if not isinstance(role_id, str) or not role_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "forbidden", "message_key": "error.forbidden"},
         )
     user_perms = set(session.get("permissions", []))
     if "admin.sso.manage" not in user_perms:
@@ -155,11 +161,10 @@ def _validate_saml_required(body: SsoProviderCreate | SsoProviderUpdate) -> None
 
 @router.get("/providers")
 async def list_providers(
-    request: Request,
+    _session: dict = Depends(require_permission(Permission.ADMIN_SSO_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """GET /admin/sso/providers — list all providers with masked secrets."""
-    _check_permission(request)
     try:
         result = await db.execute(select(SsoProvider))
         rows = result.scalars().all()
@@ -177,10 +182,10 @@ async def list_providers(
 async def create_provider(
     request: Request,
     body: SsoProviderCreate,
+    _session: dict = Depends(require_permission(Permission.ADMIN_SSO_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """POST /admin/sso/providers — create new provider, encrypt secrets."""
-    _check_permission(request)
 
     if body.protocol == SsoProtocol.OIDC:
         _validate_oidc_required(body)
@@ -253,10 +258,10 @@ async def update_provider(
     request: Request,
     provider_id: str,
     body: SsoProviderUpdate,
+    _session: dict = Depends(require_permission(Permission.ADMIN_SSO_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """PUT /admin/sso/providers/{id} — partial update, encrypt new secrets."""
-    _check_permission(request)
 
     try:
         result = await db.execute(select(SsoProvider).where(SsoProvider.id == provider_id))
@@ -333,10 +338,10 @@ async def update_provider(
 async def delete_provider(
     request: Request,
     provider_id: str,
+    _session: dict = Depends(require_permission(Permission.ADMIN_SSO_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """DELETE /admin/sso/providers/{id} — remove provider."""
-    _check_permission(request)
 
     try:
         result = await db.execute(select(SsoProvider).where(SsoProvider.id == provider_id))
@@ -402,12 +407,10 @@ def _mapping_to_response(mapping: SsoGroupMapping, role_name: str) -> dict:
 
 @router.get("/group-mappings")
 async def list_group_mappings(
-    request: Request,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """GET /admin/sso/group-mappings — list all SSO group-to-role mappings."""
-    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
-
     try:
         result = await db.execute(select(SsoGroupMapping))
         mappings = result.scalars().all()
@@ -432,11 +435,10 @@ async def list_group_mappings(
 async def create_group_mapping(
     request: Request,
     body: GroupMappingCreate,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """POST /admin/sso/group-mappings — create a new group-to-role mapping."""
-    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
-
     try:
         role_uuid = uuid.UUID(body.role_id)
     except ValueError:
@@ -504,11 +506,10 @@ async def create_group_mapping(
 async def delete_group_mapping(
     request: Request,
     mapping_id: str,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """DELETE /admin/sso/group-mappings/{id} — remove a group-to-role mapping."""
-    await require_permission(Permission.ADMIN_ROLES_MANAGE)(request)
-
     try:
         mapping_uuid = uuid.UUID(mapping_id)
     except ValueError:
