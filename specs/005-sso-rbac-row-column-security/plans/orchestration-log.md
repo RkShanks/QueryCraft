@@ -626,14 +626,48 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2f (Backend Gate)
+## Wave 17.2g — Frontend Role Management + Permission Guards
+
+### Dispatch
+- **Date**: 2026-06-05
+- **Model**: Gemini Frontend Implementer (Antigravity)
+- **T-IDs**: T-686 through T-696
+- **Branch**: `phase-5/wave-17.2g-frontend-role-management`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/122
+
+### Scope
+- T-686: Test suite for AdminRolesPage (`AdminRolesPage.test.tsx`).
+- T-687: AdminRolesPage component (`AdminRolesPage.tsx`).
+- T-688: SSO Group Mappings Editor component (`GroupMappingEditor.tsx`).
+- T-689: Hook `useAdminRoles.ts` modified to persist group mappings via separate POST/DELETE requests.
+- T-690: Test suite for PermissionGuard (`PermissionGuard.test.tsx`).
+- T-691: Route PermissionGuard component (`PermissionGuard.tsx`).
+- T-692: Registered `/admin/roles` route and conditionally rendered connections and roles nav links in `Sidebar.tsx`.
+- T-693 & T-694: Branded layouts, error strings, and RTL support translation keys with key parity checking.
+- T-695 & T-696: Visual browser verification (walkthrough recorded).
+
+### Gates
+- Full frontend test suite: `55 passed (55 files), 562 passed (562 tests)`
+- ESLint check: `All checks passed!`
+- TypeScript compilation: `tsc --noEmit` passed.
+- CSS style linter: `stylelint` passed.
+- Production build: `npm run build` completed.
+
+### Security Notes
+- Group mappings are not sent inline to the role endpoint (which ignores them on the backend), but are managed through separate transactional POST/DELETE SSO group mapping requests from the hook.
+- Non-negative integer check is enforced on the priority field.
+- Built-in roles (`admin`, `member`, `anonymous`) block editing and hide delete options in the UI.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.2g (Frontend Role Management)
 
 ### Status
-- **Date**: 2026-06-04
+- **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2f backend gate complete and ready for merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120.
-- **Current/open PR**: #121 (Wave 17.2f — Backend Gate).
+- **Current point**: Wave 17.2g frontend role management complete and PR opened.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121.
+- **Current/open PR**: #122 (Wave 17.2g — Frontend Role Management + Permission Guards).
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -642,13 +676,12 @@
 - Wave 17.2b group mapping endpoints are complete.
 - Wave 17.2c permission gates are complete.
 - Wave 17.2d unmapped user denial is complete.
-- Wave 17.2e RBAC audit logging is complete (PR #120 merged with audit persistence-before-403 fix).
-- Wave 17.2f backend foundation gate is complete: 1034 passed, 61 skipped, 9 deselected, 12 warnings. Ruff check + format clean.
+- Wave 17.2e RBAC audit logging is complete.
+- Wave 17.2f backend foundation gate is complete.
+- Wave 17.2g frontend role management, permission guards, and group mappings persistence is complete.
 
 ### Remaining Wave 17.2 Work
-- T-686..T-696: Frontend role management, permission guards, i18n, browser evidence.
 - T-697: Wave 17.2 frontend gate.
 
 ### Next Dispatch Constraint
-- Frontend implementer (Gemini) next for Wave 17.2 frontend work.
-- T-697 (frontend gate) must pass before Wave 17.2 close.
+- Wave 17.2 frontend gate T-697.

@@ -220,26 +220,26 @@
 
 ### Frontend — Role Management Page (Owner: Gemini)
 
-- [ ] T-686 [US28] Write TDD tests for role management page (role list, create form, edit form, delete confirmation, permission selector, priority input, built-in role indicator, group mapping editor) in `frontend/src/pages/AdminRolesPage.test.tsx` — FR-122, FR-123, FR-124
-- [ ] T-687 [US28] Create role management page `frontend/src/pages/AdminRolesPage.tsx`: role list with name/description/priority/permissions/group count, create/edit form with all fields per api-contracts.md, delete with confirmation, built-in role protection indicator — FR-122, FR-123, FR-124
-- [ ] T-688 [US30] Create group mapping UI component `frontend/src/components/admin/GroupMappingEditor.tsx`: inline within role editor, add/remove SSO group values — FR-125
-- [ ] T-689 [US28] Create `useAdminRoles` hook in `frontend/src/hooks/useAdminRoles.ts` for role CRUD + group mapping via TanStack Query — FR-122, FR-125
+- [x] T-686 [US28] Write TDD tests for role management page (role list, create form, edit form, delete confirmation, permission selector, priority input, built-in role indicator, group mapping editor) in `frontend/src/pages/AdminRolesPage.test.tsx` — FR-122, FR-123, FR-124
+- [x] T-687 [US28] Create role management page `frontend/src/pages/AdminRolesPage.tsx`: role list with name/description/priority/permissions/group count, create/edit form with all fields per api-contracts.md, delete with confirmation, built-in role protection indicator — FR-122, FR-123, FR-124
+- [x] T-688 [US30] Create group mapping UI component `frontend/src/components/admin/GroupMappingEditor.tsx`: inline within role editor, add/remove SSO group values — FR-125
+- [x] T-689 [US28] Create `useAdminRoles` hook in `frontend/src/hooks/useAdminRoles.ts` for role CRUD + group mapping via TanStack Query — FR-122, FR-125
 
 ### Frontend — Permission-Based Route Guards (Owner: Gemini)
 
-- [ ] T-690 [US28] Write TDD tests for permission-based route guards (admin nav hidden for non-admin, routes redirect unauthorized users) in `frontend/src/components/auth/PermissionGuard.test.tsx` — FR-127
-- [ ] T-691 [US28] Create `PermissionGuard` component in `frontend/src/components/auth/PermissionGuard.tsx`: wrap admin routes, check `permissions` from `useAuth`, redirect or hide — FR-127
-- [ ] T-692 [US28] Update `frontend/src/App.tsx`: wrap admin routes (`/admin/*`) with `PermissionGuard`, add `/admin/roles` route — FR-127
+- [x] T-690 [US28] Write TDD tests for permission-based route guards (admin nav hidden for non-admin, routes redirect unauthorized users) in `frontend/src/components/auth/PermissionGuard.test.tsx` — FR-127
+- [x] T-691 [US28] Create `PermissionGuard` component in `frontend/src/components/auth/PermissionGuard.tsx`: wrap admin routes, check `permissions` from `useAuth`, redirect or hide — FR-127
+- [x] T-692 [US28] Update `frontend/src/App.tsx`: wrap admin routes (`/admin/*`) with `PermissionGuard`, add `/admin/roles` route — FR-127
 
 ### Frontend — i18n for Wave 17.2 (Owner: Gemini)
 
-- [ ] T-693 [US33] Add all Wave 17.2 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: role management labels, group mapping labels, permission names, validation messages — FR-137
-- [ ] T-694 [US33] Verify 100% EN/AR key parity for Wave 17.2 keys via locale coverage test — FR-137, SC-054
+- [x] T-693 [US28] Add all Wave 17.2 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: role management labels, group mapping labels, permission names, validation messages — FR-137
+- [x] T-694 [US28] Verify 100% EN/AR key parity for Wave 17.2 keys via locale coverage test — FR-137, SC-054
 
 ### Frontend — Browser Evidence (Owner: Gemini)
 
-- [ ] T-695 [US28] Chrome DevTools MCP: verify role management page renders list/create/edit/delete, Arabic/RTL layout correct — FR-122, SC-055
-- [ ] T-696 [US30] Chrome DevTools MCP: verify group mapping editor renders within role form, Arabic/RTL correct — FR-125, SC-055
+- [x] T-695 [US28] Chrome DevTools MCP: verify role management page renders list/create/edit/delete, Arabic/RTL layout correct — FR-122, SC-055
+- [x] T-696 [US30] Chrome DevTools MCP: verify group mapping editor renders within role form, Arabic/RTL correct — FR-125, SC-055
 
 ### Wave 17.2 Frontend Gate
 
