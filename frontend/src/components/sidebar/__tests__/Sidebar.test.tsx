@@ -32,6 +32,16 @@ vi.mock('../../../hooks/useSessions', () => ({
 
 vi.mock('../../../hooks/useAuth', () => ({
   useSignOut: vi.fn(),
+  useCurrentUser: vi.fn(() => ({
+    data: {
+      data: {
+        id: 'user-admin',
+        role: 'admin',
+        permissions: ['admin.connections.manage', 'admin.roles.manage'],
+      },
+    },
+    isLoading: false,
+  })),
 }));
 
 const mockNavigate = vi.fn();
@@ -44,7 +54,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 import { useSessionsList } from '../../../hooks/useSessions';
-import { useSignOut } from '../../../hooks/useAuth';
+import { useSignOut, useCurrentUser } from '../../../hooks/useAuth';
 
 function setup(sessions = mockSessions, isLoading = false) {
   (useSessionsList as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -214,5 +224,39 @@ describe('Sidebar', () => {
     const settingsButtons = screen.getAllByLabelText('Settings');
     expect(historyButtons.length).toBeGreaterThanOrEqual(1);
     expect(settingsButtons.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows roles and hides connections when user only has admin.roles.manage permission', () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: {
+        data: {
+          id: 'user-roles',
+          role: 'member',
+          permissions: ['admin.roles.manage'],
+        },
+      },
+      isLoading: false,
+    } as any);
+
+    setup();
+    expect(screen.queryByTestId('sidebar-nav-connections')).not.toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-nav-roles')).toBeInTheDocument();
+  });
+
+  it('shows connections and hides roles when user only has admin.connections.manage permission', () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: {
+        data: {
+          id: 'user-connections',
+          role: 'member',
+          permissions: ['admin.connections.manage'],
+        },
+      },
+      isLoading: false,
+    } as any);
+
+    setup();
+    expect(screen.getByTestId('sidebar-nav-connections')).toBeInTheDocument();
+    expect(screen.queryByTestId('sidebar-nav-roles')).not.toBeInTheDocument();
   });
 });

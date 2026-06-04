@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../stores/uiStore';
 import { useSessionsList } from '../../hooks/useSessions';
-import { useSignOut } from '../../hooks/useAuth';
+import { useSignOut, useCurrentUser } from '../../hooks/useAuth';
 import { SessionItem } from './SessionItem';
 import { UndoToast, type UndoToastItem } from './UndoToast';
+import { Shield } from 'lucide-react';
 import {
   Plus,
   PanelLeftClose,
@@ -57,6 +58,18 @@ export const Sidebar: React.FC = () => {
   const setActiveSessionId = useUIStore((state) => state.setActiveSessionId);
   const [toasts, setToasts] = React.useState<UndoToastItem[]>([]);
   const signOutMutation = useSignOut();
+  const { data: userResponse } = useCurrentUser();
+  const user = userResponse?.data;
+
+  const hasConnectionsPermission =
+    user?.role === 'admin' ||
+    user?.role_name === 'admin' ||
+    user?.permissions?.includes('admin.connections.manage');
+
+  const hasRolesPermission =
+    user?.role === 'admin' ||
+    user?.role_name === 'admin' ||
+    user?.permissions?.includes('admin.roles.manage');
 
   const { data, isLoading } = useSessionsList();
   const deletingSessionIds = React.useMemo(() => new Set(toasts.map((t) => t.sessionId)), [toasts]);
@@ -158,15 +171,28 @@ export const Sidebar: React.FC = () => {
           <Settings className="w-4 h-4" />
           {!sidebarCollapsed && t('nav.settings')}
         </button>
-        <button
-          className="sidebar-nav-btn"
-          onClick={() => navigate('/admin/connections')}
-          aria-label={t('nav.adminConnections')}
-          data-testid="sidebar-nav-connections"
-        >
-          <Database className="w-4 h-4" />
-          {!sidebarCollapsed && t('nav.adminConnections')}
-        </button>
+        {hasConnectionsPermission && (
+          <button
+            className="sidebar-nav-btn"
+            onClick={() => navigate('/admin/connections')}
+            aria-label={t('nav.adminConnections')}
+            data-testid="sidebar-nav-connections"
+          >
+            <Database className="w-4 h-4" />
+            {!sidebarCollapsed && t('nav.adminConnections')}
+          </button>
+        )}
+        {hasRolesPermission && (
+          <button
+            className="sidebar-nav-btn"
+            onClick={() => navigate('/admin/roles')}
+            aria-label={t('nav.adminRoles') || 'Roles'}
+            data-testid="sidebar-nav-roles"
+          >
+            <Shield className="w-4 h-4" />
+            {!sidebarCollapsed && (t('nav.adminRoles') || 'Roles')}
+          </button>
+        )}
       </div>
 
       <div className="sidebar-sessions">
