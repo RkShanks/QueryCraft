@@ -667,7 +667,7 @@
 - **Model**: Gemini Frontend Implementer (Antigravity)
 - **T-IDs**: T-697
 - **Branch**: `phase-5/wave-17.2h-frontend-gate`
-- **PR**: (pending)
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/123
 
 ### Scope
 - T-697: Run frontend foundation gates (no code changes expected).
@@ -703,7 +703,7 @@
 - **Phase**: Phase 5 remains IN PROGRESS.
 - **Current point**: Wave 17.2h frontend gate complete.
 - **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122.
-- **Current/open PR**: (pending)
+- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/123
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
