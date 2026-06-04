@@ -261,8 +261,8 @@
 
 ### Backend — Row Filter Validation (Owner: Kimi ( opencode ))
 
-- [ ] T-700 [US31] Write TDD tests for row filter validation at save time (`sqlglot` AST parsing, column existence check, reject subqueries/functions/UNION/DML/comments, fail-closed on absent columns) in `backend/tests/unit/test_row_filter_validation.py` — FR-131, S-004
-- [ ] T-701 [US31] Implement row filter validation in `backend/src/app/services/policy_enforcement.py`: `validate_row_filter()` per S-004 — parse with `sqlglot`, reject dangerous expressions, validate column existence against connection schema, fail-closed — FR-131
+- [x] T-700 [US31] Write TDD tests for row filter validation at save time (`sqlglot` AST parsing, column existence check, reject subqueries/functions/UNION/DML/comments, fail-closed on absent columns) in `backend/tests/unit/test_row_filter_validation.py` — FR-131, S-004
+- [x] T-701 [US31] Implement row filter validation in `backend/src/app/services/policy_enforcement.py`: `validate_row_filter()` per S-004 — parse with `sqlglot`, reject dangerous expressions, validate column existence against connection schema, fail-closed — FR-131
 - [ ] T-702 [US31] Write TDD tests for `{user.*}` placeholder binding (email, subject_id, role) resolved to parameterized bind values in `backend/tests/unit/test_placeholder_binding.py` — FR-131, S-004
 
 ### Backend — Row Filter Injection (Owner: Kimi ( opencode ))
