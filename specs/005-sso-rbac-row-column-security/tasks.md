@@ -211,8 +211,8 @@
 
 ### Backend — RBAC Audit Logging (Owner: Kimi ( opencode ))
 
-- [ ] T-683 [US28] Write TDD tests for RBAC audit events (role create/update/delete, mapping changes, access denied) in `backend/tests/unit/test_rbac_audit_logging.py` — FR-140
-- [ ] T-684 [US28] Add audit logging calls to role CRUD and group mapping endpoints for all RBAC-related events — FR-140
+- [x] T-683 [US28] Write TDD tests for RBAC audit events (role create/update/delete, mapping changes, access denied) in `backend/tests/unit/test_rbac_audit_logging.py` — FR-140
+- [x] T-684 [US28] Add audit logging calls to role CRUD and group mapping endpoints for all RBAC-related events — FR-140
 
 ### Wave 17.2 Backend Gate
 

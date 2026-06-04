@@ -470,42 +470,6 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2d
-
-### Status
-- **Date**: 2026-06-02
-- **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2d complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118.
-- **Current/open PR**: #119 (Wave 17.2d — Unmapped User Denial).
-
-### Completed Scope Through This Point
-- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
-- Wave 17.1a-h backend and frontend SSO features are complete.
-- Wave 17.2a role CRUD backend slice is complete.
-- Wave 17.2b group mapping endpoints are complete.
-- Wave 17.2c permission gates are complete:
-  - `admin.py` settings endpoints require `admin.connections.manage`.
-  - `admin_connections.py` all endpoints require `admin.connections.manage`.
-  - `query.py` submit/accept/reject/regenerate require `query.submit`.
-  - `history.py` list/detail/delete require `query.history.view`.
-  - Existing `admin_roles.py` (`admin.roles.manage`) and `admin_sso.py` (`admin.sso.manage` for providers, `admin.roles.manage` for group mappings) permissions preserved — no regression.
-  - 39 TDD tests in `test_permission_gates_all.py` verify 401/403 behavior, error sanitization, and dependency ordering.
-- Wave 17.2d unmapped user denial is complete:
-  - `require_permission()` checks `role_id` is present and non-empty before checking permissions.
-  - Session with `role_id=None`, missing `role_id`, or empty string `role_id` → 403 `error.forbidden`.
-  - 18 TDD tests in `test_unmapped_user_denial.py` verify direct dependency, route-level behavior, non-string role_id rejection, and admin_sso provider endpoint coverage.
-  - Regression sweep: added `role_id` to all existing session mocks across 8 test files to preserve prior test behavior.
-
-### Remaining Wave 17.2 Backend Work
-- T-683/T-684: RBAC audit logging coverage.
-- T-685: Wave 17.2 backend gate.
-
-### Next Dispatch Constraint
-- Wave 17.2e RBAC audit logging (T-683-T-684) after PR #119 merge.
-
----
-
 ## Wave 17.2d — Unmapped User Denial
 
 ### Dispatch
@@ -570,93 +534,89 @@
   - Updated `test_permission_gates_all.py` signature assertions to check `_session` parameter instead of `request`.
 
 ### Remaining Wave 17.2 Backend Work
-- T-683/T-684: RBAC audit logging coverage.
 - T-685: Wave 17.2 backend gate.
 
 ---
 
-## Wave 17.2c — Permission Gates
+## Wave 17.2e — RBAC Audit Logging
 
 ### Dispatch
-- **Date**: 2026-06-02
+- **Date**: 2026-06-04
 - **Model**: Kimi (opencode) Backend Implementer
-- **T-IDs**: T-678, T-679, T-680
-- **Branch**: `phase-5/wave-17.2c-permission-gates`
-- **PR**: https://github.com/RkShanks/QueryCraft/pull/118
+- **T-IDs**: T-683, T-684
+- **Branch**: `phase-5/wave-17.2e-rbac-audit-logging`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/120
 
 ### Scope
-- T-678: TDD tests for permission gates on all existing admin and query/history endpoints (`tests/unit/test_permission_gates_all.py`): 38 tests covering direct dependency checks, route-level 401/403 behavior, and error sanitization.
-- T-679: Applied `require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)` as `Depends()` to all endpoints in `admin.py` (GET/PUT /admin/settings) and `admin_connections.py` (list, create, get, update, delete, disable, enable, test, refresh-schema, get-schema).
-- T-680: Applied `require_permission(Permission.QUERY_SUBMIT)` and `require_permission(Permission.QUERY_HISTORY_VIEW)` as `Depends()` to query.py and history.py endpoints.
-- Updated existing unit tests that use FastAPI dependency injection to patch `require_permission` where needed.
-- Preserved existing admin_roles.py (`admin.roles.manage`) and admin_sso.py (`admin.sso.manage` for providers, `admin.roles.manage` for group mappings) permissions — no regression.
+- T-683: TDD tests for RBAC audit events (`tests/unit/test_rbac_audit_logging.py`): 13 tests covering:
+  - Role create → `role.create` audit event with actor_identity, resource_id, name/priority context
+  - Role update → `role.update` audit event with updated_fields context
+  - Role delete → `role.delete` audit event with resource_id
+  - Built-in role update denial → `access.denied` with reason=builtin_protected
+  - Built-in role delete denial → `access.denied` with reason=builtin_protected
+  - Audit context redaction: no credentials, passwords, tokens, certificates in context
+  - Audit atomicity: `RuntimeError` from `AuditService.log` propagates, blocking mutation
+  - Group mapping create → `role.mapping.change` with action=create, sso_group_value
+  - Group mapping delete → `role.mapping.change` with action=delete
+  - Group mapping audit context no secrets
+  - Group mapping audit failure blocks create (route-level 500)
+- T-684: Added `access.denied` audit logging to `RoleService`:
+  - `update_role()`: logs `access.denied` before raising `BuiltinProtectedError` on built-in role core field modification
+  - `delete_role()`: logs `access.denied` before raising `BuiltinProtectedError` on built-in role deletion
+  - Existing `role.create/update/delete` audit logging preserved in `admin_roles.py` endpoints
+  - Existing `role.mapping.change` audit logging preserved in `admin_sso.py` group mapping endpoints
+- **PR #120 review fix — audit persistence before 403**: PR #120 review identified that built-in role update/delete denial `access.denied` audit rows were rolled back by `get_db()` dependency because the endpoint raised `HTTPException(403)` before `db.commit()` ran. Fix:
+  - `admin_roles.py` `update_role` and `delete_role` endpoints: in `except BuiltinProtectedError` block, call `await db.commit()` before raising `HTTPException(403)`.
+  - If `AuditService.log` raises inside `RoleService`, the exception propagates past `except BuiltinProtectedError` to outer `except Exception` → 500, ensuring no 403 is returned without a persisted audit row.
+  - 4 new tests in `TestBuiltinRoleAuditPersistence` class in `tests/unit/test_rbac_audit_logging.py`:
+    - `test_builtin_role_update_denial_commits_audit_before_403`
+    - `test_builtin_role_delete_denial_commits_audit_before_403`
+    - `test_audit_failure_blocks_builtin_role_update_403`
+    - `test_audit_failure_blocks_builtin_role_delete_403`
+  - Updated 4 existing tests in `test_role_endpoints.py` (`test_update_builtin_role_name_returns_403`, `test_update_builtin_role_permissions_returns_403`, `test_update_builtin_role_priority_returns_403`, `test_delete_builtin_role_returns_403`) to assert `mock_db.commit.assert_awaited_once()`.
 
 ### Gates
-- Full unit gate: `946 passed, 61 skipped, 9 deselected, 12 warnings in 11.21s`
-- Focused permission gates tests: `38 passed`
+- Full unit gate: `986 passed, 61 skipped, 9 deselected, 12 warnings in 10.70s`
+- Focused RBAC audit tests: `17 passed`
 - Ruff check: `All checks passed!`
-- Ruff format: `285 files already formatted`
+- Ruff format: `287 files already formatted`
 - `git diff --check`: clean
 
 ### Security Notes
-- All admin endpoints now enforce RBAC permissions via `require_permission()` dependency.
-- Query endpoints require `query.submit`; history endpoints require `query.history.view`.
-- Missing session returns 401 `error.unauthorized`; wrong permission returns 403 `error.forbidden`.
-- No raw UUIDs, permission internals, DB errors, SQL, stack traces, source DB details, hostnames, usernames, or tokens in user-facing errors.
-- Built-in admin local login behavior preserved (admin gets all permissions via role resolution).
-
-### Review Fixes
-- **Fix 1 — Permission checks moved to `Depends()`**: RBAC checks were inside endpoint bodies, meaning FastAPI resolved body validation and service dependencies before permission was checked. Moved to `Depends(require_permission(Permission.X))` signatures so wrong-permission requests return 403 before body validation or expensive service deps execute.
-- **Fix 2 — Route-level TestClient coverage**: Added 6 route-level tests using ASGI `TestClient` with session injection middleware proving:
-  - Invalid body + wrong permission → 403 (not 422) on POST /admin/connections and POST /query/submit.
-  - POST /query/accept with wrong permission → 403 without running `_get_query_service`.
-  - GET /history, GET /admin/settings with wrong permission → 403.
-  - No session → 401.
-- **Fix 3 — Updated existing unit tests**: Patched `require_permission` in `test_admin_connections.py`, `test_history_metadata.py`, `test_admin_settings_unit.py` to use `side_effect` returning callable dependencies instead of `return_value=AsyncMock()`.
+- Built-in role protection emits `access.denied` audit event and persists it (`db.commit()`) before returning 403 to user.
+- Audit context sanitized: no credentials, tokens, passwords, role internals leaked.
+- Audit atomicity: if `AuditService.log` raises, the exception propagates before `db.commit()` in the service, preventing un-audited mutations. If audit fails at endpoint level, endpoint returns 500 (not 403) to ensure no silent denial.
+- Preserves fail-closed permission ordering: `require_permission()` runs before body/DB deps.
 
 ### Remaining Wave 17.2 Backend Work
-- T-681/T-682: Unmapped user denial.
-- T-683/T-684: RBAC audit logging coverage.
 - T-685: Wave 17.2 backend gate.
 
 ---
 
-## Wave 17.2b — Group Mapping Endpoints
+## Current Wave Checkpoint — Through Wave 17.2e
 
-### Dispatch
-- **Date**: 2026-06-02
-- **Model**: Kimi (opencode) Backend Implementer
-- **T-IDs**: T-676, T-677
-- **Branch**: `phase-5/wave-17.2b-group-mapping-endpoints`
-- **PR**: https://github.com/RkShanks/QueryCraft/pull/117
+### Status
+- **Date**: 2026-06-04
+- **Phase**: Phase 5 remains IN PROGRESS.
+- **Current point**: Wave 17.2e complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119.
+- **Current/open PR**: #120 (Wave 17.2e — RBAC Audit Logging).
 
-### Scope
-- T-676: TDD tests for group mapping endpoints (`tests/unit/test_group_mapping_endpoints.py`): permission enforcement (admin.roles.manage, NOT admin.sso.manage), list, create, delete, duplicate group rejection (409), missing role validation (404), error sanitization.
-- T-677: Implemented group mapping endpoints in `backend/src/app/api/v1/admin_sso.py`:
-  - `GET /admin/sso/group-mappings` — list all mappings with role names.
-  - `POST /admin/sso/group-mappings` — create mapping, duplicate check, role existence validation.
-  - `DELETE /admin/sso/group-mappings/{id}` — delete mapping, 404 if missing.
-- Audit logging via `AuditActionType.ROLE_MAPPING_CHANGE` for create and delete.
-- Added i18n keys `error.conflict.duplicateGroupMapping` to `en.json` and `ar.json`.
-
-### Gates
-- Full unit gate: `908 passed, 61 skipped, 9 deselected, 12 warnings in 11.54s`
-- Focused group mapping tests: `27 passed`
-- Ruff check: `All checks passed!`
-- Ruff format: `284 files already formatted`
-
-### Security Notes
-- Group mapping endpoints enforce `require_permission(Permission.ADMIN_ROLES_MANAGE)` — admin.sso.manage does NOT grant access.
-- Duplicate SSO group value returns 409 with sanitized localized key `error.conflict.duplicateGroupMapping`; no raw UUIDs or DB internals leaked.
-- Missing referenced role returns 404 with `error.notFound`; no UUIDs leaked.
-- All exceptions caught and sanitized to generic `error.internal` with no stack traces or DB errors exposed.
-- Audit logging for mapping create/delete via `AuditService.log()` with redacted context.
-
-### Review Fixes
-- **Fix 1 — UUID validation**: `body.role_id` in POST and `mapping_id` in DELETE are converted via `uuid.UUID(...)` before DB use. Invalid UUIDs return sanitized 404 `error.notFound` without leaking raw input.
-- Tests added for invalid `role_id` POST and invalid `mapping_id` DELETE; assert raw invalid value does not appear in response.
+### Completed Scope Through This Point
+- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
+- Wave 17.1a-h backend and frontend SSO features are complete.
+- Wave 17.2a role CRUD backend slice is complete.
+- Wave 17.2b group mapping endpoints are complete.
+- Wave 17.2c permission gates are complete.
+- Wave 17.2d unmapped user denial is complete.
+- Wave 17.2e RBAC audit logging is complete:
+  - `RoleService.update_role()` logs `access.denied` before `BuiltinProtectedError` on built-in role update.
+  - `RoleService.delete_role()` logs `access.denied` before `BuiltinProtectedError` on built-in role delete.
+  - `admin_roles.py` `update_role` and `delete_role` endpoints commit the audit row before raising 403.
+  - 17 TDD tests verify all RBAC audit events including atomicity, redaction, and endpoint commit-before-403 ordering.
 
 ### Remaining Wave 17.2 Backend Work
-- T-681/T-682: Unmapped user denial.
-- T-683/T-684: RBAC audit logging coverage.
 - T-685: Wave 17.2 backend gate.
+
+### Next Dispatch Constraint
+- Wave 17.2 backend gate (T-685) after PR #120 merge.

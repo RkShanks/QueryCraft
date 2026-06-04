@@ -292,6 +292,10 @@ async def update_role(
 
         return _role_to_detail_response(role, [], [])
     except BuiltinProtectedError as exc:
+        # Commit the audit log (access.denied was written inside service)
+        # before returning 403. If AuditService.log had raised, we would not
+        # reach this block; the outer Exception handler returns 500.
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message_key": exc.message_key},
@@ -357,6 +361,10 @@ async def delete_role(
         await db.commit()
         return None
     except BuiltinProtectedError as exc:
+        # Commit the audit log (access.denied was written inside service)
+        # before returning 403. If AuditService.log had raised, we would not
+        # reach this block; the outer Exception handler returns 500.
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message_key": exc.message_key},

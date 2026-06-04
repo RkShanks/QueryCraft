@@ -541,6 +541,7 @@ class TestUpdateRole:
 
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(return_value=FakeResult(role))
+        mock_db.commit = AsyncMock()
 
         request = MagicMock()
         request.state.session = {
@@ -557,6 +558,7 @@ class TestUpdateRole:
         assert detail["error"] == "forbidden"
         assert detail["message_key"] == "error.builtinRoleProtected"
         assert "uuid" not in str(detail).lower()
+        mock_db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_update_builtin_role_permissions_returns_403(self):
@@ -566,6 +568,7 @@ class TestUpdateRole:
 
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(return_value=FakeResult(role))
+        mock_db.commit = AsyncMock()
 
         request = MagicMock()
         request.state.session = {
@@ -579,6 +582,7 @@ class TestUpdateRole:
             await update_role(request=request, role_id=str(role.id), body=body, db=mock_db)
         assert exc.value.status_code == 403
         assert exc.value.detail["message_key"] == "error.builtinRoleProtected"
+        mock_db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_update_builtin_role_priority_returns_403(self):
@@ -588,6 +592,7 @@ class TestUpdateRole:
 
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(return_value=FakeResult(role))
+        mock_db.commit = AsyncMock()
 
         request = MagicMock()
         request.state.session = {
@@ -601,6 +606,7 @@ class TestUpdateRole:
             await update_role(request=request, role_id=str(role.id), body=body, db=mock_db)
         assert exc.value.status_code == 403
         assert exc.value.detail["message_key"] == "error.builtinRoleProtected"
+        mock_db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_update_builtin_role_description_allowed(self):
@@ -790,6 +796,7 @@ class TestDeleteRole:
 
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(return_value=FakeResult(role))
+        mock_db.commit = AsyncMock()
 
         request = MagicMock()
         request.state.session = {
@@ -803,6 +810,7 @@ class TestDeleteRole:
         detail = exc.value.detail
         assert detail["message_key"] == "error.builtinRoleProtected"
         assert "uuid" not in str(detail).lower()
+        mock_db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_delete_not_found_returns_404(self):
