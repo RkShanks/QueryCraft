@@ -593,36 +593,6 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2e
-
-### Status
-- **Date**: 2026-06-04
-- **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2e complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119.
-- **Current/open PR**: #120 (Wave 17.2e — RBAC Audit Logging).
-
-### Completed Scope Through This Point
-- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
-- Wave 17.1a-h backend and frontend SSO features are complete.
-- Wave 17.2a role CRUD backend slice is complete.
-- Wave 17.2b group mapping endpoints are complete.
-- Wave 17.2c permission gates are complete.
-- Wave 17.2d unmapped user denial is complete.
-- Wave 17.2e RBAC audit logging is complete:
-  - `RoleService.update_role()` logs `access.denied` before `BuiltinProtectedError` on built-in role update.
-  - `RoleService.delete_role()` logs `access.denied` before `BuiltinProtectedError` on built-in role delete.
-  - `admin_roles.py` `update_role` and `delete_role` endpoints commit the audit row before raising 403.
-  - 17 TDD tests verify all RBAC audit events including atomicity, redaction, and endpoint commit-before-403 ordering.
-
-### Remaining Wave 17.2 Backend Work
-- T-685: Wave 17.2 backend gate.
-
-### Next Dispatch Constraint
-- Wave 17.2 backend gate (T-685) after PR #120 merge.
-
----
-
 ## Wave 17.2f — Backend Foundation Gate
 
 ### Dispatch
@@ -630,7 +600,7 @@
 - **Model**: Kimi (opencode) Backend Implementer
 - **T-IDs**: T-685
 - **Branch**: `phase-5/wave-17.2f-backend-gate`
-- **PR**: (pending — see report)
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/121
 
 ### Scope
 - T-685: Run CI-equivalent backend foundation gates (no code changes expected).
@@ -663,7 +633,7 @@
 - **Phase**: Phase 5 remains IN PROGRESS.
 - **Current point**: Wave 17.2f backend gate complete and ready for merge.
 - **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120.
-- **Current/open PR**: (Wave 17.2f backend gate — pending).
+- **Current/open PR**: #121 (Wave 17.2f — Backend Gate).
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
