@@ -42,21 +42,15 @@ class TestValidateRowFilterAcceptsValidFilters:
 
     def test_simple_equality_filter_is_accepted(self) -> None:
         schema = _build_orders_schema()
-        PolicyEnforcementService.validate_row_filter(
-            "region = 'Sales'", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("region = 'Sales'", schema, "orders")
 
     def test_boolean_and_filter_is_accepted(self) -> None:
         schema = _build_orders_schema()
-        PolicyEnforcementService.validate_row_filter(
-            "region = 'Sales' AND status = 'active'", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("region = 'Sales' AND status = 'active'", schema, "orders")
 
     def test_boolean_or_filter_is_accepted(self) -> None:
         schema = _build_orders_schema()
-        PolicyEnforcementService.validate_row_filter(
-            "region = 'Sales' OR region = 'Marketing'", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("region = 'Sales' OR region = 'Marketing'", schema, "orders")
 
     def test_parenthesized_boolean_filter_is_accepted(self) -> None:
         schema = _build_orders_schema()
@@ -68,9 +62,7 @@ class TestValidateRowFilterAcceptsValidFilters:
 
     def test_numeric_comparison_is_accepted(self) -> None:
         schema = _build_orders_schema()
-        PolicyEnforcementService.validate_row_filter(
-            "total > 100", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("total > 100", schema, "orders")
 
     def test_literal_only_filter_is_accepted(self) -> None:
         """A tautological filter (e.g. ``1 = 1``) is valid SQL and is allowed."""
@@ -83,21 +75,15 @@ class TestValidateRowFilterAcceptsAllowedPlaceholders:
 
     def test_user_email_placeholder_is_accepted(self) -> None:
         schema = _build_orders_schema()
-        PolicyEnforcementService.validate_row_filter(
-            "customer_id = {user.subject_id}", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("customer_id = {user.subject_id}", schema, "orders")
 
     def test_user_subject_id_placeholder_is_accepted(self) -> None:
         schema = _build_orders_schema()
-        PolicyEnforcementService.validate_row_filter(
-            "customer_id = {user.subject_id}", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("customer_id = {user.subject_id}", schema, "orders")
 
     def test_user_role_placeholder_is_accepted(self) -> None:
         schema = _build_orders_schema()
-        PolicyEnforcementService.validate_row_filter(
-            "region = {user.role}", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("region = {user.role}", schema, "orders")
 
     def test_multiple_placeholders_in_one_filter_are_accepted(self) -> None:
         schema = _build_orders_schema()
@@ -114,9 +100,7 @@ class TestValidateRowFilterRejectsInvalidSQL:
     def test_garbage_input_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "this is not sql", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("this is not sql", schema, "orders")
 
     def test_empty_filter_is_rejected(self) -> None:
         schema = _build_orders_schema()
@@ -131,9 +115,7 @@ class TestValidateRowFilterRejectsInvalidSQL:
     def test_unbalanced_parens_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "(region = 'Sales'", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("(region = 'Sales'", schema, "orders")
 
 
 class TestValidateRowFilterRejectsMissingTable:
@@ -142,16 +124,12 @@ class TestValidateRowFilterRejectsMissingTable:
     def test_unknown_target_table_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "region = 'Sales'", schema, "nonexistent_table"
-            )
+            PolicyEnforcementService.validate_row_filter("region = 'Sales'", schema, "nonexistent_table")
 
     def test_empty_schema_is_rejected(self) -> None:
         schema = SchemaContext(tables=[])
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "1 = 1", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("1 = 1", schema, "orders")
 
 
 class TestValidateRowFilterRejectsNonexistentColumn:
@@ -160,9 +138,7 @@ class TestValidateRowFilterRejectsNonexistentColumn:
     def test_nonexistent_column_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "nonexistent_col = 'x'", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("nonexistent_col = 'x'", schema, "orders")
 
     def test_column_from_other_table_is_rejected(self) -> None:
         """A column reference qualified with a different table is rejected."""
@@ -187,9 +163,7 @@ class TestValidateRowFilterRejectsNonexistentColumn:
             ]
         )
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "customers.name = 'x'", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("customers.name = 'x'", schema, "orders")
 
 
 class TestValidateRowFilterRejectsSubquery:
@@ -218,31 +192,23 @@ class TestValidateRowFilterRejectsFunctionCall:
     def test_lowercase_function_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "region = LOWER('Sales')", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("region = LOWER('Sales')", schema, "orders")
 
     def test_coalesce_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "COALESCE(status, 'unknown') = 'active'", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("COALESCE(status, 'unknown') = 'active'", schema, "orders")
 
     def test_aggregate_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "total > AVG(total)", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("total > AVG(total)", schema, "orders")
 
     def test_current_user_is_rejected(self) -> None:
         """``current_user`` is a special sqlglot node (not exp.Anonymous)."""
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "region = current_user", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("region = current_user", schema, "orders")
 
 
 class TestValidateRowFilterRejectsSetOperations:
@@ -282,30 +248,22 @@ class TestValidateRowFilterRejectsDMLAndMultipleStatements:
     def test_delete_statement_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "1 = 1; DELETE FROM orders", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("1 = 1; DELETE FROM orders", schema, "orders")
 
     def test_update_statement_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "1 = 1; UPDATE orders SET status = 'x'", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("1 = 1; UPDATE orders SET status = 'x'", schema, "orders")
 
     def test_insert_statement_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "1 = 1; INSERT INTO orders (id) VALUES (1)", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("1 = 1; INSERT INTO orders (id) VALUES (1)", schema, "orders")
 
     def test_drop_statement_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "1 = 1; DROP TABLE orders", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("1 = 1; DROP TABLE orders", schema, "orders")
 
 
 class TestValidateRowFilterRejectsComments:
@@ -314,23 +272,17 @@ class TestValidateRowFilterRejectsComments:
     def test_inline_comment_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "region = 'Sales' -- trusted condition", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("region = 'Sales' -- trusted condition", schema, "orders")
 
     def test_block_comment_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "region = 'Sales' /* trusted */", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("region = 'Sales' /* trusted */", schema, "orders")
 
     def test_comment_at_start_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "-- comment\nregion = 'Sales'", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("-- comment\nregion = 'Sales'", schema, "orders")
 
 
 class TestValidateRowFilterRejectsUnknownPlaceholder:
@@ -339,17 +291,13 @@ class TestValidateRowFilterRejectsUnknownPlaceholder:
     def test_unknown_user_attribute_is_rejected(self) -> None:
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "region = {user.evil}", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("region = {user.evil}", schema, "orders")
 
     def test_other_namespace_placeholder_is_rejected(self) -> None:
         """``{other.thing}`` is not a supported placeholder shape."""
         schema = _build_orders_schema()
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "region = {other.thing}", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("region = {other.thing}", schema, "orders")
 
 
 class TestValidateRowFilterColumnMatchingCaseInsensitive:
@@ -357,15 +305,11 @@ class TestValidateRowFilterColumnMatchingCaseInsensitive:
 
     def test_uppercase_column_is_accepted(self) -> None:
         schema = _build_orders_schema()
-        PolicyEnforcementService.validate_row_filter(
-            "REGION = 'Sales'", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("REGION = 'Sales'", schema, "orders")
 
     def test_mixed_case_column_is_accepted(self) -> None:
         schema = _build_orders_schema()
-        PolicyEnforcementService.validate_row_filter(
-            "Region = 'Sales' AND Status = 'active'", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("Region = 'Sales' AND Status = 'active'", schema, "orders")
 
 
 class TestValidateRowFilterDoesNotMutateSchema:
@@ -374,18 +318,14 @@ class TestValidateRowFilterDoesNotMutateSchema:
     def test_schema_is_not_mutated_on_success(self) -> None:
         schema = _build_orders_schema()
         snapshot = copy.deepcopy(schema)
-        PolicyEnforcementService.validate_row_filter(
-            "region = 'Sales'", schema, "orders"
-        )
+        PolicyEnforcementService.validate_row_filter("region = 'Sales'", schema, "orders")
         assert schema == snapshot
 
     def test_schema_is_not_mutated_on_failure(self) -> None:
         schema = _build_orders_schema()
         snapshot = copy.deepcopy(schema)
         with pytest.raises(ValueError, match="filter_validation_failed"):
-            PolicyEnforcementService.validate_row_filter(
-                "nonexistent = 1", schema, "orders"
-            )
+            PolicyEnforcementService.validate_row_filter("nonexistent = 1", schema, "orders")
         assert schema == snapshot
 
 
