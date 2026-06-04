@@ -220,10 +220,10 @@
 
 ### Frontend — Role Management Page (Owner: Gemini)
 
-- [ ] T-686 [US28] Write TDD tests for role management page (role list, create form, edit form, delete confirmation, permission selector, priority input, built-in role indicator, group mapping editor) in `frontend/src/pages/AdminRolesPage.test.tsx` — FR-122, FR-123, FR-124
-- [ ] T-687 [US28] Create role management page `frontend/src/pages/AdminRolesPage.tsx`: role list with name/description/priority/permissions/group count, create/edit form with all fields per api-contracts.md, delete with confirmation, built-in role protection indicator — FR-122, FR-123, FR-124
-- [ ] T-688 [US30] Create group mapping UI component `frontend/src/components/admin/GroupMappingEditor.tsx`: inline within role editor, add/remove SSO group values — FR-125
-- [ ] T-689 [US28] Create `useAdminRoles` hook in `frontend/src/hooks/useAdminRoles.ts` for role CRUD + group mapping via TanStack Query — FR-122, FR-125
+- [x] T-686 [US28] Write TDD tests for role management page (role list, create form, edit form, delete confirmation, permission selector, priority input, built-in role indicator, group mapping editor) in `frontend/src/pages/AdminRolesPage.test.tsx` — FR-122, FR-123, FR-124
+- [x] T-687 [US28] Create role management page `frontend/src/pages/AdminRolesPage.tsx`: role list with name/description/priority/permissions/group count, create/edit form with all fields per api-contracts.md, delete with confirmation, built-in role protection indicator — FR-122, FR-123, FR-124
+- [x] T-688 [US30] Create group mapping UI component `frontend/src/components/admin/GroupMappingEditor.tsx`: inline within role editor, add/remove SSO group values — FR-125
+- [x] T-689 [US28] Create `useAdminRoles` hook in `frontend/src/hooks/useAdminRoles.ts` for role CRUD + group mapping via TanStack Query — FR-122, FR-125
 
 ### Frontend — Permission-Based Route Guards (Owner: Gemini)
 
