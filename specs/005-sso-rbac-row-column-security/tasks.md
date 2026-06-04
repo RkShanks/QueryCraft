@@ -256,8 +256,8 @@
 
 ### Backend — Schema Filtering (Owner: Kimi ( opencode ))
 
-- [ ] T-698 [US31] Write TDD tests for schema filtering service (filter `SchemaContext` by role policy, exclude unauthorized tables/columns) in `backend/tests/unit/test_schema_filtering.py` — FR-128, FR-129, SC-050
-- [ ] T-699 [US31] Implement `PolicyEnforcementService.filter_schema()` in `backend/src/app/services/policy_enforcement.py`: filter `SchemaContext` by role's `allowed_tables`/`allowed_columns` before LLM prompt construction per S-006 — FR-128, FR-129
+- [x] T-698 [US31] Write TDD tests for schema filtering service (filter `SchemaContext` by role policy, exclude unauthorized tables/columns) in `backend/tests/unit/test_schema_filtering.py` — FR-128, FR-129, SC-050
+- [x] T-699 [US31] Implement `PolicyEnforcementService.filter_schema()` in `backend/src/app/services/policy_enforcement.py`: filter `SchemaContext` by role's `allowed_tables`/`allowed_columns` before LLM prompt construction per S-006 — FR-128, FR-129
 
 ### Backend — Row Filter Validation (Owner: Kimi ( opencode ))
 
