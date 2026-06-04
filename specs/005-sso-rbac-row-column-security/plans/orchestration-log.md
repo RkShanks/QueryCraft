@@ -660,14 +660,50 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2g (Frontend Role Management)
+## Wave 17.2h — Frontend Foundation Gate
+
+### Dispatch
+- **Date**: 2026-06-05
+- **Model**: Gemini Frontend Implementer (Antigravity)
+- **T-IDs**: T-697
+- **Branch**: `phase-5/wave-17.2h-frontend-gate`
+- **PR**: (pending)
+
+### Scope
+- T-697: Run frontend foundation gates (no code changes expected).
+  - `cd frontend && npm run test -- --run`
+  - `cd frontend && npm run lint`
+  - `cd frontend && npm run typecheck`
+  - `cd frontend && npm run build`
+  - `cd frontend && npm run lint:css`
+  - `git diff --check`
+
+### Gates
+- Frontend Vitest: `55 files passed, 562 tests passed (100% green)`
+- ESLint check: `All checks passed!`
+- TypeScript compilation: `tsc --noEmit` passed.
+- Production build: `npm run build` completed.
+- CSS style linter: `stylelint` passed.
+- `git diff --check`: clean
+- No code changes required; all gates green on `main` post PR #122 merge.
+
+### Security Notes
+- Gate confirms PR #122 route guards, permission checks, group mappings separate persistence, priority validations, and EN/AR parity are in main and fully functional.
+- Built-in roles check remains intact on frontend views and routes.
+
+### Remaining Wave 17.2 Work
+- None — T-697 complete. Wave 17.2 features and gates are fully complete.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.2h (Frontend Gate)
 
 ### Status
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2g frontend role management complete and PR opened.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121.
-- **Current/open PR**: #122 (Wave 17.2g — Frontend Role Management + Permission Guards).
+- **Current point**: Wave 17.2h frontend gate complete.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122.
+- **Current/open PR**: (pending)
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -679,9 +715,10 @@
 - Wave 17.2e RBAC audit logging is complete.
 - Wave 17.2f backend foundation gate is complete.
 - Wave 17.2g frontend role management, permission guards, and group mappings persistence is complete.
+- Wave 17.2h frontend gate is complete.
 
 ### Remaining Wave 17.2 Work
-- T-697: Wave 17.2 frontend gate.
+- None.
 
 ### Next Dispatch Constraint
-- Wave 17.2 frontend gate T-697.
+- Wave 17.3 policy enforcement tasks (T-698 through T-732).
