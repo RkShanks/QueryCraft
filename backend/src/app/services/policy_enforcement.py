@@ -292,10 +292,17 @@ class PolicyEnforcementService:
 
         # 10. Validate every Column reference. The target table owns the
         #     columns; placeholder sentinels (and only sentinels) are skipped.
+        #     If a qualifier is present, it must match the target table
+        #     case-insensitively. Without this check, ``customers.id`` would
+        #     leak across to a target table that also has an ``id`` column
+        #     (PR #125 blocker).
+        target_table_lower = target_table.name.lower()
         for col in statement.find_all(exp.Column):
             col_name = col.name
             if col_name.startswith(_PH_SENTINEL_PREFIX):
                 continue
+            if col.table and col.table.lower() != target_table_lower:
+                raise ValueError("filter_validation_failed")
             if col_name.lower() in valid_columns:
                 continue
             raise ValueError("filter_validation_failed")

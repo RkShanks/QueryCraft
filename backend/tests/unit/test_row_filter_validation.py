@@ -186,6 +186,50 @@ class TestValidateRowFilterRejectsSubquery:
             )
 
 
+class TestValidateRowFilterQualifiedColumnTable:
+    """Qualified column references must match the target table."""
+
+    @staticmethod
+    def _two_table_schema() -> SchemaContext:
+        """Schema with ``orders`` and ``customers``, both having an ``id`` column."""
+        return SchemaContext(
+            tables=[
+                Table(
+                    name="orders",
+                    schema_name="public",
+                    columns=[
+                        Column(name="id", type="integer", nullable=False, primary_key=True),
+                        Column(name="region", type="text", nullable=False),
+                    ],
+                ),
+                Table(
+                    name="customers",
+                    schema_name="public",
+                    columns=[
+                        Column(name="id", type="integer", nullable=False, primary_key=True),
+                        Column(name="name", type="text", nullable=True),
+                    ],
+                ),
+            ]
+        )
+
+    def test_qualified_column_from_other_table_is_rejected(self) -> None:
+        """``customers.id`` must be rejected when target is ``orders`` even if
+        both tables share the column name ``id`` (PR #125 blocker)."""
+        schema = self._two_table_schema()
+        with pytest.raises(ValueError, match="filter_validation_failed"):
+            PolicyEnforcementService.validate_row_filter("customers.id = 1", schema, "orders")
+
+    def test_qualified_column_matching_target_table_is_accepted(self) -> None:
+        schema = self._two_table_schema()
+        PolicyEnforcementService.validate_row_filter("orders.id = 1", schema, "orders")
+
+    def test_qualified_target_table_matched_case_insensitively(self) -> None:
+        """Qualifier matching is case-insensitive (Postgres folding)."""
+        schema = self._two_table_schema()
+        PolicyEnforcementService.validate_row_filter("ORDERS.id = 1", schema, "orders")
+
+
 class TestValidateRowFilterRejectsFunctionCall:
     """All function calls are rejected (fail-closed; T-702 may relax to allowlist)."""
 
