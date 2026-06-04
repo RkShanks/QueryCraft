@@ -13,7 +13,9 @@ import { WorkspacePage } from './pages/WorkspacePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminConnectionsPage } from './pages/AdminConnectionsPage';
 import { AdminSsoPage } from './pages/AdminSsoPage';
+import { AdminRolesPage } from './pages/AdminRolesPage';
 import { AppShell } from './components/shell/AppShell';
+import { PermissionGuard } from './components/auth/PermissionGuard';
 
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -31,29 +33,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function PermissionGuard({ children, permission }: { children: React.ReactNode; permission: string }) {
-  const { data: response, isLoading } = useCurrentUser();
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-      </div>
-    );
-  }
-  const user = response?.data;
-  if (!user) {
-    return <Navigate to="/sign-in" replace />;
-  }
-  const hasPermission =
-    user.role === 'admin' ||
-    user.role_name === 'admin' ||
-    user.permissions?.includes(permission);
 
-  if (!hasPermission) {
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-}
 
 function RootRedirect() {
   const { data: user, isLoading } = useCurrentUser();
@@ -141,6 +121,16 @@ function App() {
               <AuthenticatedLayout>
                 <PermissionGuard permission="admin.sso.manage">
                   <AdminSsoPage />
+                </PermissionGuard>
+              </AuthenticatedLayout>
+            }
+          />
+          <Route
+            path="/admin/roles"
+            element={
+              <AuthenticatedLayout>
+                <PermissionGuard permission="admin.roles.manage">
+                  <AdminRolesPage />
                 </PermissionGuard>
               </AuthenticatedLayout>
             }
