@@ -696,14 +696,77 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.2h (Frontend Gate)
+## Wave 17.3a — Schema Filtering
+
+### Dispatch
+- **Date**: 2026-06-05
+- **Model**: Kimi (opencode) Backend Implementer
+- **T-IDs**: T-698, T-699
+- **Branch**: `phase-5/wave-17.3a-schema-filtering`
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/123
+
+### Scope
+- T-698: TDD tests for `PolicyEnforcementService.filter_schema()` in
+  `backend/tests/unit/test_schema_filtering.py`.
+- T-699: Implement `PolicyEnforcementService.filter_schema()` in
+  `backend/src/app/services/policy_enforcement.py`.
+
+### Behavior
+- Returns new `SchemaContext`; input is never mutated.
+- `None` policy or empty list → empty schema (fail-closed).
+- `columns=[]` in a policy entry → table listed with no columns (fail-closed).
+- Unknown policy tables/columns ignored silently (no leak, no exception).
+- Case-insensitive matching on table and column names (Postgres folding).
+- Preserves `table.schema_name` and column metadata (`type`, `nullable`, `primary_key`).
+- Stateless service: no constructor args; callable as `@staticmethod`.
+- Defensive: non-string table/column entries in the policy are skipped.
+
+### Gates
+- `tests/unit/test_schema_filtering.py`: 19 passed in 0.19s
+- `tests/unit -q -m "not integration"` (excluding 4 pre-existing audit-chain failures
+  identical on `main`): 1062 passed, 13 deselected, 12 warnings in 12.90s
+- `ruff check src tests`: All checks passed!
+- `ruff format --check src tests`: 289 files already formatted
+- `git diff --check`: clean
+- Pre-existing audit failures (NOT from this work, confirmed on `main`):
+  - `tests/unit/test_audit_service.py::TestAuditService::test_log_creates_entry` —
+    expects `sequence_number == 1`; DB state has accumulated rows.
+  - `tests/unit/test_audit_service.py::TestAuditService::test_log_assigns_increasing_sequence`
+  - `tests/unit/test_audit_chain_verification.py::TestAuditChainVerification::test_broken_chain_detects_first_break`
+  - `tests/unit/test_audit_chain_verification.py::TestAuditChainVerification::test_chain_continues_after_break`
+  All four reproduce on `main` at `bc3405f`; environment-dependent, no fix in this wave.
+
+### TDD Evidence
+- T-698 RED: `0472d8d` — `test(T-698): TDD tests for PolicyEnforcementService.filter_schema` (collection error = all tests fail).
+- T-699 GREEN: `b060130` — `feat(T-699): implement PolicyEnforcementService.filter_schema` (19/19 pass).
+- Format fix: `style: apply ruff format to policy_enforcement.py` (still 19/19).
+
+### Security Notes
+- Fail-closed: `None`, `[]`, and `{"table": "t", "columns": []}` all deny access.
+- No leak: unknown policy tables/columns dropped silently — no exception path exposes
+  unauthorized schema names.
+- Case-insensitive matching aligns with existing `SchemaContext.find_table` / `find_column`
+  (Postgres identifier folding). No surprise authorization differences across capitalizations.
+
+### Remaining Wave 17.3 Work
+- T-700..T-705: Row filter validation/injection (placeholder binding, schema drift).
+- T-706..T-707: Column masking.
+- T-708..T-710: Evaluator rule.
+- T-711..T-712: Query flow integration.
+- T-713..T-714: Role policy test endpoint.
+- T-715..T-721: History/rerun/audit/cross-dialect.
+- T-722: Wave 17.3 backend gate.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.3a (Schema Filtering)
 
 ### Status
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.2h frontend gate complete.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122.
-- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/123
+- **Current point**: Wave 17.3a schema filtering complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123.
+- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/123 (Wave 17.3a — Schema Filtering)
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -716,9 +779,18 @@
 - Wave 17.2f backend foundation gate is complete.
 - Wave 17.2g frontend role management, permission guards, and group mappings persistence is complete.
 - Wave 17.2h frontend gate is complete.
+- Wave 17.3a schema filtering is complete:
+  - `PolicyEnforcementService.filter_schema()` filters `SchemaContext` by role policy
+    before LLM prompt construction per S-006.
+  - 19 TDD tests cover table/column filtering, fail-closed, unknown entries,
+    metadata preservation, immutability, case-insensitive matching, and no-leak.
 
-### Remaining Wave 17.2 Work
-- None.
+### Remaining Wave 17.3 Work
+- T-700..T-721: Remaining backend policy enforcement (row filters, column masks,
+  evaluator rule, query flow integration, role policy test endpoint, history/rerun/audit,
+  cross-dialect).
+- T-722: Wave 17.3 backend gate.
 
 ### Next Dispatch Constraint
-- Wave 17.3 policy enforcement tasks (T-698 through T-732).
+- Continue Wave 17.3 backend policy enforcement (T-700+).
+- T-722 (backend gate) must pass before Wave 17.3 close.
