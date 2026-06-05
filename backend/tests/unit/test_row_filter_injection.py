@@ -380,3 +380,153 @@ class TestReturnsBoundSql:
         assert "DROP" not in result.sql
         assert "--" not in result.sql
         assert result.params == ("analyst",)
+
+
+# ──────────────────────── PR #126 blockers: string-literal preservation ────────────────────────
+# These guard against raw-string replacement that previously mutated
+# characters inside SQL string literals. The driver-style rendering and
+# the internal ``?`` normalization must both skip single-quoted and
+# double-quoted content. See PR #126 for the original bug reports.
+
+
+class TestStringLiteralPreservation:
+    def test_postgres_generated_sql_literal_question_preserved(self) -> None:
+        """Bug 1 (PR #126): ``WHERE note = '?'`` must stay verbatim;
+        only the row-filter placeholder may be renumbered to ``$N``.
+        """
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT id FROM orders WHERE note = '?'",
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="postgres",
+        )
+        assert "'?'" in result.sql
+        assert "'$1'" not in result.sql
+        assert "region = $2" in result.sql
+        assert result.params == ("analyst",)
+
+    def test_mysql_generated_sql_literal_question_preserved(self) -> None:
+        """Bug 2 mirror (PR #126): MySQL output must not turn a literal
+        ``'?'`` into ``'%s'``. The literal stays; only the row-filter
+        placeholder becomes ``%s``.
+        """
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT id FROM orders WHERE note = '?'",
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="mysql",
+        )
+        assert "'?'" in result.sql
+        assert "'%s'" not in result.sql
+        assert "region = %s" in result.sql
+        assert result.params == ("analyst",)
+
+    def test_mssql_generated_sql_literal_question_preserved(self) -> None:
+        """MSSQL is positional; existing ``?`` placeholders coexist
+        with the new one. A literal ``'?'`` must not collide.
+        """
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT id FROM orders WHERE note = '?'",
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="mssql",
+        )
+        assert "'?'" in result.sql
+        assert "region = ?" in result.sql
+        assert result.params == ("analyst",)
+
+    def test_mysql_filter_literal_percent_s_preserved(self) -> None:
+        """Bug 2 (PR #126): a literal ``%s`` in the filter fragment
+        (inside a string) must NOT be re-rendered to ``?`` during the
+        internal normalization step, and must still appear as ``%s``
+        in the output (because the literal never changed).
+        """
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT id FROM orders",
+            row_filters=[
+                {"table": "orders", "filter": "region = 'a%s' OR region = {user.role}"},
+            ],
+            schema=_schema(),
+            user_context=USER,
+            dialect="mysql",
+        )
+        assert "'a%s'" in result.sql
+        # The actual row-filter placeholder is a single ``%s`` (not four).
+        # Count the ``%s`` outside the literal: there should be exactly
+        # one for the {user.role} bind value.
+        import re
+        outside = re.sub(r"'[^']*(?:''[^']*)*'", "", result.sql)
+        assert outside.count("%s") == 1
+        assert result.params == ("analyst",)
+
+    def test_postgres_filter_literal_question_preserved(self) -> None:
+        """A literal ``?`` in the filter fragment (postgres dialect,
+        inside a string) must NOT be re-rendered to ``$N`` during the
+        final renumbering pass. The row-filter ``{user.role}`` becomes
+        ``$N``; the literal ``?`` stays as ``?``.
+        """
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT id FROM orders",
+            row_filters=[
+                {"table": "orders", "filter": "note = '?' OR region = {user.role}"},
+            ],
+            schema=_schema(),
+            user_context=USER,
+            dialect="postgres",
+        )
+        assert "'?'" in result.sql
+        assert "region = $1" in result.sql
+        # The literal ``?`` is still a literal ``?`` — it was NOT turned
+        # into ``$1`` by the renumbering pass.
+        import re
+        outside = re.sub(r"'[^']*(?:''[^']*)*'", "", result.sql)
+        assert "$" not in outside or outside.count("$1") == 1
+        assert result.params == ("analyst",)
+
+    def test_escaped_single_quote_in_string_literal_handled(self) -> None:
+        """SQL escapes a single quote inside a string by doubling:
+        ``'don''t'``. The lexer must treat the whole span as one
+        literal — the inner ``'`` does not close the string.
+        """
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT id FROM orders WHERE note = 'don''t?'",
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="postgres",
+        )
+        # The whole string literal is preserved verbatim, including the
+        # trailing ``?``.
+        assert "'don''t?'" in result.sql
+        assert "region = $2" in result.sql
+
+    def test_double_quoted_identifier_with_question_preserved_postgres(self) -> None:
+        """Quoted identifiers (``"my col"``) containing a ``?`` must
+        also be skipped by the renumbering pass.
+        """
+        result = PolicyEnforcementService.apply_row_filters(
+            sql='SELECT id FROM "my?"',
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="postgres",
+        )
+        assert '"my?"' in result.sql
+        assert "region = $1" in result.sql
+
+    def test_string_literal_with_dollar_n_preserved_postgres(self) -> None:
+        """A literal that already contains ``$1`` (e.g. user data
+        that looks like a placeholder) must not be touched.
+        """
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT id FROM orders WHERE note = '$1 shouldn't collide'",
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="postgres",
+        )
+        assert "'$1 shouldn''t collide'" in result.sql
+        assert "region = $2" in result.sql
