@@ -30,7 +30,7 @@ USER = {"email": "a@b.c", "subject_id": "sso|x", "role": "analyst"}
 
 
 def _schema() -> SchemaContext:
-    """Single ``orders`` table with id / region / owner columns."""
+    """Single ``orders`` table with id / region / note / owner columns."""
     return SchemaContext(
         tables=[
             Table(
@@ -39,6 +39,7 @@ def _schema() -> SchemaContext:
                 columns=[
                     Column(name="id", type="integer", nullable=False, primary_key=True),
                     Column(name="region", type="text", nullable=False),
+                    Column(name="note", type="text", nullable=True),
                     Column(name="owner_email", type="text", nullable=True),
                 ],
             ),
@@ -393,6 +394,7 @@ class TestStringLiteralPreservation:
     def test_postgres_generated_sql_literal_question_preserved(self) -> None:
         """Bug 1 (PR #126): ``WHERE note = '?'`` must stay verbatim;
         only the row-filter placeholder may be renumbered to ``$N``.
+        The literal ``?`` does NOT consume a placeholder slot.
         """
         result = PolicyEnforcementService.apply_row_filters(
             sql="SELECT id FROM orders WHERE note = '?'",
@@ -403,7 +405,7 @@ class TestStringLiteralPreservation:
         )
         assert "'?'" in result.sql
         assert "'$1'" not in result.sql
-        assert "region = $2" in result.sql
+        assert "region = $1" in result.sql
         assert result.params == ("analyst",)
 
     def test_mysql_generated_sql_literal_question_preserved(self) -> None:
@@ -458,6 +460,7 @@ class TestStringLiteralPreservation:
         # Count the ``%s`` outside the literal: there should be exactly
         # one for the {user.role} bind value.
         import re
+
         outside = re.sub(r"'[^']*(?:''[^']*)*'", "", result.sql)
         assert outside.count("%s") == 1
         assert result.params == ("analyst",)
@@ -482,8 +485,9 @@ class TestStringLiteralPreservation:
         # The literal ``?`` is still a literal ``?`` — it was NOT turned
         # into ``$1`` by the renumbering pass.
         import re
+
         outside = re.sub(r"'[^']*(?:''[^']*)*'", "", result.sql)
-        assert "$" not in outside or outside.count("$1") == 1
+        assert outside.count("$1") == 1
         assert result.params == ("analyst",)
 
     def test_escaped_single_quote_in_string_literal_handled(self) -> None:
@@ -501,7 +505,7 @@ class TestStringLiteralPreservation:
         # The whole string literal is preserved verbatim, including the
         # trailing ``?``.
         assert "'don''t?'" in result.sql
-        assert "region = $2" in result.sql
+        assert "region = $1" in result.sql
 
     def test_double_quoted_identifier_with_question_preserved_postgres(self) -> None:
         """Quoted identifiers (``"my col"``) containing a ``?`` must
@@ -522,11 +526,12 @@ class TestStringLiteralPreservation:
         that looks like a placeholder) must not be touched.
         """
         result = PolicyEnforcementService.apply_row_filters(
-            sql="SELECT id FROM orders WHERE note = '$1 shouldn't collide'",
+            sql="SELECT id FROM orders WHERE note = '$1 shouldn''t collide'",
             row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
             schema=_schema(),
             user_context=USER,
             dialect="postgres",
         )
         assert "'$1 shouldn''t collide'" in result.sql
-        assert "region = $2" in result.sql
+        # The literal ``$1`` does not consume a placeholder slot.
+        assert "region = $1" in result.sql

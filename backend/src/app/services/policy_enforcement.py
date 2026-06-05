@@ -645,11 +645,16 @@ def _to_internal_placeholder(filter_sql: str, dialect: str) -> str:
     Maps ``$1`` → ``?`` (postgres) and ``%s`` → ``?`` (mysql). MSSQL
     already uses ``?`` so the input is returned unchanged. This is the
     inverse of ``_render_placeholders_for_driver``.
+
+    The replacement is lexer-aware: characters inside single-quoted
+    (``'...'``) and double-quoted (``"..."``) string literals are
+    preserved verbatim. Single-quote escaping (``''`` inside a string)
+    is handled correctly.
     """
     if dialect in ("mysql",):
-        return filter_sql.replace("%s", "?")
+        return _replace_outside_strings(filter_sql, "%s", "?")
     if dialect in ("postgres", "postgresql"):
-        return re.sub(r"\$\d+", "?", filter_sql)
+        return _replace_outside_strings_regex(filter_sql, r"\$\d+", "?")
     return filter_sql  # mssql or unknown — leave as is
 
 
@@ -661,23 +666,116 @@ def _render_placeholders_for_driver(sql_str: str, dialect: str, start_index: int
     - mssql:    ``?`` is native, no change
 
     The renumbering pass for postgres replaces every ``?`` in
-    left-to-right order. Existing ``$N`` tokens (from the generated
-    SQL) are preserved verbatim.
+    left-to-right order outside of string literals. Existing ``$N``
+    tokens (from the generated SQL) are preserved verbatim, and
+    characters inside ``'...'`` or ``"..."`` string literals are
+    never touched (PR #126 fix).
     """
     if dialect in ("mssql",):
         return sql_str
     if dialect in ("mysql",):
-        return sql_str.replace("?", "%s")
+        return _replace_outside_strings(sql_str, "?", "%s")
     if dialect in ("postgres", "postgresql"):
         counter = [start_index]
 
-        def _sub(match: re.Match[str]) -> str:
+        def _replace_one(_match: re.Match[str]) -> str:
             token = f"${counter[0]}"
             counter[0] += 1
             return token
 
-        return re.sub(r"\?", _sub, sql_str)
+        return _replace_outside_strings_regex(sql_str, r"\?", _replace_one)
     return sql_str
+
+
+def _replace_outside_strings(s: str, needle: str, replacement: str) -> str:
+    """Replace a literal substring, but only outside SQL string literals.
+
+    Skips single-quoted (``'...'`` with ``''`` escape) and double-quoted
+    (``"..."`` with ``""`` escape) spans. PR #126 fix: a raw
+    ``str.replace`` would mutate placeholders inside user data.
+    """
+    out: list[str] = []
+    n = len(s)
+    needle_len = len(needle)
+    i = 0
+    while i < n:
+        c = s[i]
+        if c == "'":
+            # Single-quoted string literal: copy verbatim, handling
+            # the doubled-quote escape.
+            j = i + 1
+            while j < n:
+                if s[j] == "'":
+                    if j + 1 < n and s[j + 1] == "'":
+                        j += 2
+                        continue
+                    j += 1
+                    break
+                j += 1
+            out.append(s[i:j])
+            i = j
+            continue
+        if c == '"':
+            # Double-quoted identifier (or string under ANSI_QUOTES).
+            j = i + 1
+            while j < n:
+                if s[j] == '"':
+                    if j + 1 < n and s[j + 1] == '"':
+                        j += 2
+                        continue
+                    j += 1
+                    break
+                j += 1
+            out.append(s[i:j])
+            i = j
+            continue
+        if s[i : i + needle_len] == needle:
+            out.append(replacement)
+            i += needle_len
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def _replace_outside_strings_regex(
+    s: str,
+    pattern: str,
+    replacement: str | Callable[[re.Match[str]], str],
+) -> str:
+    """Like :func:`_replace_outside_strings` but with a regex pattern.
+
+    The regex is applied only to non-literal spans (outside ``'...'``
+    and ``"..."``). Used for postgres ``$N`` → ``?`` (whole-token
+    match) and ``?`` → ``$N`` renumbering.
+    """
+    regex = re.compile(pattern)
+    out: list[str] = []
+    n = len(s)
+    i = 0
+    while i < n:
+        c = s[i]
+        if c == "'" or c == '"':
+            quote = c
+            j = i + 1
+            while j < n:
+                if s[j] == quote:
+                    if j + 1 < n and s[j + 1] == quote:
+                        j += 2
+                        continue
+                    j += 1
+                    break
+                j += 1
+            out.append(s[i:j])
+            i = j
+            continue
+        # Outside string: find the next string start.
+        j = i
+        while j < n and s[j] not in ("'", '"'):
+            j += 1
+        out.append(regex.sub(replacement, s[i:j]))
+        i = j
+    return "".join(out)
 
 
 def _check_schema_drift(
