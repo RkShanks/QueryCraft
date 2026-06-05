@@ -1069,7 +1069,6 @@ class TestSampleSqlEvaluation:
         )
         conn = _active_healthy_conn(conn_id)
         app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
-        transport = ASGITransport(app=app)
         sample_sql = "SELECT ssn, customer_id FROM orders WHERE region = 'US'"
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
