@@ -26,7 +26,6 @@ Behaviour:
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
 from app.schemas.query import ColumnMeta, QueryResult
 from app.services.policy_enforcement import PolicyEnforcementService
@@ -158,7 +157,10 @@ class TestImmutability:
 
     def test_empty_mask_config_returns_original_equivalent(self) -> None:
         original = _result()
-        for empty in (None, [], [{}]):
+        # Truly-empty shapes: None, [] (no entries), or a list of
+        # entries that each have an empty columns list (admin
+        # intentionally configured no columns to mask).
+        for empty in (None, [], [{"table": "users", "columns": []}]):
             out = PolicyEnforcementService.apply_column_masks(original, empty)
             assert out is not original
             # Same row values, same column metadata (all masked=False)
@@ -166,6 +168,15 @@ class TestImmutability:
             assert [(c.name, c.type, c.masked) for c in out.columns] == [
                 (c.name, c.type, c.masked) for c in original.columns
             ]
+
+    def test_entry_with_empty_dict_is_fail_closed(self) -> None:
+        """``[{}]`` is malformed (missing both ``table`` and ``columns``)
+        and must fail-closed. This guards against silent-skip on
+        admin-side typos in policy config.
+        """
+        with pytest.raises(ValueError) as excinfo:
+            PolicyEnforcementService.apply_column_masks(_result(), [{}])
+        assert excinfo.value.args[0] == "column_mask_config_invalid"
 
 
 # ──────────────────────────── Case-insensitive matching ────────────────────────────
@@ -274,15 +285,29 @@ class TestUnknownAndMalformedConfig:
         assert "123" not in msg
 
     def test_malformed_config_does_not_leak_raw_value(self) -> None:
-        """If a malformed config contains a sensitive value, that value
-        must not appear in the error message.
+        """If a malformed config contains a sensitive value (admin
+        accidentally put a credential in the ``table`` field, or a
+        PII token in a column name), that value must not appear in
+        the error message — the error must remain the constant
+        sanitized code.
         """
-        bad = [{"table": "secret_table_xyz", "columns": ["super_secret_col_abc"]}]
+        # Structurally malformed: ``table`` is a non-string (None) and
+        # ``columns`` contains a sensitive-looking value.
+        bad = [{"table": None, "columns": ["super_secret_col_abc"]}]
         with pytest.raises(ValueError) as excinfo:
             PolicyEnforcementService.apply_column_masks(_result(), bad)
         msg = str(excinfo.value)
-        assert "secret_table_xyz" not in msg
+        assert msg == "column_mask_config_invalid"
         assert "super_secret_col_abc" not in msg
+        assert "None" not in msg  # don't leak the type
+
+        # Second variant: a non-list ``columns`` whose repr contains
+        # the sensitive value.
+        bad2 = [{"table": "users", "columns": "super_secret_col_abc"}]
+        with pytest.raises(ValueError) as excinfo2:
+            PolicyEnforcementService.apply_column_masks(_result(), bad2)
+        msg2 = str(excinfo2.value)
+        assert "super_secret_col_abc" not in msg2
 
 
 # ──────────────────────────── Output never contains raw value ────────────────────────────

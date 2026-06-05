@@ -40,6 +40,7 @@ from sqlglot import exp
 from app.core.exceptions import PolicySchemaConflictError
 from app.db.models.enums import AuditActionType
 from app.evaluator.schema_context import Column, SchemaContext, Table
+from app.schemas.query import ColumnMeta, QueryResult
 
 # Type alias for the optional audit hook passed to ``apply_row_filters``.
 # The hook receives the action type and a sanitized payload (table name
@@ -53,6 +54,19 @@ _PLACEHOLDER_BINDING_FAILED = "placeholder_binding_failed"
 # Constant error code for any injection failure. Intentionally opaque:
 # does not leak the offending SQL, schema, or dialect.
 _FILTER_INJECTION_FAILED = "filter_injection_failed"
+
+# Constant error code for any column-mask configuration failure. The
+# column-mask service runs at output time, so a malformed admin
+# config (wrong type, missing key, empty values) is a fail-closed
+# condition: the service refuses to silently skip masking and the
+# error message never echoes the offending config (no leak of admin
+# policy or sensitive column names).
+_COLUMN_MASK_CONFIG_INVALID = "column_mask_config_invalid"
+
+# Literal mask token used to replace masked cell values. A short,
+# easily-recognizable, dialect-agnostic string. Frontend renders a
+# localized "column was masked" badge independently (FR-133).
+_MASK_TOKEN = "***"
 
 # Placeholder token per dialect driver:
 # - asyncpg (postgres): ``$1``, ``$2``, ... (numbered, configurable start)
@@ -617,6 +631,129 @@ class PolicyEnforcementService:
         out_sql = stmt.sql(dialect=sqlglot_dialect)
         out_sql = _render_placeholders_for_driver(out_sql, dialect.lower(), render_start_index)
         return BoundSql(sql=out_sql, params=tuple(params))
+
+    @staticmethod
+    def apply_column_masks(
+        result: QueryResult,
+        column_masks: list[dict[str, Any]] | None,
+    ) -> QueryResult:
+        """Apply role-configured column masks to a post-execution result.
+
+        Per ADR-19 / FR-132: replace cell values in configured sensitive
+        columns with ``"***"`` and set ``ColumnMeta.masked = True`` for
+        the affected columns. Operates on the ``QueryResult`` after the
+        underlying query has executed — dialect-independent (the dialect
+        produced the rows; masking only walks the materialized cells).
+
+        Contract:
+        - Returns a NEW ``QueryResult`` instance. The input is never
+          mutated (rows / columns / column metadata).
+        - ``column_masks`` is the admin policy shape stored on
+          ``role_connection_policies.column_masks``:
+          ``[{"table": "users", "columns": ["ssn", "salary"]}]``.
+        - ``column_masks`` is ``None`` or empty (no entries, or entries
+          with empty ``columns``): returns an original-equivalent result
+          (new instance, all values preserved, no ``masked`` flag set).
+        - Column matching is case-insensitive (postgres lower-folds, MSSQL
+          is case-insensitive by default, MySQL depends on collation).
+        - A configured column that is NOT present in the result is a
+          silent no-op — its value was never returned to the service, so
+          no leak is possible. This is intentionally different from the
+          schema-drift guard (T-705), which fails closed at filter
+          injection time because the filter IS going to be applied.
+        - Malformed config (non-list top level, non-dict entries,
+          missing ``table`` or ``columns`` key, wrong types, empty
+          values) raises ``ValueError("column_mask_config_invalid")`` —
+          fail-closed. The error message is the constant only; it never
+          echoes the offending table or column names.
+
+        NOTE — table-scoped matching: ``QueryResult`` columns are
+        flat (no per-column source-table annotation). A configured
+        ``orders.ssn`` mask will also mask a same-named column from any
+        other table in the result. This is an acceptable bound for
+        T-707: the query service (T-712) integration can pass a
+        result→table mapping to disambiguate joins. Until then, admins
+        who require strict table-scoping should pick non-overlapping
+        column names across tables they expose in the same connection.
+        """
+        # Build a sanitized lookup of mask targets. Validation runs FIRST
+        # (fail-closed) so that a malformed admin policy can never
+        # produce a partial mask that silently leaks.
+        masks_by_name: dict[str, None] = {}
+        if column_masks is not None:
+            if not isinstance(column_masks, list):
+                raise ValueError(_COLUMN_MASK_CONFIG_INVALID)
+            for entry in column_masks:
+                if not isinstance(entry, dict):
+                    raise ValueError(_COLUMN_MASK_CONFIG_INVALID)
+                table = entry.get("table")
+                columns = entry.get("columns")
+                # Strict type / emptiness check. Anything else is fail-closed.
+                if not isinstance(table, str) or not table:
+                    raise ValueError(_COLUMN_MASK_CONFIG_INVALID)
+                # ``columns`` is required. ``None`` (missing key) is
+                # malformed — fail-closed. An empty LIST, however, is
+                # a silent no-op for this entry (admin intentionally
+                # configured no columns for this table).
+                if columns is None or not isinstance(columns, list):
+                    raise ValueError(_COLUMN_MASK_CONFIG_INVALID)
+                if not columns:
+                    continue
+                for col in columns:
+                    if not isinstance(col, str) or not col:
+                        raise ValueError(_COLUMN_MASK_CONFIG_INVALID)
+                    masks_by_name[col.lower()] = None
+
+        # No masks configured: original-equivalent result.
+        if not masks_by_name:
+            return QueryResult(
+                attempt_id=result.attempt_id,
+                session_id=result.session_id,
+                question=result.question,
+                generated_sql=result.generated_sql,
+                columns=[ColumnMeta(name=c.name, type=c.type) for c in result.columns],
+                rows=[list(r) for r in result.rows],
+                row_count=result.row_count,
+                attempt_number=result.attempt_number,
+                is_last_auto_retry=result.is_last_auto_retry,
+                accepted_query_id=result.accepted_query_id,
+            )
+
+        # Resolve which column indices get masked. Unknown / unmatched
+        # column names are silent no-ops (see docstring rationale).
+        new_columns: list[ColumnMeta] = []
+        mask_indices: list[int] = []
+        for idx, col in enumerate(result.columns):
+            is_masked = col.name.lower() in masks_by_name
+            new_columns.append(ColumnMeta(name=col.name, type=col.type, masked=is_masked))
+            if is_masked:
+                mask_indices.append(idx)
+
+        # Build masked rows. Skip masking work entirely when no column
+        # in the result actually matched (avoids needless copies and
+        # keeps the response shape stable).
+        if not mask_indices:
+            new_rows: list[list] = [list(r) for r in result.rows]
+        else:
+            new_rows = []
+            for row in result.rows:
+                new_row = list(row)
+                for i in mask_indices:
+                    new_row[i] = _MASK_TOKEN
+                new_rows.append(new_row)
+
+        return QueryResult(
+            attempt_id=result.attempt_id,
+            session_id=result.session_id,
+            question=result.question,
+            generated_sql=result.generated_sql,
+            columns=new_columns,
+            rows=new_rows,
+            row_count=result.row_count,
+            attempt_number=result.attempt_number,
+            is_last_auto_retry=result.is_last_auto_retry,
+            accepted_query_id=result.accepted_query_id,
+        )
 
 
 def _next_postgres_index(stmt: exp.Expression, sqlglot_dialect: str) -> int:
