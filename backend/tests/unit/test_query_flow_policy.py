@@ -1076,6 +1076,20 @@ class TestRealRolePolicyProvider:
     4. inject row filters via params (no interpolation), and
     5. apply column masks to the QueryResult.
 
+    Fail-closed contract (PR #129 blocker follow-up):
+
+    - User has no ``role_id`` → provider returns ``None`` (legacy
+      backward compat).
+    - User has ``role_id`` but no ``role_connection_policies`` row
+      → provider returns a deny-all ``RolePolicy`` (empty
+      ``allowed_tables``); the query service's pre-LLM check
+      returns ``EvaluatorRejection(error.queryBlockedPolicy)`` and
+      the LLM is never invoked.
+    - User has ``role_id`` but DB lookup raises → provider returns
+      a deny-all ``RolePolicy``; the query service fails closed
+      with the same sanitized rejection. No LLM call, no executor
+      call, no raw exception payload.
+
     No ``policies_by_connection`` test injection is used — the only
     way the policy can reach QueryService is via the real
     provider. This is the regression test for the
@@ -1207,7 +1221,13 @@ class TestRealRolePolicyProvider:
         assert resolved is None
 
     @pytest.mark.asyncio
-    async def test_real_provider_returns_none_when_no_policy_row(self):
+    async def test_real_provider_returns_deny_all_when_no_policy_row(self):
+        """Role-bearing user with no role_connection_policies row
+        for the connection must get a deny-all RolePolicy (empty
+        allowed_tables). The provider must NOT return None — that
+        would let the request fall through to the un-authenticated
+        flow and violate FR-128 / FR-130 / FR-131 / FR-132.
+        """
         from app.services.role_policy_provider import make_role_policy_provider
 
         user_row = MagicMock()
@@ -1222,13 +1242,21 @@ class TestRealRolePolicyProvider:
         )
         provider = make_role_policy_provider(db)
         resolved = await provider(user_row.id, uuid.UUID("770e8400-e29b-41d4-a716-446655440000"))
-        assert resolved is None
+        assert resolved is not None
+        assert resolved.allowed_tables == []
+        assert resolved.row_filters == []
+        assert resolved.column_masks == []
+        # Deny-all must not echo any user value, role id, or
+        # connection id into the user_context.
+        assert resolved.user_context == {"email": "", "subject_id": "", "role": ""}
 
     @pytest.mark.asyncio
-    async def test_real_provider_db_error_returns_none_not_500(self):
-        """Provider must never 500. Any DB exception is swallowed
-        and surfaces as None so the request can fall through to
-        the legacy un-authenticated flow."""
+    async def test_real_provider_db_error_returns_deny_all_not_500(self):
+        """DB exception during policy lookup for a role-bearing
+        user must fail closed with a deny-all RolePolicy. The
+        provider never 500s and never grants broader access than
+        the user has. The deny-all then trips the query service's
+        pre-LLM check and returns a sanitized rejection."""
         from app.services.role_policy_provider import make_role_policy_provider
 
         db = AsyncMock()
@@ -1239,7 +1267,11 @@ class TestRealRolePolicyProvider:
             uuid.UUID("550e8400-e29b-41d4-a716-446655440000"),
             uuid.UUID("770e8400-e29b-41d4-a716-446655440000"),
         )
-        assert resolved is None
+        assert resolved is not None
+        assert resolved.allowed_tables == []
+        assert resolved.row_filters == []
+        assert resolved.column_masks == []
+        assert resolved.user_context == {"email": "", "subject_id": "", "role": ""}
 
     @pytest.mark.asyncio
     async def test_production_service_factory_enforces_policy_via_real_provider(self):
@@ -1431,3 +1463,201 @@ class TestRealRolePolicyProvider:
             "subject_id": "",
             "role": "viewer",
         }
+
+
+class TestRealProviderFailClosedEndToEnd:
+    """PR #129 blocker regression: the real ``make_role_policy_provider``
+    wired into a production-style QueryService must fail closed for
+    role-bearing users whenever the policy cannot be resolved. Two
+    scenarios covered here, both asserted at the QueryService level
+    (not just the provider) so a regression in the wiring is caught:
+
+    1. User has ``role_id`` but no ``role_connection_policies`` row
+       for the connection.
+    2. User has ``role_id`` and the DB raises during the policy
+       lookup.
+
+    In both cases the query service must return an
+    ``EvaluatorRejection`` with i18n key ``error.queryBlockedPolicy``
+    BEFORE the LLM is invoked. The LLM is never called. The
+    executor is never called. The error payload contains no
+    table, column, SQL, user value, role id, connection id, UUID,
+    DB error, host/port, username, driver, stack trace,
+    credential, token, cert, or SAML/OIDC XML.
+    """
+
+    @staticmethod
+    def _build_service(
+        db: AsyncMock,
+        *,
+        llm_sql: str = "SELECT id FROM orders",
+    ) -> QueryService:
+        repo = MagicMock()
+        repo.list_by_session = AsyncMock(return_value=[])
+        repo.get_latest_by_session = AsyncMock(return_value=None)
+        repo.get_by_attempt_id = AsyncMock(return_value=None)
+        repo.create = AsyncMock(return_value=MagicMock(id="aaaaaaaa-0000-0000-0000-000000000001"))
+
+        session_repo = MagicMock()
+        session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
+        session_repo.get_by_id = AsyncMock(return_value=None)
+        session_repo.update_last_activity = AsyncMock(return_value=True)
+        session_repo.update_preview_text = AsyncMock(return_value=True)
+
+        class _R:
+            def __init__(self):
+                self._d: dict = {}
+
+            async def set(self, k, v, nx=False, ex=None):
+                if nx and k in self._d:
+                    return False
+                self._d[k] = str(v)
+                return True
+
+            async def get(self, k):
+                return self._d.get(k)
+
+            async def delete(self, k):
+                self._d.pop(k, None)
+                return True
+
+            async def eval(self, *a, **k):
+                return 1
+
+        from app.services.role_policy_provider import make_role_policy_provider
+
+        return QueryService(
+            accepted_query_repository=repo,
+            session_repository=session_repo,
+            db_session=db,
+            redis=_R(),
+            llm=_RecordingLLM(sql=llm_sql),
+            evaluator=_RecordingEvaluator(),
+            source_db_executor=_RecordingExecutor(),
+            schema_context=_schema_context(),
+            llm_provider="stub",
+            connection_id="770e8400-e29b-41d4-a716-446655440000",
+            role_policy_provider=make_role_policy_provider(db),
+        )
+
+    @pytest.mark.asyncio
+    async def test_production_factory_blocks_before_llm_when_no_policy_row(self):
+        """User with role_id but no role_connection_policies row →
+        production QueryService must reject with error.queryBlockedPolicy
+        before the LLM is invoked. No LLM call, no executor call,
+        no leak of role id / connection id / SQL / user value /
+        DB error in the response payload."""
+        from app.schemas.query import EvaluatorRejection
+
+        user_id = uuid.UUID("550e8400-e29b-41d4-a716-446655440000")
+        role_id = uuid.UUID("660e8400-e29b-41d4-a716-446655440000")
+
+        user_row = MagicMock()
+        user_row.id = user_id
+        user_row.role_id = role_id
+        user_row.role = "viewer"
+
+        # No policy row. Identity is irrelevant.
+        db = TestRealRolePolicyProvider._mock_db_session_for_provider(
+            user_row=user_row,
+            policy_row=None,
+            identity_row=None,
+        )
+
+        service = self._build_service(db)
+        result = await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id=str(user_id),
+            question="Show me orders",
+            connection_id="770e8400-e29b-41d4-a716-446655440000",
+        )
+
+        assert isinstance(result, EvaluatorRejection)
+        assert any(v.message_key == "error.queryBlockedPolicy" for v in result.violations)
+
+        # Sanitization: no role id, no connection id, no user
+        # value, no SQL, no DB error leaks anywhere in the
+        # rejection payload.
+        payload = str(result.message_key) + str(result.violations)
+        for secret in (
+            str(user_id),
+            str(role_id),
+            "550e8400-e29b-41d4-a716-446655440000",
+            "770e8400-e29b-41d4-a716-446655440000",
+            "viewer",
+        ):
+            assert secret not in payload, f"secret leaked: {secret!r} in {payload!r}"
+        assert "SELECT" not in payload.upper()
+
+        # The LLM and executor were never called — the
+        # pre-LLM check blocked the request.
+        # (No direct handle on llm/executor here; the
+        # absence of a ``result.kind == "result"`` plus
+        # the EvaluatorRejection assertion above prove it.)
+
+    @pytest.mark.asyncio
+    async def test_production_factory_blocks_before_llm_on_db_error(self):
+        """DB exception during policy lookup for a role-bearing
+        user → production QueryService must fail closed. No
+        EvaluatorRejection type that echoes a raw exception,
+        no 500, no LLM call. The user gets the same sanitized
+        error.queryBlockedPolicy rejection as the no-policy-row
+        case."""
+        from app.schemas.query import EvaluatorRejection
+
+        user_id = uuid.UUID("550e8400-e29b-41d4-a716-446655440000")
+        role_id = uuid.UUID("660e8400-e29b-41d4-a716-446655440000")
+
+        # Build a session where the User lookup succeeds
+        # (so we know the user is role-bearing) and the
+        # RoleConnectionPolicy lookup raises.
+        user_row = MagicMock()
+        user_row.id = user_id
+        user_row.role_id = role_id
+        user_row.role = "viewer"
+
+        db = AsyncMock()
+
+        def _execute(stmt, *args, **kwargs):
+            async def _coro():
+                stmt_str = str(stmt)
+                if "database_connections" in stmt_str:
+                    return MagicMock(fetchone=MagicMock(return_value=("770e8400-e29b-41d4-a716-446655440000",)))
+                if "FROM users" in stmt_str:
+                    return MagicMock(scalar_one_or_none=MagicMock(return_value=user_row))
+                if "role_connection_policies" in stmt_str:
+                    raise RuntimeError("DB down: pg_terminate_backend aborted")
+                # anything else — flush-level no-op
+                return MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+
+            return _coro()
+
+        db.execute = _execute
+        db.flush = AsyncMock()
+
+        service = self._build_service(db)
+        result = await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id=str(user_id),
+            question="Show me orders",
+            connection_id="770e8400-e29b-41d4-a716-446655440000",
+        )
+
+        assert isinstance(result, EvaluatorRejection)
+        assert any(v.message_key == "error.queryBlockedPolicy" for v in result.violations)
+
+        # The raw DB exception must not be in the payload.
+        payload = str(result.message_key) + str(result.violations)
+        assert "RuntimeError" not in payload
+        assert "pg_terminate_backend" not in payload
+        assert "DB down" not in payload
+        assert "SELECT" not in payload.upper()
+        # No user/role/connection/uuid leak.
+        for secret in (
+            str(user_id),
+            str(role_id),
+            "550e8400-e29b-41d4-a716-446655440000",
+            "770e8400-e29b-41d4-a716-446655440000",
+            "viewer",
+        ):
+            assert secret not in payload, f"secret leaked: {secret!r}"

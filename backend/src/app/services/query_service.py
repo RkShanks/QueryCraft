@@ -200,12 +200,13 @@ class QueryService:
     ) -> RolePolicy | None:
         """Look up the role policy for (user_id, connection_id).
 
-        Returns ``None`` when:
-        - no provider is configured (backward compat), or
-        - the user has no role_id, or
-        - no role_connection_policies row exists for the connection.
-
-        Never raises; provider exceptions bubble up to the caller.
+        Returns ``None`` ONLY when the provider is not configured
+        (Phase 1-3 backward compat) or the user has no ``role_id``.
+        For role-bearing users the provider always returns a
+        ``RolePolicy`` (either the resolved row or a deny-all) so
+        the caller can fail closed. See
+        ``app.services.role_policy_provider`` for the full
+        fail-closed contract.
         """
         if self._role_policy_provider is None:
             return None

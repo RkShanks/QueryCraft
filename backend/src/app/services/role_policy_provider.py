@@ -1,26 +1,48 @@
-"""Role policy provider — production factory for the live /query/submit path.
+"""Role policy provider — production factory for the live /query path.
 
-T-712 follow-up: the QueryService constructor accepts an optional
+T-712 follow-up: the ``QueryService`` constructor accepts an optional
 ``role_policy_provider`` callback. This module supplies the real
-production callback used by the /query/submit, /query/regenerate,
-/query/reject, and /query/accept factories in
-``app/api/v1/query.py``.
+production callback used by the ``/query/submit``,
+``/query/regenerate``, ``/query/reject``, and ``/query/accept``
+factories in ``app/api/v1/query.py``.
 
 The provider:
 
-1. Loads the user's ``role_id`` from the ``users`` table. ``None`` →
-   no policy applies (Phase 1-3 backward compat).
+1. Loads the user's ``role_id`` from the ``users`` table.
 2. Loads the matching ``role_connection_policies`` row for
-   ``(role_id, connection_id)``. Missing row → no policy applies.
+   ``(role_id, connection_id)``.
 3. Loads the user's ``user_identities`` row to populate the
    ``user_context`` dict with the values bound to ``{user.email}``,
    ``{user.subject_id}``, ``{user.role}`` placeholders by
    ``PolicyEnforcementService.bind_placeholders`` (T-702).
 
+Fail-closed contract (FR-128 / FR-130 / FR-131 / FR-132,
+api-contracts.md lines 351-356):
+
+- User has no ``role_id`` (Phase 1-3 legacy admin): return ``None``.
+  The query service treats ``None`` as "no policy applies" and the
+  un-authenticated flow runs unchanged. This is the only path that
+  can return ``None`` for a user that exists.
+- User has a ``role_id`` but no ``role_connection_policies`` row for
+  the connection: return a deny-all ``RolePolicy`` (``allowed_tables=[]``,
+  ``row_filters=[]``, ``column_masks=[]``). The query service's
+  pre-LLM check will surface a sanitized ``EvaluatorRejection`` with
+  i18n key ``error.queryBlockedPolicy`` before the LLM is ever
+  called.
+- User has a ``role_id`` but the policy lookup raises a DB error:
+  return a deny-all ``RolePolicy``. Provider errors never 500 a
+  query; they fail-closed with a sanitized block.
+- User has a ``role_id`` and a policy row but no ``user_identities``
+  row: return a ``RolePolicy`` with empty-string
+  ``email``/``subject_id`` in ``user_context``. Row filters that
+  reference these placeholders will fail closed at
+  ``bind_placeholders`` time (``placeholder_binding_failed``) — by
+  design. Empty ``allowed_tables`` (deny-all) is also fail-closed.
+
 Sanitization: the provider never echoes the user value, role id,
-or connection id in any error path. All failures resolve to
-``None`` (no policy) so the request can fall through to the
-un-authenticated flow.
+connection id, table name, column name, SQL, DB error, host/port,
+username, driver name, stack trace, credential, token, cert, or
+SAML/OIDC XML in any return value or error path.
 """
 
 from __future__ import annotations
@@ -42,22 +64,40 @@ from app.services.query_service import RolePolicy
 RolePolicyProvider = Callable[[uuid.UUID, uuid.UUID], Awaitable[RolePolicy | None]]
 
 
+def _deny_all_policy(user_id: uuid.UUID) -> RolePolicy:
+    """Build a deny-all ``RolePolicy`` for a role-bearing user.
+
+    The query service's pre-LLM check (line 366 of query_service.py)
+    sees ``allowed_tables=[]`` and returns a sanitized
+    ``EvaluatorRejection(error.queryBlockedPolicy)`` BEFORE the LLM
+    is invoked. The LLM never sees the schema. No user value,
+    table, column, role id, connection id, DB error, host/port,
+    credential, token, cert, or SAML/OIDC XML is included in the
+    returned policy.
+    """
+    return RolePolicy(
+        user_id=user_id,
+        role_id=uuid.UUID(int=0),
+        connection_id=uuid.UUID(int=0),
+        allowed_tables=[],
+        row_filters=[],
+        column_masks=[],
+        user_context={"email": "", "subject_id": "", "role": ""},
+    )
+
+
 def make_role_policy_provider(db: AsyncSession) -> RolePolicyProvider:
     """Build a real ``RolePolicyProvider`` bound to *db*.
 
-    The returned closure looks up the user's role and the matching
-    per-connection policy. Returns ``None`` (no policy) when:
+    Returns ``None`` ONLY when the user has no ``role_id`` (Phase
+    1-3 backward compat path). For all other role-bearing users
+    the provider returns a ``RolePolicy`` — either the resolved
+    policy row or a deny-all — so the query service can enforce
+    fail-closed semantics.
 
-    - the user has no ``role_id`` (Phase 1-3 backward compat), or
-    - no ``role_connection_policies`` row exists for the connection, or
-    - the ``user_identities`` lookup fails (placeholders will be
-      empty strings; row filters using them will fail closed at
-      ``bind_placeholders`` time — by design).
-
-    The closure never raises. Any DB error is swallowed and surfaces
-    as ``None`` so the request can fall through to the legacy flow
-    rather than 500 on a transient DB hiccup. The audit log will
-    capture the issue separately.
+    The closure never raises. Any DB error in the policy lookup
+    resolves to a deny-all ``RolePolicy`` for role-bearing users
+    (provider failures never 500 a query; they fail closed).
     """
 
     async def _provider(
@@ -65,13 +105,19 @@ def make_role_policy_provider(db: AsyncSession) -> RolePolicyProvider:
         connection_id: uuid.UUID,
     ) -> RolePolicy | None:
         try:
-            # 1. User and role.
+            # 1. User and role. A user with no role_id is the
+            #    Phase 1-3 legacy path; no policy applies.
             user_result = await db.execute(select(User).where(User.id == user_id))
             user = user_result.scalar_one_or_none()
             if user is None or user.role_id is None:
                 return None
 
-            # 2. Per-connection policy.
+            # 2. Per-connection policy. If no row exists for this
+            #    (role_id, connection_id), the role-bearing user
+            #    must fail closed — not fall through to the
+            #    un-authenticated flow. The query service's
+            #    pre-LLM check sees ``allowed_tables=[]`` and
+            #    blocks with ``error.queryBlockedPolicy``.
             policy_result = await db.execute(
                 select(RoleConnectionPolicy).where(
                     RoleConnectionPolicy.role_id == user.role_id,
@@ -80,9 +126,11 @@ def make_role_policy_provider(db: AsyncSession) -> RolePolicyProvider:
             )
             policy_row = policy_result.scalar_one_or_none()
             if policy_row is None:
-                return None
+                return _deny_all_policy(user_id)
 
-            # 3. User identity for placeholder binding.
+            # 3. User identity for placeholder binding. A
+            #    missing row is fine — empty strings fail
+            #    closed at bind_placeholders time.
             identity_result = await db.execute(select(UserIdentity).where(UserIdentity.user_id == user_id).limit(1))
             identity = identity_result.scalar_one_or_none()
 
@@ -102,9 +150,10 @@ def make_role_policy_provider(db: AsyncSession) -> RolePolicyProvider:
                 user_context=user_context,
             )
         except Exception:
-            # Swallow DB errors. Provider failures must never 500 a
-            # query; the request can fall through to the legacy
-            # un-authenticated flow.
-            return None
+            # DB error while resolving the policy for a
+            # role-bearing user — fail closed with a deny-all
+            # policy. Provider failures never 500 a query; they
+            # never grant broader access than the user has.
+            return _deny_all_policy(user_id)
 
     return _provider

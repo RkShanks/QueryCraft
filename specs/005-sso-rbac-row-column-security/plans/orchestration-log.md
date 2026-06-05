@@ -846,7 +846,7 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3b (Row Filter Validation)
+## Historical Checkpoint — Through Wave 17.3b (Row Filter Validation)
 
 ### Status
 - **Date**: 2026-06-05
@@ -990,7 +990,7 @@
       `EvaluatorPipeline.add_rule()` (the T-154 extensibility
       contract) or passed into `Evaluator(rules=[...])` at
       construction time.
-   - 38 TDD tests in `test_evaluator_auth_rule.py` across 9 classes:
+   - 50 TDD tests in `test_evaluator_auth_rule.py` across 9 classes:
      `TestAllowsAllowedReferences` (6), `TestBlocksDisallowedReferences`
      (6), `TestMaskedColumnInteraction` (4), `TestAliasesAndQualifiers`
      (3), `TestCaseInsensitiveMatching` (3),
@@ -1166,28 +1166,74 @@
   `backend/src/app/services/role_policy_provider.py`. Both API
   factories now pass `role_policy_provider=make_role_policy_provider(db)`
   to `QueryService(...)`.
-- **Provider contract**:
-  - `User.role_id is None` → returns `None` (backward compat for
-    Phase 1-3 callers).
-  - No `RoleConnectionPolicy` row → returns `None`.
-  - No `UserIdentity` row → empty-string `email`/`subject_id` in
-    `user_context`; row filters using these fail closed at
-    `bind_placeholders` time by design.
-  - `try/except Exception` wraps full body; DB errors return `None`
-    (provider failures never 500 a query).
-- **Regression tests added** (8 total, all green):
-  - `TestRealRolePolicyProvider` (6) in `test_query_flow_policy.py`:
-    load user/role/policy/identity, None fallbacks (no role_id, no
-    policy row, db error), no-identity placeholder strings, and
-    end-to-end factory enforcement without test injection.
-  - `tests/unit/test_t712_factory_wires_policy_provider.py` (2):
-    asserts both `_get_query_service` and
-    `_build_query_service_for_connection` call
-    `make_role_policy_provider(db)` and pass the result to
-    `QueryService(role_policy_provider=...)`.
-- **Test count**: 1230 → 1232 unit (the prior 1281 figure included
-  integration-marked tests not run under `-m "not integration"`).
-  All other unit tests still pass; no audit pre-existing failures
-  observed in this run.
-- **Gates**: pytest 1232 pass, ruff check clean, ruff format clean,
-  git diff --check clean.
+- **Initial provider contract (v1)**: returned `None` for any
+  unresolvable policy. This was a security gap: for a role-bearing
+  user, `None` made the query service treat the request as legacy
+  un-authenticated and skip schema filter, role auth, row filters,
+  and column masks.
+
+### T-712 Follow-up: Provider Fails Closed for Role-Bearing Users
+- **Date**: 2026-06-05
+- **Commits**: `<this commit>` (provider) and follow-up tests
+- **PR**: #129 (same PR, blocker fix)
+- **Bug class**: provider fail-opened for role-bearing users when
+  the policy row was missing or the DB errored during the lookup.
+  `QueryService` treats `None` as "no policy applies" and the
+  request fell through to the legacy un-authenticated flow. For a
+  user with `role_id` this violated FR-128 / FR-130 / FR-131 /
+  FR-132 and the `/query/submit` contract lines 351-356.
+- **Fix**:
+  - `make_role_policy_provider(db)` now returns `None` ONLY when
+    the user has no `role_id` (the Phase 1-3 legacy admin path).
+  - User has `role_id` but no `role_connection_policies` row →
+    returns a deny-all `RolePolicy` (`allowed_tables=[]`,
+    `row_filters=[]`, `column_masks=[]`, safe
+    `user_context={"email": "", "subject_id": "", "role": ""}`).
+    The query service's pre-LLM check sees the empty
+    `allowed_tables` and returns
+    `EvaluatorRejection(error.queryBlockedPolicy)` BEFORE the LLM
+    is invoked. The LLM never sees the schema and the user gets a
+    sanitized, constant i18n key.
+  - User has `role_id` but the DB raises during the policy
+    lookup → returns a deny-all `RolePolicy`. Provider errors
+    never 500 a query; they fail closed with the same sanitized
+    rejection.
+  - User has `role_id` + policy row but no `user_identities`
+    row → returns a `RolePolicy` with empty-string `email` /
+    `subject_id` in `user_context`. Row filters that reference
+    these placeholders will fail closed at `bind_placeholders`
+    time (`placeholder_binding_failed`) — by design. Deny-all
+    (`allowed_tables=[]`) is also fail-closed.
+  - `QueryService._resolve_role_policy` docstring updated to
+    match: `None` only for unconfigured provider or no `role_id`.
+  - Module + closure docstrings rewritten to describe the
+    fail-closed contract and the sanitization guarantees (no
+    role id, connection id, table, column, SQL, user value,
+    DB error, host/port, username, driver, stack trace,
+    credential, token, cert, or SAML/OIDC XML in any return
+    value or error path).
+- **Tests updated / added** (8 in the flow-policy file + 2
+  factory tests still green):
+  - `TestRealRolePolicyProvider::test_real_provider_returns_deny_all_when_no_policy_row`
+    — role-bearing user + no row → deny-all (not None).
+  - `TestRealRolePolicyProvider::test_real_provider_db_error_returns_deny_all_not_500`
+    — DB exception during lookup → deny-all (not None, not 500).
+  - `TestRealProviderFailClosedEndToEnd::test_production_factory_blocks_before_llm_when_no_policy_row`
+    — production `QueryService` + real provider + no row →
+    `EvaluatorRejection(error.queryBlockedPolicy)` BEFORE the
+    LLM. No SQL, no UUID, no user value, no role id, no
+    connection id in payload.
+  - `TestRealProviderFailClosedEndToEnd::test_production_factory_blocks_before_llm_on_db_error`
+    — DB exception during lookup → `EvaluatorRejection` with no
+    `RuntimeError`, no `pg_terminate_backend`, no `DB down`, no
+    SQL, no UUIDs in payload.
+  - All previous positive tests still green: real policy row →
+    filter → auth → row filter → mask.
+  - `TestBackwardCompat::test_no_role_id_skips_policy_enforcement`
+    still green: `role_id=None` → provider returns `None` →
+    legacy flow unchanged.
+- **Test count**: 1232 → 1234 unit (the prior 1281 figure
+  included integration-marked tests not run under
+  `-m "not integration"`). All other unit tests still pass.
+- **Gates**: pytest 1234 pass, ruff check clean, ruff format
+  clean, git diff --check clean.
