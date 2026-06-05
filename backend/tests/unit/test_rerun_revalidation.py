@@ -966,22 +966,17 @@ class TestRerunConnectionContext:
         )
 
         # Mismatch → None (caller surfaces sanitized 404).
-        assert result is None, (
-            f"expected None on connection mismatch (A vs B), "
-            f"got {type(result).__name__}: {result!r}"
-        )
+        assert result is None, f"expected None on connection mismatch (A vs B), got {type(result).__name__}: {result!r}"
         # Policy provider MUST NOT be consulted for the wrong
         # connection. Connection A's policy never leaks into the
         # rerun path, and connection B's policy is irrelevant
         # because the accepted query was accepted against A.
         assert provider_calls == [], (
-            f"policy provider must not be called on connection "
-            f"mismatch; got {provider_calls!r}"
+            f"policy provider must not be called on connection mismatch; got {provider_calls!r}"
         )
         # Executor MUST NOT be called.
         assert deps["executor"].calls == [], (
-            f"executor must not be called on connection mismatch; "
-            f"got {deps['executor'].calls!r}"
+            f"executor must not be called on connection mismatch; got {deps['executor'].calls!r}"
         )
         # LLM never called.
         if hasattr(service._llm, "generate_sql"):
@@ -996,10 +991,7 @@ class TestRerunConnectionContext:
         # into the call graph (the provider was never called, so
         # neither UUID appears in the policy provider's call log).
         for call in provider_calls:
-            assert call["cid"] != conn_b, (
-                "connection B leaked into the policy provider on "
-                "mismatch"
-            )
+            assert call["cid"] != conn_b, "connection B leaked into the policy provider on mismatch"
 
     @pytest.mark.asyncio
     async def test_rerun_uses_accepted_connection_id_when_no_caller_connection(
@@ -1058,13 +1050,9 @@ class TestRerunConnectionContext:
         assert isinstance(result, QueryResult)
         # Provider called with connection A (accepted), NOT the
         # service default.
-        assert len(provider_calls) == 1, (
-            f"expected provider called once, got {len(provider_calls)}: "
-            f"{provider_calls!r}"
-        )
+        assert len(provider_calls) == 1, f"expected provider called once, got {len(provider_calls)}: {provider_calls!r}"
         assert provider_calls[0]["cid"] == conn_a, (
-            f"expected provider called with conn_a={conn_a}, "
-            f"got {provider_calls[0]['cid']}"
+            f"expected provider called with conn_a={conn_a}, got {provider_calls[0]['cid']}"
         )
         # And NOT the service default.
         assert provider_calls[0]["cid"] != conn_default, (
@@ -1135,10 +1123,7 @@ class TestRerunConnectionContext:
         # Mismatch → None.
         assert result is None
         # Provider MUST NOT be called for either connection.
-        assert provider_calls == [], (
-            f"provider must not be called on mismatch; got "
-            f"{provider_calls!r}"
-        )
+        assert provider_calls == [], f"provider must not be called on mismatch; got {provider_calls!r}"
         # Executor MUST NOT be called.
         assert deps["executor"].calls == []
         # LLM never called.

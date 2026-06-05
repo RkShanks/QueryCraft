@@ -1050,11 +1050,35 @@ class QueryService:
         if accepted is None:
             return None
 
+        # Multi-connection fix: the accepted row's
+        # ``database_connection_id`` is the AUTHORITATIVE
+        # connection for policy resolution and execution.
+        # If the caller supplied a ``connection_id`` and it
+        # differs from the accepted row's id, return ``None``
+        # (caller surfaces a sanitized 404) BEFORE the policy
+        # provider is consulted and BEFORE the executor is
+        # reached. This prevents a multi-connection leak
+        # where a query accepted under connection A is
+        # revalidated/executed under connection B's policy,
+        # schema, and executor context.
+        if (
+            connection_id is not None
+            and accepted.database_connection_id is not None
+            and connection_id != str(accepted.database_connection_id)
+        ):
+            return None
+
         stored_sql = accepted.generated_sql
         if not stored_sql:
             return self._role_auth_rejection()
 
-        role_policy = await self._resolve_role_policy(user_id, connection_id)
+        # Use the accepted row's connection id (not the
+        # caller's arg, not the service default, not the
+        # first configured source DB) for policy resolution.
+        resolved_connection_id = (
+            str(accepted.database_connection_id) if accepted.database_connection_id is not None else connection_id
+        )
+        role_policy = await self._resolve_role_policy(user_id, resolved_connection_id)
 
         if role_policy is not None and not role_policy.allowed_tables:
             return self._role_auth_rejection()
