@@ -851,9 +851,9 @@
 ### Status
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.3b row filter validation complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124.
-- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/125 (Wave 17.3b — Row Filter Validation)
+- **Current point**: Wave 17.3c row filter injection (placeholder binding + drift guard) complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125.
+- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/126 (Wave 17.3c — Placeholder Binding + Row Filter Injection)
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -868,9 +868,39 @@
     `current_user`), set operations, DML/DDL multi-statements, comments,
     unknown placeholders, case-insensitive matching, immutability, and
     sanitized error messages.
+- Wave 17.3c placeholder binding + row filter injection + schema drift guard is complete:
+  - `PolicyEnforcementService.bind_placeholders()` translates `{user.email}`,
+    `{user.subject_id}`, `{user.role}` to driver-appropriate parameter
+    tokens (`$N` for postgres, `%s` for mysql, `?` for mssql) and emits
+    a params tuple. 26 TDD tests cover email/subject_id/role binding,
+    repeated and distinct placeholder indexing, postgres start_index
+    (1, 2, 10), dialect styles, unknown placeholder, missing/None user
+    value, raw user value never in SQL.
+  - `PolicyEnforcementService.apply_row_filters()` parses the generated
+    SQL with sqlglot, AND-conjunctions each row filter into the WHERE
+    clause (or adds WHERE if none exists), resolves placeholders, and
+    transpiles to the target dialect. Internal AST merging uses `?`
+    uniformly; a final post-processing pass converts to driver style.
+    22 TDD tests cover WHERE-adding, AND-conjunction, postgres
+    start_index max+1, multi-filter AND, empty filter list, dialect
+    transpilation smoke, malformed/non-SELECT/multi-statement input,
+    BoundSql shape, schema immutability, no user-value leak.
+  - Schema drift guard (T-705): re-checks every column reference in
+    every filter against the current connection schema. Missing
+    column or table raises `PolicySchemaConflictError` (sanitized
+    constant message + i18n key `error.policySchemaConflict`) and
+    emits `AuditActionType.POLICY_SCHEMA_MISMATCH` via the optional
+    `audit_hook` callable. Payload contains only the admin-configured
+    table name — never filter SQL, missing column, or user values.
+    17 TDD tests cover drift detection, sanitized error (no filter
+    SQL / column / user-value leak; constant across invocations),
+    i18n key, audit hook on drift / not on success / optional /
+    once-per-drift, cross-dialect drift.
+  - New exception class `PolicySchemaConflictError` in
+    `app/core/exceptions.py`; new i18n key `error.policySchemaConflict`
+    in `frontend/src/locales/en.json`.
 
 ### Remaining Wave 17.3 Work
-- T-702..T-705: Placeholder binding, injection hardening, schema drift guard.
 - T-706..T-707: Column masking.
 - T-708..T-710: Evaluator rule.
 - T-711..T-712: Query flow integration.
@@ -879,5 +909,5 @@
 - T-722: Wave 17.3 backend gate.
 
 ### Next Dispatch Constraint
-- Continue Wave 17.3 backend policy enforcement (T-702+).
+- Continue Wave 17.3 backend policy enforcement (T-706+).
 - T-722 (backend gate) must pass before Wave 17.3 close.
