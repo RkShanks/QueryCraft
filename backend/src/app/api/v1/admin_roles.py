@@ -23,6 +23,7 @@ from app.db.models.enums import HealthStatus, LifecycleState, Permission, Schema
 from app.db.models.role import Role
 from app.db.models.role_connection_policy import RoleConnectionPolicy
 from app.db.models.sso_group_mapping import SsoGroupMapping
+from app.evaluator.rules.read_only import DIALECT_MAP
 from app.evaluator.rules.role_authorization import RoleAuthorizationRule
 from app.evaluator.schema_context import Column, SchemaContext, Table
 from app.repositories.connection_repository import ConnectionRepository
@@ -458,6 +459,25 @@ def _build_schema_from_entries(entries):
     return SchemaContext(tables=list(tables.values()))
 
 
+def _resolve_dialect(database_type) -> str:
+    """Map a ``DatabaseType`` (or any value) to a sqlglot read dialect.
+
+    Uses the canonical ``DIALECT_MAP`` from ``app.evaluator.rules.read_only``
+    (T-429 / FR-071) so PostgreSQL / MySQL / MSSQL get the dialect they
+    actually need. Falls back to ``"postgres"`` (the conservative
+    default used by ``read_only`` and ``role_authorization``) when the
+    value is missing, ``None``, an unexpected type, or an unknown enum
+    member. The fallback is never surfaced to the client — the endpoint
+    uses the dialect only inside the role-auth rule, which already
+    returns the constant ``"query_blocked_policy"`` for every parse
+    failure (no dialect name is ever echoed in the response).
+    """
+    try:
+        return DIALECT_MAP[database_type]
+    except (KeyError, TypeError):
+        return "postgres"
+
+
 @router.post("/{role_id}/test-policy")
 async def test_role_policy(
     request: Request,
@@ -637,14 +657,24 @@ async def test_role_policy(
         # table, column, schema, or driver text. The i18n message key
         # we surface is the constant "error.queryBlockedPolicy" per
         # api-contracts.md line 385.
+        #
+        # Dialect: chosen from the connection's ``database_type`` via
+        # the canonical ``DIALECT_MAP`` (T-429 / FR-071). PostgreSQL
+        # gets ``"postgres"``, MySQL gets ``"mysql"``, MSSQL gets
+        # ``"tsql"``. Missing / unknown enum members fall back to
+        # ``"postgres"`` (the conservative default used by
+        # ``read_only`` and ``role_authorization``); the fallback is
+        # never surfaced in the response, the dialect name is internal
+        # to the rule's sqlglot call.
         would_be_allowed = bool(accessible_tables)
         message_key: str | None = None
         sample_sql = body.sample_sql if isinstance(body.sample_sql, str) else None
         if sample_sql and sample_sql.strip():
+            dialect = _resolve_dialect(getattr(conn, "database_type", None))
             rule = RoleAuthorizationRule(
                 allowed_tables=allowed_tables if allowed_tables else None,
                 column_masks=column_masks_list if column_masks_list else None,
-                dialect="postgres",
+                dialect=dialect,
             )
             allowed, _reason = await rule.evaluate(sample_sql, schema_context)
             would_be_allowed = bool(allowed)
