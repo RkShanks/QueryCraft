@@ -1242,17 +1242,17 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3g (Role Policy Test Endpoint)
+## Historical Checkpoint — Through Wave 17.3g (Role Policy Test Endpoint)
 
 ### Status
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.3g role policy test endpoint RED + GREEN
-  complete on branch `phase-5/wave-17.3g-role-policy-test-endpoint`.
-  PR will be opened off main once DOCS commit lands.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127, #128, #129.
-- **Current/open PR**: Wave 17.3g (T-713/T-714) — Role Policy Test
-  Endpoint (FR-136 dry-run, no LLM, no source-DB query).
+- **Current point**: Wave 17.3g role policy test endpoint merged
+  to main as PR #130.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127, #128, #129, #130.
+- **Current/open PR**: Wave 17.3h (T-715/T-716) — Query History
+  Scoping (FR-134 / SC-053: user sees only own history, no
+  cross-user leakage, admins not exempt).
 
 ### Wave 17.3g Scope (T-713 / T-714)
 - **T-713**: 16 RED tests in
@@ -1586,3 +1586,164 @@
   failures unchanged.
 - **Gates**: pytest 1260 pass, ruff check clean, ruff
   format clean, git diff --check clean.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.3h (Query History Scoping)
+
+### Wave 17.3h Scope (T-715 / T-716)
+- **T-715** — 17 RED-then-GREEN tests in
+  `backend/tests/unit/test_history_scoping.py` across 6 classes:
+  - `TestPerUserIsolation` (4): per-user isolation; admin session
+    is NOT exempt from per-user scoping (api-contracts.md line 362
+    — admins see only their own user_id's rows, not a system-wide
+    view).
+  - `TestEmptyAndPagination` (2): empty history returns `[]`, not
+    other users' rows; pagination `limit=2` returns 2 of the
+    caller's own rows.
+  - `TestPermissionAndSession` (3): missing `query.history.view`
+    → 403 `error.forbidden`; unmapped user (FR-126 / SC-048) → 403;
+    no session → 401 `error.unauthorized`.
+  - `TestRepositoryUserIdPredicate` (4): regression guards
+    pinning the user_id predicate at the repository layer
+    (`list_by_user`, `count_by_user`). A future refactor that
+    drops the user_id filter breaks these tests.
+  - `TestResponseShapeAndSanitization` (2): response shape
+    backward-compatible (`items`, `total`, `next_cursor`); User
+    B's `question_text` and `generated_sql` never appear in
+    User A's response.
+  - `TestDetailScoping` (2): `GET /history/{id}` also passes
+    user_id to the repo; detail lookup for User B's row from
+    User A's session returns 404 (not 200 with another user's
+    row).
+- **T-716** — `GET /history`, `GET /history/{id}`, and
+  `DELETE /history/{id}` in `backend/src/app/api/v1/history.py`
+  renamed the `require_active_user` dep alias to
+  `current_user_id` to make the spec formula
+  `user_id = current_user.id` visible at the endpoint
+  signature. Behaviour is unchanged: the same user_id is
+  forwarded to the service. The module docstring documents
+  the full chain (session → dep → endpoint → service → repo
+  WHERE clause) so a reviewer can see the contract without
+  walking the dependency chain.
+
+### Endpoint Contract (per api-contracts.md line 359-362)
+- Permission: `query.history.view` (sanitized 403 when missing).
+- Filter: `user_id = current_user.id` at the DB query layer.
+  No cross-user visibility. Admins are not exempt (the admin's
+  own user_id is what the endpoint must use).
+- Response shape unchanged: `{items, total, next_cursor}`.
+- Detail endpoint: `GET /history/{id}` returns 404 if the row
+  belongs to a different user (same `current_user.id` filter
+  applied).
+- Delete endpoint: `DELETE /history/{id}` returns 404 if the
+  row belongs to a different user; only the row's owner can
+  delete it.
+
+### Sanitization Guarantees (defence in depth)
+- The user_id source is `request.state.session["user_id"]`,
+  which the `require_active_user` dependency validates by
+  re-fetching the `User` row from the DB. A stale session
+  whose user no longer exists raises 401 `error.unauthorized`
+  and the session is cleaned up in Redis. The endpoint never
+  trusts a client-supplied user id.
+- The `user_id` filter is applied at the SQL `WHERE` clause
+  in `AcceptedQueryRepository.list_by_user`, `count_by_user`,
+  `get_by_id`, `delete_by_id`, and `list_by_session`. A
+  missing or wrong user_id is impossible at the repo level:
+  the unit tests pin this.
+- Empty history for the caller returns `{items: [], total: 0,
+  next_cursor: null}` — never another user's rows.
+- Pagination cursor walks the caller's own rows only (the
+  cursor encodes the caller's `accepted_at` + `id` tuple and
+  the WHERE clause keeps scoping to the caller's user_id).
+- Errors are sanitized by the existing `require_permission`
+  (401 / 403 with constant message_keys) and by the service's
+  `HTTPException(404, ...)` path. No raw UUIDs, DB errors, SQL,
+  stack traces, host/port, usernames, credentials, or tokens
+  leak in any response or error path.
+
+### Test Seams (intentional, documented)
+- The test harness uses `SessionInjectionMiddleware` to set
+  `request.state.session` per test, matching the pattern in
+  `test_policy_test_endpoint.py` and `test_role_endpoints.py`.
+- `require_active_user` is overridden with a `Request`-typed
+  shim that pulls `user_id` from `request.state.session`.
+  Without the explicit `Request` type hint, FastAPI treats
+  the request param as a query parameter and returns 422.
+- `_get_history_service` is overridden with a `HistoryService`
+  built from a `MagicMock` repo + `MagicMock` connection_repo.
+  The mock repo enforces that `list_by_user` / `count_by_user`
+  are called with a real user_id; a missing user_id would
+  return `[]` (defence in depth, since production code
+  always passes one).
+- The 3 pre-existing `TestHistoryPermissionGates` direct-call
+  tests in `test_permission_gates_all.py` were updated to
+  pass `current_user_id=...` to match the renamed parameter.
+  Test names, assertions, and intent unchanged.
+
+### Test Coverage (17 tests, all green)
+- `TestPerUserIsolation` (4) — User A sees only A, User B
+  sees only B, mixed history disjoint, admin scoped to own.
+- `TestEmptyAndPagination` (2) — empty returns `[]` not other
+  users' rows; `limit=2` returns 2 of caller's own.
+- `TestPermissionAndSession` (3) — 403 missing permission, 403
+  unmapped, 401 no session.
+- `TestRepositoryUserIdPredicate` (4) — `list_by_user` called
+  with user A id, called with user B id, `count_by_user`
+  called with current user id, two sessions → two distinct
+  repo calls with the right ids.
+- `TestResponseShapeAndSanitization` (2) — response shape
+  preserved; no cross-user question_text / generated_sql in
+  response.
+- `TestDetailScoping` (2) — User A cannot fetch User B's
+  detail (404 sanitized); User A can fetch own detail (200).
+
+### Test Count
+- 1260 (post-17.3g follow-up 2) → 1277 unit pass
+  (`-m "not integration"`).
+- The 4 pre-existing audit DB-state failures
+  (`test_audit_service.py` and
+  `test_audit_chain_verification.py`) are unchanged and
+  unrelated to this wave.
+
+### Gates (all green)
+- `pytest tests/unit/test_history_scoping.py -q` → 17 passed.
+- `pytest tests/unit -q -m "not integration"` → 1277 passed,
+  61 skipped, 9 deselected, 12 warnings.
+- `ruff check src tests` → All checks passed.
+- `ruff format --check src tests` → 301 files already formatted.
+- `git diff --check` → clean.
+
+### Commits on Wave 17.3h Branch
+- `a7e2de1` test(T-715): query history scoping regression tests
+  (17 tests across 6 classes).
+- `964ebb0` feat(T-716): explicit `user_id = current_user.id`
+  at /history signature (alias rename + module/handler
+  docstrings + test_permission_gates_all caller updates).
+
+### Next Steps (Wave 17.3i and beyond)
+- Wave 17.3i — Accepted-Query Rerun Re-Validation
+  (T-717 / T-718) — re-check SQL against current role
+  policy before execution.
+- Wave 17.3j — Query Lifecycle Audit Logging (T-719 / T-720) —
+  submit / validate / execute / accept / reject / policy block.
+- Wave 17.3k — Cross-Dialect Policy Enforcement
+  (T-721, integration). Row filters + column masks verified
+  against PostgreSQL, MySQL, MSSQL via testcontainers.
+- Wave 17.3l — Backend Foundation Gates (T-722) — CI-equivalent
+  ruff check / pytest / format pass.
+- Frontend policy editor (T-725+) is out of scope for backend
+  waves.
+
+### Open Questions / Decisions for Future Waves
+- None for Wave 17.3h. The contract is fully specified by
+  FR-134, SC-053, and api-contracts.md line 359-362, and the
+  implementation matches the spec formula. The existing
+  `require_active_user` → `service` → `repository` chain
+  was already enforcing the contract; T-716 made the contract
+  self-documenting at the endpoint signature and T-715 pinned
+  it with regression tests.
+- Wave 17.3i (T-717 / T-718) is the next open work item. It
+  is out of scope for this PR and remains in the next-wave
+  bucket per the `### Next Steps` section above.

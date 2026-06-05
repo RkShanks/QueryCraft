@@ -296,8 +296,8 @@
 
 ### Backend — Query History Scoping (Owner: Kimi ( opencode ))
 
-- [ ] T-715 [US32] Write TDD tests for query history scoping (user sees only own queries, no cross-user leakage) in `backend/tests/unit/test_history_scoping.py` — FR-134, SC-053
-- [ ] T-716 [US32] Modify `GET /history` in `backend/src/app/api/v1/history.py`: filter by `user_id = current_user.id` — FR-134
+- [X] T-715 [US32] Write TDD tests for query history scoping (user sees only own queries, no cross-user leakage) in `backend/tests/unit/test_history_scoping.py` — FR-134, SC-053
+- [X] T-716 [US32] Modify `GET /history` in `backend/src/app/api/v1/history.py`: filter by `user_id = current_user.id` — FR-134
 
 ### Backend — Accepted Query Rerun Revalidation (Owner: Kimi ( opencode ))
 

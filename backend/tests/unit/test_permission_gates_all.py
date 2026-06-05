@@ -416,7 +416,7 @@ class TestHistoryPermissionGates:
         result = await list_history(
             cursor=None,
             limit=100,
-            user_id="user1",
+            current_user_id="user1",
             _session={"permissions": [Permission.QUERY_HISTORY_VIEW.value]},
             service=mock_service,
         )
@@ -430,7 +430,7 @@ class TestHistoryPermissionGates:
         mock_service.get_detail = AsyncMock(return_value=MagicMock())
         result = await get_history_entry(
             query_id=uuid.uuid4(),
-            user_id="user1",
+            current_user_id="user1",
             _session={"permissions": [Permission.QUERY_HISTORY_VIEW.value]},
             service=mock_service,
         )
@@ -444,7 +444,7 @@ class TestHistoryPermissionGates:
         mock_service.delete_entry = AsyncMock(return_value=True)
         result = await delete_history_entry(
             query_id=uuid.uuid4(),
-            user_id="user1",
+            current_user_id="user1",
             _session={"permissions": [Permission.QUERY_HISTORY_VIEW.value]},
             service=mock_service,
         )
