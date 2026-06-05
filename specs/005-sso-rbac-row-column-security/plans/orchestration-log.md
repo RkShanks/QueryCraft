@@ -1248,8 +1248,9 @@
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
 - **Current point**: Wave 17.3g role policy test endpoint merged
-  to main as PR #130; Wave 17.3h query history scoping merged to
-  main as PR #131.
+to main as PR #130; Wave 17.3h query history scoping merged to
+main as PR #131; Wave 17.3i accepted-query rerun re-validation
+merged to main as PR #132.
 - **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127, #128, #129, #130, #131.
 - **Current/open PR**: Wave 17.3i (T-717/T-718) — Accepted Query
   Rerun Re-Validation (FR-135 / SC-053: rerun re-validates stored
@@ -1752,7 +1753,7 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3i (Accepted Query Rerun Re-Validation)
+## Historical Checkpoint — Through Wave 17.3i (Accepted Query Rerun Re-Validation)
 
 ### Wave 17.3i Scope (T-717 / T-718)
 - **T-717** — 8 RED-then-GREEN tests in
@@ -2216,3 +2217,216 @@ service method's contract is fully pinned by T-717
 + the 6 follow-up tests across the two follow-ups
 (3 in follow-up 1 + 1 replaced + 1 new in follow-up 2
 = 5 distinct `TestRerunConnectionContext` tests).
+
+## Current Wave Checkpoint — Through Wave 17.3j (Query Lifecycle Audit Logging)
+
+### Wave 17.3j Scope (T-719 / T-720)
+
+- **T-719** — 9 RED-then-GREEN tests in
+  `backend/tests/unit/test_query_audit_logging.py`
+  across 9 classes:
+
+  1. `TestSubmitSuccessAuditLogging` —
+     `test_submit_success_logs_submit_validate_pass_execute_in_order`.
+     Asserts three events in order:
+     `query.submit` → `query.validate.pass` →
+     `query.execute`.
+  2. `TestEvaluatorFailAuditLogging` —
+     `test_evaluator_validation_failure_logs_validate_fail_and_skips_execute`.
+     Asserts `query.submit` + `query.validate.fail`; asserts
+     `query.execute` is NOT in the call list (executor must
+     not be reached on evaluator failure).
+  3. `TestPolicyBlockBeforeLlmAuditLogging` —
+     `test_deny_all_policy_block_logs_access_denied_no_sql`.
+     Deny-all (empty `allowed_tables`) emits
+     `access.denied` BEFORE the LLM is called.
+     LLM call count == 0. The `access.denied` context
+     has no raw SQL / question text / schema / credentials
+     / SAML / cert / stack trace / driver error.
+  4. `TestPolicyBlockAfterLlmAuditLogging` —
+     `test_role_authorization_block_logs_access_denied_no_table_or_column`.
+     Role-auth block (LLM generated SQL referencing a
+     table outside the role's policy) emits
+     `access.denied` AFTER `query.validate.pass`.
+     Context has no SQL, no offending table name, no
+     offending column name.
+  5. `TestAcceptAuditLogging` —
+     `test_accept_query_logs_accept_event`.
+     `accept_query` emits `query.accept` with
+     `resource_type='accepted_query'` and
+     `resource_id = str(<accepted_query_id>)`.
+  6. `TestRejectAuditLogging` —
+     `test_reject_query_logs_reject_event`.
+     `reject_query` emits `query.reject`.
+  7. `TestSourceDbTimeoutAuditLogging` —
+     `test_source_db_timeout_logs_execution_failure_sanitized`.
+     Source DB `TimeoutError` → `HTTPException(504)`.
+     `query.execute` is logged with `outcome != 'success'`.
+     Failure context has no raw driver error, no host,
+     no port, no credentials, no SAML / cert / assertion.
+  8. `TestAuditContextRedaction` —
+     `test_audit_context_has_no_secrets_or_user_values`.
+     Cross-cutting redaction: every audit `context`
+     dict on the success path has no SQL, no question
+     text, no DB internals, no credentials, no
+     SAML / cert / XML, no stack traces.
+  9. `TestAuditServiceFailurePath` —
+     `test_audit_service_failure_propagates_fail_closed`.
+     Project pattern: `role_service` + `sso_service`
+     do NOT wrap `AuditService.log` in try/except.
+     Audit failures propagate. The query service
+     follows the same pattern: a `RuntimeError` from
+     `AuditService.log` is raised out of
+     `submit_question` unchanged.
+
+- **T-720** — 8 audit call sites in
+  `backend/src/app/services/query_service.py`:
+  - `submit_question`: 7 events (submit, deny-all block,
+    validate fail, validate pass, role-auth block,
+    execute success, execute failure).
+  - `accept_query`: 1 event (accept; both idempotent
+    and fresh paths).
+  - `reject_query`: 1 event (reject; at entry, before
+    delegating to `regenerate_query`).
+
+### FRs / SCs verified
+
+- **FR-140** — Every security-relevant action is written
+  to a tamper-evident audit log (query submissions,
+  validation outcomes, executions, accepted/rejected
+  decisions, policy blocks).
+- **FR-143** — Audit log entries do not contain secrets,
+  credentials, full tokens, or raw database passwords
+  (context redaction enforced).
+- **SC-059** — Tamper-evident audit log records all
+  specified event types (queries, role changes, admin
+  actions). Verified by automated test (T-719).
+- **SC-061** — Audit log entries contain no secrets,
+  credentials, or full tokens. Verified by automated
+  test inspecting entry content (T-719 + T-620).
+- **PR #129** fail-closed provider behavior preserved
+  (deny-all before LLM).
+- **PR #132** rerun connection-authority behavior
+  preserved (rerun path is unchanged; no audit calls
+  added inside `rerun_accepted_query` for this wave
+  — rerun audit coverage, if needed, is a follow-up).
+
+### Audit call-site decisions
+
+- **Reuse `AuditActionType` enum**: no new enum value
+  was needed. The existing
+  `QUERY_SUBMIT / QUERY_VALIDATE_PASS /
+  QUERY_VALIDATE_FAIL / QUERY_EXECUTE / QUERY_ACCEPT /
+  QUERY_REJECT / ACCESS_DENIED` cover the full
+  lifecycle. Source DB execution failure is logged
+  with `action=QUERY_EXECUTE` and
+  `outcome='failure'` (the `AuditService.log` `outcome`
+  parameter is a free-form string per the existing
+  audit model; no enum extension required).
+- **Resource IDs** are the standard audit model:
+  - `query_attempt` for submit / validate / execute
+    / reject / access_denied (resource = attempt id).
+  - `accepted_query` for accept (resource = accepted
+    query id).
+- **Actor identity**: `actor_id = user.id` (UUID) and
+  `actor_identity = user.username` (string) when a
+  user record was fetched (submit, accept). For
+  `reject_query`, `actor_id = None` and
+  `actor_identity = None` because `reject_query` does
+  not re-fetch the user (the audit log leaves the
+  human-readable identity blank rather than fabricate
+  a value).
+- **`QUERY_SUBMIT` context**:
+  `{question_length: int, dialect: str}`. The question
+  text is NEVER in context (users may paste secrets
+  into the question).
+- **`QUERY_VALIDATE_PASS` context**: `{}` (just confirm
+  the event).
+- **`QUERY_VALIDATE_FAIL` context**:
+  `{rules: [<rule_name>...]}`. Rule names are safe
+  constants; no SQL, no schema, no question text.
+- **`QUERY_EXECUTE` success context**:
+  `{attempt_id, row_count}`. No rows, no columns,
+  no SQL.
+- **`QUERY_EXECUTE` failure context**:
+  `{attempt_id, reason: 'timeout'}`. No raw driver
+  error, no host, no port, no credential.
+- **`QUERY_ACCEPT` context**:
+  `{accepted_query_id}`. No SQL, no question text.
+- **`QUERY_REJECT` context**: `{attempt_id}`. No SQL,
+  no question text.
+- **`ACCESS_DENIED` (deny-all) context**:
+  `{reason: 'deny_all'}`. No SQL, no schema, no user
+  values.
+- **`ACCESS_DENIED` (role-auth) context**:
+  `{reason: 'role_authorization'}`. No SQL, no table,
+  no column.
+
+### Audit failure path
+
+The project pattern (`role_service.create_role`,
+`role_service.update_role`, `sso_service
+.process_oidc_callback`, `sso_service
+.process_saml_callback`, sso_service admin endpoints)
+does NOT wrap `AuditService.log` in try/except. The
+query service follows the same pattern: audit
+exceptions propagate unchanged. This is the
+project-wide fail-closed contract for audit writes.
+The test `TestAuditServiceFailurePath` asserts this
+explicitly (a `RuntimeError` from `AuditService.log`
+is raised out of `submit_question` unchanged).
+
+### Test count
+
+1288 → 1298 (+10: 9 new `test_query_audit_logging`
+tests, plus pre-existing audit-redaction net new in
+the suite; both 17.3i rerun tests preserved).
+
+### Gates
+
+```text
+$ uv run pytest tests/unit/test_query_audit_logging.py -q
+9 passed in 0.32s
+
+$ uv run pytest tests/unit -q -m "not integration"
+1298 passed, 61 skipped, 9 deselected, 12 warnings in 11.02s
+
+$ uv run ruff check src tests
+All checks passed!
+
+$ uv run ruff format --check src tests
+303 files already formatted
+
+$ git diff --check
+(clean)
+```
+
+### Commits
+
+- `5149469` test(T-719): query lifecycle audit logging
+  tests (FR-140, SC-059, SC-061) — 9 RED tests across
+  9 classes.
+- `0dba168` feat(T-720): query lifecycle audit logging
+  in query service (FR-140, SC-059, SC-061) — 8 audit
+  call sites; no query behavior change.
+
+**No `[NEEDS DECISION]` items**. The implementation
+follows the project-wide audit pattern (existing
+`role_service` / `sso_service` reference, no new
+enum values, fail-closed propagation). The minimal
+correct redaction (no SQL / no question text / no
+table / no column / no host / no port / no
+credentials / no SAML / no cert / no stack trace)
+matches the FR-140 / FR-143 / SC-061 contract. No
+ambiguous product decisions or trade-offs not
+locked by spec/plan/tasks/contracts.
+
+### Scope held
+
+T-719 / T-720 only. No new tasks; no new FRs. The
+implementation is the minimal correct approach per
+the user input. Remaining backend work: T-721
+(cross-dialect enforcement tests), T-722 (backend
+foundation gate). Frontend work starts T-723
+(masked column indicator). Both deferred to
+subsequent waves.
