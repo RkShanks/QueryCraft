@@ -7,6 +7,7 @@ Endpoints:
 - GET /admin/roles/{id}
 - PUT /admin/roles/{id}
 - DELETE /admin/roles/{id}
+- POST /admin/roles/{id}/test-policy  (T-714)
 """
 
 import uuid
@@ -18,12 +19,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.permissions import require_permission
 from app.core.dependencies import get_db
 from app.core.exceptions import BuiltinProtectedError
-from app.db.models.enums import Permission
+from app.db.models.enums import HealthStatus, LifecycleState, Permission, SchemaIntrospectionStatus
 from app.db.models.role import Role
 from app.db.models.role_connection_policy import RoleConnectionPolicy
 from app.db.models.sso_group_mapping import SsoGroupMapping
+from app.evaluator.schema_context import Column, SchemaContext, Table
+from app.repositories.connection_repository import ConnectionRepository
 from app.repositories.role_repository import RoleRepository
-from app.schemas.roles import RoleCreate, RoleUpdate
+from app.schemas.roles import PolicyTestRequest, RoleCreate, RoleUpdate
+from app.services.policy_enforcement import PolicyEnforcementService
 from app.services.role_service import RoleService
 
 router = APIRouter(prefix="/admin/roles", tags=["Admin Roles"])
@@ -379,6 +383,256 @@ async def delete_role(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": "validation", "message_key": "error.validation.generic"},
         ) from None
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal", "message_key": "error.internal"},
+        ) from None
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# T-714: POST /admin/roles/{role_id}/test-policy
+#
+# Dry-run a sample question against a role's policy. Returns the
+# accessible/blocked table summary, applicable row filter + column
+# mask metadata, and a verdict. Does NOT call the LLM and does NOT
+# execute a source-DB query (FR-136).
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _policy_test_connection_state_error(
+    state,
+    health,
+    introspect,
+):
+    """Map connection lifecycle / health / introspection state to a sanitized 400.
+
+    Returns ``None`` when the connection is in a usable state. Order
+    matters: disabled takes precedence over unhealthy, which takes
+    precedence over no-schema (mirrors the query flow pre-flight).
+
+    Uses ``not (a == b)`` (not ``a != b``) so MagicMock test fakes that
+    override ``__eq__`` are honored — ``unittest.mock.MagicMock`` keeps
+    a separate auto-generated ``__ne__`` that does not delegate.
+    """
+    if not (state == LifecycleState.ACTIVE):  # noqa: SIM201
+        return HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_disabled", "message_key": "error.connection_disabled"},
+        )
+    if not (health == HealthStatus.HEALTHY):  # noqa: SIM201
+        return HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_unhealthy", "message_key": "error.connection_unhealthy"},
+        )
+    if not (introspect == SchemaIntrospectionStatus.SUCCESS):  # noqa: SIM201
+        return HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_no_schema", "message_key": "error.connection_no_schema"},
+        )
+    return None
+
+
+def _build_schema_from_entries(entries):
+    """Group connection_schema entries into a SchemaContext.
+
+    Inputs are read but never mutated. The endpoint never inspects or
+    echoes the column data type beyond the schema filter pass.
+    """
+    tables = {}
+    for entry in entries:
+        table = tables.get(entry.table_name)
+        if table is None:
+            table = Table(name=entry.table_name, columns=[])
+            tables[entry.table_name] = table
+        table.columns.append(
+            Column(
+                name=entry.column_name,
+                data_type=entry.column_data_type,
+                is_primary_key=entry.is_primary_key,
+            )
+        )
+    return SchemaContext(tables=list(tables.values()))
+
+
+@router.post("/{role_id}/test-policy")
+async def test_role_policy(
+    request: Request,
+    role_id: str,
+    body: PolicyTestRequest,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+):
+    """POST /admin/roles/{id}/test-policy — dry-run a question against role policy.
+
+    Request body: ``{"question": str, "connection_id": uuid}``.
+
+    Response 200::
+
+        {
+          "accessible_tables": [...],
+          "accessible_columns": {"table": [cols]},
+          "blocked_tables": [...],
+          "applicable_row_filters": [{"table": ..., "filter": ...}],
+          "masked_columns": {"table": [cols]},
+          "would_be_allowed": bool
+        }
+
+    Behaviour:
+    - Loads the role by id. Unknown / malformed role id -> sanitized
+      404 with ``error.notFound``. The id is never echoed.
+    - Loads the connection by id. Unknown / malformed connection id,
+      or inactive / unhealthy / no-schema connection -> sanitized 400
+      with the matching connection_* message key. Credentials, host,
+      port, username, and the raw id are never echoed.
+    - Loads the ``role_connection_policies`` row for
+      ``(role_id, connection_id)``. Missing row -> deny-all result
+      (consistent with PR #129 fail-closed provider; a role with no
+      policy for the connection sees nothing).
+    - Applies ``PolicyEnforcementService.filter_schema`` to the
+      connection's introspected schema with the policy's
+      ``allowed_tables``. The result drives
+      ``accessible_tables`` / ``accessible_columns``.
+    - ``blocked_tables`` = every schema table not in accessible.
+    - ``applicable_row_filters`` is the policy's row-filter list
+      echoed verbatim — never interpolated, never bound. Placeholder
+      syntax (``{user.*}``) is preserved as metadata.
+    - ``masked_columns`` is derived from the policy's ``column_masks``
+      and includes only columns that also appear in
+      ``accessible_columns`` (a mask on a non-accessible column is
+      not a leak risk but is omitted for clarity).
+    - ``would_be_allowed`` is True iff the policy grants at least one
+      table. The endpoint does NOT evaluate generated SQL — that is
+      the role of the live ``/query/submit`` evaluator; this dry-run
+      is a policy-state preview, not a query simulation.
+    - Internal failures (driver errors, missing tables, etc.) are
+      caught and returned as sanitized 500 with constant
+      ``error.internal``. No host / port / username / SQL / stack
+      trace / driver class leaks in any error path.
+    - Inputs (schema entries, allowed_tables, row_filters,
+      column_masks) are never mutated.
+    - The question field is accepted for context but is not used to
+      drive any LLM call or SQL generation.
+    """
+    # Path / body UUID parsing — sanitized 404/400 (never echo the input).
+    try:
+        role_uuid = uuid.UUID(role_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "not_found", "message_key": "error.notFound"},
+        ) from None
+
+    try:
+        conn_uuid = uuid.UUID(body.connection_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
+        ) from None
+
+    # Test seam: tests may inject mock repos on request.state. In
+    # production the attributes are absent and the real db / repos
+    # are used.
+    role_repo_override = getattr(request.state, "role_repo_override", None)
+    conn_repo_override = getattr(request.state, "connection_repo_override", None)
+    db_override = getattr(request.state, "db_override", None)
+    db_to_use = db_override if db_override is not None else db
+
+    try:
+        if role_repo_override is not None:
+            role = await role_repo_override.get_by_id(role_uuid)
+        else:
+            role_repo = RoleRepository(db_to_use)
+            role = await role_repo.get_by_id(role_uuid)
+        if role is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "not_found", "message_key": "error.notFound"},
+            )
+
+        if conn_repo_override is not None:
+            conn = await conn_repo_override.get_by_id(conn_uuid)
+        else:
+            conn_repo = ConnectionRepository(db_to_use)
+            conn = await conn_repo.get_by_id(conn_uuid)
+        if conn is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
+            )
+
+        state_err = _policy_test_connection_state_error(
+            getattr(conn, "lifecycle_state", None),
+            getattr(conn, "health_status", None),
+            getattr(conn, "schema_introspection_status", None),
+        )
+        if state_err is not None:
+            raise state_err
+
+        if conn_repo_override is not None:
+            schema_entries = await conn_repo_override.get_schema_entries(conn.id)
+        else:
+            schema_entries = await ConnectionRepository(db_to_use).get_schema_entries(conn.id)
+        schema_context = _build_schema_from_entries(schema_entries)
+
+        # Load the role_connection_policies row for (role_id, conn_id).
+        # Missing row -> deny-all (fail-closed, matches PR #129 provider).
+        result = await db_to_use.execute(
+            select(RoleConnectionPolicy).where(
+                RoleConnectionPolicy.role_id == role_uuid,
+                RoleConnectionPolicy.connection_id == conn_uuid,
+            )
+        )
+        policy_row = result.scalars().first()
+
+        if policy_row is None:
+            allowed_tables: list[dict] = []
+            row_filters_list: list[dict] = []
+            column_masks_list: list[dict] = []
+        else:
+            allowed_tables = policy_row.allowed_tables or []
+            row_filters_list = policy_row.row_filters or []
+            column_masks_list = policy_row.column_masks or []
+
+        # Apply the role policy to the connection schema. The
+        # policy_enforcement service never mutates its inputs.
+        filtered_schema = PolicyEnforcementService.filter_schema(schema_context, allowed_tables)
+        accessible_tables = [t.name for t in filtered_schema.tables]
+        accessible_columns = {t.name: [c.name for c in t.columns] for t in filtered_schema.tables}
+
+        # Blocked = every schema table not in accessible. Preserve the
+        # original schema order via a set difference.
+        all_tables = [t.name for t in schema_context.tables]
+        blocked_tables = [name for name in all_tables if name not in accessible_tables]
+
+        # Row filters / masks returned as metadata only. The endpoint
+        # does NOT bind placeholders, does NOT inject the filter into
+        # any SQL, and does NOT transform masked values. Placeholder
+        # syntax is preserved verbatim.
+        applicable_row_filters = [
+            {"table": rf.get("table"), "filter": rf.get("filter")} for rf in row_filters_list if isinstance(rf, dict)
+        ]
+        masked_columns = {}
+        for entry in column_masks_list:
+            if not isinstance(entry, dict):
+                continue
+            table_name = entry.get("table")
+            cols = entry.get("columns")
+            if not isinstance(table_name, str) or not isinstance(cols, list):
+                continue
+            masked_columns[table_name] = [c for c in cols if isinstance(c, str)]
+
+        return {
+            "accessible_tables": accessible_tables,
+            "accessible_columns": accessible_columns,
+            "blocked_tables": blocked_tables,
+            "applicable_row_filters": applicable_row_filters,
+            "masked_columns": masked_columns,
+            "would_be_allowed": bool(accessible_tables),
+        }
     except HTTPException:
         raise
     except Exception:
