@@ -36,6 +36,10 @@ from app.evaluator.schema_context import Column, SchemaContext, Table
 # leaking which key was missing or what dialect was requested.
 _PLACEHOLDER_BINDING_FAILED = "placeholder_binding_failed"
 
+# Constant error code for any injection failure. Intentionally opaque:
+# does not leak the offending SQL, schema, or dialect.
+_FILTER_INJECTION_FAILED = "filter_injection_failed"
+
 # Placeholder token per dialect driver:
 # - asyncpg (postgres): ``$1``, ``$2``, ... (numbered, configurable start)
 # - asyncmy (mysql):    ``%s`` (positional)
@@ -45,6 +49,15 @@ _DIALECT_PARAM_STYLE: dict[str, str] = {
     "postgresql": "numbered",
     "mysql": "positional",
     "mssql": "positional",
+}
+
+# Map our public dialect name to the sqlglot dialect name used for parsing
+# and transpilation. ``tsql`` is the sqlglot name for Microsoft SQL Server.
+_SQLGLOT_DIALECT: dict[str, str] = {
+    "postgres": "postgres",
+    "postgresql": "postgres",
+    "mysql": "mysql",
+    "mssql": "tsql",
 }
 
 # Allowed identity placeholders. Anything else inside ``{...}`` is rejected.
@@ -347,15 +360,21 @@ class PolicyEnforcementService:
         dialect: str = "postgres",
         start_index: int = 1,
     ) -> BoundSql:
-        """Resolve ``{user.*}`` placeholders to dialect parameter tokens + values.
+        """Resolve ``{user.*}`` placeholders to driver parameter tokens + values.
 
         The input ``filter_sql`` is the already-validated fragment from
         ``validate_row_filter``. Each ``{user.<key>}`` occurrence is
-        replaced in left-to-right order with a dialect-appropriate
+        replaced in left-to-right order with a driver-appropriate
         placeholder (``$N`` for postgres, ``%s`` for mysql, ``?`` for
         mssql) and the corresponding value is appended to ``params`` in
         the same order. User values are never interpolated into the SQL
         string — they live only in ``params``.
+
+        This is the public binding entry point used by
+        ``apply_row_filters`` and any other caller. The function does
+        NOT use sqlglot to parse the fragment — the input is a simple
+        string with ``{user.*}`` placeholders and the output is a
+        string with driver-style placeholders.
 
         Args:
             filter_sql: Validated filter fragment containing zero or more
@@ -364,8 +383,8 @@ class PolicyEnforcementService:
             user_context: Mapping with the resolved user values. Each
                 ``{user.<key>}`` placeholder looks up ``<key>`` in this
                 dict; missing or ``None`` values fail closed.
-            dialect: Target sqlglot driver dialect. Unknown dialects
-                fail closed.
+            dialect: Target driver dialect. Unknown dialects fail
+                closed.
             start_index: For numbered dialects, the index of the first
                 emitted parameter (default ``1``). Ignored for
                 positional dialects.
@@ -405,12 +424,9 @@ class PolicyEnforcementService:
             occurrence += 1
             return token
 
-        # ``re.sub`` with a function repl is safe — match positions are
-        # scanned left-to-right, replacement is verbatim.
         try:
             new_sql = _PLACEHOLDER_RE.sub(_replace, filter_sql)
         except ValueError:
-            # Already a binding failure; re-raise unchanged.
             raise
 
         # Reject any leftover ``{user.`` shapes that the regex did not
@@ -421,6 +437,203 @@ class PolicyEnforcementService:
             raise ValueError(_PLACEHOLDER_BINDING_FAILED)
 
         return BoundSql(sql=new_sql, params=tuple(params))
+
+    @staticmethod
+    def apply_row_filters(
+        sql: str,
+        row_filters: list[dict[str, Any]],
+        schema: SchemaContext,
+        user_context: dict[str, Any],
+        dialect: str = "postgres",
+    ) -> BoundSql:
+        """Inject per-role row filters into a generated SQL statement.
+
+        Each ``row_filters`` entry is ``{"table": str, "filter": str}``.
+        The ``filter`` is a WHERE-condition fragment already validated
+        by ``validate_row_filter`` and may contain ``{user.*}``
+        placeholders.
+
+        The generated ``sql`` is parsed with sqlglot in the target
+        dialect. For each filter:
+        1. Placeholders are bound to driver-appropriate tokens via
+           ``bind_placeholders`` (postgres: ``$N`` continuing from
+           max+1 of the existing SQL; mysql: ``%s``; mssql: ``?``).
+        2. The bound filter is normalized to use ``?`` placeholders
+           internally and re-parsed as ``SELECT 1 WHERE <bound>``.
+        3. Its WHERE expression is AND-conjunctions into the main
+           statement's WHERE (or added as a new WHERE if none exists).
+        4. Bound values are appended to the returned ``params`` tuple.
+
+        After AST manipulation, the final SQL is renumbered to the
+        target driver's style:
+        - postgres / asyncpg: ``$N`` starting at ``max+1``
+        - mysql / asyncmy: ``%s`` (positional)
+        - mssql / aioodbc: ``?`` (positional, native)
+
+        Args:
+            sql: Generated SQL statement, already transpiled to the
+                target dialect.
+            row_filters: Role-configured row filters. Each must have
+                string ``table`` and string ``filter`` keys.
+            schema: Connection schema (used by T-705 for drift checks).
+            user_context: Mapping with resolved user values for
+                placeholder binding.
+            dialect: Target driver dialect (one of ``postgres``,
+                ``mysql``, ``mssql``).
+
+        Returns:
+            ``BoundSql`` with the rewritten SQL in the target driver's
+            placeholder style and the row-filter parameter values (in
+            occurrence order). User values are never interpolated.
+
+        Raises:
+            ValueError: ``"filter_injection_failed"`` for malformed
+                input, unparseable SQL, non-SELECT generated SQL,
+                multi-statement input, or any bind failure. Constant
+                error code, no leak of SQL/schema/dialect internals.
+        """
+        if not isinstance(sql, str):
+            raise ValueError(_FILTER_INJECTION_FAILED)
+        if not isinstance(row_filters, list):
+            raise ValueError(_FILTER_INJECTION_FAILED)
+        if not isinstance(schema, SchemaContext):
+            raise ValueError(_FILTER_INJECTION_FAILED)
+        if not isinstance(user_context, dict):
+            raise ValueError(_FILTER_INJECTION_FAILED)
+
+        sqlglot_dialect = _SQLGLOT_DIALECT.get(dialect.lower())
+        if sqlglot_dialect is None:
+            raise ValueError(_FILTER_INJECTION_FAILED)
+
+        # Parse the generated SQL. Reject parse errors, multi-statement
+        # input, and non-SELECT statements.
+        try:
+            parsed = sqlglot.parse(sql, read=sqlglot_dialect)
+        except Exception:
+            raise ValueError(_FILTER_INJECTION_FAILED) from None
+        if not parsed or len(parsed) != 1 or parsed[0] is None:
+            raise ValueError(_FILTER_INJECTION_FAILED)
+        stmt = parsed[0]
+        if not isinstance(stmt, exp.Select):
+            raise ValueError(_FILTER_INJECTION_FAILED)
+
+        # Compute the postgres start_index from existing $N placeholders.
+        # For mysql/mssql, ignored by the renumbering pass.
+        start_index = _next_postgres_index(stmt, sqlglot_dialect)
+        render_start_index = start_index  # captured before any advancement
+
+        params: list[Any] = []
+        for rf in row_filters:
+            if not isinstance(rf, dict):
+                raise ValueError(_FILTER_INJECTION_FAILED)
+            table_name = rf.get("table")
+            filter_sql = rf.get("filter")
+            if not isinstance(table_name, str) or not isinstance(filter_sql, str):
+                raise ValueError(_FILTER_INJECTION_FAILED)
+
+            # Bind placeholders to the driver's native style. The
+            # internal AST re-uses ``?`` (Placeholder) regardless of
+            # driver, so the driver-specific token from bind_placeholders
+            # is converted back to ``?`` for parsing here. The
+            # post-processing step at the end re-emits driver style.
+            bound = PolicyEnforcementService.bind_placeholders(filter_sql, user_context, dialect, start_index)
+            params.extend(bound.params)
+            internal_filter_sql = _to_internal_placeholder(bound.sql, dialect)
+
+            # Parse the bound filter wrapped as a SELECT so we can lift
+            # its WHERE expression for AND-conjunction. Parse in tsql
+            # (which understands ``?``) regardless of target dialect
+            # to keep the internal format uniform.
+            wrapped = f"SELECT 1 WHERE {internal_filter_sql}"
+            try:
+                filter_stmt = sqlglot.parse_one(wrapped, read="tsql")
+            except Exception:
+                raise ValueError(_FILTER_INJECTION_FAILED) from None
+            if not isinstance(filter_stmt, exp.Select):
+                raise ValueError(_FILTER_INJECTION_FAILED)
+            filter_where = filter_stmt.args.get("where")
+            if filter_where is None:
+                raise ValueError(_FILTER_INJECTION_FAILED)
+            new_expr = filter_where.this
+
+            # AND-conjunction (or add new WHERE).
+            existing = stmt.args.get("where")
+            if existing is None:
+                stmt = stmt.where(new_expr)
+            else:
+                stmt.set("where", exp.Where(this=exp.and_(existing.this, new_expr)))
+
+            # Advance the start_index for the next filter.
+            start_index += len(bound.params)
+
+        # Serialize back to the target sqlglot dialect, then convert
+        # the ``?`` placeholders (added by us) to driver style.
+        out_sql = stmt.sql(dialect=sqlglot_dialect)
+        out_sql = _render_placeholders_for_driver(out_sql, dialect.lower(), render_start_index)
+        return BoundSql(sql=out_sql, params=tuple(params))
+
+
+def _next_postgres_index(stmt: exp.Expression, sqlglot_dialect: str) -> int:
+    """Return the next safe ``$N`` index for a postgres SELECT.
+
+    For postgres we take ``max($N) + 1`` to avoid colliding with any
+    existing placeholder, even if there are gaps. For mysql/mssql the
+    parameter style is positional so we start at 1 (ignored).
+    """
+    if sqlglot_dialect != "postgres":
+        return 1
+    max_index = 0
+    for param in stmt.find_all(exp.Parameter):
+        node = param.this
+        if isinstance(node, exp.Literal) and node.is_string is False:
+            try:
+                idx = int(node.this)
+            except (TypeError, ValueError):
+                continue
+            if idx > max_index:
+                max_index = idx
+    return max_index + 1
+
+
+def _to_internal_placeholder(filter_sql: str, dialect: str) -> str:
+    """Convert driver-style placeholders to internal ``?`` for AST merging.
+
+    Maps ``$1`` → ``?`` (postgres) and ``%s`` → ``?`` (mysql). MSSQL
+    already uses ``?`` so the input is returned unchanged. This is the
+    inverse of ``_render_placeholders_for_driver``.
+    """
+    if dialect in ("mysql",):
+        return filter_sql.replace("%s", "?")
+    if dialect in ("postgres", "postgresql"):
+        return re.sub(r"\$\d+", "?", filter_sql)
+    return filter_sql  # mssql or unknown — leave as is
+
+
+def _render_placeholders_for_driver(sql_str: str, dialect: str, start_index: int) -> str:
+    """Convert internal ``?`` placeholders to the target driver's style.
+
+    - postgres: ``?`` → ``$N`` numbered from ``start_index`` (left-to-right)
+    - mysql:    ``?`` → ``%s``
+    - mssql:    ``?`` is native, no change
+
+    The renumbering pass for postgres replaces every ``?`` in
+    left-to-right order. Existing ``$N`` tokens (from the generated
+    SQL) are preserved verbatim.
+    """
+    if dialect in ("mssql",):
+        return sql_str
+    if dialect in ("mysql",):
+        return sql_str.replace("?", "%s")
+    if dialect in ("postgres", "postgresql"):
+        counter = [start_index]
+
+        def _sub(match: re.Match[str]) -> str:
+            token = f"${counter[0]}"
+            counter[0] += 1
+            return token
+
+        return re.sub(r"\?", _sub, sql_str)
+    return sql_str
 
 
 @dataclass(frozen=True)

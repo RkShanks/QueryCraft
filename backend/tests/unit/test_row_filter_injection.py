@@ -226,8 +226,10 @@ class TestMultipleFilters:
         )
         assert "region = $1" in result.sql
         assert "owner_email = $2" in result.sql
-        assert "id > $3" in result.sql
-        assert result.params == ("analyst", "a@b.c", 0)
+        # Third filter is a literal (no placeholder), so the literal ``0``
+        # appears verbatim — no $3 placeholder emitted.
+        assert "id > 0" in result.sql
+        assert result.params == ("analyst", "a@b.c")
 
     def test_empty_filter_list_returns_unmodified_sql(self) -> None:
         sql = "SELECT id FROM orders WHERE id = 1"
