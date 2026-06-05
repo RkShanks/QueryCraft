@@ -1152,3 +1152,42 @@
   and `test_audit_chain_verification.py`) are unchanged and
   unrelated to this wave (CI has been green; local DB has
   leftover rows).
+
+### T-712 Follow-up: Real Provider Wired into Factories
+- **Date**: 2026-06-05
+- **Commit**: `dc9f28f`
+- **PR**: #129 (same PR, follow-up commit).
+- **Bug discovered after PR #129 initial review**: `_get_query_service`
+  and `_build_query_service_for_connection` built `QueryService`
+  without `role_policy_provider`, so production requests would never
+  load `users.role_id` / `role_connection_policies` / `user_identities`.
+  Policy was enforced only in tests via direct injection.
+- **Fix**: New `make_role_policy_provider(db)` closure factory in
+  `backend/src/app/services/role_policy_provider.py`. Both API
+  factories now pass `role_policy_provider=make_role_policy_provider(db)`
+  to `QueryService(...)`.
+- **Provider contract**:
+  - `User.role_id is None` → returns `None` (backward compat for
+    Phase 1-3 callers).
+  - No `RoleConnectionPolicy` row → returns `None`.
+  - No `UserIdentity` row → empty-string `email`/`subject_id` in
+    `user_context`; row filters using these fail closed at
+    `bind_placeholders` time by design.
+  - `try/except Exception` wraps full body; DB errors return `None`
+    (provider failures never 500 a query).
+- **Regression tests added** (8 total, all green):
+  - `TestRealRolePolicyProvider` (6) in `test_query_flow_policy.py`:
+    load user/role/policy/identity, None fallbacks (no role_id, no
+    policy row, db error), no-identity placeholder strings, and
+    end-to-end factory enforcement without test injection.
+  - `tests/unit/test_t712_factory_wires_policy_provider.py` (2):
+    asserts both `_get_query_service` and
+    `_build_query_service_for_connection` call
+    `make_role_policy_provider(db)` and pass the result to
+    `QueryService(role_policy_provider=...)`.
+- **Test count**: 1230 → 1232 unit (the prior 1281 figure included
+  integration-marked tests not run under `-m "not integration"`).
+  All other unit tests still pass; no audit pre-existing failures
+  observed in this run.
+- **Gates**: pytest 1232 pass, ruff check clean, ruff format clean,
+  git diff --check clean.
