@@ -26,7 +26,7 @@ Sanitization guarantees (defence in depth):
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -98,12 +98,10 @@ SENSITIVE_TOKENS = (
 # ── Helpers ───────────────────────────────────────────────────────────────
 
 
-def _make_accepted_query_mock(
-    item_id: str, question_text: str, generated_sql: str, accepted_at: str
-):
+def _make_accepted_query_mock(item_id: str, question_text: str, generated_sql: str, accepted_at: str):
     """Build an AcceptedQuery-shaped mock with isoformat() on accepted_at."""
     m = MagicMock()
-    setattr(m, "id", uuid.UUID(item_id))
+    m.id = uuid.UUID(item_id)
     m.question_text = question_text
     m.generated_sql = generated_sql
     m.accepted_at = datetime.fromisoformat(accepted_at)
@@ -338,9 +336,10 @@ class TestPerUserIsolation:
         app_b = _make_app(_user_session(USER_B_ID))
         transport_a = ASGITransport(app=app_a)
         transport_b = ASGITransport(app=app_b)
-        async with AsyncClient(transport=transport_a, base_url="http://test") as ca, AsyncClient(
-            transport=transport_b, base_url="http://test"
-        ) as cb:
+        async with (
+            AsyncClient(transport=transport_a, base_url="http://test") as ca,
+            AsyncClient(transport=transport_b, base_url="http://test") as cb,
+        ):
             resp_a = await ca.get("/api/v1/history")
             resp_b = await cb.get("/api/v1/history")
         ids_a = {item["id"] for item in resp_a.json()["items"]}
@@ -502,15 +501,15 @@ class TestRepositoryUserIdPredicate:
         app_b = _makeApp = _make_app(_user_session(USER_B_ID), repo=repo)
         transport_a = ASGITransport(app=app_a)
         transport_b = ASGITransport(app=app_b)
-        async with AsyncClient(transport=transport_a, base_url="http://test") as ca, AsyncClient(
-            transport=transport_b, base_url="http://test"
-        ) as cb:
+        async with (
+            AsyncClient(transport=transport_a, base_url="http://test") as ca,
+            AsyncClient(transport=transport_b, base_url="http://test") as cb,
+        ):
             await ca.get("/api/v1/history")
             await cb.get("/api/v1/history")
         assert repo.list_by_user.await_count == 2
         user_ids = [
-            (call.args[0] if call.args else call.kwargs.get("user_id"))
-            for call in repo.list_by_user.await_args_list
+            (call.args[0] if call.args else call.kwargs.get("user_id")) for call in repo.list_by_user.await_args_list
         ]
         assert str(user_ids[0]) == USER_A_ID
         assert str(user_ids[1]) == USER_B_ID
