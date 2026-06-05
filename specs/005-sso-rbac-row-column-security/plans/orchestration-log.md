@@ -851,9 +851,9 @@
 ### Status
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.3d column masking complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126.
-- **Current/open PR**: Wave 17.3d (T-706/T-707) — Column Masking.
+- **Current point**: Wave 17.3e evaluator authorization rule complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127.
+- **Current/open PR**: Wave 17.3e (T-708/T-709/T-710) — Evaluator Authorization Rule.
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -905,7 +905,7 @@
     string literals containing `?` / `%s` / `$N` are preserved; 8
     regression tests in `TestStringLiteralPreservation`; `ar.json`
     `error.policySchemaConflict` parity.
-- Wave 17.3d column masking is complete:
+- Wave 17.3d column masking is complete (PR #127 merged):
   - `PolicyEnforcementService.apply_column_masks(result, column_masks)`
     post-query masking per ADR-19 / FR-132 / SC-052. Replaces values in
     configured sensitive columns with `"***"`, sets `ColumnMeta.masked = True`
@@ -939,6 +939,63 @@
     Acceptable bound for T-707; T-712 query service integration can
     pass a result→table mapping to disambiguate joins. Documented in
     the `apply_column_masks` docstring.
+- Wave 17.3e evaluator authorization rule is complete:
+  - `RoleAuthorizationRule` in
+    `backend/src/app/evaluator/rules/role_authorization.py`. Runs
+    inside the evaluator pipeline BEFORE execution. Walks every
+    `exp.Table` and `exp.Column` node in the SQL AST and blocks the
+    query if any reference is outside the role's `allowed_tables`
+    policy. Per FR-130 / S-007 / SC-050.
+  - API: `RoleAuthorizationRule(allowed_tables, column_masks=None,
+    dialect="postgres")`. `async evaluate(sql, schema) -> (bool, str | None)`.
+  - Returns the constant `query_blocked_policy` for EVERY failure
+    mode (disallowed table, disallowed column, ambiguous unqualified
+    column, unknown column, malformed SQL, multi-statement, non-SELECT,
+    empty SQL, missing schema).
+  - Deny-all on `None` / empty `allowed_tables`: every query blocked
+    (fail-closed).
+  - Column must be in `allowed_columns` for the owning table to be
+    referenced in SELECT / WHERE / JOIN / ORDER BY / GROUP BY / HAVING.
+    `exp.Column` nodes cover all those clauses.
+  - `column_masks` is informational only: the auth rule treats masked
+    columns the same as non-masked columns. Masking never grants
+    extra access (a masked column not in `allowed_columns` is still
+    blocked) and never denies otherwise-allowed access
+    (`apply_column_masks` handles the actual value replacement
+    downstream). Satisfies S-007: "if masked column in SELECT — allow
+    but mask output; if in WHERE — allow (computation uses real
+    values, output masked)".
+  - Unqualified column resolution: walks every allowed table
+    referenced in the query and finds owners; exactly one owner ->
+    allow; zero or multiple owners -> block (ambiguous, fail closed).
+  - Schema-qualified table names: `public.orders` falls back to
+    `orders` for the PostgreSQL default schema (mirrors
+    `SchemaValidationRule`).
+  - CTEs: column list resolved best-effort from the CTE alias or body
+    SELECT; cannot-statically-resolve (e.g. SELECT *) returns `[]`
+    which means unqualified references into the CTE block.
+  - Sanitisation: reason string is the constant `query_blocked_policy`
+    for every failure mode. Never echoes the raw SQL, table name,
+    column name, schema internals, or user values. Pipeline
+    translates the failed rule name `role_authorization` to i18n key
+    `error.queryBlockedPolicy` for the API response
+    (api-contracts.md line 385).
+  - T-710 pipeline registration:
+    - `backend/src/app/evaluator/pipeline.py`:
+      `_MESSAGE_KEY_MAP["role_authorization"] = "error.queryBlockedPolicy"`.
+    - The rule conforms to the `EvaluatorRule` runtime-checkable
+      protocol and is discoverable via
+      `app.evaluator.rules.role_authorization.RoleAuthorizationRule`.
+      It can be added to an existing pipeline via
+      `EvaluatorPipeline.add_rule()` (the T-154 extensibility
+      contract) or passed into `Evaluator(rules=[...])` at
+      construction time.
+  - 38 TDD tests in `test_evaluator_auth_rule.py` across 9 classes:
+    `TestAllowsAllowedReferences` (6), `TestBlocksDisallowedReferences`
+    (6), `TestMaskedColumnInteraction` (4), `TestAliasesAndQualifiers`
+    (3), `TestCaseInsensitiveMatching` (3),
+    `TestMalformedAndMultiStatement` (4), `TestImmutability` (3),
+    `TestSanitizedError` (4), `TestPipelineRegistration` (5).
 
 ### Remaining Wave 17.3 Work
 - T-708..T-710: Evaluator rule.
