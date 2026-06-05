@@ -1501,3 +1501,88 @@
   unchanged.
 - **Gates**: pytest 1257 pass, ruff check clean, ruff format
   clean, git diff --check clean.
+
+### Wave 17.3g Follow-up 2: Dialect-Aware Sample SQL Evaluation
+- **Date**: 2026-06-05
+- **Commits** (on `phase-5/wave-17.3g-role-policy-test-endpoint`,
+  appended to the follow-up-1 chain):
+  - `236efe6` test(T-713): dialect-aware sample-SQL tests
+    (mysql, mssql, wrong-dialect) — 3 new tests; 2 RED, 1
+    defense-in-depth regression guard.
+  - `91de1c2` feat(T-714): dialect-aware sample-SQL
+    evaluation via DIALECT_MAP.
+- **PR**: #130 (same PR, second follow-up commit pair).
+- **Issue raised in PR #130 review (round 2)**: the
+  sample-SQL evaluator hard-coded `dialect="postgres"`,
+  so backtick-quoted MySQL SQL (`SELECT \`id\` FROM
+  \`customers\``) and bracket-quoted MSSQL SQL
+  (`SELECT [id] FROM [customers]`) were rejected at the
+  sqlglot parse step and the rule wrongly returned
+  `query_blocked_policy` for valid MySQL/MSSQL queries.
+  The dialect should follow the connection's
+  `database_type`, not the endpoint's caller.
+- **Fix (single-source-of-truth)**: the endpoint now
+  resolves the sqlglot dialect from the connection's
+  `database_type` via the canonical `DIALECT_MAP` exported
+  by `app.evaluator.rules.read_only` (T-429 / FR-071). The
+  same map is used by `ReadOnlyRule.from_database_type`
+  in the live evaluator pipeline, so the dry-run and the
+  live path agree on which dialect parses a given
+  connection. A small `_resolve_dialect` helper wraps the
+  map and falls back to `"postgres"` for missing / unknown
+  / non-`DatabaseType` values, mirroring the conservative
+  default used by `read_only` and `role_authorization`.
+- **No new public API**: the request body and response
+  shape are unchanged. `sample_sql` is still optional; the
+  `message_key` contract is unchanged.
+- **No-execution guarantees (unchanged from follow-up 1)**:
+  - The dialect name is internal to the role-auth rule's
+    sqlglot call. It is never echoed in the response, the
+    audit log, the `message_key`, or any error path. The
+    new test `test_sample_sql_wrong_dialect_blocks_sanitized`
+    asserts that the response body contains no `sqlglot`,
+    `ParseError`, `Traceback`, `tsql`, `mysql`, `mssql`,
+    `postgresql`, `dialect`, `RoleAuthorization`, role id,
+    connection id, or SQL fragment.
+  - The rule's constant `"query_blocked_policy"` reason
+    still applies to every failure mode (disallowed
+    reference, malformed SQL, multi-statement, non-SELECT,
+    empty, parse error). The constant never includes the
+    dialect.
+  - No LLM call, no source-DB query, no row-filter
+    binding, no column-mask value transformation, no schema
+    mutation, no `sample_sql` echo. All unchanged from
+    follow-up 1 (`94568be`).
+- **Tests added** (3 in `TestSampleSqlEvaluation`, total
+  10 in the class):
+  - `test_sample_sql_mysql_backtick_allowed` — MySQL
+    connection (DatabaseType.MYSQL), policy allows
+    `customers`, sample `SELECT \`id\`, \`name\` FROM
+    \`customers\`` → `would_be_allowed = True`,
+    `message_key = None`.
+  - `test_sample_sql_mssql_bracket_allowed` — MSSQL
+    connection (DatabaseType.MSSQL), policy allows
+    `customers`, sample `SELECT [id], [name] FROM
+    [customers]` → `would_be_allowed = True`,
+    `message_key = None`.
+  - `test_sample_sql_wrong_dialect_blocks_sanitized` —
+    MSSQL connection receiving backtick SQL → blocked
+    with `error.queryBlockedPolicy`, and the response body
+    must not contain the SQL, role id, connection id,
+    `sqlglot`, `ParseError`, `Traceback`, `tsql`, `mysql`,
+    `mssql`, `postgresql`, `dialect`, or
+    `RoleAuthorization`. Defense-in-depth regression guard
+    (the test also passes RED by coincidence because the
+    pre-fix postgres dialect also rejects backticks; its
+    real purpose is to lock the sanitization contract).
+- **Test helper change**: `_active_healthy_conn` gains an
+  optional `database_type` parameter (default
+  `DatabaseType.POSTGRESQL`) so callers can exercise
+  per-connection dialect resolution. The 20 other tests
+  that use this helper still pass unchanged (they default
+  to POSTGRESQL).
+- **Test count**: 1257 → 1260 unit pass. All other unit
+  tests still pass; the 4 pre-existing audit DB-state
+  failures unchanged.
+- **Gates**: pytest 1260 pass, ruff check clean, ruff
+  format clean, git diff --check clean.
