@@ -184,7 +184,22 @@ class RoleAuthorizationRule:
             for col in allowed_cols:
                 column_owners.setdefault(col, set()).add(table_name)
 
+        # Build a physical-columns index: lowercased table name -> set of
+        # lowercased physical column names. Used to validate star
+        # expansion: ``SELECT *`` and ``SELECT t.*`` are only allowed
+        # when EVERY physical column of the targeted table is in the
+        # role policy. Otherwise the star silently leaks disallowed
+        # columns (FR-130 / S-007).
+        physical_columns_by_table: dict[str, set[str]] = {}
+        for table in schema.tables:
+            physical_columns_by_table[table.name.lower()] = {c.name.lower() for c in table.columns}
+
         for col in statement.find_all(exp.Column):
+            # ``SELECT t.*`` is modelled as ``Column(this=Star(), table='t')``
+            # by sqlglot. The Column walk must skip these — they are
+            # validated by the dedicated star walk below.
+            if isinstance(col.this, exp.Star):
+                continue
             col_name = col.name
             col_name_lower = col_name.lower()
             table_ref = col.table
@@ -218,10 +233,147 @@ class RoleAuthorizationRule:
             # Single owner: allow (the column is in that table's policy).
             continue
 
-        # Light touch: also walk exp.Star markers and Order / Group / Having
-        # columns via the same find_all above. ORDER BY / GROUP BY columns
-        # are exp.Column nodes too, so the loop above covers them.
+        # Validate stars. ``SELECT *`` and ``SELECT t.*`` expand to one
+        # column per physical column of the target table. The auth rule
+        # must block them unless EVERY physical column of the target
+        # table is in the role policy. Otherwise the star silently leaks
+        # disallowed columns (FR-130 / S-007 — this is the leak class
+        # caught by the regression suite). ``COUNT(*)`` and other
+        # aggregate stars are exempted because no column value reaches
+        # the user.
+        for star in statement.find_all(exp.Star):
+            if self._is_aggregate_star(star):
+                # Aggregate star (e.g. COUNT(*)): no value leak.
+                continue
+            star_result = self._validate_star(
+                star,
+                alias_map=alias_map,
+                policy_by_table=policy_by_table,
+                cte_aliases=cte_aliases,
+                physical_columns_by_table=physical_columns_by_table,
+                referenced_allowed_tables=referenced_allowed_tables,
+            )
+            if star_result is not None:
+                return star_result
+
+        # ORDER BY / GROUP BY columns are exp.Column nodes too, so the
+        # loop above covers them. The star walk above covers any star
+        # expression anywhere in the statement.
         return True, None
+
+    @staticmethod
+    def _is_aggregate_star(star: exp.Star) -> bool:
+        """Return True when *star* is the argument of an aggregate.
+
+        ``COUNT(*)``, ``SUM(*)`` (invalid SQL but may parse), etc. The
+        aggregate returns a scalar — no column value reaches the user —
+        so the auth rule does not need to validate the underlying
+        columns.
+        """
+        # Common aggregate function nodes in sqlglot. ``exp.Count`` is
+        # the dedicated node; other aggregates (``SUM``, ``AVG``) are
+        # ``exp.Anonymous`` or ``exp.AggFunc`` subclasses, but ``*`` is
+        # only valid as the argument of ``COUNT`` in standard SQL.
+        ancestor = star.parent
+        while ancestor is not None:
+            cls_name = type(ancestor).__name__
+            if cls_name in {"Count", "AggFunc"}:
+                return True
+            ancestor = ancestor.parent
+        return False
+
+    def _validate_star(
+        self,
+        star: exp.Star,
+        *,
+        alias_map: dict[str, str],
+        policy_by_table: dict[str, set[str]],
+        cte_aliases: dict[str, list[str]],
+        physical_columns_by_table: dict[str, set[str]],
+        referenced_allowed_tables: set[str],
+    ) -> tuple[bool, str | None] | None:
+        """Validate a single ``exp.Star`` against the role policy.
+
+        Returns ``None`` if the star is allowed (caller proceeds to the
+        next star or returns ``(True, None)`` at the end). Returns a
+        ``(False, _REASON)`` tuple to block the query.
+        """
+        # Qualified star: ``t.*`` or ``alias.*`` — sqlglot may expose
+        # the qualifier on the ``exp.Star`` node (older versions) or on
+        # a child ``exp.Column`` (newer versions). Handle both.
+        qualifier = self._star_qualifier(star)
+        if qualifier:
+            # CTE-qualified star. We cannot statically map CTE columns
+            # back to base-table policies without a column->source
+            # trace, so we block conservatively (fail-closed). A role
+            # that needs CTE output should reference columns
+            # explicitly.
+            if qualifier in cte_aliases:
+                return False, _REASON
+            actual = alias_map.get(qualifier, qualifier)
+            actual_lower = actual.lower()
+            if actual_lower not in policy_by_table:
+                return False, _REASON
+            physical = physical_columns_by_table.get(actual_lower, set())
+            if not physical:
+                # Unknown physical table for the qualifier; treat as
+                # referential failure (defence in depth — schema
+                # validation should have caught this).
+                return False, _REASON
+            if not physical.issubset(policy_by_table[actual_lower]):
+                return False, _REASON
+            return None
+
+        # Unqualified star: applies to every referenced allowed table
+        # in the query. The role must be granted EVERY physical column
+        # of EVERY referenced table. An empty referenced-set (no
+        # FROM) cannot produce rows; treat as referential failure.
+        if not referenced_allowed_tables:
+            return False, _REASON
+        for table_name in referenced_allowed_tables:
+            actual_lower = table_name.lower()
+            physical = physical_columns_by_table.get(actual_lower, set())
+            if not physical:
+                return False, _REASON
+            if not physical.issubset(policy_by_table.get(actual_lower, set())):
+                return False, _REASON
+        return None
+
+    @staticmethod
+    def _star_qualifier(star: exp.Star) -> str | None:
+        """Extract the table qualifier from an ``exp.Star`` if any.
+
+        ``SELECT *`` -> ``None``. ``SELECT orders.*`` -> ``\"orders\"``.
+        ``SELECT o.*`` -> ``\"o\"``. The qualifier lives in different
+        places depending on sqlglot version:
+
+        - Newer sqlglot: a child ``exp.Table`` (``star.this``).
+        - Common shape: the parent is an ``exp.Column`` whose
+          ``table`` attribute holds the qualifier and whose ``this``
+          attribute is the ``exp.Star``.
+        - Older sqlglot: ``star.table`` directly, or a child
+          ``exp.Column`` (``star.expressions[0].table``).
+
+        We try each shape in turn.
+        """
+        # Parent-as-Column: ``SELECT orders.*`` -> ``Column(table='orders', this=Star())``
+        parent = star.parent
+        if isinstance(parent, exp.Column) and parent.table:
+            return parent.table
+        # Newer sqlglot: star carries a Table child.
+        inner = star.args.get("this") if hasattr(star, "args") else None
+        if isinstance(inner, exp.Table) and inner.name:
+            return inner.name
+        # Older sqlglot: qualifier is the ``table`` attribute on the
+        # Star or a child Column.
+        direct = getattr(star, "table", None)
+        if direct:
+            return direct
+        if hasattr(star, "expressions") and star.expressions:
+            first = star.expressions[0]
+            if isinstance(first, exp.Column) and first.table:
+                return first.table
+        return None
 
     def _resolve_table_name(
         self,

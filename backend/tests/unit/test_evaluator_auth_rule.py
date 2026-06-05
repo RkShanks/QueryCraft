@@ -576,3 +576,146 @@ class TestPipelineRegistration:
             _schema(),
         )
         assert result.passed is True
+
+
+# ────────────────────── Star expansion (SELECT * / table.*) ──────────────────────
+
+
+class TestStarExpansion:
+    """Star references must NOT silently leak columns outside the role policy.
+
+    ``SELECT *`` and ``SELECT t.*`` expand to one expression per physical
+    column of the target table. The auth rule must block the star unless
+    every physical column of the target table is granted. ``COUNT(*)`` and
+    other aggregate stars are exempted because no column value reaches
+    the user.
+    """
+
+    @pytest.mark.asyncio
+    async def test_unqualified_star_blocked_by_subset_policy(self) -> None:
+        """SELECT * with a subset policy (id only, ssn not granted)
+        must block — ssn would otherwise be leaked."""
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
+        result = await rule.evaluate("SELECT * FROM orders", _schema())
+        assert result == (False, "query_blocked_policy")
+
+    @pytest.mark.asyncio
+    async def test_unqualified_star_allowed_when_all_columns_granted(self) -> None:
+        """SELECT * is allowed when the role is granted every physical
+        column of the target table (intentional wide access)."""
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id", "customer_id", "ssn"]}],
+        )
+        result = await rule.evaluate("SELECT * FROM orders", _schema())
+        assert result == (True, None)
+
+    @pytest.mark.asyncio
+    async def test_qualified_star_blocked_by_subset_policy(self) -> None:
+        """SELECT orders.* with a subset policy (id only) must block."""
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
+        result = await rule.evaluate("SELECT orders.* FROM orders", _schema())
+        assert result == (False, "query_blocked_policy")
+
+    @pytest.mark.asyncio
+    async def test_qualified_star_allowed_when_all_columns_granted(self) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id", "customer_id", "ssn"]}],
+        )
+        result = await rule.evaluate("SELECT orders.* FROM orders", _schema())
+        assert result == (True, None)
+
+    @pytest.mark.asyncio
+    async def test_aliased_star_blocked_by_subset_policy(self) -> None:
+        """``SELECT o.*`` with a subset policy (id only) must block."""
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
+        result = await rule.evaluate("SELECT o.* FROM orders o", _schema())
+        assert result == (False, "query_blocked_policy")
+
+    @pytest.mark.asyncio
+    async def test_aliased_star_allowed_when_all_columns_granted(self) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id", "customer_id", "ssn"]}],
+        )
+        result = await rule.evaluate("SELECT o.* FROM orders o", _schema())
+        assert result == (True, None)
+
+    @pytest.mark.asyncio
+    async def test_count_star_allowed_for_allowed_table(self) -> None:
+        """COUNT(*) returns a scalar; no column value reaches the user.
+        Must be allowed when the underlying table is allowed, even if
+        no individual columns are granted."""
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
+        result = await rule.evaluate("SELECT COUNT(*) FROM orders", _schema())
+        assert result == (True, None)
+
+    @pytest.mark.asyncio
+    async def test_count_star_with_subset_policy_allowing_zero_columns(self) -> None:
+        """The table is in the policy but no columns are granted
+        (deny-all columns). ``COUNT(*)`` is still allowed because it
+        returns a scalar, not a column value."""
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": []}],
+        )
+        result = await rule.evaluate("SELECT COUNT(*) FROM orders", _schema())
+        assert result == (True, None)
+
+    @pytest.mark.asyncio
+    async def test_star_blocked_for_disallowed_table_even_with_count(self) -> None:
+        """COUNT(*) on a table outside the policy is still blocked at
+        the table level (the table itself is not allowed)."""
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
+        result = await rule.evaluate("SELECT COUNT(*) FROM payments", _schema())
+        assert result == (False, "query_blocked_policy")
+
+    @pytest.mark.asyncio
+    async def test_unqualified_star_with_join_blocked_by_subset_policy(self) -> None:
+        """SELECT * FROM orders JOIN customers: star applies to every
+        referenced allowed table. With a subset policy on either, the
+        star is blocked (FR-130 — must not leak columns from either)."""
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "orders", "columns": ["id"]},
+                {"table": "customers", "columns": ["id"]},
+            ],
+        )
+        result = await rule.evaluate(
+            "SELECT * FROM orders JOIN customers ON orders.customer_id = customers.id",
+            _schema(),
+        )
+        assert result == (False, "query_blocked_policy")
+
+    @pytest.mark.asyncio
+    async def test_unqualified_star_with_join_allowed_when_all_granted(self) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "orders", "columns": ["id", "customer_id", "ssn"]},
+                {"table": "customers", "columns": ["id", "name"]},
+            ],
+        )
+        result = await rule.evaluate(
+            "SELECT * FROM orders JOIN customers ON orders.customer_id = customers.id",
+            _schema(),
+        )
+        assert result == (True, None)
+
+    @pytest.mark.asyncio
+    async def test_qualified_star_with_unknown_qualifier_blocked(self) -> None:
+        """A qualified star whose qualifier is not in the alias map is
+        blocked (defence in depth — schema validation would normally
+        catch the missing table, but a config-only pipeline should
+        still fail closed)."""
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id", "customer_id", "ssn"]}],
+        )
+        result = await rule.evaluate("SELECT ghost.* FROM orders", _schema())
+        assert result == (False, "query_blocked_policy")
