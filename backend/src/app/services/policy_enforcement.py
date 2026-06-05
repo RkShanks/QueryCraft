@@ -585,12 +585,14 @@ class PolicyEnforcementService:
             )
 
             # Parse the bound filter wrapped as a SELECT so we can lift
-            # its WHERE expression for AND-conjunction. Parse in tsql
-            # (which understands ``?``) regardless of target dialect
-            # to keep the internal format uniform.
+            # its WHERE expression for AND-conjunction. Parse in the
+            # target sqlglot dialect (so MySQL backticks, T-SQL square
+            # brackets, etc. are recognized as identifier quoting) — the
+            # internal placeholder token is ``?`` (Placeholder) which all
+            # three dialects accept.
             wrapped = f"SELECT 1 WHERE {internal_filter_sql}"
             try:
-                filter_stmt = sqlglot.parse_one(wrapped, read="tsql")
+                filter_stmt = sqlglot.parse_one(wrapped, read=sqlglot_dialect)
             except Exception:
                 raise ValueError(_FILTER_INJECTION_FAILED) from None
             if not isinstance(filter_stmt, exp.Select):

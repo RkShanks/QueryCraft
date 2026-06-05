@@ -553,13 +553,13 @@ class TestMySQLBacktickIdentifier:
             user_context=USER,
             dialect="mysql",
         )
-        assert "region = %s" in result.sql
+        # Backticks are preserved verbatim; only the placeholder style
+        # is converted to mysql's ``%s``.
+        assert "`region` = %s" in result.sql
         assert result.params == ("analyst",)
 
     def test_backtick_filter_validates_at_save_time(self) -> None:
         """Sanity check: backtick identifier also passes validation
         (the save-time path), so injection must match.
         """
-        PolicyEnforcementService.validate_row_filter(
-            "`region` = {user.role}", _schema(), "orders", dialect="mysql"
-        )
+        PolicyEnforcementService.validate_row_filter("`region` = {user.role}", _schema(), "orders", dialect="mysql")
