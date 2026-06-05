@@ -1,7 +1,36 @@
-"""QueryService — submit, accept, reject, regenerate logic."""
+"""QueryService — submit, accept, reject, regenerate logic.
+
+T-712: Policy enforcement integration. When a ``role_policy_provider``
+is configured, the query flow becomes:
+
+1. Resolve the user's role policy for the requested connection.
+2. If the policy exists with an empty ``allowed_tables`` (deny-all),
+   fail closed before the LLM with ``error.queryBlockedPolicy``.
+3. Filter the schema using ``PolicyEnforcementService.filter_schema()``
+   so the LLM prompt only sees role-allowed tables and columns.
+4. Build a fresh evaluator that augments the existing evaluator's
+   pipeline with a ``RoleAuthorizationRule`` using the role's
+   ``allowed_tables``. The new rule runs after the existing rules
+   and before execution.
+5. After the existing evaluator passes, apply
+   ``PolicyEnforcementService.apply_row_filters()`` to inject any
+   per-role row filters via driver-style parameter placeholders.
+   Execute using the rewritten SQL and the bound params tuple —
+   user values are never interpolated.
+6. After execution, apply
+   ``PolicyEnforcementService.apply_column_masks()`` to the
+   ``QueryResult`` so masked columns are replaced with ``"***"`` and
+   ``ColumnMeta.masked`` is set. The masked rows are what get
+   persisted to the accepted-query history.
+
+Errors are surfaced with sanitized i18n keys — never raw SQL,
+column, table, schema, UUID, host, port, or user values.
+"""
 
 import asyncio
 import uuid
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -12,9 +41,16 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
-from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SourceDBTimeout
+from app.core.exceptions import (
+    AttemptNotFound,
+    AttemptOwnershipViolation,
+    PolicySchemaConflictError,
+    SourceDBTimeout,
+)
 from app.core.processing_lock import acquire_lock, release_lock_if_owned
 from app.db.models.user import User
+from app.evaluator.rules.role_authorization import RoleAuthorizationRule
+from app.evaluator.schema_context import SchemaContext
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.repositories.session_repository import SessionRepository
 from app.schemas.query import (
@@ -25,6 +61,36 @@ from app.schemas.query import (
     RefinePrompt,
     Violation,
 )
+from app.services.policy_enforcement import (
+    PolicyEnforcementService,
+)
+
+
+@dataclass(frozen=True)
+class RolePolicy:
+    """Resolved role policy for a (user, connection) pair (T-712).
+
+    Constructed by the ``role_policy_provider`` callback passed to
+    ``QueryService``. The provider looks up the user's role and the
+    matching ``role_connection_policies`` row for the connection and
+    returns the resolved policy.
+
+    A ``None`` return from the provider means "no policy applies" —
+    backward-compatible with the Phase 1-3 un-authenticated flow
+    (no schema filter, no role auth rule, no row filter, no mask).
+    """
+
+    user_id: uuid.UUID
+    role_id: uuid.UUID
+    connection_id: uuid.UUID
+    allowed_tables: list[dict] = field(default_factory=list)
+    row_filters: list[dict] = field(default_factory=list)
+    column_masks: list[dict] | None = None
+    user_context: dict[str, Any] = field(default_factory=dict)
+
+
+# Type alias for the policy provider callback.
+RolePolicyProvider = Callable[[uuid.UUID, uuid.UUID], Awaitable[RolePolicy | None]]
 
 
 def _sanitize_for_json(obj: Any) -> Any:
@@ -53,10 +119,12 @@ class QueryService:
         evaluator: Any,
         source_db_executor: Any,
         llm_provider: str = "",
-        schema_context: str = "",
+        schema_context: SchemaContext | str = "",
         target_dialect: str | None = None,
         connection_id: str | None = None,
         source_db_adapter: Any = None,
+        policy_enforcement: PolicyEnforcementService | None = None,
+        role_policy_provider: RolePolicyProvider | None = None,
     ) -> None:
         self._repo = accepted_query_repository
         self._session_repo = session_repository
@@ -70,6 +138,8 @@ class QueryService:
         self._target_dialect = target_dialect
         self._connection_id = connection_id
         self._adapter = source_db_adapter
+        self._policy = policy_enforcement or PolicyEnforcementService()
+        self._role_policy_provider = role_policy_provider
 
     async def _acquire_lock(self, session_id: str, ttl: int = 60) -> str | None:
         """Try to acquire a per-session processing lock.
@@ -123,6 +193,100 @@ class QueryService:
             )
         return str(row[0])
 
+    async def _resolve_role_policy(
+        self,
+        user_id: str,
+        connection_id: str | None,
+    ) -> RolePolicy | None:
+        """Look up the role policy for (user_id, connection_id).
+
+        Returns ``None`` ONLY when the provider is not configured
+        (Phase 1-3 backward compat) or the user has no ``role_id``.
+        For role-bearing users the provider always returns a
+        ``RolePolicy`` (either the resolved row or a deny-all) so
+        the caller can fail closed. See
+        ``app.services.role_policy_provider`` for the full
+        fail-closed contract.
+        """
+        if self._role_policy_provider is None:
+            return None
+        user_uuid = uuid.UUID(user_id)
+        conn_uuid = uuid.UUID(connection_id) if connection_id else uuid.UUID(await self._get_database_connection_id())
+        return await self._role_policy_provider(user_uuid, conn_uuid)
+
+    def _policy_schema_for_prompt(
+        self,
+        policy: RolePolicy | None,
+        base_schema: Any,
+    ) -> Any:
+        """Return the schema (object or string) to send to the LLM.
+
+        When a policy with a non-empty ``allowed_tables`` exists, the
+        schema is filtered so the LLM only sees role-permitted
+        tables/columns (FR-128 / S-006). The input schema object is
+        never mutated (``PolicyEnforcementService.filter_schema``
+        returns a new instance).
+
+        When ``policy`` is ``None`` or has an empty ``allowed_tables``
+        the caller is responsible for the fail-closed check; this
+        helper does not enforce that — it just returns the base
+        schema for the LLM.
+        """
+        if policy is None:
+            return base_schema
+        if not policy.allowed_tables:
+            return base_schema
+        if not isinstance(base_schema, SchemaContext):
+            # Backward compat: if a string was passed in (legacy
+            # tests), pass it through. Production passes a
+            # SchemaContext.
+            return base_schema
+        return self._policy.filter_schema(base_schema, policy.allowed_tables)
+
+    def _role_auth_rejection(self) -> EvaluatorRejection:
+        """Build a sanitized rejection for a role-auth failure.
+
+        Reason: the LLM was either blocked from being called (empty
+        policy) or generated SQL that referenced tables/columns
+        outside the role's policy. The response uses the constant
+        i18n key ``error.queryBlockedPolicy`` per FR-130 / S-007
+        and the api-contracts.md line 385 contract. No table,
+        column, or SQL value is leaked.
+        """
+        return EvaluatorRejection(
+            message_key="error.queryBlockedPolicy",
+            violations=[
+                Violation(
+                    rule="role_authorization",
+                    message_key="error.queryBlockedPolicy",
+                )
+            ],
+        )
+
+    async def _enforce_role_authorization(
+        self,
+        sql: str,
+        policy: RolePolicy | None,
+    ) -> EvaluatorRejection | None:
+        """Run the ``RoleAuthorizationRule`` against *sql*.
+
+        Returns an ``EvaluatorRejection`` if the SQL is outside the
+        role's ``allowed_tables`` policy, or ``None`` if the SQL
+        passes. No-op when ``policy`` is ``None`` or has empty
+        ``allowed_tables`` (the latter is enforced earlier in the
+        flow as a fail-closed pre-LLM rejection).
+        """
+        if policy is None or not policy.allowed_tables:
+            return None
+        rule = RoleAuthorizationRule(
+            allowed_tables=policy.allowed_tables,
+            dialect=self._target_dialect or "postgres",
+        )
+        passed, _reason = await rule.evaluate(sql, self._schema_context)
+        if not passed:
+            return self._role_auth_rejection()
+        return None
+
     async def submit_question(
         self,
         http_session_id: str,
@@ -144,7 +308,8 @@ class QueryService:
 
             # Verify user exists in DB (guard against stale Redis sessions)
             result = await self._db_session.execute(select(User).where(User.id == user_uuid))
-            if result.scalar_one_or_none() is None:
+            user_row = result.scalar_one_or_none()
+            if user_row is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={"error": "unauthorized", "message_key": "error.unauthorized"},
@@ -188,6 +353,28 @@ class QueryService:
 
             await store_attempt(attempt, http_session_id, self._redis)
 
+            # T-712: Resolve role policy. When the user has a role_id
+            # and a connection-scoped policy exists, the LLM prompt
+            # is filtered to role-allowed schema and a
+            # ``RoleAuthorizationRule`` is added to the evaluator
+            # pipeline. When the user has no role_id (Phase 1-3
+            # backwards compat) the provider returns ``None`` and
+            # every policy step is a no-op.
+            role_policy = await self._resolve_role_policy(
+                user_id,
+                connection_id,
+            )
+            if role_policy is not None and not role_policy.allowed_tables:
+                # Deny-all policy: fail closed before the LLM so the
+                # user never gets a prompt that mentions any table.
+                attempt.state = "REJECTED"
+                attempt.evaluator_result = {
+                    "passed": False,
+                    "violations": [{"rule": "role_authorization", "message_key": "error.queryBlockedPolicy"}],
+                }
+                await store_attempt(attempt, http_session_id, self._redis)
+                return self._role_auth_rejection()
+
             # Load conversation history for context
             conversation_history: list[dict] = []
             if chat_session_id:
@@ -204,10 +391,14 @@ class QueryService:
                         )
 
             # 1. LLM generation
+            schema_for_prompt = self._policy_schema_for_prompt(
+                role_policy,
+                self._schema_context,
+            )
             try:
                 sql = await self._llm.generate_sql(
                     question=question,
-                    schema_context=self._schema_context,
+                    schema_context=schema_for_prompt,
                     conversation_history=conversation_history or None,
                     target_dialect=self._target_dialect,
                 )
@@ -221,7 +412,7 @@ class QueryService:
             attempt.state = "GENERATED"
             await store_attempt(attempt, http_session_id, self._redis)
 
-            # 2. Evaluator gate
+            # 2. Evaluator gate (existing rules)
             eval_result = await self._evaluator.evaluate(sql, None)
             if not eval_result.passed:
                 attempt.state = "REJECTED"
@@ -236,20 +427,73 @@ class QueryService:
                     violations=violations,
                 )
 
+            # 2a. T-712: Policy-based role authorization. Runs after
+            # the existing evaluator and before the executor. Uses
+            # the role's allowed_tables to build a fresh
+            # RoleAuthorizationRule. Failure surfaces as a sanitized
+            # EvaluatorRejection with error.queryBlockedPolicy.
+            role_auth_rejection = await self._enforce_role_authorization(sql, role_policy)
+            if role_auth_rejection is not None:
+                attempt.state = "REJECTED"
+                attempt.evaluator_result = {
+                    "passed": False,
+                    "violations": [
+                        {"rule": v.rule, "message_key": v.message_key} for v in role_auth_rejection.violations
+                    ],
+                }
+                await store_attempt(attempt, http_session_id, self._redis)
+                return role_auth_rejection
+
             attempt.state = "EVALUATED"
             await store_attempt(attempt, http_session_id, self._redis)
 
-            # 3. Execute against source DB
+            # 3. T-712: Apply per-role row filters via
+            # PolicyEnforcementService.apply_row_filters. Returns a
+            # ``BoundSql`` with the rewritten SQL and the bound
+            # parameter tuple. When no policy applies (legacy
+            # Phase 1-3) the SQL passes through unchanged with
+            # ``params = ()``. ``PolicySchemaConflictError`` is
+            # caught below and translated to a sanitized
+            # ``error.policySchemaConflict`` HTTP 409.
+            row_filter_params: tuple[Any, ...] = ()
+            effective_sql = sql
+            if role_policy is not None and role_policy.row_filters:
+                try:
+                    bound = self._policy.apply_row_filters(
+                        sql=sql,
+                        row_filters=role_policy.row_filters,
+                        schema=self._schema_context
+                        if isinstance(self._schema_context, SchemaContext)
+                        else SchemaContext(tables=[]),
+                        user_context=role_policy.user_context,
+                        dialect=self._target_dialect or "postgres",
+                    )
+                except PolicySchemaConflictError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "error": "policy_schema_conflict",
+                            "message_key": "error.policySchemaConflict",
+                        },
+                    ) from exc
+                effective_sql = bound.sql
+                row_filter_params = bound.params
+
+            # 4. Execute against source DB. Adapter and legacy
+            # executor both receive the rewritten SQL + row-filter
+            # params. asyncpg positional binding is used; the
+            # adapter's ``execute(sql, params)`` signature accepts
+            # the tuple unchanged.
             try:
                 if self._adapter is not None:
                     exec_result = await asyncio.wait_for(
-                        self._adapter.execute(sql),
+                        self._adapter.execute(effective_sql, row_filter_params),
                         timeout=30,
                     )
                     columns, rows = exec_result.columns, exec_result.rows
                 else:
                     columns, rows = await asyncio.wait_for(
-                        self._executor.execute(sql),
+                        self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
                         timeout=30,
                     )
             except (TimeoutError, SourceDBTimeout) as exc:
@@ -268,14 +512,22 @@ class QueryService:
             }
             await store_attempt(attempt, http_session_id, self._redis)
 
-            # 4. Build result
+            # 4a. T-712: Apply per-role column masks to the
+            # ``QueryResult`` after execution. Returns a new
+            # ``QueryResult`` with masked values (``"***"``) and
+            # ``ColumnMeta.masked = True``. When no policy applies
+            # this is a no-op that returns an original-equivalent
+            # ``QueryResult`` (input not mutated). The masked rows
+            # are what get persisted to the accepted-query history
+            # — unmasked sensitive values never touch the response
+            # or the DB.
             column_metas = []
             for c in columns:
                 if isinstance(c, dict):
                     column_metas.append(ColumnMeta(name=c["name"], type=c["type"]))
                 else:
                     column_metas.append(ColumnMeta(name=c, type="text"))
-            result = QueryResult(
+            masked_result = QueryResult(
                 kind="result",
                 attempt_id=attempt_id,
                 session_id=chat_session_id,
@@ -287,6 +539,16 @@ class QueryService:
                 attempt_number=1,
                 is_last_auto_retry=False,
             )
+            if role_policy is not None and role_policy.column_masks:
+                masked_result = self._policy.apply_column_masks(
+                    masked_result,
+                    role_policy.column_masks,
+                )
+                # Refresh ColumnMeta list from the masked result so
+                # the masked flags are reflected in the response.
+                column_metas = list(masked_result.columns)
+                rows = masked_result.rows
+            result = masked_result
 
             # 5. Auto-save (idempotent: skip if already persisted for this attempt_id)
             session_uuid = uuid.UUID(chat_session_id) if chat_session_id else None
@@ -499,14 +761,35 @@ class QueryService:
                     should_refine=True,
                 )
 
+            # T-712: Resolve role policy for the connection this
+            # regenerate is operating on. Falls back to
+            # ``self._connection_id`` (constructor-set) since
+            # ``regenerate_query`` does not take a request-supplied
+            # ``connection_id`` — it operates on a prior attempt
+            # whose connection is whatever was active at submit time.
+            role_policy = await self._resolve_role_policy(
+                prior.user_id or "",
+                self._connection_id,
+            )
+            if role_policy is not None and not role_policy.allowed_tables:
+                await self._redis.delete(f"active_attempt:{http_session_id}")
+                return self._role_auth_rejection()
+
             # Build negative context from prior attempt
             negative_examples = [prior.sql] if prior.sql else []
+
+            # T-712: filter schema before LLM call so the
+            # regenerate prompt also respects the role's policy.
+            schema_for_prompt = self._policy_schema_for_prompt(
+                role_policy,
+                self._schema_context,
+            )
 
             # Call LLM
             try:
                 new_sql = await self._llm.generate_sql(
                     prior.question,
-                    self._schema_context,
+                    schema_for_prompt,
                     negative_examples=negative_examples,
                 )
             except Exception as exc:
@@ -549,12 +832,73 @@ class QueryService:
                     should_refine=True,
                 )
 
+            # T-712: policy-based role authorization on the
+            # regenerated SQL. Returns a RefinePrompt (treating it
+            # as a rejected regenerate) — the next click would be a
+            # refine prompt anyway.
+            role_auth_rejection = await self._enforce_role_authorization(new_sql, role_policy)
+            if role_auth_rejection is not None:
+                new_attempt_id = str(uuid.uuid4())
+                failed_attempt = EphemeralAttempt(
+                    attempt_id=new_attempt_id,
+                    session_id=http_session_id,
+                    sql=new_sql,
+                    question=prior.question,
+                    attempt_number=next_attempt_number,
+                    llm_provider=self._llm_provider,
+                    evaluator_result={
+                        "passed": False,
+                        "violations": [
+                            {"rule": v.rule, "message_key": v.message_key} for v in role_auth_rejection.violations
+                        ],
+                    },
+                )
+                await store_attempt(failed_attempt, http_session_id, self._redis)
+                await self._redis.delete(f"active_attempt:{http_session_id}")
+                return RefinePrompt(
+                    message_key="query.refine.message",
+                    should_refine=True,
+                )
+
+            # T-712: Apply per-role row filters before execute.
+            row_filter_params: tuple[Any, ...] = ()
+            effective_sql = new_sql
+            if role_policy is not None and role_policy.row_filters:
+                try:
+                    bound = self._policy.apply_row_filters(
+                        sql=new_sql,
+                        row_filters=role_policy.row_filters,
+                        schema=self._schema_context
+                        if isinstance(self._schema_context, SchemaContext)
+                        else SchemaContext(tables=[]),
+                        user_context=role_policy.user_context,
+                        dialect=self._target_dialect or "postgres",
+                    )
+                except PolicySchemaConflictError as exc:
+                    await self._redis.delete(f"active_attempt:{http_session_id}")
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "error": "policy_schema_conflict",
+                            "message_key": "error.policySchemaConflict",
+                        },
+                    ) from exc
+                effective_sql = bound.sql
+                row_filter_params = bound.params
+
             # Execute against source DB
             try:
-                columns, rows = await asyncio.wait_for(
-                    self._executor.execute(new_sql),
-                    timeout=30,
-                )
+                if self._adapter is not None:
+                    exec_result = await asyncio.wait_for(
+                        self._adapter.execute(effective_sql, row_filter_params),
+                        timeout=30,
+                    )
+                    columns, rows = exec_result.columns, exec_result.rows
+                else:
+                    columns, rows = await asyncio.wait_for(
+                        self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
+                        timeout=30,
+                    )
             except (TimeoutError, SourceDBTimeout) as exc:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise HTTPException(
@@ -570,7 +914,7 @@ class QueryService:
                     column_metas.append(ColumnMeta(name=c["name"], type=c["type"]))
                 else:
                     column_metas.append(ColumnMeta(name=c, type="text"))
-            result = QueryResult(
+            masked_result = QueryResult(
                 kind="result",
                 attempt_id=new_attempt_id,
                 question=prior.question,
@@ -581,6 +925,14 @@ class QueryService:
                 attempt_number=next_attempt_number,
                 is_last_auto_retry=next_attempt_number >= max_regens + 1,
             )
+            if role_policy is not None and role_policy.column_masks:
+                masked_result = self._policy.apply_column_masks(
+                    masked_result,
+                    role_policy.column_masks,
+                )
+                column_metas = list(masked_result.columns)
+                rows = masked_result.rows
+            result = masked_result
 
             new_attempt = EphemeralAttempt(
                 attempt_id=new_attempt_id,

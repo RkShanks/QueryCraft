@@ -44,7 +44,7 @@ class StubEvaluator:
 
 
 class StubExecutor:
-    async def execute(self, sql):
+    async def execute(self, sql, *args, **kwargs):
         return (["col"], [[1]])
 
 

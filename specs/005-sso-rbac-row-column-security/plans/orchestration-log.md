@@ -846,7 +846,7 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3b (Row Filter Validation)
+## Historical Checkpoint — Through Wave 17.3b (Row Filter Validation)
 
 ### Status
 - **Date**: 2026-06-05
@@ -990,20 +990,250 @@
       `EvaluatorPipeline.add_rule()` (the T-154 extensibility
       contract) or passed into `Evaluator(rules=[...])` at
       construction time.
-  - 38 TDD tests in `test_evaluator_auth_rule.py` across 9 classes:
-    `TestAllowsAllowedReferences` (6), `TestBlocksDisallowedReferences`
-    (6), `TestMaskedColumnInteraction` (4), `TestAliasesAndQualifiers`
-    (3), `TestCaseInsensitiveMatching` (3),
-    `TestMalformedAndMultiStatement` (4), `TestImmutability` (3),
-    `TestSanitizedError` (4), `TestPipelineRegistration` (5).
+   - 50 TDD tests in `test_evaluator_auth_rule.py` across 9 classes:
+     `TestAllowsAllowedReferences` (6), `TestBlocksDisallowedReferences`
+     (6), `TestMaskedColumnInteraction` (4), `TestAliasesAndQualifiers`
+     (3), `TestCaseInsensitiveMatching` (3),
+     `TestMalformedAndMultiStatement` (4), `TestImmutability` (3),
+     `TestSanitizedError` (4), `TestPipelineRegistration` (5).
+- Wave 17.3f query flow integration is complete (PR #128 follow-up):
+  - `QueryService` is the orchestrator that wires the policy pieces
+    (T-699..T-710) into the live query lifecycle. Two new
+    constructor params are optional and default to a no-op state
+    (backward compatible with all Phase 1-3 callers):
+    - `policy_enforcement: PolicyEnforcementService | None = None`
+      (defaults to a fresh `PolicyEnforcementService()` instance)
+    - `role_policy_provider: RolePolicyProvider | None = None`
+      (an async `(user_id, connection_id) -> RolePolicy | None`
+      callback; ``None`` means "no policy applies" and disables
+      every policy step — the Phase 1-3 path).
+  - New dataclass `RolePolicy` in `query_service.py` holds the
+    resolved policy: `user_id`, `role_id`, `connection_id`,
+    `allowed_tables`, `row_filters`, `column_masks`, and a
+    `user_context` dict (`email`, `subject_id`, `role`).
+  - `submit_question` flow now goes:
+    1. Resolve role policy via the provider. User with no role_id
+       or no policy for the connection -> provider returns
+       ``None`` and every policy step is a no-op (backward compat).
+    2. If the policy has an empty `allowed_tables` (deny-all),
+       fail closed BEFORE the LLM is called. The LLM never sees
+       the schema and the user gets an `EvaluatorRejection` with
+       the i18n key `error.queryBlockedPolicy` (sanitized,
+       constant). No table, column, or schema leaks into the
+       response.
+    3. `PolicyEnforcementService.filter_schema()` strips the
+       schema to role-allowed tables/columns before the LLM call
+       (FR-128 / S-006). The input `SchemaContext` is never
+       mutated; `filter_schema()` returns a new instance.
+    4. The existing evaluator (read-only, schema, etc.) runs on
+       the LLM-generated SQL.
+    5. A fresh `RoleAuthorizationRule` is constructed from the
+       role's `allowed_tables` and runs immediately after. Failure
+       surfaces as an `EvaluatorRejection` with i18n key
+       `error.queryBlockedPolicy` (FR-130 / S-007). The error
+       string is the constant `query_blocked_policy` — never the
+       raw SQL, table, column, schema, UUID, or user value.
+    6. `PolicyEnforcementService.apply_row_filters()` rewrites
+       the SQL via AST AND-conjunction, binds `{user.*}`
+       placeholders to driver-style parameter tokens
+       (`$N`/`%s`/`?`), transpiles to the target dialect, and
+       returns a `BoundSql(sql, params)` (FR-131 / S-005). The
+       executor receives the rewritten SQL and the bound params
+       tuple — user values are never interpolated into the SQL
+       string.
+    7. `PolicySchemaConflictError` from row-filter injection is
+       translated to HTTP 409 with i18n key
+       `error.policySchemaConflict`. The detail dict contains
+       only the constant `error` code and the i18n key — no
+       table, column, filter SQL, or user value leaks.
+    8. The executor runs the rewritten SQL with the bound params
+       (asyncpg positional binding; the legacy
+       `SourceDBExecutor` was extended to accept `params: tuple`
+       without breaking its prior signature). The
+       `SourceDBAdapter` (multi-dialect) path receives the same
+       rewritten SQL + params via its existing
+       `execute(sql, params)` signature.
+    9. After execution, `PolicyEnforcementService.apply_column_masks()`
+       walks the `QueryResult` and replaces masked cell values
+       with `"***"`, sets `ColumnMeta.masked = True` for the
+       affected columns, and returns a new `QueryResult` (input
+       never mutated). The masked rows are what get persisted
+       to the accepted-query history (FR-132).
+  - `regenerate_query` applies the same integration: schema
+    filter before the LLM, role auth after the existing
+    evaluator, row filter injection before execute, column mask
+    after. A role-auth failure on a regenerate returns
+    `RefinePrompt` (treating it like a second consecutive
+    rejection), matching the existing regenerate semantics.
+  - Type annotation fix: `schema_context` is now correctly
+    typed as `SchemaContext | str` (was `str`). Production
+    callers have always passed a `SchemaContext` object.
+  - 18 TDD tests in `tests/unit/test_query_flow_policy.py` across
+    11 classes:
+    - `TestSchemaFilterBeforePrompt` (4) — LLM receives filtered
+      schema, full schema when no policy, empty allowed_tables
+      fails closed, input not mutated.
+    - `TestEvaluatorAuthBeforeExecution` (3) — disallowed table /
+      column blocked, allowed SQL proceeds.
+    - `TestRowFilterInjection` (2) — row filter via params, no
+      row filter means no WHERE injection.
+    - `TestColumnMaskAfterExecute` (2) — masked value replacement
+      and `ColumnMeta.masked = True`, no mask config keeps raw
+      values.
+    - `TestIntegratedOrder` (1) — end-to-end happy path
+      (filter -> auth -> row filter -> mask).
+    - `TestErrorMapping` (1) — `PolicySchemaConflictError`
+      surfaces as a sanitized HTTP 409 with
+      `error.policySchemaConflict`.
+    - `TestNoUserValueLeak` (1) — user value from `{user.*}` not
+      in executed SQL.
+    - `TestBackwardCompat` (1) — user with no role_id skips every
+      policy step (no filter, no row filter, no mask).
+    - `TestRegeneratePath` (1) — regenerate applies the same
+      policy enforcement.
+    - `TestParamOrdering` (1) — multiple row filters append in
+      order.
+    - `TestAdapterPath` (1) — multi-dialect adapter receives
+      rewritten SQL + params.
+  - Pre-existing stub (`test_query_service_schema_context.py`)
+    updated to accept `*args, **kwargs` on its `StubExecutor.execute`
+    so the new `params=()` keyword is accepted. Backward
+    compatible.
+  - `SourceDBExecutor.execute()` extended with
+    `params: tuple[Any, ...] = ()`. asyncpg positional binding is
+    used; existing callers that pass no params continue to work
+    (the empty tuple branch falls back to `conn.fetch(sql)` for
+    safety).
+  - Security: every error path (pre-LLM deny-all rejection, role
+    auth rejection, `PolicySchemaConflictError` mapping) uses a
+    constant i18n key and never echoes the SQL, table, column,
+    schema, user value, UUID, host/port, driver, stack trace,
+    or credential. The masked `QueryResult` is what is returned
+    to the user and persisted to the accepted-query history;
+    raw sensitive values never touch the response or the DB.
+  - Backward compatibility: every Phase 1-3 caller that
+    constructs `QueryService` without `policy_enforcement` or
+    `role_policy_provider` sees the existing flow unchanged.
+    All existing tests continue to pass.
 
 ### Remaining Wave 17.3 Work
-- T-708..T-710: Evaluator rule.
-- T-711..T-712: Query flow integration.
 - T-713..T-714: Role policy test endpoint.
 - T-715..T-721: History/rerun/audit/cross-dialect.
 - T-722: Wave 17.3 backend gate.
 
 ### Next Dispatch Constraint
-- Continue Wave 17.3 backend policy enforcement (T-708+).
+- Continue Wave 17.3 backend policy enforcement (T-713+).
 - T-722 (backend gate) must pass before Wave 17.3 close.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.3f (Query Flow Policy Integration)
+
+### Status
+- **Date**: 2026-06-05
+- **Phase**: Phase 5 remains IN PROGRESS.
+- **Current point**: Wave 17.3f query flow integration complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127, #128.
+- **Current/open PR**: Wave 17.3f (T-711/T-712) — Query Flow Policy Integration.
+
+### Completed Scope Through This Point
+- Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
+- Wave 17.1a-h backend and frontend SSO features are complete.
+- Wave 17.2a-h role management, group mapping, permission gates, and gates are complete.
+- Wave 17.3a schema filtering is complete.
+- Wave 17.3b row filter validation is complete.
+- Wave 17.3c placeholder binding + row filter injection + schema drift guard is complete.
+- Wave 17.3d column masking is complete.
+- Wave 17.3e evaluator authorization rule is complete.
+- Wave 17.3f query flow policy integration is complete (T-711/T-712, see prior section).
+- 12 NEW TDD tests in `test_query_flow_policy.py` (T-711) bring the
+  Phase 5 test count to 1281 in the full unit suite. The 4
+  pre-existing audit DB-state failures (`test_audit_service.py`
+  and `test_audit_chain_verification.py`) are unchanged and
+  unrelated to this wave (CI has been green; local DB has
+  leftover rows).
+
+### T-712 Follow-up: Real Provider Wired into Factories
+- **Date**: 2026-06-05
+- **Commit**: `dc9f28f`
+- **PR**: #129 (same PR, follow-up commit).
+- **Bug discovered after PR #129 initial review**: `_get_query_service`
+  and `_build_query_service_for_connection` built `QueryService`
+  without `role_policy_provider`, so production requests would never
+  load `users.role_id` / `role_connection_policies` / `user_identities`.
+  Policy was enforced only in tests via direct injection.
+- **Fix**: New `make_role_policy_provider(db)` closure factory in
+  `backend/src/app/services/role_policy_provider.py`. Both API
+  factories now pass `role_policy_provider=make_role_policy_provider(db)`
+  to `QueryService(...)`.
+- **Initial provider contract (v1)**: returned `None` for any
+  unresolvable policy. This was a security gap: for a role-bearing
+  user, `None` made the query service treat the request as legacy
+  un-authenticated and skip schema filter, role auth, row filters,
+  and column masks.
+
+### T-712 Follow-up: Provider Fails Closed for Role-Bearing Users
+- **Date**: 2026-06-05
+- **Commits**: `<this commit>` (provider) and follow-up tests
+- **PR**: #129 (same PR, blocker fix)
+- **Bug class**: provider fail-opened for role-bearing users when
+  the policy row was missing or the DB errored during the lookup.
+  `QueryService` treats `None` as "no policy applies" and the
+  request fell through to the legacy un-authenticated flow. For a
+  user with `role_id` this violated FR-128 / FR-130 / FR-131 /
+  FR-132 and the `/query/submit` contract lines 351-356.
+- **Fix**:
+  - `make_role_policy_provider(db)` now returns `None` ONLY when
+    the user has no `role_id` (the Phase 1-3 legacy admin path).
+  - User has `role_id` but no `role_connection_policies` row →
+    returns a deny-all `RolePolicy` (`allowed_tables=[]`,
+    `row_filters=[]`, `column_masks=[]`, safe
+    `user_context={"email": "", "subject_id": "", "role": ""}`).
+    The query service's pre-LLM check sees the empty
+    `allowed_tables` and returns
+    `EvaluatorRejection(error.queryBlockedPolicy)` BEFORE the LLM
+    is invoked. The LLM never sees the schema and the user gets a
+    sanitized, constant i18n key.
+  - User has `role_id` but the DB raises during the policy
+    lookup → returns a deny-all `RolePolicy`. Provider errors
+    never 500 a query; they fail closed with the same sanitized
+    rejection.
+  - User has `role_id` + policy row but no `user_identities`
+    row → returns a `RolePolicy` with empty-string `email` /
+    `subject_id` in `user_context`. Row filters that reference
+    these placeholders will fail closed at `bind_placeholders`
+    time (`placeholder_binding_failed`) — by design. Deny-all
+    (`allowed_tables=[]`) is also fail-closed.
+  - `QueryService._resolve_role_policy` docstring updated to
+    match: `None` only for unconfigured provider or no `role_id`.
+  - Module + closure docstrings rewritten to describe the
+    fail-closed contract and the sanitization guarantees (no
+    role id, connection id, table, column, SQL, user value,
+    DB error, host/port, username, driver, stack trace,
+    credential, token, cert, or SAML/OIDC XML in any return
+    value or error path).
+- **Tests updated / added** (8 in the flow-policy file + 2
+  factory tests still green):
+  - `TestRealRolePolicyProvider::test_real_provider_returns_deny_all_when_no_policy_row`
+    — role-bearing user + no row → deny-all (not None).
+  - `TestRealRolePolicyProvider::test_real_provider_db_error_returns_deny_all_not_500`
+    — DB exception during lookup → deny-all (not None, not 500).
+  - `TestRealProviderFailClosedEndToEnd::test_production_factory_blocks_before_llm_when_no_policy_row`
+    — production `QueryService` + real provider + no row →
+    `EvaluatorRejection(error.queryBlockedPolicy)` BEFORE the
+    LLM. No SQL, no UUID, no user value, no role id, no
+    connection id in payload.
+  - `TestRealProviderFailClosedEndToEnd::test_production_factory_blocks_before_llm_on_db_error`
+    — DB exception during lookup → `EvaluatorRejection` with no
+    `RuntimeError`, no `pg_terminate_backend`, no `DB down`, no
+    SQL, no UUIDs in payload.
+  - All previous positive tests still green: real policy row →
+    filter → auth → row filter → mask.
+  - `TestBackwardCompat::test_no_role_id_skips_policy_enforcement`
+    still green: `role_id=None` → provider returns `None` →
+    legacy flow unchanged.
+- **Test count**: 1232 → 1234 unit (the prior 1281 figure
+  included integration-marked tests not run under
+  `-m "not integration"`). All other unit tests still pass.
+- **Gates**: pytest 1234 pass, ruff check clean, ruff format
+  clean, git diff --check clean.

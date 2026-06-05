@@ -33,6 +33,7 @@ from app.schemas.query import (
     SubmitQuestionRequest,
 )
 from app.services.query_service import QueryService
+from app.services.role_policy_provider import make_role_policy_provider
 from app.source_db.connector import SourceDBConnector
 from app.source_db.executor import SourceDBExecutor
 from app.source_db.introspector import SchemaIntrospector
@@ -69,6 +70,7 @@ async def _get_query_service(
         source_db_executor=_source_db_executor,
         llm_provider=settings.LLM_PROVIDER,
         schema_context=schema_context,
+        role_policy_provider=make_role_policy_provider(db),
     )
 
 
@@ -181,6 +183,7 @@ async def _build_query_service_for_connection(
         target_dialect=dialect,
         connection_id=connection_id,
         source_db_adapter=adapter,
+        role_policy_provider=make_role_policy_provider(db),
     )
 
 
