@@ -2015,3 +2015,94 @@
   `accepted_query_id` from the request body, then
   translates `None` → 404 and `EvaluatorRejection` → 422
   per the existing pattern.
+
+### Wave 17.3i Follow-up: Multi-Connection Authority Fix
+
+**Problem identified in PR #132 review**: the original
+`rerun_accepted_query` resolved the role policy using the
+caller's optional `connection_id` arg (falling back to
+`self._connection_id` / first configured source DB via
+`_resolve_role_policy`). In a multi-connection deployment
+this meant a query accepted under connection A could be
+revalidated and executed under connection B's policy,
+schema, and executor context — a cross-connection leak.
+
+**Scope**: T-717 / T-718 follow-up only. No new tasks.
+No new FRs. The fix is the minimal correct approach
+recommended in the user input: use the accepted row's
+`database_connection_id` as authoritative for policy
+resolution; fail closed (`None`, sanitized 404) when the
+caller's `connection_id` differs from the accepted row.
+
+**Follow-up RED tests** (3, in `TestRerunConnectionContext`):
+
+- `test_rerun_returns_none_when_caller_connection_mismatches_accepted`:
+  accepted belongs to connection A; caller passes
+  connection B; rerun returns `None`; policy provider
+  NEVER consulted; executor NEVER called; LLM NEVER
+  called; accepted row not mutated.
+- `test_rerun_uses_accepted_connection_id_when_no_caller_connection`:
+  accepted belongs to connection A; caller omits
+  `connection_id`; service default is connection C;
+  provider MUST be called with A, not C. The service
+  default (and the first configured source DB) is NOT
+  consulted for policy resolution.
+- `test_rerun_mismatch_blocks_sanitized_no_provider_no_executor`:
+  defence-in-depth invariant: on mismatch, no provider
+  call, no executor call, no LLM, no mutation; forbidden
+  tokens absent from the result; connection UUIDs absent
+  from the result.
+
+**GREEN fix** (in
+`backend/src/app/services/query_service.py`,
+`rerun_accepted_query`):
+
+1. After loading the accepted row, compare the caller's
+   `connection_id` (if supplied) against
+   `accepted.database_connection_id`. If they differ,
+   return `None` (caller surfaces a sanitized 404)
+   BEFORE the policy provider is consulted and BEFORE
+   the executor is reached.
+2. Use `str(accepted.database_connection_id)` as the
+   authoritative connection id for
+   `_resolve_role_policy`. The caller's arg, the
+   service default, and the first configured source
+   DB are no longer consulted for policy resolution
+   on the rerun path.
+
+**Preserved invariants** (no regression):
+
+- Current role policy only, not historical policy.
+- Fail-closed on missing policy row for role-bearing
+  users (PR #129 contract).
+- LLM never called for rerun.
+- Row filters applied before execution; user values
+  flow via `user_context` + bound params, never via
+  SQL interpolation.
+- Column masks applied after execution.
+- Accepted row read-only.
+- No raw UUID/SQL/table/column/driver/schema leak in
+  any response or error path.
+- `role_id=None` legacy path: provider returns `None`;
+  rerun executes with no policy enforcement.
+
+**Test count**: 1285 → 1288 (8 → 11 in
+`test_rerun_revalidation.py`).
+
+**Gates**: all green.
+
+**Commits**:
+
+- `20501ad` test(T-717 follow-up): rerun
+  connection-context authority tests (3 RED tests).
+- `51530d1` fix(T-718 follow-up): rerun uses
+  `accepted.database_connection_id` authoritatively
+  (mismatch → `None`).
+
+**No `[NEEDS DECISION]` items**. The fix is the
+minimal correct approach per the user input. The
+accepted row's `database_connection_id` is the
+authoritative source for connection scoping on
+rerun; the caller's `connection_id` is a cross-check
+that must match. No ambiguous product decisions or
+trade-offs not locked by spec/plan/tasks/contracts.
