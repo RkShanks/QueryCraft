@@ -272,6 +272,7 @@ async def reject_query(
         return await service.reject_query(
             attempt_id=req.attempt_id,
             http_session_id=request.state.session_id,
+            user_id=user_id,
         )
     except (AttemptNotFound, AttemptOwnershipViolation) as exc:
         raise HTTPException(

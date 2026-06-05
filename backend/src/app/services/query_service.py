@@ -575,9 +575,11 @@ class QueryService:
                 await store_attempt(attempt, http_session_id, self._redis)
                 # FR-140: emit query.execute with outcome='failure'
                 # on source DB timeout. Context carries only the
-                # constant reason + attempt_id; no raw driver
-                # error, no host/port/credential. The HTTP 504
-                # detail below uses the constant i18n key
+                # constant reason; no raw driver error, no
+                # host/port/credential. attempt_id is in
+                # resource_id (audit standard) so it is NOT
+                # duplicated in context. The HTTP 504 detail
+                # below uses the constant i18n key
                 # 'error.timeout' which never carries the
                 # underlying exception message.
                 await AuditService.log(
@@ -588,7 +590,7 @@ class QueryService:
                     resource_type="query_attempt",
                     resource_id=attempt_id,
                     outcome="failure",
-                    context={"attempt_id": attempt_id, "reason": "timeout"},
+                    context={"reason": "timeout"},
                 )
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
@@ -604,11 +606,12 @@ class QueryService:
             await store_attempt(attempt, http_session_id, self._redis)
 
             # FR-140: emit query.execute (success) right after the
-            # executor returns. Context carries only the
-            # attempt_id + row_count; no rows, no columns, no SQL,
-            # no host/port/credential. The audit log itself is
-            # not the source of truth for the result — the
-            # accepted-query history (auto-saved below) is.
+            # executor returns. Context carries only row_count;
+            # no rows, no columns, no SQL, no host/port/credential.
+            # attempt_id is in resource_id (audit standard) so
+            # it is NOT duplicated in context. The audit log
+            # itself is not the source of truth for the result —
+            # the accepted-query history (auto-saved below) is.
             await AuditService.log(
                 self._db_session,
                 action=AuditActionType.QUERY_EXECUTE,
@@ -617,7 +620,7 @@ class QueryService:
                 resource_type="query_attempt",
                 resource_id=attempt_id,
                 outcome="success",
-                context={"attempt_id": attempt_id, "row_count": len(rows)},
+                context={"row_count": len(rows)},
             )
 
             # 4a. T-712: Apply per-role column masks to the
@@ -752,8 +755,8 @@ class QueryService:
                 # FR-140: emit query.accept even on the idempotent
                 # path; the user made a distinct accept decision
                 # (click). resource_id is the existing accepted
-                # query id (audit standard). No SQL / no question
-                # text in the context.
+                # query id (audit standard); accepted_query_id is
+                # NOT duplicated in context.
                 await AuditService.log(
                     self._db_session,
                     action=AuditActionType.QUERY_ACCEPT,
@@ -762,7 +765,7 @@ class QueryService:
                     resource_type="accepted_query",
                     resource_id=str(existing.id),
                     outcome="success",
-                    context={"accepted_query_id": str(existing.id)},
+                    context={},
                 )
                 return AcceptedQuerySummary(
                     id=str(existing.id),
@@ -792,9 +795,10 @@ class QueryService:
             await delete_attempt(attempt_id, self._redis)
             await self._redis.delete(f"active_attempt:{http_session_id}")
 
-            # FR-140: emit query.accept on the fresh path. The
-            # accepted_query_id is the freshly-created row's id
-            # (audit standard; not a leak). No SQL, no question
+            # FR-140: emit query.accept on the fresh path.
+            # resource_id is the freshly-created accepted query
+            # id (audit standard; not a leak). accepted_query_id
+            # is NOT duplicated in context. No SQL, no question
             # text, no row data in the context.
             await AuditService.log(
                 self._db_session,
@@ -804,7 +808,7 @@ class QueryService:
                 resource_type="accepted_query",
                 resource_id=str(query.id),
                 outcome="success",
-                context={"accepted_query_id": str(query.id)},
+                context={},
             )
 
             return AcceptedQuerySummary(
@@ -821,6 +825,7 @@ class QueryService:
         self,
         attempt_id: str,
         http_session_id: str,
+        user_id: str | None = None,
     ) -> QueryResult | RefinePrompt:
         """Reject a query result and trigger one auto-retry.
 
@@ -829,6 +834,15 @@ class QueryService:
         a new SQL attempt. If this is the second consecutive rejection (or
         the regenerated SQL is byte-equal), returns a RefinePrompt instead
         of a new result.
+
+        Args:
+            attempt_id: The ephemeral attempt id to reject.
+            http_session_id: The HTTP session id (Redis lock key).
+            user_id: The authenticated user id (FR-140 audit
+                attribution). Optional for backward compatibility
+                with existing test callers; when provided it is
+                recorded as ``actor_id`` and ``actor_identity`` on
+                the ``query.reject`` audit entry.
 
         Raises:
             SessionBusy: if a concurrent operation is in progress.
@@ -841,24 +855,39 @@ class QueryService:
         # audited separately only if it reaches a new
         # submit/validate/execute path (currently out of
         # T-720 scope — regenerate logs no further events
-        # to keep the diff minimal). The attempt id is the
-        # resource; no SQL / no question text in the context.
-        # actor_identity is None here because reject_query
-        # does not re-fetch the user (regenerate_query does
-        # internally if needed); the actor_id is still
-        # recorded via the user lookup in regenerate_query
-        # (none — reject has no user_id at this entry
-        # point). For the audit log we leave actor_identity
-        # None rather than fabricate a value.
+        # to keep the diff minimal).
+        #
+        # Actor attribution (PR #133 review fix): when the
+        # API layer passes the authenticated ``user_id``,
+        # the audit entry records both ``actor_id`` (UUID
+        # form) and ``actor_identity`` (string form). When
+        # ``user_id`` is ``None`` (legacy test callers
+        # without the new param), both are ``None`` rather
+        # than fabricated. The actor_id remains the
+        # authoritative user link; actor_identity is a
+        # human-readable mirror of the same value.
+        reject_actor_id: uuid.UUID | None = None
+        reject_actor_identity: str | None = None
+        if user_id is not None:
+            try:
+                reject_actor_id = uuid.UUID(user_id)
+                reject_actor_identity = user_id
+            except ValueError:
+                # Defensive: a malformed user_id is treated
+                # as no attribution rather than raising —
+                # the audit must not break the user-facing
+                # reject path.
+                reject_actor_id = None
+                reject_actor_identity = None
         await AuditService.log(
             self._db_session,
             action=AuditActionType.QUERY_REJECT,
-            actor_id=None,
-            actor_identity=None,
+            actor_id=reject_actor_id,
+            actor_identity=reject_actor_identity,
             resource_type="query_attempt",
             resource_id=attempt_id,
             outcome="success",
-            context={"attempt_id": attempt_id},
+            context={},
         )
         return await self.regenerate_query(attempt_id, http_session_id)
 

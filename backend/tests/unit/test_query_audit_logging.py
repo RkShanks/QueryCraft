@@ -66,7 +66,14 @@ from app.services.query_service import QueryService
 # Mirrors the rerun test pattern but scoped to the audit
 # context dict only (not the API response). Resource IDs
 # (accepted_query_id, attempt_id) are NOT forbidden in
-# resource_id per the existing audit model.
+# resource_id per the existing audit model; they MUST be
+# absent from ``context`` (PR #133 review fix). The
+# specific known accepted_query_id used by the
+# TestAcceptAuditLogging fixture is included so a
+# regression that puts it back into context fails.
+_AUDIT_KNOWN_ACCEPTED_QUERY_ID = "aaaaaaaa-0000-0000-0000-000000000001"
+_AUDIT_KNOWN_USER_ID = "550e8400-e29b-41d4-a716-446655440000"
+
 _AUDIT_FORBIDDEN_IN_CONTEXT = (
     # raw SQL fragment
     "SELECT orders.ssn FROM orders WHERE ssn = '123-45-6789'",
@@ -97,6 +104,11 @@ _AUDIT_FORBIDDEN_IN_CONTEXT = (
     "psycopg2",
     "pymysql",
     "pyodbc",
+    # known resource UUIDs that must NEVER appear in
+    # context (PR #133 review fix). They live in
+    # resource_id, not context.
+    _AUDIT_KNOWN_ACCEPTED_QUERY_ID,
+    _AUDIT_KNOWN_USER_ID,
 )
 
 
@@ -671,6 +683,152 @@ class TestRejectAuditLogging:
                 "generate_sql",
                 new=AsyncMock(return_value="SELECT 1"),
             ):
+                # PR #133 review fix: the API layer passes
+                # the authenticated user_id. The audit entry
+                # must record both actor_id (UUID form) and
+                # actor_identity (string form) for the
+                # QUERY_REJECT event.
+                await service.reject_query(
+                    attempt_id=attempt_id,
+                    http_session_id=http_session_id,
+                    user_id=deps["user_id"],
+                )
+
+        actions = _audit_actions(mock_audit)
+        assert AuditActionType.QUERY_REJECT in actions, f"Expected QUERY_REJECT in audit calls, got {actions}"
+
+        # PR #133: assert reject actor attribution.
+        reject_calls = [
+            c
+            for c in mock_audit.call_args_list
+            if (c.kwargs.get("action") if c.kwargs else None) == AuditActionType.QUERY_REJECT
+        ]
+        assert len(reject_calls) == 1
+        reject_call = reject_calls[0]
+        assert reject_call.kwargs.get("actor_id") == uuid.UUID(deps["user_id"]), (
+            f"actor_id missing or wrong on QUERY_REJECT: {reject_call.kwargs.get('actor_id')!r}"
+        )
+        assert reject_call.kwargs.get("actor_identity") == deps["user_id"], (
+            f"actor_identity missing or wrong on QUERY_REJECT: {reject_call.kwargs.get('actor_identity')!r}"
+        )
+
+    async def test_reject_query_without_user_id_keeps_none_actors(self):
+        """PR #133: when user_id is not passed (legacy callers),
+        QUERY_REJECT records actor_id=None and actor_identity=None
+        rather than fabricating a value. Backward-compatible with
+        existing reject test callers."""
+        from app.db.models.enums import AuditActionType
+
+        service, deps = _make_service()
+        http_session_id = "http-sess-1"
+        attempt_id = str(uuid.uuid4())
+
+        await service._redis.set(f"active_attempt:{http_session_id}", attempt_id)
+        ephemeral = EphemeralAttempt(
+            attempt_id=attempt_id,
+            session_id=http_session_id,
+            user_id=deps["user_id"],
+            state="EXECUTED",
+            sql="SELECT 1",
+            question="How many?",
+        )
+        await store_attempt(ephemeral, http_session_id, service._redis)
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            with patch.object(
+                service._llm,
+                "generate_sql",
+                new=AsyncMock(return_value="SELECT 1"),
+            ):
+                await service.reject_query(
+                    attempt_id=attempt_id,
+                    http_session_id=http_session_id,
+                )
+
+        reject_calls = [
+            c
+            for c in mock_audit.call_args_list
+            if (c.kwargs.get("action") if c.kwargs else None) == AuditActionType.QUERY_REJECT
+        ]
+        assert len(reject_calls) == 1
+        reject_call = reject_calls[0]
+        assert reject_call.kwargs.get("actor_id") is None
+        assert reject_call.kwargs.get("actor_identity") is None
+
+    async def test_reject_query_context_has_no_resource_uuids(self):
+        """PR #133: QUERY_REJECT context must NOT carry
+        attempt_id (it lives in resource_id). The context
+        is empty {}; resource_id is the authoritative
+        resource pointer."""
+        from app.db.models.enums import AuditActionType
+
+        service, deps = _make_service()
+        http_session_id = "http-sess-1"
+        attempt_id = str(uuid.uuid4())
+
+        await service._redis.set(f"active_attempt:{http_session_id}", attempt_id)
+        ephemeral = EphemeralAttempt(
+            attempt_id=attempt_id,
+            session_id=http_session_id,
+            user_id=deps["user_id"],
+            state="EXECUTED",
+            sql="SELECT 1",
+            question="How many?",
+        )
+        await store_attempt(ephemeral, http_session_id, service._redis)
+
+        # Reuse the existing rejection-patch pattern by
+        # isolating only the QUERY_REJECT audit call
+        # (patch regenerate_query to a no-op so the
+        # subsequent active-attempt check inside
+        # regenerate is not exercised — the test
+        # focuses on the QUERY_REJECT audit shape
+        # only).
+        async def _noop_regen(attempt_id, http_session_id):
+            from app.schemas.query import RefinePrompt
+
+            return RefinePrompt(message_key="query.refine.message", should_refine=True)
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            with patch.object(service, "regenerate_query", new=_noop_regen):
+                await service.reject_query(
+                    attempt_id=attempt_id,
+                    http_session_id=http_session_id,
+                    user_id=deps["user_id"],
+                )
+
+        reject_calls = [
+            c
+            for c in mock_audit.call_args_list
+            if (c.kwargs.get("action") if c.kwargs else None) == AuditActionType.QUERY_REJECT
+        ]
+        assert len(reject_calls) == 1
+        ctx = reject_calls[0].kwargs.get("context") or {}
+        assert "attempt_id" not in ctx
+        # the actual attempt_id string itself must also not appear
+        assert attempt_id not in str(ctx)
+        # resource_id still carries the attempt_id
+        assert reject_calls[0].kwargs.get("resource_id") == attempt_id
+        await store_attempt(ephemeral, http_session_id, service._redis)
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            # Patch LLM/evaluator on the regenerate path so
+            # the call returns a RefinePrompt quickly. The
+            # point of this test is the QUERY_REJECT event.
+            with patch.object(
+                service._llm,
+                "generate_sql",
+                new=AsyncMock(return_value="SELECT 1"),
+            ):
                 await service.reject_query(
                     attempt_id=attempt_id,
                     http_session_id=http_session_id,
@@ -779,6 +937,15 @@ class TestAuditContextRedaction:
             ctx_str = str(ctx)
             for token in _AUDIT_FORBIDDEN_IN_CONTEXT:
                 assert token not in ctx_str, f"Forbidden token {token!r} found in audit context: {ctx}"
+            # PR #133: resource UUIDs (attempt_id,
+            # accepted_query_id) live in resource_id, not in
+            # the context dict. Asserting the absence here
+            # is a direct contract test that prevents the
+            # duplication from creeping back in.
+            assert "attempt_id" not in ctx, f"attempt_id must not be in audit context (use resource_id); context={ctx}"
+            assert "accepted_query_id" not in ctx, (
+                f"accepted_query_id must not be in audit context (use resource_id); context={ctx}"
+            )
 
         # Sanity: at least the three expected events were emitted.
         actions = _audit_actions(mock_audit)
