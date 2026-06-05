@@ -28,6 +28,7 @@ class ColumnMeta(BaseModel):
 
     name: str
     type: str
+    masked: bool = False
 
 
 class QueryResult(BaseModel):
