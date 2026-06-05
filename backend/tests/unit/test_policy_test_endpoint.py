@@ -39,6 +39,7 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
+from app.db.models.enums import DatabaseType
 from app.db.models.role import Role
 from app.db.models.role_connection_policy import RoleConnectionPolicy
 from app.evaluator.schema_context import Column, SchemaContext, Table
@@ -964,10 +965,18 @@ def _admin_app_with_policy(
     )
 
 
-def _active_healthy_conn(conn_id):
-    """Build a connection mock in active+healthy+introspected state."""
+def _active_healthy_conn(conn_id, database_type=DatabaseType.POSTGRESQL):
+    """Build a connection mock in active+healthy+introspected state.
+
+    ``database_type`` defaults to POSTGRESQL so existing tests keep
+    passing unchanged. The endpoint uses ``conn.database_type`` (a
+    ``DatabaseType`` StrEnum) to pick the sqlglot dialect for
+    sample-SQL evaluation; supplying a different enum here exercises
+    the per-connection dialect resolution.
+    """
     conn = MagicMock()
     conn.id = conn_id
+    conn.database_type = database_type
     conn.lifecycle_state = MagicMock()
     conn.lifecycle_state.value = "active"
     conn.lifecycle_state.__eq__ = lambda self, other: self.value == getattr(other, "value", other)
@@ -1243,3 +1252,118 @@ class TestSampleSqlEvaluation:
             "SingleStatement",
         ]:
             assert leak not in body, f"leaked {leak!r} in multi-statement response body"
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_mysql_backtick_allowed(self):
+        """MySQL connection + backtick-quoted sample SQL must be parsed with
+        the ``mysql`` sqlglot dialect. The previous hard-coded
+        ``dialect="postgres"`` caused sqlglot to reject backticks and
+        the rule wrongly returned ``query_blocked_policy``."""
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[
+                {"table": "customers", "columns": ["id", "name", "email"]},
+            ],
+        )
+        conn = _active_healthy_conn(conn_id, database_type=DatabaseType.MYSQL)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={
+                    "question": "Show customers",
+                    "connection_id": str(conn_id),
+                    "sample_sql": "SELECT `id`, `name` FROM `customers`",
+                },
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["would_be_allowed"] is True, data
+        assert data.get("message_key") in (None, "")
+        assert "customers" in data["accessible_tables"]
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_mssql_bracket_allowed(self):
+        """MSSQL connection + bracket-quoted sample SQL must be parsed with
+        the ``tsql`` sqlglot dialect. The previous hard-coded
+        ``dialect="postgres"`` caused sqlglot to reject brackets and the
+        rule wrongly returned ``query_blocked_policy``."""
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[
+                {"table": "customers", "columns": ["id", "name", "email"]},
+            ],
+        )
+        conn = _active_healthy_conn(conn_id, database_type=DatabaseType.MSSQL)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={
+                    "question": "Show customers",
+                    "connection_id": str(conn_id),
+                    "sample_sql": "SELECT [id], [name] FROM [customers]",
+                },
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["would_be_allowed"] is True, data
+        assert data.get("message_key") in (None, "")
+        assert "customers" in data["accessible_tables"]
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_wrong_dialect_blocks_sanitized(self):
+        """MSSQL connection receiving MySQL-flavoured (backtick) sample SQL
+        must block with the sanitized ``error.queryBlockedPolicy`` key
+        and never leak the SQL, table, column, role id, connection
+        id, sqlglot, or driver text. Guards against a regression where
+        a future helper might silently coerce dialects or pass
+        through raw parse errors."""
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[{"table": "customers", "columns": ["id", "name"]}],
+        )
+        conn = _active_healthy_conn(conn_id, database_type=DatabaseType.MSSQL)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={
+                    "question": "Show customers",
+                    "connection_id": str(conn_id),
+                    "sample_sql": "SELECT `id` FROM `customers`",
+                },
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["would_be_allowed"] is False
+        assert data["message_key"] == "error.queryBlockedPolicy"
+        body = response.text
+        for leak in [
+            "SELECT `id`",
+            "FROM `customers`",
+            str(role_id),
+            str(conn_id),
+            "sqlglot",
+            "ParseError",
+            "Traceback",
+            "tsql",
+            "mysql",
+            "mssql",
+            "postgresql",
+            "dialect",
+            "RoleAuthorization",
+        ]:
+            assert leak not in body, f"leaked {leak!r} in wrong-dialect response body"
