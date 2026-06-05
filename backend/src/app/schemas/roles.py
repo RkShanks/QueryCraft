@@ -73,6 +73,18 @@ class PolicyTestRequest(BaseModel):
 
     question: str = Field(..., min_length=1, max_length=2000)
     connection_id: str
+    sample_sql: str | None = Field(
+        default=None,
+        max_length=20000,
+        description=(
+            "Optional sample SQL the admin wants to dry-run through the role "
+            "auth rule. When present and non-empty, the endpoint runs "
+            "RoleAuthorizationRule against the current schema + policy and "
+            "overrides would_be_allowed with the SQL-level verdict. When "
+            "absent, the endpoint falls back to the policy-state preview "
+            "(would_be_allowed = bool(accessible_tables))."
+        ),
+    )
 
 
 class PolicyTestResponse(BaseModel):
@@ -84,3 +96,11 @@ class PolicyTestResponse(BaseModel):
     applicable_row_filters: list[dict] = Field(default_factory=list)
     masked_columns: dict[str, list[str]] = Field(default_factory=dict)
     would_be_allowed: bool = True
+    message_key: str | None = Field(
+        default=None,
+        description=(
+            "Set to 'error.queryBlockedPolicy' when sample_sql evaluation "
+            "blocks the query. Null when sample_sql is absent or the rule "
+            "allows the query."
+        ),
+    )
