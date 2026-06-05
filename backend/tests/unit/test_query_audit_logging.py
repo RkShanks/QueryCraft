@@ -93,7 +93,7 @@ _AUDIT_FORBIDDEN_IN_CONTEXT = (
     "PHNhbWw+",
     # stack traces / driver errors
     "Traceback",
-    "File \"",
+    'File "',
     "psycopg2",
     "pymysql",
     "pyodbc",
@@ -292,8 +292,6 @@ def _make_service(
         role_policy_provider = role_policy_provider or _provider
 
     db = AsyncMock()
-    db_conn_uuid = uuid.UUID(connection_id)
-    db_conn_id = str(db_conn_uuid)
     user_id = "550e8400-e29b-41d4-a716-446655440000"
     user_mock = user or _make_user_mock(user_id=user_id)
 
@@ -314,7 +312,20 @@ def _make_service(
     repo.list_by_session = AsyncMock(return_value=[])
     repo.get_latest_by_session = AsyncMock(return_value=None)
     repo.get_by_attempt_id = AsyncMock(return_value=None)
-    _saved = MagicMock(id="aaaaaaaa-0000-0000-0000-000000000001")
+    # _saved is the returned accepted-query ORM row. Use a real
+    # string id (audit resource_id) + real string scalar fields
+    # (AcceptedQuerySummary is a pydantic model that rejects
+    # MagicMock on string fields). accepted_at is a real
+    # datetime (the service calls .isoformat() on it).
+    from datetime import UTC, datetime
+
+    _saved = MagicMock(
+        id="aaaaaaaa-0000-0000-0000-000000000001",
+        question_text="How many?",
+        generated_sql="SELECT 1",
+        accepted_at=datetime(2026, 6, 5, tzinfo=UTC),
+        database_connection_id=uuid.UUID("770e8400-e29b-41d4-a716-446655440000"),
+    )
     repo.create = AsyncMock(return_value=_saved)
 
     session_repo = MagicMock()
@@ -351,8 +362,6 @@ def _make_service(
 
 def _audit_actions(mock_audit) -> list:
     """Return list of AuditActionType enums from mock_audit calls."""
-    from app.db.models.enums import AuditActionType
-
     out: list = []
     for call in mock_audit.call_args_list:
         action = call.kwargs.get("action") if call.kwargs else None
@@ -504,9 +513,7 @@ class TestPolicyBlockBeforeLlmAuditLogging:
         ctx = _audit_context(mock_audit, AuditActionType.ACCESS_DENIED)
         ctx_str = str(ctx)
         for token in _AUDIT_FORBIDDEN_IN_CONTEXT:
-            assert token not in ctx_str, (
-                f"Forbidden token {token!r} found in access.denied audit context: {ctx}"
-            )
+            assert token not in ctx_str, f"Forbidden token {token!r} found in access.denied audit context: {ctx}"
 
 
 # ── 4. Policy block after LLM (role-authorization) ─────────────────────
@@ -569,9 +576,7 @@ class TestPolicyBlockAfterLlmAuditLogging:
             "payments",
             "ssn",
         ):
-            assert forbidden not in ctx_str, (
-                f"Forbidden token {forbidden!r} found in role-auth audit context: {ctx}"
-            )
+            assert forbidden not in ctx_str, f"Forbidden token {forbidden!r} found in role-auth audit context: {ctx}"
 
 
 # ── 5. Accept ──────────────────────────────────────────────────────────
@@ -612,13 +617,12 @@ class TestAcceptAuditLogging:
             )
 
         actions = _audit_actions(mock_audit)
-        assert AuditActionType.QUERY_ACCEPT in actions, (
-            f"Expected QUERY_ACCEPT in audit calls, got {actions}"
-        )
+        assert AuditActionType.QUERY_ACCEPT in actions, f"Expected QUERY_ACCEPT in audit calls, got {actions}"
         # resource_id should be the accepted query id (audit
         # standard; not a leak).
         accept_calls = [
-            c for c in mock_audit.call_args_list
+            c
+            for c in mock_audit.call_args_list
             if (c.kwargs.get("action") if c.kwargs else None) == AuditActionType.QUERY_ACCEPT
             or (c.args[0] if c.args else None) == AuditActionType.QUERY_ACCEPT
         ]
@@ -673,9 +677,7 @@ class TestRejectAuditLogging:
                 )
 
         actions = _audit_actions(mock_audit)
-        assert AuditActionType.QUERY_REJECT in actions, (
-            f"Expected QUERY_REJECT in audit calls, got {actions}"
-        )
+        assert AuditActionType.QUERY_REJECT in actions, f"Expected QUERY_REJECT in audit calls, got {actions}"
 
 
 # ── 7. Source DB timeout / execution failure ───────────────────────────
@@ -715,26 +717,20 @@ class TestSourceDbTimeoutAuditLogging:
         # Find the QUERY_EXECUTE call(s) and assert one
         # is a failure outcome.
         execute_calls = [
-            c for c in mock_audit.call_args_list
+            c
+            for c in mock_audit.call_args_list
             if (c.kwargs.get("action") if c.kwargs else None) == AuditActionType.QUERY_EXECUTE
         ]
         assert len(execute_calls) >= 1
-        failure_calls = [
-            c for c in execute_calls
-            if (c.kwargs.get("outcome") if c.kwargs else "success") != "success"
-        ]
-        assert len(failure_calls) == 1, (
-            f"Expected exactly one QUERY_EXECUTE failure outcome, got: {execute_calls}"
-        )
+        failure_calls = [c for c in execute_calls if (c.kwargs.get("outcome") if c.kwargs else "success") != "success"]
+        assert len(failure_calls) == 1, f"Expected exactly one QUERY_EXECUTE failure outcome, got: {execute_calls}"
 
         # Failure context: no raw driver error / host / port /
         # credential / SAML / cert.
         ctx = failure_calls[0].kwargs.get("context") or {}
         ctx_str = str(ctx)
         for token in _AUDIT_FORBIDDEN_IN_CONTEXT:
-            assert token not in ctx_str, (
-                f"Forbidden token {token!r} found in execution-failure audit context: {ctx}"
-            )
+            assert token not in ctx_str, f"Forbidden token {token!r} found in execution-failure audit context: {ctx}"
 
 
 # ── 8. Audit context redaction (cross-cutting) ─────────────────────────
@@ -755,7 +751,11 @@ class TestAuditContextRedaction:
             user_id=uuid.UUID("550e8400-e29b-41d4-a716-446655440000"),
             role_id=uuid.UUID("660e8400-e29b-41d4-a716-446655440000"),
             connection_id=conn_id,
-            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+            # Allow ssn so the role-auth rule passes and execution
+            # actually runs; the redaction assertions below
+            # verify the SQL fragment never reaches the audit
+            # context regardless.
+            allowed_tables=[{"table": "orders", "columns": ["id", "ssn"]}],
         )
         service, deps = _make_service(
             llm=_RecordingLLM(sql="SELECT orders.id FROM orders WHERE ssn = '123-45-6789'"),
@@ -778,9 +778,7 @@ class TestAuditContextRedaction:
             ctx = (call.kwargs.get("context") or {}) if call.kwargs else {}
             ctx_str = str(ctx)
             for token in _AUDIT_FORBIDDEN_IN_CONTEXT:
-                assert token not in ctx_str, (
-                    f"Forbidden token {token!r} found in audit context: {ctx}"
-                )
+                assert token not in ctx_str, f"Forbidden token {token!r} found in audit context: {ctx}"
 
         # Sanity: at least the three expected events were emitted.
         actions = _audit_actions(mock_audit)
@@ -804,8 +802,6 @@ class TestAuditServiceFailurePath:
     not best-effort."""
 
     async def test_audit_service_failure_propagates_fail_closed(self):
-        from app.db.models.enums import AuditActionType
-
         service, deps = _make_service(
             adapter=_RecordingAdapter(),
         )
