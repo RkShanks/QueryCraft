@@ -1128,13 +1128,11 @@ class TestRerunConnectionContext:
         # rerun would have authorized with A's policy and then
         # executed against C — a multi-connection leak.)
         assert provider_calls == [], (
-            f"policy provider must not be called on service-context "
-            f"mismatch; got {provider_calls!r}"
+            f"policy provider must not be called on service-context mismatch; got {provider_calls!r}"
         )
         # Executor MUST NOT be called.
         assert deps["executor"].calls == [], (
-            f"executor must not be called on service-context "
-            f"mismatch; got {deps['executor'].calls!r}"
+            f"executor must not be called on service-context mismatch; got {deps['executor'].calls!r}"
         )
         # LLM never called.
         if hasattr(service._llm, "generate_sql"):

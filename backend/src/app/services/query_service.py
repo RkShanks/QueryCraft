@@ -1052,15 +1052,33 @@ class QueryService:
 
         # Multi-connection fix: the accepted row's
         # ``database_connection_id`` is the AUTHORITATIVE
-        # connection for policy resolution and execution.
-        # If the caller supplied a ``connection_id`` and it
-        # differs from the accepted row's id, return ``None``
-        # (caller surfaces a sanitized 404) BEFORE the policy
-        # provider is consulted and BEFORE the executor is
-        # reached. This prevents a multi-connection leak
-        # where a query accepted under connection A is
-        # revalidated/executed under connection B's policy,
-        # schema, and executor context.
+        # connection for policy resolution AND execution.
+        # The rerun runs through the already-built service
+        # context (``self._adapter`` / ``self._executor`` /
+        # ``self._schema_context`` / ``self._target_dialect``),
+        # so the service's ``self._connection_id`` (when set)
+        # MUST also match the accepted row's id. Two checks:
+        #
+        # 1. Service context: if the service was built for a
+        #    specific connection (request-scoped), it must
+        #    match the accepted row's connection. Otherwise
+        #    we'd authorize with A's policy and execute under
+        #    C's adapter / schema / dialect / executor — a
+        #    multi-connection leak.
+        # 2. Caller-supplied connection_id (cross-check): if
+        #    the caller passed a connection_id and it differs
+        #    from the accepted row's id, the rerun is
+        #    rejected before any DB or policy work.
+        #
+        # If ``self._connection_id`` is ``None`` the service
+        # is unscoped (legacy / single-connection build); the
+        # caller-supplied check still applies.
+        if (
+            self._connection_id is not None
+            and accepted.database_connection_id is not None
+            and self._connection_id != str(accepted.database_connection_id)
+        ):
+            return None
         if (
             connection_id is not None
             and accepted.database_connection_id is not None
