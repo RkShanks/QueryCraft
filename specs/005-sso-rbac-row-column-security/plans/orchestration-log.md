@@ -2106,3 +2106,113 @@ authoritative source for connection scoping on
 rerun; the caller's `connection_id` is a cross-check
 that must match. No ambiguous product decisions or
 trade-offs not locked by spec/plan/tasks/contracts.
+
+### Wave 17.3i Follow-up 2: Service-Context Authority Fix
+
+**Problem identified in PR #132 review follow-up**: the
+previous fix routed policy resolution through
+`accepted.database_connection_id` correctly. But
+`rerun_accepted_query` still EXECUTES through the
+already-built service context (`self._adapter`,
+`self._executor`, `self._schema_context`,
+`self._target_dialect`). If the service was built for
+connection C (request-scoped default) but the accepted
+query belongs to A, the executor would run the SQL
+against C's adapter under A's policy — a
+multi-connection leak. Authorizing with A and
+executing under C is exactly the kind of cross-context
+leak the original fix was meant to prevent.
+
+**Scope**: T-717 / T-718 follow-up only. No new tasks.
+No new FRs. The fix is the minimal correct approach
+recommended in the user input: extend the existing
+mismatch check to also gate on the service's
+`self._connection_id`.
+
+**Follow-up RED tests** (1 new, 1 replaced in
+`TestRerunConnectionContext`):
+
+- `test_rerun_uses_accepted_connection_id_when_no_caller_connection`
+  (replaced with)
+  `test_rerun_succeeds_when_service_matches_accepted_and_no_caller_connection`:
+  service scoped to A, accepted A, no caller id →
+  rerun succeeds; provider called with A; executor
+  called once with stored SQL; LLM never called; row
+  not mutated. The positive case.
+- (new) `test_rerun_fails_closed_when_service_default_mismatches_accepted`:
+  service scoped to C, accepted A, no caller id →
+  rerun returns `None`; provider NEVER consulted;
+  executor NEVER called; LLM NEVER called; row not
+  mutated; connection UUIDs absent from result;
+  forbidden tokens absent from result. Defence in
+  depth: even though the previous fix routes policy
+  through A, the executor runs against C — so the
+  rerun must be rejected before either is reached.
+
+**GREEN fix** (in
+`backend/src/app/services/query_service.py`,
+`rerun_accepted_query`):
+
+The mismatch check now has two clauses:
+
+1. **Service-context check** (NEW): if
+   `self._connection_id is not None` and it differs
+   from `accepted.database_connection_id`, return
+   `None` BEFORE the policy provider is consulted
+   and BEFORE the executor is reached.
+2. **Caller-supplied check** (UNCHANGED from the
+   previous follow-up): if the caller passed
+   `connection_id` and it differs from the accepted
+   row's id, return `None`.
+
+If `self._connection_id` is `None` the service is
+unscoped (legacy / single-connection build); the
+caller-supplied check still applies. The legacy
+`role_id=None` path (provider returns `None`) is
+unchanged: rerun executes with no policy enforcement
+when the service is unscoped AND the caller did not
+pass a `connection_id`.
+
+**Preserved invariants** (no regression):
+
+- Current role policy only, not historical policy.
+- Fail-closed on missing policy row for role-bearing
+  users (PR #129 contract).
+- LLM never called for rerun.
+- Row filters applied before execution; user values
+  flow via `user_context` + bound params, never via
+  SQL interpolation.
+- Column masks applied after execution.
+- Accepted row read-only.
+- No raw UUID/SQL/table/column/driver/schema leak
+  in any response or error path.
+- `role_id=None` legacy path: provider returns
+  `None`; rerun executes with no policy enforcement
+  when service is unscoped AND caller did not pass
+  a `connection_id`.
+
+**Test count**: 1288 → 1289 (11 → 12 in
+`test_rerun_revalidation.py`).
+
+**Gates**: all green.
+
+**Commits**:
+
+- `e6bba57` test(T-717 follow-up 2): service-context
+  authority tests (1 RED, 1 replaced).
+- `0caea57` fix(T-718 follow-up 2): rerun fails
+  closed on service-context mismatch.
+
+**No `[NEEDS DECISION]` items**. The fix is the
+minimal correct approach per the user input. The
+service's `self._connection_id` is now a required
+match against the accepted row's id (when set). The
+caller-supplied check is unchanged. No ambiguous
+product decisions or trade-offs not locked by
+spec/plan/tasks/contracts.
+
+The rerun route is still intentionally deferred. The
+service method's contract is fully pinned by T-717
++ the 6 follow-up tests across the two follow-ups
+(3 in follow-up 1 + 1 replaced + 1 new in follow-up 2
+= 5 distinct `TestRerunConnectionContext` tests).
