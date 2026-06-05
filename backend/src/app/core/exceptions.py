@@ -197,6 +197,22 @@ class SchemaTokenLimitExceeded(SchemaError):
 # ─── RBAC / Lockout Prevention ───
 
 
+class PolicySchemaConflictError(QueryCraftError):
+    """Raised when a row filter references a column or table removed
+    from the connection schema between save time and query time
+    (schema drift, FR-131 / S-005).
+
+    The error is sanitized: callers see only the constant message and
+    the i18n message key. The filter SQL, column name, and user values
+    are never leaked. The optional ``audit_hook`` in
+    ``PolicyEnforcementService.apply_row_filters`` is the side channel
+    for tamper-evident audit logging.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("Policy schema conflict", message_key="error.policySchemaConflict")
+
+
 class BuiltinProtectedError(QueryCraftError):
     """Raised when an attempt is made to delete or modify a built-in user/role.
 

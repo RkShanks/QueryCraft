@@ -19,18 +19,32 @@ params tuple. FR-131 / S-004.
 T-704: Row filter injection. Injects per-role row filters into a generated
 SQL statement via sqlglot AST AND-conjunction, transpiling the result to the
 target dialect, with schema-drift detection. FR-131 / S-005.
+
+T-705: Schema drift guard. Re-checks every column reference in every
+row filter against the current connection schema at injection time. A
+missing column or table raises ``PolicySchemaConflictError`` and emits
+``AuditActionType.POLICY_SCHEMA_MISMATCH`` via the optional ``audit_hook``.
 """
 
 from __future__ import annotations
 
+import contextlib
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 import sqlglot
 from sqlglot import exp
 
+from app.core.exceptions import PolicySchemaConflictError
+from app.db.models.enums import AuditActionType
 from app.evaluator.schema_context import Column, SchemaContext, Table
+
+# Type alias for the optional audit hook passed to ``apply_row_filters``.
+# The hook receives the action type and a sanitized payload (table name
+# only — never the filter SQL, column name, or user values).
+AuditHook = Callable[[AuditActionType, dict[str, Any]], None]
 
 # Constant error code for any binding failure. Intentionally opaque to avoid
 # leaking which key was missing or what dialect was requested.
@@ -445,6 +459,7 @@ class PolicyEnforcementService:
         schema: SchemaContext,
         user_context: dict[str, Any],
         dialect: str = "postgres",
+        audit_hook: AuditHook | None = None,
     ) -> BoundSql:
         """Inject per-role row filters into a generated SQL statement.
 
@@ -455,14 +470,20 @@ class PolicyEnforcementService:
 
         The generated ``sql`` is parsed with sqlglot in the target
         dialect. For each filter:
-        1. Placeholders are bound to driver-appropriate tokens via
+        1. Schema drift is checked — every column in the bound filter
+           must exist in the current ``schema`` for the filter's
+           table. A missing column or table raises
+           ``PolicySchemaConflictError`` (T-705). The optional
+           ``audit_hook`` receives
+           ``(POLICY_SCHEMA_MISMATCH, {"table": ...})`` first.
+        2. Placeholders are bound to driver-appropriate tokens via
            ``bind_placeholders`` (postgres: ``$N`` continuing from
            max+1 of the existing SQL; mysql: ``%s``; mssql: ``?``).
-        2. The bound filter is normalized to use ``?`` placeholders
+        3. The bound filter is normalized to use ``?`` placeholders
            internally and re-parsed as ``SELECT 1 WHERE <bound>``.
-        3. Its WHERE expression is AND-conjunctions into the main
+        4. Its WHERE expression is AND-conjunctions into the main
            statement's WHERE (or added as a new WHERE if none exists).
-        4. Bound values are appended to the returned ``params`` tuple.
+        5. Bound values are appended to the returned ``params`` tuple.
 
         After AST manipulation, the final SQL is renumbered to the
         target driver's style:
@@ -475,11 +496,17 @@ class PolicyEnforcementService:
                 target dialect.
             row_filters: Role-configured row filters. Each must have
                 string ``table`` and string ``filter`` keys.
-            schema: Connection schema (used by T-705 for drift checks).
+            schema: Current connection schema. Used for drift checks
+                on every column reference in every filter.
             user_context: Mapping with resolved user values for
                 placeholder binding.
             dialect: Target driver dialect (one of ``postgres``,
                 ``mysql``, ``mssql``).
+            audit_hook: Optional callable invoked with
+                ``(AuditActionType, payload)`` when a drift is
+                detected. The payload contains the admin-configured
+                ``table`` name only — never the filter SQL, the
+                missing column, or user values.
 
         Returns:
             ``BoundSql`` with the rewritten SQL in the target driver's
@@ -487,10 +514,14 @@ class PolicyEnforcementService:
             occurrence order). User values are never interpolated.
 
         Raises:
+            PolicySchemaConflictError: A filter references a column or
+                table removed from the current schema (schema drift).
+                The error is sanitized: no SQL, column, or user-value
+                leak. Constant message and i18n message key
+                ``error.policySchemaConflict``.
             ValueError: ``"filter_injection_failed"`` for malformed
                 input, unparseable SQL, non-SELECT generated SQL,
-                multi-statement input, or any bind failure. Constant
-                error code, no leak of SQL/schema/dialect internals.
+                multi-statement input, or any bind failure.
         """
         if not isinstance(sql, str):
             raise ValueError(_FILTER_INJECTION_FAILED)
@@ -539,6 +570,19 @@ class PolicyEnforcementService:
             bound = PolicyEnforcementService.bind_placeholders(filter_sql, user_context, dialect, start_index)
             params.extend(bound.params)
             internal_filter_sql = _to_internal_placeholder(bound.sql, dialect)
+
+            # T-705: schema drift guard. Parse the bound filter and
+            # check every column reference still exists in the
+            # current schema. Drift raises PolicySchemaConflictError
+            # (sanitized) and emits the audit hook with a payload
+            # containing only the table name.
+            _check_schema_drift(
+                internal_filter_sql,
+                table_name,
+                schema,
+                sqlglot_dialect,
+                audit_hook,
+            )
 
             # Parse the bound filter wrapped as a SELECT so we can lift
             # its WHERE expression for AND-conjunction. Parse in tsql
@@ -634,6 +678,71 @@ def _render_placeholders_for_driver(sql_str: str, dialect: str, start_index: int
 
         return re.sub(r"\?", _sub, sql_str)
     return sql_str
+
+
+def _check_schema_drift(
+    internal_filter_sql: str,
+    table_name: str,
+    schema: SchemaContext,
+    sqlglot_dialect: str,
+    audit_hook: AuditHook | None,
+) -> None:
+    """Verify every column in the bound filter still exists in the schema.
+
+    T-705. Drift means a column (or the whole table) was removed from
+    the connection schema between the time the filter was saved and
+    the time the query is being injected. Drift raises
+    ``PolicySchemaConflictError`` (sanitized constant message +
+    ``error.policySchemaConflict`` i18n key) and, if provided,
+    invokes the audit hook with ``POLICY_SCHEMA_MISMATCH`` and a
+    payload containing only the table name (no filter SQL, no column
+    name, no user values).
+
+    The check is case-insensitive on column/table names to match
+    Postgres identifier folding.
+    """
+    table = schema.find_table(table_name)
+    if table is None:
+        _emit_drift(audit_hook, table_name)
+        raise PolicySchemaConflictError()
+    valid_columns = {c.name.lower() for c in table.columns}
+
+    wrapped = f"SELECT 1 WHERE {internal_filter_sql}"
+    try:
+        stmt = sqlglot.parse_one(wrapped, read=sqlglot_dialect)
+    except Exception:
+        # If the bound filter is unparseable, we cannot guarantee the
+        # column set. Treat as drift — fail-closed.
+        _emit_drift(audit_hook, table_name)
+        raise PolicySchemaConflictError() from None
+
+    if not isinstance(stmt, exp.Select):
+        _emit_drift(audit_hook, table_name)
+        raise PolicySchemaConflictError()
+
+    for col in stmt.find_all(exp.Column):
+        # Placeholder sentinels (T-702 internal) never appear here, but
+        # guard anyway: any column whose name starts with the sentinel
+        # prefix is a user-context substitution, not a real column.
+        if col.name.startswith(_PH_SENTINEL_PREFIX):
+            continue
+        if col.name.lower() not in valid_columns:
+            _emit_drift(audit_hook, table_name)
+            raise PolicySchemaConflictError()
+
+
+def _emit_drift(audit_hook: AuditHook | None, table_name: str) -> None:
+    """Fire the audit hook for a drift event, if one was provided.
+
+    The payload is sanitized: only the admin-configured table name
+    leaks. No filter SQL, no missing column, no user values.
+    """
+    if audit_hook is None:
+        return
+    # Audit failure must not block the raise that follows. The caller
+    # still sees PolicySchemaConflictError regardless.
+    with contextlib.suppress(Exception):
+        audit_hook(AuditActionType.POLICY_SCHEMA_MISMATCH, {"table": table_name})
 
 
 @dataclass(frozen=True)
