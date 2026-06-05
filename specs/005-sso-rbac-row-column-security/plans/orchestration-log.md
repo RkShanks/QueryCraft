@@ -1248,11 +1248,13 @@
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
 - **Current point**: Wave 17.3g role policy test endpoint merged
-  to main as PR #130.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127, #128, #129, #130.
-- **Current/open PR**: Wave 17.3h (T-715/T-716) — Query History
-  Scoping (FR-134 / SC-053: user sees only own history, no
-  cross-user leakage, admins not exempt).
+  to main as PR #130; Wave 17.3h query history scoping merged to
+  main as PR #131.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127, #128, #129, #130, #131.
+- **Current/open PR**: Wave 17.3i (T-717/T-718) — Accepted Query
+  Rerun Re-Validation (FR-135 / SC-053: rerun re-validates stored
+  SQL against current role policy; block + sanitize on restriction;
+  fail closed for role-bearing users with no policy row).
 
 ### Wave 17.3g Scope (T-713 / T-714)
 - **T-713**: 16 RED tests in
@@ -1589,7 +1591,7 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3h (Query History Scoping)
+## Historical Checkpoint — Through Wave 17.3h (Query History Scoping)
 
 ### Wave 17.3h Scope (T-715 / T-716)
 - **T-715** — 17 RED-then-GREEN tests in
@@ -1747,3 +1749,470 @@
 - Wave 17.3i (T-717 / T-718) is the next open work item. It
   is out of scope for this PR and remains in the next-wave
   bucket per the `### Next Steps` section above.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.3i (Accepted Query Rerun Re-Validation)
+
+### Wave 17.3i Scope (T-717 / T-718)
+- **T-717** — 8 RED-then-GREEN tests in
+  `backend/tests/unit/test_rerun_revalidation.py` across 6 classes:
+  - `TestRerunHappyPath` (1): allowed current policy permits
+    rerun, executor called exactly once with the stored SQL, LLM
+    never called, no mutation of the accepted row.
+  - `TestRerunBlockedByRestrictedPolicy` (2): table-removed
+    and column-removed restrictions block before executor with
+    `error.queryBlockedPolicy`. Sanitization: forbidden tokens
+    (raw SQL, table, column, UUID, user value, schema, host/port,
+    credential, token) never appear in the rejection payload.
+  - `TestRerunFailClosedOnMissingPolicyRow` (1): real production
+    `make_role_policy_provider` + DB fixture with user has
+    `role_id` but no `role_connection_policies` row. Fail-closed
+    block with `error.queryBlockedPolicy` before executor.
+    Consistent with PR #129.
+  - `TestRerunNotFound` (1): cross-user or non-existent
+    `accepted_query_id` returns `None`; repo's `get_by_id` is
+    called with the caller `user_id` (PR #131 user-scoped repo
+    clause); executor never reached.
+  - `TestRerunColumnMaskingPreserved` (1): allowed + masked
+    column passes auth; `apply_column_masks` invoked with the
+    executor's result; returned `QueryResult` is the masked one;
+    LLM never called.
+  - `TestRerunRowFilterApplied` (1): row filter rewrites SQL
+    and binds params; executor receives the rewritten SQL and
+    bound tuple, not the original SQL string; user values flow
+    via `user_context`, never via SQL interpolation.
+  - `TestRerunLegacyNoPolicyPath` (1): provider returns `None`
+    (`role_id=None` legacy admin) → rerun executes with no policy
+    enforcement; matches `submit_question`'s `policy is None`
+    branch.
+
+- **T-718** — `QueryService.rerun_accepted_query(accepted_query_id,
+  user_id, connection_id=None)` added to
+  `backend/src/app/services/query_service.py`. The method:
+  1. Loads the accepted query via
+     `AcceptedQueryRepository.get_by_id(query_id, user_id)`.
+     Cross-user or non-existent ids return `None` so the caller
+     raises a sanitized 404 (PR #131 user-scoped repo clause).
+  2. Resolves the user's CURRENT role policy for the connection
+     via the configured `role_policy_provider`. The historical
+     role policy from acceptance time is NOT trusted; only the
+     live provider is consulted.
+  3. Fail-closed pre-execution check: when the provider returns
+     a deny-all `RolePolicy` (`allowed_tables=[]`) — the case
+     for a role-bearing user whose policy row is missing, per
+     PR #129 — returns a sanitized
+     `EvaluatorRejection(error.queryBlockedPolicy)`. The LLM
+     is never called for rerun; the executor is never reached.
+  4. Runs the `RoleAuthorizationRule` against the stored SQL
+     via `_enforce_role_authorization`. On block, returns
+     `error.queryBlockedPolicy`. No raw SQL, table, column,
+     schema, UUID, user value, role id, connection id, DB
+     error, host/port, username, credential, or token leaks.
+  5. On allow: applies per-role row filters via
+     `PolicyEnforcementService.apply_row_filters`. Passes the
+     rewritten SQL and bound params tuple to the executor. User
+     values flow through `user_context` and bound params, never
+     via SQL interpolation.
+  6. After execution, applies per-role column masks via
+     `PolicyEnforcementService.apply_column_masks`. The returned
+     `QueryResult` is the masked one; `accepted_query_id` is
+     preserved on the response.
+  7. Read-only on the accepted row. No `create`,
+     `update_feedback`, or `delete_by_id` is called.
+
+  Legacy `role_id=None` / provider returns `None` path:
+  executes the stored SQL with no policy enforcement, matching
+  `submit_question`'s `policy is None` branch.
+
+### Endpoint Contract (per FR-135 / SC-053)
+- The rerun path is exposed via a service method
+  (`QueryService.rerun_accepted_query`) for now. A route
+  owner is left for a follow-up wave once a UI surface or
+  programmatic consumer requires it; the service method is
+  the testable surface and the contract is fully pinned by
+  T-717.
+- Accepted-query rerun re-validates the stored SQL against
+  the user's CURRENT role policy. If the role has been
+  restricted since the query was accepted, rerun is blocked
+  with a sanitized `error.queryBlockedPolicy` localized
+  error before any source DB execution.
+- No source DB execution on a blocked rerun.
+- No LLM call is made for rerun. The rerun path does not
+  regenerate SQL; it executes the stored SQL only.
+- Historical role policy is not trusted. The provider is
+  always consulted at rerun time; the role policy at
+  acceptance time is irrelevant.
+- Missing policy row for a role-bearing user fails closed
+  (deny-all) per PR #129.
+- The `role_id=None` legacy path remains unchanged: provider
+  returns `None`; rerun executes with no policy enforcement.
+- The accepted query is scoped by `user_id` at the repo
+  `WHERE` clause (PR #131). A cross-user or non-existent
+  `accepted_query_id` returns `None` from the repo, and the
+  service method returns `None` so the caller can surface a
+  sanitized 404.
+- Accepted query records are not mutated on the rerun path.
+  The accepted row is read-only.
+
+### Sanitization Guarantees (defence in depth)
+- The user_id source is `request.state.session["user_id"]`,
+  validated by `require_active_user` (re-fetches the `User`
+  row in the DB; stale session → 401 `error.unauthorized` +
+  Redis cleanup). The endpoint never trusts a client-supplied
+  user id.
+- The role policy provider is always consulted at rerun time;
+  historical policy is never trusted. The provider's fail-closed
+  contract is unchanged from PR #129.
+- `RoleAuthorizationRule` returns the constant
+  `query_blocked_policy` reason for every failure mode (per its
+  module docstring); the rejection surface uses the constant
+  i18n key `error.queryBlockedPolicy`. No internal details.
+- The `_role_auth_rejection()` helper builds the rejection with
+  the constant i18n key; no table, column, SQL, UUID, user
+  value, role id, connection id, DB error, host/port, username,
+  credential, or token is included.
+- The `evaluator_result` stored on the `EphemeralAttempt` is
+  NOT updated for rerun. Rerun is not an attempt; no attempt
+  state is touched.
+- Row filter parameters are bound through the driver's
+  positional binding; user values are never interpolated into
+  the SQL string.
+- Errors are surfaced with sanitized i18n keys: 409
+  `error.policySchemaConflict` for row filter / schema drift
+  conflict; 504 `error.timeout` for source DB timeout.
+- Forbidden tokens asserted absent from any rejection payload
+  in `TestRerunBlockedByRestrictedPolicy`:
+  `Traceback`, `File `, `Error`, `Exception`, `asyncpg`,
+  `asyncio`, `sqlalchemy`, host/port, `svc-prod`, `***MASKED***`,
+  `ssn`, `orders.ssn`, `payments.ssn`, fixture UUIDs (4
+  distinct), `alice@example.com`, `bob@example.com`,
+  `bob_smith`, `admin_pw`, `secret-token`, `saml-xml`,
+  and the raw stored SQL string itself.
+
+### Test Seams (intentional, documented)
+- The test harness uses `_make_rerun_service` (mirrors
+  `_make_service` from `test_query_flow_policy.py`) with
+  a stubbed `accepted_query_repository` and a recording
+  executor. Cross-user and non-existent cases pass
+  `accepted_query=None`; the repo's `get_by_id` returns
+  `None`, mirroring the production WHERE clause.
+- `role_policy_provider` is overridden per-test:
+  - TestRerunHappyPath: in-test `_provider` returns an allowed
+    `_RolePolicy` with both `orders` and `payments`.
+  - TestRerunBlockedByRestrictedPolicy: `_provider` returns a
+    restricted policy (table-removed or column-removed).
+  - TestRerunFailClosedOnMissingPolicyRow: real production
+    `make_role_policy_provider(db)` is wired to a `MagicMock`
+    DB whose `users` lookup returns a user with `role_id`
+    and whose `role_connection_policies` lookup returns
+    `None`. The provider returns a deny-all `RolePolicy`.
+  - TestRerunNotFound: `accepted_query=None`; no provider
+    override needed (the rerun path returns `None` before
+    the provider is consulted).
+  - TestRerunRowFilterApplied: in-test `apply_row_filters`
+    stub returns a `BoundSql` with the rewritten SQL and
+    bound tuple; executor is asserted to receive the
+    rewritten SQL.
+  - TestRerunColumnMaskingPreserved: in-test
+    `apply_column_masks` stub returns a real
+    `QueryResult` with `ColumnMeta.masked=True` and
+    `rows=[["***"]]`.
+  - TestRerunLegacyNoPolicyPath: provider returns `None`;
+    policy enforcement stubs raise `AssertionError` if
+    called.
+- The pre-existing 4 audit DB-state failures
+  (`test_audit_service.py` and
+  `test_audit_chain_verification.py`) remain and are
+  unrelated to this wave.
+
+### Test Coverage (8 tests, all green)
+- `TestRerunHappyPath` (1) — allowed rerun, executor
+  called exactly once, LLM not called, accepted row
+  not mutated.
+- `TestRerunBlockedByRestrictedPolicy` (2) — table-removed
+  and column-removed restrictions block before executor
+  with sanitized `error.queryBlockedPolicy`; no internal
+  details leak.
+- `TestRerunFailClosedOnMissingPolicyRow` (1) — real
+  provider + DB fixture; deny-all policy blocks before
+  executor.
+- `TestRerunNotFound` (1) — cross-user / non-existent
+  returns `None`; repo's `get_by_id` called with caller
+  user_id.
+- `TestRerunColumnMaskingPreserved` (1) — allowed +
+  masked column passes auth; masking applied to executor
+  result; returned `QueryResult` is the masked one.
+- `TestRerunRowFilterApplied` (1) — row filter rewrites
+  SQL + binds params; executor receives rewritten SQL
+  + bound tuple, not the original SQL string.
+- `TestRerunLegacyNoPolicyPath` (1) — provider returns
+  `None`; rerun executes with no policy enforcement;
+  matches `submit_question`'s `policy is None` branch.
+
+### Test Count
+- 1277 (post-17.3h) → 1285 unit pass
+  (`-m "not integration"`).
+- The 4 pre-existing audit DB-state failures
+  (`test_audit_service.py` and
+  `test_audit_chain_verification.py`) are unchanged and
+  unrelated to this wave.
+
+### Gates (all green)
+- `pytest tests/unit/test_rerun_revalidation.py -q` → 8
+  passed.
+- `pytest tests/unit -q -m "not integration"` → 1285
+  passed, 61 skipped, 9 deselected, 12 warnings.
+- `ruff check src tests` → All checks passed.
+- `ruff format --check src tests` → 302 files already
+  formatted.
+- `git diff --check` → clean.
+
+### Commits on Wave 17.3i Branch
+- `b182257` test(T-717): accepted-query rerun
+  re-validation tests (FR-135, SC-053) — 8 RED tests
+  across 6 classes.
+- `7c82f1c` feat(T-718): accepted-query rerun
+  re-validation in query service — adds
+  `QueryService.rerun_accepted_query`, with fail-closed
+  deny-all check + role auth rule + row filter injection
+  + column mask + read-only on the accepted row.
+
+### Next Steps (Wave 17.3j and beyond)
+- Wave 17.3j — Query Lifecycle Audit Logging (T-719 /
+  T-720) — submit / validate / execute / accept / reject /
+  policy block events on the query service.
+- Wave 17.3k — Cross-Dialect Policy Enforcement
+  (T-721, integration). Row filters + column masks verified
+  against PostgreSQL, MySQL, MSSQL via testcontainers.
+- Wave 17.3l — Backend Foundation Gates (T-722) —
+  CI-equivalent ruff check / pytest / format pass.
+- Frontend: T-723+ (masked column indicator, policy
+  editor, i18n) all out of scope for backend waves.
+- A rerun route owner (e.g. `POST /query/rerun`) is
+  intentionally deferred; the service method
+  `QueryService.rerun_accepted_query` is the testable
+  surface and the contract is fully pinned by T-717.
+  Adding a route is a follow-up wave once a UI surface
+  or programmatic consumer requires it.
+
+### Open Questions / Decisions for Future Waves
+- None for Wave 17.3i. The contract is fully specified by
+  FR-135, SC-053, and the api-contracts.md policy error
+  code table. The implementation reuses the existing
+  `RoleAuthorizationRule`, the production role policy
+  provider (PR #129), and the existing
+  `PolicyEnforcementService` (T-712). The rerun path
+  is a minimal, self-contained add to `query_service.py`
+  with no refactor of `submit_question` or
+  `regenerate_query`. No ambiguous product decisions or
+  trade-offs not locked by spec/plan/tasks/contracts.
+- A rerun route is intentionally deferred. If a future
+  wave needs the route, it can be added as a thin
+  FastAPI handler in `backend/src/app/api/v1/query.py`
+  that calls `QueryService.rerun_accepted_query` with
+  the request's `current_user_id` and the
+  `accepted_query_id` from the request body, then
+  translates `None` → 404 and `EvaluatorRejection` → 422
+  per the existing pattern.
+
+### Wave 17.3i Follow-up: Multi-Connection Authority Fix
+
+**Problem identified in PR #132 review**: the original
+`rerun_accepted_query` resolved the role policy using the
+caller's optional `connection_id` arg (falling back to
+`self._connection_id` / first configured source DB via
+`_resolve_role_policy`). In a multi-connection deployment
+this meant a query accepted under connection A could be
+revalidated and executed under connection B's policy,
+schema, and executor context — a cross-connection leak.
+
+**Scope**: T-717 / T-718 follow-up only. No new tasks.
+No new FRs. The fix is the minimal correct approach
+recommended in the user input: use the accepted row's
+`database_connection_id` as authoritative for policy
+resolution; fail closed (`None`, sanitized 404) when the
+caller's `connection_id` differs from the accepted row.
+
+**Follow-up RED tests** (3, in `TestRerunConnectionContext`):
+
+- `test_rerun_returns_none_when_caller_connection_mismatches_accepted`:
+  accepted belongs to connection A; caller passes
+  connection B; rerun returns `None`; policy provider
+  NEVER consulted; executor NEVER called; LLM NEVER
+  called; accepted row not mutated.
+- `test_rerun_uses_accepted_connection_id_when_no_caller_connection`:
+  accepted belongs to connection A; caller omits
+  `connection_id`; service default is connection C;
+  provider MUST be called with A, not C. The service
+  default (and the first configured source DB) is NOT
+  consulted for policy resolution.
+- `test_rerun_mismatch_blocks_sanitized_no_provider_no_executor`:
+  defence-in-depth invariant: on mismatch, no provider
+  call, no executor call, no LLM, no mutation; forbidden
+  tokens absent from the result; connection UUIDs absent
+  from the result.
+
+**GREEN fix** (in
+`backend/src/app/services/query_service.py`,
+`rerun_accepted_query`):
+
+1. After loading the accepted row, compare the caller's
+   `connection_id` (if supplied) against
+   `accepted.database_connection_id`. If they differ,
+   return `None` (caller surfaces a sanitized 404)
+   BEFORE the policy provider is consulted and BEFORE
+   the executor is reached.
+2. Use `str(accepted.database_connection_id)` as the
+   authoritative connection id for
+   `_resolve_role_policy`. The caller's arg, the
+   service default, and the first configured source
+   DB are no longer consulted for policy resolution
+   on the rerun path.
+
+**Preserved invariants** (no regression):
+
+- Current role policy only, not historical policy.
+- Fail-closed on missing policy row for role-bearing
+  users (PR #129 contract).
+- LLM never called for rerun.
+- Row filters applied before execution; user values
+  flow via `user_context` + bound params, never via
+  SQL interpolation.
+- Column masks applied after execution.
+- Accepted row read-only.
+- No raw UUID/SQL/table/column/driver/schema leak in
+  any response or error path.
+- `role_id=None` legacy path: provider returns `None`;
+  rerun executes with no policy enforcement.
+
+**Test count**: 1285 → 1288 (8 → 11 in
+`test_rerun_revalidation.py`).
+
+**Gates**: all green.
+
+**Commits**:
+
+- `20501ad` test(T-717 follow-up): rerun
+  connection-context authority tests (3 RED tests).
+- `51530d1` fix(T-718 follow-up): rerun uses
+  `accepted.database_connection_id` authoritatively
+  (mismatch → `None`).
+
+**No `[NEEDS DECISION]` items**. The fix is the
+minimal correct approach per the user input. The
+accepted row's `database_connection_id` is the
+authoritative source for connection scoping on
+rerun; the caller's `connection_id` is a cross-check
+that must match. No ambiguous product decisions or
+trade-offs not locked by spec/plan/tasks/contracts.
+
+### Wave 17.3i Follow-up 2: Service-Context Authority Fix
+
+**Problem identified in PR #132 review follow-up**: the
+previous fix routed policy resolution through
+`accepted.database_connection_id` correctly. But
+`rerun_accepted_query` still EXECUTES through the
+already-built service context (`self._adapter`,
+`self._executor`, `self._schema_context`,
+`self._target_dialect`). If the service was built for
+connection C (request-scoped default) but the accepted
+query belongs to A, the executor would run the SQL
+against C's adapter under A's policy — a
+multi-connection leak. Authorizing with A and
+executing under C is exactly the kind of cross-context
+leak the original fix was meant to prevent.
+
+**Scope**: T-717 / T-718 follow-up only. No new tasks.
+No new FRs. The fix is the minimal correct approach
+recommended in the user input: extend the existing
+mismatch check to also gate on the service's
+`self._connection_id`.
+
+**Follow-up RED tests** (1 new, 1 replaced in
+`TestRerunConnectionContext`):
+
+- `test_rerun_uses_accepted_connection_id_when_no_caller_connection`
+  (replaced with)
+  `test_rerun_succeeds_when_service_matches_accepted_and_no_caller_connection`:
+  service scoped to A, accepted A, no caller id →
+  rerun succeeds; provider called with A; executor
+  called once with stored SQL; LLM never called; row
+  not mutated. The positive case.
+- (new) `test_rerun_fails_closed_when_service_default_mismatches_accepted`:
+  service scoped to C, accepted A, no caller id →
+  rerun returns `None`; provider NEVER consulted;
+  executor NEVER called; LLM NEVER called; row not
+  mutated; connection UUIDs absent from result;
+  forbidden tokens absent from result. Defence in
+  depth: even though the previous fix routes policy
+  through A, the executor runs against C — so the
+  rerun must be rejected before either is reached.
+
+**GREEN fix** (in
+`backend/src/app/services/query_service.py`,
+`rerun_accepted_query`):
+
+The mismatch check now has two clauses:
+
+1. **Service-context check** (NEW): if
+   `self._connection_id is not None` and it differs
+   from `accepted.database_connection_id`, return
+   `None` BEFORE the policy provider is consulted
+   and BEFORE the executor is reached.
+2. **Caller-supplied check** (UNCHANGED from the
+   previous follow-up): if the caller passed
+   `connection_id` and it differs from the accepted
+   row's id, return `None`.
+
+If `self._connection_id` is `None` the service is
+unscoped (legacy / single-connection build); the
+caller-supplied check still applies. The legacy
+`role_id=None` path (provider returns `None`) is
+unchanged: rerun executes with no policy enforcement
+when the service is unscoped AND the caller did not
+pass a `connection_id`.
+
+**Preserved invariants** (no regression):
+
+- Current role policy only, not historical policy.
+- Fail-closed on missing policy row for role-bearing
+  users (PR #129 contract).
+- LLM never called for rerun.
+- Row filters applied before execution; user values
+  flow via `user_context` + bound params, never via
+  SQL interpolation.
+- Column masks applied after execution.
+- Accepted row read-only.
+- No raw UUID/SQL/table/column/driver/schema leak
+  in any response or error path.
+- `role_id=None` legacy path: provider returns
+  `None`; rerun executes with no policy enforcement
+  when service is unscoped AND caller did not pass
+  a `connection_id`.
+
+**Test count**: 1288 → 1289 (11 → 12 in
+`test_rerun_revalidation.py`).
+
+**Gates**: all green.
+
+**Commits**:
+
+- `e6bba57` test(T-717 follow-up 2): service-context
+  authority tests (1 RED, 1 replaced).
+- `0caea57` fix(T-718 follow-up 2): rerun fails
+  closed on service-context mismatch.
+
+**No `[NEEDS DECISION]` items**. The fix is the
+minimal correct approach per the user input. The
+service's `self._connection_id` is now a required
+match against the accepted row's id (when set). The
+caller-supplied check is unchanged. No ambiguous
+product decisions or trade-offs not locked by
+spec/plan/tasks/contracts.
+
+The rerun route is still intentionally deferred. The
+service method's contract is fully pinned by T-717
++ the 6 follow-up tests across the two follow-ups
+(3 in follow-up 1 + 1 replaced + 1 new in follow-up 2
+= 5 distinct `TestRerunConnectionContext` tests).
