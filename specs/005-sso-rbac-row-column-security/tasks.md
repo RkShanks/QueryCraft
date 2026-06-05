@@ -286,8 +286,8 @@
 
 ### Backend — Query Flow Integration (Owner: Kimi ( opencode ))
 
-- [ ] T-711 [US31] Write TDD tests for integrated query flow (schema filter → LLM prompt → evaluator auth → row filter injection → execute → column mask → response) in `backend/tests/unit/test_query_flow_policy.py` — FR-128, FR-129, FR-130, FR-131, FR-132
-- [ ] T-712 [US31] Integrate policy enforcement into query service in `backend/src/app/services/query_service.py`: call `filter_schema()` before prompt, `apply_row_filters()` before execution, `apply_column_masks()` after execution — FR-128, FR-131, FR-132
+- [X] T-711 [US31] Write TDD tests for integrated query flow (schema filter → LLM prompt → evaluator auth → row filter injection → execute → column mask → response) in `backend/tests/unit/test_query_flow_policy.py` — FR-128, FR-129, FR-130, FR-131, FR-132
+- [X] T-712 [US31] Integrate policy enforcement into query service in `backend/src/app/services/query_service.py`: call `filter_schema()` before prompt, `apply_row_filters()` before execution, `apply_column_masks()` after execution — FR-128, FR-131, FR-132
 
 ### Backend — Role Policy Test (Owner: Kimi ( opencode ))
 
