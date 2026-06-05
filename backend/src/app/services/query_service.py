@@ -993,3 +993,141 @@ class QueryService:
             return result
         finally:
             await self._release_lock_if_owned(http_session_id, lock_owner)
+
+    async def rerun_accepted_query(
+        self,
+        accepted_query_id: str,
+        user_id: str,
+        connection_id: str | None = None,
+    ) -> QueryResult | EvaluatorRejection | None:
+        """Re-execute a previously accepted query.
+
+        Per FR-135. The stored SQL is re-validated against the
+        user's CURRENT role policy before execution. If the role
+        has been restricted since the query was accepted, the
+        rerun is blocked with a sanitized ``EvaluatorRejection``
+        (i18n key: ``error.queryBlockedPolicy``) before the
+        executor is called. The historical role policy from
+        acceptance time is NOT trusted; only the live provider
+        is consulted.
+
+        Per SC-053: the accepted query is scoped by the caller
+        ``user_id`` at the repo ``WHERE`` clause. A cross-user
+        or non-existent ``accepted_query_id`` returns ``None``
+        so the caller can surface a sanitized 404. The LLM is
+        never called for rerun. Accepted query rows are NOT
+        mutated on the rerun path (read-only).
+
+        Args:
+            accepted_query_id: ID of the accepted query to rerun.
+            user_id: The authenticated user's ID. Used to scope
+                the repo lookup and resolve the current role
+                policy.
+            connection_id: Optional connection override; falls
+                back to ``self._connection_id`` (request-scoped)
+                then to the first configured source DB.
+
+        Returns:
+            ``QueryResult``: on successful re-execution.
+            ``EvaluatorRejection``: if the current role policy
+                blocks the stored SQL (sanitized; no table,
+                column, SQL, UUID, user value, role id, or
+                connection id leak).
+            ``None``: if the accepted query is not found or
+                belongs to a different user. Caller is
+                responsible for translating to a sanitized 404.
+
+        Raises:
+            HTTPException 409: row filter references a column
+                that was removed by schema drift
+                (``error.policySchemaConflict``).
+            HTTPException 504: source DB execution timed out
+                (``error.timeout``).
+        """
+        user_uuid = uuid.UUID(user_id)
+        aq_uuid = uuid.UUID(accepted_query_id)
+        accepted = await self._repo.get_by_id(aq_uuid, user_uuid)
+        if accepted is None:
+            return None
+
+        stored_sql = accepted.generated_sql
+        if not stored_sql:
+            return self._role_auth_rejection()
+
+        role_policy = await self._resolve_role_policy(user_id, connection_id)
+
+        if role_policy is not None and not role_policy.allowed_tables:
+            return self._role_auth_rejection()
+
+        rejection = await self._enforce_role_authorization(stored_sql, role_policy)
+        if rejection is not None:
+            return rejection
+
+        row_filter_params: tuple[Any, ...] = ()
+        effective_sql = stored_sql
+        if role_policy is not None and role_policy.row_filters:
+            try:
+                bound = self._policy.apply_row_filters(
+                    sql=stored_sql,
+                    row_filters=role_policy.row_filters,
+                    schema=self._schema_context
+                    if isinstance(self._schema_context, SchemaContext)
+                    else SchemaContext(tables=[]),
+                    user_context=role_policy.user_context,
+                    dialect=self._target_dialect or "postgres",
+                )
+            except PolicySchemaConflictError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "error": "policy_schema_conflict",
+                        "message_key": "error.policySchemaConflict",
+                    },
+                ) from exc
+            effective_sql = bound.sql
+            row_filter_params = bound.params
+
+        try:
+            if self._adapter is not None:
+                exec_result = await asyncio.wait_for(
+                    self._adapter.execute(effective_sql, row_filter_params),
+                    timeout=30,
+                )
+                columns, rows = exec_result.columns, exec_result.rows
+            else:
+                columns, rows = await asyncio.wait_for(
+                    self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
+                    timeout=30,
+                )
+        except (TimeoutError, SourceDBTimeout) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail={"error": "timeout", "message_key": "error.timeout"},
+            ) from exc
+
+        column_metas = []
+        for c in columns:
+            if isinstance(c, dict):
+                column_metas.append(ColumnMeta(name=c["name"], type=c["type"]))
+            else:
+                column_metas.append(ColumnMeta(name=c, type="text"))
+        masked_result = QueryResult(
+            kind="result",
+            attempt_id=f"rerun-{accepted_query_id}",
+            session_id=str(accepted.session_id) if accepted.session_id else None,
+            question=accepted.question_text,
+            generated_sql=stored_sql,
+            columns=column_metas,
+            rows=rows,
+            row_count=len(rows),
+            attempt_number=1,
+            is_last_auto_retry=False,
+            accepted_query_id=str(aq_uuid),
+        )
+        if role_policy is not None and role_policy.column_masks:
+            masked_result = self._policy.apply_column_masks(
+                masked_result,
+                role_policy.column_masks,
+            )
+
+        return masked_result

@@ -45,8 +45,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.query_service import QueryService
 from app.schemas.query import EvaluatorRejection, QueryResult
+from app.services.query_service import QueryService
 
 # ─── helpers ─────────────────────────────────────────────────────────
 
@@ -184,9 +184,7 @@ def _make_rerun_service(
     repo = MagicMock()
     repo.get_by_id = AsyncMock(return_value=accepted_query)
     repo.get_by_attempt_id = AsyncMock(return_value=None)
-    repo.create = AsyncMock(
-        return_value=MagicMock(id="aaaaaaaa-0000-0000-0000-000000000001")
-    )
+    repo.create = AsyncMock(return_value=MagicMock(id="aaaaaaaa-0000-0000-0000-000000000001"))
     repo.update_feedback = AsyncMock(return_value=accepted_query)
     repo.delete_by_id = AsyncMock(return_value=True)
     repo.list_by_session = AsyncMock(return_value=[])
@@ -195,9 +193,7 @@ def _make_rerun_service(
     repo.get_latest_by_session = AsyncMock(return_value=None)
 
     session_repo = MagicMock()
-    session_repo.create = AsyncMock(
-        return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001")
-    )
+    session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
     session_repo.get_by_id = AsyncMock(return_value=None)
     session_repo.update_last_activity = AsyncMock(return_value=True)
     session_repo.update_preview_text = AsyncMock(return_value=True)
@@ -319,13 +315,10 @@ class TestRerunHappyPath:
         )
 
         # Returned a QueryResult (not a rejection, not None).
-        assert isinstance(result, QueryResult), (
-            f"expected QueryResult, got {type(result).__name__}: {result!r}"
-        )
+        assert isinstance(result, QueryResult), f"expected QueryResult, got {type(result).__name__}: {result!r}"
         # Executor called exactly once with the stored SQL.
         assert len(deps["executor"].calls) == 1, (
-            f"expected executor called exactly once, "
-            f"got {len(deps['executor'].calls)}: {deps['executor'].calls!r}"
+            f"expected executor called exactly once, got {len(deps['executor'].calls)}: {deps['executor'].calls!r}"
         )
         assert deps["executor"].calls[0]["sql"] == "SELECT orders.id FROM orders"
         # LLM never called.
@@ -400,16 +393,14 @@ class TestRerunBlockedByRestrictedPolicy:
             assert v.message_key == "error.queryBlockedPolicy"
         # Executor NOT called.
         assert deps["executor"].calls == [], (
-            f"executor should not be called when rerun is blocked; "
-            f"got {deps['executor'].calls!r}"
+            f"executor should not be called when rerun is blocked; got {deps['executor'].calls!r}"
         )
         # Sanitization: forbidden tokens must not appear in the
         # rejection payload's serialized form.
         payload = result.model_dump()
         for token in _RERUN_FORBIDDEN_IN_RESPONSE:
             assert token not in str(payload), (
-                f"forbidden token {token!r} leaked into rerun rejection "
-                f"payload: {payload!r}"
+                f"forbidden token {token!r} leaked into rerun rejection payload: {payload!r}"
             )
 
     @pytest.mark.asyncio
@@ -460,8 +451,7 @@ class TestRerunBlockedByRestrictedPolicy:
         payload = result.model_dump()
         for token in _RERUN_FORBIDDEN_IN_RESPONSE:
             assert token not in str(payload), (
-                f"forbidden token {token!r} leaked into rerun "
-                f"rejection payload: {payload!r}"
+                f"forbidden token {token!r} leaked into rerun rejection payload: {payload!r}"
             )
         # The stored SQL itself must never appear in the payload.
         assert "SELECT orders.ssn FROM orders" not in str(payload)
@@ -496,6 +486,7 @@ class TestRerunFailClosedOnMissingPolicyRow:
             user_id=user_uuid,
             generated_sql="SELECT orders.id FROM orders",
         )
+
         # Build the service with a real provider. Wire the DB so
         # the user lookup returns a user with role_id, and the
         # role_connection_policies lookup returns None.
@@ -506,17 +497,11 @@ class TestRerunFailClosedOnMissingPolicyRow:
                 user.id = user_uuid
                 user.role_id = role_uuid
                 user.role = "viewer"
-                return MagicMock(
-                    scalar_one_or_none=MagicMock(return_value=user)
-                )
+                return MagicMock(scalar_one_or_none=MagicMock(return_value=user))
             if "role_connection_policies" in stmt_str:
-                return MagicMock(
-                    scalar_one_or_none=MagicMock(return_value=None)
-                )
+                return MagicMock(scalar_one_or_none=MagicMock(return_value=None))
             if "user_identities" in stmt_str:
-                return MagicMock(
-                    scalar_one_or_none=MagicMock(return_value=None)
-                )
+                return MagicMock(scalar_one_or_none=MagicMock(return_value=None))
             return MagicMock()
 
         db = MagicMock()
@@ -537,8 +522,7 @@ class TestRerunFailClosedOnMissingPolicyRow:
         )
 
         assert isinstance(result, EvaluatorRejection), (
-            f"expected fail-closed EvaluatorRejection, "
-            f"got {type(result).__name__}: {result!r}"
+            f"expected fail-closed EvaluatorRejection, got {type(result).__name__}: {result!r}"
         )
         assert result.message_key == "error.queryBlockedPolicy"
         assert deps["executor"].calls == []
@@ -546,8 +530,7 @@ class TestRerunFailClosedOnMissingPolicyRow:
         payload = result.model_dump()
         for token in _RERUN_FORBIDDEN_IN_RESPONSE:
             assert token not in str(payload), (
-                f"forbidden token {token!r} leaked into fail-closed "
-                f"rerun rejection payload: {payload!r}"
+                f"forbidden token {token!r} leaked into fail-closed rerun rejection payload: {payload!r}"
             )
         # LLM never called.
         if hasattr(service._llm, "generate_sql"):
@@ -600,8 +583,7 @@ class TestRerunNotFound:
         )
 
         assert result is None, (
-            f"expected None for cross-user / non-existent accepted "
-            f"query, got {type(result).__name__}: {result!r}"
+            f"expected None for cross-user / non-existent accepted query, got {type(result).__name__}: {result!r}"
         )
         # The repo's get_by_id was called exactly once with the
         # user's id (so the WHERE clause scoped the lookup).
@@ -609,10 +591,7 @@ class TestRerunNotFound:
         call_args = deps["repo"].get_by_id.await_args
         assert call_args is not None
         # The second positional arg is user_id; assert it equals user_b.
-        assert call_args.args[1] == user_b, (
-            f"expected get_by_id called with user_id={user_b}, "
-            f"got {call_args.args[1]}"
-        )
+        assert call_args.args[1] == user_b, f"expected get_by_id called with user_id={user_b}, got {call_args.args[1]}"
         # Executor NOT called.
         assert deps["executor"].calls == []
 
@@ -666,34 +645,32 @@ class TestRerunColumnMaskingPreserved:
         # result so we can assert masking was applied.
         masking_calls: list[dict] = []
 
-        class _MaskingResult:
-            def __init__(self):
-                self.kind = "result"
-                self.attempt_id = "rerun-aq"
-                self.session_id = None
-                self.question = "How many orders?"
-                self.generated_sql = "SELECT orders.ssn FROM orders"
-                from app.schemas.query import ColumnMeta
+        from app.schemas.query import ColumnMeta, QueryResult
 
-                self.columns = [
-                    ColumnMeta(name="ssn", type="text", masked=True),
-                ]
-                self.rows = [["***"]]
-                self.row_count = 1
-                self.attempt_number = 1
-                self.is_last_auto_retry = False
-
-        async def _apply_masks(result, masks):
+        def _apply_masks(result, masks):
             masking_calls.append({"result": result, "masks": masks})
-            return _MaskingResult()
+            # Return a real QueryResult with the masked values so
+            # the rerun path returns a model-valid response.
+            return QueryResult(
+                kind="result",
+                attempt_id=result.attempt_id,
+                session_id=result.session_id,
+                question=result.question,
+                generated_sql=result.generated_sql,
+                columns=[
+                    ColumnMeta(name="ssn", type="text", masked=True),
+                ],
+                rows=[["***"]],
+                row_count=1,
+                attempt_number=1,
+                is_last_auto_retry=False,
+                accepted_query_id=result.accepted_query_id,
+            )
 
         # Row filter stub: no row filters, so apply_row_filters is
         # not expected to be called.
-        async def _apply_filters(sql, row_filters, **kwargs):
-            raise AssertionError(
-                "apply_row_filters should not be called when no "
-                "row_filters are configured"
-            )
+        def _apply_filters(sql, row_filters, **kwargs):
+            raise AssertionError("apply_row_filters should not be called when no row_filters are configured")
 
         service, deps = _make_rerun_service(
             accepted_query=accepted,
@@ -714,12 +691,9 @@ class TestRerunColumnMaskingPreserved:
         assert deps["executor"].calls[0]["sql"] == "SELECT orders.ssn FROM orders"
         # Masking was applied.
         assert len(masking_calls) == 1, (
-            f"expected apply_column_masks called once, "
-            f"got {len(masking_calls)}: {masking_calls!r}"
+            f"expected apply_column_masks called once, got {len(masking_calls)}: {masking_calls!r}"
         )
-        assert masking_calls[0]["masks"] == [
-            {"table": "orders", "column": "ssn"}
-        ]
+        assert masking_calls[0]["masks"] == [{"table": "orders", "column": "ssn"}]
         # The returned QueryResult is the masked one.
         assert result.rows == [["***"]]
         # No LLM call.
@@ -789,7 +763,7 @@ class TestRerunRowFilterApplied:
                 self.sql = sql
                 self.params = params
 
-        async def _apply_filters(sql, row_filters, **kwargs):
+        def _apply_filters(sql, row_filters, **kwargs):
             filter_calls.append(
                 {
                     "sql": sql,
@@ -804,11 +778,8 @@ class TestRerunRowFilterApplied:
             )
 
         # No column masks for this test.
-        async def _apply_masks(result, masks):
-            raise AssertionError(
-                "apply_column_masks should not be called when no "
-                "column_masks are configured"
-            )
+        def _apply_masks(result, masks):
+            raise AssertionError("apply_column_masks should not be called when no column_masks are configured")
 
         service, deps = _make_rerun_service(
             accepted_query=accepted,
@@ -838,10 +809,7 @@ class TestRerunRowFilterApplied:
         assert filter_calls[0]["user_context"]["subject_id"] == "subject-abc-123"
         # Executor called once with the REWRITTEN SQL + bound params.
         assert len(deps["executor"].calls) == 1
-        assert (
-            deps["executor"].calls[0]["sql"]
-            == "SELECT orders.id FROM orders WHERE customer_id = $1"
-        )
+        assert deps["executor"].calls[0]["sql"] == "SELECT orders.id FROM orders WHERE customer_id = $1"
         assert deps["executor"].calls[0]["params"] == ("subject-abc-123",)
         # No LLM call.
         if hasattr(service._llm, "generate_sql"):
@@ -883,13 +851,13 @@ class TestRerunLegacyNoPolicyPath:
         filter_calls: list[dict] = []
         mask_calls: list[dict] = []
 
-        async def _apply_filters(sql, row_filters, **kwargs):
+        def _apply_filters(sql, row_filters, **kwargs):
             filter_calls.append(sql)
             from app.services.policy_enforcement import BoundSql
 
             return BoundSql(sql=sql, params=())
 
-        async def _apply_masks(result, masks):
+        def _apply_masks(result, masks):
             mask_calls.append(masks)
             return result
 
