@@ -23,6 +23,7 @@ from app.db.models.enums import HealthStatus, LifecycleState, Permission, Schema
 from app.db.models.role import Role
 from app.db.models.role_connection_policy import RoleConnectionPolicy
 from app.db.models.sso_group_mapping import SsoGroupMapping
+from app.evaluator.rules.role_authorization import RoleAuthorizationRule
 from app.evaluator.schema_context import Column, SchemaContext, Table
 from app.repositories.connection_repository import ConnectionRepository
 from app.repositories.role_repository import RoleRepository
@@ -625,13 +626,39 @@ async def test_role_policy(
                 continue
             masked_columns[table_name] = [c for c in cols if isinstance(c, str)]
 
+        # Verdict + message_key. Default to the policy-state preview
+        # (bool(accessible_tables)). When the request carries a
+        # non-empty sample_sql, run RoleAuthorizationRule against the
+        # full schema + policy and override the verdict with the
+        # SQL-level result. The rule's `evaluate` is fail-closed: it
+        # returns the constant "query_blocked_policy" reason for every
+        # failure mode (disallowed reference, malformed SQL, multi-
+        # statement, non-SELECT, empty) and never echoes the raw SQL,
+        # table, column, schema, or driver text. The i18n message key
+        # we surface is the constant "error.queryBlockedPolicy" per
+        # api-contracts.md line 385.
+        would_be_allowed = bool(accessible_tables)
+        message_key: str | None = None
+        sample_sql = body.sample_sql if isinstance(body.sample_sql, str) else None
+        if sample_sql and sample_sql.strip():
+            rule = RoleAuthorizationRule(
+                allowed_tables=allowed_tables if allowed_tables else None,
+                column_masks=column_masks_list if column_masks_list else None,
+                dialect="postgres",
+            )
+            allowed, _reason = await rule.evaluate(sample_sql, schema_context)
+            would_be_allowed = bool(allowed)
+            if not allowed:
+                message_key = "error.queryBlockedPolicy"
+
         return {
             "accessible_tables": accessible_tables,
             "accessible_columns": accessible_columns,
             "blocked_tables": blocked_tables,
             "applicable_row_filters": applicable_row_filters,
             "masked_columns": masked_columns,
-            "would_be_allowed": bool(accessible_tables),
+            "would_be_allowed": would_be_allowed,
+            "message_key": message_key,
         }
     except HTTPException:
         raise
