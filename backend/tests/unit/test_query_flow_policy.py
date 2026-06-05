@@ -1054,3 +1054,380 @@ class TestAdapterPath:
         call = adapter.calls[0]
         assert "user-42" in call["params"]
         assert "user-42" not in call["sql"]
+
+
+# ─── 12. Real production role_policy_provider ──────────────────────
+
+
+class TestRealRolePolicyProvider:
+    """T-712 follow-up — wire the real ``make_role_policy_provider``
+    factory into the production service builders. Without this, every
+    request falls through to the un-authenticated flow and no
+    policy enforcement happens. The tests below exercise the real
+    provider against a mocked ``AsyncSession`` that yields canned
+    ``User``, ``RoleConnectionPolicy``, and ``UserIdentity`` rows.
+
+    Goal: prove that with the production provider wired in, a
+    QueryService constructed WITHOUT any test-only injection will:
+
+    1. resolve the user's role policy for the connection,
+    2. filter the schema before the LLM call,
+    3. block out-of-policy SQL via the role auth rule,
+    4. inject row filters via params (no interpolation), and
+    5. apply column masks to the QueryResult.
+
+    No ``policies_by_connection`` test injection is used — the only
+    way the policy can reach QueryService is via the real
+    provider. This is the regression test for the
+    "production factories never pass role_policy_provider" bug.
+    """
+
+    @staticmethod
+    def _mock_db_session_for_provider(
+        *,
+        user_row,
+        policy_row,
+        identity_row,
+        list_by_session_rows=None,
+    ):
+        """Build an ``AsyncMock`` db session that routes ``select``
+        queries to the right table based on the SQL string.
+
+        Reuses the same routing pattern as the rest of the test
+        suite but adds the three tables needed by the real
+        provider: ``users``, ``role_connection_policies``,
+        ``user_identities``.
+        """
+        db = AsyncMock()
+
+        def _execute_side_effect(stmt, *args, **kwargs):
+            async def _coro():
+                stmt_str = str(stmt)
+                # App-config / cap / db-conn-id lookups
+                if "database_connections" in stmt_str:
+                    return MagicMock(fetchone=MagicMock(return_value=("770e8400-e29b-41d4-a716-446655440000",)))
+                if "FROM users" in stmt_str:
+                    if user_row is None:
+                        return MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+                    return MagicMock(scalar_one_or_none=MagicMock(return_value=user_row))
+                if "role_connection_policies" in stmt_str:
+                    if policy_row is None:
+                        return MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+                    return MagicMock(scalar_one_or_none=MagicMock(return_value=policy_row))
+                if "user_identities" in stmt_str:
+                    if identity_row is None:
+                        return MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+                    return MagicMock(scalar_one_or_none=MagicMock(return_value=identity_row))
+                if "accepted_queries" in stmt_str and "list_by_session" not in stmt_str:
+                    return MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+                if "FROM app_config" in stmt_str:
+                    return MagicMock(fetchone=MagicMock(return_value=(3,)))
+                return MagicMock(fetchone=MagicMock(return_value=(3,)))
+
+            return _coro()
+
+        db.execute = _execute_side_effect
+        db.flush = AsyncMock()
+        return db
+
+    @pytest.mark.asyncio
+    async def test_real_provider_loads_user_role_and_connection_policy(self):
+        """End-to-end: the real provider is wired into a QueryService
+        (no test-only injection). A request triggers a SELECT on
+        users, role_connection_policies, and user_identities. The
+        resulting RolePolicy drives every T-712 enforcement step.
+        """
+        from app.services.role_policy_provider import make_role_policy_provider
+
+        user_id = uuid.UUID("550e8400-e29b-41d4-a716-446655440000")
+        role_id = uuid.UUID("660e8400-e29b-41d4-a716-446655440000")
+        conn_id = uuid.UUID("770e8400-e29b-41d4-a716-446655440000")
+
+        # Mocked DB rows.
+        user_row = MagicMock()
+        user_row.id = user_id
+        user_row.role_id = role_id
+        user_row.role = "viewer"
+
+        policy_row = MagicMock()
+        policy_row.role_id = role_id
+        policy_row.connection_id = conn_id
+        policy_row.allowed_tables = [
+            {"table": "orders", "columns": ["id", "customer_id"]},
+        ]
+        policy_row.row_filters = [
+            {"table": "orders", "filter": "customer_id = {user.subject_id}"},
+        ]
+        policy_row.column_masks = [{"table": "orders", "columns": ["customer_id"]}]
+
+        identity_row = MagicMock()
+        identity_row.user_id = user_id
+        identity_row.subject_id = "sso-subject-99"
+        identity_row.email = "user@example.com"
+
+        db = self._mock_db_session_for_provider(
+            user_row=user_row,
+            policy_row=policy_row,
+            identity_row=identity_row,
+        )
+
+        # Build the real provider and a service that uses it (no
+        # test-only policies_by_connection injection).
+        provider = make_role_policy_provider(db)
+        # The provider must return a RolePolicy.
+        resolved = await provider(user_id, conn_id)
+        assert resolved is not None
+        assert resolved.user_id == user_id
+        assert resolved.role_id == role_id
+        assert resolved.connection_id == conn_id
+        assert resolved.allowed_tables == policy_row.allowed_tables
+        assert resolved.row_filters == policy_row.row_filters
+        assert resolved.column_masks == policy_row.column_masks
+        # user_context populated from user_identities + users.role.
+        assert resolved.user_context["email"] == "user@example.com"
+        assert resolved.user_context["subject_id"] == "sso-subject-99"
+        assert resolved.user_context["role"] == "viewer"
+
+    @pytest.mark.asyncio
+    async def test_real_provider_returns_none_when_user_has_no_role_id(self):
+        from app.services.role_policy_provider import make_role_policy_provider
+
+        user_row = MagicMock()
+        user_row.id = uuid.UUID("550e8400-e29b-41d4-a716-446655440000")
+        user_row.role_id = None  # backward compat: legacy user
+        user_row.role = "admin"
+
+        db = self._mock_db_session_for_provider(
+            user_row=user_row,
+            policy_row=None,
+            identity_row=None,
+        )
+        provider = make_role_policy_provider(db)
+        resolved = await provider(user_row.id, uuid.UUID("770e8400-e29b-41d4-a716-446655440000"))
+        assert resolved is None
+
+    @pytest.mark.asyncio
+    async def test_real_provider_returns_none_when_no_policy_row(self):
+        from app.services.role_policy_provider import make_role_policy_provider
+
+        user_row = MagicMock()
+        user_row.id = uuid.UUID("550e8400-e29b-41d4-a716-446655440000")
+        user_row.role_id = uuid.UUID("660e8400-e29b-41d4-a716-446655440000")
+        user_row.role = "viewer"
+
+        db = self._mock_db_session_for_provider(
+            user_row=user_row,
+            policy_row=None,  # no role_connection_policies row
+            identity_row=None,
+        )
+        provider = make_role_policy_provider(db)
+        resolved = await provider(user_row.id, uuid.UUID("770e8400-e29b-41d4-a716-446655440000"))
+        assert resolved is None
+
+    @pytest.mark.asyncio
+    async def test_real_provider_db_error_returns_none_not_500(self):
+        """Provider must never 500. Any DB exception is swallowed
+        and surfaces as None so the request can fall through to
+        the legacy un-authenticated flow."""
+        from app.services.role_policy_provider import make_role_policy_provider
+
+        db = AsyncMock()
+        db.execute = AsyncMock(side_effect=Exception("DB down"))
+        db.flush = AsyncMock()
+        provider = make_role_policy_provider(db)
+        resolved = await provider(
+            uuid.UUID("550e8400-e29b-41d4-a716-446655440000"),
+            uuid.UUID("770e8400-e29b-41d4-a716-446655440000"),
+        )
+        assert resolved is None
+
+    @pytest.mark.asyncio
+    async def test_production_service_factory_enforces_policy_via_real_provider(self):
+        """Regression test: production-style QueryService built with
+        the real ``make_role_policy_provider`` (no test-only
+        ``policies_by_connection`` injection) must enforce the
+        T-712 flow end-to-end. This is the bug fix for "production
+        factories never pass role_policy_provider"."""
+        from app.services.role_policy_provider import make_role_policy_provider
+
+        user_id = uuid.UUID("550e8400-e29b-41d4-a716-446655440000")
+        role_id = uuid.UUID("660e8400-e29b-41d4-a716-446655440000")
+        conn_id = uuid.UUID("770e8400-e29b-41d4-a716-446655440000")
+
+        user_row = MagicMock()
+        user_row.id = user_id
+        user_row.role_id = role_id
+        user_row.role = "viewer"
+
+        policy_row = MagicMock()
+        policy_row.role_id = role_id
+        policy_row.connection_id = conn_id
+        policy_row.allowed_tables = [{"table": "orders", "columns": ["id", "ssn"]}]
+        policy_row.row_filters = [
+            {"table": "orders", "filter": "id = {user.subject_id}"},
+        ]
+        policy_row.column_masks = [{"table": "orders", "columns": ["ssn"]}]
+
+        identity_row = MagicMock()
+        identity_row.user_id = user_id
+        identity_row.subject_id = "sso-real"
+        identity_row.email = "real@example.com"
+
+        db = self._mock_db_session_for_provider(
+            user_row=user_row,
+            policy_row=policy_row,
+            identity_row=identity_row,
+        )
+
+        # Build a service the same way the production factory does
+        # — wiring the real provider, not a test-only injection.
+        repo = MagicMock()
+        repo.list_by_session = AsyncMock(return_value=[])
+        repo.get_latest_by_session = AsyncMock(return_value=None)
+        repo.get_by_attempt_id = AsyncMock(return_value=None)
+        repo.create = AsyncMock(return_value=MagicMock(id="aaaaaaaa-0000-0000-0000-000000000001"))
+
+        session_repo = MagicMock()
+        session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
+        session_repo.get_by_id = AsyncMock(return_value=None)
+        session_repo.update_last_activity = AsyncMock(return_value=True)
+        session_repo.update_preview_text = AsyncMock(return_value=True)
+
+        class _R:
+            def __init__(self):
+                self._d: dict = {}
+
+            async def set(self, k, v, nx=False, ex=None):
+                if nx and k in self._d:
+                    return False
+                self._d[k] = str(v)
+                return True
+
+            async def get(self, k):
+                return self._d.get(k)
+
+            async def delete(self, k):
+                self._d.pop(k, None)
+                return True
+
+            async def eval(self, *a, **k):
+                return 1
+
+        llm = _RecordingLLM(sql="SELECT id, ssn FROM orders")
+        executor = _RecordingExecutor(
+            columns=["id", "ssn"],
+            rows=[[1, "secret-1"], [2, "secret-2"]],
+        )
+
+        # The only difference from the test-only factory: provider
+        # comes from the real make_role_policy_provider(db).
+        service = QueryService(
+            accepted_query_repository=repo,
+            session_repository=session_repo,
+            db_session=db,
+            redis=_R(),
+            llm=llm,
+            evaluator=_RecordingEvaluator(),
+            source_db_executor=executor,
+            schema_context=_schema_context(),
+            llm_provider="stub",
+            connection_id=str(conn_id),
+            role_policy_provider=make_role_policy_provider(db),
+        )
+
+        result = await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id=str(user_id),
+            question="My orders",
+            connection_id=str(conn_id),
+        )
+
+        # 1. LLM was called with a FILTERED schema (the
+        #    payments table must not appear).
+        assert len(llm.calls) == 1
+        sent = str(llm.calls[0]["schema_context"])
+        assert "payments" not in sent, f"payments leaked: {sent!r}"
+
+        # 2. Executor received the rewritten SQL with a row-filter
+        #    param. The user value must be in params, not in SQL.
+        assert len(executor.calls) == 1
+        call = executor.calls[0]
+        assert "sso-real" not in call["sql"], f"user value leaked into SQL: {call['sql']!r}"
+        assert "sso-real" in call["params"], f"user value missing from params: {call['params']!r}"
+
+        # 3. Result has masked ssn values.
+        assert result.kind == "result"
+        for row in result.rows:
+            assert "secret-1" not in row
+            assert "secret-2" not in row
+            assert "***" in row
+
+        # 4. Role auth rule blocks out-of-policy SQL. A second test
+        #    uses an LLM that returns SQL referencing payments —
+        #    not in the policy.
+        llm2 = _RecordingLLM(sql="SELECT id FROM payments")
+        executor2 = _RecordingExecutor()
+        service2 = QueryService(
+            accepted_query_repository=repo,
+            session_repository=session_repo,
+            db_session=db,
+            redis=_R(),
+            llm=llm2,
+            evaluator=_RecordingEvaluator(),
+            source_db_executor=executor2,
+            schema_context=_schema_context(),
+            llm_provider="stub",
+            connection_id=str(conn_id),
+            role_policy_provider=make_role_policy_provider(db),
+        )
+        from app.schemas.query import EvaluatorRejection
+
+        rej = await service2.submit_question(
+            http_session_id="http-sess-2",
+            user_id=str(user_id),
+            question="Show payments",
+            connection_id=str(conn_id),
+        )
+        assert isinstance(rej, EvaluatorRejection)
+        assert executor2.calls == [], "executor must NOT be called on policy block"
+        assert any(v.message_key == "error.queryBlockedPolicy" for v in rej.violations)
+
+    @pytest.mark.asyncio
+    async def test_real_provider_no_user_identity_row_yields_empty_placeholder_strings(self):
+        """If a user has a role_id + connection policy but no
+        ``user_identities`` row, the provider still returns a
+        RolePolicy with empty-string user_context values. A
+        row filter using ``{user.email}`` will fail closed at
+        ``bind_placeholders`` time (``placeholder_binding_failed``)
+        — by design. The provider itself does not 500."""
+        from app.services.role_policy_provider import make_role_policy_provider
+
+        user_id = uuid.UUID("550e8400-e29b-41d4-a716-446655440000")
+        role_id = uuid.UUID("660e8400-e29b-41d4-a716-446655440000")
+        conn_id = uuid.UUID("770e8400-e29b-41d4-a716-446655440000")
+
+        user_row = MagicMock()
+        user_row.id = user_id
+        user_row.role_id = role_id
+        user_row.role = "viewer"
+
+        policy_row = MagicMock()
+        policy_row.role_id = role_id
+        policy_row.connection_id = conn_id
+        policy_row.allowed_tables = [{"table": "orders", "columns": ["id"]}]
+        policy_row.row_filters = []
+        policy_row.column_masks = []
+
+        db = self._mock_db_session_for_provider(
+            user_row=user_row,
+            policy_row=policy_row,
+            identity_row=None,  # no SSO identity yet
+        )
+        provider = make_role_policy_provider(db)
+        resolved = await provider(user_id, conn_id)
+        assert resolved is not None
+        assert resolved.user_context == {
+            "email": "",
+            "subject_id": "",
+            "role": "viewer",
+        }
