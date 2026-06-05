@@ -851,9 +851,9 @@
 ### Status
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.3c row filter injection (placeholder binding + drift guard) complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125.
-- **Current/open PR**: https://github.com/RkShanks/QueryCraft/pull/126 (Wave 17.3c — Placeholder Binding + Row Filter Injection)
+- **Current point**: Wave 17.3d column masking complete and ready for review/merge.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126.
+- **Current/open PR**: Wave 17.3d (T-706/T-707) — Column Masking.
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -898,10 +898,49 @@
     once-per-drift, cross-dialect drift.
   - New exception class `PolicySchemaConflictError` in
     `app/core/exceptions.py`; new i18n key `error.policySchemaConflict`
-    in `frontend/src/locales/en.json`.
+    in `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`.
+  - PR #126 blocker fixes (post-merge follow-ups on the same branch):
+    lexer-aware `_replace_outside_strings` + `_replace_outside_strings_regex`
+    in `policy_enforcement.py` so backtick-quoted MySQL identifiers and
+    string literals containing `?` / `%s` / `$N` are preserved; 8
+    regression tests in `TestStringLiteralPreservation`; `ar.json`
+    `error.policySchemaConflict` parity.
+- Wave 17.3d column masking is complete:
+  - `PolicyEnforcementService.apply_column_masks(result, column_masks)`
+    post-query masking per ADR-19 / FR-132 / SC-052. Replaces values in
+    configured sensitive columns with `"***"`, sets `ColumnMeta.masked = True`
+    for the affected columns, returns a new `QueryResult` (input never
+    mutated). Dialect-independent (operates on the materialized
+    `QueryResult`; the dialect that produced the rows is irrelevant).
+  - Config shape mirrors `role_connection_policies.column_masks`:
+    `[{"table": "t", "columns": ["c1", ...]}]`.
+  - Case-insensitive column matching.
+  - Empty / `None` config returns original-equivalent (new instance,
+    no masking, `masked=False`).
+  - Configured column not in result: silent no-op (no leak possible
+    because the value never reached the service). Documented in the
+    docstring as distinct from the T-705 schema-drift guard, which
+    fails closed because the filter IS going to be applied.
+  - Malformed config (non-list, non-dict entries, missing/empty
+    `table` or `columns`, wrong types) raises
+    `ValueError("column_mask_config_invalid")` — fail-closed. Constant
+    sanitized message; never echoes the offending config (no leak of
+    admin policy or sensitive column names).
+  - `ColumnMeta` schema change: added `masked: bool = False` (Pydantic
+    default — backwards compatible with all existing callers).
+  - 32 TDD tests across 7 classes: value replacement, masked flag,
+    immutability, case-insensitive matching, dialect independence
+    (postgres/mysql/mssql), unknown / malformed config, no raw-value
+    leak in output. Plus a regression test for the lexer-aware string
+    preservation pattern via dialect fixture results.
+  - Known limitation: `QueryResult` columns are flat (no per-column
+    source-table annotation), so a configured `orders.ssn` mask will
+    also mask a same-named column from any other table in the result.
+    Acceptable bound for T-707; T-712 query service integration can
+    pass a result→table mapping to disambiguate joins. Documented in
+    the `apply_column_masks` docstring.
 
 ### Remaining Wave 17.3 Work
-- T-706..T-707: Column masking.
 - T-708..T-710: Evaluator rule.
 - T-711..T-712: Query flow integration.
 - T-713..T-714: Role policy test endpoint.
@@ -909,5 +948,5 @@
 - T-722: Wave 17.3 backend gate.
 
 ### Next Dispatch Constraint
-- Continue Wave 17.3 backend policy enforcement (T-706+).
+- Continue Wave 17.3 backend policy enforcement (T-708+).
 - T-722 (backend gate) must pass before Wave 17.3 close.

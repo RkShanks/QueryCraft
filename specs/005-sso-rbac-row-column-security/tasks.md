@@ -275,8 +275,8 @@
 
 ### Backend — Column Masking (Owner: Kimi ( opencode ))
 
-- [ ] T-706 [US31] Write TDD tests for column masking service (replace values with `***`, add `masked: true` to `ColumnMeta`, works for all 3 dialects) in `backend/tests/unit/test_column_masking.py` — FR-132, SC-052
-- [ ] T-707 [US31] Implement column masking in `backend/src/app/services/policy_enforcement.py`: `apply_column_masks()` — post-query result replacement per ADR-19, set `masked` flag on `ColumnMeta` — FR-132, FR-133
+- [x] T-706 [US31] Write TDD tests for column masking service (replace values with `***`, add `masked: true` to `ColumnMeta`, works for all 3 dialects) in `backend/tests/unit/test_column_masking.py` — FR-132, SC-052
+- [x] T-707 [US31] Implement column masking in `backend/src/app/services/policy_enforcement.py`: `apply_column_masks()` — post-query result replacement per ADR-19, set `masked` flag on `ColumnMeta` — FR-132, FR-133
 
 ### Backend — Evaluator Extension (Owner: Kimi ( opencode ))
 
