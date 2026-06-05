@@ -49,9 +49,7 @@ class TestBoundSqlShape:
 
 class TestPostgresBinding:
     def test_email_placeholder_binds_to_param(self) -> None:
-        result = PolicyEnforcementService.bind_placeholders(
-            "owner_email = {user.email}", USER_FULL, dialect="postgres"
-        )
+        result = PolicyEnforcementService.bind_placeholders("owner_email = {user.email}", USER_FULL, dialect="postgres")
         assert result.sql == "owner_email = $1"
         assert result.params == ("alice@example.com",)
 
@@ -63,9 +61,7 @@ class TestPostgresBinding:
         assert result.params == ("sso|abc-123",)
 
     def test_role_binds_to_param(self) -> None:
-        result = PolicyEnforcementService.bind_placeholders(
-            "region = {user.role}", USER_FULL, dialect="postgres"
-        )
+        result = PolicyEnforcementService.bind_placeholders("region = {user.role}", USER_FULL, dialect="postgres")
         assert result.sql == "region = $1"
         assert result.params == ("analyst",)
 
@@ -112,9 +108,7 @@ class TestPostgresBinding:
         assert result.params == ("alice@example.com", "analyst")
 
     def test_no_placeholders_returns_unmodified_sql(self) -> None:
-        result = PolicyEnforcementService.bind_placeholders(
-            "region = 'US'", USER_FULL, dialect="postgres"
-        )
+        result = PolicyEnforcementService.bind_placeholders("region = 'US'", USER_FULL, dialect="postgres")
         assert result.sql == "region = 'US'"
         assert result.params == ()
 
@@ -124,9 +118,7 @@ class TestPostgresBinding:
 
 class TestMySQLBinding:
     def test_email_uses_percent_s(self) -> None:
-        result = PolicyEnforcementService.bind_placeholders(
-            "owner_email = {user.email}", USER_FULL, dialect="mysql"
-        )
+        result = PolicyEnforcementService.bind_placeholders("owner_email = {user.email}", USER_FULL, dialect="mysql")
         assert result.sql == "owner_email = %s"
         assert result.params == ("alice@example.com",)
 
@@ -160,9 +152,7 @@ class TestMySQLBinding:
 
 class TestMSSQLBinding:
     def test_email_uses_question_mark(self) -> None:
-        result = PolicyEnforcementService.bind_placeholders(
-            "owner_email = {user.email}", USER_FULL, dialect="mssql"
-        )
+        result = PolicyEnforcementService.bind_placeholders("owner_email = {user.email}", USER_FULL, dialect="mssql")
         assert result.sql == "owner_email = ?"
         assert result.params == ("alice@example.com",)
 
@@ -189,41 +179,32 @@ class TestMSSQLBinding:
 class TestBindingFailures:
     def test_unknown_placeholder_rejected(self) -> None:
         with pytest.raises(ValueError, match="placeholder_binding_failed"):
-            PolicyEnforcementService.bind_placeholders(
-                "x = {user.tenant}", USER_FULL, dialect="postgres"
-            )
+            PolicyEnforcementService.bind_placeholders("x = {user.tenant}", USER_FULL, dialect="postgres")
 
     def test_missing_email_value_rejected(self) -> None:
         ctx = {"subject_id": "sso|x", "role": "analyst"}
         with pytest.raises(ValueError, match="placeholder_binding_failed"):
-            PolicyEnforcementService.bind_placeholders(
-                "owner_email = {user.email}", ctx, dialect="postgres"
-            )
+            PolicyEnforcementService.bind_placeholders("owner_email = {user.email}", ctx, dialect="postgres")
 
     def test_missing_subject_id_value_rejected(self) -> None:
         ctx = {"email": "a@b.c", "role": "analyst"}
         with pytest.raises(ValueError, match="placeholder_binding_failed"):
-            PolicyEnforcementService.bind_placeholders(
-                "owner = {user.subject_id}", ctx, dialect="postgres"
-            )
+            PolicyEnforcementService.bind_placeholders("owner = {user.subject_id}", ctx, dialect="postgres")
 
     def test_missing_role_value_rejected(self) -> None:
         ctx = {"email": "a@b.c", "subject_id": "sso|x"}
         with pytest.raises(ValueError, match="placeholder_binding_failed"):
-            PolicyEnforcementService.bind_placeholders(
-                "region = {user.role}", ctx, dialect="postgres"
-            )
+            PolicyEnforcementService.bind_placeholders("region = {user.role}", ctx, dialect="postgres")
 
     def test_empty_user_context_rejected(self) -> None:
         with pytest.raises(ValueError, match="placeholder_binding_failed"):
-            PolicyEnforcementService.bind_placeholders(
-                "region = {user.role}", {}, dialect="postgres"
-            )
+            PolicyEnforcementService.bind_placeholders("region = {user.role}", {}, dialect="postgres")
 
     def test_none_user_value_rejected(self) -> None:
         with pytest.raises(ValueError, match="placeholder_binding_failed"):
             PolicyEnforcementService.bind_placeholders(
-                "region = {user.role}", {"email": "a@b.c", "subject_id": "x", "role": None},
+                "region = {user.role}",
+                {"email": "a@b.c", "subject_id": "x", "role": None},
                 dialect="postgres",
             )
 
@@ -232,9 +213,7 @@ class TestBindingFailures:
         the output SQL must not contain it — the value lives only in params.
         """
         ctx = {"email": "evil'; DROP TABLE users;--", "subject_id": "x", "role": "analyst"}
-        result = PolicyEnforcementService.bind_placeholders(
-            "owner_email = {user.email}", ctx, dialect="postgres"
-        )
+        result = PolicyEnforcementService.bind_placeholders("owner_email = {user.email}", ctx, dialect="postgres")
         assert "evil" not in result.sql
         assert "DROP" not in result.sql
         assert "--" not in result.sql
@@ -242,9 +221,7 @@ class TestBindingFailures:
 
     def test_raw_user_value_quoted_in_mysql(self) -> None:
         ctx = {"email": "weird'value", "subject_id": "x", "role": "analyst"}
-        result = PolicyEnforcementService.bind_placeholders(
-            "owner_email = {user.email}", ctx, dialect="mysql"
-        )
+        result = PolicyEnforcementService.bind_placeholders("owner_email = {user.email}", ctx, dialect="mysql")
         assert "weird" not in result.sql
         assert "value" not in result.sql
         assert result.sql == "owner_email = %s"

@@ -10,19 +10,52 @@ time, rejecting dangerous expressions and validating column existence against
 the target table per S-004 / FR-131. Placeholder syntax (``{user.email}``,
 ``{user.subject_id}``, ``{user.role}``) is allowed syntactically but not bound
 here; T-702/T-704 cover binding and injection.
+
+T-702: Placeholder binding. Translates ``{user.*}`` placeholders inside an
+already-validated filter fragment into dialect-appropriate parameterized
+placeholders (``$N`` for postgres, ``%s`` for mysql, ``?`` for mssql) plus a
+params tuple. FR-131 / S-004.
+
+T-704: Row filter injection. Injects per-role row filters into a generated
+SQL statement via sqlglot AST AND-conjunction, transpiling the result to the
+target dialect, with schema-drift detection. FR-131 / S-005.
 """
 
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from typing import Any
 
 import sqlglot
 from sqlglot import exp
 
 from app.evaluator.schema_context import Column, SchemaContext, Table
 
+# Constant error code for any binding failure. Intentionally opaque to avoid
+# leaking which key was missing or what dialect was requested.
+_PLACEHOLDER_BINDING_FAILED = "placeholder_binding_failed"
+
+# Placeholder token per dialect driver:
+# - asyncpg (postgres): ``$1``, ``$2``, ... (numbered, configurable start)
+# - asyncmy (mysql):    ``%s`` (positional)
+# - aioodbc (mssql):    ``?`` (positional)
+_DIALECT_PARAM_STYLE: dict[str, str] = {
+    "postgres": "numbered",
+    "postgresql": "numbered",
+    "mysql": "positional",
+    "mssql": "positional",
+}
+
 # Allowed identity placeholders. Anything else inside ``{...}`` is rejected.
 _ALLOWED_PLACEHOLDER_KEYS: frozenset[str] = frozenset({"email", "subject_id", "role"})
+
+# User-context keys the binding step looks up. Mirrors the placeholder keys.
+_USER_CONTEXT_KEYS: dict[str, str] = {
+    "email": "email",
+    "subject_id": "subject_id",
+    "role": "role",
+}
 
 # Sentinel prefix used to swap placeholders for parseable identifiers before
 # sqlglot sees the fragment. The column-existence check skips any column whose
@@ -306,3 +339,115 @@ class PolicyEnforcementService:
             if col_name.lower() in valid_columns:
                 continue
             raise ValueError("filter_validation_failed")
+
+    @staticmethod
+    def bind_placeholders(
+        filter_sql: str,
+        user_context: dict[str, Any],
+        dialect: str = "postgres",
+        start_index: int = 1,
+    ) -> BoundSql:
+        """Resolve ``{user.*}`` placeholders to dialect parameter tokens + values.
+
+        The input ``filter_sql`` is the already-validated fragment from
+        ``validate_row_filter``. Each ``{user.<key>}`` occurrence is
+        replaced in left-to-right order with a dialect-appropriate
+        placeholder (``$N`` for postgres, ``%s`` for mysql, ``?`` for
+        mssql) and the corresponding value is appended to ``params`` in
+        the same order. User values are never interpolated into the SQL
+        string — they live only in ``params``.
+
+        Args:
+            filter_sql: Validated filter fragment containing zero or more
+                ``{user.email}`` / ``{user.subject_id}`` / ``{user.role}``
+                occurrences.
+            user_context: Mapping with the resolved user values. Each
+                ``{user.<key>}`` placeholder looks up ``<key>`` in this
+                dict; missing or ``None`` values fail closed.
+            dialect: Target sqlglot driver dialect. Unknown dialects
+                fail closed.
+            start_index: For numbered dialects, the index of the first
+                emitted parameter (default ``1``). Ignored for
+                positional dialects.
+
+        Returns:
+            ``BoundSql(sql, params)``. ``params`` is a tuple of values in
+            the same order as the placeholder occurrences in the SQL.
+
+        Raises:
+            ValueError: ``"placeholder_binding_failed"`` for unknown
+                placeholder, missing/``None`` user value, unknown
+                dialect, or non-string ``filter_sql``.
+        """
+        if not isinstance(filter_sql, str):
+            raise ValueError(_PLACEHOLDER_BINDING_FAILED)
+        if not isinstance(user_context, dict):
+            raise ValueError(_PLACEHOLDER_BINDING_FAILED)
+        if dialect.lower() not in _DIALECT_PARAM_STYLE:
+            raise ValueError(_PLACEHOLDER_BINDING_FAILED)
+
+        params: list[Any] = []
+        occurrence = 0
+
+        def _replace(match: re.Match[str]) -> str:
+            nonlocal occurrence
+            key = match.group(1)
+            if key not in _ALLOWED_PLACEHOLDER_KEYS:
+                raise ValueError(_PLACEHOLDER_BINDING_FAILED)
+            ctx_key = _USER_CONTEXT_KEYS[key]
+            if ctx_key not in user_context:
+                raise ValueError(_PLACEHOLDER_BINDING_FAILED)
+            value = user_context[ctx_key]
+            if value is None:
+                raise ValueError(_PLACEHOLDER_BINDING_FAILED)
+            params.append(value)
+            token = _placeholder_token(dialect, start_index, occurrence)
+            occurrence += 1
+            return token
+
+        # ``re.sub`` with a function repl is safe — match positions are
+        # scanned left-to-right, replacement is verbatim.
+        try:
+            new_sql = _PLACEHOLDER_RE.sub(_replace, filter_sql)
+        except ValueError:
+            # Already a binding failure; re-raise unchanged.
+            raise
+
+        # Reject any leftover ``{user.`` shapes that the regex did not
+        # match (e.g. ``{user.}`` or ``{user.XY}`` with weird chars). The
+        # validator should have caught these at save time, but binding is
+        # the second line of defense.
+        if re.search(r"\{user\.", new_sql):
+            raise ValueError(_PLACEHOLDER_BINDING_FAILED)
+
+        return BoundSql(sql=new_sql, params=tuple(params))
+
+
+@dataclass(frozen=True)
+class BoundSql:
+    """Parameterized SQL ready to hand to a source-DB adapter.
+
+    Attributes:
+        sql: SQL string with dialect-appropriate placeholders (``$N``,
+            ``%s``, or ``?``). No user-supplied values are interpolated.
+        params: Positional parameter values, one per placeholder occurrence.
+    """
+
+    sql: str
+    params: tuple[Any, ...]
+
+
+def _placeholder_token(dialect: str, start_index: int, occurrence: int) -> str:
+    """Return the dialect-appropriate placeholder for a single occurrence.
+
+    Postgres uses numbered ``$N`` starting at ``start_index``; MySQL and
+    MSSQL use positional ``%s`` / ``?`` with ``start_index`` ignored.
+    """
+    style = _DIALECT_PARAM_STYLE.get(dialect.lower())
+    if style is None:
+        raise ValueError(_PLACEHOLDER_BINDING_FAILED)
+    if style == "numbered":
+        return f"${start_index + occurrence}"
+    if style == "positional":
+        return "%s" if dialect.lower() == "mysql" else "?"
+    raise ValueError(_PLACEHOLDER_BINDING_FAILED)  # pragma: no cover
