@@ -2430,3 +2430,141 @@ the user input. Remaining backend work: T-721
 foundation gate). Frontend work starts T-723
 (masked column indicator). Both deferred to
 subsequent waves.
+
+### Wave 17.3j follow-up — PR #133 review fixes (T-719 / T-720)
+
+Two PR #133 review blockers fixed. Scope held to
+T-719 / T-720 only — no new tasks, no new FRs.
+
+**1. Reject actor attribution (T-720)**
+
+`QueryService.reject_query` now accepts an optional
+`user_id` parameter. The API route
+`backend/src/app/api/v1/query.py::reject_query`
+passes `user_id=user_id` (from the
+`require_active_user` dependency). The
+`query.reject` audit entry records:
+
+- `actor_id = uuid.UUID(user_id)`
+- `actor_identity = user_id` (string form)
+
+When `user_id` is `None` (legacy test callers),
+both remain `None` — backward compatible, no
+fabricated value. A malformed `user_id` is caught
+by a defensive `try/except ValueError` and treated
+as no attribution rather than raising — the audit
+call must not break the user-facing reject path.
+
+**2. No resource UUIDs in audit context (T-720)**
+
+Resource UUIDs (`attempt_id`, `accepted_query_id`)
+already live in `resource_id` per the existing
+audit model standard; they were duplicated in
+`context`, which is now removed:
+
+- `query.execute` (success) context:
+  `{row_count}` (was `{attempt_id, row_count}`)
+- `query.execute` (failure) context:
+  `{reason: 'timeout'}` (was `{attempt_id, reason}`)
+- `query.accept` (both idempotent + fresh paths)
+  context: `{}` (was `{accepted_query_id}`)
+- `query.reject` context: `{}` (was `{attempt_id}`)
+
+`resource_id` remains the authoritative resource
+pointer in every case. The remaining context
+fields (`{row_count}`, `{reason: 'timeout'}`,
+`{question_length, dialect}`, `{rules}`,
+`{reason: 'deny_all' / 'role_authorization'}`)
+still satisfy FR-140 / FR-143 / SC-061
+sanitization (no raw SQL, no question text, no
+table, no column, no host, no port, no
+credentials, no SAML, no cert, no stack trace).
+
+**3. Test updates (T-719)**
+
+- `test_reject_query_logs_reject_event` now passes
+  `user_id` and asserts `actor_id == uuid.UUID(user_id)`
+  + `actor_identity == user_id` on the
+  `QUERY_REJECT` call.
+- `test_reject_query_without_user_id_keeps_none_actors`:
+  new test asserting the backward-compat path
+  (no `user_id`) leaves both actor fields `None`.
+- `test_reject_query_context_has_no_resource_uuids`:
+  new test asserting the `QUERY_REJECT` context
+  has no `attempt_id` key, the `attempt_id`
+  string is not in `str(context)`, and
+  `resource_id` still carries the `attempt_id`.
+  Patches `regenerate_query` to a no-op to
+  isolate the audit call (the existing 2 reject
+  tests exercise the full regenerate path; this
+  test focuses on the audit shape only).
+- `test_audit_context_has_no_secrets_or_user_values`
+  now also asserts no `attempt_id` /
+  `accepted_query_id` keys in any context dict
+  (direct contract test) and adds the known
+  `accepted_query_id` + the known `user_id` to
+  the forbidden tokens list for cross-cutting
+  redaction.
+
+**4. Preserved invariants (no regression)**
+
+- All other audit events (`query.submit` /
+  `query.validate.pass` / `query.validate.fail`
+  / `query.accept` / `access.denied`) unchanged
+  in action / outcome / actor / resource_type /
+  resource_id.
+- Existing reject callers in
+  `test_query_service_reject.py` (8 tests) pass
+  no `user_id` (the parameter is optional with
+  default `None`) and continue to work — the
+  audit entry records `actor_id=None` /
+  `actor_identity=None`, the legacy behaviour.
+- Sanitization invariants unchanged in the
+  remaining context fields; the forbidden token
+  list assertions still pass.
+- The `QUERY_REJECT` audit call still fires
+  BEFORE the `regenerate_query` delegation. No
+  new audit events added in this follow-up.
+- PR #129 fail-closed provider behavior +
+  PR #132 rerun connection-authority behavior
+  unchanged (no calls touched in
+  `rerun_accepted_query`).
+
+**5. Test count**
+
+1298 → 1300 (+2 new reject tests:
+`test_reject_query_without_user_id_keeps_none_actors`
+and
+`test_reject_query_context_has_no_resource_uuids`).
+
+**6. Gates**
+
+```text
+$ uv run pytest tests/unit/test_query_audit_logging.py -q
+11 passed in 0.38s
+
+$ uv run pytest tests/unit -q -m "not integration"
+1300 passed, 61 skipped, 9 deselected, 12 warnings in 11.23s
+
+$ uv run ruff check src tests
+All checks passed!
+
+$ uv run ruff format --check src tests
+303 files already formatted
+
+$ git diff --check
+(clean)
+```
+
+**7. Commits**
+
+- `347c1d5` fix(T-719/T-720): reject actor
+  attribution + no resource UUIDs in audit
+  context (PR #133 review).
+
+**8. PR**
+
+PR #133 OPEN
+(https://github.com/RkShanks/QueryCraft/pull/133).
+Review fixes pushed; awaiting user review +
+merge to main. No `[NEEDS DECISION]` items.
