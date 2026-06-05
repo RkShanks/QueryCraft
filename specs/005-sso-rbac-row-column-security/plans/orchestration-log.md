@@ -1127,14 +1127,16 @@
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3f (Query Flow Policy Integration)
+## Historical Checkpoint — Through Wave 17.3f (Query Flow Policy Integration)
 
 ### Status
 - **Date**: 2026-06-05
 - **Phase**: Phase 5 remains IN PROGRESS.
-- **Current point**: Wave 17.3f query flow integration complete and ready for review/merge.
-- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127, #128.
-- **Current/open PR**: Wave 17.3f (T-711/T-712) — Query Flow Policy Integration.
+- **Current point**: Wave 17.3f query flow integration complete and
+  merged to main via PR #129.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127, #128, #129.
+- **Current/open PR**: Wave 17.3g (T-713/T-714) — Role Policy Test
+  Endpoint (open as a follow-up branch off main).
 
 ### Completed Scope Through This Point
 - Wave 17.0 foundation is complete through subwaves 17.0a-17.0d.
@@ -1237,3 +1239,183 @@
   `-m "not integration"`). All other unit tests still pass.
 - **Gates**: pytest 1234 pass, ruff check clean, ruff format
   clean, git diff --check clean.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.3g (Role Policy Test Endpoint)
+
+### Status
+- **Date**: 2026-06-05
+- **Phase**: Phase 5 remains IN PROGRESS.
+- **Current point**: Wave 17.3g role policy test endpoint RED + GREEN
+  complete on branch `phase-5/wave-17.3g-role-policy-test-endpoint`.
+  PR will be opened off main once DOCS commit lands.
+- **Merged Phase 5 PRs so far**: #101, #102, #103, #104, #105, #108, #110, #111, #112, #113, #114, #115, #116, #117, #118, #119, #120, #121, #122, #123, #124, #125, #126, #127, #128, #129.
+- **Current/open PR**: Wave 17.3g (T-713/T-714) — Role Policy Test
+  Endpoint (FR-136 dry-run, no LLM, no source-DB query).
+
+### Wave 17.3g Scope (T-713 / T-714)
+- **T-713**: 16 RED tests in
+  `backend/tests/unit/test_policy_test_endpoint.py` across 7 classes
+  (TestPermissionEnforcement, TestValidation, TestPolicyEvaluation,
+  TestMetadataAndSanitization, TestConnectionState,
+  TestInternalErrorSanitization, TestNoExecution).
+- **T-714**: `POST /admin/roles/{role_id}/test-policy` in
+  `backend/src/app/api/v1/admin_roles.py`. Returns the
+  accessible/blocked table summary, applicable row filter + column
+  mask metadata, and a `would_be_allowed` verdict. Does NOT call
+  the LLM and does NOT execute a source-DB query.
+
+### Endpoint Contract (per api-contracts.md line 253-273)
+- Permission: `admin.roles.manage` (sanitized 403 when missing).
+- Body: `{"question": str, "connection_id": uuid}`.
+- Response 200:
+  ```json
+  {
+    "accessible_tables": ["customers"],
+    "accessible_columns": {"customers": ["id", "name"]},
+    "blocked_tables": ["orders"],
+    "applicable_row_filters": [{"table": "customers", "filter": "region = 'US'"}],
+    "masked_columns": {"customers": ["email"]},
+    "would_be_allowed": true
+  }
+  ```
+- Errors:
+  - 404 `error.notFound` — invalid / unknown role id (no UUID leak).
+  - 400 `error.connection_not_found` — invalid / unknown
+    connection id (no UUID leak).
+  - 400 `error.connection_disabled` — connection not ACTIVE.
+  - 400 `error.connection_unhealthy` — connection not HEALTHY.
+  - 400 `error.connection_no_schema` — schema introspection not
+    SUCCESS.
+  - 500 `error.internal` — sanitized catch-all (no host, port,
+    username, encrypted password, SQL, stack, driver class leak).
+
+### Sanitization Guarantees (defence in depth)
+- Path / body UUID parsing failures are caught; the offending
+  string is never echoed in the error body or message_key.
+- Connection state checks (lifecycle / health / introspection)
+  return constant i18n keys; the connection id and the state
+  enum name are never echoed.
+- `connection.host` / `port` / `username` / `encrypted_password`
+  are never read by the endpoint (no adapter is built; we only
+  need `id` + `lifecycle_state` + `health_status` +
+  `schema_introspection_status` + `get_schema_entries`).
+- Row filters are echoed as metadata only; the placeholder syntax
+  (`{user.email}`, `{user.subject_id}`, `{user.role}`) is
+  preserved verbatim and never bound / interpolated.
+- Column masks are echoed in the configured `{"table": [cols]}`
+  shape; the endpoint does not transform values.
+- Internal failures (driver errors, missing tables, etc.) are
+  caught by an outer `except Exception` and returned as
+  `HTTPException(500, {"error": "internal", "message_key":
+  "error.internal"})`. No raw exception text, traceback, or
+  driver class name appears in the response.
+- Inputs (schema entries, allowed_tables, row_filters,
+  column_masks) are never mutated. The endpoint reads
+  `connection_schema_entries` rows but does not write back.
+
+### Fail-Closed Semantics
+- Missing `role_connection_policies` row for `(role_id,
+  connection_id)` → deny-all result:
+  - `accessible_tables = []`
+  - `accessible_columns = {}`
+  - `blocked_tables = [every schema table]`
+  - `applicable_row_filters = []`
+  - `masked_columns = {}`
+  - `would_be_allowed = false`
+  - Status: 200 (a successful dry-run that returns the deny-all
+    summary is the right answer for an admin; the endpoint is a
+    preview, not a query simulation).
+  This matches the PR #129 fail-closed provider contract: a
+  role with no policy row for the connection sees nothing.
+- Empty `allowed_tables` (admin configured an explicit empty
+  grant) → same deny-all summary.
+
+### Test Seams (intentional, documented)
+- Production code reads `request.state.role_repo_override` /
+  `connection_repo_override` / `db_override` when set; absent in
+  production. This lets the AsyncClient-based test harness inject
+  mock services without bypassing FastAPI's `Depends(get_db)`.
+- `_policy_test_connection_state_error` uses `not (a == b)`
+  rather than `a != b` because
+  `unittest.mock.MagicMock` keeps a separate auto-generated
+  `__ne__` that does NOT delegate to `__eq__`. The three checks
+  carry `# noqa: SIM201` to keep ruff check clean while
+  preserving the test-fake pattern. The trade-off is documented
+  in the helper's docstring.
+
+### Test Coverage (16 tests, all green)
+- `TestPermissionEnforcement` (1) — 403 when missing
+  `admin.roles.manage`.
+- `TestValidation` (4) — invalid role id 404 sanitized, unknown
+  role 404 sanitized (no UUID leak), invalid connection id 400
+  sanitized, unknown connection 400 sanitized.
+- `TestPolicyEvaluation` (3) — existing role+connection+policy
+  returns accessible/blocked summary, missing policy row returns
+  deny-all, empty `allowed_tables` returns deny-all.
+- `TestMetadataAndSanitization` (4) — row filter returned as
+  metadata with placeholders preserved verbatim, column mask
+  returned in configured shape, no host/port/username/encrypted
+  password leak in response body, schema entries not mutated.
+- `TestConnectionState` (2) — inactive connection returns
+  `connection_disabled` 400 with no UUID leak, no-schema
+  connection returns `connection_no_schema` 400.
+- `TestInternalErrorSanitization` (1) — raw `asyncpg` driver
+  error returns 500 with constant `error.internal`; no
+  `asyncpg` / `10.0.0.42` / `5432` / `svc` / `PostgresError` /
+  `RuntimeError` / `Traceback` leak.
+- `TestNoExecution` (1) — response is purely policy+schema
+  derived; no `sql` / `generated_sql` / `rows` keys in the
+  body (the endpoint never ran the LLM or executed a query).
+
+### Test Count
+- 1234 (post-17.3f fail-closed) → 1250 unit pass
+  (`-m "not integration"`).
+- The 4 pre-existing audit DB-state failures
+  (`test_audit_service.py` and
+  `test_audit_chain_verification.py`) are unchanged and unrelated
+  to this wave.
+
+### Gates (all green)
+- `pytest tests/unit/test_policy_test_endpoint.py -q` → 16 passed.
+- `pytest tests/unit -q -m "not integration"` → 1250 passed,
+  61 skipped, 9 deselected, 12 warnings.
+- `ruff check src tests` → All checks passed.
+- `ruff format --check src tests` → 300 files already formatted.
+- `git diff --check` → clean.
+
+### Commits on Wave 17.3g Branch
+- `5ca1c99` test(T-713): failing tests for role policy test endpoint
+  (16 tests, all red because endpoint did not exist).
+- `5ec840e` feat(T-714): POST /admin/roles/{id}/test-policy
+  dry-run endpoint (16/16 green).
+
+### Next Steps (Wave 17.3h and beyond)
+- Wave 17.3h — Query History Scoping (T-715 / T-716) — user
+  sees only own queries, no cross-user leakage.
+- Wave 17.3i — Accepted-Query Rerun Re-Validation (T-717 / T-718)
+  — re-check SQL against current role policy before execution.
+- Wave 17.3j — Query Lifecycle Audit Logging (T-719 / T-720) —
+  submit / validate / execute / accept / reject / policy block.
+- Wave 17.3k — Cross-Dialect Policy Enforcement
+  (T-721, integration). Row filters + column masks verified
+  against PostgreSQL, MySQL, MSSQL via testcontainers.
+- Wave 17.3l — Backend Foundation Gates (T-722) — CI-equivalent
+  ruff check / pytest / format pass.
+
+### Open Questions / Decisions for Future Waves
+- The dry-run's `would_be_allowed` is a policy-state verdict
+  (`bool(accessible_tables)`), not a SQL-level verdict. If a
+  future wave needs a true SQL simulation (e.g., evaluating a
+  concrete SQL string with `RoleAuthorizationRule` against the
+  filtered schema), the endpoint can be extended with an
+  optional `sample_sql` field. The current contract intentionally
+  stops at policy-state preview per FR-136 wording.
+- Frontend policy editor (T-725+) is out of scope for this wave.
+  The dry-run endpoint is the admin's primary tool until the
+  editor ships; results can be fetched via a thin client.
+- The endpoint does not write to the audit log. FR-140 (T-719)
+  will cover the full query-lifecycle audit chain; admin dry-runs
+  are policy introspection, not data access, and were not in
+  scope for the FR-140 contract.

@@ -43,7 +43,6 @@ from app.db.models.role import Role
 from app.db.models.role_connection_policy import RoleConnectionPolicy
 from app.evaluator.schema_context import Column, SchemaContext, Table
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 
@@ -97,9 +96,13 @@ def _make_policy(
     cp.id = uuid.uuid4()
     cp.role_id = role_id
     cp.connection_id = connection_id
-    cp.allowed_tables = allowed_tables if allowed_tables is not None else [
-        {"table": "customers", "columns": ["id", "name"]},
-    ]
+    cp.allowed_tables = (
+        allowed_tables
+        if allowed_tables is not None
+        else [
+            {"table": "customers", "columns": ["id", "name"]},
+        ]
+    )
     cp.row_filters = row_filters if row_filters is not None else []
     cp.column_masks = column_masks if column_masks is not None else []
     return cp
@@ -133,6 +136,21 @@ def _schema() -> SchemaContext:
             ),
         ]
     )
+
+
+def _schema_entries():
+    """Build a list of connection_schema entry mocks for the test connection."""
+    schema = _schema()
+    entries = []
+    for table in schema.tables:
+        for col in table.columns:
+            entry = MagicMock()
+            entry.table_name = table.name
+            entry.column_name = col.name
+            entry.column_data_type = "text" if col.type == "text" else "integer"
+            entry.is_primary_key = col.name == "id"
+            entries.append(entry)
+    return entries
 
 
 def _admin_session() -> dict:
@@ -179,9 +197,7 @@ def _make_app(
     async def _http_exc_handler(request, exc):
         if isinstance(exc.detail, dict):
             return JSONResponse(status_code=exc.status_code, content=exc.detail)
-        return JSONResponse(
-            status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)}
-        )
+        return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
 
     app = FastAPI()
     app.add_middleware(SessionInjectionMiddleware)
@@ -240,8 +256,11 @@ class TestValidation:
     @pytest.mark.asyncio
     async def test_unknown_role_returns_404_sanitized(self):
         unknown_role_id = str(uuid.uuid4())
-        # role lookup returns None; policy lookup returns None
-        app = _make_app(_admin_session())
+        # role lookup returns None
+        role_repo = MagicMock()
+        role_repo.get_by_id = AsyncMock(return_value=None)
+        db = MagicMock()
+        app = _make_app(_admin_session(), role_repo=role_repo, db=db)
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
@@ -347,7 +366,7 @@ class TestPolicyEvaluation:
 
         connection_repo = MagicMock()
         connection_repo.get_by_id = AsyncMock(return_value=conn)
-        connection_repo.get_schema_entries = AsyncMock(return_value=[])
+        connection_repo.get_schema_entries = AsyncMock(return_value=_schema_entries())
 
         db = MagicMock()
         # 1st call: role_connection_policies lookup -> single policy
@@ -398,7 +417,7 @@ class TestPolicyEvaluation:
         role_repo.get_by_id = AsyncMock(return_value=role)
         connection_repo = MagicMock()
         connection_repo.get_by_id = AsyncMock(return_value=conn)
-        connection_repo.get_schema_entries = AsyncMock(return_value=[])
+        connection_repo.get_schema_entries = AsyncMock(return_value=_schema_entries())
 
         db = MagicMock()
         # No policy row -> deny-all
@@ -454,7 +473,7 @@ class TestPolicyEvaluation:
         role_repo.get_by_id = AsyncMock(return_value=role)
         connection_repo = MagicMock()
         connection_repo.get_by_id = AsyncMock(return_value=conn)
-        connection_repo.get_schema_entries = AsyncMock(return_value=[])
+        connection_repo.get_schema_entries = AsyncMock(return_value=_schema_entries())
 
         db = MagicMock()
         db.execute = AsyncMock(return_value=FakeResult([policy]))

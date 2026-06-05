@@ -291,8 +291,8 @@
 
 ### Backend — Role Policy Test (Owner: Kimi ( opencode ))
 
-- [ ] T-713 [US28] Write TDD tests for role policy test endpoint (dry-run evaluation showing accessible/blocked tables, filters, masks) in `backend/tests/unit/test_policy_test_endpoint.py` — FR-136
-- [ ] T-714 [US28] Implement `POST /admin/roles/{id}/test-policy` in `backend/src/app/api/v1/admin_roles.py` per api-contracts.md — FR-136
+- [X] T-713 [US28] Write TDD tests for role policy test endpoint (dry-run evaluation showing accessible/blocked tables, filters, masks) in `backend/tests/unit/test_policy_test_endpoint.py` — FR-136
+- [X] T-714 [US28] Implement `POST /admin/roles/{id}/test-policy` in `backend/src/app/api/v1/admin_roles.py` per api-contracts.md — FR-136
 
 ### Backend — Query History Scoping (Owner: Kimi ( opencode ))
 
