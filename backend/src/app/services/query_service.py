@@ -48,6 +48,7 @@ from app.core.exceptions import (
     SourceDBTimeout,
 )
 from app.core.processing_lock import acquire_lock, release_lock_if_owned
+from app.db.models.enums import AuditActionType
 from app.db.models.user import User
 from app.evaluator.rules.role_authorization import RoleAuthorizationRule
 from app.evaluator.schema_context import SchemaContext
@@ -61,6 +62,7 @@ from app.schemas.query import (
     RefinePrompt,
     Violation,
 )
+from app.services.audit_service import AuditService
 from app.services.policy_enforcement import (
     PolicyEnforcementService,
 )
@@ -353,6 +355,26 @@ class QueryService:
 
             await store_attempt(attempt, http_session_id, self._redis)
 
+            # FR-140: emit a tamper-evident query.submit audit
+            # entry on every submission attempt. Context carries
+            # the question length (never the question text —
+            # users may paste secrets into the question) and
+            # the target dialect. No SQL, no row data, no
+            # credentials, no driver internals.
+            await AuditService.log(
+                self._db_session,
+                action=AuditActionType.QUERY_SUBMIT,
+                actor_id=user_uuid,
+                actor_identity=getattr(user_row, "username", None),
+                resource_type="query_attempt",
+                resource_id=attempt_id,
+                outcome="success",
+                context={
+                    "question_length": len(question),
+                    "dialect": self._target_dialect or "postgres",
+                },
+            )
+
             # T-712: Resolve role policy. When the user has a role_id
             # and a connection-scoped policy exists, the LLM prompt
             # is filtered to role-allowed schema and a
@@ -373,6 +395,19 @@ class QueryService:
                     "violations": [{"rule": "role_authorization", "message_key": "error.queryBlockedPolicy"}],
                 }
                 await store_attempt(attempt, http_session_id, self._redis)
+                # FR-140: audit the policy block. Context carries
+                # the constant reason; no table / column / schema /
+                # SQL / user values leak.
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.ACCESS_DENIED,
+                    actor_id=user_uuid,
+                    actor_identity=getattr(user_row, "username", None),
+                    resource_type="query_attempt",
+                    resource_id=attempt_id,
+                    outcome="denied",
+                    context={"reason": "deny_all"},
+                )
                 return self._role_auth_rejection()
 
             # Load conversation history for context
@@ -421,6 +456,21 @@ class QueryService:
                     "violations": [{"rule": v.rule_name, "message_key": v.message_key} for v in eval_result.violations],
                 }
                 await store_attempt(attempt, http_session_id, self._redis)
+                # FR-140: emit query.validate.fail. Context carries
+                # the rule names only (safe strings); no SQL, no
+                # schema, no question text.
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.QUERY_VALIDATE_FAIL,
+                    actor_id=user_uuid,
+                    actor_identity=getattr(user_row, "username", None),
+                    resource_type="query_attempt",
+                    resource_id=attempt_id,
+                    outcome="failure",
+                    context={
+                        "rules": [v.rule_name for v in eval_result.violations],
+                    },
+                )
                 violations = [Violation(rule=v.rule_name, message_key=v.message_key) for v in eval_result.violations]
                 return EvaluatorRejection(
                     message_key="query.evaluator.rejected",
@@ -432,6 +482,20 @@ class QueryService:
             # the role's allowed_tables to build a fresh
             # RoleAuthorizationRule. Failure surfaces as a sanitized
             # EvaluatorRejection with error.queryBlockedPolicy.
+            # FR-140: emit query.validate.pass BEFORE the
+            # role-authorization check; if role-auth then blocks,
+            # a separate access.denied entry is emitted (constant
+            # reason; no SQL / table / column leak).
+            await AuditService.log(
+                self._db_session,
+                action=AuditActionType.QUERY_VALIDATE_PASS,
+                actor_id=user_uuid,
+                actor_identity=getattr(user_row, "username", None),
+                resource_type="query_attempt",
+                resource_id=attempt_id,
+                outcome="success",
+                context={},
+            )
             role_auth_rejection = await self._enforce_role_authorization(sql, role_policy)
             if role_auth_rejection is not None:
                 attempt.state = "REJECTED"
@@ -442,6 +506,16 @@ class QueryService:
                     ],
                 }
                 await store_attempt(attempt, http_session_id, self._redis)
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.ACCESS_DENIED,
+                    actor_id=user_uuid,
+                    actor_identity=getattr(user_row, "username", None),
+                    resource_type="query_attempt",
+                    resource_id=attempt_id,
+                    outcome="denied",
+                    context={"reason": "role_authorization"},
+                )
                 return role_auth_rejection
 
             attempt.state = "EVALUATED"
@@ -499,6 +573,25 @@ class QueryService:
             except (TimeoutError, SourceDBTimeout) as exc:
                 attempt.state = "TIMEOUT"
                 await store_attempt(attempt, http_session_id, self._redis)
+                # FR-140: emit query.execute with outcome='failure'
+                # on source DB timeout. Context carries only the
+                # constant reason; no raw driver error, no
+                # host/port/credential. attempt_id is in
+                # resource_id (audit standard) so it is NOT
+                # duplicated in context. The HTTP 504 detail
+                # below uses the constant i18n key
+                # 'error.timeout' which never carries the
+                # underlying exception message.
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.QUERY_EXECUTE,
+                    actor_id=user_uuid,
+                    actor_identity=getattr(user_row, "username", None),
+                    resource_type="query_attempt",
+                    resource_id=attempt_id,
+                    outcome="failure",
+                    context={"reason": "timeout"},
+                )
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
@@ -511,6 +604,24 @@ class QueryService:
                 "row_count": len(rows),
             }
             await store_attempt(attempt, http_session_id, self._redis)
+
+            # FR-140: emit query.execute (success) right after the
+            # executor returns. Context carries only row_count;
+            # no rows, no columns, no SQL, no host/port/credential.
+            # attempt_id is in resource_id (audit standard) so
+            # it is NOT duplicated in context. The audit log
+            # itself is not the source of truth for the result —
+            # the accepted-query history (auto-saved below) is.
+            await AuditService.log(
+                self._db_session,
+                action=AuditActionType.QUERY_EXECUTE,
+                actor_id=user_uuid,
+                actor_identity=getattr(user_row, "username", None),
+                resource_type="query_attempt",
+                resource_id=attempt_id,
+                outcome="success",
+                context={"row_count": len(rows)},
+            )
 
             # 4a. T-712: Apply per-role column masks to the
             # ``QueryResult`` after execution. Returns a new
@@ -591,7 +702,8 @@ class QueryService:
         # Verify user exists in DB (guard against stale Redis sessions)
         user_uuid = uuid.UUID(user_id)
         user_result = await self._db_session.execute(select(User).where(User.id == user_uuid))
-        if user_result.scalar_one_or_none() is None:
+        user_row = user_result.scalar_one_or_none()
+        if user_row is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"error": "unauthorized", "message_key": "error.unauthorized"},
@@ -640,6 +752,21 @@ class QueryService:
             if existing is not None:
                 await delete_attempt(attempt_id, self._redis)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
+                # FR-140: emit query.accept even on the idempotent
+                # path; the user made a distinct accept decision
+                # (click). resource_id is the existing accepted
+                # query id (audit standard); accepted_query_id is
+                # NOT duplicated in context.
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.QUERY_ACCEPT,
+                    actor_id=user_uuid,
+                    actor_identity=getattr(user_row, "username", None),
+                    resource_type="accepted_query",
+                    resource_id=str(existing.id),
+                    outcome="success",
+                    context={},
+                )
                 return AcceptedQuerySummary(
                     id=str(existing.id),
                     question_text=existing.question_text,
@@ -668,6 +795,22 @@ class QueryService:
             await delete_attempt(attempt_id, self._redis)
             await self._redis.delete(f"active_attempt:{http_session_id}")
 
+            # FR-140: emit query.accept on the fresh path.
+            # resource_id is the freshly-created accepted query
+            # id (audit standard; not a leak). accepted_query_id
+            # is NOT duplicated in context. No SQL, no question
+            # text, no row data in the context.
+            await AuditService.log(
+                self._db_session,
+                action=AuditActionType.QUERY_ACCEPT,
+                actor_id=user_uuid,
+                actor_identity=getattr(user_row, "username", None),
+                resource_type="accepted_query",
+                resource_id=str(query.id),
+                outcome="success",
+                context={},
+            )
+
             return AcceptedQuerySummary(
                 id=str(query.id),
                 question_text=query.question_text,
@@ -682,6 +825,7 @@ class QueryService:
         self,
         attempt_id: str,
         http_session_id: str,
+        user_id: str | None = None,
     ) -> QueryResult | RefinePrompt:
         """Reject a query result and trigger one auto-retry.
 
@@ -691,11 +835,60 @@ class QueryService:
         the regenerated SQL is byte-equal), returns a RefinePrompt instead
         of a new result.
 
+        Args:
+            attempt_id: The ephemeral attempt id to reject.
+            http_session_id: The HTTP session id (Redis lock key).
+            user_id: The authenticated user id (FR-140 audit
+                attribution). Optional for backward compatibility
+                with existing test callers; when provided it is
+                recorded as ``actor_id`` and ``actor_identity`` on
+                the ``query.reject`` audit entry.
+
         Raises:
             SessionBusy: if a concurrent operation is in progress.
             AttemptNotFound: if the attempt does not exist.
             AttemptOwnershipViolation: if session_id doesn't match.
         """
+        # FR-140: emit query.reject BEFORE delegating to
+        # regenerate_query. The user made a distinct reject
+        # decision (click); the subsequent regeneration is
+        # audited separately only if it reaches a new
+        # submit/validate/execute path (currently out of
+        # T-720 scope — regenerate logs no further events
+        # to keep the diff minimal).
+        #
+        # Actor attribution (PR #133 review fix): when the
+        # API layer passes the authenticated ``user_id``,
+        # the audit entry records both ``actor_id`` (UUID
+        # form) and ``actor_identity`` (string form). When
+        # ``user_id`` is ``None`` (legacy test callers
+        # without the new param), both are ``None`` rather
+        # than fabricated. The actor_id remains the
+        # authoritative user link; actor_identity is a
+        # human-readable mirror of the same value.
+        reject_actor_id: uuid.UUID | None = None
+        reject_actor_identity: str | None = None
+        if user_id is not None:
+            try:
+                reject_actor_id = uuid.UUID(user_id)
+                reject_actor_identity = user_id
+            except ValueError:
+                # Defensive: a malformed user_id is treated
+                # as no attribution rather than raising —
+                # the audit must not break the user-facing
+                # reject path.
+                reject_actor_id = None
+                reject_actor_identity = None
+        await AuditService.log(
+            self._db_session,
+            action=AuditActionType.QUERY_REJECT,
+            actor_id=reject_actor_id,
+            actor_identity=reject_actor_identity,
+            resource_type="query_attempt",
+            resource_id=attempt_id,
+            outcome="success",
+            context={},
+        )
         return await self.regenerate_query(attempt_id, http_session_id)
 
     async def regenerate_query(

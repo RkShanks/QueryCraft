@@ -306,8 +306,8 @@
 
 ### Backend — Query/Policy Audit Logging (Owner: Kimi ( opencode ))
 
-- [ ] T-719 [US31] Write TDD tests for query lifecycle audit events (submit, validate pass/fail, execute, accept, reject, policy block) in `backend/tests/unit/test_query_audit_logging.py` — FR-140
-- [ ] T-720 [US31] Add audit logging calls to query service for all query lifecycle events — FR-140
+- [X] T-719 [US31] Write TDD tests for query lifecycle audit events (submit, validate pass/fail, execute, accept, reject, policy block) in `backend/tests/unit/test_query_audit_logging.py` — FR-140
+- [X] T-720 [US31] Add audit logging calls to query service for all query lifecycle events — FR-140
 
 ### Backend — Cross-Dialect Enforcement Tests (Owner: Kimi ( opencode ))
 
