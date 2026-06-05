@@ -994,17 +994,21 @@ class TestRerunConnectionContext:
             assert call["cid"] != conn_b, "connection B leaked into the policy provider on mismatch"
 
     @pytest.mark.asyncio
-    async def test_rerun_uses_accepted_connection_id_when_no_caller_connection(
+    async def test_rerun_succeeds_when_service_matches_accepted_and_no_caller_connection(
         self,
     ):
-        """Accepted query belongs to connection A. Caller does NOT
-        pass ``connection_id``. The policy provider must be
-        consulted with connection A (the accepted row's id), NOT
-        the service default (``self._connection_id``) and NOT
-        the first configured source DB. The executor runs the
-        stored SQL; rerun succeeds."""
+        """Service is scoped to connection A. Accepted query
+        belongs to connection A. Caller does NOT pass
+        ``connection_id``. The rerun succeeds: the policy
+        provider is consulted with A, the executor is called
+        exactly once with the stored SQL, the LLM is not
+        called, and the accepted row is not mutated.
+
+        This is the positive case: when the service context
+        (adapter, executor, schema, dialect, connection id)
+        is already scoped to the accepted query's connection,
+        the rerun proceeds normally."""
         conn_a = uuid.UUID("aaaaaaaa-0000-0000-0000-00000000000a")
-        conn_default = uuid.UUID("cccccccc-0000-0000-0000-00000000000c")
         user_uuid = uuid.UUID("550e8400-e29b-41d4-a716-446655440000")
         role_uuid = uuid.UUID("660e8400-e29b-41d4-a716-446655440000")
         aq_id = uuid.UUID("aaaaaaaa-dddd-dddd-dddd-000000000001")
@@ -1030,14 +1034,11 @@ class TestRerunConnectionContext:
         )
         accepted.database_connection_id = conn_a
 
-        # Service is built for the WRONG default connection
-        # (this is the request-scoped connection). The rerun
-        # must NOT consult the service default for policy
-        # resolution; it must use conn_a.
+        # Service is scoped to the same connection A.
         service, deps = _make_rerun_service(
             accepted_query=accepted,
             policy_provider=_provider,
-            connection_id=str(conn_default),
+            connection_id=str(conn_a),
         )
 
         result = await service.rerun_accepted_query(
@@ -1048,28 +1049,107 @@ class TestRerunConnectionContext:
 
         # Rerun succeeds.
         assert isinstance(result, QueryResult)
-        # Provider called with connection A (accepted), NOT the
-        # service default.
-        assert len(provider_calls) == 1, f"expected provider called once, got {len(provider_calls)}: {provider_calls!r}"
-        assert provider_calls[0]["cid"] == conn_a, (
-            f"expected provider called with conn_a={conn_a}, got {provider_calls[0]['cid']}"
-        )
-        # And NOT the service default.
-        assert provider_calls[0]["cid"] != conn_default, (
-            f"policy provider must not be called with the service "
-            f"default {conn_default}; must use accepted row's id {conn_a}"
-        )
-        # And NOT the first configured source DB (this is
-        # exercised implicitly — the service default is not
-        # consulted, and the first configured DB is the service
-        # default in the request-scoped path).
+        # Provider called with connection A.
+        assert len(provider_calls) == 1
+        assert provider_calls[0]["cid"] == conn_a
         # Executor called once with the stored SQL.
         assert len(deps["executor"].calls) == 1
+        assert deps["executor"].calls[0]["sql"] == "SELECT orders.id FROM orders"
         # LLM never called.
         if hasattr(service._llm, "generate_sql"):
             service._llm.generate_sql.assert_not_called()
         # Accepted row not mutated.
         deps["repo"].create.assert_not_called()
+        deps["repo"].update_feedback.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_rerun_fails_closed_when_service_default_mismatches_accepted(
+        self,
+    ):
+        """Service is scoped to connection C (request default).
+        Accepted query belongs to connection A. Caller does NOT
+        pass ``connection_id``. Even though the previous fix
+        routes policy resolution through ``accepted.database_connection_id``,
+        the EXECUTOR, ADAPTER, SCHEMA, and DIALECT are still the
+        service's — connection C. Authorizing with A's policy
+        and executing against C would be a multi-connection
+        leak. The rerun must return ``None`` BEFORE the policy
+        provider is consulted and BEFORE the executor is
+        reached. No source DB execution on a service-mismatch
+        rerun."""
+        conn_a = uuid.UUID("aaaaaaaa-0000-0000-0000-00000000000a")
+        conn_c = uuid.UUID("cccccccc-0000-0000-0000-00000000000c")
+        user_uuid = uuid.UUID("550e8400-e29b-41d4-a716-446655440000")
+        role_uuid = uuid.UUID("660e8400-e29b-41d4-a716-446655440000")
+        aq_id = uuid.UUID("aaaaaaaa-eeee-eeee-eeee-000000000001")
+
+        # Provider would return an allowed policy if consulted
+        # (we use this to assert the provider is NOT called).
+        provider_calls: list[dict] = []
+
+        async def _provider(uid, cid):
+            provider_calls.append({"uid": uid, "cid": cid})
+            return _RolePolicy(
+                user_id=user_uuid,
+                role_id=role_uuid,
+                connection_id=cid,
+                allowed_tables=[
+                    {"table": "orders", "columns": ["id", "customer_id", "ssn"]},
+                    {"table": "payments", "columns": ["id", "order_id"]},
+                ],
+            )
+
+        accepted = _make_accepted_query(
+            accepted_query_id=aq_id,
+            user_id=user_uuid,
+            generated_sql="SELECT orders.id FROM orders",
+        )
+        accepted.database_connection_id = conn_a
+
+        # Service scoped to a DIFFERENT connection C.
+        service, deps = _make_rerun_service(
+            accepted_query=accepted,
+            policy_provider=_provider,
+            connection_id=str(conn_c),
+        )
+
+        result = await service.rerun_accepted_query(
+            accepted_query_id=str(aq_id),
+            user_id=str(user_uuid),
+            connection_id=None,  # caller does not pass connection_id
+        )
+
+        # Service mismatch → None (caller surfaces sanitized 404).
+        assert result is None, (
+            f"expected None on service-context mismatch (service=C, "
+            f"accepted=A), got {type(result).__name__}: {result!r}"
+        )
+        # Policy provider MUST NOT be consulted. (If it were, the
+        # rerun would have authorized with A's policy and then
+        # executed against C — a multi-connection leak.)
+        assert provider_calls == [], (
+            f"policy provider must not be called on service-context "
+            f"mismatch; got {provider_calls!r}"
+        )
+        # Executor MUST NOT be called.
+        assert deps["executor"].calls == [], (
+            f"executor must not be called on service-context "
+            f"mismatch; got {deps['executor'].calls!r}"
+        )
+        # LLM never called.
+        if hasattr(service._llm, "generate_sql"):
+            service._llm.generate_sql.assert_not_called()
+        # Accepted row not mutated.
+        deps["repo"].create.assert_not_called()
+        deps["repo"].update_feedback.assert_not_called()
+        deps["repo"].delete_by_id.assert_not_called()
+        # Connection UUIDs must not appear in the result (which
+        # is None — assert against str()).
+        assert str(conn_a) not in str(result)
+        assert str(conn_c) not in str(result)
+        # Forbidden tokens absent from any str() of the result.
+        for token in ("Traceback", "asyncpg", "sqlalchemy", "Error"):
+            assert token not in str(result)
 
     @pytest.mark.asyncio
     async def test_rerun_mismatch_blocks_sanitized_no_provider_no_executor(self):
