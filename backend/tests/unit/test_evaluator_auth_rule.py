@@ -43,6 +43,7 @@ from app.evaluator.rules.schema_validation import SchemaValidationRule
 from app.evaluator.rules.single_statement import SingleStatementRule
 from app.evaluator.schema_context import Column, SchemaContext, Table
 
+
 # Three-table schema reused across tests. The role policy varies per test
 # so we re-build the SchemaContext inside each test for clarity.
 def _schema() -> SchemaContext:
@@ -118,8 +119,7 @@ class TestAllowsAllowedReferences:
     async def test_allows_join_across_allowed_tables(self) -> None:
         rule = RoleAuthorizationRule(allowed_tables=_POLICY_ORDERS_CUSTOMERS)
         result = await rule.evaluate(
-            "SELECT orders.id FROM orders JOIN customers "
-            "ON orders.customer_id = customers.id",
+            "SELECT orders.id FROM orders JOIN customers ON orders.customer_id = customers.id",
             _schema(),
         )
         assert result == (True, None)
@@ -186,12 +186,13 @@ class TestBlocksDisallowedReferences:
 
     @pytest.mark.asyncio
     async def test_blocks_disallowed_column_via_join(self) -> None:
-        rule = RoleAuthorizationRule(allowed_tables=[
-            {"table": "orders", "columns": ["id", "customer_id"]},
-        ])
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "orders", "columns": ["id", "customer_id"]},
+            ]
+        )
         result = await rule.evaluate(
-            "SELECT orders.id FROM orders JOIN customers "
-            "ON orders.customer_id = customers.id",
+            "SELECT orders.id FROM orders JOIN customers ON orders.customer_id = customers.id",
             _schema(),
         )
         assert result[0] is False
@@ -417,15 +418,11 @@ class TestImmutability:
     async def test_does_not_mutate_schema(self) -> None:
         schema = _schema()
         original_tables = [t.name for t in schema.tables]
-        original_cols = {
-            t.name: [c.name for c in t.columns] for t in schema.tables
-        }
+        original_cols = {t.name: [c.name for c in t.columns] for t in schema.tables}
         rule = RoleAuthorizationRule(allowed_tables=_POLICY_ORDERS)
         await rule.evaluate("SELECT ssn FROM orders", schema)
         assert [t.name for t in schema.tables] == original_tables
-        assert {
-            t.name: [c.name for c in t.columns] for t in schema.tables
-        } == original_cols
+        assert {t.name: [c.name for c in t.columns] for t in schema.tables} == original_cols
 
     @pytest.mark.asyncio
     async def test_does_not_mutate_policy(self) -> None:
@@ -454,8 +451,10 @@ class TestImmutability:
 class TestSanitizedError:
     @pytest.mark.asyncio
     async def test_reason_is_constant_across_violations(self) -> None:
-        rule = RoleAuthorizationRule(allowed_tables=_POLICY_ORDERS)
-        # Different violations all return the same constant reason.
+        # Restrictive policy so every SQL in the list violates a check.
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
         cases = [
             "SELECT id FROM payments",
             "SELECT ssn FROM orders",
@@ -470,7 +469,9 @@ class TestSanitizedError:
 
     @pytest.mark.asyncio
     async def test_reason_does_not_include_raw_sql(self) -> None:
-        rule = RoleAuthorizationRule(allowed_tables=_POLICY_ORDERS)
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
         sql = "SELECT ghost_column FROM orders"
         result = await rule.evaluate(sql, _schema())
         assert result[0] is False
@@ -478,8 +479,9 @@ class TestSanitizedError:
 
     @pytest.mark.asyncio
     async def test_reason_does_not_include_table_or_column_names(self) -> None:
-        rule = RoleAuthorizationRule(allowed_tables=_POLICY_ORDERS)
-        # Build a SQL with distinctive, look-for strings.
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
         sql = "SELECT secret_table_name.col_x FROM secret_table_name"
         result = await rule.evaluate(sql, _schema())
         assert result[0] is False
@@ -489,14 +491,16 @@ class TestSanitizedError:
 
     @pytest.mark.asyncio
     async def test_reason_does_not_include_schema_or_user_values(self) -> None:
-        rule = RoleAuthorizationRule(allowed_tables=_POLICY_ORDERS)
-        sql = "SELECT ssn FROM orders WHERE customer_id = 99999"
+        rule = RoleAuthorizationRule(
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
+        sql = "SELECT id FROM orders WHERE customer_id = 99999"
         result = await rule.evaluate(sql, _schema())
         assert result[0] is False
         reason = result[1] or ""
         assert "99999" not in reason
         assert "orders" not in reason
-        assert "ssn" not in reason
+        assert "customer_id" not in reason
 
 
 # ────────────────────── Pipeline registration / message key (T-710) ──────────────────────
@@ -511,10 +515,7 @@ class TestPipelineRegistration:
         from app.evaluator import pipeline as pipeline_module
 
         assert "role_authorization" in pipeline_module._MESSAGE_KEY_MAP
-        assert (
-            pipeline_module._MESSAGE_KEY_MAP["role_authorization"]
-            == "error.queryBlockedPolicy"
-        )
+        assert pipeline_module._MESSAGE_KEY_MAP["role_authorization"] == "error.queryBlockedPolicy"
 
     @pytest.mark.asyncio
     async def test_evaluator_translates_role_authorization_to_query_blocked_policy(self) -> None:
