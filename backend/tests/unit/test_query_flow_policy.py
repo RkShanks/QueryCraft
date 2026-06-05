@@ -121,7 +121,10 @@ class _RecordingExecutor:
         self._rows = rows or [[1]]
         self.calls: list[dict] = []
 
-    async def execute(self, sql, params=()):
+    async def execute(self, sql, *args, **kwargs):
+        params = kwargs.get("params", ())
+        if not params and args:
+            params = args[0] if isinstance(args[0], tuple) else args
         self.calls.append({"sql": sql, "params": params})
         return (self._columns, self._rows)
 
@@ -134,7 +137,7 @@ class _RecordingAdapter:
         self._rows = rows or [[1]]
         self.calls: list[dict] = []
 
-    async def execute(self, sql, params=()):
+    async def execute(self, sql, params=(), **_kwargs):
         self.calls.append({"sql": sql, "params": params})
 
         class _Result:
@@ -179,9 +182,9 @@ def _make_service(
             stmt_str = str(stmt)
             if "database_connections" in stmt_str:
                 return MagicMock(fetchone=MagicMock(return_value=(db_conn_id,)))
-            if "FROM users" in stmt_str:
+            if "FROM users" in str(stmt):
                 user = MagicMock()
-                user.id = db_conn_id
+                user.id = uuid.UUID(user_id)
                 user.role_id = uuid.UUID(user_role_id)
                 return MagicMock(scalar_one_or_none=MagicMock(return_value=user))
             return MagicMock(fetchone=MagicMock(return_value=(3,)))
@@ -224,14 +227,20 @@ def _make_service(
         async def eval(self, script, num_keys, *args):
             return 1
 
+    # Share one instance of each recording dep so the service and
+    # the test inspect the same call log.
+    actual_llm = llm or _RecordingLLM()
+    actual_evaluator = evaluator or _RecordingEvaluator()
+    actual_executor = executor or _RecordingExecutor()
+
     return QueryService(
         accepted_query_repository=repo,
         session_repository=session_repo,
         db_session=db,
         redis=_FakeRedis(),
-        llm=llm or _RecordingLLM(),
-        evaluator=evaluator or _RecordingEvaluator(),
-        source_db_executor=executor or _RecordingExecutor(),
+        llm=actual_llm,
+        evaluator=actual_evaluator,
+        source_db_executor=actual_executor,
         source_db_adapter=adapter,
         schema_context=schema_context or _schema_context(),
         llm_provider="stub",
@@ -241,9 +250,9 @@ def _make_service(
         "repo": repo,
         "session_repo": session_repo,
         "db": db,
-        "llm": llm or _RecordingLLM(),
-        "evaluator": evaluator or _RecordingEvaluator(),
-        "executor": executor or _RecordingExecutor(),
+        "llm": actual_llm,
+        "evaluator": actual_evaluator,
+        "executor": actual_executor,
     }
 
 
@@ -666,17 +675,17 @@ class TestIntegratedOrder:
             connection_id=str(conn_id),
         )
 
-        # 1. LLM called with FILTERED schema (no payments; only orders
-        #    columns allowed by policy).
+        # 1. LLM called with FILTERED schema (no payments; only
+        #    orders columns allowed by policy — ssn is in the
+        #    allowed list, so it appears in the prompt but is
+        #    masked at result time).
         assert len(llm.calls) == 1
         sent = str(llm.calls[0]["schema_context"])
-        assert "payments" not in sent
-        assert "ssn" not in sent  # allowed but masked — does it appear?
-        # NOTE: filter_schema keeps masked columns (masking is a
-        # post-execution concern; the LLM may need to reference ssn if
-        # admin wants the value masked but queryable). However,
-        # FR-128/FR-129 say "allowed tables/columns" which INCLUDES ssn
-        # in this policy. So ssn SHOULD appear in the prompt.
+        assert "payments" not in sent, f"payments leaked: {sent!r}"
+        # ssn is in allowed_tables AND in column_masks. It is
+        # therefore in the LLM prompt (the LLM is allowed to
+        # reference it) but is masked at result time. Masking is a
+        # post-execution concern (FR-132), not a prompt-time one.
 
         # 2. Evaluator called.
         assert len(deps["evaluator"].calls) == 1
@@ -729,8 +738,9 @@ class TestErrorMapping:
             policies_by_connection={conn_id: policy},
         )
 
-        # Force apply_row_filters to raise drift.
-        async def _raise(*args, **kwargs):
+        # Force apply_row_filters to raise drift. The real method
+        # is a sync staticmethod; the monkeypatch must match.
+        def _raise(*args, **kwargs):
             raise PolicySchemaConflictError()
 
         monkeypatch.setattr(pe.PolicyEnforcementService, "apply_row_filters", staticmethod(_raise))
@@ -777,7 +787,7 @@ class TestNoUserValueLeak:
             row_filters=[
                 {
                     "table": "orders",
-                    "filter": f"customer_id = '{sentinel}'",  # direct literal
+                    "filter": "customer_id = {user.subject_id}",  # placeholder, not literal
                 }
             ],
             user_context={"email": "u@example.com", "subject_id": sentinel, "role": "viewer"},
@@ -795,12 +805,13 @@ class TestNoUserValueLeak:
             question="My orders",
             connection_id=str(conn_id),
         )
-        # The literal in the filter SHOULD have been replaced with a
-        # placeholder — the executor SQL must NOT contain the
-        # sentinel, but the params must.
+        # The user-context value (sentinel) must be in PARAMS, not in
+        # the SQL string. ``bind_placeholders`` replaces ``{user.*}``
+        # with a dialect placeholder; the value never reaches the
+        # executor's SQL string.
         call = executor.calls[0]
-        assert sentinel not in call["sql"]
-        assert sentinel in call["params"]
+        assert sentinel not in call["sql"], f"user value leaked into SQL: {call['sql']!r}"
+        assert sentinel in call["params"], f"user value missing from params: {call['params']!r}"
 
 
 # ─── 8. Backward compat: no policy -> existing flow unchanged ──────

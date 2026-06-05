@@ -30,8 +30,16 @@ class SourceDBExecutor:
         self,
         sql: str,
         timeout: float = 30.0,
+        params: tuple[Any, ...] = (),
     ) -> tuple[list[str], list[tuple[Any, ...]]]:
         """Execute *sql* and return (column_names, rows).
+
+        Args:
+            sql: Parameterized SQL with ``$N`` placeholders.
+            timeout: Client-side timeout in seconds.
+            params: Positional parameter values for the ``$N`` placeholders.
+                Empty tuple means no parameters. asyncpg is positional so
+                the order matters (T-712 row-filter integration).
 
         Raises:
             SourceDBTimeout: on client- or server-side timeout.
@@ -45,7 +53,10 @@ class SourceDBExecutor:
                 await conn.execute(f"SET LOCAL statement_timeout = '{timeout_ms}ms'")
 
                 try:
-                    rows = await asyncio.wait_for(conn.fetch(sql), timeout=timeout)
+                    rows = await asyncio.wait_for(
+                        conn.fetch(sql, *params) if params else conn.fetch(sql),
+                        timeout=timeout,
+                    )
                 except TimeoutError as exc:
                     raise SourceDBTimeout(timeout_seconds=int(timeout)) from exc
                 except asyncpg.exceptions.QueryCanceledError as exc:
