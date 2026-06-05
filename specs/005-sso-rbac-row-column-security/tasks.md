@@ -280,9 +280,9 @@
 
 ### Backend — Evaluator Extension (Owner: Kimi ( opencode ))
 
-- [ ] T-708 [US31] Write TDD tests for evaluator authorization rule (check SQL table/column references against role-allowed schema, block if outside set, allow masked columns in WHERE) in `backend/tests/unit/test_evaluator_auth_rule.py` — FR-130, S-007, SC-050
-- [ ] T-709 [US31] Create evaluator authorization rule in `backend/src/app/evaluator/rules/role_authorization.py`: check SQL references against role policy, block disallowed with `error.queryBlockedPolicy`, allow masked columns per S-007 — FR-130
-- [ ] T-710 [US31] Register `RoleAuthorizationRule` in evaluator pipeline in `backend/src/app/evaluator/pipeline.py` — FR-130
+- [x] T-708 [US31] Write TDD tests for evaluator authorization rule (check SQL table/column references against role-allowed schema, block if outside set, allow masked columns in WHERE) in `backend/tests/unit/test_evaluator_auth_rule.py` — FR-130, S-007, SC-050
+- [x] T-709 [US31] Create evaluator authorization rule in `backend/src/app/evaluator/rules/role_authorization.py`: check SQL references against role policy, block disallowed with `error.queryBlockedPolicy`, allow masked columns per S-007 — FR-130
+- [x] T-710 [US31] Register `RoleAuthorizationRule` in evaluator pipeline in `backend/src/app/evaluator/pipeline.py` — FR-130
 
 ### Backend — Query Flow Integration (Owner: Kimi ( opencode ))
 

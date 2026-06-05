@@ -16,6 +16,7 @@ _MESSAGE_KEY_MAP = {
     "schema_validation": "evaluator.violation.unknownTable",
     "unsafe_pattern": "evaluator.violation.unsafePattern",
     "dialect_validation": "evaluator.violation.dialectMismatch",
+    "role_authorization": "error.queryBlockedPolicy",
 }
 
 
