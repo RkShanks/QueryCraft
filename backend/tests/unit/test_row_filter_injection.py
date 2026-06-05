@@ -535,3 +535,31 @@ class TestStringLiteralPreservation:
         assert "'$1 shouldn''t collide'" in result.sql
         # The literal ``$1`` does not consume a placeholder slot.
         assert "region = $1" in result.sql
+
+
+# ──────────────────────── PR #126 blocker: MySQL backtick identifiers ────────────────────────
+# ``validate_row_filter`` accepts MySQL backtick-quoted identifiers
+# (e.g. ``\`region\```) at save time. ``apply_row_filters`` must also
+# accept them at injection time. The previous hard-coded ``read="tsql"``
+# re-parse rejected backticks, raising ``filter_injection_failed``.
+
+
+class TestMySQLBacktickIdentifier:
+    def test_backtick_column_in_filter_injects_for_mysql(self) -> None:
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT id FROM orders",
+            row_filters=[{"table": "orders", "filter": "`region` = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="mysql",
+        )
+        assert "region = %s" in result.sql
+        assert result.params == ("analyst",)
+
+    def test_backtick_filter_validates_at_save_time(self) -> None:
+        """Sanity check: backtick identifier also passes validation
+        (the save-time path), so injection must match.
+        """
+        PolicyEnforcementService.validate_row_filter(
+            "`region` = {user.role}", _schema(), "orders", dialect="mysql"
+        )
