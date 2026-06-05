@@ -7,6 +7,10 @@ WHERE clause (or adds a WHERE if none exists), binds ``{user.*}``
 placeholders to driver-appropriate parameters, and transpiles back to
 the target dialect.
 
+The function does NOT receive the generated SQL's own bind values;
+those are the caller's responsibility (T-711/T-712 query flow). The
+``params`` returned by this function contain only row-filter values.
+
 Schema-drift behavior is covered separately in
 ``test_schema_drift_guard.py`` (T-705). These tests use schemas that
 match the filter columns.
@@ -57,7 +61,7 @@ class TestNoExistingWhereGetsWhere:
         )
         assert "WHERE" in result.sql
         assert "region = $1" in result.sql
-        assert "analyst" in result.params
+        assert result.params == ("analyst",)
 
     def test_filter_added_as_where_mysql(self) -> None:
         sql = "SELECT id FROM orders"
@@ -101,8 +105,8 @@ class TestExistingWhereGetsAnd:
         )
         assert "WHERE id > 10" in result.sql
         assert "AND" in result.sql
-        assert "region = $2" in result.sql  # $1 used by generated SQL
-        assert result.params == (10, "analyst")
+        assert "region = $1" in result.sql
+        assert result.params == ("analyst",)
 
     def test_appends_and_mysql(self) -> None:
         sql = "SELECT id FROM orders WHERE id = 10"
@@ -116,7 +120,7 @@ class TestExistingWhereGetsAnd:
         assert "WHERE id = 10" in result.sql
         assert "AND" in result.sql
         assert "%s" in result.sql
-        assert result.params == (10, "analyst")
+        assert result.params == ("analyst",)
 
     def test_appends_and_mssql(self) -> None:
         sql = "SELECT id FROM orders WHERE id = 10"
@@ -130,7 +134,7 @@ class TestExistingWhereGetsAnd:
         assert "WHERE id = 10" in result.sql
         assert "AND" in result.sql
         assert "?" in result.sql
-        assert result.params == (10, "analyst")
+        assert result.params == ("analyst",)
 
 
 # ──────────────────────── Postgres start_index after existing params ────────────────────────
@@ -138,6 +142,7 @@ class TestExistingWhereGetsAnd:
 
 class TestPostgresStartIndex:
     def test_three_existing_params_starts_at_four(self) -> None:
+        """Generated SQL uses ``$1, $2, $3``; new filter must be ``$4``."""
         sql = "SELECT id FROM orders WHERE a = $1 AND b = $2 AND c = $3"
         result = PolicyEnforcementService.apply_row_filters(
             sql=sql,
@@ -147,12 +152,14 @@ class TestPostgresStartIndex:
             dialect="postgres",
         )
         assert "region = $4" in result.sql
-        # params from generated SQL come first, then our bound value
-        assert result.params == (1, 2, 3, "analyst") or result.params[3] == "analyst"
+        assert "$1" in result.sql
+        assert "$2" in result.sql
+        assert "$3" in result.sql
+        assert result.params == ("analyst",)
 
     def test_existing_with_gap_starts_above_max(self) -> None:
-        """Even if there are gaps, our new placeholders must not collide
-        with existing ones. Take max + 1, not count + 1.
+        """Even with gaps (``$1`` and ``$5``), our new placeholder is ``$6``,
+        not ``$3`` (count + 1). Take max + 1 to avoid collisions.
         """
         sql = "SELECT id FROM orders WHERE a = $1 AND b = $5"
         result = PolicyEnforcementService.apply_row_filters(
@@ -163,7 +170,7 @@ class TestPostgresStartIndex:
             dialect="postgres",
         )
         assert "region = $6" in result.sql
-        assert result.params[1] == "analyst"
+        assert result.params == ("analyst",)
 
 
 # ──────────────────────── Multiple filters on same table ────────────────────────
@@ -217,6 +224,8 @@ class TestMultipleFilters:
             user_context=USER,
             dialect="postgres",
         )
+        assert "region = $1" in result.sql
+        assert "owner_email = $2" in result.sql
         assert "id > $3" in result.sql
         assert result.params == ("analyst", "a@b.c", 0)
 
@@ -231,15 +240,14 @@ class TestMultipleFilters:
         )
         assert "WHERE id = 1" in result.sql
         assert "AND" not in result.sql
-        # Original param is preserved.
-        assert 1 in result.params or result.params == (1,)
+        assert result.params == ()
 
 
 # ──────────────────────── Dialect transpilation smoke ────────────────────────
 
 
 class TestDialectTranspilation:
-    def test_mysql_input_uses_percent_s(self) -> None:
+    def test_mysql_output_uses_percent_s(self) -> None:
         sql = "SELECT id FROM orders"
         result = PolicyEnforcementService.apply_row_filters(
             sql=sql,
@@ -248,11 +256,10 @@ class TestDialectTranspilation:
             user_context=USER,
             dialect="mysql",
         )
-        # No $N postgres-style tokens in the output.
-        assert "$1" not in result.sql
-        assert "$" not in result.sql or "%s" in result.sql
+        assert "$" not in result.sql
+        assert "%s" in result.sql
 
-    def test_mssql_input_uses_question_mark(self) -> None:
+    def test_mssql_output_uses_question_mark(self) -> None:
         sql = "SELECT id FROM orders"
         result = PolicyEnforcementService.apply_row_filters(
             sql=sql,
@@ -261,11 +268,11 @@ class TestDialectTranspilation:
             user_context=USER,
             dialect="mssql",
         )
-        assert "$1" not in result.sql
+        assert "$" not in result.sql
         assert "?" in result.sql
         assert "%s" not in result.sql
 
-    def test_postgres_input_uses_dollar_n(self) -> None:
+    def test_postgres_output_uses_dollar_n(self) -> None:
         sql = "SELECT id FROM orders"
         result = PolicyEnforcementService.apply_row_filters(
             sql=sql,
@@ -317,19 +324,6 @@ class TestMalformedInput:
                 dialect="postgres",
             )
 
-    def test_garbage_in_generated_sql_does_not_leak_value(self) -> None:
-        """Raw user values must not appear in the SQL string under any
-        circumstance, even if the input SQL is broken.
-        """
-        with pytest.raises(ValueError):
-            PolicyEnforcementService.apply_row_filters(
-                sql="BROKEN",
-                row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
-                schema=_schema(),
-                user_context=USER,
-                dialect="postgres",
-            )
-
 
 # ──────────────────────── BoundSql shape ────────────────────────
 
@@ -357,12 +351,10 @@ class TestReturnsBoundSql:
         )
         assert isinstance(result.params, tuple)
 
-    def test_input_sql_not_mutated_internally(self) -> None:
-        """The caller passes a plain string; the service must not require
-        SchemaContext mutation. Schema identity check.
-        """
+    def test_input_schema_not_mutated(self) -> None:
+        """The caller passes a SchemaContext; the service must not mutate it."""
         schema = _schema()
-        before_tables = [t.name for t in schema.tables]
+        before_tables = [(t.name, tuple(c.name for c in t.columns)) for t in schema.tables]
         PolicyEnforcementService.apply_row_filters(
             sql="SELECT id FROM orders",
             row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
@@ -370,5 +362,19 @@ class TestReturnsBoundSql:
             user_context=USER,
             dialect="postgres",
         )
-        after_tables = [t.name for t in schema.tables]
+        after_tables = [(t.name, tuple(c.name for c in t.columns)) for t in schema.tables]
         assert before_tables == after_tables
+
+    def test_user_value_never_appears_in_sql(self) -> None:
+        ctx = {"email": "evil'; DROP TABLE x;--", "subject_id": "x", "role": "analyst"}
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT id FROM orders",
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=ctx,
+            dialect="postgres",
+        )
+        assert "evil" not in result.sql
+        assert "DROP" not in result.sql
+        assert "--" not in result.sql
+        assert result.params == ("analyst",)
