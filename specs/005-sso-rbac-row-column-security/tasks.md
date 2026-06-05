@@ -263,13 +263,15 @@
 
 - [x] T-700 [US31] Write TDD tests for row filter validation at save time (`sqlglot` AST parsing, column existence check, reject subqueries/functions/UNION/DML/comments, fail-closed on absent columns) in `backend/tests/unit/test_row_filter_validation.py` — FR-131, S-004
 - [x] T-701 [US31] Implement row filter validation in `backend/src/app/services/policy_enforcement.py`: `validate_row_filter()` per S-004 — parse with `sqlglot`, reject dangerous expressions, validate column existence against connection schema, fail-closed — FR-131
-- [ ] T-702 [US31] Write TDD tests for `{user.*}` placeholder binding (email, subject_id, role) resolved to parameterized bind values in `backend/tests/unit/test_placeholder_binding.py` — FR-131, S-004
+- [x] T-702 [US31] Write TDD tests for `{user.*}` placeholder binding (email, subject_id, role) resolved to parameterized bind values in `backend/tests/unit/test_placeholder_binding.py` — FR-131, S-004
 
 ### Backend — Row Filter Injection (Owner: Kimi ( opencode ))
 
-- [ ] T-703 [US31] Write TDD tests for row filter injection at query time (`sqlglot` AST AND-conjunction into WHERE, cross-dialect identifier quoting for PG/MySQL/MSSQL) in `backend/tests/unit/test_row_filter_injection.py` — FR-131, SC-051
-- [ ] T-704 [US31] Implement row filter injection in `backend/src/app/services/policy_enforcement.py`: `apply_row_filters()` — parse generated SQL via `sqlglot`, inject filter via AST AND-conjunction, resolve `{user.*}` to parameterized values, transpile per dialect per S-005 — FR-131
-- [ ] T-705 [US31] Write TDD tests for schema drift guard (filter references column no longer in schema → block query, emit `policy.schema_mismatch` audit event, return `error.policySchemaConflict`) in `backend/tests/unit/test_schema_drift_guard.py` — FR-131, S-004, S-005
+- [x] T-703 [US31] Write TDD tests for row filter injection at query time (`sqlglot` AST AND-conjunction into WHERE, cross-dialect identifier quoting for PG/MySQL/MSSQL) in `backend/tests/unit/test_row_filter_injection.py` — FR-131, SC-051
+
+- [x] T-704 [US31] Implement row filter injection in `backend/src/app/services/policy_enforcement.py`: `apply_row_filters()` — parse generated SQL via `sqlglot`, inject filter via AST AND-conjunction, resolve `{user.*}` to parameterized values, transpile per dialect per S-005 — FR-131
+
+- [x] T-705 [US31] Write TDD tests for schema drift guard (filter references column no longer in schema → block query, emit `policy.schema_mismatch` audit event, return `error.policySchemaConflict`) in `backend/tests/unit/test_schema_drift_guard.py` — FR-131, S-004, S-005
 
 ### Backend — Column Masking (Owner: Kimi ( opencode ))
 

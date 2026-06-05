@@ -104,6 +104,7 @@
   "error.attemptExpired": "This query attempt has expired. Please submit a new question.",
   "error.timeout": "The query timed out. Please try a simpler question.",
   "error.forbidden": "This request was blocked for security reasons.",
+  "error.policySchemaConflict": "A row filter references a column that no longer exists in the schema. Please ask an administrator to update the policy.",
   "error.notFound": "The requested resource was not found.",
   "error.sourceDbNotConfigured": "Source database connection is not configured. Please check your environment settings.",
   "error.sourceDbConnectionFailed": "Unable to connect to the database. Please check your connection settings and try again.",
