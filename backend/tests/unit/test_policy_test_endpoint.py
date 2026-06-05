@@ -930,3 +930,317 @@ class TestNoExecution:
         assert "sql" not in data
         assert "generated_sql" not in data
         assert "rows" not in data
+
+
+# ── Sample-SQL evaluation (FR-136 / SC-051 follow-up) ──────────────────────
+
+
+def _admin_app_with_policy(
+    role_id,
+    conn_id,
+    role,
+    policy,
+    conn,
+    role_repo=None,
+    connection_repo=None,
+    db=None,
+):
+    """Build a FastAPI app wired with the given role / connection / policy mocks."""
+    if role_repo is None:
+        role_repo = MagicMock()
+        role_repo.get_by_id = AsyncMock(return_value=role)
+    if connection_repo is None:
+        connection_repo = MagicMock()
+        connection_repo.get_by_id = AsyncMock(return_value=conn)
+        connection_repo.get_schema_entries = AsyncMock(return_value=_schema_entries())
+    if db is None:
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=FakeResult([policy]))
+    return _make_app(
+        _admin_session(),
+        role_repo=role_repo,
+        connection_repo=connection_repo,
+        db=db,
+    )
+
+
+def _active_healthy_conn(conn_id):
+    """Build a connection mock in active+healthy+introspected state."""
+    conn = MagicMock()
+    conn.id = conn_id
+    conn.lifecycle_state = MagicMock()
+    conn.lifecycle_state.value = "active"
+    conn.lifecycle_state.__eq__ = lambda self, other: self.value == getattr(other, "value", other)
+    conn.health_status = MagicMock()
+    conn.health_status.value = "healthy"
+    conn.health_status.__eq__ = lambda self, other: self.value == getattr(other, "value", other)
+    conn.schema_introspection_status = MagicMock()
+    conn.schema_introspection_status.value = "success"
+    conn.schema_introspection_status.__eq__ = lambda self, other: self.value == getattr(other, "value", other)
+    return conn
+
+
+class TestSampleSqlEvaluation:
+    """When the request body includes ``sample_sql``, the endpoint must run
+    ``RoleAuthorizationRule`` against the current schema + policy and return
+    a SQL-level verdict. The verdict (``would_be_allowed``) is True only when
+    every table/column reference in the SQL is in the policy. Blocked SQL
+    returns False plus a sanitized ``message_key``. No raw SQL, table,
+    column, UUID, driver, or stack text ever appears in the response.
+    """
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_allowed_returns_true(self):
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[
+                {"table": "customers", "columns": ["id", "name", "email"]},
+            ],
+        )
+        conn = _active_healthy_conn(conn_id)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={
+                    "question": "Show customers",
+                    "connection_id": str(conn_id),
+                    "sample_sql": "SELECT id, name FROM customers",
+                },
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["would_be_allowed"] is True
+        # No blocking message key when allowed
+        assert data.get("message_key") in (None, "")
+        # Policy summary is still returned
+        assert "customers" in data["accessible_tables"]
+        assert "orders" in data["blocked_tables"]
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_disallowed_returns_false_with_message_key(self):
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        # Policy allows ONLY customers.orders is NOT allowed.
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[
+                {"table": "customers", "columns": ["id", "name", "email"]},
+            ],
+        )
+        conn = _active_healthy_conn(conn_id)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={
+                    "question": "Show orders",
+                    "connection_id": str(conn_id),
+                    "sample_sql": "SELECT * FROM orders",
+                },
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["would_be_allowed"] is False
+        assert data["message_key"] == "error.queryBlockedPolicy"
+        # Policy summary is still returned (admin can see what WOULD be allowed)
+        assert "customers" in data["accessible_tables"]
+        assert "orders" in data["blocked_tables"]
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_blocked_does_not_leak_sql_or_schema(self):
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[
+                {"table": "customers", "columns": ["id", "name"]},
+            ],
+        )
+        conn = _active_healthy_conn(conn_id)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        transport = ASGITransport(app=app)
+        sample_sql = "SELECT ssn, customer_id FROM orders WHERE region = 'US'"
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={
+                    "question": "Show me all SSN in orders",
+                    "connection_id": str(conn_id),
+                    "sample_sql": sample_sql,
+                },
+            )
+        assert response.status_code == 200, response.text
+        body = response.text
+        # No raw SQL fragment
+        for leak in [
+            "SELECT ssn",
+            "FROM orders",
+            "WHERE region",
+            "'US'",
+            "ssn",
+        ]:
+            assert leak not in body, f"leaked SQL fragment {leak!r} in response body"
+        # No role id, connection id, user, or driver text
+        for leak in [
+            str(role_id),
+            str(conn_id),
+            "sqlglot",
+            "ParseError",
+            "Traceback",
+            "evaluator",
+            "RoleAuthorization",
+        ]:
+            assert leak not in body, f"leaked {leak!r} in response body"
+        # Sanitized i18n key + the verdict
+        data = response.json()
+        assert data["would_be_allowed"] is False
+        assert data["message_key"] == "error.queryBlockedPolicy"
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_absent_keeps_policy_state_verdict(self):
+        # Without sample_sql, the endpoint must keep its current
+        # policy-state preview behaviour: would_be_allowed reflects
+        # bool(accessible_tables) and message_key is absent / null.
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[{"table": "customers", "columns": ["id", "name"]}],
+        )
+        conn = _active_healthy_conn(conn_id)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={"question": "Show customers", "connection_id": str(conn_id)},
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["would_be_allowed"] is True
+        assert data.get("message_key") in (None, "")
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_malformed_returns_blocked_sanitized(self):
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[{"table": "customers", "columns": ["id", "name"]}],
+        )
+        conn = _active_healthy_conn(conn_id)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={
+                    "question": "Bogus",
+                    "connection_id": str(conn_id),
+                    "sample_sql": "SELEKT id FORM customers (((",
+                },
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["would_be_allowed"] is False
+        assert data["message_key"] == "error.queryBlockedPolicy"
+        body = response.text
+        for leak in [
+            "SELEKT",
+            "FORM",
+            "((( ",
+            "ParseError",
+            "sqlglot",
+            "exceptions",
+            "Traceback",
+            "tokenizer",
+        ]:
+            assert leak not in body, f"leaked {leak!r} in malformed-SQL response body"
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_non_select_returns_blocked(self):
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        # Policy allows customers. The sample SQL is a DELETE — blocked
+        # at the role-auth rule because it is not a SELECT.
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[{"table": "customers", "columns": ["id", "name"]}],
+        )
+        conn = _active_healthy_conn(conn_id)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={
+                    "question": "Wipe",
+                    "connection_id": str(conn_id),
+                    "sample_sql": "DELETE FROM customers WHERE id = 1",
+                },
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["would_be_allowed"] is False
+        assert data["message_key"] == "error.queryBlockedPolicy"
+        body = response.text
+        for leak in [
+            "DELETE",
+            "WHERE id = 1",
+            "ReadOnlyRule",
+            "SingleStatement",
+            "sqlglot",
+        ]:
+            assert leak not in body, f"leaked {leak!r} in non-SELECT response body"
+
+    @pytest.mark.asyncio
+    async def test_sample_sql_multi_statement_returns_blocked(self):
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        role = _make_role(role_id=role_id)
+        policy = _make_policy(
+            role_id=role_id,
+            connection_id=conn_id,
+            allowed_tables=[{"table": "customers", "columns": ["id", "name"]}],
+        )
+        conn = _active_healthy_conn(conn_id)
+        app = _admin_app_with_policy(role_id, conn_id, role, policy, conn)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                f"/api/v1/admin/roles/{role_id}/test-policy",
+                json={
+                    "question": "Sneaky",
+                    "connection_id": str(conn_id),
+                    "sample_sql": "SELECT id FROM customers; DROP TABLE customers",
+                },
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["would_be_allowed"] is False
+        assert data["message_key"] == "error.queryBlockedPolicy"
+        body = response.text
+        for leak in [
+            "DROP TABLE",
+            "DROP",
+            "multi",
+            "SingleStatement",
+        ]:
+            assert leak not in body, f"leaked {leak!r} in multi-statement response body"
