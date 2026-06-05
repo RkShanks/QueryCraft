@@ -1405,13 +1405,6 @@
   ruff check / pytest / format pass.
 
 ### Open Questions / Decisions for Future Waves
-- The dry-run's `would_be_allowed` is a policy-state verdict
-  (`bool(accessible_tables)`), not a SQL-level verdict. If a
-  future wave needs a true SQL simulation (e.g., evaluating a
-  concrete SQL string with `RoleAuthorizationRule` against the
-  filtered schema), the endpoint can be extended with an
-  optional `sample_sql` field. The current contract intentionally
-  stops at policy-state preview per FR-136 wording.
 - Frontend policy editor (T-725+) is out of scope for this wave.
   The dry-run endpoint is the admin's primary tool until the
   editor ships; results can be fetched via a thin client.
@@ -1419,3 +1412,92 @@
   will cover the full query-lifecycle audit chain; admin dry-runs
   are policy introspection, not data access, and were not in
   scope for the FR-140 contract.
+
+### Wave 17.3g Follow-up: Sample-SQL Evaluation
+- **Date**: 2026-06-05
+- **Commits** (on `phase-5/wave-17.3g-role-policy-test-endpoint`):
+  - `b851235` test(T-713): sample-SQL evaluation tests (FR-136 follow-up)
+  - `94568be` feat(T-714): sample-SQL evaluation via RoleAuthorizationRule
+- **PR**: #130 (same PR, follow-up commits).
+- **Issue raised in PR #130 review**: the dry-run's
+  `would_be_allowed = bool(accessible_tables)` is a policy-state
+  verdict, not a SQL-level one. FR-136 requires showing whether
+  a sample query would be blocked or allowed. The initial
+  endpoint only returned the policy-state preview and ignored
+  the user's sample intent.
+- **API extension (backward compatible)**:
+  - `PolicyTestRequest` gains optional
+    `sample_sql: str | None = Field(default=None, max_length=20000)`.
+  - `PolicyTestResponse` gains `message_key: str | None = None`.
+- **Endpoint behaviour**:
+  - `sample_sql` absent or empty → keep current policy-state
+    preview: `would_be_allowed = bool(accessible_tables)`,
+    `message_key = None`. The 16 original tests
+    (`TestPermissionEnforcement`, `TestValidation`,
+    `TestPolicyEvaluation`, `TestMetadataAndSanitization`,
+    `TestConnectionState`, `TestInternalErrorSanitization`,
+    `TestNoExecution`) still pass unchanged.
+  - `sample_sql` present and non-empty → run
+    `RoleAuthorizationRule(allowed_tables, column_masks,
+    dialect="postgres")` against the **full**
+    `schema_context` (the rule does not need the filtered schema
+    — it walks the SQL AST directly) and override
+    `would_be_allowed` with the rule's verdict. On block, set
+    `message_key = "error.queryBlockedPolicy"`. The rule is
+    fail-closed: every failure mode (disallowed reference,
+    malformed SQL, multi-statement, non-SELECT, empty) returns
+    the constant `"query_blocked_policy"` reason. It never
+    echoes the raw SQL, table, column, schema, or driver text.
+- **Why RoleAuthorizationRule directly (not the full evaluator)**:
+  - The dry-run is a policy preview, not a query simulation.
+  - The rule covers FR-130 / SC-050 (table/column allow) plus
+    the defence-in-depth SQL guards (malformed, multi-statement,
+    non-SELECT, empty).
+  - Running the full evaluator would also exercise
+    `ReadOnlyRule` / `SingleStatementRule` /
+    `SchemaValidationRule` against the user's question text,
+    which is not what an admin dry-run is for. The role-auth
+    rule is the policy-shaped gate that the admin wants to
+    preview.
+- **No execution guarantees (unchanged from the initial wave)**:
+  - No LLM call.
+  - No source-DB query.
+  - No row-filter binding or interpolation; filters remain
+    metadata-only in `applicable_row_filters`.
+  - No column-mask value transformation; masks remain
+    metadata-only in `masked_columns`.
+  - Inputs (`schema_entries`, `allowed_tables`, `row_filters`,
+    `column_masks`) are never mutated.
+  - The `sample_sql` is consumed by the rule but never echoed
+    in the response.
+- **Tests added** (7 in `TestSampleSqlEvaluation`):
+  - `test_sample_sql_allowed_returns_true` — policy allows
+    customers; `SELECT id, name FROM customers` →
+    `would_be_allowed = True`, `message_key = None`.
+  - `test_sample_sql_disallowed_returns_false_with_message_key`
+    — policy allows only customers; `SELECT * FROM orders` →
+    `would_be_allowed = False`,
+    `message_key = "error.queryBlockedPolicy"`.
+  - `test_sample_sql_blocked_does_not_leak_sql_or_schema` —
+    sample references `ssn` from a non-allowed table; response
+    body must not contain the SQL fragment, the column name,
+    the role id, the connection id, `sqlglot`, `ParseError`,
+    `Traceback`, `evaluator`, or `RoleAuthorization`.
+  - `test_sample_sql_absent_keeps_policy_state_verdict` —
+    `sample_sql` omitted → policy-state preview (current
+    behaviour).
+  - `test_sample_sql_malformed_returns_blocked_sanitized` —
+    `"SELEKT id FORM customers ((("` → blocked, no
+    `sqlglot` / `ParseError` / `tokenizer` leak.
+  - `test_sample_sql_non_select_returns_blocked` —
+    `DELETE FROM customers WHERE id = 1` → blocked, no
+    `ReadOnlyRule` / `SingleStatement` / `sqlglot` leak.
+  - `test_sample_sql_multi_statement_returns_blocked` —
+    `SELECT id FROM customers; DROP TABLE customers` →
+    blocked, no `DROP TABLE` / `multi` / `SingleStatement`
+    leak.
+- **Test count**: 1250 → 1257 unit pass. All other unit tests
+  still pass; the 4 pre-existing audit DB-state failures
+  unchanged.
+- **Gates**: pytest 1257 pass, ruff check clean, ruff format
+  clean, git diff --check clean.
