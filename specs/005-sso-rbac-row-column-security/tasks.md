@@ -301,8 +301,8 @@
 
 ### Backend — Accepted Query Rerun Revalidation (Owner: Kimi ( opencode ))
 
-- [ ] T-717 [US32] Write TDD tests for accepted-query rerun re-validation (role restricted since acceptance → block rerun) in `backend/tests/unit/test_rerun_revalidation.py` — FR-135, SC-053
-- [ ] T-718 [US32] Implement rerun re-validation in query service: re-check SQL against current role policy before execution — FR-135
+- [X] T-717 [US32] Write TDD tests for accepted-query rerun re-validation (role restricted since acceptance → block rerun) in `backend/tests/unit/test_rerun_revalidation.py` — FR-135, SC-053
+- [X] T-718 [US32] Implement rerun re-validation in query service: re-check SQL against current role policy before execution — FR-135
 
 ### Backend — Query/Policy Audit Logging (Owner: Kimi ( opencode ))
 
