@@ -131,6 +131,26 @@ describe('ResultTable', () => {
     expect(screen.getByText(/last auto retry/i)).toBeInTheDocument();
   });
 
+  it('should render masked column indicator when ColumnMeta.masked is true', () => {
+    const maskedResult: QueryResult = {
+      ...mockResult,
+      columns: [
+        { name: 'id', type: 'integer' },
+        { name: 'secret_name', type: 'text', masked: true } as any,
+      ],
+      rows: [['1', '***']],
+    };
+
+    render(<ResultTable result={maskedResult} onAccept={vi.fn()} />, { wrapper: createWrapper() });
+
+    // Normal column header is rendered, but no masked text next to it
+    expect(screen.getByText('id')).toBeInTheDocument();
+
+    // Masked column header is rendered with the Masked badge
+    expect(screen.getByText('secret_name')).toBeInTheDocument();
+    expect(screen.getByText('Masked')).toBeInTheDocument();
+  });
+
   it('should use i18n for all visible strings', () => {
     render(<ResultTable result={mockResult} onAccept={vi.fn()} />, { wrapper: createWrapper() });
 

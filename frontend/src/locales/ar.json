@@ -51,6 +51,7 @@
   "query.actions.deleteResult": "حذف",
 
   "query.result.lastRetry": "آخر محاولة تلقائية",
+  "query.result.columnMasked": "محجوب",
 
   "query.evaluator.rejected": "تعذر إنشاء استعلام آمن لسؤالك. يرجى إعادة صياغته بطريقة مختلفة.",
   "query.evaluator.read_only": "عمليات الكتابة محظورة. جرب استخدام SELECT.",

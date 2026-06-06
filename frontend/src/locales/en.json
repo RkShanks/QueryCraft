@@ -42,6 +42,7 @@
   "query.actions.regenerate": "Regenerate",
   "query.actions.deleteResult": "Delete",
   "query.result.lastRetry": "Last auto retry",
+  "query.result.columnMasked": "Masked",
   "query.evaluator.rejected": "We couldn't generate a safe query for your question. Please try rephrasing it in a different way.",
   "query.evaluator.read_only": "Write operations are blocked. Try a SELECT.",
   "query.evaluator.schema_validation": "Schema mismatch: {{identifier}}. Check table/column names.",
