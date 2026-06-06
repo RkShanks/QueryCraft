@@ -46,13 +46,15 @@ async def truncate_test_tables(async_engine_fixture):
         await conn.execute(
             text(
                 f"""
-                INSERT INTO users (username, display_name, password_hash, role)
-                VALUES ('{username}', '{display_name}', '{password_hash}', 'admin')
+                INSERT INTO users (username, display_name, password_hash, role, is_builtin, auth_provider)
+                VALUES ('{username}', '{display_name}', '{password_hash}', 'admin', true, 'local')
                 ON CONFLICT (username)
                 DO UPDATE SET
                     display_name = EXCLUDED.display_name,
                     password_hash = EXCLUDED.password_hash,
-                    updated_at = now()
+                    updated_at = now(),
+                    is_builtin = true,
+                    auth_provider = 'local'
                 """
             )
         )

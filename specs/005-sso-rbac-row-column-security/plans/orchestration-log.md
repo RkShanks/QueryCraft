@@ -2569,7 +2569,7 @@ PR #133 OPEN
 Review fixes pushed; awaiting user review +
 merge to main. No `[NEEDS DECISION]` items.
 
-## Current Wave Checkpoint — Through Wave 17.3k (Cross-Dialect Policy Enforcement Tests)
+## Historical Checkpoint — Through Wave 17.3k (Cross-Dialect Policy Enforcement Tests)
 
 ### Wave 17.3k Scope (T-721)
 
@@ -2827,3 +2827,224 @@ admin-user and ruff-format failures on
 should be addressed in a separate wave
 (they are flagged here for the orchestrator's
 awareness).
+
+## Current Wave Checkpoint — Through Wave 17.3l (Backend Foundation Gate)
+
+### Wave 17.3l Scope (T-722)
+
+- **T-722** — Run CI-equivalent backend foundation
+  gates and make Wave 17.3 backend gate clean
+  (`SC-057`).
+
+### Pre-existing failure diagnosed (root cause)
+
+The Wave 17.3j "pre-existing failure" flagged in
+the Wave 17.3k checkpoint turned out to be a real
+repo bug, not a local-only artefact. Re-run on
+fresh `origin/main` (commit `f05a2ee` /
+PR #134 merge `31990c5`) reproduced:
+
+```text
+$ cd backend && uv run pytest tests/unit -q -m "not integration"
+FAILED tests/unit/test_admin_lockout_prevention.py::test_builtin_admin_user_exists_in_db
+assert False is True where False = ('admin', False, 'local').is_builtin
+1 failed, 1360 passed, 9 deselected
+```
+
+The test is correct: a built-in admin user must
+have `is_builtin=true` (enforced by the
+`BuiltinProtectedError` guard in
+`backend/src/app/repositories/user_repository.py`
+and asserted by 25 other tests in
+`test_admin_lockout_prevention.py`). The seed
+was the bug.
+
+### Root cause
+
+`backend/src/app/main.py::_sync_admin_user`
+(the dev/single-admin upsert called on every
+FastAPI startup) INSERTed the admin user with
+columns:
+
+```sql
+INSERT INTO users (username, display_name, password_hash, role)
+VALUES (..., 'admin')
+ON CONFLICT (username) DO UPDATE SET
+    display_name = ..., password_hash = ..., updated_at = now()
+```
+
+`is_builtin` was neither set on INSERT nor
+on UPDATE. The Phase 5 `007` migration's UPDATE
+statement
+(`UPDATE users SET is_builtin = true, ... WHERE
+roles.is_builtin = true AND (users.role_id IS NULL
+OR users.role = 'admin')`) ran once during
+alembic upgrade, but any subsequent
+`_sync_admin_user` INSERT (e.g. on a new
+container start, a fresh test DB volume, or an
+on-the-fly admin re-seed) overrode `is_builtin`
+to the column default `false` because the
+INSERT's column list did not include
+`is_builtin` and the `ON CONFLICT` clause did
+not touch it.
+
+The `002_seed_admin_user` migration predates
+the `is_builtin` column (added in `007`), so it
+does not set the flag either; for fresh DBs the
+column default of `false` is what
+`_sync_admin_user` writes. The
+`tests/integration/conftest.py` re-seed had the
+same omission.
+
+### Minimal fix (T-722 SC-057 gate cleanup)
+
+The T-722 fix is owned by SC-057 because the
+test enforces the build-in admin invariant
+(`is_builtin=true` on the seeded admin user) and
+the gate must be clean for Wave 17.3 to be
+considered green. The fix is two lines per
+file:
+
+- `backend/src/app/main.py::_sync_admin_user`:
+  add `is_builtin, auth_provider` to the INSERT
+  column list with `true, 'local'` values; add
+  `is_builtin = true, auth_provider = 'local'`
+  to the `ON CONFLICT DO UPDATE` set-list so
+  re-syncs converge the existing row.
+- `backend/tests/integration/conftest.py`:
+  identical change in the post-truncate re-seed
+  so integration tests see a `is_builtin=true`
+  admin user.
+
+The `002_seed_admin_user` migration is NOT
+modified — modifying an applied migration is
+not alembic-safe, and a fresh-DB upgrade runs
+`002` (no `is_builtin` column yet) before `007`
+(which adds the column and UPDATEs the admin).
+The Phase 5 `007` migration's UPDATE is the
+source of truth for the `is_builtin` flag for
+fresh DBs; the two T-722 fixes above keep
+runtime / test-DB state converging on the same
+value.
+
+### Test DB manual recovery (one-time)
+
+The existing local test DB
+(`localhost:5433` / `querycraft` /
+`querycraft_dev`) was in a corrupted state
+(`is_builtin=false`) due to past
+`_sync_admin_user` runs pre-fix. A one-time
+`UPDATE users SET role_id = roles.id,
+is_builtin = true, auth_provider = 'local'
+FROM roles WHERE roles.is_builtin = true AND
+(users.role_id IS NULL OR users.role =
+'admin')` brought it into the correct state.
+This is a state recovery, not a code change,
+and is reproducible by running the same UPDATE
+once on any DB that previously had a
+corrupted admin row.
+
+### Foundation gates (all green)
+
+```text
+$ cd backend && uv run pytest tests/unit -q -m "not integration"
+1361 passed, 9 deselected, 12 warnings in 12.52s
+
+$ cd backend && uv run pytest -q \
+    --ignore=tests/integration \
+    --ignore=tests/acceptance \
+    --ignore=tests/contract \
+    -m "not integration"
+1409 passed, 9 deselected, 12 warnings in 15.66s
+
+$ cd backend && uv run ruff check src tests
+All checks passed!
+
+$ cd backend && uv run ruff format --check src tests
+304 files already formatted
+
+$ git diff --check
+(clean)
+```
+
+The user-spec `pytest tests/unit -q -m "not
+integration"` reports 1361 passed (1 more than
+the pre-T-722 1360 because the
+`test_builtin_admin_user_exists_in_db` test
+is now part of the green set). The original
+T-722 task-spec gate
+(`--ignore=tests/integration
+--ignore=tests/acceptance
+--ignore=tests/contract -m "not integration"`)
+reports 1409 passed (broader: includes
+`tests/lifecycle/`).
+
+### T-721 integration smoke (source services up)
+
+All three `docker-compose.dev.yml` source
+services were healthy at gate time
+(`postgres-source 5434`, `mysql-source 3306`,
+`mssql-source 1433`). T-721 cross-dialect
+policy enforcement tests re-ran as part of the
+T-722 smoke:
+
+```text
+$ cd backend && uv run pytest tests/integration/test_cross_dialect_policy.py -q
+7 passed in 1.36s
+```
+
+End-to-end PG / MySQL / MSSQL coverage still
+green after the T-722 admin-seed fix.
+
+### Pre-existing failures: resolved
+
+Both pre-existing failures flagged in the
+Wave 17.3k checkpoint are now resolved by the
+T-722 fixes:
+
+- `tests/unit/test_admin_lockout_prevention.py
+  ::test_builtin_admin_user_exists_in_db`:
+  green after `_sync_admin_user` is corrected
+  + test DB admin row is updated.
+- `ruff format --check src tests`: clean
+  (the pre-existing format issue in
+  `tests/unit/test_auth_service.py` flagged
+  earlier turned out to be a transient local
+  artefact; on fresh `origin/main` the full
+  `src tests` tree is correctly formatted).
+
+### FRs / SCs verified
+
+- **SC-057** — Wave 17.3 backend foundation gate
+  is clean. No unit-test deselects, no skips, no
+  ruff/format violations. The
+  `pytest tests/unit -q -m "not integration"`
+  and the broader
+  `--ignore=tests/integration
+  --ignore=tests/acceptance
+  --ignore=tests/contract -m "not integration"`
+  gates both return 0 failed.
+- **T-721** (`FR-131`, `FR-132`, `SC-051`,
+  `SC-052`) — end-to-end coverage re-confirmed
+  against live source services (7 / 7 passed).
+
+### Diff (3 files, 10 insertions, 6 deletions)
+
+```text
+backend/src/app/main.py               | 8 +++++---
+backend/tests/conftest.py             | 2 ++
+backend/tests/integration/conftest.py | 8 +++++---
+```
+
+The `tests/conftest.py` change is the
+formatting fix (blank line after `from ...`
+import) introduced while clearing the
+pre-existing `ruff format --check` failure
+on the same file; the T-722 admin-seed
+changes are in `main.py` and
+`tests/integration/conftest.py` only.
+
+**No `[NEEDS DECISION]` items**. The Wave
+17.3l gate is clean and the previously
+flagged pre-existing failures are resolved by
+the in-scope `_sync_admin_user` fix.
