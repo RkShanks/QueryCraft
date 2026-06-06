@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     SCHEMA_CACHE_TTL_SECONDS: int = 300
     MAX_SCHEMA_TOKENS: int = 60000
 
+    # ─── Audit (Constitution IX) ───
+    AUDIT_RETENTION_MONTHS: int = 24  # FR-142: minimum 24-month retention
+
     # ─── Logging ───
     LOG_LEVEL: str = "INFO"
 
