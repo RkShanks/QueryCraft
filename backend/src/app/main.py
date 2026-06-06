@@ -97,11 +97,14 @@ async def _sync_admin_user(settings):
             await session.execute(
                 text(
                     """
-                    INSERT INTO users (username, display_name, password_hash, role, is_builtin, auth_provider)
-                    VALUES (:username, :display_name, :password_hash, 'admin', true, 'local')
+                    INSERT INTO users (username, display_name, password_hash, role, role_id, is_builtin, auth_provider)
+                    SELECT :username, :display_name, :password_hash, 'admin', id, true, 'local'
+                    FROM roles
+                    WHERE name = 'Admin' AND is_builtin = true
                     ON CONFLICT (username) DO UPDATE SET
                         display_name = EXCLUDED.display_name,
                         password_hash = EXCLUDED.password_hash,
+                        role_id = EXCLUDED.role_id,
                         updated_at = now(),
                         is_builtin = true,
                         auth_provider = 'local'

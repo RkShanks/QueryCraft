@@ -148,4 +148,3 @@ async def test_sync_admin_user_links_role_id():
     stmt = str(calls[-1][0][0])
     assert "role_id" in stmt
     assert "role_id = EXCLUDED.role_id" in stmt or "role_id = roles.id" in stmt
-
