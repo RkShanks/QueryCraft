@@ -1,8 +1,36 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ResultTable } from './ResultTable';
 import { createWrapper } from '../../test/utils';
 import type { ColumnMeta, QueryResult } from '../../api/generated/types.gen';
+import en from '../../locales/en.json';
+import ar from '../../locales/ar.json';
+
+let mockLanguage = 'en';
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: unknown) => {
+      if (typeof options === 'string') return options;
+      const opts = options as Record<string, unknown> | undefined;
+      const defaultValue = opts?.defaultValue as string | undefined;
+      const translations = mockLanguage === 'ar' ? ar : en;
+      const value = (translations as Record<string, string>)[key] ?? defaultValue ?? key;
+      return value.replace(/\{\{(\w+)\}\}/g, (_, match) => String(opts?.[match] ?? `{{${match}}}`));
+    },
+    i18n: {
+      changeLanguage: (lng: string) => {
+        mockLanguage = lng;
+        return Promise.resolve();
+      },
+      language: mockLanguage,
+    },
+  }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  },
+}));
 
 describe('ResultTable', () => {
   const mockResult: QueryResult = {
@@ -131,7 +159,12 @@ describe('ResultTable', () => {
     expect(screen.getByText(/last auto retry/i)).toBeInTheDocument();
   });
 
-  it('should render masked column indicator when ColumnMeta.masked is true', () => {
+  beforeEach(() => {
+    mockLanguage = 'en';
+  });
+
+  it('should render masked column indicator in English (Masked)', () => {
+    mockLanguage = 'en';
     const maskedResult: QueryResult = {
       ...mockResult,
       columns: [
@@ -149,6 +182,27 @@ describe('ResultTable', () => {
     // Masked column header is rendered with the Masked badge
     expect(screen.getByText('secret_name')).toBeInTheDocument();
     expect(screen.getByText('Masked')).toBeInTheDocument();
+  });
+
+  it('should render masked column indicator in Arabic (محجوب)', () => {
+    mockLanguage = 'ar';
+    const maskedResult: QueryResult = {
+      ...mockResult,
+      columns: [
+        { name: 'id', type: 'integer' },
+        { name: 'secret_name', type: 'text', masked: true } as ColumnMeta & { masked?: boolean },
+      ],
+      rows: [['1', '***']],
+    };
+
+    render(<ResultTable result={maskedResult} onAccept={vi.fn()} />, { wrapper: createWrapper() });
+
+    // Normal column header is rendered, but no masked text next to it
+    expect(screen.getByText('id')).toBeInTheDocument();
+
+    // Masked column header is rendered with the Arabic badge
+    expect(screen.getByText('secret_name')).toBeInTheDocument();
+    expect(screen.getByText('محجوب')).toBeInTheDocument();
   });
 
   it('should use i18n for all visible strings', () => {

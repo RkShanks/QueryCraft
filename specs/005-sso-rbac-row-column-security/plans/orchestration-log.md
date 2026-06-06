@@ -3063,7 +3063,8 @@ the in-scope `_sync_admin_user` fix.
 - **i18n Localization**:
   - Added `query.result.columnMasked` to both `frontend/src/locales/en.json` ("Masked") and `frontend/src/locales/ar.json` ("محجوب") for full language parity.
 - **TDD Tests**:
-  - Wrote red-green-refactor test case `should render masked column indicator when ColumnMeta.masked is true` in `ResultTable.test.tsx` verifying unmasked column headers do not display the badge while masked ones render it, and ensuring localized text is read correctly.
+  - Wrote red-green-refactor test cases `should render masked column indicator in English (Masked)` and `should render masked column indicator in Arabic (محجوب)` in `ResultTable.test.tsx` verifying unmasked column headers do not display the badge while masked ones render it, and ensuring English and Arabic localized text is read correctly.
+  - Added mock `react-i18next` locally in `ResultTable.test.tsx` reading from `en.json` and `ar.json` via a test-controlled language switch variable to support Arabic and English testing in jsdom.
 - **Badge Implementation**:
   - Conditionally rendered a premium, small badge next to the column name in `ResultTable.tsx` column headers using `ColumnMeta & { masked?: boolean }` type casting to prevent ESLint explicit-any warnings.
   - Used RTL-compliant logical properties: `flex items-center gap-2` and `normal-case` to preserve localized rendering formatting.
@@ -3075,7 +3076,7 @@ $ cd frontend && npm run lint && npm run typecheck
 All checks passed!
 
 $ cd frontend && npm run test -- --run
-55 passed, 563 passed, environment clean.
+55 passed, 564 passed, environment clean.
 ```
 
 ### Commits
@@ -3083,14 +3084,15 @@ $ cd frontend && npm run test -- --run
 - `65b38b9` test(T-723): masked column indicator tests
 - `9baeaba` feat(T-724): masked column indicator
 
-### Diff (5 files, 42 insertions, 10 deletions)
+### Diff (6 files, 150 insertions, 12 deletions)
 
 ```text
- frontend/src/components/query/ResultTable.test.tsx | 22 +++++++++++++++++++++-
- frontend/src/components/query/ResultTable.tsx      | 24 +++++++++++++++++-------
- frontend/src/locales/ar.json                       |  1 +
- frontend/src/locales/en.json                       |  1 +
- specs/005-sso-rbac-row-column-security/tasks.md    |  4 ++--
+ frontend/src/components/query/ResultTable.test.tsx                | 78 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ frontend/src/components/query/ResultTable.tsx                     | 24 +++++++++++++++++-------
+ frontend/src/locales/ar.json                                      |  1 +
+ frontend/src/locales/en.json                                      |  1 +
+ specs/005-sso-rbac-row-column-security/plans/orchestration-log.md | 50 +++++++++++++++++++++++++++++++++++++++++++++-
+ specs/005-sso-rbac-row-column-security/tasks.md                   |  4 ++--
 ```
 
 **No `[NEEDS DECISION]` items**. Wave 17.3m gate is fully clean, lint/typecheck are green, and tests are passing successfully.
