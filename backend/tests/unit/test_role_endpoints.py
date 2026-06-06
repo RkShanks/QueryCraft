@@ -301,7 +301,9 @@ class TestCreateRole:
             side_effect=[
                 FakeResult([]),  # duplicate name check
                 FakeResult([]),  # duplicate priority check
-                FakeResult([MagicMock()]),  # RETURNING result
+                FakeResult(None),  # DELETE existing policies (empty input)
+                FakeResult([]),  # select persisted policies (empty)
+                FakeResult([MagicMock()]),  # db.refresh(role)
             ]
         )
         mock_db.commit = AsyncMock()
@@ -327,6 +329,7 @@ class TestCreateRole:
         assert result["name"] == "Analyst"
         assert result["priority"] == 10
         assert result["permissions"] == ["query.submit", "query.history.view"]
+        assert result["connection_policies"] == []
 
     @pytest.mark.asyncio
     async def test_create_duplicate_name_returns_409(self):
@@ -513,6 +516,8 @@ class TestUpdateRole:
                 FakeResult(role),  # service.get_by_id
                 FakeResult([]),  # no duplicate name
                 FakeResult(role),  # repo.update internal get_by_id
+                FakeResult(None),  # DELETE existing policies (empty input)
+                FakeResult([]),  # select persisted policies (empty)
                 FakeResult([MagicMock()]),  # db.refresh
             ]
         )
@@ -532,6 +537,7 @@ class TestUpdateRole:
 
         assert result["name"] == "Updated Analyst"
         assert result["description"] == "Updated desc"
+        assert result["connection_policies"] == []
 
     @pytest.mark.asyncio
     async def test_update_builtin_role_name_returns_403(self):
@@ -619,6 +625,9 @@ class TestUpdateRole:
             side_effect=[
                 FakeResult(role),  # service.get_by_id
                 FakeResult(role),  # repo.update internal get_by_id
+                FakeResult(None),  # DELETE existing policies (empty input)
+                FakeResult([]),  # select persisted policies (empty)
+                FakeResult([MagicMock()]),  # db.refresh(role)
             ]
         )
         mock_db.commit = AsyncMock()
@@ -915,7 +924,6 @@ class TestRoleConnectionPolicyPersistence:
     async def test_create_role_persists_connection_policies(self):
         from app.api.v1.admin_roles import create_role
 
-        role_id = uuid.uuid4()
         conn_id = uuid.uuid4()
         persisted = MagicMock()
         persisted.id = uuid.uuid4()
@@ -924,17 +932,17 @@ class TestRoleConnectionPolicyPersistence:
         persisted.row_filters = []
         persisted.column_masks = []
 
-        # duplicate-name empty, duplicate-priority empty, RETURNING role,
-        # select existing policies (empty), delete existing (empty),
-        # insert policies RETURNING, select persisted policies
+        # Order: name-check, priority-check, connection-existence,
+        # delete-existing, select-persisted, db.refresh
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(
             side_effect=[
                 FakeResult([]),  # duplicate name
                 FakeResult([]),  # duplicate priority
-                FakeResult([MagicMock()]),  # RETURNING role
-                FakeResult([]),  # select existing policies (none)
+                FakeResult([conn_id]),  # connection existence check
+                FakeResult(None),  # DELETE existing (return not used)
                 FakeResult([persisted]),  # select persisted policies
+                FakeResult([MagicMock()]),  # db.refresh(role)
             ]
         )
         mock_db.commit = AsyncMock()
@@ -966,6 +974,7 @@ class TestRoleConnectionPolicyPersistence:
         cp = result["connection_policies"][0]
         assert cp["connection_id"] == str(conn_id)
         assert cp["allowed_tables"] == [{"table": "orders", "columns": ["id"]}]
+        assert "id" in cp
 
     @pytest.mark.asyncio
     async def test_update_role_replaces_connection_policies(self):
@@ -973,12 +982,6 @@ class TestRoleConnectionPolicyPersistence:
 
         role_id = uuid.uuid4()
         new_conn_id = uuid.uuid4()
-        old_persisted = MagicMock()
-        old_persisted.id = uuid.uuid4()
-        old_persisted.connection_id = uuid.uuid4()
-        old_persisted.allowed_tables = []
-        old_persisted.row_filters = []
-        old_persisted.column_masks = []
         new_persisted = MagicMock()
         new_persisted.id = uuid.uuid4()
         new_persisted.connection_id = new_conn_id
@@ -986,9 +989,9 @@ class TestRoleConnectionPolicyPersistence:
         new_persisted.row_filters = []
         new_persisted.column_masks = []
 
-        # service.get_by_id, no duplicate name, no duplicate priority,
-        # repo.update internal get_by_id, db.refresh, select existing,
-        # delete existing, insert, select persisted
+        # Order: service.get_by_id, duplicate-name, duplicate-priority,
+        # repo.update internal get_by_id, connection-existence,
+        # delete-existing, select-persisted, db.refresh
         role = _make_role(name="Analyst", priority=10, role_id=role_id)
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(
@@ -997,13 +1000,15 @@ class TestRoleConnectionPolicyPersistence:
                 FakeResult([]),  # duplicate name
                 FakeResult([]),  # duplicate priority
                 FakeResult(role),  # repo.update internal get_by_id
+                FakeResult([new_conn_id]),  # connection existence
+                FakeResult(None),  # delete existing
+                FakeResult([new_persisted]),  # select persisted
                 FakeResult([MagicMock()]),  # db.refresh
-                FakeResult([old_persisted]),  # select existing policies
-                FakeResult([new_persisted]),  # select persisted policies
             ]
         )
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
+        mock_db.add = MagicMock()
 
         request = MagicMock()
         request.state.session = self._session()
@@ -1026,9 +1031,7 @@ class TestRoleConnectionPolicyPersistence:
 
         assert len(result["connection_policies"]) == 1
         assert result["connection_policies"][0]["connection_id"] == str(new_conn_id)
-        assert result["connection_policies"][0]["allowed_tables"] == [
-            {"table": "users", "columns": ["id", "email"]}
-        ]
+        assert result["connection_policies"][0]["allowed_tables"] == [{"table": "users", "columns": ["id", "email"]}]
 
     @pytest.mark.asyncio
     async def test_create_role_rejects_invalid_connection_id_uuid(self):

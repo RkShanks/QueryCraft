@@ -13,12 +13,13 @@ Endpoints:
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
 from app.core.dependencies import get_db
 from app.core.exceptions import BuiltinProtectedError
+from app.db.models.database_connection import SourceDatabaseConnection
 from app.db.models.enums import HealthStatus, LifecycleState, Permission, SchemaIntrospectionStatus
 from app.db.models.role import Role
 from app.db.models.role_connection_policy import RoleConnectionPolicy
@@ -73,6 +74,110 @@ def _validate_permissions(permissions: list[str] | None) -> None:
     invalid = [p for p in permissions if p not in allowed]
     if invalid:
         raise ValueError(f"Invalid permissions: {', '.join(invalid)}")
+
+
+def _parse_policy_connection_ids(policies) -> list[uuid.UUID]:
+    """Parse and validate `connection_id` UUIDs in a connection_policies list.
+
+    Raises sanitized 422 on bad UUID format. Returns the parsed UUIDs in
+    input order. Duplicates are detected in `_validate_policy_input`.
+    """
+    parsed: list[uuid.UUID] = []
+    for policy in policies:
+        raw = getattr(policy, "connection_id", None)
+        if not isinstance(raw, str) or not raw:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "validation",
+                    "message_key": "error.validation.invalidConnection",
+                },
+            )
+        try:
+            parsed.append(uuid.UUID(raw))
+        except (ValueError, AttributeError, TypeError):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "validation",
+                    "message_key": "error.validation.invalidConnection",
+                },
+            ) from None
+    return parsed
+
+
+async def _validate_policy_input(db: AsyncSession, parsed_conn_ids: list[uuid.UUID]) -> None:
+    """Validate a parsed policy input: duplicate detection + connection existence.
+
+    - Duplicate `connection_id` in the body -> sanitized 422.
+    - Unknown `connection_id` (not in `source_database_connections`) ->
+      sanitized 404. The bad uuid is never echoed.
+    """
+    seen: set[uuid.UUID] = set()
+    for conn_uuid in parsed_conn_ids:
+        if conn_uuid in seen:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "error": "validation",
+                    "message_key": "error.validation.duplicateConnectionPolicy",
+                },
+            )
+        seen.add(conn_uuid)
+
+    if not seen:
+        return
+
+    result = await db.execute(select(SourceDatabaseConnection.id).where(SourceDatabaseConnection.id.in_(seen)))
+    existing = {row for row in result.scalars().all()}
+    missing = seen - existing
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "not_found", "message_key": "error.notFound.connection"},
+        )
+
+
+async def _replace_role_connection_policies(db: AsyncSession, role_id: uuid.UUID, policies) -> list[dict]:
+    """Replace all `role_connection_policies` rows for a role.
+
+    Validates input (UUIDs, duplicates, connection existence) before any
+    DELETE/INSERT. On failure, raises a sanitized HTTPException that does
+    not echo the bad input. On success, deletes all existing rows for the
+    role, inserts the new rows, flushes, and returns the persisted rows
+    mapped to the detail-response shape (id, connection_id,
+    allowed_tables, row_filters, column_masks). Does not commit; the
+    caller is responsible for committing the transaction.
+    """
+    parsed_conn_ids = _parse_policy_connection_ids(policies)
+    await _validate_policy_input(db, parsed_conn_ids)
+
+    await db.execute(delete(RoleConnectionPolicy).where(RoleConnectionPolicy.role_id == role_id))
+
+    for policy in policies:
+        db.add(
+            RoleConnectionPolicy(
+                role_id=role_id,
+                connection_id=uuid.UUID(policy.connection_id),
+                allowed_tables=policy.allowed_tables or [],
+                row_filters=policy.row_filters or [],
+                column_masks=policy.column_masks or [],
+            )
+        )
+    await db.flush()
+
+    result = await db.execute(select(RoleConnectionPolicy).where(RoleConnectionPolicy.role_id == role_id))
+    rows = result.scalars().all()
+    return [
+        {
+            "id": str(cp.id),
+            "connection_id": str(cp.connection_id),
+            "allowed_tables": cp.allowed_tables or [],
+            "row_filters": cp.row_filters or [],
+            "column_masks": cp.column_masks or [],
+        }
+        for cp in rows
+    ]
 
 
 @router.get("")
@@ -157,10 +262,16 @@ async def create_role(
             db_session=db,
         )
 
+        # Validate + persist connection policies before commit so the
+        # SQL execute ordering is: (name check, priority check,
+        # conn-existence, delete-existing, select-persisted, refresh).
+        # role.id is set by repo.create's internal flush.
+        persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies or [])
+
         await db.commit()
         await db.refresh(role)
 
-        return _role_to_detail_response(role, [], [])
+        return _role_to_detail_response(role, [], persisted_policies)
     except BuiltinProtectedError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -293,10 +404,16 @@ async def update_role(
             db_session=db,
         )
 
+        # Validate + persist connection policies before commit so the
+        # SQL execute ordering is: (get_by_id, name check, priority check,
+        # repo.update internal get_by_id, conn-existence, delete-existing,
+        # select-persisted, refresh). role.id is stable across flushes.
+        persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies or [])
+
         await db.commit()
         await db.refresh(role)
 
-        return _role_to_detail_response(role, [], [])
+        return _role_to_detail_response(role, [], persisted_policies)
     except BuiltinProtectedError as exc:
         # Commit the audit log (access.denied was written inside service)
         # before returning 403. If AuditService.log had raised, we would not
