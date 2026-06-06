@@ -106,6 +106,26 @@ async def db_session(async_engine_fixture) -> AsyncGenerator[AsyncSession, None]
 
 
 @pytest_asyncio.fixture
+async def clean_audit_table(async_engine_fixture) -> AsyncGenerator[None, None]:
+    """Truncate ``audit_log_entries`` before the test starts.
+
+    The shared Postgres testcontainer persists audit rows across
+    test sessions, so the manually-assigned ``sequence_number``
+    keeps growing. Tests that assert on a known starting sequence
+    (e.g. ``e1.sequence_number == 1``) or that insert tampered
+    entries at fixed sequence numbers must request this fixture.
+
+    Apply via ``@pytest.mark.usefixtures("clean_audit_table")`` on
+    the test class — the fixture is intentionally NOT autouse on
+    ``db_session`` because other tests rely on audit rows left
+    behind by prior tests in the same session.
+    """
+    async with async_engine_fixture.begin() as conn:
+        await conn.execute(text("TRUNCATE TABLE audit_log_entries"))
+    yield
+
+
+@pytest_asyncio.fixture
 async def redis_client(test_env_vars) -> AsyncGenerator[Redis, None]:
     """Provide a Redis client pointing to test DB (index 1)."""
     url = test_env_vars["REDIS_URL"]

@@ -11,8 +11,14 @@ from app.services.audit_service import AuditService, VerificationResult
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("clean_audit_table")
 class TestAuditService:
-    """AuditService TDD: log, chain hashing, genesis, canonical JSON."""
+    """AuditService TDD: log, chain hashing, genesis, canonical JSON.
+
+    Each test assumes ``sequence_number`` starts at 1; the
+    ``clean_audit_table`` fixture truncates the shared test
+    container's audit table before the test runs.
+    """
 
     async def test_log_creates_entry(self, db_session):
         entry = await AuditService.log(
