@@ -3028,21 +3028,23 @@ T-722 fixes:
   `SC-052`) — end-to-end coverage re-confirmed
   against live source services (7 / 7 passed).
 
-### Diff (3 files, 10 insertions, 6 deletions)
+### Diff (4 files, 233 insertions, 8 deletions)
 
 ```text
-backend/src/app/main.py               | 8 +++++---
-backend/tests/conftest.py             | 2 ++
-backend/tests/integration/conftest.py | 8 +++++---
+backend/src/app/main.py                                       |   8 +-
+backend/tests/integration/conftest.py                         |   8 +-
+specs/005-sso-rbac-row-column-security/tasks.md               |   2 +-
+specs/005-sso-rbac-row-column-security/plans/orchestration-log.md | 223 ++++++++++++++++++++-
 ```
 
-The `tests/conftest.py` change is the
-formatting fix (blank line after `from ...`
-import) introduced while clearing the
-pre-existing `ruff format --check` failure
-on the same file; the T-722 admin-seed
-changes are in `main.py` and
-`tests/integration/conftest.py` only.
+The T-722 admin-seed changes are in
+`main.py` (2 lines) and
+`tests/integration/conftest.py` (2 lines)
+only. The two `+1` doc changes are the
+T-722 checkbox flip in `tasks.md` and the
+Wave 17.3l checkpoint section (with the
+17.3k demotion to Historical) in
+`orchestration-log.md`.
 
 **No `[NEEDS DECISION]` items**. The Wave
 17.3l gate is clean and the previously
