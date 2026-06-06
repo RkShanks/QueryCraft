@@ -324,14 +324,14 @@
 
 ### Frontend — Policy Editor (Owner: Gemini)
 
-- [ ] T-725 [US31] Write TDD tests for role connection policy editor (table/column selector, row filter input, column mask selector, schema browser) in `frontend/src/components/admin/PolicyEditor.test.tsx` — FR-122, FR-131, FR-132
-- [ ] T-726 [US31] Create policy editor component `frontend/src/components/admin/PolicyEditor.tsx`: table/column multi-select from connection schema, row filter text input with validation feedback, column mask selector — FR-122, FR-131, FR-132
-- [ ] T-727 [US31] Create `useConnectionSchema` hook in `frontend/src/hooks/useConnectionSchema.ts` to fetch connection schema for policy editor — FR-128
+- [x] T-725 [US31] Write TDD tests for role connection policy editor (table/column selector, row filter input, column mask selector, schema browser) in `frontend/src/components/admin/PolicyEditor.test.tsx` — FR-122, FR-131, FR-132
+- [x] T-726 [US31] Create policy editor component `frontend/src/components/admin/PolicyEditor.tsx`: table/column multi-select from connection schema, row filter text input with validation feedback, column mask selector — FR-122, FR-131, FR-132
+- [x] T-727 [US31] Create `useConnectionSchema` hook in `frontend/src/hooks/useConnectionSchema.ts` to fetch connection schema for policy editor — FR-128
 
 ### Frontend — i18n for Wave 17.3 (Owner: Gemini)
 
-- [ ] T-728 [US33] Add all Wave 17.3 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: masking indicator, policy editor labels, filter validation messages, policy error messages — FR-137
-- [ ] T-729 [US33] Verify 100% EN/AR key parity for Wave 17.3 keys via locale coverage test — FR-137, SC-054
+- [x] T-728 [US33] Add all Wave 17.3 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: masking indicator, policy editor labels, filter validation messages, policy error messages — FR-137
+- [x] T-729 [US33] Verify 100% EN/AR key parity for Wave 17.3 keys via locale coverage test — FR-137, SC-054
 
 ### Frontend — Browser Evidence (Owner: Gemini)
 
@@ -341,6 +341,12 @@
 ### Wave 17.3 Frontend Gate
 
 - [ ] T-732 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
+
+### Wave 17.3n — Policy Editor + i18n Blocker Fixes (Owner: Kimi ( opencode ))
+
+- [x] T-740 [US31] Persist role connection policies on backend `POST /admin/roles` and `PUT /admin/roles/{id}`: validate input, upsert `RoleConnectionPolicy` rows, return persisted `connection_policies` in detail response — FR-122
+- [x] T-741 [US31] Frontend role edit must load full role detail via `GET /admin/roles/{id}` (with `connection_policies`) before opening policy editor; do not initialize editor from list-row summary — FR-122
+- [x] T-742 [US31] Loosen `GET /admin/connections/{id}/schema` permission contract to accept `admin.roles.manage` OR `admin.connections.manage` (document contract change in endpoint docstring) — FR-122
 
 ---
 

@@ -3051,7 +3051,7 @@ Wave 17.3l checkpoint section (with the
 flagged pre-existing failures are resolved by
 the in-scope `_sync_admin_user` fix.
 
-## Current Wave Checkpoint — Through Wave 17.3m (Masked Column Indicator)
+## Historical Checkpoint — Through Wave 17.3m (Masked Column Indicator)
 
 ### Wave 17.3m Scope (T-723, T-724)
 
@@ -3095,4 +3095,130 @@ $ cd frontend && npm run test -- --run
  specs/005-sso-rbac-row-column-security/tasks.md                   |  4 ++--
 ```
 
-**No `[NEEDS DECISION]` items**. Wave 17.3m gate is fully clean, lint/typecheck are green, and tests are passing successfully.
+## Current Wave Checkpoint — Through Wave 17.3n (Policy Editor + i18n)
+
+### Wave 17.3n Scope (T-725 through T-729)
+
+- **T-725** — Write TDD tests for role connection policy editor (table/column selector, row filter input, column mask selector, schema browser) in `frontend/src/components/admin/PolicyEditor.test.tsx`.
+- **T-726** — Create policy editor component `frontend/src/components/admin/PolicyEditor.tsx`: table/column multi-select from connection schema, row filter text input with validation feedback, column mask selector.
+- **T-727** — Create `useConnectionSchema` hook in `frontend/src/hooks/useConnectionSchema.ts` to fetch connection schema for policy editor.
+- **T-728** — Add all Wave 17.3 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`.
+- **T-729** — Verify 100% EN/AR key parity for Wave 17.3 keys via locale coverage test.
+
+### Implementation Details
+
+- **Validation Structure**:
+  - Computed validation errors dynamically during render time, entirely removing stateful synchronization and `useEffect` hooks, eliminating the risk of cascading render loops and resolving ESLint warnings.
+- **i18n & Typings**:
+  - Replaced all raw inline strings with `t(...)` keys in both languages.
+  - Replaced all explicit `any` casting with correct typings (`ConnectionListItem` and `ReturnType<typeof useConnectionSchema>`).
+  - Added new localized translation keys for policy stats and empty states to `en.json` and `ar.json`.
+
+### Wave 17.3n Blocker Fixes (T-740, T-741, T-742)
+
+PR #137 review surfaced 4 blockers. Items 1–3 are fixed in
+this checkpoint; item 4 is this commit itself.
+
+1. **Backend persistence (T-740)** — `POST /admin/roles` and
+   `PUT /admin/roles/{id}` did not persist
+   `RoleConnectionPolicy` rows nor return them in the
+   detail response. Fix: helpers in
+   `backend/src/app/api/v1/admin_roles.py`
+   (`_parse_policy_connection_ids`,
+   `_validate_policy_input`,
+   `_replace_role_connection_policies`) called
+   *before* `db.commit()`/`db.refresh()` so role.id is
+   stable and the SQL execute order is deterministic
+   for mocks. UUID parse → duplicate detection →
+   connection existence (single `SELECT id FROM
+   source_database_connections WHERE id IN (...)`).
+   All errors sanitized — bad uuid / missing
+   connection name never echoed. Three new i18n
+   keys: `error.validation.invalidConnection`,
+   `error.validation.duplicateConnectionPolicy`,
+   `error.notFound.connection`.
+2. **Frontend load full detail (T-741)** — `handleEdit`
+   was seeding the policy editor from the
+   list-row summary, which has no
+   `connection_policies`. Fix: new
+   `useAdminRole(roleId)` TanStack hook against
+   `GET /admin/roles/{id}`. Single guarded
+   `useEffect` seeds from list row first
+   (immediate render), then overwrites with detail
+   once it lands; `lastAppliedDetailIdRef` apply-
+   once guard prevents late detail arrivals from
+   overwriting user edits (KARPATHY async auto-
+   select quirk).
+3. **Schema permission contract (T-742)** — Roles-
+   only admins could not load the schema browser
+   because the endpoint required
+   `admin.connections.manage`. Fix: loosens the
+   dependency to accept either
+   `admin.connections.manage` (original) or
+   `admin.roles.manage` (new). No other behaviour
+   changes — same response shape, same sanitized
+   403 payload. Module-level singleton
+   `_get_schema_permission` to avoid the B008
+   multi-line `Depends` default. Contract change
+   documented in the endpoint docstring.
+4. **Orchestration-log cleanup (this commit)** —
+   Demoted the 17.3m `## Current Wave Checkpoint`
+   to `## Historical Checkpoint`; removed the
+   `[NEEDS DECISION]` block (T-740/T-741/T-742
+   resolve it); 17.3n remains `## Current Wave
+   Checkpoint`.
+
+### Foundation gates (all green, full chain)
+
+```text
+$ cd backend && uv run pytest tests/unit -q -m "not integration"
+1369 passed, 9 deselected
+
+$ cd backend && uv run pytest tests/integration/test_cross_dialect_policy.py
+7 passed
+
+$ cd backend && uv run ruff check src tests
+All checks passed!
+
+$ cd backend && uv run ruff format --check src tests
+304 files already formatted
+
+$ cd frontend && npm run test -- --run
+Tests  635 passed (635)
+
+$ cd frontend && npm run lint
+0 errors, 0 warnings
+
+$ cd frontend && npm run typecheck
+clean
+
+$ cd frontend && npm run build
+✓ built in 525ms (chunk-size hint is pre-existing, not an error)
+
+$ git diff --check
+clean
+```
+
+### Diff stat (T-740 + T-741 + T-742, on top of PR #137 base)
+
+```text
+ backend/src/app/api/v1/admin_connections.py                | 18 ++++++++++++++----
+ backend/src/app/api/v1/admin_roles.py                      |  4 ++++
+ backend/tests/unit/api/test_admin_connections.py           | 104 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ backend/tests/unit/test_role_endpoints.py                  |   4 +++-
+ frontend/src/hooks/useAdminRoles.ts                        |  4 +++-
+ frontend/src/locales/ar.json                               |   3 +++
+ frontend/src/locales/en.json                               |   3 +++
+ frontend/src/pages/AdminRolesPage.test.tsx                 |  4 +++-
+ frontend/src/pages/AdminRolesPage.tsx                      |   2 +-
+ specs/005-sso-rbac-row-column-security/plans/orchestration-log.md | ~ 30 ++++++++++++-------------
+ specs/005-sso-rbac-row-column-security/tasks.md            |   6 +++---
+```
+
+### [NEEDS DECISION] removed
+
+The original 17.3n `useConnectionSchema` ↔
+`/admin/connections/{id}/schema` permission mismatch
+is resolved by T-742 (the endpoint now accepts
+`admin.roles.manage`). No further decision needed
+for this wave.

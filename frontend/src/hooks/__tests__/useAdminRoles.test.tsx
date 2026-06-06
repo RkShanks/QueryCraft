@@ -75,6 +75,7 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
       description: 'Analyst description',
       priority: 15,
       permissions: ['query.submit'],
+      connection_policies: [],
     });
 
     // Verify separate group mapping requests
@@ -154,6 +155,7 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
       description: 'New Description',
       priority: 20,
       permissions: ['query.submit', 'query.history.view'],
+      connection_policies: [],
     });
 
     // Verify additions (sso-manager)
