@@ -2568,3 +2568,262 @@ PR #133 OPEN
 (https://github.com/RkShanks/QueryCraft/pull/133).
 Review fixes pushed; awaiting user review +
 merge to main. No `[NEEDS DECISION]` items.
+
+## Current Wave Checkpoint — Through Wave 17.3k (Cross-Dialect Policy Enforcement Tests)
+
+### Wave 17.3k Scope (T-721)
+
+- **T-721** — Cross-dialect policy enforcement tests
+  in
+  `backend/tests/integration/test_cross_dialect_policy.py`
+  (7 tests across 5 classes):
+
+  1. `TestPostgresCrossDialectPolicy` (1) —
+     `test_row_filter_and_mask_postgres`. End-to-end
+     PG: 3 fixture rows, row filter `region = east`
+     returns 2 rows, `ssn` and `secret_name` are
+     masked to `***`, no raw sensitive value leaks.
+     Verifies PG placeholder style is in the
+     rewritten SQL.
+  2. `TestMysqlCrossDialectPolicy` (1) —
+     `test_row_filter_and_mask_mysql`. End-to-end
+     MySQL. Verifies MySQL placeholder style is
+     `%s`.
+  3. `TestMssqlCrossDialectPolicy` (1) —
+     `test_row_filter_and_mask_mssql`. End-to-end
+     MSSQL. Verifies MSSQL placeholder style is `?`.
+  4. `TestPostgresSchemaDrift` (1) —
+     `test_drift_raises_before_db_execution`. Drift
+     guard: filter referencing `ghost_column` not
+     in the schema raises
+     `PolicySchemaConflictError` BEFORE the SQL is
+     ever sent to the DB. Post-raise, the PG
+     connection is verified still usable (positive
+     confirmation that the engine was not consumed
+     by the drift path).
+  5. `TestDialectPlaceholderStyleUniqueness` (3) —
+     the three dialect placeholder styles are
+     mutually distinct in the rewritten SQL:
+     - `test_postgres_uses_dollar_numbered`:
+       `$1` in, `%s` and `?` out.
+     - `test_mysql_uses_percent_s`: `%s` in,
+       `$1` and `?` out.
+     - `test_mssql_uses_question_mark`: `?` in,
+       `$1` and `%s` out.
+
+### FRs / SCs verified
+
+- **FR-131** — Role-configured row filters
+  enforced at the database level (verified
+  end-to-end against all three dialects).
+- **FR-132** — Column masks applied after
+  execution (verified end-to-end: masked cells
+  are `***`, `ColumnMeta.masked` is set, no raw
+  sensitive value leaks into the response).
+- **SC-051** — Row filters inject correctly with
+  dialect-specific parameter placeholders (`$N`
+  for PG, `%s` for MySQL, `?` for MSSQL).
+- **SC-052** — Column masks replace cell values
+  post-execution (verified against all three
+  dialects).
+- **PR #129** fail-closed provider behavior
+  preserved (the drift test exercises the
+  fail-closed schema-drift guard against a real
+  PG DB).
+- **PR #132** rerun connection-authority behavior
+  preserved (no calls touched in
+  `rerun_accepted_query`).
+- **T-719/T-720** audit logging from Wave 17.3j
+  preserved (the T-721 tests do not assert on
+  audit events; audit coverage remains scoped to
+  the unit test in
+  `test_query_audit_logging.py`).
+
+### Dialect coverage (per FR-131 / FR-132)
+
+All three dialects exercised end-to-end against
+the `docker-compose.dev.yml` source services
+(`postgres-source`, `mysql-source`, `mssql-source`):
+
+- **PostgreSQL** — asyncpg native driver against
+  `localhost:5434` (the
+  `pagila_user`/`pagila_dev_pwd`/`source_analytics`
+  read-only account; TEMP TABLE works for
+  any connected user in PG).
+  - 3 tests pass.
+- **MySQL** — asyncmy native driver against
+  `localhost:3306` as `root` (the
+  `sakila_user`/`sakila_dev_pwd` account is
+  read-only on the `sakila` database per the
+  init script, so it cannot CREATE TEMPORARY
+  TABLE; root has the privilege).
+  - 2 tests pass.
+- **MSSQL** — aioodbc / pyodbc native driver
+  against `localhost:1433` as `sa` (the
+  `adventureworks_user`/`adventureworks_dev_pwd`
+  account is read-only on `AdventureWorksLT`, so
+  it cannot CREATE TABLE; SA has the privilege).
+  - 2 tests pass.
+  - Local system requirement: `unixODBC` +
+    Microsoft ODBC Driver 18 for SQL Server
+    (`/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.6.so.2.1`).
+    The fixture's `ctypes.cdll.LoadLibrary("libodbc.so.2")`
+    precheck produces a precise skip reason if
+    these libraries are missing.
+
+The tests connect to the dev compose services
+rather than spinning up `testcontainers[mysql]`
+or `testcontainers[mssql]`. This matches the
+existing integration test pattern (e.g.
+`test_invariant_attempt_ownership.py`,
+`test_api_history.py`); `testcontainers[postgres,redis]`
+in dev deps is reserved for opportunistic
+adoption, not required by T-721.
+
+### Test design
+
+- **Per-test connection fixtures**
+  (`pg_conn`, `mysql_conn`, `mssql_conn`) are
+  function-scoped. Session-scoped async
+  engines trigger `RuntimeError: ... attached
+  to a different loop` in asyncpg / asyncmy /
+  aioodbc when pytest-asyncio creates a fresh
+  per-test event loop. Function scope binds
+  the connection's event loop to the test's
+  loop.
+- **Per-test unique table name** (uuid suffix)
+  to avoid cross-session / cross-test
+  collisions. PG drops at commit
+  (`ON COMMIT DROP`); MySQL drops on
+  connection close (TEMPORARY TABLE); MSSQL
+  drops via explicit `DROP TABLE` in a
+  `finally` block (regular table — the
+  `adventureworks_user` is read-only, so the
+  test connects as SA and uses a regular table
+  for simplicity; a `#` local temp table in
+  `tempdb` would also work but adds
+  prefix-quoting complexity).
+- **Bypasses SQLAlchemy `text()`** — the
+  dialect placeholders (`$N` / `%s` / `?`) are
+  not recognized by SQLAlchemy's `text()`.
+  The tests use the raw DBAPI connections
+  directly, so the driver accepts the dialect
+  placeholders natively.
+- **Skip on unavailable service** — every
+  fixture's connect path wraps the connection
+  attempt in `pytest.skip(...)` with a
+  precise `type(exc).__name__: exc` reason.
+  MSSQL additionally pre-probes
+  `libodbc.so.2` via `ctypes` and skips with
+  the exact apt-get / msodbcsql18
+  remediation.
+
+### Pre-existing failures (out of scope)
+
+- `tests/unit/test_admin_lockout_prevention.py::test_builtin_admin_user_exists_in_db`:
+  fails on `origin/main` HEAD (`624727e`) with
+  the same error (`assert False is True where
+  False = ('admin', False, 'local').is_builtin`).
+  T-721 does not touch the admin user seeding
+  path; the failure is independent of the
+  T-721 work. Reported in the Wave Final Report
+  for the orchestrator's attention.
+- `ruff format --check` on
+  `tests/unit/test_auth_service.py`:
+  pre-existing line-length issue on
+  `origin/main`. T-721 does not touch this
+  file. The T-721 test file
+  (`tests/integration/test_cross_dialect_policy.py`)
+  is clean per `ruff format --check`.
+
+### Gates (all green except pre-existing)
+
+```text
+$ uv run pytest tests/integration/test_cross_dialect_policy.py -q
+7 passed in 1.30s
+
+$ uv run pytest tests/unit -q -m "not integration" \\
+    --deselect tests/unit/test_admin_lockout_prevention.py::test_builtin_admin_user_exists_in_db
+1360 passed, 10 deselected, 12 warnings in 12.37s
+
+$ uv run pytest tests/unit -q -m "not integration"
+1 failed (pre-existing admin test), 1360 passed,
+10 deselected, 12 warnings in 12.53s
+
+$ uv run ruff check src tests
+All checks passed!
+
+$ uv run ruff format --check tests/integration/test_cross_dialect_policy.py
+304 files already formatted
+(ruff format --check on tests/unit/test_auth_service.py
+pre-existing line-length issue, NOT in T-721 scope)
+
+$ git diff --check
+(clean)
+```
+
+### Quirks surfaced (for skill file update)
+
+The following behaviours are dialect- or
+library-specific and were discovered during
+T-721; they should be rolled into the
+relevant skill files before the next
+cross-dialect test wave:
+
+1. **asyncpg Record iteration**: `for k in
+   record` yields VALUES, not keys. Use
+   `record.keys()` for column names. The
+   SQLAlchemy `E` lint suggestion `key in
+   dict.keys() -> key in dict` is wrong for
+   asyncpg Records.
+2. **SQLAlchemy `text()` does NOT bind
+   dialect placeholders** (`$N` / `%s` / `?`).
+   For dialect-placeholder testing, use the
+   raw DBAPI connection (asyncpg /
+   asyncmy / aioodbc / pyodbc) directly.
+3. **aioodbc requires both** the Python
+   package and system `unixODBC` + Microsoft
+   ODBC Driver 18 for SQL Server. The
+   package import alone does not fail; the
+   first connection does. Pre-probe
+   `libodbc.so.2` via `ctypes` for a precise
+   skip reason.
+4. **MySQL `sakila_user` is read-only** on
+   `sakila` per the init script (revoke +
+   grant SELECT). `CREATE TEMPORARY TABLE`
+   requires the `CREATE TEMPORARY TABLES`
+   privilege. Use `root` for any test that
+   creates a temp table.
+5. **MSSQL `adventureworks_user` is
+   read-only** on `AdventureWorksLT`. Use
+   `sa` for any test that creates a table or
+   temp table.
+6. **aioodbc DSN** must include
+   `TrustServerCertificate=yes` for the
+   self-signed dev cert in the
+   `docker-compose.dev.yml` mssql-source
+   container.
+7. **Session-scoped asyncpg/asyncmy/aioodbc
+   engines** fail with `attached to a
+   different loop` against per-test event
+   loops (the `pytest-asyncio` default in
+   `auto` mode). Use function-scoped
+   connection fixtures to keep the
+   connection's loop bound to the test's
+   loop.
+
+### Commits
+
+- `0eb0b20` test(T-721): cross-dialect policy
+  enforcement tests (FR-131, FR-132, SC-051,
+  SC-052). 7 tests, 5 classes, end-to-end
+  against real PG / MySQL / MSSQL source
+  databases.
+
+**No `[NEEDS DECISION]` items**. All three
+dialects are covered end-to-end. The pre-existing
+admin-user and ruff-format failures on
+`origin/main` are independent of T-721 and
+should be addressed in a separate wave
+(they are flagged here for the orchestrator's
+awareness).
