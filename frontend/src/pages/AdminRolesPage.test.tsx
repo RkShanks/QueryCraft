@@ -2,10 +2,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { AdminRolesPage } from './AdminRolesPage.tsx';
-import { useAdminRoles } from '../hooks/useAdminRoles.ts';
+import { useAdminRoles, useAdminRole } from '../hooks/useAdminRoles.ts';
 
 vi.mock('../hooks/useAdminRoles', () => ({
   useAdminRoles: vi.fn(),
+  useAdminRole: vi.fn(),
 }));
 
 vi.mock('../hooks/useConnections', () => ({
@@ -226,6 +227,84 @@ describe('AdminRolesPage', () => {
           connection_policies: [],
         }),
       }));
+    });
+  });
+
+  it('loads full role detail with connection_policies when editing an existing role', async () => {
+    // T-741: list row has only connection_policy_count (no connection_policies).
+    // Editing must call useAdminRole(id) to fetch the full detail, otherwise
+    // the policy editor opens empty and any save wipes the persisted policies.
+    const fullDetail = {
+      id: '123',
+      name: 'Analyst',
+      description: 'Read-only analyst role',
+      priority: 10,
+      permissions: ['query.submit', 'query.history.view'],
+      is_builtin: false,
+      group_mappings: [{ id: 'gm-1', sso_group_value: 'analysts' }],
+      connection_policies: [
+        {
+          id: 'cp-1',
+          connection_id: 'conn-1',
+          allowed_tables: [{ table: 'orders', columns: ['id', 'total'] }],
+          row_filters: [],
+          column_masks: [],
+        },
+      ],
+      created_at: '2026-06-01T00:00:00Z',
+      updated_at: '2026-06-01T00:00:00Z',
+    };
+
+    vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
+
+    // First call: detail is loading. Second call: detail loaded.
+    let detailCallCount = 0;
+    vi.mocked(useAdminRole).mockImplementation((roleId: string | null) => {
+      detailCallCount += 1;
+      if (!roleId) {
+        return { data: undefined, isLoading: false, isError: false } as any;
+      }
+      if (detailCallCount === 1) {
+        return { data: undefined, isLoading: true, isError: false } as any;
+      }
+      return { data: fullDetail, isLoading: false, isError: false } as any;
+    });
+
+    render(<AdminRolesPage />);
+
+    const editButtons = screen.getAllByRole('button', { name: 'common.edit' });
+    fireEvent.click(editButtons[0]);
+
+    // Detail query must have been called with the role id from the list row.
+    expect(vi.mocked(useAdminRole)).toHaveBeenCalledWith('123');
+
+    // Eventually the policy editor should show the connection from the detail
+    // (a select option with the connection id) and the form should be editable.
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Analyst')).toBeInTheDocument();
+    });
+
+    // Save without changes: the update mutation must carry the persisted
+    // connection_policies (not an empty list derived from the list row).
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
+
+    await waitFor(() => {
+      expect(mockMutations.updateMutation.mutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: '123',
+          data: expect.objectContaining({
+            connection_policies: [
+              {
+                id: 'cp-1',
+                connection_id: 'conn-1',
+                allowed_tables: [{ table: 'orders', columns: ['id', 'total'] }],
+                row_filters: [],
+                column_masks: [],
+              },
+            ],
+          }),
+        })
+      );
     });
   });
 
