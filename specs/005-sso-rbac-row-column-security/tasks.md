@@ -335,12 +335,12 @@
 
 ### Frontend — Browser Evidence (Owner: Gemini)
 
-- [ ] T-730 [US31] Chrome DevTools MCP: verify masked column indicator renders in result table, Arabic/RTL correct — FR-133, SC-055
-- [ ] T-731 [US31] Chrome DevTools MCP: verify policy editor renders table/column selector, row filter input, Arabic/RTL correct — FR-122, SC-055
+- [x] T-730 [US31] Chrome DevTools MCP: verify masked column indicator renders in result table, Arabic/RTL correct — FR-133, SC-055
+- [x] T-731 [US31] Chrome DevTools MCP: verify policy editor renders table/column selector, row filter input, Arabic/RTL correct — FR-122, SC-055
 
 ### Wave 17.3 Frontend Gate
 
-- [ ] T-732 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
+- [x] T-732 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
 
 ### Wave 17.3n — Policy Editor + i18n Blocker Fixes (Owner: Kimi ( opencode ))
 

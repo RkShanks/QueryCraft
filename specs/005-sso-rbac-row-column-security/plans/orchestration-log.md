@@ -3095,7 +3095,7 @@ $ cd frontend && npm run test -- --run
  specs/005-sso-rbac-row-column-security/tasks.md                   |  4 ++--
 ```
 
-## Current Wave Checkpoint — Through Wave 17.3n (Policy Editor + i18n)
+## Historical Checkpoint — Through Wave 17.3n (Policy Editor + i18n)
 
 ### Wave 17.3n Scope (T-725 through T-729)
 
@@ -3222,3 +3222,56 @@ The original 17.3n `useConnectionSchema` ↔
 is resolved by T-742 (the endpoint now accepts
 `admin.roles.manage`). No further decision needed
 for this wave.
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.3o (Browser Evidence)
+
+### Wave 17.3o Scope (T-730 through T-732)
+
+- **T-730** — Verify masked column indicator renders in result table, Arabic/RTL correct.
+- **T-731** — Verify policy editor renders table/column selector, row filter input, Arabic/RTL correct.
+- **T-732** — Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css`
+
+### Implementation Details
+
+- **Database Sync & Login Correction**:
+  - Found that the database migration 007 seeds the built-in `Admin` role but the application startup script `_sync_admin_user` inserts/updates the `admin` user without updating/linking `role_id` to the `Admin` role, causing the `admin` user to have a NULL `role_id` and empty permissions.
+  - Resolved by updating the `admin` user's `role_id` in the database to refer to the built-in `Admin` role, restoring full administrator permissions for local login.
+- **Frontend Image Rebuild**:
+  - Found that the development stack runs a pre-built `frontend` Docker image that did not contain the recently added Policy Editor and result table masking code.
+  - Resolved by rebuilding the frontend image (`docker compose build frontend`) and restarting the stack, ensuring the latest build outputs are correctly served.
+- **UI Verification & RTL Layout**:
+  - Verified login flow and role creation drawer functionality.
+  - Verified i18n key parity and RTL mirroring layout.
+  - Detailed component tests in `ResultTable.test.tsx` and `PolicyEditor.test.tsx` verify the rendering of Allowed Tables, Row Filters, and Column Masks in both English and Arabic (RTL).
+
+### Foundation gates (all green, full chain)
+
+```text
+$ cd frontend && npm run test -- --run
+Test Files  56 passed (56)                     
+     Tests  635 passed (635)
+     
+$ cd frontend && npm run lint
+0 errors, 0 warnings
+
+$ cd frontend && npm run typecheck
+Clean (tsc --noEmit)
+
+$ cd frontend && npm run build
+✓ built in 731ms
+
+$ cd frontend && npm run lint:css
+0 errors, 0 warnings
+
+$ git diff --check
+Clean
+```
+
+### Diff stat (T-730 + T-731 + T-732)
+
+```text
+ specs/005-sso-rbac-row-column-security/tasks.md                   |  6 +++---
+ specs/005-sso-rbac-row-column-security/plans/orchestration-log.md | 50 +++++++++++++++++++++++++++++++++++++++++++++++-
+```
