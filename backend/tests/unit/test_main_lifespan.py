@@ -128,7 +128,7 @@ async def test_sync_admin_user_links_role_id():
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    
+
     # Mock lookup of roles.id and insertion
     execute_mock = AsyncMock()
     session.execute = execute_mock
@@ -143,9 +143,8 @@ async def test_sync_admin_user_links_role_id():
     # Verify that the query inserts role_id and updates it on conflict
     calls = execute_mock.call_args_list
     assert len(calls) >= 1
-    
+
     # Let's inspect the query statement(s) executed
     stmt = str(calls[-1][0][0])
     assert "role_id" in stmt
     assert "role_id = EXCLUDED.role_id" in stmt or "role_id = roles.id" in stmt
-
