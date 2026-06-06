@@ -3114,12 +3114,12 @@ $ cd frontend && npm run test -- --run
   - Replaced all explicit `any` casting with correct typings (`ConnectionListItem` and `ReturnType<typeof useConnectionSchema>`).
   - Added new localized translation keys for policy stats and empty states to `en.json` and `ar.json`.
 
-### Wave 17.3n Blocker Fixes (T-740, T-741, T-742)
+### Wave 17.3n Blocker Fixes
 
 PR #137 review surfaced 4 blockers. Items 1–3 are fixed in
 this checkpoint; item 4 is this commit itself.
 
-1. **Backend persistence (T-740)** — `POST /admin/roles` and
+1. **Backend persistence** — `POST /admin/roles` and
    `PUT /admin/roles/{id}` did not persist
    `RoleConnectionPolicy` rows nor return them in the
    detail response. Fix: helpers in
@@ -3137,7 +3137,7 @@ this checkpoint; item 4 is this commit itself.
    keys: `error.validation.invalidConnection`,
    `error.validation.duplicateConnectionPolicy`,
    `error.notFound.connection`.
-2. **Frontend load full detail (T-741)** — `handleEdit`
+2. **Frontend load full detail** — `handleEdit`
    was seeding the policy editor from the
    list-row summary, which has no
    `connection_policies`. Fix: new
@@ -3149,7 +3149,7 @@ this checkpoint; item 4 is this commit itself.
    once guard prevents late detail arrivals from
    overwriting user edits (KARPATHY async auto-
    select quirk).
-3. **Schema permission contract (T-742)** — Roles-
+3. **Schema permission contract** — Roles-
    only admins could not load the schema browser
    because the endpoint required
    `admin.connections.manage`. Fix: loosens the
@@ -3164,7 +3164,7 @@ this checkpoint; item 4 is this commit itself.
 4. **Orchestration-log cleanup (this commit)** —
    Demoted the 17.3m `## Current Wave Checkpoint`
    to `## Historical Checkpoint`; removed the
-   `[NEEDS DECISION]` block (T-740/T-741/T-742
+   `[NEEDS DECISION]` block (the three blocker
    resolve it); 17.3n remains `## Current Wave
    Checkpoint`.
 
@@ -3199,7 +3199,7 @@ $ git diff --check
 clean
 ```
 
-### Diff stat (T-740 + T-741 + T-742, on top of PR #137 base)
+### Diff stat (blocker fixes, on top of PR #137 base)
 
 ```text
  backend/src/app/api/v1/admin_connections.py                | 18 ++++++++++++++----
@@ -3219,7 +3219,7 @@ clean
 
 The original 17.3n `useConnectionSchema` ↔
 `/admin/connections/{id}/schema` permission mismatch
-is resolved by T-742 (the endpoint now accepts
+is resolved by the schema permission contract fix (the endpoint now accepts
 `admin.roles.manage`). No further decision needed
 for this wave.
 
