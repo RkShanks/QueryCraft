@@ -10,10 +10,18 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.credential_provider import FernetCredentialProvider
 from app.core.exceptions import QueryCraftError
 from app.db.models.database_connection import SourceDatabaseConnection
-from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
+from app.db.models.enums import (
+    AuditActionType,
+    DatabaseType,
+    HealthStatus,
+    LifecycleState,
+    SchemaIntrospectionStatus,
+)
 from app.repositories.connection_repository import ConnectionRepository
 from app.schemas.connection import (
     ConnectionCreate,
@@ -23,6 +31,7 @@ from app.schemas.connection import (
     UserConnectionListResponse,
     UserConnectionResponse,
 )
+from app.services.audit_service import AuditService
 
 
 class ConnectionReferencedError(QueryCraftError):
@@ -59,11 +68,20 @@ class ConnectionService:
         self._credential_provider = FernetCredentialProvider(credential_key)
         self._get_db_session = get_db_session or (lambda: None)
 
-    async def create(self, req: ConnectionCreate) -> ConnectionResponse:
+    async def create(
+        self,
+        req: ConnectionCreate,
+        actor_identity: str | None = None,
+        db_session: AsyncSession | None = None,
+    ) -> ConnectionResponse:
         """Create a new source database connection.
 
         After persisting, runs auto-introspect pipeline: health check → introspect.
         Statuses are updated accordingly (FR-093).
+
+        Emits a ``connection.create`` audit entry when ``db_session``
+        is provided. Audit failures propagate (fail-closed) per the
+        project-wide contract.
         """
         encrypted_password = self._credential_provider.encrypt(req.password)
 
@@ -85,6 +103,20 @@ class ConnectionService:
 
         # Auto-introspect pipeline: health check → introspect (FR-093)
         await self._auto_introspect_on_create(created)
+
+        if db_session is not None:
+            await AuditService.log(
+                db_session,
+                action=AuditActionType.CONNECTION_CREATE,
+                actor_identity=actor_identity,
+                resource_type="connection",
+                resource_id=str(created.id),
+                outcome="success",
+                context={
+                    "display_name": req.display_name,
+                    "database_type": str(req.database_type.value),
+                },
+            )
 
         return ConnectionResponse.model_validate(created)
 
@@ -167,30 +199,62 @@ class ConnectionService:
         ]
         return UserConnectionListResponse(connections=items)
 
-    async def update(self, connection_id: uuid.UUID, req: ConnectionUpdate) -> ConnectionResponse:
-        """Update an existing connection."""
+    async def update(
+        self,
+        connection_id: uuid.UUID,
+        req: ConnectionUpdate,
+        actor_identity: str | None = None,
+        db_session: AsyncSession | None = None,
+    ) -> ConnectionResponse:
+        """Update an existing connection.
+
+        Emits a ``connection.update`` audit entry when ``db_session``
+        is provided. The context lists the changed fields, never
+        the values (no host, no port, no password).
+        """
         conn = await self._repo.get_by_id(connection_id)
         if conn is None:
             raise ConnectionNotFoundError(connection_id)
 
+        changed: list[str] = []
         if req.display_name is not None:
             conn.display_name = req.display_name
+            changed.append("display_name")
         if req.database_type is not None:
             conn.database_type = req.database_type
+            changed.append("database_type")
         if req.host is not None:
             conn.host = req.host
+            changed.append("host")
         if req.port is not None:
             conn.port = req.port
+            changed.append("port")
         if req.database_name is not None:
             conn.database_name = req.database_name
+            changed.append("database_name")
         if req.username is not None:
             conn.username = req.username
+            changed.append("username")
         if req.password is not None:
             conn.encrypted_password = self._credential_provider.encrypt(req.password)
+            changed.append("password")
         if req.ssl_mode is not None:
             conn.ssl_mode = req.ssl_mode
+            changed.append("ssl_mode")
 
         updated = await self._repo.update(conn)
+
+        if db_session is not None:
+            await AuditService.log(
+                db_session,
+                action=AuditActionType.CONNECTION_UPDATE,
+                actor_identity=actor_identity,
+                resource_type="connection",
+                resource_id=str(connection_id),
+                outcome="success",
+                context={"changed_fields": changed},
+            )
+
         return ConnectionResponse.model_validate(updated)
 
     async def disable(self, connection_id: uuid.UUID) -> ConnectionResponse:
@@ -280,10 +344,17 @@ class ConnectionService:
         finally:
             await adapter.close()
 
-    async def hard_delete(self, connection_id: uuid.UUID) -> None:
+    async def hard_delete(
+        self,
+        connection_id: uuid.UUID,
+        actor_identity: str | None = None,
+        db_session: AsyncSession | None = None,
+    ) -> None:
         """Hard-delete a connection only if unreferenced.
 
         Blocked if referenced by accepted_queries, sessions, or schema entries.
+        Emits a ``connection.delete`` audit entry when ``db_session``
+        is provided.
         """
         conn = await self._repo.get_by_id(connection_id)
         if conn is None:
@@ -299,6 +370,17 @@ class ConnectionService:
             raise ConnectionReferencedError()
 
         await self._repo.delete(connection_id)
+
+        if db_session is not None:
+            await AuditService.log(
+                db_session,
+                action=AuditActionType.CONNECTION_DELETE,
+                actor_identity=actor_identity,
+                resource_type="connection",
+                resource_id=str(connection_id),
+                outcome="success",
+                context={"display_name": getattr(conn, "display_name", None)},
+            )
 
     @staticmethod
     def _classify_error(error_msg: str) -> str:

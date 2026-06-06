@@ -38,6 +38,7 @@ async def sign_in(
 async def sign_out(
     request: Request,
     response: Response,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     auth_service: AuthService = Depends(_get_auth_service),  # noqa: B008
 ):
     """POST /auth/sign-out — delete session and clear cookie."""
@@ -55,7 +56,7 @@ async def sign_out(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         ) from None
-    await auth_service.sign_out(session_id)
+    await auth_service.sign_out(session_id, db_session=db)
     SessionMiddleware.delete_cookie(response)
     return None
 

@@ -14,12 +14,13 @@ from app.api.dependencies.permissions import require_permission
 from app.core.config import get_settings
 from app.core.dependencies import get_db
 from app.db.models.app_config import AppConfig
-from app.db.models.enums import Permission
+from app.db.models.enums import AuditActionType, Permission
 from app.schemas.admin_settings import (
     AdminSettingsResponse,
     UpdateAdminSettingsRequest,
     UpdateAdminSettingsResponse,
 )
+from app.services.audit_service import AuditService
 from app.source_db.connector import SourceDBConnector
 from app.source_db.introspector import SchemaIntrospector
 
@@ -114,7 +115,9 @@ async def update_settings_admin(
 ):
     """PATCH /admin/settings — update admin settings via session cookie.
 
-    Requires ``admin.connections.manage`` permission.
+    Requires ``admin.connections.manage`` permission. Emits an
+    ``admin.config.change`` audit entry before returning. Audit
+    failures propagate (fail-closed) per the project-wide contract.
     """
     await db.execute(
         text(
@@ -140,6 +143,21 @@ async def update_settings_admin(
         ),
         {"max_regen": str(req.max_regenerate_attempts)},
     )
+
+    actor_identity = _session.get("username") if isinstance(_session, dict) else None
+    await AuditService.log(
+        db,
+        action=AuditActionType.ADMIN_CONFIG_CHANGE,
+        actor_identity=actor_identity,
+        resource_type="admin_settings",
+        resource_id="global",
+        outcome="success",
+        context={
+            "llm_context_cap": req.llm_context_cap,
+            "max_regenerate_attempts": req.max_regenerate_attempts,
+        },
+    )
+
     await db.commit()
     now = datetime.datetime.now(datetime.UTC).isoformat()
     return UpdateAdminSettingsResponse(

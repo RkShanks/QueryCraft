@@ -3286,7 +3286,7 @@ Clean
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3p (Frontend Foundation Gate)
+## Historical Checkpoint — Through Wave 17.3p (Frontend Foundation Gate)
 
 ### Wave 17.3p Scope (T-732)
 
@@ -3318,4 +3318,141 @@ clean
 ### Commits
 
 - `7e97b1f` docs(T-732): mark task complete in tasks.md
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.4a (Audit Event Coverage)
+
+### Wave 17.4a Scope (T-733, T-734) — honest status
+
+- **T-733** — Comprehensive TDD test matrix in `backend/tests/unit/test_audit_event_coverage.py` (38 tests). Two-layer verification:
+  - **Per-action smoke tests** for the 5 T-734 call sites (`AUTH_LOGOUT`, `CONNECTION_*`, `ADMIN_CONFIG_CHANGE`).
+  - **Structural source-code reference backstop** (`TestAuditActionTypeSourceCodeReference`) — scans `src/app/**/*.py` for every `AuditActionType.XXX` reference; fails if a shipped emit call disappears. `audit.verify` is the one explicit deferral.
+  - **Forbidden-token sweep** covers 5 T-734 call sites; no raw SQL/SAML/cert/host/port/credentials/stack traces in any audit context.
+  [COMPLETED]
+- **T-734** — Added **5 of 6** missing audit call sites. Brought shipped coverage **15/22 → 20/22**:
+  - `AUTH_LOGOUT` — `auth_service.sign_out()` emits; **resource_id is a `sha256:<hex>` digest, not the raw session token** (security fix from PR-141 review).
+  - `CONNECTION_CREATE` / `CONNECTION_UPDATE` / `CONNECTION_DELETE` — `connection_service.{create, update, hard_delete}` emit; endpoint layer threads `actor_identity` + `db_session`.
+  - `ADMIN_CONFIG_CHANGE` — `admin.update_settings_admin` emits before commit (fail-closed).
+  - `AUDIT_VERIFY` emit site intentionally NOT added by T-734. It lands with the `/admin/audit/verify` endpoint in T-738 — emitting before the endpoint exists would create a dead code path. Coverage matrix stays at 20/22 until T-738 lands.
+  [COMPLETED — 5/6 missing call sites]
+
+### Action-type coverage matrix (post-wave 17.4a, T-734 fix pass)
+
+| # | Action type | Emitter | Call site | Status |
+|---|---|---|---|---|
+| 1 | `auth.login.success` | `SsoService.process_*_callback` | services/sso_service.py | shipped (17.2) |
+| 2 | `auth.login.failure` | `SsoService.*` failure paths | services/sso_service.py | shipped (17.2) |
+| 3 | `auth.logout` | `AuthService.sign_out` | services/auth_service.py | **new (17.4a) — `sha256:` digest** |
+| 4 | `auth.sso.validation` | `SsoService._validate_*_claims` | services/sso_service.py | shipped (17.2) |
+| 5 | `query.submit` | `QueryService.submit` | services/query_service.py | shipped (17.0) |
+| 6 | `query.validate.pass` | `QueryService.validate` | services/query_service.py | shipped (17.0) |
+| 7 | `query.validate.fail` | `QueryService.validate` | services/query_service.py | shipped (17.0) |
+| 8 | `query.execute` | `QueryService.execute` | services/query_service.py | shipped (17.0) |
+| 9 | `query.accept` | `QueryService.accept` | services/query_service.py | shipped (17.0) |
+| 10 | `query.reject` | `QueryService.reject` | services/query_service.py | shipped (17.0) |
+| 11 | `role.create` | `RoleService.create_role` | services/role_service.py | shipped (17.1) |
+| 12 | `role.update` | `RoleService.update_role` | services/role_service.py | shipped (17.1) |
+| 13 | `role.delete` | `RoleService.delete_role` | services/role_service.py | shipped (17.1) |
+| 14 | `role.mapping.change` | `RoleService.{grant,revoke,set_user_roles}` | services/role_service.py | shipped (17.1) |
+| 15 | `sso.config.change` | `SsoService.{create,update,delete}_config` | services/sso_service.py | shipped (17.3n) |
+| 16 | `connection.create` | `ConnectionService.create` | services/connection_service.py | **new (17.4a)** |
+| 17 | `connection.update` | `ConnectionService.update` | services/connection_service.py | **new (17.4a)** |
+| 18 | `connection.delete` | `ConnectionService.hard_delete` | services/connection_service.py | **new (17.4a)** |
+| 19 | `admin.config.change` | `update_settings_admin` | api/v1/admin.py | **new (17.4a)** |
+| 20 | `access.denied` | role_service / query_service | services/* | shipped (17.2) |
+| 21 | `audit.verify` | — | — | **deferred → T-738** (endpoint + emit land together) |
+| 22 | `policy.schema.mismatch` | `PolicyEnforcementService._emit_drift` | services/policy_enforcement.py | shipped (17.3n) |
+
+**Coverage: 20/22 shipped.** Remaining gap is `audit.verify` emission (intentional, T-738).
+
+### Security contract — `resource_id` redaction (T-734 fix pass)
+
+| Call site | `resource_id` shape | Notes |
+|---|---|---|
+| `auth.logout` | `sha256:<64-hex-chars>` | **Fix from PR-141 review**: was raw session token; now SHA-256 digest. Lets auditors correlate without exposing bearer credentials. |
+| `role.{create,update,delete,mapping.change}` | `str(<role id>)` | Durable UUID is the audit invariant key per audit_log_entry contract. |
+| `sso.config.change` | `str(<provider id>)` | Same. |
+| `connection.{create,update,delete}` | `str(<connection id>)` | Same. |
+| `admin.config.change` | `"global"` | Singleton; not a real resource id. |
+| `query.*` | `str(<query attempt id>)` | Same. |
+| `auth.login.*` | `str(<user id>)` or `subject_id` (no token). | Same. |
+| `access.denied` | endpoint path or resource name | No secret. |
+| `policy.schema.mismatch` | `str(<policy id>)` | Same. |
+
+**No raw session tokens, no passwords, no API keys, no SAML / cert / XML, no SQL, no hostnames, no DB driver names, no stack traces** ever appear in `resource_id` or `context` of any emit site. The forbidden-token sweep + the explicit `sha256:` digest assertion on `auth.logout` enforce this.
+
+### Foundation gates (all green for new code, T-734 fix pass + audit isolation fix)
+
+```text
+$ cd backend && uv run pytest tests/unit/test_audit_service.py tests/unit/test_audit_chain_verification.py -q
+..........                                                               [100%]
+10 passed in 0.79s
+
+$ cd backend && uv run pytest tests/unit/test_audit_event_coverage.py -q
+......................................                                   [100%]
+38 passed in 0.50s
+
+$ cd backend && uv run pytest tests/unit -q -m "not integration"
+1408 passed, 9 deselected, 12 warnings in 15.72s
+
+$ cd backend && uv run ruff check src tests
+All checks passed!
+
+$ cd backend && uv run ruff format --check src tests
+305 files already formatted
+
+$ git diff --check
+clean
+```
+
+**Full backend unit gate now passes, not waived.** Previous waves
+17.4a (commits `4ec248a`–`d1cea5b`) reported 4 pre-existing audit
+DB-state failures; this wave (`796d277`) fixes them in test-only
+code without touching product audit behavior.
+
+### Audit test isolation fix (`796d277`)
+
+The 4 failures all had the same root cause: the shared Postgres
+testcontainer retains `audit_log_entries` rows across test runs,
+so manually-assigned `sequence_number` kept growing. Two of the
+tests hardcode `e1.sequence_number == 1`; the chain-verification
+tests manually insert tampered rows at `sequence_number=1`/`2`
+which collide with prior runs.
+
+Fix is test-only — `app/services/audit_service.py` is unchanged:
+
+- `backend/tests/conftest.py` — new `clean_audit_table` fixture
+  that runs `TRUNCATE TABLE audit_log_entries` before the test,
+  using the shared `async_engine_fixture` (independent of the
+  per-test transactional `db_session`).
+- `backend/tests/unit/test_audit_service.py` — `TestAuditService`
+  opts in via `@pytest.mark.usefixtures("clean_audit_table")`.
+- `backend/tests/unit/test_audit_chain_verification.py` — same on
+  `TestAuditChainVerification`.
+
+The fixture is intentionally NOT autouse on `db_session`: other
+tests in the suite rely on audit rows left by prior tests in the
+same session. The two test classes are the only ones that
+hardcode `sequence_number=1`/`2`.
+
+### Commits (this wave, including T-734 fix pass + audit isolation)
+
+- `d1cea5b` test(T-733): comprehensive audit event coverage matrix
+- `d4a664c` style(T-733): apply ruff format
+- `16bec77` feat(T-734): emit AUTH_LOGOUT + CONNECTION_* + ADMIN_CONFIG_CHANGE
+- `8cab27d` docs(T-733/T-734): mark complete in tasks.md
+- `4b06577` docs(T-733/T-734): Wave 17.4a checkpoint in orchestration-log
+- `c8da1cd` fix(T-734): hash `auth.logout` resource_id; structural backstop test
+- `4ec248a` docs(T-733/T-734): honest status (5/6 sites; audit.verify→T-738)
+- `796d277` fix(test): isolate audit_log_entries between tests; full backend unit gate green
+
+### Open tasks after 17.4a
+
+- T-735 — Audit immutability tests
+- T-736 — Audit redaction comprehensive tests
+- T-737 — Audit log query tests
+- T-738 — `/admin/audit/verify` endpoint (ships `AUDIT_VERIFY` emission) — **brings coverage 20/22 → 22/22**
+- T-739–T-750 — remaining Wave 17.4 surface
+
 

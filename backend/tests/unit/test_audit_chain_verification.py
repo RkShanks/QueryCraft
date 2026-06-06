@@ -10,8 +10,15 @@ from app.services.audit_service import AuditService
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("clean_audit_table")
 class TestAuditChainVerification:
-    """Chain integrity: intact, broken, first break reporting."""
+    """Chain integrity: intact, broken, first break reporting.
+
+    Tests that manually insert tampered entries at fixed
+    sequence numbers (1 or 2) assume a clean audit table;
+    the ``clean_audit_table`` fixture truncates the shared
+    test container's audit table before each test runs.
+    """
 
     async def test_intact_chain_verifies_true(self, db_session):
         await AuditService.log(db_session, action=AuditActionType.QUERY_SUBMIT)
