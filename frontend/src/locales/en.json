@@ -393,5 +393,24 @@
   "admin.roles.form.noColumnMasks": "No column masks configured.",
   "admin.roles.form.tablesLabel": "Tables:",
   "admin.roles.form.rowFiltersLabel": "Row Filters:",
-  "admin.roles.form.columnMasksLabel": "Column Masks:"
+  "admin.roles.form.columnMasksLabel": "Column Masks:",
+  "nav.adminAudit": "Audit Verification",
+  "admin.audit.title": "Tamper-Evident Audit Log Verification",
+  "admin.audit.verifyButton": "Verify Integrity",
+  "admin.audit.verifying": "Verifying...",
+  "admin.audit.totalEntries": "Total Log Entries",
+  "admin.audit.lastVerification": "Last Verification",
+  "admin.audit.neverVerified": "Never verified",
+  "admin.audit.status.verified": "Verified Intact",
+  "admin.audit.status.broken": "Chain Broken",
+  "admin.audit.status.brokenDesc": "A hash mismatch was detected in the audit log chain. The log may have been tampered with or corrupted.",
+  "admin.audit.firstBreakAt": "First break at sequence number",
+  "admin.audit.entriesChecked": "Entries checked",
+  "admin.audit.verifiedAt": "Verified at",
+  "admin.audit.loadError": "Failed to load audit status.",
+  "admin.audit.verifySuccess": "Audit chain integrity verified successfully",
+  "admin.audit.verifyFailed": "Audit chain verification failed",
+  "admin.audit.emptyState": "No audit entries found.",
+  "admin.audit.securityWarning": "No auto-repair utility is provided to preserve evidence. Contact your system administrator to recover the database chain."
 }
+

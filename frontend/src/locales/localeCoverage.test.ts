@@ -128,7 +128,27 @@ describe('Wave 14 i18n key coverage', () => {
     'admin.roles.form.loadingSchema',
     'admin.roles.form.schemaLoadFailed',
     'admin.roles.form.emptySchema',
+    // Wave 17.4 Audit Verification keys
+    'nav.adminAudit',
+    'admin.audit.title',
+    'admin.audit.verifyButton',
+    'admin.audit.verifying',
+    'admin.audit.totalEntries',
+    'admin.audit.lastVerification',
+    'admin.audit.neverVerified',
+    'admin.audit.status.verified',
+    'admin.audit.status.broken',
+    'admin.audit.status.brokenDesc',
+    'admin.audit.firstBreakAt',
+    'admin.audit.entriesChecked',
+    'admin.audit.verifiedAt',
+    'admin.audit.loadError',
+    'admin.audit.verifySuccess',
+    'admin.audit.verifyFailed',
+    'admin.audit.emptyState',
+    'admin.audit.securityWarning',
   ];
+
 
   it.each(requiredKeys)('has %s in en.json', (key) => {
     expect(en).toHaveProperty(key);

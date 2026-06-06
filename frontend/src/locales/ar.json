@@ -412,5 +412,24 @@
   "admin.roles.form.noColumnMasks": "لم يتم تهيئة أي أقنعة أعمدة.",
   "admin.roles.form.tablesLabel": "الجداول:",
   "admin.roles.form.rowFiltersLabel": "عوامل تصفية الصفوف:",
-  "admin.roles.form.columnMasksLabel": "أقنعة الأعمدة:"
+  "admin.roles.form.columnMasksLabel": "أقنعة الأعمدة:",
+  "nav.adminAudit": "التحقق من سجل التدقيق",
+  "admin.audit.title": "التحقق من سلامة سجل التدقيق المقاوم للتلاعب",
+  "admin.audit.verifyButton": "التحقق من السلامة",
+  "admin.audit.verifying": "جارٍ التحقق...",
+  "admin.audit.totalEntries": "إجمالي إدخالات السجل",
+  "admin.audit.lastVerification": "آخر تحقق",
+  "admin.audit.neverVerified": "لم يتم التحقق منه بعد",
+  "admin.audit.status.verified": "سليم وغير متلاعب به",
+  "admin.audit.status.broken": "سلسلة التدقيق مكسورة",
+  "admin.audit.status.brokenDesc": "تم اكتشاف عدم تطابق في تشفير سلسلة سجل التدقيق. قد يكون السجل قد تعرض للتلاعب أو التلف.",
+  "admin.audit.firstBreakAt": "أول كسر في السلسلة عند رقم الإدخال",
+  "admin.audit.entriesChecked": "الإدخالات التي تم فحصها",
+  "admin.audit.verifiedAt": "تم التحقق في",
+  "admin.audit.loadError": "فشل تحميل حالة سجل التدقيق.",
+  "admin.audit.verifySuccess": "تم التحقق من سلامة سلسلة التدقيق بنجاح",
+  "admin.audit.verifyFailed": "فشل التحقق من سلسلة سجل التدقيق",
+  "admin.audit.emptyState": "لم يتم العثور على أي إدخالات تدقيق.",
+  "admin.audit.securityWarning": "لا تتوفر أداة إصلاح تلقائي للحفاظ على الأدلة. يرجى الاتصال بمسؤول النظام لاستعادة سلسلة قاعدة البيانات."
 }
+
