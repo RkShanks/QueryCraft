@@ -319,3 +319,107 @@ class TestAdminConnectionSchemaRealDependencyPath:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(f"/api/v1/admin/connections/{conn_id}/refresh-schema")
             assert response.status_code == 404
+
+
+# ── T-742: schema endpoint accepts admin.roles.manage OR admin.connections.manage ─
+
+
+class TestSchemaEndpointPermissionContract:
+    """T-742: GET /admin/connections/{id}/schema must accept either
+    ``admin.connections.manage`` (original) or ``admin.roles.manage``
+    (so the role policy editor's schema browser works for roles-only
+    admins). Other permissions still 403.
+    """
+
+    @staticmethod
+    def _make_app(permissions: list[str], mock_service):
+        from fastapi.responses import JSONResponse
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        from app.api.v1.admin_connections import _get_connection_service, router
+
+        async def override_service():
+            return mock_service
+
+        class SessionInjectionMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                request.state.session = {
+                    "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                    "permissions": permissions,
+                }
+                return await call_next(request)
+
+        app = FastAPI()
+        app.add_middleware(SessionInjectionMiddleware)
+
+        @app.exception_handler(HTTPException)
+        async def _http_exception_handler(request, exc):
+            if isinstance(exc.detail, dict):
+                return JSONResponse(status_code=exc.status_code, content=exc.detail)
+            return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
+
+        app.include_router(router, prefix="/api/v1")
+        app.dependency_overrides[_get_connection_service] = override_service
+        return app
+
+    @pytest.mark.asyncio
+    async def test_schema_endpoint_accepts_admin_connections_manage(self):
+        from app.services.connection_service import ConnectionService
+
+        conn_id = uuid4()
+        mock_service = MagicMock(spec=ConnectionService)
+        mock_service.get_schema_summary = AsyncMock(
+            return_value={
+                "connection_id": str(conn_id),
+                "tables": [],
+                "introspected_at": datetime.now(UTC).isoformat(),
+            }
+        )
+
+        app = self._make_app(["admin.connections.manage"], mock_service)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get(f"/api/v1/admin/connections/{conn_id}/schema")
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_schema_endpoint_accepts_admin_roles_manage(self):
+        # T-742: roles-only admins must be able to load the schema in the
+        # role policy editor. Pre-fix this 403s; post-fix it 200s.
+        from app.services.connection_service import ConnectionService
+
+        conn_id = uuid4()
+        mock_service = MagicMock(spec=ConnectionService)
+        mock_service.get_schema_summary = AsyncMock(
+            return_value={
+                "connection_id": str(conn_id),
+                "tables": [],
+                "introspected_at": datetime.now(UTC).isoformat(),
+            }
+        )
+
+        app = self._make_app(["admin.roles.manage"], mock_service)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get(f"/api/v1/admin/connections/{conn_id}/schema")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["connection_id"] == str(conn_id)
+        mock_service.get_schema_summary.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_schema_endpoint_rejects_unrelated_permission(self):
+        from app.services.connection_service import ConnectionService
+
+        conn_id = uuid4()
+        mock_service = MagicMock(spec=ConnectionService)
+
+        app = self._make_app(["query.submit"], mock_service)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get(f"/api/v1/admin/connections/{conn_id}/schema")
+        assert response.status_code == 403
+        data = response.json()
+        assert data["error"] == "forbidden"
+        assert data["message_key"] == "error.forbidden"
+        mock_service.get_schema_summary.assert_not_called()
