@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAdminRoles } from '../hooks/useAdminRoles';
+import { useAdminRoles, useAdminRole } from '../hooks/useAdminRoles';
 import { GroupMappingEditor } from '../components/admin/GroupMappingEditor';
 import { PolicyEditor } from '../components/admin/PolicyEditor';
 import { Shield, Plus, RefreshCw, Trash2, Edit2, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
@@ -111,15 +111,58 @@ export const AdminRolesPage: React.FC = () => {
     },
   });
 
+  // T-741: fetch full role detail (with connection_policies) when editing
+  // an existing role. The list endpoint only returns connection_policy_count,
+  // so initializing the editor from the list row would wipe the persisted
+  // policies on save.
+  const detailQuery = useAdminRole(editingRole?.id);
+  // Guard against late detail arrivals overwriting user edits
+  // (KARPATHY async auto-select quirk). Reset on every editing target
+  // change so the new detail applies exactly once.
+  const lastAppliedDetailIdRef = useRef<string | null>(null);
+
+  // Single effect: seed the form from the list row immediately when
+  // the editing target changes, then overwrite with the persisted
+  // detail once it lands. Guarded by lastAppliedDetailIdRef so the
+  // detail lands at most once per editing target and the apply path
+  // never runs in a no-data render (avoids cascading-render lint).
+  useEffect(() => {
+    if (!editingRole) {
+      lastAppliedDetailIdRef.current = null;
+      return;
+    }
+    if (lastAppliedDetailIdRef.current !== editingRole.id) {
+      lastAppliedDetailIdRef.current = null;
+      setValidationError(null);
+      setName(editingRole.name);
+      setDescription(editingRole.description || '');
+      setPriority(editingRole.priority);
+      setSelectedPermissions(editingRole.permissions);
+      setMappedGroups(editingRole.group_mappings.map((gm) => gm.sso_group_value));
+      setConnectionPolicies(editingRole.connection_policies || []);
+    }
+    const detail = detailQuery.data;
+    if (!detail || detail.id !== editingRole.id) {
+      return;
+    }
+    if (lastAppliedDetailIdRef.current === detail.id) {
+      return;
+    }
+    lastAppliedDetailIdRef.current = detail.id;
+    setName(detail.name);
+    setDescription(detail.description || '');
+    setPriority(detail.priority);
+    setSelectedPermissions(detail.permissions);
+    setMappedGroups(detail.group_mappings.map((gm) => gm.sso_group_value));
+    setConnectionPolicies(detail.connection_policies || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingRole?.id, detailQuery.data]);
+
   const handleEdit = (role: Role) => {
+    // T-741: just select the target. The useEffects above seed the form
+    // from the list row first, then overwrite with the full detail once
+    // GET /admin/roles/{id} lands.
     setEditingRole(role);
-    setValidationError(null);
-    setName(role.name);
-    setDescription(role.description || '');
-    setPriority(role.priority);
-    setSelectedPermissions(role.permissions);
-    setMappedGroups(role.group_mappings.map((gm) => gm.sso_group_value));
-    setConnectionPolicies(role.connection_policies || []);
   };
 
   const handleCancel = () => {

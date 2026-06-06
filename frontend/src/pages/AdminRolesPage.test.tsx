@@ -40,6 +40,12 @@ const mockMutations = {
   deleteMutation: { mutate: vi.fn(), isPending: false },
 };
 
+const mockDetailQuery = {
+  data: undefined,
+  isLoading: false,
+  isError: false,
+};
+
 const mockEmptyRoles = {
   listQuery: {
     data: { roles: [] },
@@ -100,6 +106,7 @@ const mockPopulatedRoles = {
 describe('AdminRolesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useAdminRole).mockReturnValue(mockDetailQuery as any);
   });
 
   it('renders title and empty state when no roles exist', () => {
@@ -259,7 +266,7 @@ describe('AdminRolesPage', () => {
 
     // First call: detail is loading. Second call: detail loaded.
     let detailCallCount = 0;
-    vi.mocked(useAdminRole).mockImplementation((roleId: string | null) => {
+    vi.mocked(useAdminRole).mockImplementation((roleId: string | null | undefined) => {
       detailCallCount += 1;
       if (!roleId) {
         return { data: undefined, isLoading: false, isError: false } as any;

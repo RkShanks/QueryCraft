@@ -218,3 +218,27 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
     deleteGroupMappingMutation,
   };
 };
+
+/**
+ * Fetch a single role by id with its full detail (including
+ * `connection_policies`). The list endpoint `GET /admin/roles` only
+ * returns `connection_policy_count`, so the editor must hit this
+ * detail endpoint when opening an existing role. Pass `null` to
+ * disable the query.
+ */
+export const useAdminRole = (roleId: string | null | undefined) => {
+  return useQuery<Role>({
+    queryKey: ['adminRole', roleId],
+    queryFn: async () => {
+      if (!roleId) {
+        throw new Error('Role id is required');
+      }
+      const res = await client.get({
+        url: `/admin/roles/${roleId}`,
+        throwOnError: true,
+      });
+      return res.data as Role;
+    },
+    enabled: !!roleId,
+  });
+};
