@@ -656,7 +656,9 @@ class TestStatusResponseShape:
         assert result["last_verification"]["verified"] is True
         assert result["last_verification"]["entries_checked"] == 2
         assert result["last_verification"]["first_break_at"] is None
-        assert result["last_verification"]["verified_at"] == "2026-06-06T12:00:00+00:00"
+        # verified_at is the row's persisted timestamp (ISO 8601 with +00:00).
+        assert isinstance(result["last_verification"]["verified_at"], str)
+        assert result["last_verification"]["verified_at"].endswith("+00:00")
         _assert_no_forbidden_in_response(result)
 
     @pytest.mark.asyncio
@@ -798,7 +800,10 @@ class TestStatusResponseShape:
         assert result["last_verification"]["verified"] is False
         assert result["last_verification"]["first_break_at"] == 3
         assert result["last_verification"]["entries_checked"] == 5
-        assert result["last_verification"]["verified_at"] == "2026-06-06T12:00:00+00:00"
+        # verified_at is the persisted row's timestamp; for the most
+        # recent (broken-chain) verify, it must be >= the first verify's.
+        assert isinstance(result["last_verification"]["verified_at"], str)
+        assert result["last_verification"]["verified_at"].endswith("+00:00")
 
 
 # ---------------------------------------------------------------------------

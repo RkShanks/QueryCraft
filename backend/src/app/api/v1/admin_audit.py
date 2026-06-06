@@ -25,7 +25,7 @@ AUDIT_VERIFY emission recursion-safety (defence in depth):
   - The response ``entries_checked`` reflects the chain size at the moment
     of verification (PRE-log). The audit.verify row appended by the same
     call is NOT counted in the same response. A subsequent ``GET /status``
-    reflects the same pre-log count via the captured ``VerificationResult``.
+    reflects the durable post-log count (see below).
 
 Resource-id contract for ``audit.verify`` events:
 
@@ -34,29 +34,34 @@ Resource-id contract for ``audit.verify`` events:
     used. This avoids exposing internal row UUIDs in the audit log or
     any API response. See ``api-contracts.md`` for the endpoint shape.
 
-Last-verification state:
+``GET /status`` source of truth (durable, DB-derived):
 
-  - The ``GET /status`` endpoint reads from an in-process module-level
-    variable ``_last_verification`` populated by the most recent
-    successful ``POST /verify`` call.
-  - For multi-worker deployments, the durable source of truth is the
-    ``audit_log_entries`` table — every verify call appends an
-    ``audit.verify`` row whose ``context`` captures ``entries_checked``,
-    ``verified``, and ``first_break_at``. A future enhancement can
-    rebuild ``last_verification`` by reading the most recent
-    ``audit.verify`` row; the current in-process state keeps the
-    endpoint fast and the test seam clean.
+  - ``total_entries`` is the actual ``SELECT COUNT(*) FROM
+    audit_log_entries`` result. The count INCLUDES any
+    ``audit.verify`` rows that have been appended. This is
+    process-restart safe and worker-agnostic.
+  - ``last_verification`` is reconstructed from the most recent
+    ``audit.verify`` row in ``audit_log_entries`` (ordered by
+    ``sequence_number DESC LIMIT 1``). The reconstructed block
+    carries ``verified``, ``entries_checked``, ``first_break_at``
+    from the row's ``context`` JSONB column, and ``verified_at``
+    from the row's ``timestamp``.
+  - No in-process module-level cache. The status endpoint is a
+    pure read of the durable table. A process restart does not
+    lose state.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status  # noqa: F401
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
 from app.core.dependencies import get_db
+from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType, Permission
 from app.services.audit_service import AuditService, VerificationResult
 
@@ -67,12 +72,6 @@ router = APIRouter(prefix="/admin/audit", tags=["Admin Audit"])
 # a constant sentinel avoids exposing internal row UUIDs to end users.
 AUDIT_VERIFY_RESOURCE_ID: str = "audit_chain"
 AUDIT_VERIFY_RESOURCE_TYPE: str = "audit_chain"
-
-# In-process last verification result. Populated by ``verify_audit_chain``
-# on success; read by ``get_audit_status`` to render the admin page.
-# Reset to ``None`` on cold start; updated atomically by each successful
-# verify call. See module docstring for the multi-worker trade-off.
-_last_verification: VerificationResult | None = None
 
 
 def _verification_to_response(result: VerificationResult) -> dict[str, Any]:
@@ -91,6 +90,22 @@ def _verification_to_response(result: VerificationResult) -> dict[str, Any]:
     }
 
 
+def _row_to_last_verification(row: AuditLogEntry) -> dict[str, Any]:
+    """Reconstruct ``last_verification`` from a persisted ``audit.verify`` row.
+
+    The ``context`` JSONB column carries ``verified`` (bool),
+    ``entries_checked`` (int), and ``first_break_at`` (int | None).
+    ``verified_at`` is the row's persisted ``timestamp``.
+    """
+    ctx: dict[str, Any] = dict(row.context or {})
+    return {
+        "verified": bool(ctx.get("verified", False)),
+        "entries_checked": int(ctx.get("entries_checked", 0)),
+        "first_break_at": ctx.get("first_break_at"),
+        "verified_at": row.timestamp.isoformat(),
+    }
+
+
 @router.post("/verify")
 async def verify_audit_chain(
     request: Request,
@@ -103,8 +118,7 @@ async def verify_audit_chain(
 
     Behaviour:
       1. Walk the chain via ``AuditService.verify_chain`` (PRE-log count).
-      2. Capture the result in ``_last_verification`` for ``GET /status``.
-      3. Append an ``audit.verify`` audit entry to the chain. The
+      2. Append an ``audit.verify`` audit entry to the chain. The
          ``outcome`` is ``"success"`` when the chain is intact and
          ``"broken"`` when ``first_break_at`` is not None. The
          ``context`` carries only ``verified`` (bool), ``entries_checked``
@@ -122,8 +136,6 @@ async def verify_audit_chain(
     Response 200: ``AuditVerifyResponse`` shape
     (``verified``, ``entries_checked``, ``first_break_at``, ``verified_at``).
     """
-    global _last_verification
-
     try:
         # Step 1: walk the chain BEFORE appending the AUDIT_VERIFY row.
         # The response ``entries_checked`` is the PRE-log count. This
@@ -131,12 +143,7 @@ async def verify_audit_chain(
         # AFTER verify_chain returns.
         result = await AuditService.verify_chain(db)
 
-        # Step 2: capture the result for GET /status.
-        # Read into a local first so a concurrent verify call cannot
-        # observe a half-updated module global.
-        _last_verification = result
-
-        # Step 3: emit the audit event. The mocked-log test seam in
+        # Step 2: emit the audit event. The mocked-log test seam in
         # test_audit_endpoints.py short-circuits this in HTTP-level tests.
         actor_identity = (_session or {}).get("username") if _session else None
         outcome = "success" if result.verified else "broken"
@@ -171,16 +178,21 @@ async def verify_audit_chain(
 
 @router.get("/status")
 async def get_audit_status(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     _session: dict = Depends(require_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
 ):
-    """GET /admin/audit/status — return last verification result + entry count.
+    """GET /admin/audit/status — return durable last verification + entry count.
 
     Permission: ``admin.audit.verify``.
+
+    Both ``total_entries`` and ``last_verification`` are read from the
+    ``audit_log_entries`` table on every request. The endpoint holds
+    no in-process state and survives process restarts.
 
     Response 200::
 
         {
-          "total_entries": 15234,
+          "total_entries": 15235,
           "last_verification": {
             "verified": true,
             "entries_checked": 15234,
@@ -189,25 +201,48 @@ async def get_audit_status(
           }
         }
 
-    Or, when no verification has run since process start::
+    - ``total_entries`` is the actual durable row count in
+      ``audit_log_entries`` (the count INCLUDES any persisted
+      ``audit.verify`` rows). This is process-restart safe.
+    - ``last_verification`` is reconstructed from the most recent
+      ``audit.verify`` row. ``entries_checked`` here reflects the
+      PRE-log count captured at verify time (it is the count the
+      verify endpoint itself returned, not the post-log count).
+      If no verify has ever been performed, ``last_verification``
+      is ``null``.
+
+    Or, when the audit log is empty::
 
         {
           "total_entries": 0,
           "last_verification": null
         }
 
-    ``total_entries`` reflects the ``entries_checked`` value from the
-    most recent successful verify call (the PRE-log count, by the
-    recursion-safety contract above). If no verify has run, both fields
-    are zero / null. The audit log itself is the durable record; the
-    in-process state is a fast read-path for the admin page.
-    """
-    if _last_verification is None:
-        return {
-            "total_entries": 0,
-            "last_verification": None,
+    Or, when the audit log has rows but no verify has been performed::
+
+        {
+          "total_entries": 42,
+          "last_verification": null
         }
+    """
+    # 1. Actual durable row count (process-restart safe, worker-agnostic).
+    count_result = await db.execute(select(func.count()).select_from(AuditLogEntry))
+    total_entries = int(count_result.scalar_one())
+
+    # 2. Reconstruct last_verification from the most recent audit.verify
+    #    row. Filter on the canonical string value of the enum (matches
+    #    AuditService.log which stores ``str(AuditActionType.AUDIT_VERIFY)``).
+    latest_result = await db.execute(
+        select(AuditLogEntry)
+        .where(AuditLogEntry.action_type == str(AuditActionType.AUDIT_VERIFY))
+        .order_by(AuditLogEntry.sequence_number.desc())
+        .limit(1)
+    )
+    latest = latest_result.scalar_one_or_none()
+
+    last_verification: dict[str, Any] | None = _row_to_last_verification(latest) if latest is not None else None
+
     return {
-        "total_entries": _last_verification.entries_checked,
-        "last_verification": _verification_to_response(_last_verification),
+        "total_entries": total_entries,
+        "last_verification": last_verification,
     }
