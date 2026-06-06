@@ -67,6 +67,11 @@ from app.db.models.enums import AuditActionType
 # the same AsyncMock.
 _AUDIT_PATCH = "app.services.audit_service.AuditService.log"
 
+# Valid base64-encoded 32-byte Fernet key for ConnectionService
+# construction. Real encryption is irrelevant — the audit
+# shape is the assertion target.
+_VALID_FERNET_KEY = "d1OQc28ErbKH8nnhjNbchX5y_1EyXcfclkK1hPjPqFY="
+
 
 # Forbidden tokens for audit context redaction — kept here
 # so the coverage test asserts no action type leaks raw
@@ -130,8 +135,7 @@ def _assert_no_forbidden_in_contexts(mock_audit: AsyncMock) -> None:
         ctx_str = str(ctx)
         for token in _AUDIT_FORBIDDEN_IN_CONTEXT:
             assert token not in ctx_str, (
-                f"Forbidden token {token!r} in audit context for action "
-                f"{kwargs.get('action')!r}: {ctx}"
+                f"Forbidden token {token!r} in audit context for action {kwargs.get('action')!r}: {ctx}"
             )
 
 
@@ -159,9 +163,7 @@ class TestAuditActionTypeEnumeration:
 
     def test_all_action_types_distinct(self):
         values = [a.value for a in AuditActionType]
-        assert len(values) == len(set(values)), (
-            f"Duplicate AuditActionType values: {values}"
-        )
+        assert len(values) == len(set(values)), f"Duplicate AuditActionType values: {values}"
 
     def test_action_type_value_format(self):
         # Each action type value must be a dotted lower-case
@@ -218,7 +220,9 @@ class TestAuthLogoutEmits:
         from app.services.auth_service import AuthService
 
         # Build a minimal auth service: bypass DB / Redis reads
-        # by setting raw=None on the redis get.
+        # by setting raw=None on the redis get. db_session is
+        # passed so the audit call fires (the production endpoint
+        # always passes the request-scoped session).
         redis = AsyncMock()
         redis.get = AsyncMock(return_value=None)
         redis.delete = AsyncMock(return_value=1)
@@ -230,12 +234,10 @@ class TestAuthLogoutEmits:
         )
 
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
-            await service.sign_out("test-session-id")
+            await service.sign_out("test-session-id", db_session=MagicMock())
 
         actions = _captured_actions(mock_audit)
-        assert AuditActionType.AUTH_LOGOUT in actions, (
-            f"Expected AUTH_LOGOUT in audit calls, got {actions}"
-        )
+        assert AuditActionType.AUTH_LOGOUT in actions, f"Expected AUTH_LOGOUT in audit calls, got {actions}"
 
         # No raw session content leaks into the logout context.
         _assert_no_forbidden_in_contexts(mock_audit)
@@ -417,14 +419,14 @@ class TestConnectionCreateEmits:
         # missing db_session falls through gracefully).
         service = ConnectionService(
             repository=repo,
-            credential_key="dummy-key",
+            credential_key=_VALID_FERNET_KEY,
             get_db_session=lambda: None,
         )
 
         # Bypass the credential encryption to avoid Fernet key
         # length issues; use a minimal request body.
-        from app.schemas.connection import ConnectionCreate
         from app.db.models.enums import DatabaseType
+        from app.schemas.connection import ConnectionCreate
 
         req = ConnectionCreate(
             display_name="Test",
@@ -438,20 +440,14 @@ class TestConnectionCreateEmits:
         )
 
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
-            # The credential provider may blow up on a dummy key —
-            # we accept that the service's first call may fail; we
-            # only care about the audit shape when the create path
-            # succeeds, so we patch the credential provider.
             with patch(
-                "app.services.connection_service.FernetCredentialProvider"
-            ) as crypto:
-                crypto.return_value.encrypt.return_value = "enc"
-                await service.create(req)
+                "app.schemas.connection.ConnectionResponse.model_validate",
+                return_value=MagicMock(),
+            ):
+                await service.create(req, actor_identity="admin@test", db_session=MagicMock())
 
         actions = _captured_actions(mock_audit)
-        assert AuditActionType.CONNECTION_CREATE in actions, (
-            f"Expected CONNECTION_CREATE in audit calls, got {actions}"
-        )
+        assert AuditActionType.CONNECTION_CREATE in actions, f"Expected CONNECTION_CREATE in audit calls, got {actions}"
         _assert_no_forbidden_in_contexts(mock_audit)
 
 
@@ -491,22 +487,26 @@ class TestConnectionUpdateEmits:
 
         service = ConnectionService(
             repository=repo,
-            credential_key="dummy-key",
+            credential_key=_VALID_FERNET_KEY,
             get_db_session=lambda: None,
         )
 
         from app.schemas.connection import ConnectionUpdate
 
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
-            await service.update(
-                conn.id,
-                ConnectionUpdate(display_name="Renamed"),
-            )
+            with patch(
+                "app.schemas.connection.ConnectionResponse.model_validate",
+                return_value=MagicMock(),
+            ):
+                await service.update(
+                    conn.id,
+                    ConnectionUpdate(display_name="Renamed"),
+                    actor_identity="admin@test",
+                    db_session=MagicMock(),
+                )
 
         actions = _captured_actions(mock_audit)
-        assert AuditActionType.CONNECTION_UPDATE in actions, (
-            f"Expected CONNECTION_UPDATE in audit calls, got {actions}"
-        )
+        assert AuditActionType.CONNECTION_UPDATE in actions, f"Expected CONNECTION_UPDATE in audit calls, got {actions}"
         _assert_no_forbidden_in_contexts(mock_audit)
 
 
@@ -549,17 +549,19 @@ class TestConnectionDeleteEmits:
 
         service = ConnectionService(
             repository=repo,
-            credential_key="dummy-key",
+            credential_key=_VALID_FERNET_KEY,
             get_db_session=lambda: None,
         )
 
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
-            await service.hard_delete(conn.id)
+            await service.hard_delete(
+                conn.id,
+                actor_identity="admin@test",
+                db_session=MagicMock(),
+            )
 
         actions = _captured_actions(mock_audit)
-        assert AuditActionType.CONNECTION_DELETE in actions, (
-            f"Expected CONNECTION_DELETE in audit calls, got {actions}"
-        )
+        assert AuditActionType.CONNECTION_DELETE in actions, f"Expected CONNECTION_DELETE in audit calls, got {actions}"
         _assert_no_forbidden_in_contexts(mock_audit)
 
 
@@ -649,9 +651,7 @@ class TestPolicySchemaMismatchEmits:
     + the _emit_drift helper in policy_enforcement.py."""
 
     def test_action_type_is_shipped(self):
-        assert (
-            AuditActionType.POLICY_SCHEMA_MISMATCH.value == "policy.schema_mismatch"
-        )
+        assert AuditActionType.POLICY_SCHEMA_MISMATCH.value == "policy.schema_mismatch"
 
 
 # ── 23. Aggregate coverage invariant ───────────────────────────────────────
@@ -726,13 +726,13 @@ class TestForbiddenTokenSweep:
         redis.zrem = AsyncMock(return_value=1)
         service = AuthService(user_repository=MagicMock(), redis=redis)
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
-            await service.sign_out("sess-id")
+            await service.sign_out("sess-id", db_session=MagicMock())
         _assert_no_forbidden_in_contexts(mock_audit)
 
     async def test_connection_create_context_no_secrets(self):
-        from app.services.connection_service import ConnectionService
-        from app.schemas.connection import ConnectionCreate
         from app.db.models.enums import DatabaseType
+        from app.schemas.connection import ConnectionCreate
+        from app.services.connection_service import ConnectionService
 
         @dataclass
         class _Conn:
@@ -753,7 +753,7 @@ class TestForbiddenTokenSweep:
         repo.create = AsyncMock(return_value=_Conn())
         service = ConnectionService(
             repository=repo,
-            credential_key="dummy-key",
+            credential_key=_VALID_FERNET_KEY,
             get_db_session=lambda: None,
         )
 
@@ -770,15 +770,15 @@ class TestForbiddenTokenSweep:
 
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
             with patch(
-                "app.services.connection_service.FernetCredentialProvider"
-            ) as crypto:
-                crypto.return_value.encrypt.return_value = "enc"
-                await service.create(req)
+                "app.schemas.connection.ConnectionResponse.model_validate",
+                return_value=MagicMock(),
+            ):
+                await service.create(req, actor_identity="admin", db_session=MagicMock())
         _assert_no_forbidden_in_contexts(mock_audit)
 
     async def test_connection_update_context_no_secrets(self):
-        from app.services.connection_service import ConnectionService
         from app.schemas.connection import ConnectionUpdate
+        from app.services.connection_service import ConnectionService
 
         @dataclass
         class _Conn:
@@ -795,19 +795,26 @@ class TestForbiddenTokenSweep:
             health_status: Any = "untested"
             schema_introspection_status: Any = "none"
 
+        conn = _Conn()
         repo = MagicMock()
-        repo.get_by_id = AsyncMock(return_value=_Conn())
-        repo.update = AsyncMock(return_value=_Conn())
+        repo.get_by_id = AsyncMock(return_value=conn)
+        repo.update = AsyncMock(return_value=conn)
         service = ConnectionService(
             repository=repo,
-            credential_key="dummy-key",
+            credential_key=_VALID_FERNET_KEY,
             get_db_session=lambda: None,
         )
 
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
-            await service.update(
-                _Conn().id, ConnectionUpdate(display_name="R")
-            )
+            with patch(
+                "app.schemas.connection.ConnectionResponse.model_validate",
+                return_value=MagicMock(),
+            ):
+                await service.update(
+                    conn.id,
+                    ConnectionUpdate(display_name="R"),
+                    db_session=MagicMock(),
+                )
         _assert_no_forbidden_in_contexts(mock_audit)
 
     async def test_connection_delete_context_no_secrets(self):
@@ -837,12 +844,12 @@ class TestForbiddenTokenSweep:
         repo.delete = AsyncMock(return_value=None)
         service = ConnectionService(
             repository=repo,
-            credential_key="dummy-key",
+            credential_key=_VALID_FERNET_KEY,
             get_db_session=lambda: None,
         )
 
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
-            await service.hard_delete(conn.id)
+            await service.hard_delete(conn.id, db_session=MagicMock())
         _assert_no_forbidden_in_contexts(mock_audit)
 
     async def test_admin_settings_context_no_secrets(self):
