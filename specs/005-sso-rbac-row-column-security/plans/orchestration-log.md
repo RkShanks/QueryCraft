@@ -3286,7 +3286,7 @@ Clean
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3p (Frontend Foundation Gate)
+## Historical Checkpoint — Through Wave 17.3p (Frontend Foundation Gate)
 
 ### Wave 17.3p Scope (T-732)
 
@@ -3318,4 +3318,101 @@ clean
 ### Commits
 
 - `7e97b1f` docs(T-732): mark task complete in tasks.md
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.4a (Audit Event Coverage)
+
+### Wave 17.4a Scope (T-733, T-734)
+
+- **T-733** — Write comprehensive TDD tests verifying ALL **22** audit action types emit entries. New file `backend/tests/unit/test_audit_event_coverage.py` enumerates every `AuditActionType` enum value, asserts the emit signature, and pins the aggregate invariant that shipped emits match the enum. Includes a forbidden-token sweep covering 6 newly added call sites (no raw SQL/SAML/cert/host/port/credentials/stack traces). [COMPLETED]
+- **T-734** — Add missing audit logging calls across services/endpoints. Brought shipped coverage from 15/22 → 20/22:
+  - `AUTH_LOGOUT` — `auth_service.sign_out()` now emits on session termination.
+  - `CONNECTION_CREATE` / `CONNECTION_UPDATE` / `CONNECTION_DELETE` — `connection_service.{create, update, hard_delete}` now emit; endpoint layer threads `actor_identity` + `db_session`.
+  - `ADMIN_CONFIG_CHANGE` — `admin.update_settings_admin` emits before commit (fail-closed).
+  - `AUDIT_VERIFY` emission site lands with Wave 17.4 endpoint (T-738) — intentionally deferred.
+  - `policy.schema.mismatch` already shipped via Wave 17.3n T-722.
+
+### Action-type coverage matrix (post-wave 17.4a)
+
+| Action type | Emitter | Call site | Status |
+|---|---|---|---|
+| `auth.login.success` | `AuthService.sign_in` | services/auth_service.py | shipped (17.2) |
+| `auth.login.failure` | `AuthService.sign_in_failure` | services/auth_service.py | shipped (17.2) |
+| `auth.logout` | `AuthService.sign_out` | services/auth_service.py | **new (17.4a)** |
+| `auth.sso.validation` | `SsoService.validate_idp` | services/sso_service.py | shipped (17.2) |
+| `query.submit` | `QueryService.submit` | services/query_service.py | shipped (17.0) |
+| `query.validate.pass` | `QueryService.validate` | services/query_service.py | shipped (17.0) |
+| `query.validate.fail` | `QueryService.validate` | services/query_service.py | shipped (17.0) |
+| `query.execute` | `QueryService.execute` | services/query_service.py | shipped (17.0) |
+| `query.accept` | `QueryService.accept` | services/query_service.py | shipped (17.0) |
+| `query.reject` | `QueryService.reject` | services/query_service.py | shipped (17.0) |
+| `role.create` | `RoleService.create_role` | services/role_service.py | shipped (17.1) |
+| `role.update` | `RoleService.update_role` | services/role_service.py | shipped (17.1) |
+| `role.delete` | `RoleService.delete_role` | services/role_service.py | shipped (17.1) |
+| `role.mapping.change` | `RoleService.{grant,revoke,set_user_roles}` | services/role_service.py | shipped (17.1) |
+| `sso.config.change` | `SsoService.{create,update,delete}_config` | services/sso_service.py | shipped (17.3n) |
+| `connection.create` | `ConnectionService.create` | services/connection_service.py | **new (17.4a)** |
+| `connection.update` | `ConnectionService.update` | services/connection_service.py | **new (17.4a)** |
+| `connection.delete` | `ConnectionService.hard_delete` | services/connection_service.py | **new (17.4a)** |
+| `admin.config.change` | `update_settings_admin` | api/v1/admin.py | **new (17.4a)** |
+| `access.denied` | middleware | middleware/rbac.py | shipped (17.2) |
+| `audit.verify` | `AuditService.verify_chain` | services/audit_service.py | **deferred → T-738** |
+| `policy.schema.mismatch` | `PolicyService.apply` | services/policy_service.py | shipped (17.3n) |
+
+**Coverage**: 20/22 shipped. Remaining gap: `audit.verify` emission (intentional, T-738).
+
+### Foundation gates (all green for new code)
+
+```text
+$ cd backend && uv run pytest tests/unit/test_audit_event_coverage.py -q
+....................................                                     [100%]
+36 passed in 0.35s
+
+$ cd backend && uv run pytest tests/unit -q -m "not integration"
+1402 passed, 4 pre-existing environmental failures (DB sequence_number
+  not cleaned between test runs; verified to fail identically on main
+  `49e2efa` — not regressions from this wave)
+
+$ cd backend && uv run ruff check src tests
+All checks passed!
+
+$ cd backend && uv run ruff format --check src tests
+305 files already formatted
+
+$ git diff --check
+clean
+```
+
+### Pre-existing failures (NOT regressions)
+
+```text
+tests/unit/test_audit_service.py::TestAuditService::test_log_creates_entry
+  assert e1.sequence_number == 1  →  actual 5
+tests/unit/test_audit_service.py::TestAuditService::test_log_assigns_increasing_sequence
+tests/unit/test_audit_chain_verification.py::TestAuditChainVerification::test_broken_chain_detects_first_break
+  IntegrityError on sequence_number=2 (duplicate key)
+tests/unit/test_audit_chain_verification.py::TestAuditChainVerification::test_chain_continues_after_break
+```
+
+Root cause: `audit_log_entry.sequence_number` is not reset between
+test runs against the shared Postgres testcontainer. Confirmed on
+`main` @ `49e2efa` by `git stash; git checkout main; pytest …` → same
+4 failures. Not introduced by this wave. Logged for hardening PR
+separate from Wave 17.4.
+
+### Commits (this wave)
+
+- `d1cea5b` test(T-733): comprehensive audit event coverage matrix (36 tests, 22 action types)
+- `16bec77` feat(T-734): emit AUTH_LOGOUT + CONNECTION_* + ADMIN_CONFIG_CHANGE
+- `8cab27d` docs(T-733/T-734): mark complete in tasks.md
+- (this commit) docs: Wave 17.4a checkpoint in orchestration-log
+
+### Open tasks after 17.4a
+
+- T-735 — Audit immutability tests
+- T-736 — Audit redaction comprehensive tests
+- T-737 — Audit log query tests
+- T-738 — `/admin/audit/verify` endpoint (ships `AUDIT_VERIFY` emission)
+- T-739–T-750 — remaining Wave 17.4 surface
 
