@@ -202,6 +202,8 @@ class TestAdminConnectionsPermissionGates:
                 username="u",
                 password="p",
             ),
+            request=MagicMock(),
+            db=AsyncMock(),
             _session={"permissions": [Permission.ADMIN_CONNECTIONS_MANAGE.value]},
             service=mock_service,
         )

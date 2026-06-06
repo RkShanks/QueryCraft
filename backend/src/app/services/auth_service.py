@@ -7,12 +7,15 @@ import uuid
 
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.core.security import verify_password
+from app.db.models.enums import AuditActionType
 from app.repositories.session_repository import SessionRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import UserProfile
+from app.services.audit_service import AuditService
 
 
 class AuthService:
@@ -140,19 +143,46 @@ class AuthService:
             ttl_seconds,
         )
 
-    async def sign_out(self, session_id: str) -> None:
-        """Delete the session from Redis and clean up user index."""
+    async def sign_out(
+        self,
+        session_id: str,
+        db_session: AsyncSession | None = None,
+    ) -> None:
+        """Delete the session from Redis and clean up user index.
+
+        Emits an ``auth.logout`` audit entry when a DB session is
+        provided. The actor is the username pulled from the session
+        blob; the resource_id is the (hashed) session id. Audit
+        failures propagate (fail-closed) per the project-wide
+        contract used by role_service, sso_service, and
+        query_service.
+        """
         # Remove from user session index first (need to discover user_id)
         raw = await self._redis.get(f"session:{session_id}")
+        actor_identity: str | None = None
         if raw:
             try:
                 data = json.loads(raw)
                 user_id = data.get("user_id")
                 if user_id:
                     await self._redis.zrem(f"user_sessions:{user_id}", session_id)
+                _uname = data.get("username")
+                if isinstance(_uname, str):
+                    actor_identity = _uname
             except Exception:
                 pass  # sanitize — never leak raw session content
         await self._redis.delete(f"session:{session_id}")
+
+        if db_session is not None:
+            await AuditService.log(
+                db_session,
+                action=AuditActionType.AUTH_LOGOUT,
+                actor_identity=actor_identity,
+                resource_type="session",
+                resource_id=session_id,
+                outcome="success",
+                context={},
+            )
 
     async def get_me(self, session_id: str) -> UserProfile:
         """Return the user profile for the given session.

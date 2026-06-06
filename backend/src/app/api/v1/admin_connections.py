@@ -6,7 +6,7 @@ CRUD, lifecycle (disable/enable), health test, hard-delete guard.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
@@ -70,15 +70,19 @@ async def list_connections(
 @router.post("", response_model=ConnectionResponse, status_code=status.HTTP_201_CREATED)
 async def create_connection(
     req: ConnectionCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """POST /admin/connections — create a new source database connection.
 
-    Requires ``admin.connections.manage`` permission.
+    Requires ``admin.connections.manage`` permission. Emits a
+    ``connection.create`` audit entry before returning.
     """
+    actor_identity = _session.get("username") if isinstance(_session, dict) else None
     try:
-        return await service.create(req)
+        return await service.create(req, actor_identity=actor_identity, db_session=db)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -114,15 +118,18 @@ async def get_connection(
 async def update_connection(
     connection_id: uuid.UUID,
     req: ConnectionUpdate,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """PUT /admin/connections/{id} — update an existing connection.
 
-    Requires ``admin.connections.manage`` permission.
+    Requires ``admin.connections.manage`` permission. Emits a
+    ``connection.update`` audit entry before returning.
     """
+    actor_identity = _session.get("username") if isinstance(_session, dict) else None
     try:
-        return await service.update(connection_id, req)
+        return await service.update(connection_id, req, actor_identity=actor_identity, db_session=db)
     except ConnectionNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -138,15 +145,18 @@ async def update_connection(
 @router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_connection(
     connection_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """DELETE /admin/connections/{id} — hard-delete a connection (blocked if referenced).
 
-    Requires ``admin.connections.manage`` permission.
+    Requires ``admin.connections.manage`` permission. Emits a
+    ``connection.delete`` audit entry before returning.
     """
+    actor_identity = _session.get("username") if isinstance(_session, dict) else None
     try:
-        await service.hard_delete(connection_id)
+        await service.hard_delete(connection_id, actor_identity=actor_identity, db_session=db)
     except ConnectionNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
