@@ -285,7 +285,7 @@ class TestVerifyResponseShape:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
                 mock_vc.return_value = mock_result
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_log:
+                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                     response = await client.post("/api/v1/admin/audit/verify")
         assert response.status_code == 200
         data = response.json()
@@ -308,7 +308,7 @@ class TestVerifyResponseShape:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
                 mock_vc.return_value = mock_result
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_log:
+                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                     response = await client.post("/api/v1/admin/audit/verify")
         assert response.status_code == 200
         data = response.json()
@@ -330,7 +330,7 @@ class TestVerifyResponseShape:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
                 mock_vc.return_value = mock_result
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_log:
+                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                     response = await client.post("/api/v1/admin/audit/verify")
         assert response.status_code == 200
         data = response.json()
@@ -477,7 +477,7 @@ class TestVerifyNoInfiniteRecursion:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
                 mock_vc.return_value = mock_result
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_log:
+                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                     response = await client.post("/api/v1/admin/audit/verify")
         assert response.status_code == 200
         assert mock_vc.await_count == 1
@@ -527,9 +527,7 @@ class TestVerifyResponsePreLogCount:
                 with patch(_AUDIT_PATCH, side_effect=_log):
                     response = await client.post("/api/v1/admin/audit/verify")
         assert response.status_code == 200
-        assert call_order == ["verify_chain", "log"], (
-            f"verify_chain must run before log; got {call_order!r}"
-        )
+        assert call_order == ["verify_chain", "log"], f"verify_chain must run before log; got {call_order!r}"
 
     @pytest.mark.asyncio
     async def test_response_entries_checked_does_not_include_audit_verify_row(self):
@@ -548,7 +546,7 @@ class TestVerifyResponsePreLogCount:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
                 mock_vc.return_value = mock_result
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_log:
+                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                     response = await client.post("/api/v1/admin/audit/verify")
         assert response.status_code == 200
         data = response.json()
@@ -580,7 +578,7 @@ class TestStatusResponseShape:
                     first_break_at=None,
                     verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
                 )
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock):
+                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                     response = await client.get("/api/v1/admin/audit/status")
         assert response.status_code == 200
         data = response.json()
@@ -601,7 +599,7 @@ class TestStatusResponseShape:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
                 mock_vc.return_value = mock_result
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock):
+                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                     # First: verify (populates last_verification)
                     v_response = await client.post("/api/v1/admin/audit/verify")
                     assert v_response.status_code == 200
@@ -630,7 +628,7 @@ class TestStatusResponseShape:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
                 mock_vc.return_value = mock_result
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock):
+                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                     await client.post("/api/v1/admin/audit/verify")
                     s_response = await client.get("/api/v1/admin/audit/status")
         data = s_response.json()
@@ -650,7 +648,7 @@ class TestStatusResponseShape:
                     first_break_at=None,
                     verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
                 )
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock):
+                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                     response = await client.get("/api/v1/admin/audit/status")
         _assert_no_session_internal_leak(response.json(), _admin_session())
 
@@ -713,9 +711,7 @@ class TestChainRecoveryBehavior:
         await AuditService.verify_chain(db_session)
 
         # Reload and confirm the tampered row was NOT rewritten
-        result = await db_session.execute(
-            sql_text("SELECT row_hash FROM audit_log_entries WHERE sequence_number = 2")
-        )
+        result = await db_session.execute(sql_text("SELECT row_hash FROM audit_log_entries WHERE sequence_number = 2"))
         row_hash_after = result.scalar_one()
         assert row_hash_after == original_bad_hash, (
             f"verify_chain must not auto-repair; tampered row hash changed from "
@@ -813,7 +809,7 @@ class TestChainRecoveryBehavior:
             "app.api.v1.admin_audit.AuditService.verify_chain",
             side_effect=_fake_verify,
         ):
-            with patch(_AUDIT_PATCH, new_callable=AsyncMock):
+            with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
                 await verify_audit_chain(
                     request=fake_request,
                     db=db_session,
@@ -845,10 +841,8 @@ class TestAuditVerifyHasShippedCaller:
             if needle in py.read_text(encoding="utf-8", errors="replace"):
                 hits.append(str(py.relative_to(app_root)))
         assert hits, (
-            f"AuditActionType.AUDIT_VERIFY has no shipped caller in src/app/. "
-            f"After T-738 the /admin/audit/verify endpoint must reference the enum."
+            "AuditActionType.AUDIT_VERIFY has no shipped caller in src/app/. "
+            "After T-738 the /admin/audit/verify endpoint must reference the enum."
         )
         # Must be in the admin_audit module specifically
-        assert any("admin_audit" in h for h in hits), (
-            f"AUDIT_VERIFY emit should live in admin_audit.py; found: {hits}"
-        )
+        assert any("admin_audit" in h for h in hits), f"AUDIT_VERIFY emit should live in admin_audit.py; found: {hits}"

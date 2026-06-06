@@ -149,6 +149,12 @@ _SAFE_KEYS: tuple[str, ...] = (
     "action",
     "sso_group_value",
     "role_id",
+    # T-738 audit.verify context: chain walk result metadata.
+    # verified/entries_checked/first_break_at are safe — they describe
+    # the audit chain walk outcome, not any sensitive value.
+    "verified",
+    "entries_checked",
+    "first_break_at",
 )
 
 
