@@ -171,6 +171,8 @@
   "admin.settings.saved": "تم حفظ الإعدادات",
   "admin.settings.error": "فشل حفظ الإعدادات",
   "common.cancel": "إلغاء",
+  "common.save": "حفظ",
+  "common.add": "إضافة",
   "common.delete": "حذف",
   "common.edit": "تعديل",
   "common.copy": "نسخ",
