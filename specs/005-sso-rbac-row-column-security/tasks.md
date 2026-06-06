@@ -344,9 +344,9 @@
 
 ### Wave 17.3n — Policy Editor + i18n Blocker Fixes (Owner: Kimi ( opencode ))
 
-- [ ] T-740 [US31] Persist role connection policies on backend `POST /admin/roles` and `PUT /admin/roles/{id}`: validate input, upsert `RoleConnectionPolicy` rows, return persisted `connection_policies` in detail response — FR-122
-- [ ] T-741 [US31] Frontend role edit must load full role detail via `GET /admin/roles/{id}` (with `connection_policies`) before opening policy editor; do not initialize editor from list-row summary — FR-122
-- [ ] T-742 [US31] Loosen `GET /admin/connections/{id}/schema` permission contract to accept `admin.roles.manage` OR `admin.connections.manage` (document contract change in endpoint docstring) — FR-122
+- [x] T-740 [US31] Persist role connection policies on backend `POST /admin/roles` and `PUT /admin/roles/{id}`: validate input, upsert `RoleConnectionPolicy` rows, return persisted `connection_policies` in detail response — FR-122
+- [x] T-741 [US31] Frontend role edit must load full role detail via `GET /admin/roles/{id}` (with `connection_policies`) before opening policy editor; do not initialize editor from list-row summary — FR-122
+- [x] T-742 [US31] Loosen `GET /admin/connections/{id}/schema` permission contract to accept `admin.roles.manage` OR `admin.connections.manage` (document contract change in endpoint docstring) — FR-122
 
 ---
 
