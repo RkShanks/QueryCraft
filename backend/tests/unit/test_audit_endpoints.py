@@ -108,11 +108,19 @@ def _unmapped_session() -> dict:
 
 
 def _make_app(session_data: dict | None) -> FastAPI:
-    """Build a FastAPI app with session injection for the admin_audit router."""
+    """Build a FastAPI app with session injection for the admin_audit router.
+
+    The ``get_db`` dependency is overridden to yield a no-op ``AsyncMock``
+    session so HTTP-level tests do not require a live database. The
+    mocked session's ``commit`` is an ``AsyncMock`` coroutine; nothing
+    else is exercised by these tests because ``AuditService.verify_chain``
+    and ``AuditService.log`` are patched at the endpoint level.
+    """
     from fastapi.responses import JSONResponse
     from starlette.middleware.base import BaseHTTPMiddleware
 
     from app.api.v1.admin_audit import router as admin_audit_router
+    from app.core.dependencies import get_db
 
     class SessionInjectionMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
@@ -124,11 +132,33 @@ def _make_app(session_data: dict | None) -> FastAPI:
             return JSONResponse(status_code=exc.status_code, content=exc.detail)
         return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
 
+    async def _mock_get_db():
+        mock_session = MagicMock()
+        mock_session.commit = AsyncMock()
+        mock_session.flush = AsyncMock()
+        yield mock_session
+
     app = FastAPI()
     app.add_middleware(SessionInjectionMiddleware)
     app.add_exception_handler(HTTPException, _http_exc_handler)
+    app.dependency_overrides[get_db] = _mock_get_db
     app.include_router(admin_audit_router, prefix="/api/v1")
     return app
+
+
+@pytest.fixture(autouse=True)
+def _reset_audit_state():
+    """Reset the in-memory last-verification state before each test.
+
+    The status endpoint reads from a module-level singleton. Without
+    this fixture, test order would be observable in ``last_verification``
+    and ``total_entries`` results.
+    """
+    import app.api.v1.admin_audit as admin_audit_module
+
+    admin_audit_module._last_verification = None
+    yield
+    admin_audit_module._last_verification = None
 
 
 # ---------------------------------------------------------------------------
@@ -752,6 +782,7 @@ class TestChainRecoveryBehavior:
                 await verify_audit_chain(
                     request=fake_request,
                     db=db_session,
+                    _session=_admin_session(),
                 )
 
         # Audit was logged once
@@ -783,7 +814,11 @@ class TestChainRecoveryBehavior:
             side_effect=_fake_verify,
         ):
             with patch(_AUDIT_PATCH, new_callable=AsyncMock):
-                await verify_audit_chain(request=fake_request, db=db_session)
+                await verify_audit_chain(
+                    request=fake_request,
+                    db=db_session,
+                    _session=_admin_session(),
+                )
 
         # Exactly one verify_chain call per request, no recursion
         assert call_count["verify"] == 1

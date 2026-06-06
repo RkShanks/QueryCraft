@@ -30,17 +30,17 @@ Coverage mapping (action_type -> test class + call site):
 | 18| connection.delete       | TestConnectionDeleteEmits                 | connection_service.hard_delete (T-734) |
 | 19| admin.config.change     | TestAdminConfigChangeEmits                | admin.py /admin/settings (T-734 add)   |
 | 20| access.denied           | TestAccessDeniedEmits                     | role_service / query_service           |
-| 21| audit.verify            | TestAuditVerifyEmits                      | **deferred to T-738 (Wave 17.4 endpoint)** |
+| 21| audit.verify            | TestAuditVerifyEmits                      | admin_audit.py /admin/audit/verify (T-738) |
 | 22| policy.schema_mismatch  | TestPolicySchemaMismatchEmits             | policy_enforcement drift guard         |
 
 Honest T-734 scope: T-734 added 5 of 6 missing call sites
 (AUTH_LOGOUT, CONNECTION_CREATE, CONNECTION_UPDATE,
 CONNECTION_DELETE, ADMIN_CONFIG_CHANGE). The ``audit.verify``
-emission site is intentionally deferred to T-738 because
-the ``/admin/audit/verify`` endpoint itself ships in that
-task — emitting before the endpoint exists would create a
-dead code path. After T-738 lands, the coverage matrix
-above is 22/22.
+emission site was deferred to T-738 because the
+``/admin/audit/verify`` endpoint itself ships in that task —
+emitting before the endpoint exists would create a dead code
+path. T-738 landed both: the endpoint AND its ``AuditService.log``
+call. The coverage matrix above is now 22/22.
 
 Two-layer verification:
 
@@ -703,18 +703,13 @@ class TestAccessDeniedEmits:
 
 
 class TestAuditVerifyEmits:
-    """``POST /admin/audit/verify`` will record its own run as
+    """``POST /admin/audit/verify`` records its own run as
     ``AUDIT_VERIFY``. T-738 (Wave 17.4 endpoint) implements the
-    endpoint AND the emit call. **T-734 does NOT add an
-    ``audit.verify`` call site** — emitting before the endpoint
-    exists would create a dead code path.
-
-    The structural backstop
-    (``TestAuditActionTypeSourceCodeReference.test_audit_verify_has_no_shipped_caller``)
-    is the only T-733 assertion that holds the line for this
-    action type: it asserts the enum is shipped but no
-    ``AuditService.log`` call references it yet, so the
-    T-734 coverage claim of "20/22 emit" stays honest."""
+    endpoint AND the emit call. The structural backstop
+    (``TestAuditActionTypeSourceCodeReference``) now requires
+    ``AuditActionType.AUDIT_VERIFY`` to be referenced in
+    ``src/app/api/v1/admin_audit.py`` — the deferral is cleared
+    and the coverage matrix is 22/22."""
 
     def test_action_type_is_shipped(self):
         assert AuditActionType.AUDIT_VERIFY.value == "audit.verify"
@@ -796,12 +791,9 @@ class TestAuditActionTypeSourceCodeReference:
     regression for the 16 other action types whose smoke
     flow needs a full app fixture.
 
-    The single exception is ``AUDIT_VERIFY``: the enum is
-    shipped but no call site exists yet — the emit call
-    lands with the ``/admin/audit/verify`` endpoint in
-    T-738. That exception is asserted explicitly so a
-    reviewer reading this test understands why it
-    diverges from the others.
+    As of T-738 (Wave 17.4c) every shipped ``AuditActionType``
+    enum value has a shipped caller — the ``audit.verify``
+    deferral is cleared. The coverage matrix is 22/22.
     """
 
     def _enum_references(self) -> dict[str, list[str]]:
@@ -826,15 +818,13 @@ class TestAuditActionTypeSourceCodeReference:
             out[action.value] = sorted(hits)
         return out
 
-    def test_every_action_type_has_a_shipped_caller_except_audit_verify(self):
+    def test_every_action_type_has_a_shipped_caller(self):
         refs = self._enum_references()
-        # ``audit.verify`` is the only intentional gap: the
-        # /admin/audit/verify endpoint ships in T-738 alongside
-        # its emit call. If a future wave adds more deferrals,
-        # list them here with a one-line reason.
-        KNOWN_DEFERRED: dict[str, str] = {
-            "audit.verify": "emit call lands with /admin/audit/verify endpoint in T-738",
-        }
+        # As of T-738 the AUDIT_VERIFY deferral is cleared. Every
+        # shipped action type must have at least one caller in
+        # src/app/. If a future wave adds a deferral, list it
+        # here with a one-line reason.
+        KNOWN_DEFERRED: dict[str, str] = {}
         for action_value, hits in refs.items():
             if action_value in KNOWN_DEFERRED:
                 assert not hits, (
@@ -850,17 +840,15 @@ class TestAuditActionTypeSourceCodeReference:
                 f"or document the deferral in KNOWN_DEFERRED with a reason."
             )
 
-    def test_audit_verify_has_no_shipped_caller_yet(self):
-        # Pin the deferral: until T-738 lands, the audit.verify
-        # emit call MUST NOT exist in shipped code. If this
-        # test fails, the T-738 endpoint work has started and
-        # the KNOWN_DEFERRED map above should be cleared.
+    def test_coverage_matrix_is_22_of_22_shipped(self):
+        """Pin the Wave 17.4c closeout: 22/22 action types have shipped callers."""
         refs = self._enum_references()
-        assert refs.get("audit.verify", []) == [], (
-            f"AUDIT_VERIFY is supposed to be deferred to T-738 but is "
-            f"already referenced in shipped code: {refs['audit.verify']}. "
-            f"Update the coverage matrix in this test module's docstring "
-            f"and the Wave 17.4a checkpoint in orchestration-log.md."
+        shipped = sorted(a.value for a in AuditActionType)
+        with_caller = sorted(v for v, hits in refs.items() if hits)
+        assert shipped == with_caller, (
+            f"Coverage matrix mismatch.\n"
+            f"  Shipped but no caller: {set(shipped) - set(with_caller)}\n"
+            f"  Has caller but not in enum: {set(with_caller) - set(shipped)}"
         )
 
 

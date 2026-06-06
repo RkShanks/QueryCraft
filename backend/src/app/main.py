@@ -264,6 +264,7 @@ def create_app() -> FastAPI:
     # Register v1 router stubs
     from app.api.v1 import (
         admin,
+        admin_audit,
         admin_connections,
         admin_roles,
         admin_sso,
@@ -283,6 +284,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_connections.router, prefix="/api/v1")
     app.include_router(admin_sso.router, prefix="/api/v1")
     app.include_router(admin_roles.router, prefix="/api/v1")
+    app.include_router(admin_audit.router, prefix="/api/v1")
     app.include_router(connections.router, prefix="/api/v1")
     app.include_router(sessions.router, prefix="/api/v1")
     app.include_router(feedback.router, prefix="/api/v1")
