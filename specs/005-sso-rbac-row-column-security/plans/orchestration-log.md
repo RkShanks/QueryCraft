@@ -3612,9 +3612,26 @@ the `sequence_number` of the first mismatched row.
 
 `GET /api/v1/admin/audit/status` — gated by the same
 permission. Returns `{"total_entries": int, "last_verification":
-VerificationResult | None}`. The in-process `_last_verification`
-is a fast-read cache of the most recent verify result; the
-durable source of truth is the `audit_log_entries` table.
+VerificationResult | None}`. **Both fields are read from the
+`audit_log_entries` table on every request** (no in-process
+cache):
+
+- `total_entries` = `SELECT COUNT(*) FROM audit_log_entries`
+  (the actual durable row count; INCLUDES any appended
+  `audit.verify` rows).
+- `last_verification` is reconstructed from the most recent
+  `audit.verify` row (`action_type = 'audit.verify'`,
+  `ORDER BY sequence_number DESC LIMIT 1`). `verified`,
+  `entries_checked`, `first_break_at` come from the row's
+  `context` JSONB column; `verified_at` is the row's
+  persisted `timestamp`.
+
+The status endpoint is process-restart safe and
+worker-agnostic. The `last_verification` block's
+`entries_checked` is the PRE-log count captured at verify
+time (the same value the `POST /verify` response returned);
+the `total_entries` is the POST-log count. The two values
+disagree by one when a verify has just been performed.
 
 ### Chain recovery contract (Wave 17.4c — S-008)
 
@@ -3699,11 +3716,13 @@ context or endpoint response.
 - `<test T-737>` `dc79e6f` test(T-737): TDD tests for audit verify/status endpoints
 - `<feat T-738/T-739/T-740>` `71b2d59` feat(T-738/T-739/T-740): audit verify/status endpoints
 - `<chore T-738>` `255eab4` chore(T-738): ruff compliance + safe keys for audit.verify context
-- (this commit) docs(W17.4c): wave 17.4c checkpoint in orchestration-log
+- `<docs W17.4c>` `78b054d` docs(W17.4c): wave 17.4c checkpoint in orchestration-log
+- `<test T-738 fix>` `b8a00e8` test(T-738): status contract — total_entries from DB, last_verification from latest audit.verify row (PR #143 blocker fix RED)
+- `<fix T-738>` `969476c` fix(T-738): status total_entries from DB, last_verification from latest audit.verify row (PR #143 blocker fix GREEN)
+- (this follow-up commit) docs(W17.4c): update status contract section — durable DB-derived, no in-process cache (PR #143 blocker fix docs)
 
 ### Open tasks after 17.4c
 
-- T-739–T-750 — remaining Wave 17.4 surface
 - T-741 — `AUDIT_RETENTION_MONTHS` config setting
 - T-742 — Wave 17.4 backend gate
 - T-743+ — Frontend audit verification page
