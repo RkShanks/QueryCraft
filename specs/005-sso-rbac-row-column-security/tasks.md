@@ -364,8 +364,8 @@
 
 ### Backend — Audit Immutability and Redaction (Owner: Kimi ( opencode ))
 
-- [ ] T-735 [US28] Write TDD tests verifying audit entry immutability (application-level UPDATE/DELETE rejected) in `backend/tests/unit/test_audit_immutability_comprehensive.py` — FR-141, SC-060
-- [ ] T-736 [US28] Write TDD tests verifying no secrets/credentials/tokens in any audit entry context across all action types in `backend/tests/unit/test_audit_redaction_comprehensive.py` — FR-143, SC-061
+- [x] T-735 [US28] Write TDD tests verifying audit entry immutability (application-level UPDATE/DELETE rejected) in `backend/tests/unit/test_audit_immutability_comprehensive.py` — FR-141, SC-060
+- [x] T-736 [US28] Write TDD tests verifying no secrets/credentials/tokens in any audit entry context across all action types in `backend/tests/unit/test_audit_redaction_comprehensive.py` — FR-143, SC-061
 
 ### Backend — Audit Verification Endpoint (Owner: Kimi ( opencode ))
 
