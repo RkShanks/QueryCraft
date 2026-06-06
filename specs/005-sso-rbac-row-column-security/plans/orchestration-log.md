@@ -3323,54 +3323,74 @@ clean
 
 ## Current Wave Checkpoint — Through Wave 17.4a (Audit Event Coverage)
 
-### Wave 17.4a Scope (T-733, T-734)
+### Wave 17.4a Scope (T-733, T-734) — honest status
 
-- **T-733** — Write comprehensive TDD tests verifying ALL **22** audit action types emit entries. New file `backend/tests/unit/test_audit_event_coverage.py` enumerates every `AuditActionType` enum value, asserts the emit signature, and pins the aggregate invariant that shipped emits match the enum. Includes a forbidden-token sweep covering 6 newly added call sites (no raw SQL/SAML/cert/host/port/credentials/stack traces). [COMPLETED]
-- **T-734** — Add missing audit logging calls across services/endpoints. Brought shipped coverage from 15/22 → 20/22:
-  - `AUTH_LOGOUT` — `auth_service.sign_out()` now emits on session termination.
-  - `CONNECTION_CREATE` / `CONNECTION_UPDATE` / `CONNECTION_DELETE` — `connection_service.{create, update, hard_delete}` now emit; endpoint layer threads `actor_identity` + `db_session`.
+- **T-733** — Comprehensive TDD test matrix in `backend/tests/unit/test_audit_event_coverage.py` (38 tests). Two-layer verification:
+  - **Per-action smoke tests** for the 5 T-734 call sites (`AUTH_LOGOUT`, `CONNECTION_*`, `ADMIN_CONFIG_CHANGE`).
+  - **Structural source-code reference backstop** (`TestAuditActionTypeSourceCodeReference`) — scans `src/app/**/*.py` for every `AuditActionType.XXX` reference; fails if a shipped emit call disappears. `audit.verify` is the one explicit deferral.
+  - **Forbidden-token sweep** covers 5 T-734 call sites; no raw SQL/SAML/cert/host/port/credentials/stack traces in any audit context.
+  [COMPLETED]
+- **T-734** — Added **5 of 6** missing audit call sites. Brought shipped coverage **15/22 → 20/22**:
+  - `AUTH_LOGOUT` — `auth_service.sign_out()` emits; **resource_id is a `sha256:<hex>` digest, not the raw session token** (security fix from PR-141 review).
+  - `CONNECTION_CREATE` / `CONNECTION_UPDATE` / `CONNECTION_DELETE` — `connection_service.{create, update, hard_delete}` emit; endpoint layer threads `actor_identity` + `db_session`.
   - `ADMIN_CONFIG_CHANGE` — `admin.update_settings_admin` emits before commit (fail-closed).
-  - `AUDIT_VERIFY` emission site lands with Wave 17.4 endpoint (T-738) — intentionally deferred.
-  - `policy.schema.mismatch` already shipped via Wave 17.3n T-722.
+  - `AUDIT_VERIFY` emit site intentionally NOT added by T-734. It lands with the `/admin/audit/verify` endpoint in T-738 — emitting before the endpoint exists would create a dead code path. Coverage matrix stays at 20/22 until T-738 lands.
+  [COMPLETED — 5/6 missing call sites]
 
-### Action-type coverage matrix (post-wave 17.4a)
+### Action-type coverage matrix (post-wave 17.4a, T-734 fix pass)
 
-| Action type | Emitter | Call site | Status |
-|---|---|---|---|
-| `auth.login.success` | `AuthService.sign_in` | services/auth_service.py | shipped (17.2) |
-| `auth.login.failure` | `AuthService.sign_in_failure` | services/auth_service.py | shipped (17.2) |
-| `auth.logout` | `AuthService.sign_out` | services/auth_service.py | **new (17.4a)** |
-| `auth.sso.validation` | `SsoService.validate_idp` | services/sso_service.py | shipped (17.2) |
-| `query.submit` | `QueryService.submit` | services/query_service.py | shipped (17.0) |
-| `query.validate.pass` | `QueryService.validate` | services/query_service.py | shipped (17.0) |
-| `query.validate.fail` | `QueryService.validate` | services/query_service.py | shipped (17.0) |
-| `query.execute` | `QueryService.execute` | services/query_service.py | shipped (17.0) |
-| `query.accept` | `QueryService.accept` | services/query_service.py | shipped (17.0) |
-| `query.reject` | `QueryService.reject` | services/query_service.py | shipped (17.0) |
-| `role.create` | `RoleService.create_role` | services/role_service.py | shipped (17.1) |
-| `role.update` | `RoleService.update_role` | services/role_service.py | shipped (17.1) |
-| `role.delete` | `RoleService.delete_role` | services/role_service.py | shipped (17.1) |
-| `role.mapping.change` | `RoleService.{grant,revoke,set_user_roles}` | services/role_service.py | shipped (17.1) |
-| `sso.config.change` | `SsoService.{create,update,delete}_config` | services/sso_service.py | shipped (17.3n) |
-| `connection.create` | `ConnectionService.create` | services/connection_service.py | **new (17.4a)** |
-| `connection.update` | `ConnectionService.update` | services/connection_service.py | **new (17.4a)** |
-| `connection.delete` | `ConnectionService.hard_delete` | services/connection_service.py | **new (17.4a)** |
-| `admin.config.change` | `update_settings_admin` | api/v1/admin.py | **new (17.4a)** |
-| `access.denied` | middleware | middleware/rbac.py | shipped (17.2) |
-| `audit.verify` | `AuditService.verify_chain` | services/audit_service.py | **deferred → T-738** |
-| `policy.schema.mismatch` | `PolicyService.apply` | services/policy_service.py | shipped (17.3n) |
+| # | Action type | Emitter | Call site | Status |
+|---|---|---|---|---|
+| 1 | `auth.login.success` | `SsoService.process_*_callback` | services/sso_service.py | shipped (17.2) |
+| 2 | `auth.login.failure` | `SsoService.*` failure paths | services/sso_service.py | shipped (17.2) |
+| 3 | `auth.logout` | `AuthService.sign_out` | services/auth_service.py | **new (17.4a) — `sha256:` digest** |
+| 4 | `auth.sso.validation` | `SsoService._validate_*_claims` | services/sso_service.py | shipped (17.2) |
+| 5 | `query.submit` | `QueryService.submit` | services/query_service.py | shipped (17.0) |
+| 6 | `query.validate.pass` | `QueryService.validate` | services/query_service.py | shipped (17.0) |
+| 7 | `query.validate.fail` | `QueryService.validate` | services/query_service.py | shipped (17.0) |
+| 8 | `query.execute` | `QueryService.execute` | services/query_service.py | shipped (17.0) |
+| 9 | `query.accept` | `QueryService.accept` | services/query_service.py | shipped (17.0) |
+| 10 | `query.reject` | `QueryService.reject` | services/query_service.py | shipped (17.0) |
+| 11 | `role.create` | `RoleService.create_role` | services/role_service.py | shipped (17.1) |
+| 12 | `role.update` | `RoleService.update_role` | services/role_service.py | shipped (17.1) |
+| 13 | `role.delete` | `RoleService.delete_role` | services/role_service.py | shipped (17.1) |
+| 14 | `role.mapping.change` | `RoleService.{grant,revoke,set_user_roles}` | services/role_service.py | shipped (17.1) |
+| 15 | `sso.config.change` | `SsoService.{create,update,delete}_config` | services/sso_service.py | shipped (17.3n) |
+| 16 | `connection.create` | `ConnectionService.create` | services/connection_service.py | **new (17.4a)** |
+| 17 | `connection.update` | `ConnectionService.update` | services/connection_service.py | **new (17.4a)** |
+| 18 | `connection.delete` | `ConnectionService.hard_delete` | services/connection_service.py | **new (17.4a)** |
+| 19 | `admin.config.change` | `update_settings_admin` | api/v1/admin.py | **new (17.4a)** |
+| 20 | `access.denied` | role_service / query_service | services/* | shipped (17.2) |
+| 21 | `audit.verify` | — | — | **deferred → T-738** (endpoint + emit land together) |
+| 22 | `policy.schema.mismatch` | `PolicyEnforcementService._emit_drift` | services/policy_enforcement.py | shipped (17.3n) |
 
-**Coverage**: 20/22 shipped. Remaining gap: `audit.verify` emission (intentional, T-738).
+**Coverage: 20/22 shipped.** Remaining gap is `audit.verify` emission (intentional, T-738).
 
-### Foundation gates (all green for new code)
+### Security contract — `resource_id` redaction (T-734 fix pass)
+
+| Call site | `resource_id` shape | Notes |
+|---|---|---|
+| `auth.logout` | `sha256:<64-hex-chars>` | **Fix from PR-141 review**: was raw session token; now SHA-256 digest. Lets auditors correlate without exposing bearer credentials. |
+| `role.{create,update,delete,mapping.change}` | `str(<role id>)` | Durable UUID is the audit invariant key per audit_log_entry contract. |
+| `sso.config.change` | `str(<provider id>)` | Same. |
+| `connection.{create,update,delete}` | `str(<connection id>)` | Same. |
+| `admin.config.change` | `"global"` | Singleton; not a real resource id. |
+| `query.*` | `str(<query attempt id>)` | Same. |
+| `auth.login.*` | `str(<user id>)` or `subject_id` (no token). | Same. |
+| `access.denied` | endpoint path or resource name | No secret. |
+| `policy.schema.mismatch` | `str(<policy id>)` | Same. |
+
+**No raw session tokens, no passwords, no API keys, no SAML / cert / XML, no SQL, no hostnames, no DB driver names, no stack traces** ever appear in `resource_id` or `context` of any emit site. The forbidden-token sweep + the explicit `sha256:` digest assertion on `auth.logout` enforce this.
+
+### Foundation gates (all green for new code, T-734 fix pass)
 
 ```text
 $ cd backend && uv run pytest tests/unit/test_audit_event_coverage.py -q
-....................................                                     [100%]
-36 passed in 0.35s
+......................................                                   [100%]
+38 passed in 0.48s
 
 $ cd backend && uv run pytest tests/unit -q -m "not integration"
-1402 passed, 4 pre-existing environmental failures (DB sequence_number
+1404 passed, 4 pre-existing environmental failures (DB sequence_number
   not cleaned between test runs; verified to fail identically on main
   `49e2efa` — not regressions from this wave)
 
@@ -3401,18 +3421,20 @@ test runs against the shared Postgres testcontainer. Confirmed on
 4 failures. Not introduced by this wave. Logged for hardening PR
 separate from Wave 17.4.
 
-### Commits (this wave)
+### Commits (this wave, including T-734 fix pass)
 
-- `d1cea5b` test(T-733): comprehensive audit event coverage matrix (36 tests, 22 action types)
+- `d1cea5b` test(T-733): comprehensive audit event coverage matrix
+- `d4a664c` style(T-733): apply ruff format to coverage test
 - `16bec77` feat(T-734): emit AUTH_LOGOUT + CONNECTION_* + ADMIN_CONFIG_CHANGE
 - `8cab27d` docs(T-733/T-734): mark complete in tasks.md
-- (this commit) docs: Wave 17.4a checkpoint in orchestration-log
+- `4b06577` docs(T-733/T-734): Wave 17.4a checkpoint in orchestration-log
+- (this commit) fix(T-734): hash `auth.logout` resource_id; structural backstop test; honest AUDIT_VERIFY status
 
 ### Open tasks after 17.4a
 
 - T-735 — Audit immutability tests
 - T-736 — Audit redaction comprehensive tests
 - T-737 — Audit log query tests
-- T-738 — `/admin/audit/verify` endpoint (ships `AUDIT_VERIFY` emission)
+- T-738 — `/admin/audit/verify` endpoint (ships `AUDIT_VERIFY` emission) — **brings coverage 20/22 → 22/22**
 - T-739–T-750 — remaining Wave 17.4 surface
 
