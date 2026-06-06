@@ -148,17 +148,18 @@ def _make_app(session_data: dict | None) -> FastAPI:
 
 @pytest.fixture(autouse=True)
 def _reset_audit_state():
-    """Reset the in-memory last-verification state before each test.
+    """Reset any in-memory last-verification state before each test.
 
-    The status endpoint reads from a module-level singleton. Without
-    this fixture, test order would be observable in ``last_verification``
-    and ``total_entries`` results.
+    Historical: the admin_audit module used to keep a module-level
+    ``_last_verification`` singleton. That was removed in the
+    status-contract fix — the endpoint now derives both
+    ``total_entries`` and ``last_verification`` from the durable
+    ``audit_log_entries`` table on every request. This fixture is
+    kept as a no-op so any future module-level state has a single
+    reset point. Tests that mutate in-process state should do so
+    explicitly via ``import app.api.v1.admin_audit as m; m.X = ...``.
     """
-    import app.api.v1.admin_audit as admin_audit_module
-
-    admin_audit_module._last_verification = None
     yield
-    admin_audit_module._last_verification = None
 
 
 # ---------------------------------------------------------------------------
@@ -559,98 +560,245 @@ class TestVerifyResponsePreLogCount:
 
 
 # ---------------------------------------------------------------------------
-# GET /admin/audit/status — response shape
+# GET /admin/audit/status — response shape (DB-derived)
 # ---------------------------------------------------------------------------
 
 
 class TestStatusResponseShape:
-    """GET /admin/audit/status returns total_entries + last_verification."""
+    """GET /admin/audit/status returns ``total_entries`` from the DB and
+    reconstructs ``last_verification`` from the most recent
+    ``audit.verify`` row in ``audit_log_entries``.
+
+    These tests exercise the real DB (via ``db_session`` +
+    ``clean_audit_table``) because the contract is the durable row
+    count, not an in-process counter. They are unit tests in the
+    taxonomy sense (no full app stack) and they auto-skip if the
+    testcontainer Postgres is unavailable — they do NOT carry the
+    ``integration`` marker.
+    """
 
     @pytest.mark.asyncio
-    async def test_status_empty_chain_returns_zero_and_null(self):
-        app = _make_app(_admin_session())
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
-                mock_vc.return_value = VerificationResult(
-                    verified=True,
-                    entries_checked=0,
-                    first_break_at=None,
-                    verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
-                )
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
-                    response = await client.get("/api/v1/admin/audit/status")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["total_entries"] == 0
-        assert data["last_verification"] is None
-        _assert_no_forbidden_in_response(data)
+    @pytest.mark.usefixtures("clean_audit_table")
+    async def test_status_empty_db_returns_zero_and_null(self, db_session):
+        from app.api.v1.admin_audit import get_audit_status
+
+        result = await get_audit_status(db=db_session, _session=_admin_session())
+        assert result["total_entries"] == 0
+        assert result["last_verification"] is None
+        _assert_no_forbidden_in_response(result)
 
     @pytest.mark.asyncio
-    async def test_status_after_verify_returns_total_and_last_verification(self):
-        mock_result = VerificationResult(
-            verified=True,
-            entries_checked=8,
-            first_break_at=None,
-            verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
+    @pytest.mark.usefixtures("clean_audit_table")
+    async def test_status_before_verify_returns_actual_db_count(self, db_session):
+        """When the DB has rows but no verify has run, total_entries reflects
+        the real row count (not zero, not an in-process value)."""
+        # Pre-populate audit log with three non-verify rows
+        for _ in range(3):
+            await AuditService.log(db_session, action=AuditActionType.QUERY_SUBMIT)
+        await db_session.commit()
+
+        from app.api.v1.admin_audit import get_audit_status
+
+        result = await get_audit_status(db=db_session, _session=_admin_session())
+        # total_entries is the ACTUAL count from the DB, not 0.
+        assert result["total_entries"] == 3, (
+            f"status must return real DB count; got {result['total_entries']!r}, expected 3"
         )
-        app = _make_app(_admin_session())
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
-                mock_vc.return_value = mock_result
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
-                    # First: verify (populates last_verification)
-                    v_response = await client.post("/api/v1/admin/audit/verify")
-                    assert v_response.status_code == 200
-                    # Then: status (returns last_verification)
-                    s_response = await client.get("/api/v1/admin/audit/status")
-        assert s_response.status_code == 200
-        data = s_response.json()
-        # total_entries reflects the entries checked (pre-log count from verify)
-        assert data["total_entries"] == 8
-        assert data["last_verification"] is not None
-        assert data["last_verification"]["verified"] is True
-        assert data["last_verification"]["entries_checked"] == 8
-        assert data["last_verification"]["verified_at"] == "2026-06-06T12:00:00+00:00"
-        _assert_no_forbidden_in_response(data)
+        # No audit.verify has been logged yet, so last_verification is None.
+        assert result["last_verification"] is None
+        _assert_no_forbidden_in_response(result)
 
     @pytest.mark.asyncio
-    async def test_status_after_broken_verify_includes_first_break_at(self):
-        mock_result = VerificationResult(
-            verified=False,
-            entries_checked=100,
-            first_break_at=42,
-            verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
+    @pytest.mark.usefixtures("clean_audit_table")
+    async def test_status_after_verify_returns_actual_count_including_audit_verify_row(
+        self,
+        db_session,
+    ):
+        """After a verify call, total_entries reflects the actual DB count
+        which INCLUDES the appended audit.verify row (one higher than the
+        pre-log entries_checked returned by the verify endpoint itself)."""
+        # Two rows before verify
+        await AuditService.log(db_session, action=AuditActionType.QUERY_SUBMIT)
+        await AuditService.log(db_session, action=AuditActionType.QUERY_ACCEPT)
+        await db_session.commit()
+
+        from app.api.v1.admin_audit import verify_audit_chain
+
+        fake_request = MagicMock()
+        fake_request.state.session = _admin_session()
+        with patch(
+            "app.api.v1.admin_audit.AuditService.verify_chain",
+            new_callable=AsyncMock,
+        ) as mock_vc:
+            mock_vc.return_value = VerificationResult(
+                verified=True,
+                entries_checked=2,
+                first_break_at=None,
+                verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
+            )
+            v_response = await verify_audit_chain(
+                request=fake_request,
+                db=db_session,
+                _session=_admin_session(),
+            )
+        assert v_response["entries_checked"] == 2  # pre-log count
+
+        from app.api.v1.admin_audit import get_audit_status
+
+        result = await get_audit_status(db=db_session, _session=_admin_session())
+        # total_entries is the ACTUAL DB count: 2 originals + 1 audit.verify = 3
+        assert result["total_entries"] == 3, (
+            f"status must return real DB count including the appended audit.verify "
+            f"row; got {result['total_entries']!r}, expected 3"
         )
-        app = _make_app(_admin_session())
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
-                mock_vc.return_value = mock_result
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
-                    await client.post("/api/v1/admin/audit/verify")
-                    s_response = await client.get("/api/v1/admin/audit/status")
-        data = s_response.json()
-        assert data["last_verification"]["verified"] is False
-        assert data["last_verification"]["first_break_at"] == 42
-        assert data["total_entries"] == 100
+        # last_verification is reconstructed from the persisted audit.verify row
+        assert result["last_verification"] is not None
+        assert result["last_verification"]["verified"] is True
+        assert result["last_verification"]["entries_checked"] == 2
+        assert result["last_verification"]["first_break_at"] is None
+        assert result["last_verification"]["verified_at"] == "2026-06-06T12:00:00+00:00"
+        _assert_no_forbidden_in_response(result)
 
     @pytest.mark.asyncio
-    async def test_status_sanitized_no_session_internal_leak(self):
-        app = _make_app(_admin_session())
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            with patch("app.api.v1.admin_audit.AuditService.verify_chain", new_callable=AsyncMock) as mock_vc:
-                mock_vc.return_value = VerificationResult(
-                    verified=True,
-                    entries_checked=0,
-                    first_break_at=None,
-                    verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
-                )
-                with patch(_AUDIT_PATCH, new_callable=AsyncMock) as _mock_log:  # noqa: F841
-                    response = await client.get("/api/v1/admin/audit/status")
-        _assert_no_session_internal_leak(response.json(), _admin_session())
+    @pytest.mark.usefixtures("clean_audit_table")
+    async def test_status_persisted_broken_chain_includes_first_break_at(self, db_session):
+        """A broken-chain verify is still recorded as an audit.verify row;
+        status returns that row's first_break_at."""
+        from app.api.v1.admin_audit import verify_audit_chain
+
+        fake_request = MagicMock()
+        fake_request.state.session = _admin_session()
+        with patch(
+            "app.api.v1.admin_audit.AuditService.verify_chain",
+            new_callable=AsyncMock,
+        ) as mock_vc:
+            mock_vc.return_value = VerificationResult(
+                verified=False,
+                entries_checked=10,
+                first_break_at=7,
+                verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
+            )
+            await verify_audit_chain(
+                request=fake_request,
+                db=db_session,
+                _session=_admin_session(),
+            )
+
+        from app.api.v1.admin_audit import get_audit_status
+
+        result = await get_audit_status(db=db_session, _session=_admin_session())
+        assert result["last_verification"] is not None
+        assert result["last_verification"]["verified"] is False
+        assert result["last_verification"]["first_break_at"] == 7
+        assert result["last_verification"]["entries_checked"] == 10
+        _assert_no_forbidden_in_response(result)
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("clean_audit_table")
+    async def test_status_survives_in_process_state_reset(self, db_session):
+        """The status endpoint is DB-derived; clearing any in-process state
+        (simulating a process restart) must not affect the response."""
+        # Pre-populate with one row and one audit.verify row
+        await AuditService.log(db_session, action=AuditActionType.QUERY_SUBMIT)
+
+        from app.api.v1.admin_audit import verify_audit_chain
+
+        fake_request = MagicMock()
+        fake_request.state.session = _admin_session()
+        with patch(
+            "app.api.v1.admin_audit.AuditService.verify_chain",
+            new_callable=AsyncMock,
+        ) as mock_vc:
+            mock_vc.return_value = VerificationResult(
+                verified=True,
+                entries_checked=1,
+                first_break_at=None,
+                verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
+            )
+            await verify_audit_chain(
+                request=fake_request,
+                db=db_session,
+                _session=_admin_session(),
+            )
+
+        # Simulate process restart by wiping any module-level state.
+        import app.api.v1.admin_audit as admin_audit_module
+
+        for attr in ("_last_verification",):
+            if hasattr(admin_audit_module, attr):
+                setattr(admin_audit_module, attr, None)
+
+        from app.api.v1.admin_audit import get_audit_status
+
+        result = await get_audit_status(db=db_session, _session=_admin_session())
+        # Both total_entries and last_verification are DB-derived
+        # and must survive the in-process state wipe.
+        assert result["total_entries"] == 2  # 1 original + 1 audit.verify
+        assert result["last_verification"] is not None
+        assert result["last_verification"]["verified"] is True
+        assert result["last_verification"]["entries_checked"] == 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("clean_audit_table")
+    async def test_status_sanitized_no_session_internal_leak(self, db_session):
+        from app.api.v1.admin_audit import get_audit_status
+
+        result = await get_audit_status(db=db_session, _session=_admin_session())
+        _assert_no_session_internal_leak(result, _admin_session())
+        _assert_no_forbidden_in_response(result)
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("clean_audit_table")
+    async def test_status_uses_most_recent_audit_verify_row(self, db_session):
+        """When multiple audit.verify rows exist, status returns the most
+        recent one (highest sequence_number) — not the first one ever."""
+        from app.api.v1.admin_audit import verify_audit_chain
+
+        fake_request = MagicMock()
+        fake_request.state.session = _admin_session()
+
+        # First verify
+        with patch(
+            "app.api.v1.admin_audit.AuditService.verify_chain",
+            new_callable=AsyncMock,
+        ) as mock_vc:
+            mock_vc.return_value = VerificationResult(
+                verified=True,
+                entries_checked=1,
+                first_break_at=None,
+                verified_at=datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC),
+            )
+            await verify_audit_chain(
+                request=fake_request,
+                db=db_session,
+                _session=_admin_session(),
+            )
+
+        # Second verify (broken chain)
+        with patch(
+            "app.api.v1.admin_audit.AuditService.verify_chain",
+            new_callable=AsyncMock,
+        ) as mock_vc:
+            mock_vc.return_value = VerificationResult(
+                verified=False,
+                entries_checked=5,
+                first_break_at=3,
+                verified_at=datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC),
+            )
+            await verify_audit_chain(
+                request=fake_request,
+                db=db_session,
+                _session=_admin_session(),
+            )
+
+        from app.api.v1.admin_audit import get_audit_status
+
+        result = await get_audit_status(db=db_session, _session=_admin_session())
+        # The most recent verify is the broken-chain one
+        assert result["last_verification"]["verified"] is False
+        assert result["last_verification"]["first_break_at"] == 3
+        assert result["last_verification"]["entries_checked"] == 5
+        assert result["last_verification"]["verified_at"] == "2026-06-06T12:00:00+00:00"
 
 
 # ---------------------------------------------------------------------------
