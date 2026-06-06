@@ -3455,4 +3455,104 @@ hardcode `sequence_number=1`/`2`.
 - T-738 — `/admin/audit/verify` endpoint (ships `AUDIT_VERIFY` emission) — **brings coverage 20/22 → 22/22**
 - T-739–T-750 — remaining Wave 17.4 surface
 
+---
+
+## Current Wave Checkpoint — Through Wave 17.4b (Audit Immutability + Redaction)
+
+This checkpoint supersedes the 17.4a checkpoint above. The
+earlier 17.4a section is preserved as the historical record
+of how we got here; the live "where we are now" pointer is
+this section.
+
+### Wave 17.4b Scope (T-735, T-736) — both shipped, no product code changed
+
+| T-ID | File | Tests | What it pins |
+|---|---|---|---|
+| T-735 | `backend/tests/unit/test_audit_immutability_comprehensive.py` | 63 | Per-action-type UPDATE/DELETE rejection (22+22 parametrized over `AuditActionType`), per-field immutability (11 columns), multi-flush resilience (2), structural ORM listener wiring (2), model column sanity (1), service-surface invariants (3). |
+| T-736 | `backend/tests/unit/test_audit_redaction_comprehensive.py` | 91 | Per-action-type redaction (22 parametrized), per-key redaction across every sensitive token + case variant (36), safe-key preservation (24), deep nesting redaction (3), edge cases (4), structural forbidden-value sweep across all shipped `AuditService.log(...)` call sites (2). |
+
+**Total: 154 new tests, 0 product code changes.** Both
+production guards (SQLAlchemy `before_update` /
+`before_delete` listeners on `AuditLogEntry`; `_redact_value`
++ `_SENSITIVE_TOKENS` redaction helper) were already shipped.
+T-735 / T-736 document the contract so a future regression
+in either guard is named at the source.
+
+### Security contract — re-confirmed (Wave 17.4b)
+
+The runtime redaction helper is **key-based**: any context
+key whose normalized form contains a sensitive token
+(`password`, `secret`, `token`, `apikey`, `credential`,
+`certificate`, `privatekey`, `assertion`, `samlresponse`,
+`authorization`, `encryptionkey`, `bearer`, `jwt`) is
+replaced with `"[REDACTED]"`. The structural sweep
+(`TestNoLiteralSecretsInEmitSiteContexts`) is the only
+defense against a future maintainer passing a raw secret
+under a safe-named key (e.g. `notes`, `description`,
+`value`). Today, every literal `context=` dict at every
+shipped `AuditService.log(...)` call site uses only keys
+in the safe set (`question`, `dialect`, `count`, `name`,
+`priority`, `updated_fields`, `reason`, `outcome`,
+`resource_type`, `resource_id`, `actor_identity`,
+`llm_context_cap`, `max_regenerate_attempts`, `row_count`,
+`duration_ms`, `display_name`, `database_type`,
+`changed_fields`, `question_length`, `rules`, `protocol`,
+`action`, `sso_group_value`, `role_id`).
+
+No raw session tokens, no passwords, no API keys, no
+SAML / cert / XML, no SQL fragments, no hostnames, no DB
+driver names, no stack traces appear in any audit
+`resource_id` or `context` of any shipped call site.
+
+### Foundation gates (Wave 17.4b — all green)
+
+```text
+$ cd backend && uv run pytest tests/unit/test_audit_immutability_comprehensive.py tests/unit/test_audit_redaction_comprehensive.py -q
+........................................................................   [ 46%]
+........................................................................   [ 93%]
+..........                                                               [100%]
+154 passed in 12.38s
+
+$ cd backend && uv run pytest tests/unit/test_audit_event_coverage.py -q
+......................................                                   [100%]
+38 passed in 0.48s
+
+$ cd backend && uv run pytest tests/unit -q -m "not integration"
+1562 passed, 9 deselected, 12 warnings in 27.10s
+
+$ cd backend && uv run ruff check src tests
+All checks passed!
+
+$ cd backend && uv run ruff format --check src tests
+307 files already formatted
+
+$ git diff --check
+clean
+```
+
+**Full backend unit gate: 1562 passed, 0 failed** (up from
+1408 in 17.4a; +154 new immutability + redaction tests).
+Not waived, not xfail, not skipped. No assertions weakened.
+No product behavior changed. No raw secrets/tokens/
+credentials/hostnames/ports/schema internals/SQL/driver
+errors/stack traces/SAML/XML/certs in any audit context.
+`auth.logout` resource_id digest contract preserved
+(`sha256:<64-hex>`, never raw session token).
+
+### Commits (Wave 17.4b)
+
+- `<test T-735>` test(T-735): comprehensive audit immutability matrix
+- `<test T-736>` test(T-736): comprehensive audit redaction matrix
+- `<docs T-735>` docs(T-735): mark task complete in tasks.md
+- `<docs T-736>` docs(T-736): mark task complete in tasks.md
+- (this commit) docs(W17.4b): wave 17.4b checkpoint in orchestration-log
+
+### Open tasks after 17.4b
+
+- T-737 — TDD tests for `/admin/audit/verify` + `/admin/audit/status` endpoints
+- T-738 — Implement audit endpoints in `backend/src/app/api/v1/admin_audit.py` (ships `AUDIT_VERIFY` emission) — **brings coverage 20/22 → 22/22**
+- T-739–T-750 — remaining Wave 17.4 surface
+- T-741 — `AUDIT_RETENTION_MONTHS` config setting
+- T-742 — Wave 17.4 backend gate
+- T-743+ — Frontend audit verification page
 
