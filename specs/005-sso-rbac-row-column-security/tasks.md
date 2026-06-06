@@ -369,10 +369,10 @@
 
 ### Backend — Audit Verification Endpoint (Owner: Kimi ( opencode ))
 
-- [ ] T-737 [US28] Write TDD tests for audit verification endpoint (`POST /admin/audit/verify`) and status endpoint (`GET /admin/audit/status`) in `backend/tests/unit/test_audit_endpoints.py` — FR-141, FR-144
-- [ ] T-738 [US28] Implement audit endpoints in `backend/src/app/api/v1/admin_audit.py`: `POST /admin/audit/verify` (triggers chain walk, returns `VerificationResult`), `GET /admin/audit/status` (returns last verification + entry count) per api-contracts.md, with `require_permission('admin.audit.verify')` — FR-141, FR-144
-- [ ] T-739 [US28] Register audit admin router in `backend/src/app/main.py` — FR-144
-- [ ] T-740 [US28] Implement chain recovery behavior on broken chain (report `sequence_number` of first mismatch, no auto-repair, continue appending, log verification result as audit event) per S-008 — FR-141
+- [x] T-737 [US28] Write TDD tests for audit verification endpoint (`POST /admin/audit/verify`) and status endpoint (`GET /admin/audit/status`) in `backend/tests/unit/test_audit_endpoints.py` — FR-141, FR-144
+- [x] T-738 [US28] Implement audit endpoints in `backend/src/app/api/v1/admin_audit.py`: `POST /admin/audit/verify` (triggers chain walk, returns `VerificationResult`), `GET /admin/audit/status` (returns last verification + entry count) per api-contracts.md, with `require_permission('admin.audit.verify')` — FR-141, FR-144
+- [x] T-739 [US28] Register audit admin router in `backend/src/app/main.py` — FR-144
+- [x] T-740 [US28] Implement chain recovery behavior on broken chain (report `sequence_number` of first mismatch, no auto-repair, continue appending, log verification result as audit event) per S-008 — FR-141
 
 ### Backend — Retention Config (Owner: Kimi ( opencode ))
 

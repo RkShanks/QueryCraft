@@ -3457,12 +3457,16 @@ hardcode `sequence_number=1`/`2`.
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.4b (Audit Immutability + Redaction)
+## Wave 17.4b — Audit Immutability + Redaction (historical checkpoint)
 
 This checkpoint supersedes the 17.4a checkpoint above. The
 earlier 17.4a section is preserved as the historical record
 of how we got here; the live "where we are now" pointer is
 this section.
+
+**Historical**: this section is now superseded by the 17.4c
+checkpoint below. The 17.4a section above this is also
+historical. The live pointer is the 17.4c section.
 
 ### Wave 17.4b Scope (T-735, T-736) — both shipped, no product code changed
 
@@ -3552,6 +3556,173 @@ errors/stack traces/SAML/XML/certs in any audit context.
 - T-737 — TDD tests for `/admin/audit/verify` + `/admin/audit/status` endpoints
 - T-738 — Implement audit endpoints in `backend/src/app/api/v1/admin_audit.py` (ships `AUDIT_VERIFY` emission) — **brings coverage 20/22 → 22/22**
 - T-739–T-750 — remaining Wave 17.4 surface
+- T-741 — `AUDIT_RETENTION_MONTHS` config setting
+- T-742 — Wave 17.4 backend gate
+- T-743+ — Frontend audit verification page
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.4c (Audit Verification + Status Endpoints)
+
+This checkpoint supersedes the 17.4b checkpoint above. The
+earlier 17.4a / 17.4b sections are preserved as the
+historical record of how we got here; the live "where we are
+now" pointer is this section.
+
+### Wave 17.4c Scope (T-737, T-738, T-739, T-740) — all shipped
+
+| T-ID | File | Tests | What it pins |
+|---|---|---|---|
+| T-737 | `backend/tests/unit/test_audit_endpoints.py` | 26 (across 7 classes) | TDD spec for the two admin audit endpoints, including a structural pin that `AuditActionType.AUDIT_VERIFY` is referenced in shipped `src/app/` code. |
+| T-738 | `backend/src/app/api/v1/admin_audit.py` (new, 175 lines) | — | `POST /api/v1/admin/audit/verify` (triggers chain walk, returns `VerificationResult`) and `GET /api/v1/admin/audit/status` (returns last verification + entry count) per `api-contracts.md`. Both guarded by `require_permission('admin.audit.verify')`. |
+| T-739 | `backend/src/app/main.py` | — | Registers the new `admin_audit` router in the v1 API surface. |
+| T-740 | `admin_audit.verify_audit_chain` + `AuditService.verify_chain` + `tests/unit/test_audit_endpoints.py::TestChainRecoveryBehavior` | 4 | S-008 chain recovery: broken chain reports `sequence_number` of first mismatch, no auto-repair (tampered row hash preserved across flush), appending continues (`sequence_number = last_seq + 1`), the verification itself is recorded as an `audit.verify` audit event. |
+
+**Audit event coverage: 22/22 shipped** (matrix pinned by
+`test_audit_event_coverage.py::TestCoverageMatrix::test_coverage_matrix_is_22_of_22_shipped`).
+The `AUDIT_VERIFY` row is shipped by `admin_audit.py` and is
+removed from `KNOWN_DEFERRED`. The shipped emit count is
+verified by `TestNoLiteralSecretsInEmitSiteContexts`
+on every call site (per the structural sweep).
+
+### Endpoint contract (Wave 17.4c)
+
+`POST /api/v1/admin/audit/verify` — gated by
+`require_permission('admin.audit.verify')`. Invokes
+`AuditService.verify_chain(...)` against the durable
+`audit_log_entries` table, captures the result, then emits a
+single `audit.verify` audit event via `AuditService.log(...)`
+with:
+
+- `resource_type = "audit_chain"`
+- `resource_id = "audit_chain"` (stable constant — no raw
+  row UUIDs / hash digests are surfaced to the caller)
+- `action = AuditActionType.AUDIT_VERIFY`
+- `outcome = "ok"` if `result.verified`, `"broken"` otherwise
+- `context = {"verified": bool, "entries_checked": int, "first_break_at": int | None}`
+
+The response body is the `VerificationResult` exactly as
+returned by `AuditService.verify_chain(...)` (verified,
+entries_checked, first_break_at, verified_at). `entries_checked`
+is the pre-log count — the `audit.verify` row is not included
+in the count (pinned by
+`test_response_entries_checked_does_not_include_audit_verify_row`).
+If `result.first_break_at is not None`, it is reported as
+the `sequence_number` of the first mismatched row.
+
+`GET /api/v1/admin/audit/status` — gated by the same
+permission. Returns `{"total_entries": int, "last_verification":
+VerificationResult | None}`. **Both fields are read from the
+`audit_log_entries` table on every request** (no in-process
+cache):
+
+- `total_entries` = `SELECT COUNT(*) FROM audit_log_entries`
+  (the actual durable row count; INCLUDES any appended
+  `audit.verify` rows).
+- `last_verification` is reconstructed from the most recent
+  `audit.verify` row (`action_type = 'audit.verify'`,
+  `ORDER BY sequence_number DESC LIMIT 1`). `verified`,
+  `entries_checked`, `first_break_at` come from the row's
+  `context` JSONB column; `verified_at` is the row's
+  persisted `timestamp`.
+
+The status endpoint is process-restart safe and
+worker-agnostic. The `last_verification` block's
+`entries_checked` is the PRE-log count captured at verify
+time (the same value the `POST /verify` response returned);
+the `total_entries` is the POST-log count. The two values
+disagree by one when a verify has just been performed.
+
+### Chain recovery contract (Wave 17.4c — S-008)
+
+`AuditService.verify_chain` reports the **first** broken row
+(`first_break_at = sequence_number`) and **never** mutates any
+row. `AuditService.log(...)` always appends to the chain with
+`sequence_number = last_seq + 1`, regardless of whether prior
+rows are broken. The endpoint is a pure read; it does not
+attempt to repair, prune, or rewrite the chain. The structural
+test `TestChainRecoveryBehavior::test_tampered_row_hash_unchanged_after_verify`
+flushes a tampered row to the DB, runs `verify_chain`, then
+re-reads the row and asserts the stored `row_hash` is identical
+to the pre-verify value.
+
+### Recursion-safety (Wave 17.4c)
+
+`AuditService.log(...)` does NOT call
+`AuditService.verify_chain(...)` internally. The verify
+emission is owned by the endpoint, not by the service. The
+`verify_chain` call runs first, the result is captured, and
+`AuditService.log(AUDIT_VERIFY, ...)` runs second. This ordering
+is pinned by `TestVerifyEmissionOrdering` and
+`TestRecursionSafety::test_no_infinite_audit_verify_loop`
+(static source check that `app.services.audit_service.AuditService.log`
+contains no reference to `verify_chain`; runtime
+`call_count["verify"]` is asserted to be `1`).
+
+### Security contract — re-confirmed (Wave 17.4c)
+
+`AUDIT_VERIFY` context keys (`verified`, `entries_checked`,
+`first_break_at`) are added to the structural safe-key set in
+`test_audit_redaction_comprehensive.py`. The response body
+undergoes `_assert_no_forbidden_in_response` and
+`_assert_no_session_internal_leak` checks in the
+`TestVerifyEndpointResponseSanitization` and
+`TestStatusEndpointResponseSanitization` classes. The
+`admin_audit` module itself is checked by
+`TestNoLiteralSecretsInEmitSiteContexts` (it passes — all
+three context keys are in the safe set).
+
+No raw session tokens, no passwords, no API keys, no
+SAML / cert / XML, no SQL fragments, no hostnames, no DB
+driver names, no stack traces appear in the endpoint
+response, the audit `resource_id`, or the audit `context`.
+The `admin_audit` router uses the `require_permission` guard
+with `Permission.ADMIN_AUDIT_VERIFY = "admin.audit.verify"`.
+
+### Foundation gates (Wave 17.4c — all green)
+
+```text
+$ cd backend && uv run pytest tests/unit/test_audit_endpoints.py tests/unit/test_audit_chain_verification.py -q
+.....................................................                    [100%]
+29 passed in <...>
+
+$ cd backend && uv run pytest tests/unit/test_audit_event_coverage.py -q
+......................................                                   [100%]
+38 passed in <...>
+
+$ cd backend && uv run pytest tests/unit -q -m "not integration"
+1591 passed, 9 deselected, 0 failed in <...>
+
+$ cd backend && uv run ruff check src tests
+All checks passed!
+
+$ cd backend && uv run ruff format --check src tests
+309 files already formatted
+
+$ git diff --check
+clean
+```
+
+**Full backend unit gate: 1591 passed, 0 failed** (up from
+1562 in 17.4b; +29 new audit-endpoint + audit-chain tests).
+Not waived, not xfail, not skipped. No assertions weakened.
+No product code path that redaction guards changed; no raw
+secrets/tokens/credentials/hostnames/ports/schema internals/
+SQL/driver errors/stack traces/SAML/XML/certs in any audit
+context or endpoint response.
+
+### Commits (Wave 17.4c)
+
+- `<test T-737>` `dc79e6f` test(T-737): TDD tests for audit verify/status endpoints
+- `<feat T-738/T-739/T-740>` `71b2d59` feat(T-738/T-739/T-740): audit verify/status endpoints
+- `<chore T-738>` `255eab4` chore(T-738): ruff compliance + safe keys for audit.verify context
+- `<docs W17.4c>` `78b054d` docs(W17.4c): wave 17.4c checkpoint in orchestration-log
+- `<test T-738 fix>` `b8a00e8` test(T-738): status contract — total_entries from DB, last_verification from latest audit.verify row (PR #143 blocker fix RED)
+- `<fix T-738>` `969476c` fix(T-738): status total_entries from DB, last_verification from latest audit.verify row (PR #143 blocker fix GREEN)
+- (this follow-up commit) docs(W17.4c): update status contract section — durable DB-derived, no in-process cache (PR #143 blocker fix docs)
+
+### Open tasks after 17.4c
+
 - T-741 — `AUDIT_RETENTION_MONTHS` config setting
 - T-742 — Wave 17.4 backend gate
 - T-743+ — Frontend audit verification page
