@@ -29,6 +29,16 @@ from app.services.connection_service import (
 router = APIRouter(prefix="/admin/connections", tags=["Admin Connections"])
 
 
+# T-742 (Wave 17.3n): module-level singleton so Depends() does not run
+# the require_permission factory in argument defaults. Accepts either
+# admin.connections.manage (original) or admin.roles.manage (so the
+# role policy editor's schema browser works for roles-only admins).
+_get_schema_permission = require_permission(
+    Permission.ADMIN_CONNECTIONS_MANAGE,
+    Permission.ADMIN_ROLES_MANAGE,
+)
+
+
 def _get_connection_service(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> ConnectionService:
@@ -269,12 +279,18 @@ async def refresh_schema(
 @router.get("/{connection_id}/schema")
 async def get_schema(
     connection_id: uuid.UUID,
-    _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
+    _session: dict = Depends(_get_schema_permission),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
     """GET /admin/connections/{id}/schema — get introspected schema summary.
 
-    Requires ``admin.connections.manage`` permission.
+    Contract (T-742, Wave 17.3n): accepts either
+    ``admin.connections.manage`` (original) or ``admin.roles.manage`` (added
+    so the role policy editor's schema browser works for roles-only
+    admins). All other permissions still 403 with the standard
+    sanitized ``error.forbidden`` payload. The endpoint does NOT echo
+    the connection id, the user's role id, or the requested permission
+    set. No response shape change.
     """
     try:
         result = await service.get_schema_summary(connection_id)
