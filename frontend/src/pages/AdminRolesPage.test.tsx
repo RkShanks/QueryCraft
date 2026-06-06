@@ -8,6 +8,24 @@ vi.mock('../hooks/useAdminRoles', () => ({
   useAdminRoles: vi.fn(),
 }));
 
+vi.mock('../hooks/useConnections', () => ({
+  useConnections: vi.fn(() => ({
+    listQuery: {
+      data: [],
+      isLoading: false,
+      isError: false,
+    },
+  })),
+}));
+
+vi.mock('../hooks/useConnectionSchema', () => ({
+  useConnectionSchema: vi.fn(() => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+  })),
+}));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -169,6 +187,7 @@ describe('AdminRolesPage', () => {
         priority: 25,
         permissions: ['query.submit'],
         group_mappings: ['new-group-sso'],
+        connection_policies: [],
       }));
     });
   });
@@ -204,6 +223,7 @@ describe('AdminRolesPage', () => {
         id: '123',
         data: expect.objectContaining({
           description: 'Updated description',
+          connection_policies: [],
         }),
       }));
     });

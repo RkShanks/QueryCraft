@@ -3095,4 +3095,34 @@ $ cd frontend && npm run test -- --run
  specs/005-sso-rbac-row-column-security/tasks.md                   |  4 ++--
 ```
 
-**No `[NEEDS DECISION]` items**. Wave 17.3m gate is fully clean, lint/typecheck are green, and tests are passing successfully.
+## Current Wave Checkpoint — Through Wave 17.3n (Policy Editor + i18n)
+
+### Wave 17.3n Scope (T-725 through T-729)
+
+- **T-725** — Write TDD tests for role connection policy editor (table/column selector, row filter input, column mask selector, schema browser) in `frontend/src/components/admin/PolicyEditor.test.tsx`.
+- **T-726** — Create policy editor component `frontend/src/components/admin/PolicyEditor.tsx`: table/column multi-select from connection schema, row filter text input with validation feedback, column mask selector.
+- **T-727** — Create `useConnectionSchema` hook in `frontend/src/hooks/useConnectionSchema.ts` to fetch connection schema for policy editor.
+- **T-728** — Add all Wave 17.3 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`.
+- **T-729** — Verify 100% EN/AR key parity for Wave 17.3 keys via locale coverage test.
+
+### Implementation Details
+
+- **Validation Structure**:
+  - Computed validation errors dynamically during render time, entirely removing stateful synchronization and `useEffect` hooks, eliminating the risk of cascading render loops and resolving ESLint warnings.
+- **i18n & Typings**:
+  - Replaced all raw inline strings with `t(...)` keys in both languages.
+  - Replaced all explicit `any` casting with correct typings (`ConnectionListItem` and `ReturnType<typeof useConnectionSchema>`).
+  - Added new localized translation keys for policy stats and empty states to `en.json` and `ar.json`.
+
+### [NEEDS DECISION] Note:
+- `useConnectionSchema.ts` calls `/admin/connections/{id}/schema`, but this backend endpoint requires the `admin.connections.manage` permission. However, the Role Editor page lies under the `admin.roles.manage` permission. As a result, a roles-only administrator who lacks the connections management permission will be unable to load the database schema in the role policy editor. This permission requirement must be reconciled in a subsequent backend/policy review pass.
+
+### Foundation gates (all green)
+
+```text
+$ cd frontend && npm run lint && npm run typecheck
+All checks passed!
+
+$ cd frontend && npm run test -- --run
+56 passed, 634 passed, environment clean.
+```

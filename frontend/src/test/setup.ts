@@ -35,19 +35,23 @@ import en from '../locales/en.json';
 
 const translations: Record<string, string> = en as unknown as Record<string, string>;
 
+const mockT = (key: string, options?: unknown) => {
+  if (typeof options === 'string') return options;
+  const opts = options as Record<string, unknown> | undefined;
+  const defaultValue = opts?.defaultValue as string | undefined;
+  const value = translations[key] ?? defaultValue ?? key;
+  return value.replace(/\{\{(\w+)\}\}/g, (_, match) => String(opts?.[match] ?? `{{${match}}}`));
+};
+
+const mockI18n = {
+  changeLanguage: () => Promise.resolve(),
+  language: 'en',
+};
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: unknown) => {
-      if (typeof options === 'string') return options;
-      const opts = options as Record<string, unknown> | undefined;
-      const defaultValue = opts?.defaultValue as string | undefined;
-      const value = translations[key] ?? defaultValue ?? key;
-      return value.replace(/\{\{(\w+)\}\}/g, (_, match) => String(opts?.[match] ?? `{{${match}}}`));
-    },
-    i18n: {
-      changeLanguage: () => Promise.resolve(),
-      language: 'en',
-    },
+    t: mockT,
+    i18n: mockI18n,
   }),
   initReactI18next: {
     type: '3rdParty',

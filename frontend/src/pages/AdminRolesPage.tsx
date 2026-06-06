@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminRoles } from '../hooks/useAdminRoles';
 import { GroupMappingEditor } from '../components/admin/GroupMappingEditor';
+import { PolicyEditor } from '../components/admin/PolicyEditor';
 import { Shield, Plus, RefreshCw, Trash2, Edit2, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
-import type { Role, RoleCreateData, RoleUpdateData } from '../hooks/useAdminRoles';
+import type { Role, RoleCreateData, RoleUpdateData, ConnectionPolicyItem } from '../hooks/useAdminRoles';
 
 interface Toast {
   id: string;
@@ -68,6 +69,7 @@ export const AdminRolesPage: React.FC = () => {
   const [priority, setPriority] = useState<number | ''>('');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [mappedGroups, setMappedGroups] = useState<string[]>([]);
+  const [connectionPolicies, setConnectionPolicies] = useState<ConnectionPolicyItem[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const addToast = (type: 'success' | 'error', message: string) => {
@@ -117,6 +119,7 @@ export const AdminRolesPage: React.FC = () => {
     setPriority(role.priority);
     setSelectedPermissions(role.permissions);
     setMappedGroups(role.group_mappings.map((gm) => gm.sso_group_value));
+    setConnectionPolicies(role.connection_policies || []);
   };
 
   const handleCancel = () => {
@@ -132,6 +135,7 @@ export const AdminRolesPage: React.FC = () => {
     setPriority('');
     setSelectedPermissions([]);
     setMappedGroups([]);
+    setConnectionPolicies([]);
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -156,6 +160,7 @@ export const AdminRolesPage: React.FC = () => {
         priority: priorityVal,
         permissions: selectedPermissions,
         group_mappings: mappedGroups,
+        connection_policies: connectionPolicies,
       };
       updateMutation.mutate({
         id: editingRole.id,
@@ -169,6 +174,7 @@ export const AdminRolesPage: React.FC = () => {
         priority: priorityVal,
         permissions: selectedPermissions,
         group_mappings: mappedGroups,
+        connection_policies: connectionPolicies,
       };
       createMutation.mutate(createData);
     }
@@ -310,6 +316,10 @@ export const AdminRolesPage: React.FC = () => {
 
           <div className="border-t border-gray-800 pt-6">
             <GroupMappingEditor groups={mappedGroups} onChange={setMappedGroups} />
+          </div>
+
+          <div className="border-t border-gray-800 pt-6">
+            <PolicyEditor policies={connectionPolicies} onChange={setConnectionPolicies} />
           </div>
 
           {editingRole?.is_builtin && (

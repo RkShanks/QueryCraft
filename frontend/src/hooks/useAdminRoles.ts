@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { client } from '../api/generated/client.gen';
 
+export interface ConnectionPolicyItem {
+  id?: string;
+  connection_id: string;
+  allowed_tables: Array<{ table: string; columns: string[] }>;
+  row_filters: Array<{ table: string; filter: string }>;
+  column_masks: Array<{ table: string; columns: string[] }>;
+}
+
 export interface Role {
   id: string;
   name: string;
@@ -10,6 +18,7 @@ export interface Role {
   is_builtin: boolean;
   group_mappings: Array<{ id: string; sso_group_value: string }>;
   connection_policy_count: number;
+  connection_policies?: ConnectionPolicyItem[];
   created_at: string;
   updated_at: string;
 }
@@ -20,6 +29,7 @@ export interface RoleCreateData {
   priority: number;
   permissions: string[];
   group_mappings: string[];
+  connection_policies?: ConnectionPolicyItem[];
 }
 
 export interface RoleUpdateData {
@@ -28,6 +38,7 @@ export interface RoleUpdateData {
   priority?: number;
   permissions?: string[];
   group_mappings?: string[];
+  connection_policies?: ConnectionPolicyItem[];
 }
 
 export interface GroupMapping {
@@ -67,6 +78,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
           description: data.description,
           priority: data.priority,
           permissions: data.permissions,
+          connection_policies: data.connection_policies || [],
         },
         throwOnError: true,
       });
@@ -112,6 +124,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
           description: data.description,
           priority: data.priority,
           permissions: data.permissions,
+          connection_policies: data.connection_policies || [],
         },
         throwOnError: true,
       });
