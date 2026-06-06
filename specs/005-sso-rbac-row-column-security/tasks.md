@@ -319,8 +319,8 @@
 
 ### Frontend — Masked Column Indicator (Owner: Gemini)
 
-- [ ] T-723 [US31] Write TDD tests for masked column indicator in `ResultTable` (localized badge, renders for masked columns, EN/AR text) in `frontend/src/components/query/ResultTable.test.tsx` (extend) — FR-133
-- [ ] T-724 [US31] Implement masked column indicator in `frontend/src/components/query/ResultTable.tsx`: render localized "column was masked" badge when `ColumnMeta.masked === true` — FR-133
+- [x] T-723 [US31] Write TDD tests for masked column indicator in `ResultTable` (localized badge, renders for masked columns, EN/AR text) in `frontend/src/components/query/ResultTable.test.tsx` (extend) — FR-133
+- [x] T-724 [US31] Implement masked column indicator in `frontend/src/components/query/ResultTable.tsx`: render localized "column was masked" badge when `ColumnMeta.masked === true` — FR-133
 
 ### Frontend — Policy Editor (Owner: Gemini)
 
