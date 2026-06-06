@@ -1,5 +1,6 @@
 """AuthService — login, logout, session management."""
 
+import hashlib
 import json
 import os
 import time
@@ -152,10 +153,12 @@ class AuthService:
 
         Emits an ``auth.logout`` audit entry when a DB session is
         provided. The actor is the username pulled from the session
-        blob; the resource_id is the (hashed) session id. Audit
-        failures propagate (fail-closed) per the project-wide
-        contract used by role_service, sso_service, and
-        query_service.
+        blob. The resource_id is **never** the raw session token:
+        it is a SHA-256 digest with prefix ``sha256:`` so the audit
+        log retains a stable, non-reversible identifier for
+        correlation. Audit failures propagate (fail-closed) per
+        the project-wide contract used by role_service,
+        sso_service, and query_service.
         """
         # Remove from user session index first (need to discover user_id)
         raw = await self._redis.get(f"session:{session_id}")
@@ -174,12 +177,13 @@ class AuthService:
         await self._redis.delete(f"session:{session_id}")
 
         if db_session is not None:
+            session_token_digest = "sha256:" + hashlib.sha256(session_id.encode("utf-8")).hexdigest()
             await AuditService.log(
                 db_session,
                 action=AuditActionType.AUTH_LOGOUT,
                 actor_identity=actor_identity,
                 resource_type="session",
-                resource_id=session_id,
+                resource_id=session_token_digest,
                 outcome="success",
                 context={},
             )

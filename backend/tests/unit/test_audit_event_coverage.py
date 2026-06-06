@@ -30,8 +30,39 @@ Coverage mapping (action_type -> test class + call site):
 | 18| connection.delete       | TestConnectionDeleteEmits                 | connection_service.hard_delete (T-734) |
 | 19| admin.config.change     | TestAdminConfigChangeEmits                | admin.py /admin/settings (T-734 add)   |
 | 20| access.denied           | TestAccessDeniedEmits                     | role_service / query_service           |
-| 21| audit.verify            | TestAuditVerifyEmits                      | admin_audit.py verify (T-738)          |
+| 21| audit.verify            | TestAuditVerifyEmits                      | **deferred to T-738 (Wave 17.4 endpoint)** |
 | 22| policy.schema_mismatch  | TestPolicySchemaMismatchEmits             | policy_enforcement drift guard         |
+
+Honest T-734 scope: T-734 added 5 of 6 missing call sites
+(AUTH_LOGOUT, CONNECTION_CREATE, CONNECTION_UPDATE,
+CONNECTION_DELETE, ADMIN_CONFIG_CHANGE). The ``audit.verify``
+emission site is intentionally deferred to T-738 because
+the ``/admin/audit/verify`` endpoint itself ships in that
+task — emitting before the endpoint exists would create a
+dead code path. After T-738 lands, the coverage matrix
+above is 22/22.
+
+Two-layer verification:
+
+1. **Smoke tests** (where a real call site is reachable in
+   unit-test scope without spinning up the full app):
+   ``TestAuthLogoutEmits``, ``TestConnection{Create,Update,Delete}Emits``,
+   ``TestAdminConfigChangeEmits``. These call the actual
+   service/endpoint function and assert the AuditActionType
+   is captured by the patched ``AuditService.log``.
+
+2. **Source-code reference aggregate test**
+   (``TestAuditActionTypeSourceCodeReference``) — for every
+   ``AuditActionType`` enum value, scans ``src/app/**/*.py``
+   and asserts at least one file contains a string reference
+   to that enum. This is a structural invariant that fails
+   if the emit call disappears (e.g. someone deletes the
+   ``AuditService.log`` call from a service module). It does
+   **not** replace the per-action smoke test for the 5
+   call sites owned by T-734; it is a backstop for the
+   16 action types whose smoke flow requires a full app
+   fixture (live SSO callback, query execution, role
+   service DB transaction, etc.).
 
 The test patches ``app.services.audit_service.AuditService.log``
 uniformly so all modules calling ``AuditService.log`` via the
@@ -39,9 +70,11 @@ canonical import path are captured in a single mock. This is the
 same pattern used by ``test_query_audit_logging.py``,
 ``test_rbac_audit_logging.py``, and ``test_sso_audit_logging.py``.
 
-Resource IDs (e.g. role id, connection id, attempt id) are
-stringified and may live in ``resource_id`` per the existing audit
-model (see audit_log_entry.py). No raw SQL, hostnames, passwords,
+Resource IDs (e.g. role id, connection id) are stringified
+and may live in ``resource_id`` per the existing audit
+model (see audit_log_entry.py). **Session tokens are never
+stored raw** — see ``auth_service.sign_out`` which uses a
+``sha256:`` digest prefix. No raw SQL, hostnames, passwords,
 tokens, SAML / cert / XML, or stack traces ever appear in
 ``context`` — that contract is enforced by the redaction helper
 in audit_service.py and the explicit forbidden-tokens list
@@ -53,6 +86,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -71,6 +105,12 @@ _AUDIT_PATCH = "app.services.audit_service.AuditService.log"
 # construction. Real encryption is irrelevant — the audit
 # shape is the assertion target.
 _VALID_FERNET_KEY = "d1OQc28ErbKH8nnhjNbchX5y_1EyXcfclkK1hPjPqFY="
+
+# Path to the application source tree, used by the
+# source-code reference aggregate test to verify that
+# every shipped AuditActionType enum value is actually
+# referenced by at least one shipped module.
+_APP_SRC_ROOT = Path(__file__).resolve().parents[2] / "src" / "app"
 
 
 # Forbidden tokens for audit context redaction — kept here
@@ -119,6 +159,18 @@ def _context_for(mock_audit: AsyncMock, action: AuditActionType) -> dict[str, An
         if a == action:
             return kwargs.get("context") or {}
     return {}
+
+
+def _resource_id_for(mock_audit: AsyncMock, action: AuditActionType) -> Any:
+    """Return the first resource_id for a call with ``action``."""
+    for call in mock_audit.call_args_list:
+        kwargs = call.kwargs or {}
+        a = kwargs.get("action")
+        if a is None and call.args:
+            a = call.args[0]
+        if a == action:
+            return kwargs.get("resource_id")
+    return None
 
 
 def _assert_no_forbidden_in_contexts(mock_audit: AsyncMock) -> None:
@@ -233,11 +285,30 @@ class TestAuthLogoutEmits:
             redis=redis,
         )
 
+        raw_session_token = "test-session-id"
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
-            await service.sign_out("test-session-id", db_session=MagicMock())
+            await service.sign_out(raw_session_token, db_session=MagicMock())
 
         actions = _captured_actions(mock_audit)
         assert AuditActionType.AUTH_LOGOUT in actions, f"Expected AUTH_LOGOUT in audit calls, got {actions}"
+
+        # Resource ID must be a non-reversible digest, NOT the raw
+        # session token. A raw token in the audit log would let any
+        # auditor impersonate the user whose logout was recorded.
+        resource_id = _resource_id_for(mock_audit, AuditActionType.AUTH_LOGOUT)
+        assert resource_id is not None, "AUTH_LOGOUT must include a resource_id"
+        assert isinstance(resource_id, str), f"resource_id must be string, got {type(resource_id).__name__}"
+        assert resource_id != raw_session_token, (
+            f"AUTH_LOGOUT resource_id is the raw session token: {resource_id!r}. "
+            "sign_out must use a sha256: digest, not the raw token."
+        )
+        assert resource_id.startswith("sha256:"), (
+            f"AUTH_LOGOUT resource_id must be a sha256: digest, got {resource_id!r}"
+        )
+        assert len(resource_id) == len("sha256:") + 64, (
+            f"AUTH_LOGOUT resource_id digest must be 32 bytes hex (64 chars), "
+            f"got length {len(resource_id)}: {resource_id!r}"
+        )
 
         # No raw session content leaks into the logout context.
         _assert_no_forbidden_in_contexts(mock_audit)
@@ -632,10 +703,18 @@ class TestAccessDeniedEmits:
 
 
 class TestAuditVerifyEmits:
-    """``POST /admin/audit/verify`` records its own run as
-    ``AUDIT_VERIFY``. T-738 (later wave) implements the endpoint;
-    T-734 (this wave) confirms the AuditActionType value is shipped
-    and prepared for the endpoint."""
+    """``POST /admin/audit/verify`` will record its own run as
+    ``AUDIT_VERIFY``. T-738 (Wave 17.4 endpoint) implements the
+    endpoint AND the emit call. **T-734 does NOT add an
+    ``audit.verify`` call site** — emitting before the endpoint
+    exists would create a dead code path.
+
+    The structural backstop
+    (``TestAuditActionTypeSourceCodeReference.test_audit_verify_has_no_shipped_caller``)
+    is the only T-733 assertion that holds the line for this
+    action type: it asserts the enum is shipped but no
+    ``AuditService.log`` call references it yet, so the
+    T-734 coverage claim of "20/22 emit" stays honest."""
 
     def test_action_type_is_shipped(self):
         assert AuditActionType.AUDIT_VERIFY.value == "audit.verify"
@@ -700,6 +779,88 @@ class TestAggregateCoverage:
             f"AuditActionType values not documented in coverage matrix: "
             f"{shipped - documented}. Add them to test_audit_event_coverage.py "
             f"and update the coverage table in the module docstring."
+        )
+
+
+# ── 24. Source-code reference aggregate (structural backstop) ──────────────
+
+
+class TestAuditActionTypeSourceCodeReference:
+    """For every shipped ``AuditActionType`` enum value, assert
+    there is at least one ``src/app/**/*.py`` file that
+    references it. This is the structural backstop: if a
+    future change deletes an ``AuditService.log(...)`` call
+    from the service that owns an action, the per-action
+    smoke test for the new T-734 sites will catch the
+    regression, and this aggregate test catches the
+    regression for the 16 other action types whose smoke
+    flow needs a full app fixture.
+
+    The single exception is ``AUDIT_VERIFY``: the enum is
+    shipped but no call site exists yet — the emit call
+    lands with the ``/admin/audit/verify`` endpoint in
+    T-738. That exception is asserted explicitly so a
+    reviewer reading this test understands why it
+    diverges from the others.
+    """
+
+    def _enum_references(self) -> dict[str, list[str]]:
+        """Return ``{enum_value: [file_paths_referencing_it]}``.
+
+        Scans every ``.py`` file under ``_APP_SRC_ROOT`` for
+        the literal string ``"AuditActionType.XXX"`` where
+        ``XXX`` is the enum member name. The literal-string
+        match is intentionally cheap and language-agnostic
+        — a real call site imports the enum and references
+        it as ``AuditActionType.XXX`` in an
+        ``AuditService.log(action=AuditActionType.XXX, ...)``
+        call.
+        """
+        out: dict[str, list[str]] = {}
+        for action in AuditActionType:
+            needle = f"AuditActionType.{action.name}"
+            hits: list[str] = []
+            for py in _APP_SRC_ROOT.rglob("*.py"):
+                if needle in py.read_text(encoding="utf-8", errors="replace"):
+                    hits.append(str(py.relative_to(_APP_SRC_ROOT)))
+            out[action.value] = sorted(hits)
+        return out
+
+    def test_every_action_type_has_a_shipped_caller_except_audit_verify(self):
+        refs = self._enum_references()
+        # ``audit.verify`` is the only intentional gap: the
+        # /admin/audit/verify endpoint ships in T-738 alongside
+        # its emit call. If a future wave adds more deferrals,
+        # list them here with a one-line reason.
+        KNOWN_DEFERRED: dict[str, str] = {
+            "audit.verify": "emit call lands with /admin/audit/verify endpoint in T-738",
+        }
+        for action_value, hits in refs.items():
+            if action_value in KNOWN_DEFERRED:
+                assert not hits, (
+                    f"Action type {action_value!r} was previously deferred "
+                    f"({KNOWN_DEFERRED[action_value]}) but is now referenced in "
+                    f"shipped code: {hits}. Update the KNOWN_DEFERRED map to "
+                    f"remove this entry."
+                )
+                continue
+            assert hits, (
+                f"AuditActionType.{action_value!r} has no shipped caller in "
+                f"src/app/. Either add the missing AuditService.log(...) call "
+                f"or document the deferral in KNOWN_DEFERRED with a reason."
+            )
+
+    def test_audit_verify_has_no_shipped_caller_yet(self):
+        # Pin the deferral: until T-738 lands, the audit.verify
+        # emit call MUST NOT exist in shipped code. If this
+        # test fails, the T-738 endpoint work has started and
+        # the KNOWN_DEFERRED map above should be cleared.
+        refs = self._enum_references()
+        assert refs.get("audit.verify", []) == [], (
+            f"AUDIT_VERIFY is supposed to be deferred to T-738 but is "
+            f"already referenced in shipped code: {refs['audit.verify']}. "
+            f"Update the coverage matrix in this test module's docstring "
+            f"and the Wave 17.4a checkpoint in orchestration-log.md."
         )
 
 
