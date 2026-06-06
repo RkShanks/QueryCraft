@@ -2218,7 +2218,7 @@ service method's contract is fully pinned by T-717
 (3 in follow-up 1 + 1 replaced + 1 new in follow-up 2
 = 5 distinct `TestRerunConnectionContext` tests).
 
-## Current Wave Checkpoint — Through Wave 17.3j (Query Lifecycle Audit Logging)
+## Historical Checkpoint — Through Wave 17.3j (Query Lifecycle Audit Logging)
 
 ### Wave 17.3j Scope (T-719 / T-720)
 
