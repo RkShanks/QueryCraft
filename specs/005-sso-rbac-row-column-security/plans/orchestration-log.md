@@ -2828,7 +2828,7 @@ should be addressed in a separate wave
 (they are flagged here for the orchestrator's
 awareness).
 
-## Current Wave Checkpoint — Through Wave 17.3l (Backend Foundation Gate)
+## Historical Checkpoint — Through Wave 17.3l (Backend Foundation Gate)
 
 ### Wave 17.3l Scope (T-722)
 
@@ -3050,3 +3050,47 @@ Wave 17.3l checkpoint section (with the
 17.3l gate is clean and the previously
 flagged pre-existing failures are resolved by
 the in-scope `_sync_admin_user` fix.
+
+## Current Wave Checkpoint — Through Wave 17.3m (Masked Column Indicator)
+
+### Wave 17.3m Scope (T-723, T-724)
+
+- **T-723** — Write TDD tests for masked column indicator in `ResultTable` (localized badge, renders for masked columns, EN/AR text) in `frontend/src/components/query/ResultTable.test.tsx`.
+- **T-724** — Implement masked column indicator in `frontend/src/components/query/ResultTable.tsx`: render localized "column was masked" badge when `ColumnMeta.masked === true`.
+
+### Implementation Details
+
+- **i18n Localization**:
+  - Added `query.result.columnMasked` to both `frontend/src/locales/en.json` ("Masked") and `frontend/src/locales/ar.json` ("محجوب") for full language parity.
+- **TDD Tests**:
+  - Wrote red-green-refactor test case `should render masked column indicator when ColumnMeta.masked is true` in `ResultTable.test.tsx` verifying unmasked column headers do not display the badge while masked ones render it, and ensuring localized text is read correctly.
+- **Badge Implementation**:
+  - Conditionally rendered a premium, small badge next to the column name in `ResultTable.tsx` column headers using `ColumnMeta & { masked?: boolean }` type casting to prevent ESLint explicit-any warnings.
+  - Used RTL-compliant logical properties: `flex items-center gap-2` and `normal-case` to preserve localized rendering formatting.
+
+### Foundation gates (all green)
+
+```text
+$ cd frontend && npm run lint && npm run typecheck
+All checks passed!
+
+$ cd frontend && npm run test -- --run
+55 passed, 563 passed, environment clean.
+```
+
+### Commits
+
+- `65b38b9` test(T-723): masked column indicator tests
+- `9baeaba` feat(T-724): masked column indicator
+
+### Diff (5 files, 42 insertions, 10 deletions)
+
+```text
+ frontend/src/components/query/ResultTable.test.tsx | 22 +++++++++++++++++++++-
+ frontend/src/components/query/ResultTable.tsx      | 24 +++++++++++++++++-------
+ frontend/src/locales/ar.json                       |  1 +
+ frontend/src/locales/en.json                       |  1 +
+ specs/005-sso-rbac-row-column-security/tasks.md    |  4 ++--
+```
+
+**No `[NEEDS DECISION]` items**. Wave 17.3m gate is fully clean, lint/typecheck are green, and tests are passing successfully.
