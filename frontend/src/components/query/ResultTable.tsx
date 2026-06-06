@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { QueryResult } from '../../api/generated/types.gen';
+import type { ColumnMeta, QueryResult } from '../../api/generated/types.gen';
 import {
   flexRender,
   getCoreRowModel,
@@ -24,12 +24,22 @@ export const ResultTable: React.FC<ResultTableProps> = ({
 }) => {
   const { t } = useTranslation();
   
-  const columns = React.useMemo<ColumnDef<unknown[]>[]>(() => result.columns.map((col, index) => ({
-    header: col.name,
-    accessorFn: (row) => row[index],
-    id: col.name,
-    cell: (info) => <span className="text-gray-700">{String(info.getValue())}</span>,
-  })), [result.columns]);
+  const columns = React.useMemo<ColumnDef<unknown[]>[]>(() => result.columns.map((col, index) => {
+    const isMasked = (col as ColumnMeta & { masked?: boolean }).masked === true;
+    return {
+      header: isMasked ? () => (
+        <div className="flex items-center gap-2">
+          <span>{col.name}</span>
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/50 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30 whitespace-nowrap normal-case">
+            {t('query.result.columnMasked')}
+          </span>
+        </div>
+      ) : col.name,
+      accessorFn: (row) => row[index],
+      id: col.name,
+      cell: (info) => <span className="text-gray-700">{String(info.getValue())}</span>,
+    };
+  }), [result.columns, t]);
   
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table v8 + React Compiler false-positive; remove when TanStack Table v9 ships
   const table = useReactTable({

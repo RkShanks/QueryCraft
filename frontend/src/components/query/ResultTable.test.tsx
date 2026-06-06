@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ResultTable } from './ResultTable';
 import { createWrapper } from '../../test/utils';
-import type { QueryResult } from '../../api/generated/types.gen';
+import type { ColumnMeta, QueryResult } from '../../api/generated/types.gen';
 
 describe('ResultTable', () => {
   const mockResult: QueryResult = {
@@ -136,7 +136,7 @@ describe('ResultTable', () => {
       ...mockResult,
       columns: [
         { name: 'id', type: 'integer' },
-        { name: 'secret_name', type: 'text', masked: true } as any,
+        { name: 'secret_name', type: 'text', masked: true } as ColumnMeta & { masked?: boolean },
       ],
       rows: [['1', '***']],
     };
