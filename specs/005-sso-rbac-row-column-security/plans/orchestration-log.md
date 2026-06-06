@@ -3382,17 +3382,19 @@ clean
 
 **No raw session tokens, no passwords, no API keys, no SAML / cert / XML, no SQL, no hostnames, no DB driver names, no stack traces** ever appear in `resource_id` or `context` of any emit site. The forbidden-token sweep + the explicit `sha256:` digest assertion on `auth.logout` enforce this.
 
-### Foundation gates (all green for new code, T-734 fix pass)
+### Foundation gates (all green for new code, T-734 fix pass + audit isolation fix)
 
 ```text
+$ cd backend && uv run pytest tests/unit/test_audit_service.py tests/unit/test_audit_chain_verification.py -q
+..........                                                               [100%]
+10 passed in 0.79s
+
 $ cd backend && uv run pytest tests/unit/test_audit_event_coverage.py -q
 ......................................                                   [100%]
-38 passed in 0.48s
+38 passed in 0.50s
 
 $ cd backend && uv run pytest tests/unit -q -m "not integration"
-1404 passed, 4 pre-existing environmental failures (DB sequence_number
-  not cleaned between test runs; verified to fail identically on main
-  `49e2efa` — not regressions from this wave)
+1408 passed, 9 deselected, 12 warnings in 15.72s
 
 $ cd backend && uv run ruff check src tests
 All checks passed!
@@ -3404,31 +3406,46 @@ $ git diff --check
 clean
 ```
 
-### Pre-existing failures (NOT regressions)
+**Full backend unit gate now passes, not waived.** Previous waves
+17.4a (commits `4ec248a`–`d1cea5b`) reported 4 pre-existing audit
+DB-state failures; this wave (`796d277`) fixes them in test-only
+code without touching product audit behavior.
 
-```text
-tests/unit/test_audit_service.py::TestAuditService::test_log_creates_entry
-  assert e1.sequence_number == 1  →  actual 5
-tests/unit/test_audit_service.py::TestAuditService::test_log_assigns_increasing_sequence
-tests/unit/test_audit_chain_verification.py::TestAuditChainVerification::test_broken_chain_detects_first_break
-  IntegrityError on sequence_number=2 (duplicate key)
-tests/unit/test_audit_chain_verification.py::TestAuditChainVerification::test_chain_continues_after_break
-```
+### Audit test isolation fix (`796d277`)
 
-Root cause: `audit_log_entry.sequence_number` is not reset between
-test runs against the shared Postgres testcontainer. Confirmed on
-`main` @ `49e2efa` by `git stash; git checkout main; pytest …` → same
-4 failures. Not introduced by this wave. Logged for hardening PR
-separate from Wave 17.4.
+The 4 failures all had the same root cause: the shared Postgres
+testcontainer retains `audit_log_entries` rows across test runs,
+so manually-assigned `sequence_number` kept growing. Two of the
+tests hardcode `e1.sequence_number == 1`; the chain-verification
+tests manually insert tampered rows at `sequence_number=1`/`2`
+which collide with prior runs.
 
-### Commits (this wave, including T-734 fix pass)
+Fix is test-only — `app/services/audit_service.py` is unchanged:
+
+- `backend/tests/conftest.py` — new `clean_audit_table` fixture
+  that runs `TRUNCATE TABLE audit_log_entries` before the test,
+  using the shared `async_engine_fixture` (independent of the
+  per-test transactional `db_session`).
+- `backend/tests/unit/test_audit_service.py` — `TestAuditService`
+  opts in via `@pytest.mark.usefixtures("clean_audit_table")`.
+- `backend/tests/unit/test_audit_chain_verification.py` — same on
+  `TestAuditChainVerification`.
+
+The fixture is intentionally NOT autouse on `db_session`: other
+tests in the suite rely on audit rows left by prior tests in the
+same session. The two test classes are the only ones that
+hardcode `sequence_number=1`/`2`.
+
+### Commits (this wave, including T-734 fix pass + audit isolation)
 
 - `d1cea5b` test(T-733): comprehensive audit event coverage matrix
-- `d4a664c` style(T-733): apply ruff format to coverage test
+- `d4a664c` style(T-733): apply ruff format
 - `16bec77` feat(T-734): emit AUTH_LOGOUT + CONNECTION_* + ADMIN_CONFIG_CHANGE
 - `8cab27d` docs(T-733/T-734): mark complete in tasks.md
 - `4b06577` docs(T-733/T-734): Wave 17.4a checkpoint in orchestration-log
-- (this commit) fix(T-734): hash `auth.logout` resource_id; structural backstop test; honest AUDIT_VERIFY status
+- `c8da1cd` fix(T-734): hash `auth.logout` resource_id; structural backstop test
+- `4ec248a` docs(T-733/T-734): honest status (5/6 sites; audit.verify→T-738)
+- `796d277` fix(test): isolate audit_log_entries between tests; full backend unit gate green
 
 ### Open tasks after 17.4a
 
@@ -3437,4 +3454,5 @@ separate from Wave 17.4.
 - T-737 — Audit log query tests
 - T-738 — `/admin/audit/verify` endpoint (ships `AUDIT_VERIFY` emission) — **brings coverage 20/22 → 22/22**
 - T-739–T-750 — remaining Wave 17.4 surface
+
 
