@@ -3225,7 +3225,7 @@ for this wave.
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.3o (Browser Evidence)
+## Historical Checkpoint — Through Wave 17.3o (Browser Evidence)
 
 ### Wave 17.3o Scope (T-730 through T-731)
 
@@ -3283,3 +3283,39 @@ Clean
  frontend/tests/e2e/wave_17_3o_smoke.spec.ts       | 17 ++++++++++++-----
  6 files changed, 74 insertions(+), 12 deletions(-)
 ```
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.3p (Frontend Foundation Gate)
+
+### Wave 17.3p Scope (T-732)
+
+- **T-732** — Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css`. [COMPLETED]
+
+### Foundation gates (all green)
+
+```text
+$ cd frontend && npm run test -- --run
+ Test Files  56 passed (56)
+      Tests  635 passed (635)
+
+$ cd frontend && npm run lint
+0 errors, 0 warnings
+
+$ cd frontend && npm run typecheck
+clean
+
+$ cd frontend && npm run build
+✓ built in 520ms
+
+$ cd frontend && npm run lint:css
+clean
+
+$ git diff --check
+clean
+```
+
+### Commits
+
+- `7e97b1f` docs(T-732): mark task complete in tasks.md
+
