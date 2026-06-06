@@ -3464,9 +3464,10 @@ earlier 17.4a section is preserved as the historical record
 of how we got here; the live "where we are now" pointer is
 this section.
 
-**Historical**: this section is now superseded by the 17.4c
-checkpoint below. The 17.4a section above this is also
-historical. The live pointer is the 17.4c section.
+**Historical**: this section is now superseded by the 17.4d
+checkpoint (17.4c is also historical now). The 17.4a section
+above this is also historical. The live pointer is the
+17.4d section.
 
 ### Wave 17.4b Scope (T-735, T-736) — both shipped, no product code changed
 
@@ -3562,12 +3563,17 @@ errors/stack traces/SAML/XML/certs in any audit context.
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.4c (Audit Verification + Status Endpoints)
+## Historical Checkpoint — Through Wave 17.4c (Audit Verification + Status Endpoints)
 
-This checkpoint supersedes the 17.4b checkpoint above. The
-earlier 17.4a / 17.4b sections are preserved as the
-historical record of how we got here; the live "where we are
-now" pointer is this section.
+This checkpoint has been demoted to historical by the
+Wave 17.4d checkpoint below. The earlier 17.4a / 17.4b /
+17.4c sections are preserved as the historical record of
+how we got here; the live "where we are now" pointer is the
+17.4d section.
+
+**Historical**: this section is now superseded by the 17.4d
+checkpoint below. The 17.4a / 17.4b sections above are
+also historical. The live pointer is the 17.4d section.
 
 ### Wave 17.4c Scope (T-737, T-738, T-739, T-740) — all shipped
 
@@ -3723,7 +3729,88 @@ context or endpoint response.
 
 ### Open tasks after 17.4c
 
-- T-741 — `AUDIT_RETENTION_MONTHS` config setting
-- T-742 — Wave 17.4 backend gate
+*(Both T-741 and T-742 were completed in Wave 17.4d; T-743+
+remains as the only Wave 17.4 surface not yet shipped.)*
+
+- ~~T-741 — `AUDIT_RETENTION_MONTHS` config setting~~ (shipped 17.4d)
+- ~~T-742 — Wave 17.4 backend gate~~ (shipped 17.4d)
 - T-743+ — Frontend audit verification page
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.4d (Audit Retention Config + Backend Gate)
+
+This checkpoint supersedes the 17.4c checkpoint above. The
+earlier 17.4a / 17.4b / 17.4c sections are preserved as the
+historical record of how we got here; the live "where we are
+now" pointer is this section.
+
+### Wave 17.4d Scope (T-741, T-742) — minimal, config-only
+
+| T-ID | File | Tests | What it pins |
+|---|---|---|---|
+| T-741 | `backend/src/app/core/config.py` + `backend/tests/unit/core/test_settings_audit_retention.py` | 3 | `AUDIT_RETENTION_MONTHS: int = 24` in `Settings` (FR-142: minimum 24-month retention, Constitution IX). Env-bound via pydantic-settings (`AUDIT_RETENTION_MONTHS` env var). No purge/delete job, no retention enforcement — only the documented setting. |
+| T-742 | (gates only) | — | CI-equivalent backend foundation gates pass. |
+
+**Total: 3 new tests, 1 product field.** Minimum-code
+approach: the field is the entire feature. Future tasks may
+read `Settings.AUDIT_RETENTION_MONTHS` to drive a retention
+policy / cron / cron-side guard, but no such surface is
+required by FR-142 alone, and none is in scope for this
+wave.
+
+### Security contract — re-confirmed (Wave 17.4d)
+
+This wave ships **no runtime code paths and no audit
+contexts**. No raw secrets, no tokens, no credentials, no
+hostnames, no ports, no schema internals, no SQL, no DB
+driver errors, no stack traces, no SAML / XML, no certs.
+The new field is a single integer with a documented
+default.
+
+### Foundation gates (Wave 17.4d — all green)
+
+```text
+$ cd backend && uv run pytest tests/unit/core/test_settings_audit_retention.py -q
+3 passed in 0.16s
+
+$ cd backend && uv run pytest tests/unit -q -m "not integration"
+1594 passed, 9 deselected, 12 warnings in ~28s
+
+$ cd backend && uv run ruff check src tests
+All checks passed!
+
+$ cd backend && uv run ruff format --check src tests
+309 files already formatted
+
+$ git diff --check
+clean
+```
+
+**Full backend unit gate: 1594 passed, 0 failed** (matches
+the 17.4c + blocker-fix total — this wave adds only a
+config field, no product code, no regression risk to the
+audit chain / redaction / immutability guards).
+Not waived, not xfail, not skipped. No assertions weakened.
+No product behavior changed. No raw secrets/tokens/
+credentials/hostnames/ports/schema internals/SQL/driver
+errors/stack traces/SAML/XML/certs in any audit context
+or endpoint response.
+
+### Commits (Wave 17.4d)
+
+- `<test T-741>` test(T-741): `AUDIT_RETENTION_MONTHS` config setting (default 24)
+- `<feat T-741>` feat(T-741): add `AUDIT_RETENTION_MONTHS` config setting (default 24)
+- (this commit) docs(T-741/T-742): mark tasks complete; wave 17.4d checkpoint
+
+*(Branch base: local 17.4c head. PR #143 still open; the
+17.4d PR will show only the 17.4d-specific diff once
+PR #143 is merged and main is fast-forwarded to it.)*
+
+### Open tasks after 17.4d
+
+- T-743+ — Frontend audit verification page (Gemini)
+- T-738 follow-ups deferred to 17.4c: status endpoint tests
+  re-asserting the DB-derived source of truth (done; committed
+  as part of the 17.4c blocker-fix commits on top of #143).
 

@@ -376,11 +376,11 @@
 
 ### Backend — Retention Config (Owner: Kimi ( opencode ))
 
-- [ ] T-741 [US28] Add `AUDIT_RETENTION_MONTHS` config setting (default 24) to `backend/src/app/core/config.py` — FR-142
+- [x] T-741 [US28] Add `AUDIT_RETENTION_MONTHS` config setting (default 24) to `backend/src/app/core/config.py` — FR-142
 
 ### Wave 17.4 Backend Gate
 
-- [ ] T-742 Run CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
+- [x] T-742 Run CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
 
 ### Frontend — Audit Verification Page (Owner: Gemini)
 
