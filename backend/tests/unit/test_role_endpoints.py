@@ -887,3 +887,268 @@ class TestPermissionValidation:
         from app.api.v1.admin_roles import _validate_permissions
 
         _validate_permissions(None)
+
+
+# ── T-740: connection policy persistence on create/update ───────────────
+
+
+class TestRoleConnectionPolicyPersistence:
+    """T-740: POST/PUT /admin/roles must persist `RoleConnectionPolicy` rows.
+
+    Pre-fix behaviour: endpoints accepted `connection_policies` in the
+    request body but ignored them on the way to the service and returned
+    an empty `connection_policies` list in the detail response. Post-fix
+    behaviour: validated input, replaced existing rows for the role,
+    inserted new rows, returned the persisted policies with their
+    database-assigned ids and the connection ids the admin sent.
+    """
+
+    @staticmethod
+    def _session() -> dict:
+        return {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
+
+    @pytest.mark.asyncio
+    async def test_create_role_persists_connection_policies(self):
+        from app.api.v1.admin_roles import create_role
+
+        role_id = uuid.uuid4()
+        conn_id = uuid.uuid4()
+        persisted = MagicMock()
+        persisted.id = uuid.uuid4()
+        persisted.connection_id = conn_id
+        persisted.allowed_tables = [{"table": "orders", "columns": ["id"]}]
+        persisted.row_filters = []
+        persisted.column_masks = []
+
+        # duplicate-name empty, duplicate-priority empty, RETURNING role,
+        # select existing policies (empty), delete existing (empty),
+        # insert policies RETURNING, select persisted policies
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([]),  # duplicate name
+                FakeResult([]),  # duplicate priority
+                FakeResult([MagicMock()]),  # RETURNING role
+                FakeResult([]),  # select existing policies (none)
+                FakeResult([persisted]),  # select persisted policies
+            ]
+        )
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+        mock_db.add = MagicMock()
+
+        request = MagicMock()
+        request.state.session = self._session()
+
+        body = RoleCreate(
+            name="Analyst",
+            description="Read-only",
+            priority=10,
+            permissions=["query.submit"],
+            connection_policies=[
+                {
+                    "connection_id": str(conn_id),
+                    "allowed_tables": [{"table": "orders", "columns": ["id"]}],
+                    "row_filters": [],
+                    "column_masks": [],
+                }
+            ],
+        )
+
+        result = await create_role(request=request, body=body, db=mock_db)
+
+        assert "connection_policies" in result
+        assert len(result["connection_policies"]) == 1
+        cp = result["connection_policies"][0]
+        assert cp["connection_id"] == str(conn_id)
+        assert cp["allowed_tables"] == [{"table": "orders", "columns": ["id"]}]
+
+    @pytest.mark.asyncio
+    async def test_update_role_replaces_connection_policies(self):
+        from app.api.v1.admin_roles import update_role
+
+        role_id = uuid.uuid4()
+        new_conn_id = uuid.uuid4()
+        old_persisted = MagicMock()
+        old_persisted.id = uuid.uuid4()
+        old_persisted.connection_id = uuid.uuid4()
+        old_persisted.allowed_tables = []
+        old_persisted.row_filters = []
+        old_persisted.column_masks = []
+        new_persisted = MagicMock()
+        new_persisted.id = uuid.uuid4()
+        new_persisted.connection_id = new_conn_id
+        new_persisted.allowed_tables = [{"table": "users", "columns": ["id", "email"]}]
+        new_persisted.row_filters = []
+        new_persisted.column_masks = []
+
+        # service.get_by_id, no duplicate name, no duplicate priority,
+        # repo.update internal get_by_id, db.refresh, select existing,
+        # delete existing, insert, select persisted
+        role = _make_role(name="Analyst", priority=10, role_id=role_id)
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult(role),  # service.get_by_id
+                FakeResult([]),  # duplicate name
+                FakeResult([]),  # duplicate priority
+                FakeResult(role),  # repo.update internal get_by_id
+                FakeResult([MagicMock()]),  # db.refresh
+                FakeResult([old_persisted]),  # select existing policies
+                FakeResult([new_persisted]),  # select persisted policies
+            ]
+        )
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+
+        request = MagicMock()
+        request.state.session = self._session()
+
+        body = RoleUpdate(
+            name="Analyst",
+            priority=10,
+            permissions=["query.submit"],
+            connection_policies=[
+                {
+                    "connection_id": str(new_conn_id),
+                    "allowed_tables": [{"table": "users", "columns": ["id", "email"]}],
+                    "row_filters": [],
+                    "column_masks": [],
+                }
+            ],
+        )
+
+        result = await update_role(request=request, role_id=str(role_id), body=body, db=mock_db)
+
+        assert len(result["connection_policies"]) == 1
+        assert result["connection_policies"][0]["connection_id"] == str(new_conn_id)
+        assert result["connection_policies"][0]["allowed_tables"] == [
+            {"table": "users", "columns": ["id", "email"]}
+        ]
+
+    @pytest.mark.asyncio
+    async def test_create_role_rejects_invalid_connection_id_uuid(self):
+        from app.api.v1.admin_roles import create_role
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([]),  # duplicate name
+                FakeResult([]),  # duplicate priority
+            ]
+        )
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+        mock_db.add = MagicMock()
+
+        request = MagicMock()
+        request.state.session = self._session()
+
+        body = RoleCreate(
+            name="Analyst",
+            priority=10,
+            permissions=["query.submit"],
+            connection_policies=[
+                {
+                    "connection_id": "not-a-uuid",
+                    "allowed_tables": [],
+                    "row_filters": [],
+                    "column_masks": [],
+                }
+            ],
+        )
+
+        with pytest.raises(HTTPException) as exc:
+            await create_role(request=request, body=body, db=mock_db)
+        assert exc.value.status_code == 422
+        detail = exc.value.detail
+        assert detail["error"] == "validation"
+        assert "connection" in detail["message_key"].lower()
+        assert "not-a-uuid" not in str(detail)
+        assert "uuid" not in str(detail).lower()
+
+    @pytest.mark.asyncio
+    async def test_create_role_rejects_unknown_connection_id(self):
+        from app.api.v1.admin_roles import create_role
+
+        # Pre-validation: the helper checks connections exist by SELECT id
+        # from source_database_connections and returns 404 for unknown
+        # connection ids (without echoing the bad uuid).
+        missing_conn_id = uuid.uuid4()
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([]),  # duplicate name
+                FakeResult([]),  # duplicate priority
+                FakeResult([]),  # SELECT 1 FROM source_database_connections (empty -> unknown)
+            ]
+        )
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+        mock_db.add = MagicMock()
+
+        request = MagicMock()
+        request.state.session = self._session()
+
+        body = RoleCreate(
+            name="Analyst",
+            priority=10,
+            permissions=["query.submit"],
+            connection_policies=[
+                {
+                    "connection_id": str(missing_conn_id),
+                    "allowed_tables": [],
+                    "row_filters": [],
+                    "column_masks": [],
+                }
+            ],
+        )
+
+        with pytest.raises(HTTPException) as exc:
+            await create_role(request=request, body=body, db=mock_db)
+        assert exc.value.status_code == 404
+        detail = exc.value.detail
+        assert detail["error"] == "not_found"
+        assert "connection" in detail["message_key"].lower()
+        assert str(missing_conn_id) not in str(detail)
+
+    @pytest.mark.asyncio
+    async def test_create_role_rejects_duplicate_connection_id_in_body(self):
+        from app.api.v1.admin_roles import create_role
+
+        conn_id = uuid.uuid4()
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult([]),  # duplicate name
+                FakeResult([]),  # duplicate priority
+            ]
+        )
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+        mock_db.add = MagicMock()
+
+        request = MagicMock()
+        request.state.session = self._session()
+
+        body = RoleCreate(
+            name="Analyst",
+            priority=10,
+            permissions=["query.submit"],
+            connection_policies=[
+                {"connection_id": str(conn_id), "allowed_tables": [], "row_filters": [], "column_masks": []},
+                {"connection_id": str(conn_id), "allowed_tables": [], "row_filters": [], "column_masks": []},
+            ],
+        )
+
+        with pytest.raises(HTTPException) as exc:
+            await create_role(request=request, body=body, db=mock_db)
+        assert exc.value.status_code == 422
+        detail = exc.value.detail
+        assert detail["error"] == "validation"
+        assert "duplicate" in detail["message_key"].lower()
+        assert str(conn_id) not in str(detail)
