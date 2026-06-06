@@ -3084,14 +3084,14 @@ $ cd frontend && npm run test -- --run
 - `65b38b9` test(T-723): masked column indicator tests
 - `9baeaba` feat(T-724): masked column indicator
 
-### Diff (6 files, 150 insertions, 12 deletions)
+### Diff (6 files, 144 insertions, 12 deletions)
 
 ```text
  frontend/src/components/query/ResultTable.test.tsx                | 78 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
  frontend/src/components/query/ResultTable.tsx                     | 24 +++++++++++++++++-------
  frontend/src/locales/ar.json                                      |  1 +
  frontend/src/locales/en.json                                      |  1 +
- specs/005-sso-rbac-row-column-security/plans/orchestration-log.md | 50 +++++++++++++++++++++++++++++++++++++++++++++-
+ specs/005-sso-rbac-row-column-security/plans/orchestration-log.md | 48 +++++++++++++++++++++++++++++++++++++++++++++++-
  specs/005-sso-rbac-row-column-security/tasks.md                   |  4 ++--
 ```
 
