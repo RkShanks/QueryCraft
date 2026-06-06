@@ -115,3 +115,37 @@ async def test_sync_admin_user_inserts_or_updates():
     stmt = str(calls[0][0][0])
     assert "INSERT INTO users" in stmt
     assert "ON CONFLICT (username) DO UPDATE" in stmt
+
+
+@pytest.mark.asyncio
+async def test_sync_admin_user_links_role_id():
+    """_sync_admin_user retrieves the Admin role ID and associates it with the admin user."""
+    settings = MagicMock()
+    settings.ADMIN_USERNAME = "admin"
+    settings.ADMIN_DISPLAY_NAME = "Admin User"
+    settings.ADMIN_PASSWORD = "secret"
+
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+
+    # Mock lookup of roles.id and insertion
+    execute_mock = AsyncMock()
+    session.execute = execute_mock
+
+    factory = MagicMock()
+    factory.return_value.__aenter__ = AsyncMock(return_value=session)
+    factory.return_value.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.main.get_async_session_factory", return_value=factory):
+        await _sync_admin_user(settings)
+
+    # Verify that the query inserts role_id and updates it on conflict
+    calls = execute_mock.call_args_list
+    assert len(calls) >= 1
+
+    # Let's inspect the query statement(s) executed
+    stmt = str(calls[-1][0][0])
+    assert "role_id" in stmt
+    assert "role_id = EXCLUDED.role_id" in stmt or "role_id = roles.id" in stmt
+
