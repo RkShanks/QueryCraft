@@ -311,7 +311,7 @@
 
 ### Backend — Cross-Dialect Enforcement Tests (Owner: Kimi ( opencode ))
 
-- [ ] T-721 [US31] Write cross-dialect policy enforcement tests (row filters + column masks verified against PostgreSQL, MySQL, MSSQL via testcontainers where feasible) in `backend/tests/integration/test_cross_dialect_policy.py` — FR-131, FR-132, SC-051, SC-052
+- [x] T-721 [US31] Write cross-dialect policy enforcement tests (row filters + column masks verified against PostgreSQL, MySQL, MSSQL via testcontainers where feasible) in `backend/tests/integration/test_cross_dialect_policy.py` — FR-131, FR-132, SC-051, SC-052
 
 ### Wave 17.3 Backend Gate
 
