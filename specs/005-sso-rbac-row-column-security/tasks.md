@@ -340,7 +340,7 @@
 
 ### Wave 17.3 Frontend Gate
 
-- [ ] T-732 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
+- [x] T-732 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
 
 ### Wave 17.3n — Policy Editor + i18n Blocker Fixes (Owner: Kimi ( opencode ))
 
