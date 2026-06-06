@@ -3321,7 +3321,7 @@ clean
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.4a (Audit Event Coverage)
+## Historical Checkpoint — Through Wave 17.4a (Audit Event Coverage)
 
 ### Wave 17.4a Scope (T-733, T-734) — honest status
 
