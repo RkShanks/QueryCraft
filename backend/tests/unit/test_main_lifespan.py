@@ -130,8 +130,6 @@ async def test_sync_admin_user_links_role_id():
     session.__aexit__ = AsyncMock(return_value=False)
     
     # Mock lookup of roles.id and insertion
-    role_id_mock = "a4b6d7bd-c7d2-44f8-adce-b9b56bc65bb4"
-    
     execute_mock = AsyncMock()
     session.execute = execute_mock
 
