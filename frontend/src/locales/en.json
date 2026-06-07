@@ -411,6 +411,7 @@
   "admin.audit.verifySuccess": "Audit chain integrity verified successfully",
   "admin.audit.verifyFailed": "Audit chain verification failed",
   "admin.audit.emptyState": "No audit entries found.",
+  "admin.audit.securityWarningTitle": "Security Warning:",
   "admin.audit.securityWarning": "No auto-repair utility is provided to preserve evidence. Contact your system administrator to recover the database chain."
 }
 

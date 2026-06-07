@@ -430,6 +430,7 @@
   "admin.audit.verifySuccess": "تم التحقق من سلامة سلسلة التدقيق بنجاح",
   "admin.audit.verifyFailed": "فشل التحقق من سلسلة سجل التدقيق",
   "admin.audit.emptyState": "لم يتم العثور على أي إدخالات تدقيق.",
+  "admin.audit.securityWarningTitle": "تنبيه أمني:",
   "admin.audit.securityWarning": "لا تتوفر أداة إصلاح تلقائي للحفاظ على الأدلة. يرجى الاتصال بمسؤول النظام لاستعادة سلسلة قاعدة البيانات."
 }
 

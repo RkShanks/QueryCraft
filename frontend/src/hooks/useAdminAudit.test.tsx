@@ -1,11 +1,23 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useAdminAudit } from './useAdminAudit';
 import { createWrapper } from '../test/utils';
 import { server } from '../test/server';
 import { http, HttpResponse } from 'msw';
 
 describe('useAdminAudit Hook', () => {
+  beforeEach(() => {
+    // Provide a default status handler for hook mounts
+    server.use(
+      http.get('/api/v1/admin/audit/status', () => {
+        return HttpResponse.json({
+          total_entries: 0,
+          last_verification: null,
+        });
+      })
+    );
+  });
+
   it('should fetch audit status successfully', async () => {
     server.use(
       http.get('/api/v1/admin/audit/status', () => {

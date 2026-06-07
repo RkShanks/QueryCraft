@@ -9,9 +9,13 @@ describe('useSessions hooks', () => {
   it('useSessionsList returns data shape', async () => {
     const { result } = renderHook(() => useSessionsList(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
+    if (result.current.error) {
+      console.log('Query error:', result.current.error);
+    }
     // With MSW, this should return mock data or error gracefully
     expect(result.current.data).toBeDefined();
   });
+
 
   it('useSessionDetail is disabled when sessionId is empty', () => {
     const { result } = renderHook(() => useSessionDetail(''), { wrapper: createWrapper() });

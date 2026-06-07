@@ -260,4 +260,40 @@ describe('Sidebar', () => {
     expect(screen.getByTestId('sidebar-nav-connections')).toBeInTheDocument();
     expect(screen.queryByTestId('sidebar-nav-roles')).not.toBeInTheDocument();
   });
+
+  it('shows audit and hides other admin buttons when user only has admin.audit.verify permission', () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: {
+        data: {
+          id: 'user-audit',
+          role: 'member',
+          permissions: ['admin.audit.verify'],
+        },
+      },
+      isLoading: false,
+    } as any);
+
+    setup();
+    expect(screen.queryByTestId('sidebar-nav-connections')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sidebar-nav-roles')).not.toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-nav-audit')).toBeInTheDocument();
+  });
+
+  it('clicking Audit Verification navigates to /admin/audit', () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: {
+        data: {
+          id: 'user-audit',
+          role: 'member',
+          permissions: ['admin.audit.verify'],
+        },
+      },
+      isLoading: false,
+    } as any);
+
+    setup();
+    fireEvent.click(screen.getByTestId('sidebar-nav-audit'));
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/audit');
+  });
 });
+

@@ -569,3 +569,27 @@ export const getAuditStatus = <ThrowOnError extends boolean = false>(options?: O
     url: '/admin/audit/status',
     ...options
 });
+
+/**
+ * Update SSO provider
+ */
+export const updateSsoProvider = (options: any) => (options.client ?? client).put({
+    url: `/admin/sso/providers/${options.path.providerId}`,
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+}) as Promise<any>;
+
+/**
+ * Delete SSO provider
+ */
+export const deleteSsoProvider = (options: any) => (options.client ?? client).delete({
+    url: `/admin/sso/providers/${options.path.providerId}`,
+    ...options
+}) as Promise<any>;
+
+
+
+

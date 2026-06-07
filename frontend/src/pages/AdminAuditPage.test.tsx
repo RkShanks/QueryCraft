@@ -1,9 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { AdminAuditPage } from './AdminAuditPage';
 import { createWrapper } from '../test/utils';
 import { server } from '../test/server';
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, delay } from 'msw';
 
 describe('AdminAuditPage', () => {
   it('should display page title and handle empty/never-verified status', async () => {
@@ -68,8 +68,12 @@ describe('AdminAuditPage', () => {
 
     render(<AdminAuditPage />, { wrapper: createWrapper() });
 
-    expect(await screen.findByText(/Chain Broken/i)).toBeInTheDocument();
+    // Wait for the status query to finish by checking for total entries value
+    expect(await screen.findByText('100')).toBeInTheDocument();
+
+    expect(screen.getAllByText(/Chain Broken/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/First break at sequence number/i)).toBeInTheDocument();
+
     expect(screen.getByText('86')).toBeInTheDocument();
 
     // Confirm warning description and no auto-repair warning are shown
@@ -94,8 +98,9 @@ describe('AdminAuditPage', () => {
 
     let verifyCalled = false;
     server.use(
-      http.post('/api/v1/admin/audit/verify', () => {
+      http.post('/api/v1/admin/audit/verify', async () => {
         verifyCalled = true;
+        await delay(50);
         return HttpResponse.json({
           verified: true,
           entries_checked: 15,
@@ -107,14 +112,19 @@ describe('AdminAuditPage', () => {
 
     render(<AdminAuditPage />, { wrapper: createWrapper() });
 
+    // Wait for the status query to finish by checking for total entries value
+    expect(await screen.findByText('15')).toBeInTheDocument();
+
     const verifyBtn = await screen.findByRole('button', { name: /Verify Integrity/i });
     expect(verifyBtn).not.toBeDisabled();
 
     fireEvent.click(verifyBtn);
 
     // During pending verification, button should be disabled and show loading state
-    expect(verifyBtn).toBeDisabled();
-    expect(screen.getByText(/Verifying.../i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(verifyBtn).toBeDisabled();
+      expect(screen.getByText(/Verifying.../i)).toBeInTheDocument();
+    });
 
     await waitFor(() => {
       expect(verifyCalled).toBe(true);
@@ -137,7 +147,8 @@ describe('AdminAuditPage', () => {
     );
 
     server.use(
-      http.post('/api/v1/admin/audit/verify', () => {
+      http.post('/api/v1/admin/audit/verify', async () => {
+        await delay(50);
         return HttpResponse.json({
           detail: 'DATABASE ERROR: SELECT * FROM audit_log WHERE hash = $1; password=secret host=127.0.0.1 port=5432 failed',
         }, { status: 500 });
@@ -146,7 +157,11 @@ describe('AdminAuditPage', () => {
 
     render(<AdminAuditPage />, { wrapper: createWrapper() });
 
+    // Wait for the status query to finish by checking for total entries value
+    expect(await screen.findByText('10')).toBeInTheDocument();
+
     const verifyBtn = await screen.findByRole('button', { name: /Verify Integrity/i });
+    expect(verifyBtn).not.toBeDisabled();
     fireEvent.click(verifyBtn);
 
     // Should display the localized generic error message

@@ -71,6 +71,12 @@ export const Sidebar: React.FC = () => {
     user?.role_name === 'admin' ||
     user?.permissions?.includes('admin.roles.manage');
 
+  const hasAuditPermission =
+    user?.role === 'admin' ||
+    user?.role_name === 'admin' ||
+    user?.permissions?.includes('admin.audit.verify');
+
+
   const { data, isLoading } = useSessionsList();
   const deletingSessionIds = React.useMemo(() => new Set(toasts.map((t) => t.sessionId)), [toasts]);
   const sessions = React.useMemo(() => {
@@ -193,6 +199,18 @@ export const Sidebar: React.FC = () => {
             {!sidebarCollapsed && (t('nav.adminRoles') || 'Roles')}
           </button>
         )}
+        {hasAuditPermission && (
+          <button
+            className="sidebar-nav-btn"
+            onClick={() => navigate('/admin/audit')}
+            aria-label={t('nav.adminAudit') || 'Audit Verification'}
+            data-testid="sidebar-nav-audit"
+          >
+            <Shield className="w-4 h-4" />
+            {!sidebarCollapsed && (t('nav.adminAudit') || 'Audit Verification')}
+          </button>
+        )}
+
       </div>
 
       <div className="sidebar-sessions">

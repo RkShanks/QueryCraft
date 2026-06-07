@@ -384,23 +384,23 @@
 
 ### Frontend — Audit Verification Page (Owner: Gemini)
 
-- [ ] T-743 [US28] Write TDD tests for audit verification page (verify button, status display, last verification result, broken chain warning) in `frontend/src/pages/AdminAuditPage.test.tsx` — FR-141, FR-144
-- [ ] T-744 [US28] Create audit verification page `frontend/src/pages/AdminAuditPage.tsx`: verification trigger button, entry count, last verification timestamp, result (verified/broken + first break location), loading state — FR-141, FR-144
-- [ ] T-745 [US28] Create `useAdminAudit` hook in `frontend/src/hooks/useAdminAudit.ts` for audit verify/status via TanStack Query — FR-141, FR-144
-- [ ] T-746 [US28] Add `/admin/audit` route to `frontend/src/App.tsx` with permission guard for `admin.audit.verify` — FR-144
+- [x] T-743 [US28] Write TDD tests for audit verification page (verify button, status display, last verification result, broken chain warning) in `frontend/src/pages/AdminAuditPage.test.tsx` — FR-141, FR-144
+- [x] T-744 [US28] Create audit verification page `frontend/src/pages/AdminAuditPage.tsx`: verification trigger button, entry count, last verification timestamp, result (verified/broken + first break location), loading state — FR-141, FR-144
+- [x] T-745 [US28] Create `useAdminAudit` hook in `frontend/src/hooks/useAdminAudit.ts` for audit verify/status via TanStack Query — FR-141, FR-144
+- [x] T-746 [US28] Add `/admin/audit` route to `frontend/src/App.tsx` with permission guard for `admin.audit.verify` — FR-144
 
 ### Frontend — i18n for Wave 17.4 (Owner: Gemini)
 
-- [ ] T-747 [US33] Add all Wave 17.4 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: audit page labels, verification status messages, chain integrity messages — FR-137
-- [ ] T-748 [US33] Verify 100% EN/AR key parity for Wave 17.4 keys via locale coverage test — FR-137, SC-054
+- [x] T-747 [US33] Add all Wave 17.4 i18n keys to `frontend/src/locales/en.json` and `frontend/src/locales/ar.json`: audit page labels, verification status messages, chain integrity messages — FR-137
+- [x] T-748 [US33] Verify 100% EN/AR key parity for Wave 17.4 keys via locale coverage test — FR-137, SC-054
 
 ### Frontend — Browser Evidence (Owner: Gemini)
 
-- [ ] T-749 [US28] Chrome DevTools MCP: verify audit verification page renders button/status/results, Arabic/RTL correct — FR-141, SC-055
+- [x] T-749 [US28] Chrome DevTools MCP: verify audit verification page renders button/status/results, Arabic/RTL correct — FR-141, SC-055
 
 ### Wave 17.4 Frontend Gate
 
-- [ ] T-750 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
+- [x] T-750 Run frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
 
 ---
 

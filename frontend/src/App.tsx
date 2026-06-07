@@ -14,7 +14,9 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AdminConnectionsPage } from './pages/AdminConnectionsPage';
 import { AdminSsoPage } from './pages/AdminSsoPage';
 import { AdminRolesPage } from './pages/AdminRolesPage';
+import { AdminAuditPage } from './pages/AdminAuditPage';
 import { AppShell } from './components/shell/AppShell';
+
 import { PermissionGuard } from './components/auth/PermissionGuard';
 
 
@@ -135,7 +137,18 @@ function App() {
               </AuthenticatedLayout>
             }
           />
+          <Route
+            path="/admin/audit"
+            element={
+              <AuthenticatedLayout>
+                <PermissionGuard permission="admin.audit.verify">
+                  <AdminAuditPage />
+                </PermissionGuard>
+              </AuthenticatedLayout>
+            }
+          />
           <Route path="*" element={<RootRedirect />} />
+
 
         </Routes>
       </BrowserRouter>
