@@ -3952,7 +3952,7 @@ UI rendering evidence for T-765, T-766, T-769: referenced from Wave 17.5a PR #14
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.5c (Audit Findings Hardening: F-001, F-002)
+## Wave Checkpoint — Through Wave 17.5c (Audit Findings Hardening: F-001, F-002)
 
 ### Scope — F-001 (HIGH) and F-002 (MID) only, per dispatch
 
@@ -4141,3 +4141,29 @@ existing redaction or chain integrity path was weakened.
 - Operational: schedule `AuditService.purge_expired_entries(session)` from an external scheduler (cron / k8s CronJob / systemd timer) at the desired cadence. Suggested cadence: monthly.
 
 
+
+---
+
+## Current Wave Checkpoint — Phase 5 Closeout (Wave 17.5d)
+
+### Wave 17.5d Scope (T-772 through T-777; T-778 pending)
+
+| T-ID | Document / Artifact | What it pins |
+|---|---|---|
+| T-772 | `audit/wave-17/consolidation-report.md` | Verification of all FRs (FR-115 through FR-146) with passing evidence. |
+| T-773 | `audit/wave-17/consolidation-report.md` | Verification of all SCs (SC-046 through SC-062) with documented evidence. |
+| T-774 | `audit/wave-17/consolidation-report.md` | Verification that no Critical or High audit findings remain (F-001 and F-002 fixed). |
+| T-775 | `audit/wave-17/consolidation-report.md` | Consolidation report consolidating evidence, gate results, and findings disposition. |
+| T-776 | `specs/005-sso-rbac-row-column-security/plans/orchestration-log.md` | Appending this Phase 5 closeout summary to the orchestration log. |
+| T-777 | `specs/005-sso-rbac-row-column-security/plans/wave-final-snapshot.md` | Wave final snapshot describing delivered scope, waves summary, and freeze instructions. |
+| T-778 | `AGENTS.md` (pending) | Status update to FROZEN. Kept pending until post-merge freeze per orchestration rules. |
+
+### Security contract — re-confirmed (Wave 17.5d)
+
+- All security logic implemented in Waves 17.0–17.5c satisfies the requirements without introducing Critical or High findings.
+- The 24-month audit retention requirement is fully actionable via the implemented `purge_expired_entries` method.
+- F-003 LOW finding is documented and intentionally deferred as it poses no user-facing leakage.
+
+### Open tasks after 17.5d
+
+- **T-778**: After this Wave 17.5d PR is merged into `main`, update `AGENTS.md` Phase 5 status from `IN PROGRESS` to `FROZEN`.
