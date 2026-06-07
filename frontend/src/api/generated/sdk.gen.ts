@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AcceptQueryData, AcceptQueryErrors, AcceptQueryResponses, CreateAdminConnectionData, CreateAdminConnectionErrors, CreateAdminConnectionResponses, CreateRoleData, CreateRoleErrors, CreateRoleResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, CreateSsoProviderData, CreateSsoProviderErrors, CreateSsoProviderResponses, DeleteAdminConnectionData, DeleteAdminConnectionErrors, DeleteAdminConnectionResponses, DeleteHistoryEntryData, DeleteHistoryEntryErrors, DeleteHistoryEntryResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, DisableAdminConnectionData, DisableAdminConnectionErrors, DisableAdminConnectionResponses, EnableAdminConnectionData, EnableAdminConnectionErrors, EnableAdminConnectionResponses, GetAdminConnectionData, GetAdminConnectionErrors, GetAdminConnectionResponses, GetAdminSettingsData, GetAdminSettingsErrors, GetAdminSettingsResponses, GetAuditStatusData, GetAuditStatusErrors, GetAuditStatusResponses, GetHistoryEntryData, GetHistoryEntryErrors, GetHistoryEntryResponses, GetMeData, GetMeErrors, GetMeResponses, GetSessionData, GetSessionErrors, GetSessionResponses, ListAdminConnectionsData, ListAdminConnectionsResponses, ListAdminSsoProvidersData, ListAdminSsoProvidersErrors, ListAdminSsoProvidersResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, ListRolesData, ListRolesErrors, ListRolesResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, ListSsoProvidersData, ListSsoProvidersResponses, ListUserConnectionsData, ListUserConnectionsErrors, ListUserConnectionsResponses, RefreshSchemaData, RefreshSchemaErrors, RefreshSchemaResponses, RegenerateQueryData, RegenerateQueryErrors, RegenerateQueryResponses, RejectQueryData, RejectQueryErrors, RejectQueryResponses, SignInData, SignInErrors, SignInResponses, SignOutData, SignOutErrors, SignOutResponses, SubmitQuestionData, SubmitQuestionErrors, SubmitQuestionResponses, TestAdminConnectionData, TestAdminConnectionErrors, TestAdminConnectionResponses, UpdateAdminConnectionData, UpdateAdminConnectionErrors, UpdateAdminConnectionResponses, UpdateAdminSettingsData, UpdateAdminSettingsErrors, UpdateAdminSettingsResponses, UpdateFeedbackData, UpdateFeedbackErrors, UpdateFeedbackResponses, UpdateSessionConnectionData, UpdateSessionConnectionErrors, UpdateSessionConnectionResponses, VerifyAuditChainData, VerifyAuditChainErrors, VerifyAuditChainResponses } from './types.gen';
+import type { AcceptQueryData, AcceptQueryErrors, AcceptQueryResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, DeleteHistoryEntryData, DeleteHistoryEntryErrors, DeleteHistoryEntryResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, GetAdminSettingsData, GetAdminSettingsErrors, GetAdminSettingsResponses, GetHistoryEntryData, GetHistoryEntryErrors, GetHistoryEntryResponses, GetMeData, GetMeErrors, GetMeResponses, GetSessionData, GetSessionErrors, GetSessionResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, ListSessionsData, ListSessionsErrors, ListSessionsResponses, RefreshSchemaData, RefreshSchemaErrors, RefreshSchemaResponses, RegenerateQueryData, RegenerateQueryErrors, RegenerateQueryResponses, RejectQueryData, RejectQueryErrors, RejectQueryResponses, SignInData, SignInErrors, SignInResponses, SignOutData, SignOutErrors, SignOutResponses, SubmitQuestionData, SubmitQuestionErrors, SubmitQuestionResponses, UpdateAdminSettingsData, UpdateAdminSettingsErrors, UpdateAdminSettingsResponses, UpdateFeedbackData, UpdateFeedbackErrors, UpdateFeedbackResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -171,21 +171,6 @@ export const listHistory = <ThrowOnError extends boolean = false>(options?: Opti
 });
 
 /**
- * Delete a single saved query result
- *
- * Removes an accepted query from history. Does not cascade to session entries.
- */
-export const deleteHistoryEntry = <ThrowOnError extends boolean = false>(options: Options<DeleteHistoryEntryData, ThrowOnError>) => (options.client ?? client).delete<DeleteHistoryEntryResponses, DeleteHistoryEntryErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/history/{query_id}',
-    ...options
-});
-
-/**
  * Get a single accepted query by ID
  *
  * Returns the full detail of an accepted query.
@@ -201,25 +186,23 @@ export const getHistoryEntry = <ThrowOnError extends boolean = false>(options: O
 });
 
 /**
- * List sessions for the current user
+ * Force a schema introspection cache refresh
  *
- * Returns all chat sessions for the authenticated user, sorted by last activity descending.
+ * Clears the cached schema metadata for the source database and performs
+ * a fresh introspection. Returns the updated schema statistics. If the
+ * refreshed schema exceeds `max_schema_tokens`, returns a 422 error.
+ *
  */
-export const listSessions = <ThrowOnError extends boolean = false>(options?: Options<ListSessionsData, ThrowOnError>) => (options?.client ?? client).get<ListSessionsResponses, ListSessionsErrors, ThrowOnError>({
+export const refreshSchema = <ThrowOnError extends boolean = false>(options: Options<RefreshSchemaData, ThrowOnError>) => (options.client ?? client).post<RefreshSchemaResponses, RefreshSchemaErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'session_id',
             type: 'apiKey'
         }],
-    url: '/sessions',
+    url: `/admin/connections/${options.path.connectionId}/refresh-schema`,
     ...options
 });
 
-/**
- * Create a new empty session
- *
- * Creates a new chat session for the authenticated user. Returns the session ID.
- */
 export const createSession = <ThrowOnError extends boolean = false>(options?: Options<CreateSessionData, ThrowOnError>) => (options?.client ?? client).post<CreateSessionResponses, CreateSessionErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -230,26 +213,16 @@ export const createSession = <ThrowOnError extends boolean = false>(options?: Op
     ...options
 });
 
-/**
- * Delete a session
- *
- * Deletes a chat session and cascade deletes all associated accepted queries.
- */
-export const deleteSession = <ThrowOnError extends boolean = false>(options: Options<DeleteSessionData, ThrowOnError>) => (options.client ?? client).delete<DeleteSessionResponses, DeleteSessionErrors, ThrowOnError>({
+export const getSessions = <ThrowOnError extends boolean = false>(options?: Options<ListSessionsData, ThrowOnError>) => (options?.client ?? client).get<ListSessionsResponses, ListSessionsErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'session_id',
             type: 'apiKey'
         }],
-    url: '/sessions/{sessionId}',
+    url: '/sessions',
     ...options
 });
 
-/**
- * Get session detail with conversation history
- *
- * Returns full session detail including all accepted query attempts.
- */
 export const getSession = <ThrowOnError extends boolean = false>(options: Options<GetSessionData, ThrowOnError>) => (options.client ?? client).get<GetSessionResponses, GetSessionErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -260,45 +233,16 @@ export const getSession = <ThrowOnError extends boolean = false>(options: Option
     ...options
 });
 
-/**
- * List available database connections for the current user
- *
- * Returns active, healthy, and introspected connections that can be used for querying.
- */
-export const listUserConnections = <ThrowOnError extends boolean = false>(options?: Options<ListUserConnectionsData, ThrowOnError>) => (options?.client ?? client).get<ListUserConnectionsResponses, ListUserConnectionsErrors, ThrowOnError>({
+export const deleteSession = <ThrowOnError extends boolean = false>(options: Options<DeleteSessionData, ThrowOnError>) => (options.client ?? client).delete<DeleteSessionResponses, DeleteSessionErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'session_id',
             type: 'apiKey'
         }],
-    url: '/connections',
+    url: '/sessions/{sessionId}',
     ...options
 });
 
-/**
- * Update the database connection for a session
- *
- * Changes which database connection a session uses for queries. Validates the connection is active, healthy, and introspected.
- */
-export const updateSessionConnection = <ThrowOnError extends boolean = false>(options: Options<UpdateSessionConnectionData, ThrowOnError>) => (options.client ?? client).patch<UpdateSessionConnectionResponses, UpdateSessionConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/sessions/{sessionId}/connection',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Update feedback on an accepted query
- *
- * Sets the user feedback (thumbs up/down) for a specific accepted query attempt.
- */
 export const updateFeedback = <ThrowOnError extends boolean = false>(options: Options<UpdateFeedbackData, ThrowOnError>) => (options.client ?? client).patch<UpdateFeedbackResponses, UpdateFeedbackErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
@@ -313,32 +257,12 @@ export const updateFeedback = <ThrowOnError extends boolean = false>(options: Op
     }
 });
 
-/**
- * Get admin settings
- *
- * Returns current application settings including LLM context cap and regenerate attempts.
- */
 export const getAdminSettings = <ThrowOnError extends boolean = false>(options?: Options<GetAdminSettingsData, ThrowOnError>) => (options?.client ?? client).get<GetAdminSettingsResponses, GetAdminSettingsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
     url: '/admin/settings',
     ...options
 });
 
-/**
- * Update admin settings
- *
- * Updates application settings. Only provided fields are updated.
- */
 export const updateAdminSettings = <ThrowOnError extends boolean = false>(options: Options<UpdateAdminSettingsData, ThrowOnError>) => (options.client ?? client).patch<UpdateAdminSettingsResponses, UpdateAdminSettingsErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
     url: '/admin/settings',
     ...options,
     headers: {
@@ -347,33 +271,58 @@ export const updateAdminSettings = <ThrowOnError extends boolean = false>(option
     }
 });
 
-/**
- * Force a schema introspection cache refresh
- *
- * Clears the cached schema metadata for the source database and performs
- * a fresh introspection. Returns the updated schema statistics. If the
- * refreshed schema exceeds `max_schema_tokens`, returns a 422 error.
- *
- */
-export const refreshSchema = <ThrowOnError extends boolean = false>(options?: Options<RefreshSchemaData, ThrowOnError>) => (options?.client ?? client).post<RefreshSchemaResponses, RefreshSchemaErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }, { name: 'X-Admin-Key', type: 'apiKey' }],
-    url: '/admin/refresh-schema',
-    ...options
-});
-
-/**
- * List all source database connections
- */
-export const listAdminConnections = <ThrowOnError extends boolean = false>(options?: Options<ListAdminConnectionsData, ThrowOnError>) => (options?.client ?? client).get<ListAdminConnectionsResponses, unknown, ThrowOnError>({
+export const deleteHistoryEntry = <ThrowOnError extends boolean = false>(options: Options<DeleteHistoryEntryData, ThrowOnError>) => (options.client ?? client).delete<DeleteHistoryEntryResponses, DeleteHistoryEntryErrors, ThrowOnError>({
     security: [{
             in: 'cookie',
             name: 'session_id',
             type: 'apiKey'
         }],
+    url: '/history/{query_id}',
+    ...options
+});
+
+// ─────────────────── Admin Connections (Phase 3) ───────────────────
+
+import type {
+    ListAdminConnectionsData,
+    ListAdminConnectionsErrors,
+    ListAdminConnectionsResponses,
+    CreateAdminConnectionData,
+    CreateAdminConnectionErrors,
+    CreateAdminConnectionResponses,
+    GetAdminConnectionData,
+    GetAdminConnectionErrors,
+    GetAdminConnectionResponses,
+    UpdateAdminConnectionData,
+    UpdateAdminConnectionErrors,
+    UpdateAdminConnectionResponses,
+    DeleteAdminConnectionData,
+    DeleteAdminConnectionErrors,
+    DeleteAdminConnectionResponses,
+    DisableAdminConnectionData,
+    DisableAdminConnectionErrors,
+    DisableAdminConnectionResponses,
+    EnableAdminConnectionData,
+    EnableAdminConnectionErrors,
+    EnableAdminConnectionResponses,
+    TestAdminConnectionData,
+    TestAdminConnectionErrors,
+    TestAdminConnectionResponses,
+    ListUserConnectionsData,
+    ListUserConnectionsErrors,
+    ListUserConnectionsResponses,
+    UpdateSessionConnectionData,
+    UpdateSessionConnectionErrors,
+    UpdateSessionConnectionResponses,
+    ListSsoProvidersData,
+    ListSsoProvidersErrors,
+    ListSsoProvidersResponses,
+} from './types.gen';
+
+/**
+ * List all source database connections
+ */
+export const listAdminConnections = <ThrowOnError extends boolean = false>(options?: Options<ListAdminConnectionsData, ThrowOnError>) => (options?.client ?? client).get<ListAdminConnectionsResponses, ListAdminConnectionsErrors, ThrowOnError>({
     url: '/admin/connections',
     ...options
 });
@@ -382,12 +331,27 @@ export const listAdminConnections = <ThrowOnError extends boolean = false>(optio
  * Create a new source database connection
  */
 export const createAdminConnection = <ThrowOnError extends boolean = false>(options: Options<CreateAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<CreateAdminConnectionResponses, CreateAdminConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
     url: '/admin/connections',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get a connection by ID
+ */
+export const getAdminConnection = <ThrowOnError extends boolean = false>(options: Options<GetAdminConnectionData, ThrowOnError>) => (options.client ?? client).get<GetAdminConnectionResponses, GetAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}`,
+    ...options
+});
+
+/**
+ * Update an existing connection
+ */
+export const updateAdminConnection = <ThrowOnError extends boolean = false>(options: Options<UpdateAdminConnectionData, ThrowOnError>) => (options.client ?? client).put<UpdateAdminConnectionResponses, UpdateAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}`,
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -399,38 +363,47 @@ export const createAdminConnection = <ThrowOnError extends boolean = false>(opti
  * Hard-delete a connection (blocked if referenced)
  */
 export const deleteAdminConnection = <ThrowOnError extends boolean = false>(options: Options<DeleteAdminConnectionData, ThrowOnError>) => (options.client ?? client).delete<DeleteAdminConnectionResponses, DeleteAdminConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/admin/connections/{connectionId}',
+    url: `/admin/connections/${options.path.connectionId}`,
     ...options
 });
 
 /**
- * Get a connection by ID
+ * Disable an active connection
  */
-export const getAdminConnection = <ThrowOnError extends boolean = false>(options: Options<GetAdminConnectionData, ThrowOnError>) => (options.client ?? client).get<GetAdminConnectionResponses, GetAdminConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/admin/connections/{connectionId}',
+export const disableAdminConnection = <ThrowOnError extends boolean = false>(options: Options<DisableAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<DisableAdminConnectionResponses, DisableAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}/disable`,
     ...options
 });
 
 /**
- * Update an existing connection
+ * Re-enable a disabled connection
  */
-export const updateAdminConnection = <ThrowOnError extends boolean = false>(options: Options<UpdateAdminConnectionData, ThrowOnError>) => (options.client ?? client).put<UpdateAdminConnectionResponses, UpdateAdminConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/admin/connections/{connectionId}',
+export const enableAdminConnection = <ThrowOnError extends boolean = false>(options: Options<EnableAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<EnableAdminConnectionResponses, EnableAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}/enable`,
+    ...options
+});
+
+/**
+ * Test a connection's health
+ */
+export const testAdminConnection = <ThrowOnError extends boolean = false>(options: Options<TestAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<TestAdminConnectionResponses, TestAdminConnectionErrors, ThrowOnError>({
+    url: `/admin/connections/${options.path.connectionId}/test`,
+    ...options
+});
+
+/**
+ * List user-available source database connections
+ */
+export const listUserConnections = <ThrowOnError extends boolean = false>(options?: Options<ListUserConnectionsData, ThrowOnError>) => (options?.client ?? client).get<ListUserConnectionsResponses, ListUserConnectionsErrors, ThrowOnError>({
+    url: '/connections',
+    ...options
+});
+
+/**
+ * Update the connection for a session
+ */
+export const updateSessionConnection = <ThrowOnError extends boolean = false>(options: Options<UpdateSessionConnectionData, ThrowOnError>) => (options.client ?? client).patch<UpdateSessionConnectionResponses, UpdateSessionConnectionErrors, ThrowOnError>({
+    url: `/sessions/${options.path.sessionId}/connection`,
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -439,60 +412,38 @@ export const updateAdminConnection = <ThrowOnError extends boolean = false>(opti
 });
 
 /**
- * Disable an active connection
- */
-export const disableAdminConnection = <ThrowOnError extends boolean = false>(options: Options<DisableAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<DisableAdminConnectionResponses, DisableAdminConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/admin/connections/{connectionId}/disable',
-    ...options
-});
-
-/**
- * Re-enable a disabled connection
- */
-export const enableAdminConnection = <ThrowOnError extends boolean = false>(options: Options<EnableAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<EnableAdminConnectionResponses, EnableAdminConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/admin/connections/{connectionId}/enable',
-    ...options
-});
-
-/**
- * Test a connection's health
- */
-export const testAdminConnection = <ThrowOnError extends boolean = false>(options: Options<TestAdminConnectionData, ThrowOnError>) => (options.client ?? client).post<TestAdminConnectionResponses, TestAdminConnectionErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/admin/connections/{connectionId}/test',
-    ...options
-});
-
-/**
  * List configured SSO providers
- *
- * Public endpoint returning available SSO providers for sign-in page.
  */
-export const listSsoProviders = <ThrowOnError extends boolean = false>(options?: Options<ListSsoProvidersData, ThrowOnError>) => (options?.client ?? client).get<ListSsoProvidersResponses, unknown, ThrowOnError>({ url: '/auth/sso/providers', ...options });
+export const listSsoProviders = <ThrowOnError extends boolean = false>(options?: Options<ListSsoProvidersData, ThrowOnError>) => (options?.client ?? client).get<ListSsoProvidersResponses, ListSsoProvidersErrors, ThrowOnError>({
+    url: '/auth/sso/providers',
+    ...options
+});
+
+import type {
+    ListAdminSsoProvidersData,
+    ListAdminSsoProvidersErrors,
+    ListAdminSsoProvidersResponses,
+    CreateSsoProviderData,
+    CreateSsoProviderErrors,
+    CreateSsoProviderResponses,
+    UpdateSsoProviderData,
+    UpdateSsoProviderErrors,
+    UpdateSsoProviderResponses,
+    DeleteSsoProviderData,
+    DeleteSsoProviderErrors,
+    DeleteSsoProviderResponses,
+    GetAuditStatusData,
+    GetAuditStatusErrors,
+    GetAuditStatusResponses,
+    VerifyAuditChainData,
+    VerifyAuditChainErrors,
+    VerifyAuditChainResponses,
+} from './types.gen';
 
 /**
  * List SSO providers (admin)
  */
 export const listAdminSsoProviders = <ThrowOnError extends boolean = false>(options?: Options<ListAdminSsoProvidersData, ThrowOnError>) => (options?.client ?? client).get<ListAdminSsoProvidersResponses, ListAdminSsoProvidersErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
     url: '/admin/sso/providers',
     ...options
 });
@@ -501,11 +452,6 @@ export const listAdminSsoProviders = <ThrowOnError extends boolean = false>(opti
  * Create SSO provider
  */
 export const createSsoProvider = <ThrowOnError extends boolean = false>(options: Options<CreateSsoProviderData, ThrowOnError>) => (options.client ?? client).post<CreateSsoProviderResponses, CreateSsoProviderErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
     url: '/admin/sso/providers',
     ...options,
     headers: {
@@ -515,28 +461,10 @@ export const createSsoProvider = <ThrowOnError extends boolean = false>(options:
 });
 
 /**
- * List roles
+ * Update SSO provider
  */
-export const listRoles = <ThrowOnError extends boolean = false>(options?: Options<ListRolesData, ThrowOnError>) => (options?.client ?? client).get<ListRolesResponses, ListRolesErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/admin/roles',
-    ...options
-});
-
-/**
- * Create role
- */
-export const createRole = <ThrowOnError extends boolean = false>(options: Options<CreateRoleData, ThrowOnError>) => (options.client ?? client).post<CreateRoleResponses, CreateRoleErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
-    url: '/admin/roles',
+export const updateSsoProvider = <ThrowOnError extends boolean = false>(options: Options<UpdateSsoProviderData, ThrowOnError>) => (options.client ?? client).put<UpdateSsoProviderResponses, UpdateSsoProviderErrors, ThrowOnError>({
+    url: `/admin/sso/providers/${options.path.providerId}`,
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -545,14 +473,17 @@ export const createRole = <ThrowOnError extends boolean = false>(options: Option
 });
 
 /**
+ * Delete SSO provider
+ */
+export const deleteSsoProvider = <ThrowOnError extends boolean = false>(options: Options<DeleteSsoProviderData, ThrowOnError>) => (options.client ?? client).delete<DeleteSsoProviderResponses, DeleteSsoProviderErrors, ThrowOnError>({
+    url: `/admin/sso/providers/${options.path.providerId}`,
+    ...options
+});
+
+/**
  * Verify audit chain integrity
  */
 export const verifyAuditChain = <ThrowOnError extends boolean = false>(options?: Options<VerifyAuditChainData, ThrowOnError>) => (options?.client ?? client).post<VerifyAuditChainResponses, VerifyAuditChainErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
     url: '/admin/audit/verify',
     ...options
 });
@@ -561,35 +492,9 @@ export const verifyAuditChain = <ThrowOnError extends boolean = false>(options?:
  * Get audit log status
  */
 export const getAuditStatus = <ThrowOnError extends boolean = false>(options?: Options<GetAuditStatusData, ThrowOnError>) => (options?.client ?? client).get<GetAuditStatusResponses, GetAuditStatusErrors, ThrowOnError>({
-    security: [{
-            in: 'cookie',
-            name: 'session_id',
-            type: 'apiKey'
-        }],
     url: '/admin/audit/status',
     ...options
 });
-
-/**
- * Update SSO provider
- */
-export const updateSsoProvider = (options: any) => (options.client ?? client).put({
-    url: `/admin/sso/providers/${options.path.providerId}`,
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-}) as Promise<any>;
-
-/**
- * Delete SSO provider
- */
-export const deleteSsoProvider = (options: any) => (options.client ?? client).delete({
-    url: `/admin/sso/providers/${options.path.providerId}`,
-    ...options
-}) as Promise<any>;
-
 
 
 

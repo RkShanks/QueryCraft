@@ -14,9 +14,9 @@ export type UserProfile = {
     username: string;
     display_name: string;
     role: string;
-    role_id?: string;
-    role_name?: string;
-    permissions?: Array<string>;
+    role_id?: string | null;
+    role_name?: string | null;
+    permissions?: string[];
     auth_provider?: 'local' | 'oidc' | 'saml';
 };
 
@@ -25,13 +25,7 @@ export type SubmitQuestionRequest = {
      * Natural-language question in English.
      */
     question: string;
-    /**
-     * Chat session ID for follow-up context. Null for first message (lazy session creation).
-     */
     session_id?: string;
-    /**
-     * Source database connection ID to route the query to.
-     */
     connection_id: string;
 };
 
@@ -44,9 +38,6 @@ export type QueryResult = {
      * Ephemeral ID for this generation attempt (used in accept/reject).
      */
     attempt_id: string;
-    /**
-     * Chat session ID this result belongs to. Null for legacy unsessioned results.
-     */
     session_id?: string;
     question: string;
     generated_sql: string;
@@ -91,7 +82,7 @@ export type EvaluatorRejection = {
      */
     message_params?: {
         [key: string]: unknown;
-    };
+    } | null;
     violations: Array<Violation>;
 };
 
@@ -109,93 +100,7 @@ export type Violation = {
      */
     message_params?: {
         [key: string]: unknown;
-    };
-};
-
-export type AttemptSummary = {
-    id: string;
-    question_text: string;
-    generated_sql: string;
-    accepted_at: string;
-    saved: boolean;
-    /**
-     * 1 for thumbs up, -1 for thumbs down, null if not rated.
-     */
-    feedback?: number;
-    result_columns?: Array<ColumnMeta>;
-    result_rows?: Array<Array<unknown>>;
-    result_row_count?: number;
-};
-
-export type SessionSummary = {
-    id: string;
-    preview_text: string;
-    created_at: string;
-    last_activity_at: string;
-};
-
-export type SessionDetail = {
-    id: string;
-    preview_text: string;
-    created_at: string;
-    last_activity_at: string;
-    attempts: Array<AttemptSummary>;
-};
-
-export type CreateSessionResponse = {
-    id: string;
-    preview_text: string;
-    created_at: string;
-};
-
-export type SessionListResponse = {
-    items: Array<SessionSummary>;
-    total: number;
-};
-
-export type UpdateFeedbackRequest = {
-    /**
-     * 1 for thumbs up, -1 for thumbs down.
-     */
-    feedback: number;
-    /**
-     * Mark the query as saved. Defaults to true when feedback is set.
-     */
-    saved?: boolean;
-};
-
-export type FeedbackResponse = {
-    id: string;
-    feedback: number;
-    saved: boolean;
-};
-
-export type AdminSettingsResponse = {
-    /**
-     * Number of previous conversation turns to include as context (0-10).
-     */
-    llm_context_cap: number;
-    /**
-     * Maximum number of regenerate attempts allowed per query including the original.
-     */
-    max_regenerate_attempts: number;
-};
-
-export type UpdateAdminSettingsRequest = {
-    /**
-     * Number of previous conversation turns to include as context (0-10).
-     */
-    llm_context_cap: number;
-    /**
-     * Maximum number of regenerate attempts allowed per query including the original.
-     */
-    max_regenerate_attempts?: number;
-};
-
-export type UpdateAdminSettingsResponse = {
-    llm_context_cap: number;
-    max_regenerate_attempts: number;
-    updated_at: string;
+    } | null;
 };
 
 export type AcceptQueryRequest = {
@@ -204,7 +109,7 @@ export type AcceptQueryRequest = {
      */
     attempt_id: string;
     /**
-     * Chat session ID, optional for linking to sidebar session.
+     * Chat session ID from QueryResult, optional for linking to sidebar session.
      */
     session_id?: string;
 };
@@ -224,6 +129,9 @@ export type AcceptedQuerySummary = {
      */
     generated_sql: string;
     accepted_at: string;
+    database_connection_id?: string | null;
+    database_connection_name?: string | null;
+    database_type?: DatabaseType | null;
 };
 
 export type RefinePrompt = {
@@ -240,7 +148,7 @@ export type RefinePrompt = {
      */
     message_params?: {
         [key: string]: unknown;
-    };
+    } | null;
     /**
      * Always true. Signals the frontend to show the refine UI.
      */
@@ -250,13 +158,13 @@ export type RefinePrompt = {
 export type HistoryListResponse = {
     items: Array<AcceptedQuerySummary>;
     /**
-     * Total count of items matching filter; populated only on first-page requests (no cursor) for performance.
+     * Total number of accepted queries. Populated only on the first page request (when no `cursor` is supplied). Omitted on subsequent pages.
      */
-    total?: number;
+    total?: number | null;
     /**
      * Opaque cursor for the next page. Null if no more entries.
      */
-    next_cursor?: string;
+    next_cursor?: string | null;
 };
 
 export type AcceptedQueryDetail = {
@@ -265,26 +173,14 @@ export type AcceptedQueryDetail = {
     generated_sql: string;
     llm_provider: string;
     accepted_at: string;
-    database_connection_id: string;
-    /**
-     * Column metadata from the executed query result.
-     */
-    result_columns?: Array<ColumnMeta>;
-    /**
-     * Row data from the executed query result.
-     */
-    result_rows?: Array<Array<unknown>>;
-    /**
-     * Total row count from the executed query result.
-     */
-    result_row_count?: number;
+    database_connection_id?: string | null;
+    database_connection_name?: string | null;
+    database_type?: DatabaseType | null;
+    result_columns?: Array<{ name: string; type: string }> | null;
+    result_rows?: Array<Array<unknown>> | null;
+    result_row_count?: number | null;
 };
 
-/**
- *
- *
- * Phase 5 error codes: forbidden, sso_no_role, sso_validation_failed, sso_provider_unavailable, sso_not_configured, local_login_admin_only, role_not_found, duplicate_group_mapping, query_blocked_policy, filter_validation_failed, policy_schema_conflict, audit_chain_broken, builtin_role_protected.
- */
 export type ErrorResponse = {
     /**
      * Machine-readable error code.
@@ -299,7 +195,7 @@ export type ErrorResponse = {
      */
     message_params?: {
         [key: string]: unknown;
-    };
+    } | null;
 };
 
 export type ValidationErrorResponse = {
@@ -313,7 +209,7 @@ export type ValidationErrorResponse = {
      */
     message_params?: {
         [key: string]: unknown;
-    };
+    } | null;
     details: Array<{
         field: string;
         /**
@@ -325,271 +221,8 @@ export type ValidationErrorResponse = {
          */
         message_params?: {
             [key: string]: unknown;
-        };
+        } | null;
     }>;
-};
-
-export type ConnectionListResponse = {
-    connections: Array<ConnectionResponse>;
-};
-
-export type ConnectionCreate = {
-    display_name: string;
-    database_type: 'postgresql' | 'mysql' | 'mssql';
-    host: string;
-    port: number;
-    database_name: string;
-    username: string;
-    ssl_mode?: string;
-};
-
-export type ConnectionUpdate = {
-    display_name?: string;
-    database_type?: 'postgresql' | 'mysql' | 'mssql';
-    host?: string;
-    port?: number;
-    database_name?: string;
-    username?: string;
-    ssl_mode?: string;
-};
-
-export type ConnectionResponse = {
-    id: string;
-    display_name: string;
-    database_type: 'postgresql' | 'mysql' | 'mssql';
-    host: string;
-    port: number;
-    database_name: string;
-    username: string;
-    ssl_mode: string;
-    lifecycle_state: 'active' | 'disabled';
-    health_status: 'untested' | 'healthy' | 'unhealthy';
-    last_health_check_at?: string;
-    health_error_category?: string;
-    schema_introspection_status: 'none' | 'success' | 'failed' | 'stale';
-    schema_last_refreshed_at?: string;
-    created_at: string;
-    updated_at: string;
-};
-
-export type ConnectionTestResult = {
-    status: 'healthy' | 'unhealthy';
-    latency_ms?: number;
-    error_category?: string;
-    message_key?: string;
-    tested_at: string;
-};
-
-export type UserConnectionResponse = {
-    id: string;
-    display_name: string;
-    database_type: 'postgresql' | 'mysql' | 'mssql';
-};
-
-export type SessionConnectionUpdate = {
-    connection_id: string;
-};
-
-export type SessionConnectionResponse = {
-    id: string;
-    connection_id?: string;
-    preview_text: string;
-    created_at: string;
-    last_activity_at: string;
-};
-
-export type SsoProviderPublic = {
-    protocol: 'oidc' | 'saml';
-    display_name: string;
-    login_url: string;
-};
-
-export type SsoProviderResponse = {
-    id: string;
-    protocol: 'oidc' | 'saml';
-    display_name: string;
-    issuer_url?: string;
-    client_id?: string;
-    client_secret_masked?: string;
-    scopes?: string;
-    redirect_uri?: string;
-    group_claim_name?: string;
-    saml_entity_id?: string;
-    saml_metadata_url?: string;
-    saml_metadata_xml_masked?: string;
-    saml_certificate_masked?: string;
-    is_active: boolean;
-    created_at: string;
-    updated_at: string;
-};
-
-export type SsoProviderCreate = {
-    protocol: 'oidc' | 'saml';
-    display_name: string;
-    issuer_url?: string;
-    client_id?: string;
-    scopes?: string;
-    redirect_uri?: string;
-    group_claim_name?: string;
-    saml_entity_id?: string;
-    saml_metadata_url?: string;
-};
-
-export type SsoProviderUpdate = {
-    display_name?: string;
-    issuer_url?: string;
-    client_id?: string;
-    scopes?: string;
-    redirect_uri?: string;
-    group_claim_name?: string;
-    saml_entity_id?: string;
-    saml_metadata_url?: string;
-    is_active?: boolean;
-};
-
-export type RoleResponse = {
-    id: string;
-    name: string;
-    description?: string;
-    priority: number;
-    permissions: Array<string>;
-    is_builtin: boolean;
-    group_mappings?: Array<{
-        [key: string]: unknown;
-    }>;
-    connection_policy_count?: number;
-    created_at: string;
-    updated_at: string;
-};
-
-export type RoleDetailResponse = RoleResponse & {
-    connection_policies?: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type RoleCreate = {
-    name: string;
-    description?: string;
-    priority: number;
-    permissions?: Array<string>;
-    group_mappings?: Array<string>;
-    connection_policies?: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type RoleUpdate = {
-    name?: string;
-    description?: string;
-    priority?: number;
-    permissions?: Array<string>;
-    group_mappings?: Array<string>;
-    connection_policies?: Array<{
-        [key: string]: unknown;
-    }>;
-};
-
-export type PolicyTestRequest = {
-    question: string;
-    connection_id: string;
-};
-
-export type PolicyTestResponse = {
-    accessible_tables?: Array<string>;
-    accessible_columns?: {
-        [key: string]: Array<string>;
-    };
-    blocked_tables?: Array<string>;
-    applicable_row_filters?: Array<{
-        [key: string]: unknown;
-    }>;
-    masked_columns?: {
-        [key: string]: Array<string>;
-    };
-    would_be_allowed: boolean;
-};
-
-export type GroupMappingResponse = {
-    id: string;
-    sso_group_value: string;
-    role_id: string;
-    role_name: string;
-    created_at: string;
-};
-
-export type GroupMappingCreate = {
-    sso_group_value: string;
-    role_id: string;
-};
-
-export type AuditVerifyResponse = {
-    verified: boolean;
-    entries_checked: number;
-    first_break_at?: number;
-    verified_at: string;
-};
-
-export type AuditStatusResponse = {
-    total_entries: number;
-    last_verification?: {
-        [key: string]: unknown;
-    };
-};
-
-export type ConnectionCreateWritable = {
-    display_name: string;
-    database_type: 'postgresql' | 'mysql' | 'mssql';
-    host: string;
-    port: number;
-    database_name: string;
-    username: string;
-    password: string;
-    ssl_mode?: string;
-};
-
-export type ConnectionUpdateWritable = {
-    display_name?: string;
-    database_type?: 'postgresql' | 'mysql' | 'mssql';
-    host?: string;
-    port?: number;
-    database_name?: string;
-    username?: string;
-    /**
-     * null or omitted = keep existing
-     */
-    password?: string;
-    ssl_mode?: string;
-};
-
-export type SsoProviderCreateWritable = {
-    protocol: 'oidc' | 'saml';
-    display_name: string;
-    issuer_url?: string;
-    client_id?: string;
-    client_secret?: string;
-    scopes?: string;
-    redirect_uri?: string;
-    group_claim_name?: string;
-    saml_entity_id?: string;
-    saml_metadata_url?: string;
-    saml_metadata_xml?: string;
-    saml_certificate?: string;
-};
-
-export type SsoProviderUpdateWritable = {
-    display_name?: string;
-    issuer_url?: string;
-    client_id?: string;
-    client_secret?: string;
-    scopes?: string;
-    redirect_uri?: string;
-    group_claim_name?: string;
-    saml_entity_id?: string;
-    saml_metadata_url?: string;
-    saml_metadata_xml?: string;
-    saml_certificate?: string;
-    is_active?: boolean;
 };
 
 export type SignInData = {
@@ -763,14 +396,6 @@ export type RejectQueryErrors = {
      * Not authenticated.
      */
     401: ErrorResponse;
-    /**
-     * LLM provider unreachable or returned an error.
-     */
-    502: ErrorResponse;
-    /**
-     * Source database query timed out.
-     */
-    504: ErrorResponse;
 };
 
 export type RejectQueryError = RejectQueryErrors[keyof RejectQueryErrors];
@@ -799,21 +424,9 @@ export type RegenerateQueryData = {
 
 export type RegenerateQueryErrors = {
     /**
-     * No active query result to regenerate.
-     */
-    400: ErrorResponse;
-    /**
      * Not authenticated.
      */
     401: ErrorResponse;
-    /**
-     * LLM provider unreachable or returned an error.
-     */
-    502: ErrorResponse;
-    /**
-     * Source database query timed out.
-     */
-    504: ErrorResponse;
 };
 
 export type RegenerateQueryError = RegenerateQueryErrors[keyof RegenerateQueryErrors];
@@ -867,37 +480,6 @@ export type ListHistoryResponses = {
 
 export type ListHistoryResponse = ListHistoryResponses[keyof ListHistoryResponses];
 
-export type DeleteHistoryEntryData = {
-    body?: never;
-    path: {
-        query_id: string;
-    };
-    query?: never;
-    url: '/history/{query_id}';
-};
-
-export type DeleteHistoryEntryErrors = {
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-    /**
-     * Query not found.
-     */
-    404: ErrorResponse;
-};
-
-export type DeleteHistoryEntryError = DeleteHistoryEntryErrors[keyof DeleteHistoryEntryErrors];
-
-export type DeleteHistoryEntryResponses = {
-    /**
-     * Query deleted successfully.
-     */
-    204: void;
-};
-
-export type DeleteHistoryEntryResponse = DeleteHistoryEntryResponses[keyof DeleteHistoryEntryResponses];
-
 export type GetHistoryEntryData = {
     body?: never;
     path: {
@@ -929,280 +511,13 @@ export type GetHistoryEntryResponses = {
 
 export type GetHistoryEntryResponse = GetHistoryEntryResponses[keyof GetHistoryEntryResponses];
 
-export type ListSessionsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/sessions';
-};
-
-export type ListSessionsErrors = {
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-};
-
-export type ListSessionsError = ListSessionsErrors[keyof ListSessionsErrors];
-
-export type ListSessionsResponses = {
-    /**
-     * List of sessions.
-     */
-    200: SessionListResponse;
-};
-
-export type ListSessionsResponse = ListSessionsResponses[keyof ListSessionsResponses];
-
-export type CreateSessionData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/sessions';
-};
-
-export type CreateSessionErrors = {
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-};
-
-export type CreateSessionError = CreateSessionErrors[keyof CreateSessionErrors];
-
-export type CreateSessionResponses = {
-    /**
-     * Session created.
-     */
-    201: CreateSessionResponse;
-};
-
-export type CreateSessionResponse2 = CreateSessionResponses[keyof CreateSessionResponses];
-
-export type DeleteSessionData = {
-    body?: never;
-    path: {
-        sessionId: string;
-    };
-    query?: never;
-    url: '/sessions/{sessionId}';
-};
-
-export type DeleteSessionErrors = {
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-    /**
-     * Session not found.
-     */
-    404: ErrorResponse;
-};
-
-export type DeleteSessionError = DeleteSessionErrors[keyof DeleteSessionErrors];
-
-export type DeleteSessionResponses = {
-    /**
-     * Session deleted.
-     */
-    204: void;
-};
-
-export type DeleteSessionResponse = DeleteSessionResponses[keyof DeleteSessionResponses];
-
-export type GetSessionData = {
-    body?: never;
-    path: {
-        sessionId: string;
-    };
-    query?: never;
-    url: '/sessions/{sessionId}';
-};
-
-export type GetSessionErrors = {
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-    /**
-     * Session not found.
-     */
-    404: ErrorResponse;
-};
-
-export type GetSessionError = GetSessionErrors[keyof GetSessionErrors];
-
-export type GetSessionResponses = {
-    /**
-     * Session detail.
-     */
-    200: SessionDetail;
-};
-
-export type GetSessionResponse = GetSessionResponses[keyof GetSessionResponses];
-
-export type ListUserConnectionsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/connections';
-};
-
-export type ListUserConnectionsErrors = {
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-};
-
-export type ListUserConnectionsError = ListUserConnectionsErrors[keyof ListUserConnectionsErrors];
-
-export type ListUserConnectionsResponses = {
-    /**
-     * List of available connections.
-     */
-    200: Array<UserConnectionResponse>;
-};
-
-export type ListUserConnectionsResponse = ListUserConnectionsResponses[keyof ListUserConnectionsResponses];
-
-export type UpdateSessionConnectionData = {
-    body: SessionConnectionUpdate;
-    path: {
-        sessionId: string;
-    };
-    query?: never;
-    url: '/sessions/{sessionId}/connection';
-};
-
-export type UpdateSessionConnectionErrors = {
-    /**
-     * Connection is disabled, unhealthy, or not introspected.
-     */
-    400: ErrorResponse;
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-    /**
-     * Session not found.
-     */
-    404: ErrorResponse;
-};
-
-export type UpdateSessionConnectionError = UpdateSessionConnectionErrors[keyof UpdateSessionConnectionErrors];
-
-export type UpdateSessionConnectionResponses = {
-    /**
-     * Session connection updated.
-     */
-    200: SessionConnectionResponse;
-};
-
-export type UpdateSessionConnectionResponse = UpdateSessionConnectionResponses[keyof UpdateSessionConnectionResponses];
-
-export type UpdateFeedbackData = {
-    body: UpdateFeedbackRequest;
-    path: {
-        attemptId: string;
-    };
-    query?: never;
-    url: '/feedback/{attemptId}';
-};
-
-export type UpdateFeedbackErrors = {
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-    /**
-     * Attempt not found.
-     */
-    404: ErrorResponse;
-    /**
-     * Invalid feedback value.
-     */
-    422: ErrorResponse;
-};
-
-export type UpdateFeedbackError = UpdateFeedbackErrors[keyof UpdateFeedbackErrors];
-
-export type UpdateFeedbackResponses = {
-    /**
-     * Feedback updated.
-     */
-    200: FeedbackResponse;
-};
-
-export type UpdateFeedbackResponse = UpdateFeedbackResponses[keyof UpdateFeedbackResponses];
-
-export type GetAdminSettingsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/admin/settings';
-};
-
-export type GetAdminSettingsErrors = {
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-    /**
-     * Admin role required.
-     */
-    403: ErrorResponse;
-};
-
-export type GetAdminSettingsError = GetAdminSettingsErrors[keyof GetAdminSettingsErrors];
-
-export type GetAdminSettingsResponses = {
-    /**
-     * Current admin settings.
-     */
-    200: AdminSettingsResponse;
-};
-
-export type GetAdminSettingsResponse = GetAdminSettingsResponses[keyof GetAdminSettingsResponses];
-
-export type UpdateAdminSettingsData = {
-    body: UpdateAdminSettingsRequest;
-    path?: never;
-    query?: never;
-    url: '/admin/settings';
-};
-
-export type UpdateAdminSettingsErrors = {
-    /**
-     * Not authenticated.
-     */
-    401: ErrorResponse;
-    /**
-     * Admin role required.
-     */
-    403: ErrorResponse;
-    /**
-     * Invalid settings values.
-     */
-    422: ErrorResponse;
-};
-
-export type UpdateAdminSettingsError = UpdateAdminSettingsErrors[keyof UpdateAdminSettingsErrors];
-
-export type UpdateAdminSettingsResponses = {
-    /**
-     * Settings updated.
-     */
-    200: UpdateAdminSettingsResponse;
-};
-
-export type UpdateAdminSettingsResponse2 = UpdateAdminSettingsResponses[keyof UpdateAdminSettingsResponses];
-
 export type RefreshSchemaData = {
     body?: never;
-    path?: never;
+    path: {
+        connectionId: string;
+    };
     query?: never;
-    url: '/admin/refresh-schema';
+    url: '/admin/connections/{connectionId}/refresh-schema';
 };
 
 export type RefreshSchemaErrors = {
@@ -1235,6 +550,278 @@ export type RefreshSchemaResponses = {
 
 export type RefreshSchemaResponse = RefreshSchemaResponses[keyof RefreshSchemaResponses];
 
+/* Phase 2: Session, Feedback, Admin Settings types */
+
+export type AttemptSummary = {
+    id: string;
+    question_text: string;
+    generated_sql: string;
+    accepted_at: string;
+    saved: boolean;
+    feedback?: number;
+    result_columns?: Array<{ name: string; type: string }> | null;
+    result_rows?: Array<Array<unknown>> | null;
+    result_row_count?: number | null;
+    database_connection_id?: string | null;
+    database_connection_name?: string | null;
+    database_type?: DatabaseType | null;
+};
+
+export type SessionSummary = {
+    id: string;
+    preview_text: string;
+    created_at: string;
+    last_activity_at: string;
+};
+
+export type SessionDetail = {
+    id: string;
+    connection_id?: string | null;
+    preview_text: string;
+    created_at: string;
+    last_activity_at: string;
+    attempts: Array<AttemptSummary>;
+};
+
+export type CreateSessionResponse = {
+    id: string;
+    preview_text: string;
+    created_at: string;
+};
+
+export type SessionListResponse = {
+    items: Array<SessionSummary>;
+    total: number;
+};
+
+export type UpdateFeedbackRequest = {
+    feedback: number;
+    saved?: boolean;
+};
+
+export type FeedbackResponse = {
+    id: string;
+    feedback: number;
+    saved: boolean;
+};
+
+export type AdminSettingsResponse = {
+    llm_context_cap: number;
+    max_regenerate_attempts: number;
+};
+
+export type UpdateAdminSettingsRequest = {
+    llm_context_cap: number;
+    max_regenerate_attempts?: number;
+};
+
+export type UpdateAdminSettingsResponse = {
+    llm_context_cap: number;
+    max_regenerate_attempts: number;
+    updated_at: string;
+};
+
+/* Data / Errors / Responses for new endpoints */
+
+export type CreateSessionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/sessions';
+};
+
+export type CreateSessionErrors = {
+    401: ErrorResponse;
+};
+
+export type CreateSessionResponses = {
+    201: CreateSessionResponse;
+};
+
+export type ListSessionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/sessions';
+};
+
+export type ListSessionsErrors = {
+    401: ErrorResponse;
+};
+
+export type ListSessionsResponses = {
+    200: SessionListResponse;
+};
+
+export type GetSessionData = {
+    body?: never;
+    path: {
+        sessionId: string;
+    };
+    query?: never;
+    url: '/sessions/{sessionId}';
+};
+
+export type GetSessionErrors = {
+    401: ErrorResponse;
+    404: ErrorResponse;
+};
+
+export type GetSessionResponses = {
+    200: SessionDetail;
+};
+
+export type DeleteSessionData = {
+    body?: never;
+    path: {
+        sessionId: string;
+    };
+    query?: never;
+    url: '/sessions/{sessionId}';
+};
+
+export type DeleteSessionErrors = {
+    401: ErrorResponse;
+    404: ErrorResponse;
+};
+
+export type DeleteSessionResponses = {
+    204: void;
+};
+
+export type UpdateFeedbackData = {
+    body: UpdateFeedbackRequest;
+    path: {
+        attemptId: string;
+    };
+    query?: never;
+    url: '/feedback/{attemptId}';
+};
+
+export type UpdateFeedbackErrors = {
+    401: ErrorResponse;
+    404: ErrorResponse;
+    422: ErrorResponse;
+};
+
+export type UpdateFeedbackResponses = {
+    200: FeedbackResponse;
+};
+
+export type GetAdminSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/settings';
+};
+
+export type GetAdminSettingsErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+};
+
+export type GetAdminSettingsResponses = {
+    200: AdminSettingsResponse;
+};
+
+export type UpdateAdminSettingsData = {
+    body: UpdateAdminSettingsRequest;
+    path?: never;
+    query?: never;
+    url: '/admin/settings';
+};
+
+export type UpdateAdminSettingsErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    422: ErrorResponse;
+};
+
+export type UpdateAdminSettingsResponses = {
+    200: UpdateAdminSettingsResponse;
+};
+
+export type DeleteHistoryEntryData = {
+    body?: never;
+    path: {
+        query_id: string;
+    };
+    query?: never;
+    url: '/history/{query_id}';
+};
+
+export type DeleteHistoryEntryErrors = {
+    401: ErrorResponse;
+    404: ErrorResponse;
+};
+
+export type DeleteHistoryEntryResponses = {
+    204: void;
+};
+
+export type DeleteHistoryEntryError = DeleteHistoryEntryErrors[keyof DeleteHistoryEntryErrors];
+export type DeleteHistoryEntryResponse = DeleteHistoryEntryResponses[keyof DeleteHistoryEntryResponses];
+
+// ─────────────────── Admin Connections (Phase 3) ───────────────────
+
+export type DatabaseType = 'postgresql' | 'mysql' | 'mssql';
+export type LifecycleState = 'active' | 'disabled';
+export type HealthStatus = 'untested' | 'healthy' | 'unhealthy';
+export type SchemaIntrospectionStatus = 'none' | 'success' | 'failed' | 'stale';
+
+export type ConnectionCreate = {
+    display_name: string;
+    database_type: DatabaseType;
+    host: string;
+    port: number;
+    database_name: string;
+    username: string;
+    password: string;
+    ssl_mode?: string;
+};
+
+export type ConnectionUpdate = {
+    display_name?: string | null;
+    database_type?: DatabaseType | null;
+    host?: string | null;
+    port?: number | null;
+    database_name?: string | null;
+    username?: string | null;
+    password?: string | null;
+    ssl_mode?: string | null;
+};
+
+export type ConnectionResponse = {
+    id: string;
+    display_name: string;
+    database_type: DatabaseType;
+    host: string;
+    port: number;
+    database_name: string;
+    username: string;
+    ssl_mode: string;
+    lifecycle_state: LifecycleState;
+    health_status: HealthStatus;
+    last_health_check_at: string | null;
+    health_error_category: string | null;
+    schema_introspection_status: SchemaIntrospectionStatus;
+    schema_last_refreshed_at: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
+export type ConnectionTestResult = {
+    status: 'healthy' | 'unhealthy';
+    latency_ms?: number | null;
+    error_category?: string | null;
+    message_key?: string | null;
+    tested_at: string;
+};
+
+export type ConnectionListResponse = {
+    connections: ConnectionResponse[];
+};
+
 export type ListAdminConnectionsData = {
     body?: never;
     path?: never;
@@ -1242,68 +829,31 @@ export type ListAdminConnectionsData = {
     url: '/admin/connections';
 };
 
+export type ListAdminConnectionsErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+};
+
 export type ListAdminConnectionsResponses = {
-    /**
-     * List of connections
-     */
     200: ConnectionListResponse;
 };
 
-export type ListAdminConnectionsResponse = ListAdminConnectionsResponses[keyof ListAdminConnectionsResponses];
-
 export type CreateAdminConnectionData = {
-    body: ConnectionCreateWritable;
+    body: ConnectionCreate;
     path?: never;
     query?: never;
     url: '/admin/connections';
 };
 
 export type CreateAdminConnectionErrors = {
-    /**
-     * Validation error
-     */
-    422: ValidationErrorResponse;
+    401: ErrorResponse;
+    403: ErrorResponse;
+    422: ErrorResponse;
 };
-
-export type CreateAdminConnectionError = CreateAdminConnectionErrors[keyof CreateAdminConnectionErrors];
 
 export type CreateAdminConnectionResponses = {
-    /**
-     * Connection created
-     */
     201: ConnectionResponse;
 };
-
-export type CreateAdminConnectionResponse = CreateAdminConnectionResponses[keyof CreateAdminConnectionResponses];
-
-export type DeleteAdminConnectionData = {
-    body?: never;
-    path: {
-        connectionId: string;
-    };
-    query?: never;
-    url: '/admin/connections/{connectionId}';
-};
-
-export type DeleteAdminConnectionErrors = {
-    /**
-     * Connection not found
-     */
-    404: unknown;
-    /**
-     * Connection is referenced
-     */
-    409: unknown;
-};
-
-export type DeleteAdminConnectionResponses = {
-    /**
-     * Deleted successfully
-     */
-    204: void;
-};
-
-export type DeleteAdminConnectionResponse = DeleteAdminConnectionResponses[keyof DeleteAdminConnectionResponses];
 
 export type GetAdminConnectionData = {
     body?: never;
@@ -1315,23 +865,17 @@ export type GetAdminConnectionData = {
 };
 
 export type GetAdminConnectionErrors = {
-    /**
-     * Connection not found
-     */
-    404: unknown;
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
 };
 
 export type GetAdminConnectionResponses = {
-    /**
-     * Connection details
-     */
     200: ConnectionResponse;
 };
 
-export type GetAdminConnectionResponse = GetAdminConnectionResponses[keyof GetAdminConnectionResponses];
-
 export type UpdateAdminConnectionData = {
-    body: ConnectionUpdateWritable;
+    body: ConnectionUpdate;
     path: {
         connectionId: string;
     };
@@ -1340,20 +884,35 @@ export type UpdateAdminConnectionData = {
 };
 
 export type UpdateAdminConnectionErrors = {
-    /**
-     * Connection not found
-     */
-    404: unknown;
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    422: ErrorResponse;
 };
 
 export type UpdateAdminConnectionResponses = {
-    /**
-     * Connection updated
-     */
     200: ConnectionResponse;
 };
 
-export type UpdateAdminConnectionResponse = UpdateAdminConnectionResponses[keyof UpdateAdminConnectionResponses];
+export type DeleteAdminConnectionData = {
+    body?: never;
+    path: {
+        connectionId: string;
+    };
+    query?: never;
+    url: '/admin/connections/{connectionId}';
+};
+
+export type DeleteAdminConnectionErrors = {
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    409: ErrorResponse;
+};
+
+export type DeleteAdminConnectionResponses = {
+    204: void;
+};
 
 export type DisableAdminConnectionData = {
     body?: never;
@@ -1365,24 +924,15 @@ export type DisableAdminConnectionData = {
 };
 
 export type DisableAdminConnectionErrors = {
-    /**
-     * Connection not found
-     */
-    404: unknown;
-    /**
-     * Already disabled
-     */
-    409: unknown;
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    409: ErrorResponse;
 };
 
 export type DisableAdminConnectionResponses = {
-    /**
-     * Connection disabled
-     */
     200: ConnectionResponse;
 };
-
-export type DisableAdminConnectionResponse = DisableAdminConnectionResponses[keyof DisableAdminConnectionResponses];
 
 export type EnableAdminConnectionData = {
     body?: never;
@@ -1394,24 +944,15 @@ export type EnableAdminConnectionData = {
 };
 
 export type EnableAdminConnectionErrors = {
-    /**
-     * Connection not found
-     */
-    404: unknown;
-    /**
-     * Already active
-     */
-    409: unknown;
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
+    409: ErrorResponse;
 };
 
 export type EnableAdminConnectionResponses = {
-    /**
-     * Connection enabled
-     */
     200: ConnectionResponse;
 };
-
-export type EnableAdminConnectionResponse = EnableAdminConnectionResponses[keyof EnableAdminConnectionResponses];
 
 export type TestAdminConnectionData = {
     body?: never;
@@ -1423,20 +964,74 @@ export type TestAdminConnectionData = {
 };
 
 export type TestAdminConnectionErrors = {
-    /**
-     * Connection not found
-     */
-    404: unknown;
+    401: ErrorResponse;
+    403: ErrorResponse;
+    404: ErrorResponse;
 };
 
 export type TestAdminConnectionResponses = {
-    /**
-     * Test result
-     */
     200: ConnectionTestResult;
 };
 
-export type TestAdminConnectionResponse = TestAdminConnectionResponses[keyof TestAdminConnectionResponses];
+export type UserConnectionResponse = {
+    id: string;
+    display_name: string;
+    database_type: DatabaseType;
+};
+
+export type ListUserConnectionsResponse = {
+    connections: UserConnectionResponse[];
+};
+
+export type ListUserConnectionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/connections';
+};
+
+export type ListUserConnectionsErrors = {
+    401: ErrorResponse;
+};
+
+export type ListUserConnectionsResponses = {
+    200: ListUserConnectionsResponse;
+};
+
+export type UpdateSessionConnectionRequest = {
+    connection_id: string;
+};
+
+export type UpdateSessionConnectionData = {
+    body: UpdateSessionConnectionRequest;
+    path: {
+        sessionId: string;
+    };
+    query?: never;
+    url: '/sessions/{sessionId}/connection';
+};
+
+export type UpdateSessionConnectionErrors = {
+    400: ErrorResponse;
+    401: ErrorResponse;
+    404: ErrorResponse;
+    409: ErrorResponse;
+    422: ErrorResponse;
+};
+
+export type UpdateSessionConnectionResponses = {
+    200: SessionDetail;
+};
+
+export type SsoProviderPublic = {
+    protocol: 'oidc' | 'saml';
+    display_name: string;
+    login_url: string;
+};
+
+export type ListSsoProvidersResponse = {
+    providers: SsoProviderPublic[];
+};
 
 export type ListSsoProvidersData = {
     body?: never;
@@ -1445,16 +1040,66 @@ export type ListSsoProvidersData = {
     url: '/auth/sso/providers';
 };
 
-export type ListSsoProvidersResponses = {
-    /**
-     * List of SSO providers.
-     */
-    200: {
-        providers?: Array<SsoProviderPublic>;
-    };
+export type ListSsoProvidersErrors = {
+    401?: ErrorResponse;
 };
 
-export type ListSsoProvidersResponse = ListSsoProvidersResponses[keyof ListSsoProvidersResponses];
+export type ListSsoProvidersResponses = {
+    200: ListSsoProvidersResponse;
+};
+
+export type SsoProviderResponse = {
+    id: string;
+    protocol: 'oidc' | 'saml';
+    display_name: string;
+    issuer_url?: string;
+    client_id?: string;
+    client_secret_masked?: string;
+    scopes?: string;
+    redirect_uri?: string;
+    group_claim_name?: string;
+    saml_entity_id?: string;
+    saml_metadata_url?: string;
+    saml_metadata_xml_masked?: string;
+    saml_certificate_masked?: string;
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
+};
+
+export type SsoProviderCreate = {
+    protocol: 'oidc' | 'saml';
+    display_name: string;
+    issuer_url?: string;
+    client_id?: string;
+    client_secret?: string;
+    scopes?: string;
+    redirect_uri?: string;
+    group_claim_name?: string;
+    saml_entity_id?: string;
+    saml_metadata_url?: string;
+    saml_metadata_xml?: string;
+    saml_certificate?: string;
+};
+
+export type SsoProviderUpdate = {
+    display_name?: string;
+    issuer_url?: string;
+    client_id?: string;
+    client_secret?: string;
+    scopes?: string;
+    redirect_uri?: string;
+    group_claim_name?: string;
+    saml_entity_id?: string;
+    saml_metadata_url?: string;
+    saml_metadata_xml?: string;
+    saml_certificate?: string;
+    is_active?: boolean;
+};
+
+export type ListAdminSsoProvidersResponse = {
+    providers: SsoProviderResponse[];
+};
 
 export type ListAdminSsoProvidersData = {
     body?: never;
@@ -1464,109 +1109,82 @@ export type ListAdminSsoProvidersData = {
 };
 
 export type ListAdminSsoProvidersErrors = {
-    /**
-     * Missing admin.sso.manage permission.
-     */
-    403: ErrorResponse;
+    401?: ErrorResponse;
+    403?: ErrorResponse;
 };
-
-export type ListAdminSsoProvidersError = ListAdminSsoProvidersErrors[keyof ListAdminSsoProvidersErrors];
 
 export type ListAdminSsoProvidersResponses = {
-    /**
-     * List of SSO providers with secrets masked.
-     */
-    200: {
-        providers?: Array<SsoProviderResponse>;
-    };
+    200: ListAdminSsoProvidersResponse;
 };
 
-export type ListAdminSsoProvidersResponse = ListAdminSsoProvidersResponses[keyof ListAdminSsoProvidersResponses];
-
 export type CreateSsoProviderData = {
-    body: SsoProviderCreateWritable;
+    body: SsoProviderCreate;
     path?: never;
     query?: never;
     url: '/admin/sso/providers';
 };
 
 export type CreateSsoProviderErrors = {
-    /**
-     * Missing admin.sso.manage permission.
-     */
-    403: ErrorResponse;
-    /**
-     * Provider for this protocol already exists.
-     */
-    409: ErrorResponse;
+    401?: ErrorResponse;
+    403?: ErrorResponse;
+    409?: ErrorResponse;
+    422?: ErrorResponse;
 };
 
-export type CreateSsoProviderError = CreateSsoProviderErrors[keyof CreateSsoProviderErrors];
-
 export type CreateSsoProviderResponses = {
-    /**
-     * Provider created.
-     */
     201: SsoProviderResponse;
 };
 
-export type CreateSsoProviderResponse = CreateSsoProviderResponses[keyof CreateSsoProviderResponses];
-
-export type ListRolesData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/admin/roles';
-};
-
-export type ListRolesErrors = {
-    /**
-     * Missing admin.roles.manage permission.
-     */
-    403: ErrorResponse;
-};
-
-export type ListRolesError = ListRolesErrors[keyof ListRolesErrors];
-
-export type ListRolesResponses = {
-    /**
-     * List of roles.
-     */
-    200: {
-        roles?: Array<RoleResponse>;
+export type UpdateSsoProviderData = {
+    body: SsoProviderUpdate;
+    path: {
+        providerId: string;
     };
-};
-
-export type ListRolesResponse = ListRolesResponses[keyof ListRolesResponses];
-
-export type CreateRoleData = {
-    body: RoleCreate;
-    path?: never;
     query?: never;
-    url: '/admin/roles';
+    url: '/admin/sso/providers/{providerId}';
 };
 
-export type CreateRoleErrors = {
-    /**
-     * Missing admin.roles.manage permission.
-     */
-    403: ErrorResponse;
-    /**
-     * Duplicate name, priority, or group mapping.
-     */
-    409: ErrorResponse;
+export type UpdateSsoProviderErrors = {
+    401?: ErrorResponse;
+    403?: ErrorResponse;
+    404?: ErrorResponse;
+    422?: ErrorResponse;
 };
 
-export type CreateRoleError = CreateRoleErrors[keyof CreateRoleErrors];
-
-export type CreateRoleResponses = {
-    /**
-     * Role created.
-     */
-    201: RoleResponse;
+export type UpdateSsoProviderResponses = {
+    200: SsoProviderResponse;
 };
 
-export type CreateRoleResponse = CreateRoleResponses[keyof CreateRoleResponses];
+export type DeleteSsoProviderData = {
+    body?: never;
+    path: {
+        providerId: string;
+    };
+    query?: never;
+    url: '/admin/sso/providers/{providerId}';
+};
+
+export type DeleteSsoProviderErrors = {
+    401?: ErrorResponse;
+    403?: ErrorResponse;
+    404?: ErrorResponse;
+};
+
+export type DeleteSsoProviderResponses = {
+    204: void;
+};
+
+export type AuditVerifyResponse = {
+    verified: boolean;
+    entries_checked: number;
+    first_break_at?: number | null;
+    verified_at: string;
+};
+
+export type AuditStatusResponse = {
+    total_entries: number;
+    last_verification?: AuditVerifyResponse | null;
+};
 
 export type VerifyAuditChainData = {
     body?: never;
@@ -1576,22 +1194,12 @@ export type VerifyAuditChainData = {
 };
 
 export type VerifyAuditChainErrors = {
-    /**
-     * Missing admin.audit.verify permission.
-     */
     403: ErrorResponse;
 };
 
-export type VerifyAuditChainError = VerifyAuditChainErrors[keyof VerifyAuditChainErrors];
-
 export type VerifyAuditChainResponses = {
-    /**
-     * Verification result.
-     */
     200: AuditVerifyResponse;
 };
-
-export type VerifyAuditChainResponse = VerifyAuditChainResponses[keyof VerifyAuditChainResponses];
 
 export type GetAuditStatusData = {
     body?: never;
@@ -1601,19 +1209,11 @@ export type GetAuditStatusData = {
 };
 
 export type GetAuditStatusErrors = {
-    /**
-     * Missing admin.audit.verify permission.
-     */
     403: ErrorResponse;
 };
 
-export type GetAuditStatusError = GetAuditStatusErrors[keyof GetAuditStatusErrors];
-
 export type GetAuditStatusResponses = {
-    /**
-     * Audit status.
-     */
     200: AuditStatusResponse;
 };
 
-export type GetAuditStatusResponse = GetAuditStatusResponses[keyof GetAuditStatusResponses];
+

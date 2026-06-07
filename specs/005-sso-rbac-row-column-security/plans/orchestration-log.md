@@ -3738,12 +3738,9 @@ remains as the only Wave 17.4 surface not yet shipped.)*
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.4d (Audit Retention Config + Backend Gate)
+## Historical Checkpoint — Through Wave 17.4d (Audit Retention Config + Backend Gate)
 
-This checkpoint supersedes the 17.4c checkpoint above. The
-earlier 17.4a / 17.4b / 17.4c sections are preserved as the
-historical record of how we got here; the live "where we are
-now" pointer is this section.
+*This checkpoint is historical, superseded by the Wave 17.4e checkpoint below.*
 
 ### Wave 17.4d Scope (T-741, T-742) — minimal, config-only
 
@@ -3801,11 +3798,7 @@ or endpoint response.
 
 - `<test T-741>` test(T-741): `AUDIT_RETENTION_MONTHS` config setting (default 24)
 - `<feat T-741>` feat(T-741): add `AUDIT_RETENTION_MONTHS` config setting (default 24)
-- (this commit) docs(T-741/T-742): mark tasks complete; wave 17.4d checkpoint
-
-*(Branch base: local 17.4c head. PR #143 still open; the
-17.4d PR will show only the 17.4d-specific diff once
-PR #143 is merged and main is fast-forwarded to it.)*
+- docs(T-741/T-742): mark tasks complete; wave 17.4d checkpoint
 
 ### Open tasks after 17.4d
 
@@ -3813,4 +3806,47 @@ PR #143 is merged and main is fast-forwarded to it.)*
 - T-738 follow-ups deferred to 17.4c: status endpoint tests
   re-asserting the DB-derived source of truth (done; committed
   as part of the 17.4c blocker-fix commits on top of #143).
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.4e (Audit Verification Page + i18n + Browser Evidence)
+
+### Wave 17.4e Scope (T-743 through T-750) — complete, shipped
+
+| T-ID | File | Tests | What it pins |
+|---|---|---|---|
+| T-743 | `frontend/src/pages/AdminAuditPage.tsx` | 5 | Admin Audit Verification UI page rendering status, checking entries count, indicating broken chain first break index, displaying warning on unverified state. |
+| T-744 | `frontend/src/components/sidebar/Sidebar.tsx` | 3 | Sidebar navigation links. Conditionally renders Audit Verification link if user has `admin.audit.verify` permission. |
+| T-745 | `frontend/src/hooks/useAdminAudit.ts` | 2 | Query/mutation hook for loading audit status and running integrity verification via typed sdk.gen calls. |
+| T-746 | `frontend/src/locales/en.json` | — | English strings for audit status, results, warnings, actions, and table headers. |
+| T-747 | `frontend/src/locales/ar.json` | — | Arabic translation for all audit status texts and actions (RTL-proof). |
+| T-748 | `frontend/src/locales/localeCoverage.test.ts` | — | Translation keys match perfectly across locales, no missing placeholders. |
+| T-749 | `frontend/tests/e2e/wave_17_4e_audit_smoke.spec.ts` | 2 | Playwright E2E tests verifying initial status, success state, and first break detection in LTR and RTL. |
+| T-750 | `frontend/scripts/generate-api-client.sh` | — | Production builds, TypeScript checks, and client generation settings verified. |
+
+### Security contract — re-confirmed (Wave 17.4e)
+
+- All audit pages and endpoints enforce `admin.audit.verify` or `admin` role checking.
+- No sensitive keys or raw secrets are displayed in the UI.
+- All errors are caught and localized safely without leakage.
+
+### Foundation gates (Wave 17.4e — all green)
+
+- Frontend Vitest: 58 files passed, 680 tests passed (100% green).
+- ESLint checks: All checks passed!
+- TypeScript compilation: `tsc --noEmit` passed.
+- CSS style linter: `stylelint` passed.
+- Production build: `npm run build` compiled successfully.
+- Playwright E2E tests: 2 passed.
+
+### Commits (Wave 17.4e)
+
+- `cfc8af9` test(T-743/T-745): write failing tests for audit verification page and hook
+- `50c829b` feat(frontend): complete audit verification page implementation, styling, i18n, and E2E tests
+- `docs(W17.4e)` docs: update orchestration-log and complete Wave 17.4e checkpoint (PR #145)
+
+### Open tasks after 17.4e
+
+- Wave 17.5: Arabic/RTL polish, cross-dialect verification, final audit/closeout.
+
 

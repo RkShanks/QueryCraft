@@ -14,7 +14,7 @@ echo "Output directory: ${OUTPUT_DIR}"
 npx -y @hey-api/openapi-ts \
   -i "${SPEC_PATH}" \
   -o "${OUTPUT_DIR}" \
-  -c @hey-api/client-fetch
+  -c fetch
 
 echo "API client generated successfully!"
 

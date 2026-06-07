@@ -2,19 +2,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createSession,
   getSession,
-  listSessions,
+  getSessions,
   deleteSession,
 } from '../api/generated/sdk.gen';
-
 
 
 export const useSessionsList = () => {
   return useQuery({
     queryKey: ['sessions'],
-    queryFn: () => listSessions({ throwOnError: true }).then((res) => res.data),
+    queryFn: () => getSessions({ throwOnError: true }).then((res) => res.data),
   });
 };
-
 
 export const useSessionDetail = (sessionId: string) => {
   return useQuery({
