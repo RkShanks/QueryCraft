@@ -41,7 +41,7 @@ Phases are sequential and **immutable** once snapshot.
 | 2 | FROZEN | `specs/002-phase2-premium-ui-rtl/` | Premium UI + Arabic/RTL + backend hardening |
 | 3 | FROZEN | `specs/003-multi-dialect-source-dbs/` | Multi-dialect SQL (PG/MySQL/MSSQL), admin DB management, schema introspection |
 | 4 | FROZEN | `specs/004-arabic-rtl-verification-polish/` | Arabic/RTL verification and polish on shipped surfaces |
-| 5 | IN PROGRESS | `specs/005-sso-rbac-row-column-security/` | SSO, RBAC, row/column security, tamper-evident audit log |
+| 5 | FROZEN | `specs/005-sso-rbac-row-column-security/` | SSO, RBAC, row/column security, tamper-evident audit log |
 | 6 | PLANNED | — | Quotas, hostile input/injection detection, audit search/export hardening |
 | 7 | PLANNED | — | Admin dashboard |
 | 8 | PLANNED | — | Scheduled reports and notifications |

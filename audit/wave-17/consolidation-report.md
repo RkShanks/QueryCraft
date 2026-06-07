@@ -10,7 +10,7 @@
 
 ---
 
-## PR Summary — #101 through #149
+## PR Summary — #101 through #152
 
 ### Wave 17.0 — Foundation (PRs #101–#104)
 
@@ -81,13 +81,16 @@
 | #145 | `wave-17.4e-audit-verification-ui` | Frontend audit verification page (T-743–T-750) |
 | #146 | `wave-17.4e-audit-verification-ui` | Docs-only T-ID mapping fix |
 
-### Wave 17.5 — Polish + Closeout (PRs #147–#149)
+### Wave 17.5 — Polish + Closeout (PRs #147–#152)
 
 | PR | Branch | Scope |
 |---|---|---|
 | #147 | `wave-17.5a-arabic-rtl-polish` | Arabic/RTL polish + browser smoke (T-751–T-761, T-771) |
 | #148 | `wave-17.5b-cross-dialect-security` | Cross-dialect security verification + privacy evidence (T-762–T-770) |
 | #149 | `wave-17.5c-audit-findings-hardening` | F-001 HIGH + F-002 MID fixes |
+| #150 | `wave-17.5d-phase-closeout` | Phase 5 consolidation report, closeout log, and final snapshot (T-772–T-777) |
+| #151 | `wave-17.5e-admin-audit-permission-smoke-fix` | SMOKE-001 HIGH fix: built-in admin audit permission in auth payload |
+| #152 | `chore/phase-5-final-freeze` | Final smoke report update and Phase 5 freeze (T-778) |
 
 ---
 
@@ -215,7 +218,7 @@
 
 ### CI Status
 
-All PRs #101–#149 passed CI (`backend-test` SUCCESS, `frontend-test` SUCCESS) before merge.
+All PRs #101–#152 passed CI (`backend-test` SUCCESS, `frontend-test` SUCCESS) before merge.
 
 ---
 
@@ -230,6 +233,7 @@ All PRs #101–#149 passed CI (`backend-test` SUCCESS, `frontend-test` SUCCESS) 
 - Wave 17.3n (PR #137): Policy editor screenshots
 - Wave 17.4e (PR #145): Audit verification page EN/AR screenshots
 - Wave 17.5a (PR #147): Full Arabic/RTL smoke for all Phase 5 screens
+- Post-closeout smoke (PRs #151/#152): SMOKE-001 fixed; UC-10 audit verification page rerun passed; `audit/full-browser-smoke-gemini-report.md`
 
 ### Audit Finding Files
 
@@ -252,12 +256,12 @@ All PRs #101–#149 passed CI (`backend-test` SUCCESS, `frontend-test` SUCCESS) 
 ## Final Recommendation
 
 - **0 Critical findings** remain.
-- **0 High findings** remain (F-001 fixed by PR #149).
+- **0 High findings** remain (F-001 fixed by PR #149; SMOKE-001 fixed by PR #151 and verified by Gemini rerun).
 - **0 Mid findings** remain (F-002 fixed by PR #149).
-- **1 Low finding** deferred (F-003 — structured logs only, no user-facing leak).
+- **3 Low findings** deferred (F-003 — structured logs only, no user-facing leak; SMOKE-002/SMOKE-003 — mobile polish only).
 - All 32 FRs (FR-115–FR-146) verified with passing evidence.
 - All 17 SCs (SC-046–SC-062) met with documented evidence.
 - Backend and frontend foundation gates pass.
-- CI green through PR #149.
+- CI green through PR #152.
 
-**Phase 5 is ready to freeze** after this closeout PR merges and T-778 (AGENTS.md status update) is executed.
+**Phase 5 is frozen** after PR #152 merged and T-778 (AGENTS.md status update) was executed.
