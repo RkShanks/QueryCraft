@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import BuiltinProtectedError
 from app.db.models.user import User
@@ -16,13 +17,22 @@ class UserRepository:
         self._session = session
 
     async def get_by_username(self, username: str) -> User | None:
-        """Fetch a user by exact username match."""
-        result = await self._session.execute(select(User).where(User.username == username))
+        """Fetch a user by exact username match.
+
+        Eagerly loads ``role_obj`` via ``selectinload`` so the relationship
+        is available without a follow-up lazy-load (SMOKE-001 hardening).
+        """
+        stmt = select(User).where(User.username == username).options(selectinload(User.role_obj))
+        result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def get_by_id(self, user_id: uuid.UUID) -> User | None:
-        """Fetch a user by primary key UUID."""
-        result = await self._session.execute(select(User).where(User.id == user_id))
+        """Fetch a user by primary key UUID.
+
+        Eagerly loads ``role_obj`` via ``selectinload`` (SMOKE-001 hardening).
+        """
+        stmt = select(User).where(User.id == user_id).options(selectinload(User.role_obj))
+        result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
     async def delete(self, user_id: uuid.UUID) -> bool:
