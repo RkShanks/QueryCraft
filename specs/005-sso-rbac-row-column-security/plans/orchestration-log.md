@@ -3890,7 +3890,7 @@ or endpoint response.
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.5b (Cross-Dialect Security Verification + Final Backend Privacy Evidence)
+## Wave Checkpoint — Through Wave 17.5b (Cross-Dialect Security Verification + Final Backend Privacy Evidence)
 
 *This checkpoint is historical, superseded by the Wave 17.5c checkpoint below.*
 

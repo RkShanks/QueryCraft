@@ -151,7 +151,9 @@ class AuditService:
         external scheduler (cron, k8s CronJob, systemd timer, etc.),
         e.g.::
 
-            SELECT AuditService.purge_expired_entries(session, 24);
+            async with async_session() as session:
+                deleted = await AuditService.purge_expired_entries(session, 24)
+                await session.commit()
 
         Chain verification after pruning
         --------------------------------
