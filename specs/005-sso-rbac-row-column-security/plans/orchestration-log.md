@@ -3809,7 +3809,7 @@ or endpoint response.
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.4e (Audit Verification Page + i18n + Browser Evidence)
+## Wave Checkpoint — Through Wave 17.4e (Audit Verification Page + i18n + Browser Evidence)
 
 ### Wave 17.4e Scope (T-743 through T-750) — complete, shipped
 
@@ -3849,4 +3849,45 @@ or endpoint response.
 
 - Wave 17.5: Arabic/RTL polish, cross-dialect verification, final audit/closeout.
 
+---
 
+## Current Wave Checkpoint — Through Wave 17.5a (Arabic/RTL Polish + Browser Smoke)
+
+### Wave 17.5a Scope (T-751 through T-761, and T-771) — complete, verified
+
+| T-ID | File | Tests | What it pins |
+|---|---|---|---|
+| T-751 | `frontend/src/locales/en.json` + `frontend/src/locales/ar.json` | — | Full i18n key parity audit between English and Arabic JSON locale files. |
+| T-752 | Phase 5 Arabic screens | — | Zero English fallback strings render in Arabic mode across all Phase 5 screens. |
+| T-753 | Phase 5 CSS styling | — | Zero physical directional CSS (`left`/`right`/`margin-*`/`padding-*`) in compiled assets and source files, fully logical/RTL-safe. |
+| T-754 | SSO Sign-in Page | — | Playwright / Browser verification of Arabic/RTL SSO sign-in page. |
+| T-755 | Admin SSO Config Page | — | Playwright / Browser verification of Arabic/RTL admin SSO config page (secret masking, form labels, OIDC/SAML). |
+| T-756 | Admin Roles Page | — | Playwright / Browser verification of Arabic/RTL role management page (CRUD). |
+| T-757 | Group Mapping Editor | — | Playwright / Browser verification of Arabic/RTL group mapping inline editor. |
+| T-758 | Masked Column Indicator | — | Playwright / Browser verification of Arabic/RTL masked column indicator in query result table. |
+| T-759 | Audit Verification Page | — | Playwright / Browser verification of Arabic/RTL audit verification page. |
+| T-760 | Auth Error UI Messages | — | Playwright / Browser verification of Arabic/RTL auth error messages (no role, expired, SSO failure) without raw UUID/credential leakage. |
+| T-761 | Auth Error Sanitization | — | Verification of zero raw IdP/driver errors, credentials, UUIDs, hostnames, certs, or internal database schema/internal details exposed. |
+| T-771 | Frontend Foundation Gates | — | Final frontend gates verification (vitest, eslint, typecheck, build, stylelint). |
+
+### Security contract — re-confirmed (Wave 17.5a)
+
+- All UI/error messages sanitize error parameters; raw IDP errors, internal hostnames, UUIDs, connection IDs, certificate details, or database schemas are never shown or logged.
+- Secret masking is verified to hide sensitive fields like client secrets, SAML XML metadata, and SAML certificates with standard bullet markers.
+
+### Foundation gates (Wave 17.5a — all green)
+
+- Vitest unit tests: 58 files passed, 680 tests passed (100% green).
+- ESLint checks: All checks passed.
+- TypeScript compilation: `tsc --noEmit` passed.
+- CSS style linter: `stylelint` passed.
+- Production build: `npm run build` compiled successfully.
+- Playwright E2E tests: 13/13 passed.
+
+### Commits (Wave 17.5a)
+
+- `chore(W17.5a)` docs: update orchestration-log and tasks for Wave 17.5a Arabic RTL verification
+
+### Open tasks after 17.5a
+
+- Wave 17.5b: Backend cross-dialect security verification, final security audits, and phase closeout.
