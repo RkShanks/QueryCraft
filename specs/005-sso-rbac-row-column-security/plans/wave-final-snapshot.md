@@ -2,8 +2,8 @@
 
 **Date**: 2026-06-07
 **Phase**: 5
-**Status**: Ready to Freeze
-**Task Range**: T-600 – T-777 complete, T-778 pending until post-merge freeze.
+**Status**: FROZEN
+**Task Range**: T-600 – T-778 complete.
 
 ## Scope Delivered
 
@@ -31,15 +31,15 @@ Phase 5 replaces the provisional single-admin auth model with enterprise SSO, RB
 - **Functional Requirements (FR-115..FR-146)**: 32/32 COMPLETE. All functionality shipped and verified via passing automated integration tests and browser smoke.
 - **Success Criteria (SC-046..SC-062)**: 17/17 MET. All criteria achieved with documented evidence, passing foundation gates, and zero critical/high audit findings remaining.
 
-## PR Summary (#101..#149)
+## PR Summary (#101..#150)
 
-47 Pull Requests were merged to deliver Phase 5:
+48 Pull Requests were merged to deliver Phase 5:
 - **#101–#104**: Foundation models, migrations, permission middleware, schemas.
 - **#105–#115**: SsoService, SSO endpoints, admin SSO config, sign-in page, concurrent session limit.
 - **#116–#123**: Role CRUD, group mapping, permission gates, unmapped user denial.
 - **#124–#140**: Schema filtering, row filters, column masking, evaluator rule, history scoping, policy editor.
 - **#141–#146**: Audit coverage, immutability, redaction, verification endpoint, verification UI, retention config.
-- **#147–#149**: Arabic/RTL polish, cross-dialect verification, audit findings hardening (F-001 HIGH, F-002 MID fixes).
+- **#147–#150**: Arabic/RTL polish, cross-dialect verification, audit findings hardening (F-001 HIGH, F-002 MID fixes), closeout artifacts.
 
 ## Audit Result Summary
 
@@ -54,10 +54,6 @@ The independent Phase 5 security audit is fully resolved for high/mid findings:
 1. **F-003 LOW Deferred**: `LLMUnavailable` exception carries the provider name in structured logs. This is intentionally not fixed as there is zero user-facing leak (the HTTP layer sanitizes it to a constant i18n key).
 2. **Operational Requirement**: The audit retention mechanism (F-001 fix) requires an external scheduler (cron, k8s CronJob, systemd timer) to invoke `AuditService.purge_expired_entries()` at a suggested monthly cadence.
 
-## Freeze Instructions
+## Freeze Status
 
-To complete the transition of Phase 5 to `FROZEN`:
-1. Wait for the Wave 17.5d closeout PR to merge to `main`.
-2. Update `AGENTS.md` Phase 5 status from `IN PROGRESS` to `FROZEN`.
-3. Mark task **T-778** complete.
-(This must be done in a final docs PR or direct commit post-merge).
+Phase 5 is `FROZEN` after PR #150 merged to `main`, `AGENTS.md` was updated, and T-778 was marked complete.

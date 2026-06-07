@@ -4146,7 +4146,7 @@ existing redaction or chain integrity path was weakened.
 
 ## Current Wave Checkpoint — Phase 5 Closeout (Wave 17.5d)
 
-### Wave 17.5d Scope (T-772 through T-777; T-778 pending)
+### Wave 17.5d Scope (T-772 through T-778) — complete, Phase 5 frozen
 
 | T-ID | Document / Artifact | What it pins |
 |---|---|---|
@@ -4156,7 +4156,7 @@ existing redaction or chain integrity path was weakened.
 | T-775 | `audit/wave-17/consolidation-report.md` | Consolidation report consolidating evidence, gate results, and findings disposition. |
 | T-776 | `specs/005-sso-rbac-row-column-security/plans/orchestration-log.md` | Appending this Phase 5 closeout summary to the orchestration log. |
 | T-777 | `specs/005-sso-rbac-row-column-security/plans/wave-final-snapshot.md` | Wave final snapshot describing delivered scope, waves summary, and freeze instructions. |
-| T-778 | `AGENTS.md` (pending) | Status update to FROZEN. Kept pending until post-merge freeze per orchestration rules. |
+| T-778 | `AGENTS.md` + `tasks.md` + `wave-final-snapshot.md` | Post-merge freeze: Phase 5 status set to FROZEN and final task marked complete. |
 
 ### Security contract — re-confirmed (Wave 17.5d)
 
@@ -4164,6 +4164,7 @@ existing redaction or chain integrity path was weakened.
 - The 24-month audit retention requirement is fully actionable via the implemented `purge_expired_entries` method.
 - F-003 LOW finding is documented and intentionally deferred as it poses no user-facing leakage.
 
-### Open tasks after 17.5d
+### Freeze status after 17.5d
 
-- **T-778**: After this Wave 17.5d PR is merged into `main`, update `AGENTS.md` Phase 5 status from `IN PROGRESS` to `FROZEN`.
+- Phase 5 is **FROZEN** after PR #150 merged into `main` and T-778 completed.
+- No Phase 5 tasks remain open.

@@ -10,7 +10,7 @@
 
 ---
 
-## PR Summary — #101 through #149
+## PR Summary — #101 through #150
 
 ### Wave 17.0 — Foundation (PRs #101–#104)
 
@@ -81,13 +81,14 @@
 | #145 | `wave-17.4e-audit-verification-ui` | Frontend audit verification page (T-743–T-750) |
 | #146 | `wave-17.4e-audit-verification-ui` | Docs-only T-ID mapping fix |
 
-### Wave 17.5 — Polish + Closeout (PRs #147–#149)
+### Wave 17.5 — Polish + Closeout (PRs #147–#150)
 
 | PR | Branch | Scope |
 |---|---|---|
 | #147 | `wave-17.5a-arabic-rtl-polish` | Arabic/RTL polish + browser smoke (T-751–T-761, T-771) |
 | #148 | `wave-17.5b-cross-dialect-security` | Cross-dialect security verification + privacy evidence (T-762–T-770) |
 | #149 | `wave-17.5c-audit-findings-hardening` | F-001 HIGH + F-002 MID fixes |
+| #150 | `wave-17.5d-phase-closeout` | Phase 5 consolidation report, closeout log, and final snapshot (T-772–T-777) |
 
 ---
 
@@ -258,6 +259,6 @@ All PRs #101–#149 passed CI (`backend-test` SUCCESS, `frontend-test` SUCCESS) 
 - All 32 FRs (FR-115–FR-146) verified with passing evidence.
 - All 17 SCs (SC-046–SC-062) met with documented evidence.
 - Backend and frontend foundation gates pass.
-- CI green through PR #149.
+- CI green through PR #150.
 
-**Phase 5 is ready to freeze** after this closeout PR merges and T-778 (AGENTS.md status update) is executed.
+**Phase 5 is frozen** after PR #150 merged and T-778 (AGENTS.md status update) was executed.
