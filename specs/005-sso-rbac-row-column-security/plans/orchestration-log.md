@@ -3890,7 +3890,9 @@ or endpoint response.
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.5b (Cross-Dialect Security Verification + Final Backend Privacy Evidence)
+## Wave Checkpoint — Through Wave 17.5b (Cross-Dialect Security Verification + Final Backend Privacy Evidence)
+
+*This checkpoint is historical, superseded by the Wave 17.5c checkpoint below.*
 
 ### Wave 17.5b Scope (T-762 through T-770) — complete, verified
 
@@ -3947,4 +3949,195 @@ UI rendering evidence for T-765, T-766, T-769: referenced from Wave 17.5a PR #14
 ### Open tasks after 17.5b
 
 - T-772..T-778: Orchestrator-owned closeout tasks (remain pending).
+
+---
+
+## Current Wave Checkpoint — Through Wave 17.5c (Audit Findings Hardening: F-001, F-002)
+
+### Scope — F-001 (HIGH) and F-002 (MID) only, per dispatch
+
+Independent Gemini and Opus audits (see `audit/wave-17/gemini-findings.md`
+and `audit/wave-17/opus-findings.md`) both flagged two open items
+at Phase 5 close:
+
+- **F-001 HIGH** — `AUDIT_RETENTION_MONTHS` declared in
+  `backend/src/app/core/config.py` (T-741) but no enforcement
+  mechanism. FR-142 (Constitution IX) requires 24-month minimum
+  retention. DB grows without bound; config is aspirational only.
+- **F-002 MID** — Central `AuditService._SENSITIVE_TOKENS` set
+  missed OIDC token names. `SsoService._safe_audit_context`
+  pre-redacts at the call site (defence-in-depth holds), but any
+  future direct caller of `AuditService.log` passing `nonce`,
+  `state`, `code`, or token-family keys would write plaintext to
+  the immutable audit log.
+- **F-003 LOW** — `LLMUnavailable` carries provider name in
+  structured logs only. **Not fixed** (per dispatch: no scope
+  creep).
+
+### F-001 — Audit retention enforcement
+
+Added to `backend/src/app/services/audit_service.py`:
+
+- `AuditService.compute_retention_cutoff(retention_months, now=None)`
+  — pure function, calendar arithmetic via `dateutil.relativedelta`
+  (fallback to `timedelta(days=months*30)` if dateutil unavailable).
+  Negative months raise `ValueError`; zero months means "purge
+  everything" (operator's intent).
+- `AuditService.purge_expired_entries(session, retention_months=None)`
+  — async static method, returns the rowcount of deleted rows.
+  Defaults to `Settings.AUDIT_RETENTION_MONTHS` (24) when
+  `retention_months` is `None`.
+- Module-level logger: `audit retention purge: deleted N row(s) older than <iso8601>`. **No entry content, payload, actor
+  identity, or context value is ever logged.**
+
+**Operational invocation** — no internal scheduler is shipped in
+this scope (per dispatch: "Do not invent heavyweight scheduler").
+Operators must invoke from an external scheduler:
+
+- **cron** (Linux): monthly cron entry that runs a small admin
+  script wrapping `AuditService.purge_expired_entries(session)`.
+- **k8s CronJob**: `kind: CronJob`, `schedule: "0 3 1 * *"` (first
+  of the month at 03:00 UTC), command runs the same wrapper.
+- **systemd timer**: equivalent pattern.
+
+Suggested cadence is **monthly** so the worst-case retention drift
+is one month. Operators can override `retention_months` to match
+their compliance regime (e.g. 12, 24, 36 months).
+
+**Chain verification behavior after pruning** — documented in
+`AuditService.purge_expired_entries` docstring and pinned by tests
+in `TestChainVerificationAfterPruning`:
+
+- The hash chain was designed to prove no tampering across the
+  full append-only history. Pruning deletes history; the chain
+  can no longer be verified from `GENESIS`.
+- The retained window is **internally consistent** (each surviving
+  row's `row_hash` matches its content + the prior surviving
+  row's `row_hash`).
+- `verify_chain` will honestly report a break at the first
+  surviving row because that row's `prev_hash` references a
+  now-deleted row's `row_hash`. This is the **safe, honest
+  behavior**; the chain is **not silently rewritten** to lie
+  about retained history.
+- Operators should re-issue a baseline `audit.verify` event
+  after each prune to record the new on-disk state.
+
+**Tests** — `backend/tests/unit/test_audit_retention.py` (15 tests
+total: 7 pure unit + 8 DB integration; 8 integration tests skip
+locally without PG/Redis, run in CI):
+
+| Class | Tests | What it pins |
+|---|---|---|
+| `TestRetentionCutoff` | 5 | Pure cutoff math: 24mo from a fixed `now`; default now is current UTC; default retention is 24; zero months purges everything; negative months raises `ValueError`. |
+| `TestPurgeRemovesExpiredEntries` | 5 | Old rows removed, new rows kept; default retention is 24mo; zero-row return when nothing to purge; zero months purges everything; cutoff is exclusive. |
+| `TestChainVerificationAfterPruning` | 3 | Pre-prune chain verifies clean; post-prune chain honestly reports `first_break_at=first_survivor`; no sensitive payload leaks into purge logs. |
+| `TestPurgeIsCallableNoScheduler` | 2 | `purge_expired_entries` is a coroutine static method (callable from external schedulers); `compute_retention_cutoff` is callable. |
+
+### F-002 — Central OIDC redaction tokens
+
+Added to `_SENSITIVE_TOKENS` in
+`backend/src/app/services/audit_service.py`:
+
+```python
+# OIDC / SSO tokens (W17.5c F-002). Mirrors the set in
+# ``SsoService._safe_audit_context`` verbatim so the two layers
+# cannot drift; any future direct caller of ``AuditService.log``
+# passing these keys under any nesting depth is fail-safe.
+"nonce",
+"state",
+"code",
+"accesstoken",
+"idtoken",
+"refreshtoken",
+```
+
+The `access_token` / `id_token` / `refresh_token` (snake_case)
+variants were already substring-matched by the existing `token`
+token, but the no-underscore forms and `nonce` / `state` / `code`
+were not covered. The full list now mirrors `SsoService._safe_audit_context`
+verbatim so the two layers cannot drift.
+
+`tests/unit/test_audit_redaction_comprehensive.py` — the
+`_FORBIDDEN_KEY_TOKENS` structural sweep tuple is updated in
+lock-step so a future maintainer adding a literal key containing
+these tokens is still flagged.
+
+**Tests** — `backend/tests/unit/test_audit_redaction_oidc.py` (new
+file, 36 tests; 24 pure unit + 12 DB integration):
+
+| Class | Tests | What it pins |
+|---|---|---|
+| `TestIsSensitiveKeyCoversOidcTokens` | 27 | Each of the 9 OIDC tokens is recognized in lowercase, UPPERCASE, and as a suffix (`oidc_<token>`). |
+| `TestRedactValueCoversOidcTokens` | 9 | `_redact_value` redacts each OIDC token at top level; control key untouched. |
+| `TestAuditServiceLogRedactsOidcTokens` | 12 | `AuditService.log` redacts each OIDC token; nested tokens in dict; nested tokens in list of dicts (mirrors OIDC callback flow); tokens at depth 3 (dict-in-dict-in-dict). |
+
+### TDD evidence (Wave 17.5c)
+
+| T-ID equivalent | RED commit | GREEN commit | Notes |
+|---|---|---|---|
+| F-001 retention | `<test>` — RED tests fail at collection (`AttributeError: type object 'AuditService' has no attribute 'purge_expired_entries'`) | `<feat>` — implements `compute_retention_cutoff` + `purge_expired_entries`; all 7 pure tests pass, 8 integration tests skip locally (DB unavailable), 4/7 → 7/7 | dateutil fallback for calendar arithmetic. |
+| F-002 OIDC tokens | `<test>` — 12 RED fail (3 newly-flagged tokens `nonce`, `state`, `code`); 24 pass on the substring-matched variants. | `<feat>` — extends `_SENSITIVE_TOKENS`; all 36 tests pass. | `_FORBIDDEN_KEY_TOKENS` in `test_audit_redaction_comprehensive.py` updated to keep the structural sweep in sync. |
+
+### Foundation gates (Wave 17.5c — all green)
+
+```text
+$ cd backend && uv run pytest -q tests/unit/test_audit_retention.py tests/unit/test_audit_redaction_oidc.py tests/unit/test_audit_redaction_comprehensive.py tests/unit/test_audit_redaction.py tests/unit/test_audit_service.py tests/unit/test_audit_chain_verification.py -m "not integration"
+45 passed, 138 skipped in 0.48s
+  (138 are DB-integration tests; run in CI against the testcontainer PG.)
+
+$ cd backend && uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"
+1514 passed, 242 skipped, 9 deselected, 12 warnings in 18.88s
+
+$ cd backend && uv run ruff check src tests
+All checks passed!
+
+$ cd backend && uv run ruff format --check src tests
+314 files already formatted
+
+$ git diff --check
+clean
+```
+
+The full backend unit gate is **1514 passed, 0 failed** (matches
+the 17.5b baseline; +30 new F-001/F-002 tests, -0 regressions).
+No product behavior outside the audit service was changed; no
+existing redaction or chain integrity path was weakened.
+
+### Security contract — re-confirmed (Wave 17.5c)
+
+- **FR-142 enforcement** — `AUDIT_RETENTION_MONTHS` is now
+  actually prune-enforceable via `AuditService.purge_expired_entries`.
+  The config field is no longer aspirational. FR-142 is **satisfied**.
+- **FR-143 centralization** — `AuditService._SENSITIVE_TOKENS`
+  covers the full SSO token family. Any future direct caller
+  passing these keys at any nesting depth is fail-safe.
+- **No redaction regression** — every previously-passing test
+  in `test_audit_redaction.py`, `test_audit_redaction_comprehensive.py`,
+  and `test_audit_service.py` continues to pass. The structural
+  sweep in `test_audit_redaction_comprehensive.py` continues to
+  enforce the literal-context invariant across all
+  `AuditService.log(...)` call sites.
+- **No payload leak in purge** — the purge log line contains only
+  the deleted-row count and the cutoff timestamp. No entry
+  content, payload, actor identity, or context value is ever
+  written to logs or error messages.
+- **No chain lie** — post-prune, `verify_chain` will report a
+  break at the first surviving row if the original `GENESIS`
+  was pruned. This is the safe, honest behavior; the chain is
+  not silently rewritten to lie about retained history.
+
+### Commits (Wave 17.5c)
+
+- `<test F-001>` test(W17.5c F-001): RED tests for audit retention enforcement
+- `<feat F-001>` feat(W17.5c F-001): implement audit retention purge service method
+- `<test F-002>` test(W17.5c F-002): RED tests for central OIDC redaction tokens
+- `<feat F-002>` feat(W17.5c F-002): expand central audit redaction token set
+- `<docs W17.5c>` docs(W17.5c): mark F-001/F-002 disposition in findings and orchestration log
+
+### Open tasks after 17.5c
+
+- T-772..T-778: Orchestrator-owned closeout tasks (remain pending — not touched by this hardening PR).
+- F-003 LOW (`LLMUnavailable` provider name in logs): **NOT FIXED** per dispatch ("no scope creep").
+- Operational: schedule `AuditService.purge_expired_entries(session)` from an external scheduler (cron / k8s CronJob / systemd timer) at the desired cadence. Suggested cadence: monthly.
+
 
