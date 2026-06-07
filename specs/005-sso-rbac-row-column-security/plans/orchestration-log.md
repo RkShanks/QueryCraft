@@ -4144,9 +4144,9 @@ existing redaction or chain integrity path was weakened.
 
 ---
 
-## Current Wave Checkpoint — Phase 5 Closeout (Wave 17.5d)
+## Current Wave Checkpoint — Phase 5 Final Freeze (Wave 17.5d + 17.5e Smoke Hardening)
 
-### Wave 17.5d Scope (T-772 through T-778) — complete, Phase 5 frozen
+### Wave 17.5d/17.5e Scope (T-772 through T-778 + SMOKE-001) — complete, Phase 5 frozen
 
 | T-ID | Document / Artifact | What it pins |
 |---|---|---|
@@ -4157,14 +4157,15 @@ existing redaction or chain integrity path was weakened.
 | T-776 | `specs/005-sso-rbac-row-column-security/plans/orchestration-log.md` | Appending this Phase 5 closeout summary to the orchestration log. |
 | T-777 | `specs/005-sso-rbac-row-column-security/plans/wave-final-snapshot.md` | Wave final snapshot describing delivered scope, waves summary, and freeze instructions. |
 | T-778 | `AGENTS.md` + `tasks.md` + `wave-final-snapshot.md` | Post-merge freeze: Phase 5 status set to FROZEN and final task marked complete. |
+| SMOKE-001 | `backend/src/app/repositories/user_repository.py` + `backend/src/app/services/auth_service.py` + `audit/full-browser-smoke-gemini-report.md` | Built-in admin auth payload includes `admin.audit.verify`; `/admin/audit` UI smoke rerun passes. |
 
 ### Security contract — re-confirmed (Wave 17.5d)
 
-- All security logic implemented in Waves 17.0–17.5c satisfies the requirements without introducing Critical or High findings.
+- All security logic implemented in Waves 17.0–17.5e satisfies the requirements without introducing Critical or High findings.
 - The 24-month audit retention requirement is fully actionable via the implemented `purge_expired_entries` method.
-- F-003 LOW finding is documented and intentionally deferred as it poses no user-facing leakage.
+- F-003, SMOKE-002, and SMOKE-003 LOW findings are documented and intentionally deferred because they do not pose user-facing security leakage or block critical workflows.
 
 ### Freeze status after 17.5d
 
-- Phase 5 is **FROZEN** after PR #150 merged into `main` and T-778 completed.
+- Phase 5 is **FROZEN** after PR #152 merged into `main`, PR #151 fixed SMOKE-001, Gemini reran UC-10 successfully, and T-778 completed.
 - No Phase 5 tasks remain open.
