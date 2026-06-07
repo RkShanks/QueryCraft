@@ -78,7 +78,19 @@ class TestSignInBuiltinAdminPermissions:
         repo = UserRepository(db_session)
         service = AuthService(repo, redis_client)
 
-        profile, session_id = await service.sign_in("admin", "admin123")
+        # Ensure the admin password matches conftest settings (DB may have been
+        # seeded by the Docker startup with a different password).
+        from app.core.config import get_settings
+        from app.core.security import hash_password
+
+        settings = get_settings()
+        await db_session.execute(
+            text("UPDATE users SET password_hash = :h WHERE username = 'admin'"),
+            {"h": hash_password(settings.ADMIN_PASSWORD)},
+        )
+        await db_session.commit()
+
+        profile, session_id = await service.sign_in("admin", settings.ADMIN_PASSWORD)
 
         assert profile.username == "admin"
         for perm in BUILTIN_ADMIN_PERMISSIONS:
