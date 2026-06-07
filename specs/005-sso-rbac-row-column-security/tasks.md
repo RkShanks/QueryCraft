@@ -413,26 +413,26 @@
 
 ### i18n Parity Audit (Owner: Gemini)
 
-- [ ] T-751 [US33] Run full i18n key parity audit: compare all keys in `frontend/src/locales/en.json` vs `frontend/src/locales/ar.json`, fix any missing keys to achieve 100% parity — FR-137, SC-054
-- [ ] T-752 [US33] Verify zero English fallback strings render in Arabic mode across all Phase 5 screens — FR-137
+- [x] T-751 [US33] Run full i18n key parity audit: compare all keys in `frontend/src/locales/en.json` vs `frontend/src/locales/ar.json`, fix any missing keys to achieve 100% parity — FR-137, SC-054
+- [x] T-752 [US33] Verify zero English fallback strings render in Arabic mode across all Phase 5 screens — FR-137
 
 ### CSS Logical Property Audit (Owner: Gemini)
 
-- [ ] T-753 [US33] Run CSS logical property audit on all Phase 5 components: verify zero physical directional CSS (`left`/`right`/`margin-left`/`margin-right`), all logical properties — FR-138, SC-055
+- [x] T-753 [US33] Run CSS logical property audit on all Phase 5 components: verify zero physical directional CSS (`left`/`right`/`margin-left`/`margin-right`), all logical properties — FR-138, SC-055
 
 ### Chrome DevTools MCP Browser Smoke — All Phase 5 Screens in Arabic (Owner: Gemini)
 
-- [ ] T-754 [US33] Chrome DevTools MCP: verify SSO sign-in page in Arabic/RTL — all labels, buttons, error messages in Arabic, correct RTL layout — FR-137, FR-138, SC-055
-- [ ] T-755 [US33] Chrome DevTools MCP: verify admin SSO config page in Arabic/RTL — form labels, validation messages, secret masking — FR-137, FR-138, SC-055
-- [ ] T-756 [US33] Chrome DevTools MCP: verify role management page (list, create, edit) in Arabic/RTL — FR-137, FR-138, SC-055
-- [ ] T-757 [US33] Chrome DevTools MCP: verify group mapping editor in Arabic/RTL — FR-137, FR-138, SC-055
-- [ ] T-758 [US33] Chrome DevTools MCP: verify masked column indicator in results table in Arabic/RTL — FR-137, FR-138, SC-055
-- [ ] T-759 [US33] Chrome DevTools MCP: verify audit verification page in Arabic/RTL — FR-137, FR-138, SC-055
-- [ ] T-760 [US33] Chrome DevTools MCP: verify auth error messages (no role, expired session, SSO failure) in Arabic/RTL — no raw IdP errors, no UUIDs, no hostnames — FR-139, SC-055
+- [x] T-754 [US33] Chrome DevTools MCP: verify SSO sign-in page in Arabic/RTL — all labels, buttons, error messages in Arabic, correct RTL layout — FR-137, FR-138, SC-055
+- [x] T-755 [US33] Chrome DevTools MCP: verify admin SSO config page in Arabic/RTL — form labels, validation messages, secret masking — FR-137, FR-138, SC-055
+- [x] T-756 [US33] Chrome DevTools MCP: verify role management page (list, create, edit) in Arabic/RTL — FR-137, FR-138, SC-055
+- [x] T-757 [US33] Chrome DevTools MCP: verify group mapping editor in Arabic/RTL — FR-137, FR-138, SC-055
+- [x] T-758 [US33] Chrome DevTools MCP: verify masked column indicator in results table in Arabic/RTL — FR-137, FR-138, SC-055
+- [x] T-759 [US33] Chrome DevTools MCP: verify audit verification page in Arabic/RTL — FR-137, FR-138, SC-055
+- [x] T-760 [US33] Chrome DevTools MCP: verify auth error messages (no role, expired session, SSO failure) in Arabic/RTL — no raw IdP errors, no UUIDs, no hostnames — FR-139, SC-055
 
 ### Auth Error Sanitization Verification (Owner: Gemini)
 
-- [ ] T-761 [US33] Verify no raw IdP errors, UUIDs, hostnames, credentials, or internal schema details appear in any UI error message or browser-visible evidence across all Phase 5 screens — FR-139
+- [x] T-761 [US33] Verify no raw IdP errors, UUIDs, hostnames, credentials, or internal schema details appear in any UI error message or browser-visible evidence across all Phase 5 screens — FR-139
 
 ### Cross-Dialect Security Verification (Owner: Kimi ( opencode ))
 
@@ -454,7 +454,7 @@
 
 ### Final Frontend Gate (Owner: Gemini)
 
-- [ ] T-771 Run final frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
+- [x] T-771 Run final frontend foundation gates: `cd frontend && npm run test -- --run` + `npm run lint` + `npm run typecheck` + `npm run build` + `npm run lint:css` — SC-056
 
 ### FR/SC Final Verification (Owner: Opus Orchestrator)
 
