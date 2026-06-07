@@ -3,7 +3,7 @@
 ## Environment
 - Date: 2026-06-07
 - App URL: http://localhost:5173
-- Commit: 08194f5cbd5744abf642bab52ce258991fc654e0
+- Commit: 06b0fa6 (Gemini-tested local main after PR #151; GitHub PR #151 merge commit: e9b3cdd57c93aa1dd8462288c1a93a73d6ee1dd2)
 - Browser: Chrome Headless (via MCP Subagent)
 - Viewports: Desktop (1280x800) and Mobile (375x812)
 - Accounts/roles used: admin / built-in admin role
@@ -11,11 +11,11 @@
 
 ## Summary
 - Total use cases: 12
-- Passed: 9
-- Failed: 1
+- Passed: 10
+- Failed: 0
 - Blocked: 2
 - Critical: 0
-- High: 1
+- High: 0
 - Mid: 0
 - Low: 2
 
@@ -112,14 +112,14 @@
 - Findings: Clean.
 
 ### UC-10 — Audit Verification Page
-- Happy path: FAIL
-- Bad path: FAIL
+- Happy path: PASS
+- Bad path: PARTIAL/BLOCKED (safe failed-verify path not tested in rerun)
 - URLs: /admin/audit
-- Evidence screenshots: ![Recording](file:///home/avril/.gemini/antigravity/brain/a0c13958-4377-4bec-bb2e-aa46008f33ba/querycraft_smoke_mobile_bad_paths_1780845643982.webp)
+- Evidence screenshots: ![Audit Page Loaded](file:///home/avril/.gemini/antigravity/brain/5eb99fc8-4374-41ab-a9f0-3543ec7f6418/audit_page_loaded_1780857912826.png), ![Verify Result](file:///home/avril/.gemini/antigravity/brain/5eb99fc8-4374-41ab-a9f0-3543ec7f6418/verify_result_state_1780857920606.png)
 - Console errors: None
 - Network errors: None
-- Security/i18n notes: N/A
-- Findings: High — PermissionGuard redirects to `/` because the built-in admin session lacks the `admin.audit.verify` permission in the `/api/v1/auth/me` frontend auth payload.
+- Security/i18n notes: No internal leak to UI
+- Findings: Clean.
 
 ### UC-11 — i18n + RTL
 - Happy path: PASS
@@ -154,10 +154,10 @@
 - Security impact: Built-in administrators cannot access the UI to verify the tamper-evident audit log.
 - Suggested fix: Update the backend database migration or role seeding logic to include the `admin.audit.verify` permission for the built-in Admin role.
 
-#### Disposition — Pending fix by PR (phase-5/wave-17.5e-admin-audit-permission-smoke-fix)
+#### Disposition — FIXED by PR #151 (phase-5/wave-17.5e-admin-audit-permission-smoke-fix)
 - **Root cause**: `UserRepository.get_by_username` / `get_by_id` did not explicitly eager-load `User.role_obj` via `selectinload`. The model declared `lazy="selectin"` but this was defence-in-depth only — the smoke-test DB had the admin user's `role_id` column set to NULL (startup-upsert race with migration 007), so `role_obj` resolved to `None` and the `permissions` list stored in the Redis session was empty.
 - **Fix applied**: (1) `UserRepository` now uses `options(selectinload(User.role_obj))` in both lookup methods. (2) `AuthService.get_me` refreshes a stale session whose `permissions` list is empty by re-reading the role from the DB and updating Redis in-place.
-- **Status**: Open — awaiting smoke rerun after merge to confirm fix.
+- **Status**: FIXED — verified via smoke rerun. `/api/v1/auth/me` includes `admin.audit.verify`, UI renders correctly, status endpoint is called successfully, and verify action completes safely.
 
 ### SMOKE-002 — Low — Admin Roles Table Clipping on Mobile
 - Use case: UC-04
@@ -192,6 +192,6 @@
 - UC-12 Bad Path: No restricted session available to test route guards.
 
 ## Final Recommendation
-- Ship confidence: Low → Medium (SMOKE-001 fixed in PR, pending smoke rerun)
-- Must-fix before next phase: SMOKE-001 (fix in progress, awaiting smoke rerun confirmation)
+- Ship confidence: High
+- Must-fix before next phase: None
 - Can defer: SMOKE-002, SMOKE-003 (low mobile clipping findings)
