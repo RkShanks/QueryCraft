@@ -193,6 +193,11 @@ class AuthService:
 
         Validates the user still exists in the database. If the user has been
         deleted, the stale Redis session is cleaned up and a 401 is raised.
+
+        Phase 5 (SMOKE-001 hardening): If the session's ``permissions`` list
+        is empty (stale session from before the fix), refresh from the user's
+        ``role_obj`` and update the Redis session in-place so subsequent
+        calls don't re-fetch.
         """
         raw = await self._redis.get(f"session:{session_id}")
         if raw is None:
@@ -209,6 +214,25 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"error": "unauthorized", "message_key": "error.unauthorized"},
             )
+        # --- SMOKE-001 hardening: refresh stale sessions ------------------
+        permissions = data.get("permissions", [])
+        role_obj = getattr(user, "role_obj", None)
+        if not permissions and role_obj is not None:
+            _perms = getattr(role_obj, "permissions", None)
+            if isinstance(_perms, (list, tuple, set)):
+                permissions = list(_perms)
+                _name = getattr(role_obj, "name", None)
+                data["permissions"] = permissions
+                if isinstance(_name, str):
+                    data["role_name"] = _name
+                data["role_id"] = str(role_obj.id) if getattr(role_obj, "id", None) is not None else data.get("role_id")
+                ttl_seconds = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
+                await self._redis.set(
+                    f"session:{session_id}",
+                    json.dumps(data),
+                    ex=ttl_seconds,
+                )
+        # ------------------------------------------------------------------
         # Prefer session data for Phase 5 fields (source of truth for active session)
         return UserProfile(
             id=str(user.id),
@@ -217,6 +241,6 @@ class AuthService:
             role=user.role,
             role_id=data.get("role_id"),
             role_name=data.get("role_name"),
-            permissions=data.get("permissions", []),
+            permissions=permissions,
             auth_provider=data.get("auth_provider", "local"),
         )
