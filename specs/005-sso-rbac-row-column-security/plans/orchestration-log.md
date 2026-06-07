@@ -3851,7 +3851,7 @@ or endpoint response.
 
 ---
 
-## Current Wave Checkpoint — Through Wave 17.5a (Arabic/RTL Polish + Browser Smoke)
+## Wave Checkpoint — Through Wave 17.5a (Arabic/RTL Polish + Browser Smoke)
 
 ### Wave 17.5a Scope (T-751 through T-761, and T-771) — complete, verified
 
@@ -3888,6 +3888,63 @@ or endpoint response.
 
 - `chore(W17.5a)` docs: update orchestration-log and tasks for Wave 17.5a Arabic RTL verification
 
-### Open tasks after 17.5a
+---
 
-- Wave 17.5b: Backend cross-dialect security verification, final security audits, and phase closeout.
+## Current Wave Checkpoint — Through Wave 17.5b (Cross-Dialect Security Verification + Final Backend Privacy Evidence)
+
+### Wave 17.5b Scope (T-762 through T-770) — complete, verified
+
+| T-ID | File | Tests | What it pins |
+|---|---|---|---|
+| T-762 | `backend/tests/unit/test_cross_dialect_verification.py` + `backend/tests/integration/test_cross_dialect_policy.py` | 31 unit + 7 integration | PostgreSQL row filter injection ($N placeholders), column masking, schema drift fail-closed, schema filtering. Integration: real PG DB enforcement. |
+| T-763 | Same files | Parametrized with T-762 | MySQL row filter injection (%s placeholders), column masking, schema drift fail-closed. Integration: real MySQL DB enforcement. |
+| T-764 | Same files | Parametrized with T-762 | MSSQL row filter injection (? placeholders), column masking, schema drift fail-closed. Integration: real MSSQL DB enforcement. |
+| T-765 | `backend/tests/unit/test_security_privacy_evidence.py` | 3 | No secrets in API HTTPException details, all errors use message_keys, no secret keys in audit log call sites. |
+| T-766 | Same file | 2 | No raw UUIDs in HTTPException detail strings or f-string error details. |
+| T-767 | Same file | 3 | No hostnames/IPs in HTTPException details, no internal URLs, no hostnames in exception handlers. |
+| T-768 | Same file | 4 | SSO auth errors use redirect codes only, no driver errors in API responses, exception handlers sanitize to error.internal, SsoValidationError messages are opaque. |
+| T-769 | Same file | 5 | PolicyEnforcementService errors use constant opaque codes, PolicySchemaConflictError is sanitized, evaluator auth rule uses localized keys, no table/column names in HTTPException f-strings, schema filtering silently excludes unauthorized tables. |
+| T-770 | Backend Foundation Gates | — | ruff check: All checks passed. ruff format: 312 files already formatted. pytest: 1693 passed, 9 deselected, 12 warnings. git diff --check: clean. |
+
+### Cross-dialect verification summary
+
+| Dialect | Unit Tests | Integration Tests | Placeholder Style | Row Filter | Column Mask | Schema Drift |
+|---|---|---|---|---|---|---|
+| PostgreSQL | 12 parametrized | 2 (filter+mask, drift) | `$N` (numbered) | ✅ AND-conjunction | ✅ `***` replacement | ✅ PolicySchemaConflictError |
+| MySQL | 12 parametrized | 1 (filter+mask) | `%s` (positional) | ✅ AND-conjunction | ✅ `***` replacement | ✅ PolicySchemaConflictError |
+| MSSQL | 12 parametrized | 1 (filter+mask) | `?` (positional) | ✅ AND-conjunction | ✅ `***` replacement | ✅ PolicySchemaConflictError |
+
+Additional integration evidence:
+- `TestDialectPlaceholderStyleUniqueness`: 3 tests verify placeholder styles are mutually distinct across dialects.
+- `TestPostgresSchemaDrift`: 1 test verifies drift raises before DB execution against real PG.
+- All 7 integration tests ran against live PG (port 5434), MySQL (port 3306), MSSQL (port 1433) — all passed.
+
+### Security/privacy evidence summary (T-765..T-769)
+
+| Category | Tests | Verification Method |
+|---|---|---|
+| T-765: No secrets | 3 | Static analysis of all HTTPException details + audit log call site context keys |
+| T-766: No raw UUIDs | 2 | Regex scan of all API endpoint error details for UUID patterns |
+| T-767: No hostnames | 3 | Regex scan for hostname/IP patterns in error details + exception handlers |
+| T-768: No raw IdP/driver errors | 4 | SSO auth redirect code verification + driver error pattern scan + exception handler audit |
+| T-769: No schema internals | 5 | Constant error code verification + PolicySchemaConflictError sanitization + evaluator auth rule + f-string analysis |
+
+UI rendering evidence for T-765, T-766, T-769: referenced from Wave 17.5a PR #147 screenshots/walkthrough (no frontend rework needed).
+
+### Foundation gates (Wave 17.5b — all green)
+
+- Ruff check: `All checks passed!`
+- Ruff format: `312 files already formatted`
+- Pytest: `1693 passed, 9 deselected, 12 warnings in 29.07s`
+- `git diff --check`: clean
+- Integration tests (targeted): `7 passed in 1.85s` (tests/integration/test_cross_dialect_policy.py)
+
+### Commits (Wave 17.5b)
+
+- `d83db3d` test(T-762..T-769): cross-dialect security verification + privacy evidence tests
+- `69801af` style(T-762..T-769): ruff lint and format fixes
+
+### Open tasks after 17.5b
+
+- T-772..T-778: Orchestrator-owned closeout tasks (remain pending).
+

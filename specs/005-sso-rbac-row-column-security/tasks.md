@@ -436,21 +436,21 @@
 
 ### Cross-Dialect Security Verification (Owner: Kimi ( opencode ))
 
-- [ ] T-762 [US31] Run cross-dialect policy enforcement verification: submit query as restricted role against PostgreSQL, verify row filters and column masks enforce correctly — FR-131, FR-132, SC-051, SC-052
-- [ ] T-763 [US31] Run cross-dialect policy enforcement verification: submit query as restricted role against MySQL, verify row filters and column masks enforce correctly — FR-131, FR-132, SC-051, SC-052
-- [ ] T-764 [US31] Run cross-dialect policy enforcement verification: submit query as restricted role against MSSQL, verify row filters and column masks enforce correctly — FR-131, FR-132, SC-051, SC-052
+- [x] T-762 [US31] Run cross-dialect policy enforcement verification: submit query as restricted role against PostgreSQL, verify row filters and column masks enforce correctly — FR-131, FR-132, SC-051, SC-052
+- [x] T-763 [US31] Run cross-dialect policy enforcement verification: submit query as restricted role against MySQL, verify row filters and column masks enforce correctly — FR-131, FR-132, SC-051, SC-052
+- [x] T-764 [US31] Run cross-dialect policy enforcement verification: submit query as restricted role against MSSQL, verify row filters and column masks enforce correctly — FR-131, FR-132, SC-051, SC-052
 
 ### Security/Privacy Evidence (Owner: Kimi ( opencode ) + Gemini)
 
-- [ ] T-765 Verify no secrets in any API response, UI rendering, or audit log entry — FR-143, SC-061
-- [ ] T-766 Verify no raw UUIDs exposed to end users in UI or error messages — FR-139
-- [ ] T-767 Verify no hostnames or internal URLs exposed in user-facing errors — FR-139
-- [ ] T-768 Verify no raw IdP/driver errors exposed to users (all errors are localized i18n keys) — FR-119, FR-139
-- [ ] T-769 Verify no unauthorized schema internals visible in UI or evidence — FR-128, FR-129
+- [x] T-765 Verify no secrets in any API response, UI rendering, or audit log entry — FR-143, SC-061
+- [x] T-766 Verify no raw UUIDs exposed to end users in UI or error messages — FR-139
+- [x] T-767 Verify no hostnames or internal URLs exposed in user-facing errors — FR-139
+- [x] T-768 Verify no raw IdP/driver errors exposed to users (all errors are localized i18n keys) — FR-119, FR-139
+- [x] T-769 Verify no unauthorized schema internals visible in UI or evidence — FR-128, FR-129
 
 ### Final Backend Gate (Owner: Kimi ( opencode ))
 
-- [ ] T-770 Run final CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
+- [x] T-770 Run final CI-equivalent backend foundation gates: `cd backend && uv run ruff check src tests` + `uv run pytest -q --ignore=tests/integration --ignore=tests/acceptance --ignore=tests/contract -m "not integration"` + `uv run ruff format --check src tests` — SC-057
 
 ### Final Frontend Gate (Owner: Gemini)
 
