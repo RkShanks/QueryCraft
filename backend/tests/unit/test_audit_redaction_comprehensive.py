@@ -85,6 +85,17 @@ _FORBIDDEN_KEY_TOKENS: tuple[str, ...] = (
     "encryptionkey",
     "bearer",
     "jwt",
+    # OIDC / SSO tokens (W17.5c F-002). Mirrors the additions to
+    # ``_SENSITIVE_TOKENS`` in ``app/services/audit_service.py``.
+    # Required for the structural sweep to recognize these keys
+    # as forbidden so the audit_service and sso_service sets
+    # stay in lock-step.
+    "nonce",
+    "state",
+    "code",
+    "accesstoken",
+    "idtoken",
+    "refreshtoken",
 )
 
 

@@ -52,6 +52,16 @@ _SENSITIVE_TOKENS: set[str] = {
     "encryptionkey",
     "bearer",
     "jwt",
+    # OIDC / SSO tokens (W17.5c F-002). Mirrors the set in
+    # ``SsoService._safe_audit_context`` verbatim so the two layers
+    # cannot drift; any future direct caller of ``AuditService.log``
+    # passing these keys under any nesting depth is fail-safe.
+    "nonce",
+    "state",
+    "code",
+    "accesstoken",
+    "idtoken",
+    "refreshtoken",
 }
 
 
