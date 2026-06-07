@@ -15,13 +15,10 @@ FR-119, FR-128, FR-129, FR-139, FR-143, SC-061.
 
 from __future__ import annotations
 
-import ast
 import re
 from pathlib import Path
 
 import pytest
-
-from app.db.models.enums import AuditActionType
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -65,7 +62,7 @@ _DRIVER_ERROR_PATTERNS = [
     "InterfaceError",
     "DatabaseError",
     "Traceback (most recent call last)",
-    "File \"",
+    'File "',
 ]
 
 # Raw IdP error patterns
@@ -140,13 +137,15 @@ class TestT765NoSecretsInApiResponses:
                 # Allow message_key references like "error.unauthorized"
                 if f'"{pattern}"' in detail_str.lower() or f"'{pattern}'" in detail_str.lower():
                     # Check it's not just a key name in the dict
-                    assert pattern in (
-                        "password",
-                        "client_secret",
-                    ) and "error" in detail_str.lower() or "message_key" in detail_str, (
-                        f"Secret pattern {pattern!r} found in HTTPException detail "
-                        f"in {filename}: {detail_str!r}"
-                    )
+                    assert (
+                        pattern
+                        in (
+                            "password",
+                            "client_secret",
+                        )
+                        and "error" in detail_str.lower()
+                        or "message_key" in detail_str
+                    ), f"Secret pattern {pattern!r} found in HTTPException detail in {filename}: {detail_str!r}"
 
     def test_all_error_responses_use_message_keys(self) -> None:
         """Every HTTPException detail dict contains a message_key for i18n."""
@@ -180,9 +179,17 @@ class TestT765NoSecretsInAuditLogCallSites:
     def test_no_secret_keys_in_audit_contexts(self) -> None:
         """No audit context dict should contain a key that is itself a secret name."""
         forbidden_key_substrings = {
-            "password", "secret", "token", "credential",
-            "certificate", "private_key", "bearer", "jwt",
-            "authorization", "assertion", "saml_response",
+            "password",
+            "secret",
+            "token",
+            "credential",
+            "certificate",
+            "private_key",
+            "bearer",
+            "jwt",
+            "authorization",
+            "assertion",
+            "saml_response",
         }
         contexts = self._collect_audit_log_context_keys()
         assert contexts, "No audit log call sites found — scan may be broken"
@@ -217,8 +224,7 @@ class TestT766NoRawUuidsInErrors:
                 detail_str = match.group(1)
                 uuid_matches = _UUID_RE.findall(detail_str)
                 assert not uuid_matches, (
-                    f"Raw UUID found in HTTPException detail in {py_file.name}: "
-                    f"{uuid_matches} in {detail_str!r}"
+                    f"Raw UUID found in HTTPException detail in {py_file.name}: {uuid_matches} in {detail_str!r}"
                 )
 
     def test_no_uuid_in_error_message_format_strings(self) -> None:
@@ -235,8 +241,7 @@ class TestT766NoRawUuidsInErrors:
                 # Any {id} or {xxx_id} in an f-string detail is a UUID leak
                 id_refs = re.findall(r"\{[^}]*id[^}]*\}", fstring, re.IGNORECASE)
                 assert not id_refs, (
-                    f"Potential raw UUID in f-string error detail in {py_file.name}: "
-                    f"{id_refs} in f'{fstring}'"
+                    f"Potential raw UUID in f-string error detail in {py_file.name}: {id_refs} in f'{fstring}'"
                 )
 
 
@@ -260,8 +265,7 @@ class TestT767NoHostnamesInErrors:
                 detail_str = match.group(1)
                 hostname_matches = _HOSTNAME_RE.findall(detail_str)
                 assert not hostname_matches, (
-                    f"Hostname/IP found in HTTPException detail in {py_file.name}: "
-                    f"{hostname_matches}"
+                    f"Hostname/IP found in HTTPException detail in {py_file.name}: {hostname_matches}"
                 )
 
     def test_no_internal_urls_in_error_responses(self) -> None:
@@ -275,10 +279,7 @@ class TestT767NoHostnamesInErrors:
             ):
                 detail_str = match.group(1)
                 url_matches = _INTERNAL_URL_RE.findall(detail_str)
-                assert not url_matches, (
-                    f"Internal URL found in HTTPException detail in {py_file.name}: "
-                    f"{url_matches}"
-                )
+                assert not url_matches, f"Internal URL found in HTTPException detail in {py_file.name}: {url_matches}"
 
     def test_no_hostname_in_exception_handlers(self) -> None:
         """Exception handler except blocks don't expose hostnames in responses."""
@@ -294,9 +295,7 @@ class TestT767NoHostnamesInErrors:
                 for line in block.split("\n"):
                     if "HTTPException" in line and "detail" in line:
                         hostname_matches = _HOSTNAME_RE.findall(line)
-                        assert not hostname_matches, (
-                            f"Hostname in exception handler in {py_file.name}: {line.strip()}"
-                        )
+                        assert not hostname_matches, f"Hostname in exception handler in {py_file.name}: {line.strip()}"
 
 
 # ---------------------------------------------------------------------------
@@ -332,8 +331,7 @@ class TestT768NoRawIdpDriverErrors:
                 detail_str = match.group(1)
                 for driver in _DRIVER_ERROR_PATTERNS:
                     assert driver not in detail_str, (
-                        f"Raw driver error {driver!r} in HTTPException detail "
-                        f"in {py_file.name}: {detail_str!r}"
+                        f"Raw driver error {driver!r} in HTTPException detail in {py_file.name}: {detail_str!r}"
                     )
 
     def test_exception_handlers_catch_all_and_sanitize(self) -> None:
@@ -353,12 +351,8 @@ class TestT768NoRawIdpDriverErrors:
             # Must have a broad except clause that returns error.internal
             has_broad_catch = "except Exception" in source or "except HTTPException" in source
             has_sanitized_error = "error.internal" in source
-            assert has_broad_catch, (
-                f"{filename} missing broad exception handler"
-            )
-            assert has_sanitized_error, (
-                f"{filename} missing sanitized error.internal response"
-            )
+            assert has_broad_catch, f"{filename} missing broad exception handler"
+            assert has_sanitized_error, f"{filename} missing sanitized error.internal response"
 
     def test_sso_validation_errors_are_opaque(self) -> None:
         """SsoValidationError messages are generic, not raw IdP errors."""
@@ -371,12 +365,10 @@ class TestT768NoRawIdpDriverErrors:
         for pattern in ["-----BEGIN", "PHNhbWw", "urn:oasis"]:
             # Allow imports/comments, but not in SsoValidationError() args
             sso_val_matches = re.findall(
-                rf'SsoValidationError\([^)]*{re.escape(pattern)}',
+                rf"SsoValidationError\([^)]*{re.escape(pattern)}",
                 source,
             )
-            assert not sso_val_matches, (
-                f"Raw IdP data {pattern!r} in SsoValidationError in sso_service.py"
-            )
+            assert not sso_val_matches, f"Raw IdP data {pattern!r} in SsoValidationError in sso_service.py"
 
 
 # ---------------------------------------------------------------------------
@@ -403,8 +395,7 @@ class TestT769NoSchemaInternalsInErrors:
         }
         for msg in value_errors:
             assert msg in constant_errors, (
-                f"Non-constant ValueError message in policy_enforcement.py: {msg!r} — "
-                f"may leak schema internals"
+                f"Non-constant ValueError message in policy_enforcement.py: {msg!r} — may leak schema internals"
             )
 
     def test_schema_drift_error_does_not_leak_details(self) -> None:
@@ -421,12 +412,7 @@ class TestT769NoSchemaInternalsInErrors:
     def test_evaluator_auth_rule_error_is_opaque(self) -> None:
         """Evaluator authorization rule errors use localized message keys."""
         rule_file = (
-            Path(__file__).resolve().parents[2]
-            / "src"
-            / "app"
-            / "evaluator"
-            / "rules"
-            / "role_authorization.py"
+            Path(__file__).resolve().parents[2] / "src" / "app" / "evaluator" / "rules" / "role_authorization.py"
         )
         if not rule_file.exists():
             pytest.skip("role_authorization.py not found")
@@ -453,8 +439,7 @@ class TestT769NoSchemaInternalsInErrors:
                     re.IGNORECASE,
                 )
                 assert not schema_refs, (
-                    f"Schema internals in f-string error detail in {py_file.name}: "
-                    f"{schema_refs} in f'{fstring}'"
+                    f"Schema internals in f-string error detail in {py_file.name}: {schema_refs} in f'{fstring}'"
                 )
 
     def test_schema_filtering_does_not_leak_unauthorized_names(self) -> None:

@@ -29,7 +29,6 @@ from app.evaluator.schema_context import Column, SchemaContext, Table
 from app.schemas.query import ColumnMeta, QueryResult
 from app.services.policy_enforcement import PolicyEnforcementService
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
