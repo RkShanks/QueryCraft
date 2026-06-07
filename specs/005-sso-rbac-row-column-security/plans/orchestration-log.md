@@ -3815,14 +3815,14 @@ or endpoint response.
 
 | T-ID | File | Tests | What it pins |
 |---|---|---|---|
-| T-743 | `frontend/src/pages/AdminAuditPage.tsx` | 5 | Admin Audit Verification UI page rendering status, checking entries count, indicating broken chain first break index, displaying warning on unverified state. |
-| T-744 | `frontend/src/components/sidebar/Sidebar.tsx` | 3 | Sidebar navigation links. Conditionally renders Audit Verification link if user has `admin.audit.verify` permission. |
-| T-745 | `frontend/src/hooks/useAdminAudit.ts` | 2 | Query/mutation hook for loading audit status and running integrity verification via typed sdk.gen calls. |
-| T-746 | `frontend/src/locales/en.json` | — | English strings for audit status, results, warnings, actions, and table headers. |
-| T-747 | `frontend/src/locales/ar.json` | — | Arabic translation for all audit status texts and actions (RTL-proof). |
-| T-748 | `frontend/src/locales/localeCoverage.test.ts` | — | Translation keys match perfectly across locales, no missing placeholders. |
-| T-749 | `frontend/tests/e2e/wave_17_4e_audit_smoke.spec.ts` | 2 | Playwright E2E tests verifying initial status, success state, and first break detection in LTR and RTL. |
-| T-750 | `frontend/scripts/generate-api-client.sh` | — | Production builds, TypeScript checks, and client generation settings verified. |
+| T-743 | `frontend/src/pages/AdminAuditPage.test.tsx` | 5 | AdminAuditPage.test.tsx tests for titles, verified intact/broken status, verification flow, and localized error sanitization. |
+| T-744 | `frontend/src/pages/AdminAuditPage.tsx` | — | AdminAuditPage.tsx implementation of the verification trigger button, status display, last verification result, and warning states. |
+| T-745 | `frontend/src/hooks/useAdminAudit.ts` + `useAdminAudit.test.tsx` | 2 | useAdminAudit.ts hook queries and mutations for loading status and triggering integrity check. |
+| T-746 | `frontend/src/App.tsx` | — | App.tsx /admin/audit route protected with PermissionGuard for the `admin.audit.verify` permission. |
+| T-747 | `frontend/src/locales/en.json` + `frontend/src/locales/ar.json` | — | en.json + ar.json audit i18n keys for LTR and RTL status, warning, and action messages. |
+| T-748 | `frontend/src/locales/localeCoverage.test.ts` | — | localeCoverage.test.ts parity coverage testing that English and Arabic locales contain matching key matrices. |
+| T-749 | Playwright / Chrome evidence screenshots | — | Playwright/Chrome evidence screenshots capturing visual LTR and RTL layout verifications. |
+| T-750 | Frontend Foundation Gates | — | frontend foundation gates validation checking vitest, typescript compilation, linting, css styling, and production bundling. |
 
 ### Security contract — re-confirmed (Wave 17.4e)
 
