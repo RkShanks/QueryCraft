@@ -458,15 +458,15 @@
 
 ### FR/SC Final Verification (Owner: Opus Orchestrator)
 
-- [ ] T-772 Verify all FRs (FR-115 through FR-146) have passing evidence — all FRs
-- [ ] T-773 Verify all SCs (SC-046 through SC-062) are met with documented evidence — all SCs
-- [ ] T-774 Verify no Critical or High audit findings remain — SC-058
+- [x] T-772 Verify all FRs (FR-115 through FR-146) have passing evidence — all FRs
+- [x] T-773 Verify all SCs (SC-046 through SC-062) are met with documented evidence — all SCs
+- [x] T-774 Verify no Critical or High audit findings remain — SC-058
 
 ### Closeout Artifacts (Owner: Opus Orchestrator)
 
-- [ ] T-775 Create consolidation report at `audit/wave-17/consolidation-report.md`: all FR/SC evidence, gate results, audit findings disposition — SC-058
-- [ ] T-776 Append Phase 5 summary to `specs/005-sso-rbac-row-column-security/plans/orchestration-log.md` — SC-058, all FRs (FR-115–FR-146), all SCs (SC-046–SC-062)
-- [ ] T-777 Create wave final snapshot at `specs/005-sso-rbac-row-column-security/plans/wave-final-snapshot.md` — SC-058, all FRs (FR-115–FR-146), all SCs (SC-046–SC-062)
+- [x] T-775 Create consolidation report at `audit/wave-17/consolidation-report.md`: all FR/SC evidence, gate results, audit findings disposition — SC-058
+- [x] T-776 Append Phase 5 summary to `specs/005-sso-rbac-row-column-security/plans/orchestration-log.md` — SC-058, all FRs (FR-115–FR-146), all SCs (SC-046–SC-062)
+- [x] T-777 Create wave final snapshot at `specs/005-sso-rbac-row-column-security/plans/wave-final-snapshot.md` — SC-058, all FRs (FR-115–FR-146), all SCs (SC-046–SC-062)
 - [ ] T-778 Update `AGENTS.md` Phase 5 status from `IN PROGRESS` to `FROZEN` (only after final PR merged to `main`) — SC-058
 
 ---
