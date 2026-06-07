@@ -146,7 +146,7 @@
 | SC-053 | History scoped to current user | ✅ PASS | `WHERE accepted_queries.user_id = :user_id` (PR #131) |
 | SC-054 | EN/AR i18n 100% parity | ✅ PASS | Locale coverage test, zero missing keys (PR #147) |
 | SC-055 | RTL smoke all Phase 5 screens | ✅ PASS | Zero physical directional CSS, browser evidence (PR #147) |
-| SC-056 | Frontend foundation gates | ✅ PASS | test + lint + typecheck + build + lint:css (PRs #115, #123, #139, #146, #147) |
+| SC-056 | Frontend foundation gates | ✅ PASS | test + lint + typecheck + build + lint:css (PRs #115, #123, #139, #145, #147) |
 | SC-057 | Backend foundation gates | ✅ PASS | pytest + ruff check + ruff format (PRs #104, #113, #121, #135, #144, #148, #149) |
 | SC-058 | No Critical/High findings remain | ✅ PASS | F-001 HIGH fixed (PR #149), F-002 MID fixed (PR #149) |
 | SC-059 | Audit log records all event types | ✅ PASS | 22 action types, structural backstop test (PR #141) |
@@ -228,7 +228,7 @@ All PRs #101–#149 passed CI (`backend-test` SUCCESS, `frontend-test` SUCCESS) 
 - Wave 17.2g (PR #122): Role management page EN/AR screenshots
 - Wave 17.3m (PR #136): Masked column indicator screenshots
 - Wave 17.3n (PR #137): Policy editor screenshots
-- Wave 17.4e (PR #146): Audit verification page EN/AR screenshots
+- Wave 17.4e (PR #145): Audit verification page EN/AR screenshots
 - Wave 17.5a (PR #147): Full Arabic/RTL smoke for all Phase 5 screens
 
 ### Audit Finding Files
