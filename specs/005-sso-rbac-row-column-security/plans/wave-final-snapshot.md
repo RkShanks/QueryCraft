@@ -33,7 +33,7 @@ Phase 5 replaces the provisional single-admin auth model with enterprise SSO, RB
 
 ## PR Summary (#101..#149)
 
-46 Pull Requests were merged to deliver Phase 5:
+47 Pull Requests were merged to deliver Phase 5:
 - **#101–#104**: Foundation models, migrations, permission middleware, schemas.
 - **#105–#115**: SsoService, SSO endpoints, admin SSO config, sign-in page, concurrent session limit.
 - **#116–#123**: Role CRUD, group mapping, permission gates, unmapped user denial.

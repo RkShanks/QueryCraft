@@ -4146,7 +4146,7 @@ existing redaction or chain integrity path was weakened.
 
 ## Current Wave Checkpoint — Phase 5 Closeout (Wave 17.5d)
 
-### Wave 17.5d Scope (T-772 through T-778)
+### Wave 17.5d Scope (T-772 through T-777; T-778 pending)
 
 | T-ID | Document / Artifact | What it pins |
 |---|---|---|

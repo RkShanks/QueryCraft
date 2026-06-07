@@ -78,7 +78,8 @@
 | #142 | `wave-17.4b-audit-immutability-redaction` | Immutability + redaction tests (T-735–T-736) |
 | #143 | `wave-17.4c-audit-verification-endpoint` | Verification + status endpoints (T-737–T-740) |
 | #144 | `wave-17.4d-audit-retention-config` | Retention config (T-741–T-742) |
-| #146 | `wave-17.4e-audit-verification-ui` | Frontend audit verification page (T-743–T-750) |
+| #145 | `wave-17.4e-audit-verification-ui` | Frontend audit verification page (T-743–T-750) |
+| #146 | `wave-17.4e-audit-verification-ui` | Docs-only T-ID mapping fix |
 
 ### Wave 17.5 — Polish + Closeout (PRs #147–#149)
 
