@@ -13,7 +13,9 @@ Provides:
 import asyncio
 import base64
 from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -205,6 +207,68 @@ def mock_llm():
             return "SELECT 1 AS id"
 
     return StubLLM()
+
+
+@pytest.fixture
+def make_role_quota():
+    """Factory for Phase 6 RoleQuota model instances."""
+    from app.db.models.role_quota import RoleQuota
+
+    def _make_role_quota(
+        role_id,
+        daily_query_limit=None,
+        daily_execution_limit=None,
+        daily_export_limit=None,
+    ):
+        return RoleQuota(
+            id=uuid4(),
+            role_id=role_id,
+            daily_query_limit=daily_query_limit,
+            daily_execution_limit=daily_execution_limit,
+            daily_export_limit=daily_export_limit,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+
+    return _make_role_quota
+
+
+@pytest.fixture
+def make_detection_config():
+    """Factory for Phase 6 DetectionThresholdConfig model instances."""
+    from app.db.models.detection_config import DetectionThresholdConfig
+
+    def _make_detection_config(block=0.8, flag=0.5):
+        return DetectionThresholdConfig(
+            id=uuid4(),
+            block_confidence=block,
+            flag_confidence=flag,
+            updated_at=datetime.now(UTC),
+        )
+
+    return _make_detection_config
+
+
+@pytest.fixture
+def make_audit_entry():
+    """Factory for Phase 6 AuditLogEntry model instances."""
+    from app.db.models.audit_log_entry import AuditLogEntry
+
+    def _make_audit_entry(action_type, actor_identity, outcome, context):
+        return AuditLogEntry(
+            sequence_number=1,
+            timestamp=datetime.now(UTC),
+            actor_identity=actor_identity,
+            action_type=str(action_type),
+            resource_type="phase6",
+            resource_id=None,
+            outcome=outcome,
+            context=context,
+            prev_hash="GENESIS",
+            row_hash="0" * 64,
+        )
+
+    return _make_audit_entry
 
 
 # ---------------------------------------------------------------------------
