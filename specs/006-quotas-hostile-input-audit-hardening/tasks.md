@@ -54,9 +54,9 @@ SC-074 partial, SC-075 partial (foundation gates)
 
 - [X] T-789 [P] Write RED unit tests for enum completeness in `backend/tests/unit/test_phase6_enums.py`: assert all 9 new `AuditActionType` values exist with correct string values, assert `ADMIN_QUOTAS_MANAGE` and `ADMIN_SECURITY_MANAGE` exist in `Permission` enum. Depends on T-783. **Dispatch: BE**
 
-- [ ] T-790 [P] Create `audit/wave-18/` directory and stub files `audit/wave-18/gemini-findings.md` and `audit/wave-18/opus-findings.md` with headers (Phase 6 audit scope, FR-147–FR-180, SC-063–SC-077, status: PENDING). Depends on nothing. **Dispatch: OR**
+- [X] T-790 [P] Create `audit/wave-18/` directory and stub files `audit/wave-18/gemini-findings.md` and `audit/wave-18/opus-findings.md` with headers (Phase 6 audit scope, FR-147–FR-180, SC-063–SC-077, status: PENDING). Depends on nothing. **Dispatch: OR**
 
-- [ ] T-791 [P] Initialize orchestration log at `specs/006-quotas-hostile-input-audit-hardening/plans/orchestration-log.md` with Wave 18.0 dispatch entry (date, wave, branch, dispatcher, status: IN PROGRESS). Depends on nothing. **Dispatch: OR**
+- [X] T-791 [P] Initialize orchestration log at `specs/006-quotas-hostile-input-audit-hardening/plans/orchestration-log.md` with Wave 18.0 dispatch entry (date, wave, branch, dispatcher, status: IN PROGRESS). Depends on nothing. **Dispatch: OR**
 
 - [X] T-792 Run Wave 18.0 backend gates: `cd backend && uv run pytest tests/unit/test_phase6_enums.py tests/contract/test_phase6_contracts.py -x --tb=short && uv run ruff check src/ && uv run ruff format --check src/ && git diff --check`. All must pass before Wave 18.0 PR. Depends on T-779–T-789. **Dispatch: BE**
 
