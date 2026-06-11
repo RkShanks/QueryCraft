@@ -97,6 +97,21 @@ async def _sync_admin_user(settings):
             await session.execute(
                 text(
                     """
+                    UPDATE roles
+                    SET permissions = (
+                        SELECT jsonb_agg(DISTINCT permission)
+                        FROM jsonb_array_elements_text(
+                            permissions || '["admin.quotas.manage", "admin.security.manage"]'::jsonb
+                        ) AS permission
+                    ),
+                        updated_at = now()
+                    WHERE name = 'Admin' AND is_builtin = true
+                    """
+                )
+            )
+            await session.execute(
+                text(
+                    """
                     INSERT INTO users (username, display_name, password_hash, role, role_id, is_builtin, auth_provider)
                     SELECT :username, :display_name, :password_hash, 'admin', id, true, 'local'
                     FROM roles
@@ -266,6 +281,8 @@ def create_app() -> FastAPI:
         admin,
         admin_audit,
         admin_connections,
+        admin_detection,
+        admin_quotas,
         admin_roles,
         admin_sso,
         auth,
@@ -282,6 +299,8 @@ def create_app() -> FastAPI:
     app.include_router(history.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")
     app.include_router(admin_connections.router, prefix="/api/v1")
+    app.include_router(admin_quotas.router, prefix="/api/v1")
+    app.include_router(admin_detection.router, prefix="/api/v1")
     app.include_router(admin_sso.router, prefix="/api/v1")
     app.include_router(admin_roles.router, prefix="/api/v1")
     app.include_router(admin_audit.router, prefix="/api/v1")

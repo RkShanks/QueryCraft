@@ -1,8 +1,8 @@
 """T-733 — Comprehensive audit event coverage tests (Wave 17.4a).
 
 Per FR-140 / SC-059 / SC-061: every shipped audit
-action type must have at least one emitting call site
-in the codebase. This test enumerates all 22 audit
+ action type must have at least one emitting call site
+ in the codebase. This test enumerates all 31 audit
 action types in ``AuditActionType`` and asserts each is
 called by the service / endpoint responsible for it.
 
@@ -32,6 +32,15 @@ Coverage mapping (action_type -> test class + call site):
 | 20| access.denied           | TestAccessDeniedEmits                     | role_service / query_service           |
 | 21| audit.verify            | TestAuditVerifyEmits                      | admin_audit.py /admin/audit/verify (T-738) |
 | 22| policy.schema_mismatch  | TestPolicySchemaMismatchEmits             | policy_enforcement drift guard         |
+| 23| quota.config.change     | KNOWN_DEFERRED                            | Wave 18.1 quota admin CRUD             |
+| 24| quota.exceeded          | KNOWN_DEFERRED                            | Wave 18.1 quota enforcement            |
+| 25| quota.warning           | KNOWN_DEFERRED                            | Wave 18.1 quota warnings/future use    |
+| 26| hostile.input.blocked   | KNOWN_DEFERRED                            | Wave 18.2 hostile input detection      |
+| 27| hostile.input.flagged   | KNOWN_DEFERRED                            | Wave 18.2 hostile input detection      |
+| 28| detection.config.change | KNOWN_DEFERRED                            | Wave 18.2 detection config admin       |
+| 29| audit.search            | KNOWN_DEFERRED                            | Wave 18.3 audit search                 |
+| 30| audit.export            | KNOWN_DEFERRED                            | Wave 18.3 audit export                 |
+| 31| audit.purge             | KNOWN_DEFERRED                            | Wave 18.3 retention purge-gap marker   |
 
 Honest T-734 scope: T-734 added 5 of 6 missing call sites
 (AUTH_LOGOUT, CONNECTION_CREATE, CONNECTION_UPDATE,
@@ -40,7 +49,10 @@ emission site was deferred to T-738 because the
 ``/admin/audit/verify`` endpoint itself ships in that task —
 emitting before the endpoint exists would create a dead code
 path. T-738 landed both: the endpoint AND its ``AuditService.log``
-call. The coverage matrix above is now 22/22.
+call. The Phase 5 coverage matrix is 22/22. Wave 18.0 adds
+9 Phase 6 taxonomy values only; their callers ship in Waves
+18.1, 18.2, and 18.3 and are intentionally listed in
+``KNOWN_DEFERRED`` below until those waves land.
 
 Two-layer verification:
 
@@ -136,6 +148,19 @@ _AUDIT_FORBIDDEN_IN_CONTEXT: tuple[str, ...] = (
 )
 
 
+KNOWN_DEFERRED: dict[str, str] = {
+    "quota.config.change": "Wave 18.1 quota admin CRUD emits quota config changes.",
+    "quota.exceeded": "Wave 18.1 quota enforcement emits quota exhaustion blocks.",
+    "quota.warning": "Wave 18.1 quota warning taxonomy is reserved for quota warning callers/future use.",
+    "hostile.input.blocked": "Wave 18.2 hostile input detection emits blocked events.",
+    "hostile.input.flagged": "Wave 18.2 hostile input detection emits flagged events.",
+    "detection.config.change": "Wave 18.2 detection threshold admin updates emit config changes.",
+    "audit.search": "Wave 18.3 audit search emits search activity events.",
+    "audit.export": "Wave 18.3 audit export emits export activity events.",
+    "audit.purge": "Wave 18.3 retention purge-gap handling emits purge markers.",
+}
+
+
 def _captured_actions(mock_audit: AsyncMock) -> list[AuditActionType]:
     """Extract the list of action kwargs from an AsyncMock of AuditService.log."""
     out: list[AuditActionType] = []
@@ -197,18 +222,18 @@ def _assert_no_forbidden_in_contexts(mock_audit: AsyncMock) -> None:
 class TestAuditActionTypeEnumeration:
     """Sanity-check the AuditActionType enum used by the coverage test.
 
-    The shipped enum (T-604) has 22 values; the user input
-    referenced 21 (a documented typo, the spec ships 22).
+    The shipped enum has 31 values: 22 Phase 5 values plus
+    9 Phase 6 taxonomy values introduced in Wave 18.0.
     If a future wave adds or removes values, this test
     surfaces the change explicitly so the coverage matrix
     can be updated in lock-step.
     """
 
     def test_action_type_count_matches_data_model(self):
-        # data-model.md line 135 lists 22 action types. Keep this
+        # Phase 6 data-model.md lists 31 action types. Keep this
         # aligned with that contract.
-        assert len(list(AuditActionType)) == 22, (
-            f"AuditActionType count changed (was 22, now "
+        assert len(list(AuditActionType)) == 31, (
+            f"AuditActionType count changed (was 31, now "
             f"{len(list(AuditActionType))}). Update the coverage matrix in "
             f"this test module and FR-140 / SC-059 documentation."
         )
@@ -732,13 +757,14 @@ class TestPolicySchemaMismatchEmits:
 
 
 class TestAggregateCoverage:
-    """The full set of action types must be reachable from the codebase.
+    """The full set of action types must be documented or explicitly deferred.
 
     The matrix above is a per-action smoke test. This
     aggregate test verifies the union: every enum value
     has a corresponding shipped call site documented in
     this test's module docstring (or in the cross-referenced
-    Wave 17.0..17.3 test files).
+    Wave 17.0..17.3 test files), or is listed in
+    ``KNOWN_DEFERRED`` with a future Phase 6 wave reference.
     """
 
     def test_all_enum_values_documented(self):
@@ -768,6 +794,15 @@ class TestAggregateCoverage:
             "access.denied",
             "audit.verify",
             "policy.schema_mismatch",
+            "quota.config.change",
+            "quota.exceeded",
+            "quota.warning",
+            "hostile.input.blocked",
+            "hostile.input.flagged",
+            "detection.config.change",
+            "audit.search",
+            "audit.export",
+            "audit.purge",
         }
         shipped = {a.value for a in AuditActionType}
         assert shipped == documented, (
@@ -791,9 +826,10 @@ class TestAuditActionTypeSourceCodeReference:
     regression for the 16 other action types whose smoke
     flow needs a full app fixture.
 
-    As of T-738 (Wave 17.4c) every shipped ``AuditActionType``
+    As of T-738 (Wave 17.4c) every Phase 5 ``AuditActionType``
     enum value has a shipped caller — the ``audit.verify``
-    deferral is cleared. The coverage matrix is 22/22.
+    deferral is cleared. Wave 18.0 adds 9 Phase 6 taxonomy
+    values whose callers are deferred to Waves 18.1–18.3.
     """
 
     def _enum_references(self) -> dict[str, list[str]]:
@@ -820,11 +856,6 @@ class TestAuditActionTypeSourceCodeReference:
 
     def test_every_action_type_has_a_shipped_caller(self):
         refs = self._enum_references()
-        # As of T-738 the AUDIT_VERIFY deferral is cleared. Every
-        # shipped action type must have at least one caller in
-        # src/app/. If a future wave adds a deferral, list it
-        # here with a one-line reason.
-        KNOWN_DEFERRED: dict[str, str] = {}
         for action_value, hits in refs.items():
             if action_value in KNOWN_DEFERRED:
                 assert not hits, (
@@ -840,14 +871,16 @@ class TestAuditActionTypeSourceCodeReference:
                 f"or document the deferral in KNOWN_DEFERRED with a reason."
             )
 
-    def test_coverage_matrix_is_22_of_22_shipped(self):
-        """Pin the Wave 17.4c closeout: 22/22 action types have shipped callers."""
+    def test_coverage_matrix_is_22_of_31_shipped_with_9_deferred(self):
+        """Pin Wave 18.0: 22 callers shipped, 9 Phase 6 callers deferred."""
         refs = self._enum_references()
         shipped = sorted(a.value for a in AuditActionType)
         with_caller = sorted(v for v, hits in refs.items() if hits)
-        assert shipped == with_caller, (
+        deferred = set(KNOWN_DEFERRED)
+        assert set(shipped) - set(with_caller) == deferred, (
             f"Coverage matrix mismatch.\n"
             f"  Shipped but no caller: {set(shipped) - set(with_caller)}\n"
+            f"  Known deferred: {deferred}\n"
             f"  Has caller but not in enum: {set(with_caller) - set(shipped)}"
         )
 

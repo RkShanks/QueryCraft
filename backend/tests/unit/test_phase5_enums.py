@@ -13,6 +13,8 @@ class TestPermissionEnum:
         assert Permission.ADMIN_ROLES_MANAGE == "admin.roles.manage"
         assert Permission.ADMIN_SSO_MANAGE == "admin.sso.manage"
         assert Permission.ADMIN_AUDIT_VERIFY == "admin.audit.verify"
+        assert Permission.ADMIN_QUOTAS_MANAGE == "admin.quotas.manage"
+        assert Permission.ADMIN_SECURITY_MANAGE == "admin.security.manage"
 
     def test_is_strenum(self):
         assert issubclass(Permission, str)
@@ -62,6 +64,15 @@ class TestAuditActionTypeEnum:
             "access.denied",
             "audit.verify",
             "policy.schema_mismatch",
+            "quota.config.change",
+            "quota.exceeded",
+            "quota.warning",
+            "hostile.input.blocked",
+            "hostile.input.flagged",
+            "detection.config.change",
+            "audit.search",
+            "audit.export",
+            "audit.purge",
         }
         actual = {m.value for m in AuditActionType}
         assert actual == expected

@@ -35,6 +35,8 @@ class Permission(enum.StrEnum):
     ADMIN_ROLES_MANAGE = "admin.roles.manage"
     ADMIN_SSO_MANAGE = "admin.sso.manage"
     ADMIN_AUDIT_VERIFY = "admin.audit.verify"
+    ADMIN_QUOTAS_MANAGE = "admin.quotas.manage"
+    ADMIN_SECURITY_MANAGE = "admin.security.manage"
 
 
 class AuthProvider(enum.StrEnum):
@@ -77,6 +79,15 @@ class AuditActionType(enum.StrEnum):
     ACCESS_DENIED = "access.denied"
     AUDIT_VERIFY = "audit.verify"
     POLICY_SCHEMA_MISMATCH = "policy.schema_mismatch"
+    QUOTA_CONFIG_CHANGE = "quota.config.change"
+    QUOTA_EXCEEDED = "quota.exceeded"
+    QUOTA_WARNING = "quota.warning"
+    HOSTILE_INPUT_BLOCKED = "hostile.input.blocked"
+    HOSTILE_INPUT_FLAGGED = "hostile.input.flagged"
+    DETECTION_CONFIG_CHANGE = "detection.config.change"
+    AUDIT_SEARCH = "audit.search"
+    AUDIT_EXPORT = "audit.export"
+    AUDIT_PURGE = "audit.purge"
 
 
 class SchemaIntrospectionStatus(enum.StrEnum):

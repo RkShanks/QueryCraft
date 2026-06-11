@@ -56,10 +56,12 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status  # noqa: F401
+from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
+from app.api.v1.phase6_permissions import require_phase6_admin_permission
 from app.core.dependencies import get_db
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType, Permission
@@ -246,3 +248,11 @@ async def get_audit_status(
         "total_entries": total_entries,
         "last_verification": last_verification,
     }
+
+
+@router.get("/entries")
+async def search_audit_entries(
+    _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
+):
+    """Permission-gated placeholder for Wave 18.3 audit search."""
+    return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content={"error": "not_implemented"})
