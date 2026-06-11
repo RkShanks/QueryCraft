@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/005-sso-rbac-row-column-security/plan.md
+at specs/006-quotas-hostile-input-audit-hardening/plan.md
 <!-- SPECKIT END -->
 
 # QueryCraft — Agent Handoff
@@ -17,7 +17,7 @@ Bootstrap prompt: `"Continue work on RkShanks/QueryCraft. Read AGENTS.md first."
 - **Repo**: github.com/RkShanks/QueryCraft (single-tenant)
 - **Product**: Text-to-SQL — natural language → SQL → execute → results.
 - **Stack**: FastAPI (Python 3.12) · Postgres 15 · Redis 7 · React 19 · Tailwind v4 · Vite · TanStack Query · Playwright. LLM: Google Gemini (default), provider-agnostic interface.
-- **Constitution**: 12 principles in `.specify/memory/constitution.md`. Shipped: I/II/III/V/VI/VII/VIII/IX. Deferred: IV (Phase 6), X (Phase 6).
+- **Constitution**: 12 principles in `.specify/memory/constitution.md`. Shipped: I/II/III/V/VI/VII/VIII/IX. Activating: IV (Phase 6), X (Phase 6).
 
 ## 2. Roles & Models
 
@@ -42,7 +42,7 @@ Phases are sequential and **immutable** once snapshot.
 | 3 | FROZEN | `specs/003-multi-dialect-source-dbs/` | Multi-dialect SQL (PG/MySQL/MSSQL), admin DB management, schema introspection |
 | 4 | FROZEN | `specs/004-arabic-rtl-verification-polish/` | Arabic/RTL verification and polish on shipped surfaces |
 | 5 | FROZEN | `specs/005-sso-rbac-row-column-security/` | SSO, RBAC, row/column security, tamper-evident audit log |
-| 6 | PLANNED | — | Quotas, hostile input/injection detection, audit search/export hardening |
+| 6 | ACTIVE | `specs/006-quotas-hostile-input-audit-hardening/` | Quotas, hostile input/injection detection, audit search/export hardening |
 | 7 | PLANNED | — | Admin dashboard |
 | 8 | PLANNED | — | Scheduled reports and notifications |
 | 9 | PLANNED | — | Semantic search of accepted queries |
