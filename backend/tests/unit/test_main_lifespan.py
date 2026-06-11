@@ -111,10 +111,15 @@ async def test_sync_admin_user_inserts_or_updates():
         await _sync_admin_user(settings)
 
     calls = session.execute.call_args_list
-    assert len(calls) == 1
-    stmt = str(calls[0][0][0])
-    assert "INSERT INTO users" in stmt
-    assert "ON CONFLICT (username) DO UPDATE" in stmt
+    assert len(calls) == 2
+    role_sync_stmt = str(calls[0][0][0])
+    assert "UPDATE roles" in role_sync_stmt
+    assert "admin.quotas.manage" in role_sync_stmt
+    assert "admin.security.manage" in role_sync_stmt
+
+    admin_upsert_stmt = str(calls[1][0][0])
+    assert "INSERT INTO users" in admin_upsert_stmt
+    assert "ON CONFLICT (username) DO UPDATE" in admin_upsert_stmt
 
 
 @pytest.mark.asyncio
