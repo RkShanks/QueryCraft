@@ -121,10 +121,22 @@
 - Threshold config API uses `admin.security.manage`.
 - No auto-suspension in Phase 6; hostile inputs are blocked/flagged and audited only.
 
+### Dispatch Correction — Split for Cheap Model
+
+- **Date**: 2026-06-22
+- **Reason**: T-822 through T-847 plus T-856 is too large for a cheap implementer model in one prompt.
+- **Supersedes**: Single large Wave 18.2 backend dispatch above.
+- **Revised First Dispatch**: Wave 18.2a backend foundation, T-822 through T-825 only.
+- **Hold**: T-826 through T-847 and T-856 remain undispatched until 18.2a merges.
+- **Later Suggested Slices**:
+  - 18.2b rules: T-826 through T-835.
+  - 18.2c coverage + config API: T-836 through T-841.
+  - 18.2d audit redaction + query integration + backend gate: T-842 through T-847, T-856.
+
 ### Current Wave Checkpoint
 
 - **Date**: 2026-06-22
-- **Branch Context**: `main` at `a85f211fcdbde0895b47e3cbae10374cd72cb4e0`
+- **Branch Context**: `main` at `934896b6`
 - **Status**: Wave 18.1 COMPLETE. T-793 through T-821 verified complete.
-- **Next Dispatch**: Wave 18.2 backend hostile input detection dispatched, T-822 through T-847 and T-856.
+- **Next Dispatch**: Wave 18.2a backend hostile input detection foundation, T-822 through T-825 only.
 - **Frontend Dispatch Hold**: T-848 through T-855 and T-857 after backend/API is available.
