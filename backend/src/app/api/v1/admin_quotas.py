@@ -11,11 +11,12 @@ Endpoints:
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.phase6_permissions import require_phase6_admin_permission
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, get_redis
 from app.db.models.enums import AuditActionType, Permission
 from app.db.models.role import Role
 from app.repositories.quota_repository import QuotaRepository
@@ -55,15 +56,11 @@ async def list_quotas(
 async def get_quota_status(
     _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_QUOTAS_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
 ):
     from datetime import UTC, datetime, timedelta
 
-    from redis.asyncio import Redis
-
-    from app.core.dependencies import get_redis
-
     repo = QuotaRepository(db)
-    redis: Redis = await get_redis().__anext__()
     quotas = await repo.list_all()
     now = datetime.now(UTC)
     date_suffix = now.strftime("%Y-%m-%d")
