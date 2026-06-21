@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import pytest
 
-
 BLOCK_THRESHOLD = 0.8
 BENIGN_THRESHOLD = 0.5
 

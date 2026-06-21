@@ -35,7 +35,10 @@ _ENGLISH_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\bupdate\s+all\s+(?:rows?|records?|entries|data)\b", re.IGNORECASE),
     re.compile(r"\bset\b.{0,40}\bwhere\s+1\s*=\s*1\b", re.IGNORECASE),  # mass update tautology
     # "wipe the database / clear the table"
-    re.compile(r"\b(?:wipe|clear|purge|erase)\b.{0,30}\b(?:table|database|db|all\s+records?|all\s+data)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:wipe|clear|purge|erase)\b.{0,30}\b(?:table|database|db|all\s+records?|all\s+data)\b",
+        re.IGNORECASE,
+    ),
     # "remove all data/records from"
     re.compile(r"\bremove\s+all\b.{0,30}\b(?:data|records?|rows?)\b.{0,30}\bfrom\b", re.IGNORECASE),
 ]

@@ -10,7 +10,6 @@ import re
 
 from app.services.detection.protocol import REGISTRY, DetectionResult
 
-
 # ---------------------------------------------------------------------------
 # Pattern definitions
 # ---------------------------------------------------------------------------
@@ -40,7 +39,7 @@ _ARABIC_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"تجاهل\s+.{0,30}\s*التعليمات"),
     re.compile(r"تصرف\s+كأنك"),
     re.compile(r"أنت\s+الآن"),
-    re.compile(r"تظاهر\s+بأنك"),       # pretend you are
+    re.compile(r"تظاهر\s+بأنك"),  # pretend you are
     re.compile(r"نسيان\s+التعليمات"),  # forget the instructions
     re.compile(r"تجاوز\s+التعليمات"),  # bypass the instructions
 ]

@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import pytest
 
-
 BLOCK_THRESHOLD = 0.8
 BENIGN_BLOCK_THRESHOLD = 0.8  # benign must stay below this
 
@@ -62,9 +61,7 @@ class TestSqlInjectionEnglishPatterns:
 
     def test_tautology_1_equals_1(self, rule):
         result = rule.detect("show users WHERE id=1 OR 1=1")
-        assert result.confidence >= BLOCK_THRESHOLD, (
-            f"Expected >= {BLOCK_THRESHOLD} for '1=1', got {result.confidence}"
-        )
+        assert result.confidence >= BLOCK_THRESHOLD, f"Expected >= {BLOCK_THRESHOLD} for '1=1', got {result.confidence}"
 
     def test_or_tautology(self, rule):
         result = rule.detect("login as admin OR 1=1 --")
