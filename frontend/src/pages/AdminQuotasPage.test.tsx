@@ -216,4 +216,44 @@ describe('AdminQuotasPage', () => {
       expect(mockMutations.deleteMutation.mutate).toHaveBeenCalledWith('analyst-role-id');
     });
   });
+
+  it('renders with RTL direction and verified logical classes without physical inline styles', () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: { data: { role: 'admin', permissions: ['admin.quotas.manage', 'admin.roles.manage'] } },
+      isLoading: false,
+    } as any);
+    vi.mocked(useAdminRoles).mockReturnValue({
+      listQuery: { data: mockRolesList, isLoading: false, isError: false },
+    } as any);
+    vi.mocked(useAdminQuotas).mockReturnValue({
+      listQuery: { data: { quotas: mockQuotasList }, isLoading: false, isError: false },
+      statusQuery: { data: { status: mockQuotasStatus }, isLoading: false },
+      ...mockMutations,
+    } as any);
+
+    const { container } = renderWithClient(
+      <div dir="rtl">
+        <AdminQuotasPage />
+      </div>
+    );
+
+    // Verify root is marked as RTL
+    expect(container.firstChild).toHaveAttribute('dir', 'rtl');
+
+    // Assert that there are no physical alignment inline styles
+    const allElements = container.querySelectorAll('*');
+    allElements.forEach((el) => {
+      const style = el.getAttribute('style') || '';
+      expect(style).not.toContain('text-align: left');
+      expect(style).not.toContain('text-align: right');
+      expect(style).not.toContain('margin-left');
+      expect(style).not.toContain('margin-right');
+      expect(style).not.toContain('padding-left');
+      expect(style).not.toContain('padding-right');
+    });
+
+    // Assert that table alignment uses logical properties/classes
+    const tableHeader = container.querySelector('th');
+    expect(tableHeader).toHaveClass('text-start');
+  });
 });
