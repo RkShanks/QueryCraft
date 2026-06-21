@@ -4,8 +4,8 @@ import { QuotaExceededBanner } from './QuotaExceededBanner';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, params?: any) => {
-      if (key === 'quota.reset_at' && params && params.time) {
+    t: (key: string, params?: Record<string, unknown>) => {
+      if (key === 'quota.reset_at' && params && typeof params.time === 'string') {
         return `Resets at: ${params.time}`;
       }
       return key;

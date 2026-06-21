@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useCurrentUser } from '../hooks/useAuth';
 import { useAdminRoles } from '../hooks/useAdminRoles';
 import { useAdminQuotas } from '../hooks/useAdminQuotas';
-import type { RoleQuotaConfig, RoleQuotaUpsert } from '../api/quotas';
+import type { RoleQuotaConfig, RoleQuotaUpsert, QuotaDimensionStatus } from '../api/quotas';
 import { Shield, RefreshCw, Trash2, Edit2, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
 
 interface Toast {
@@ -156,25 +156,21 @@ export const AdminQuotasPage: React.FC = () => {
 
   // Merging client-side
   const quotas = listQuery.data?.quotas || [];
-  let mergedQuotas: RoleQuotaConfig[] = [];
-
-  if (hasRolesPermission && rolesQuery.data?.roles) {
-    mergedQuotas = rolesQuery.data.roles.map((role) => {
-      const q = quotas.find((item) => item.role_id === role.id);
-      return (
-        q || {
-          role_id: role.id,
-          role_name: role.name,
-          daily_query_limit: null,
-          daily_execution_limit: null,
-          daily_export_limit: null,
-        }
-      );
-    });
-  } else {
-    // If missing roles permission, only show configured rows
-    mergedQuotas = quotas;
-  }
+  const mergedQuotas: RoleQuotaConfig[] =
+    hasRolesPermission && rolesQuery.data?.roles
+      ? rolesQuery.data.roles.map((role) => {
+          const q = quotas.find((item) => item.role_id === role.id);
+          return (
+            q || {
+              role_id: role.id,
+              role_name: role.name,
+              daily_query_limit: null,
+              daily_execution_limit: null,
+              daily_export_limit: null,
+            }
+          );
+        })
+      : quotas;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
@@ -374,7 +370,7 @@ export const AdminQuotasPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-800/50 text-sm text-gray-300">
               {(statusQuery.data?.status || []).map((s) => {
-                const renderDim = (dim: any) => {
+                const renderDim = (dim: QuotaDimensionStatus) => {
                   if (dim.limit === null) {
                     return (
                       <span>
