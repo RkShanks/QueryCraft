@@ -59,9 +59,7 @@ class TestQuotaAdminPut:
         from sqlalchemy import text
 
         async with async_engine_fixture.connect() as conn:
-            result = await conn.execute(
-                text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1")
-            )
+            result = await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
             row = result.fetchone()
             assert row is not None
             role_id = str(row[0])
@@ -80,9 +78,7 @@ class TestQuotaAdminPut:
         from sqlalchemy import text
 
         async with async_engine_fixture.connect() as conn:
-            result = await conn.execute(
-                text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1")
-            )
+            result = await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
             row = result.fetchone()
             role_id = str(row[0])
 
@@ -107,9 +103,7 @@ class TestQuotaAdminDelete:
         from sqlalchemy import text
 
         async with async_engine_fixture.connect() as conn:
-            result = await conn.execute(
-                text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1")
-            )
+            result = await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
             row = result.fetchone()
             role_id = str(row[0])
 
@@ -128,9 +122,7 @@ class TestQuotaAdminGetByRole:
         from sqlalchemy import text
 
         async with async_engine_fixture.connect() as conn:
-            result = await conn.execute(
-                text("SELECT id FROM roles ORDER BY priority LIMIT 1")
-            )
+            result = await conn.execute(text("SELECT id FROM roles ORDER BY priority LIMIT 1"))
             row = result.fetchone()
             role_id = str(row[0]) if row else "00000000-0000-0000-0000-000000000000"
 
@@ -153,9 +145,7 @@ class TestQuotaAdminAuditEvent:
         from sqlalchemy import text
 
         async with async_engine_fixture.connect() as conn:
-            result = await conn.execute(
-                text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1")
-            )
+            result = await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
             row = result.fetchone()
             role_id = str(row[0])
 

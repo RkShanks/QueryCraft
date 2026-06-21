@@ -39,9 +39,11 @@ class TestQuotaExceededAuditEvent:
             side_effect=QuotaExceededError(dimension="queries", reset_at="2026-06-13T00:00:00+00:00")
         )
 
-        mock_db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
-        ))
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
+            )
+        )
 
         service = QueryService(
             accepted_query_repository=mock_repo,
@@ -107,9 +109,11 @@ class TestQuotaExceededAuditEvent:
         mock_llm.generate_sql = AsyncMock(return_value="SELECT 1")
         mock_evaluator.evaluate = AsyncMock(return_value=MagicMock(passed=True, violations=[]))
 
-        mock_db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
-        ))
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
+            )
+        )
 
         session_id = uuid.uuid4()
         mock_session_repo.create = AsyncMock(return_value=MagicMock(id=session_id))

@@ -12,14 +12,15 @@ import pytest
 class TestExecutionQuotaIntegration:
     @pytest.mark.asyncio
     async def test_submit_blocked_when_execution_quota_exhausted(
-        self, authenticated_client, async_engine_fixture, redis_client,
+        self,
+        authenticated_client,
+        async_engine_fixture,
+        redis_client,
     ):
         from sqlalchemy import text
 
         async with async_engine_fixture.connect() as conn:
-            result = await conn.execute(
-                text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1")
-            )
+            result = await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
             row = result.fetchone()
             assert row is not None
             role_id = str(row[0])
@@ -40,14 +41,15 @@ class TestExecutionQuotaIntegration:
 
     @pytest.mark.asyncio
     async def test_submit_succeeds_when_under_execution_limit(
-        self, authenticated_client, async_engine_fixture, redis_client,
+        self,
+        authenticated_client,
+        async_engine_fixture,
+        redis_client,
     ):
         from sqlalchemy import text
 
         async with async_engine_fixture.connect() as conn:
-            result = await conn.execute(
-                text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1")
-            )
+            result = await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
             row = result.fetchone()
             assert row is not None
             role_id = str(row[0])

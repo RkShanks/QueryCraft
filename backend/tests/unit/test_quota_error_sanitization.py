@@ -5,8 +5,6 @@ reset_at; no fields: counter, limit, policy_id, role_id, provider, sql,
 stack; message_key value is constant string "error.quota_exceeded".
 """
 
-
-
 from app.core.exceptions import QuotaExceededError
 
 

@@ -30,9 +30,7 @@ class TestQuotaFailClosed:
         user_id = uuid.uuid4()
         role_id = uuid.uuid4()
 
-        mock_quota_service.check_and_increment = AsyncMock(
-            side_effect=QuotaUnavailableError()
-        )
+        mock_quota_service.check_and_increment = AsyncMock(side_effect=QuotaUnavailableError())
 
         mock_redis.get = AsyncMock(return_value=None)
         mock_redis.set = AsyncMock(return_value=True)
@@ -51,9 +49,11 @@ class TestQuotaFailClosed:
             quota_service=mock_quota_service,
         )
 
-        mock_db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
-        ))
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
+            )
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await service.submit_question(
@@ -100,9 +100,13 @@ class TestQuotaFailClosed:
         mock_evaluator.evaluate = AsyncMock(return_value=MagicMock(passed=True, violations=[]))
 
         mock_session_repo.create = AsyncMock(return_value=MagicMock(id=session_id))
-        mock_session_repo.get_by_id = AsyncMock(return_value=MagicMock(
-            id=session_id, preview_text="test", user_id=user_id,
-        ))
+        mock_session_repo.get_by_id = AsyncMock(
+            return_value=MagicMock(
+                id=session_id,
+                preview_text="test",
+                user_id=user_id,
+            )
+        )
         mock_session_repo.update_last_activity = AsyncMock()
         mock_session_repo.update_preview_text = AsyncMock()
 
@@ -124,9 +128,11 @@ class TestQuotaFailClosed:
             quota_service=mock_quota_service,
         )
 
-        mock_db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
-        ))
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
+            )
+        )
 
         from unittest.mock import patch
 

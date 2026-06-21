@@ -35,18 +35,22 @@ class TestQueryQuotaEnforcement:
         user_id = uuid.uuid4()
         role_id = uuid.uuid4()
 
-        mock_db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
-        ))
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
+            )
+        )
         mock_redis.get = AsyncMock(return_value=None)
         mock_redis.set = AsyncMock(return_value=True)
         mock_redis.delete = AsyncMock()
         mock_session_repo.create = AsyncMock(return_value=MagicMock(id=uuid.uuid4()))
-        mock_session_repo.get_by_id = AsyncMock(return_value=MagicMock(
-            id=uuid.uuid4(),
-            preview_text="test",
-            user_id=user_id,
-        ))
+        mock_session_repo.get_by_id = AsyncMock(
+            return_value=MagicMock(
+                id=uuid.uuid4(),
+                preview_text="test",
+                user_id=user_id,
+            )
+        )
         mock_session_repo.update_last_activity = AsyncMock()
         mock_session_repo.update_preview_text = AsyncMock()
         mock_repo.get_latest_by_session = AsyncMock(return_value=None)
@@ -80,9 +84,7 @@ class TestQueryQuotaEnforcement:
                     question="test question",
                 )
 
-        mock_quota_service.check_and_increment.assert_any_call(
-            user_id, role_id, "queries"
-        )
+        mock_quota_service.check_and_increment.assert_any_call(user_id, role_id, "queries")
 
     @pytest.mark.asyncio
     async def test_submit_returns_429_when_quota_exceeded(self):
@@ -122,9 +124,11 @@ class TestQueryQuotaEnforcement:
             quota_service=mock_quota_service,
         )
 
-        mock_db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
-        ))
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
+            )
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await service.submit_question(
@@ -174,9 +178,11 @@ class TestQueryQuotaEnforcement:
             quota_service=mock_quota_service,
         )
 
-        mock_db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
-        ))
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
+            )
+        )
 
         with __import__("contextlib").suppress(HTTPException):
             await service.submit_question(
@@ -203,9 +209,7 @@ class TestQueryQuotaEnforcement:
         user_id = uuid.uuid4()
         role_id = uuid.uuid4()
 
-        mock_quota_service.check_and_increment = AsyncMock(
-            side_effect=QuotaUnavailableError()
-        )
+        mock_quota_service.check_and_increment = AsyncMock(side_effect=QuotaUnavailableError())
 
         mock_redis.get = AsyncMock(return_value=None)
         mock_redis.set = AsyncMock(return_value=True)
@@ -224,9 +228,11 @@ class TestQueryQuotaEnforcement:
             quota_service=mock_quota_service,
         )
 
-        mock_db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
-        ))
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
+            )
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await service.submit_question(
@@ -247,7 +253,6 @@ class TestQueryEndpointQuotaResponse:
     @pytest.mark.asyncio
     async def test_quota_exceeded_response_429_with_message_key(self):
         from fastapi import HTTPException, status
-
 
         reset_at = "2026-06-13T00:00:00+00:00"
 
@@ -270,7 +275,6 @@ class TestQueryEndpointQuotaResponse:
     @pytest.mark.asyncio
     async def test_quota_unavailable_response_503_with_message_key(self):
         from fastapi import HTTPException, status
-
 
         http_exc = HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

@@ -9,12 +9,9 @@ These tests define the contract for QuotaRepository:
 """
 
 import uuid
-from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.role_quota import RoleQuota
 from app.repositories.quota_repository import QuotaRepository
 from app.schemas.quota import RoleQuotaUpsert
 
