@@ -415,6 +415,19 @@
   "admin.audit.verifyFailed": "Audit chain verification failed",
   "admin.audit.emptyState": "No audit entries found.",
   "admin.audit.securityWarningTitle": "Security Warning:",
-  "admin.audit.securityWarning": "No auto-repair utility is provided to preserve evidence. Contact your system administrator to recover the database chain."
+  "admin.audit.securityWarning": "No auto-repair utility is provided to preserve evidence. Contact your system administrator to recover the database chain.",
+  "quota.page_title": "Role Quotas",
+  "quota.role_column": "Role",
+  "quota.query_limit": "Daily Query Limit",
+  "quota.execution_limit": "Daily SQL Execution Limit",
+  "quota.export_limit": "Daily Audit Export Limit",
+  "quota.uncapped": "Uncapped",
+  "quota.status_title": "Quota Consumption Status",
+  "quota.used": "Used",
+  "quota.remaining": "Remaining",
+  "quota.reset_at": "Resets at: {{time}}",
+  "quota.discovery_warning": "Creating quota configurations for uncapped roles requires role management permission.",
+  "nav.adminQuotas": "Quotas"
 }
+
 
