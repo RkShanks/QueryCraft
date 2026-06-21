@@ -45,6 +45,8 @@ from app.core.exceptions import (
     AttemptNotFound,
     AttemptOwnershipViolation,
     PolicySchemaConflictError,
+    QuotaExceededError,
+    QuotaUnavailableError,
     SourceDBTimeout,
 )
 from app.core.processing_lock import acquire_lock, release_lock_if_owned
@@ -127,6 +129,7 @@ class QueryService:
         source_db_adapter: Any = None,
         policy_enforcement: PolicyEnforcementService | None = None,
         role_policy_provider: RolePolicyProvider | None = None,
+        quota_service: Any = None,
     ) -> None:
         self._repo = accepted_query_repository
         self._session_repo = session_repository
@@ -142,6 +145,7 @@ class QueryService:
         self._adapter = source_db_adapter
         self._policy = policy_enforcement or PolicyEnforcementService()
         self._role_policy_provider = role_policy_provider
+        self._quota_service = quota_service
 
     async def _acquire_lock(self, session_id: str, ttl: int = 60) -> str | None:
         """Try to acquire a per-session processing lock.
@@ -410,6 +414,43 @@ class QueryService:
                 )
                 return self._role_auth_rejection()
 
+            # T-800: Query quota check before LLM invocation.
+            # If QuotaService is wired, check the "queries" dimension
+            # before any LLM call. Fail-closed: QuotaUnavailableError
+            # blocks the request (no LLM call, no DB execution).
+            if self._quota_service is not None:
+                user_role_id = getattr(user_row, "role_id", None)
+                if user_role_id is not None:
+                    try:
+                        await self._quota_service.check_and_increment(user_uuid, user_role_id, "queries")
+                    except QuotaExceededError as exc:
+                        await AuditService.log(
+                            self._db_session,
+                            action=AuditActionType.QUOTA_EXCEEDED,
+                            actor_id=user_uuid,
+                            outcome="blocked",
+                            context={
+                                "dimension": "queries",
+                                "reset_at": exc.reset_at,
+                            },
+                        )
+                        raise HTTPException(
+                            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail={
+                                "error": "quota_exceeded",
+                                "message_key": "error.quota_exceeded",
+                                "reset_at": exc.reset_at,
+                            },
+                        ) from exc
+                    except QuotaUnavailableError as exc:
+                        raise HTTPException(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail={
+                                "error": "service_unavailable",
+                                "message_key": "error.service_unavailable",
+                            },
+                        ) from exc
+
             # Load conversation history for context
             conversation_history: list[dict] = []
             if chat_session_id:
@@ -552,6 +593,42 @@ class QueryService:
                     ) from exc
                 effective_sql = bound.sql
                 row_filter_params = bound.params
+
+            # T-802: Execution quota check before SQL execution.
+            # If QuotaService is wired, check the "executions" dimension
+            # before the source DB executor call. Fail-closed.
+            if self._quota_service is not None:
+                user_role_id = getattr(user_row, "role_id", None)
+                if user_role_id is not None:
+                    try:
+                        await self._quota_service.check_and_increment(user_uuid, user_role_id, "executions")
+                    except QuotaExceededError as exc:
+                        await AuditService.log(
+                            self._db_session,
+                            action=AuditActionType.QUOTA_EXCEEDED,
+                            actor_id=user_uuid,
+                            outcome="blocked",
+                            context={
+                                "dimension": "executions",
+                                "reset_at": exc.reset_at,
+                            },
+                        )
+                        raise HTTPException(
+                            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail={
+                                "error": "quota_exceeded",
+                                "message_key": "error.quota_exceeded",
+                                "reset_at": exc.reset_at,
+                            },
+                        ) from exc
+                    except QuotaUnavailableError as exc:
+                        raise HTTPException(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail={
+                                "error": "service_unavailable",
+                                "message_key": "error.service_unavailable",
+                            },
+                        ) from exc
 
             # 4. Execute against source DB. Adapter and legacy
             # executor both receive the rewritten SQL + row-filter

@@ -166,6 +166,9 @@ _SAFE_KEYS: tuple[str, ...] = (
     "verified",
     "entries_checked",
     "first_break_at",
+    "dimension",
+    "reset_at",
+    "dims_changed",
 )
 
 

@@ -194,6 +194,42 @@ class SchemaTokenLimitExceeded(SchemaError):
         self.limit = limit
 
 
+# ─── Quota ───
+
+
+class QuotaExceededError(QueryCraftError):
+    """Raised when a quota limit is reached.
+
+    Attributes:
+        dimension: The quota dimension that was exceeded (e.g. "queries", "executions").
+        reset_at: ISO-8601 timestamp string for when the quota resets.
+    """
+
+    def __init__(self, dimension: str = "", reset_at: str = ""):
+        super().__init__(
+            "Quota exceeded",
+            message_key="error.quota_exceeded",
+            dimension=dimension,
+            reset_at=reset_at,
+        )
+        self.dimension = dimension
+        self.reset_at = reset_at
+
+
+class QuotaUnavailableError(QueryCraftError):
+    """Raised when the quota tracking service (Redis) is unreachable.
+
+    Fail-closed: the request must not proceed when quota state cannot
+    be determined.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Quota service unavailable",
+            message_key="error.service_unavailable",
+        )
+
+
 # ─── RBAC / Lockout Prevention ───
 
 

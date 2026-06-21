@@ -22,6 +22,7 @@ from app.evaluator.rules.unsafe_pattern import UnsafePatternRule
 from app.llm.factory import LLMProviderFactory
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.repositories.connection_repository import ConnectionRepository
+from app.repositories.quota_repository import QuotaRepository
 from app.repositories.session_repository import SessionRepository
 from app.schemas.query import (
     AcceptQueryRequest,
@@ -33,6 +34,7 @@ from app.schemas.query import (
     SubmitQuestionRequest,
 )
 from app.services.query_service import QueryService
+from app.services.quota_service import QuotaService
 from app.services.role_policy_provider import make_role_policy_provider
 from app.source_db.connector import SourceDBConnector
 from app.source_db.executor import SourceDBExecutor
@@ -52,6 +54,8 @@ async def _get_query_service(
 ) -> QueryService:
     schema_context = await _source_introspector.introspect()
     settings = get_settings()
+    quota_repo = QuotaRepository(db)
+    quota_service = QuotaService(redis=redis, quota_repo=quota_repo)
     return QueryService(
         accepted_query_repository=AcceptedQueryRepository(db),
         session_repository=SessionRepository(db),
@@ -71,6 +75,7 @@ async def _get_query_service(
         llm_provider=settings.LLM_PROVIDER,
         schema_context=schema_context,
         role_policy_provider=make_role_policy_provider(db),
+        quota_service=quota_service,
     )
 
 
@@ -161,6 +166,8 @@ async def _build_query_service_for_connection(
         credential_provider=credential_provider,
     )
 
+    quota_repo = QuotaRepository(db)
+    quota_service = QuotaService(redis=redis, quota_repo=quota_repo)
     return QueryService(
         accepted_query_repository=AcceptedQueryRepository(db),
         session_repository=SessionRepository(db),
@@ -184,6 +191,7 @@ async def _build_query_service_for_connection(
         connection_id=connection_id,
         source_db_adapter=adapter,
         role_policy_provider=make_role_policy_provider(db),
+        quota_service=quota_service,
     )
 
 
