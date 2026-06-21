@@ -16,6 +16,7 @@ import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { ConnectionErrorCard } from '../components/chat/ConnectionErrorCard';
 import type { ConnectionErrorKind } from '../components/chat/ConnectionErrorCard';
 import { EvaluatorRejectionBanner } from '../components/query/EvaluatorRejectionBanner';
+import { QuotaExceededBanner } from '../components/query/QuotaExceededBanner';
 import './WorkspacePage.css';
 
 interface ConversationTurn {
@@ -31,6 +32,7 @@ interface ConversationTurn {
   connectionName?: string;
   databaseType?: string;
   connectionError?: ConnectionErrorKind;
+  quotaExceeded?: { resetAt?: string };
 }
 
 function buildHistoryTurn(a: AttemptSummary, connections: UserConnectionResponse[]): ConversationTurn {
@@ -376,6 +378,25 @@ export const WorkspacePage: React.FC = () => {
         }
       } catch (err: unknown) {
         const apiErr = (err && typeof err === 'object') ? (err as Record<string, unknown>) : {};
+        const messageKey = (apiErr.message_key as string) || (apiErr.detail as Record<string, unknown>)?.message_key as string;
+        const errCode = (apiErr.error as string) || (apiErr.detail as Record<string, unknown>)?.error as string;
+
+        if (messageKey === 'error.quota_exceeded' || errCode === 'quota_exceeded') {
+          const resetAt = (apiErr.reset_at as string) || (apiErr.detail as Record<string, unknown>)?.reset_at as string;
+          setLocalTurns((prev) =>
+            prev.map((t) =>
+              t.id === turnId ? { ...t, isLoading: false, quotaExceeded: { resetAt } } : t
+            )
+          );
+          return;
+        }
+
+        if (messageKey === 'error.service_unavailable' || errCode === 'service_unavailable') {
+          setLocalTurns((prev) => prev.filter((t) => t.id !== turnId));
+          showAlert(t('error.service_unavailable'), '', 'destructive');
+          return;
+        }
+
         if ('violations' in apiErr) {
           setLocalTurns((prev) =>
             prev.map((t) =>
@@ -441,6 +462,10 @@ export const WorkspacePage: React.FC = () => {
                 ) : turn.evaluatorRejection ? (
                   <div className="workspace-rejection-banner w-full" data-testid="rejection-banner">
                     <EvaluatorRejectionBanner {...mapEvaluatorRejection(turn.evaluatorRejection)} />
+                  </div>
+                ) : turn.quotaExceeded ? (
+                  <div className="workspace-rejection-banner w-full" data-testid="quota-exceeded-banner">
+                    <QuotaExceededBanner resetAt={turn.quotaExceeded.resetAt} />
                   </div>
                 ) : turn.refinePrompt ? (
                   <div className="workspace-refine-banner" data-testid="refine-banner" role="alert">

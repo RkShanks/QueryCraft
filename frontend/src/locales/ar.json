@@ -172,6 +172,7 @@
   "admin.settings.error": "فشل حفظ الإعدادات",
   "common.cancel": "إلغاء",
   "common.save": "حفظ",
+  "common.saveSuccess": "تم حفظ التغييرات بنجاح",
   "common.add": "إضافة",
   "common.delete": "حذف",
   "common.edit": "تعديل",
@@ -431,6 +432,23 @@
   "admin.audit.verifyFailed": "فشل التحقق من سلسلة سجل التدقيق",
   "admin.audit.emptyState": "لم يتم العثور على أي إدخالات تدقيق.",
   "admin.audit.securityWarningTitle": "تنبيه أمني:",
-  "admin.audit.securityWarning": "لا تتوفر أداة إصلاح تلقائي للحفاظ على الأدلة. يرجى الاتصال بمسؤول النظام لاستعادة سلسلة قاعدة البيانات."
+  "admin.audit.securityWarning": "لا تتوفر أداة إصلاح تلقائي للحفاظ على الأدلة. يرجى الاتصال بمسؤول النظام لاستعادة سلسلة قاعدة البيانات.",
+  "admin.quotas.deleteSuccess": "تم حذف تكوين الحصص بنجاح",
+  "quota.page_title": "حصص الأدوار",
+  "quota.role_column": "الدور",
+  "quota.query_limit": "الحد اليومي للاستعلامات",
+  "quota.execution_limit": "الحد اليومي لتنفيذ SQL",
+  "quota.export_limit": "الحد اليومي لتصدير سجل التدقيق",
+  "quota.uncapped": "غير مقيد",
+  "quota.status_title": "حالة استهلاك الحصص",
+  "quota.used": "المستخدم",
+  "quota.remaining": "المتبقي",
+  "quota.reset_at": "إعادة التعيين في: {{time}}",
+  "quota.discovery_warning": "يتطلب إنشاء تكوينات حصص للأدوار غير المقيدة صلاحية إدارة الأدوار.",
+  "nav.adminQuotas": "الحصص",
+  "error.quota_exceeded": "تم الوصول إلى الحد اليومي للاستعلامات. يرجى المحاولة مرة أخرى غداً.",
+  "error.service_unavailable": "الخدمة غير متوفرة مؤقتاً. يرجى المحاولة لاحقاً.",
+  "error.validation.invalidUUID": "تنسيق المعرّف غير صالح."
 }
+
 

@@ -21,7 +21,7 @@ export const useAcceptQuery = () => {
   });
 };
 
-type ErrorKind = 'concurrent' | 'llmUnavailable' | 'attemptInvalid' | 'network' | 'connectionRequired';
+type ErrorKind = 'concurrent' | 'llmUnavailable' | 'attemptInvalid' | 'network' | 'connectionRequired' | 'quotaExceeded' | 'serviceUnavailable';
 
 export interface UseQuerySubmitReturn {
   submitQuestion: (q: string, sessionId?: string | null, connectionId?: string | null) => Promise<unknown>;
@@ -33,7 +33,7 @@ export interface UseQuerySubmitReturn {
   refinePrompt: RefinePrompt | null;
   evaluatorRejection: EvaluatorRejection | null;
   timeout: boolean;
-  error: { kind: ErrorKind } | null;
+  error: { kind: ErrorKind; resetAt?: string } | null;
   resetError: () => void;
   reset: () => void;
 }
@@ -50,7 +50,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
   const [refinePrompt, setRefinePrompt] = useState<RefinePrompt | null>(null);
   const [evaluatorRejection, setEvaluatorRejection] = useState<EvaluatorRejection | null>(null);
   const [timeout, setTimeout] = useState(false);
-  const [error, setError] = useState<{ kind: ErrorKind } | null>(null);
+  const [error, setError] = useState<{ kind: ErrorKind; resetAt?: string } | null>(null);
   const submittingRef = useRef(false);
 
   const clearStates = useCallback(() => {
@@ -83,6 +83,20 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
       return;
     }
 
+    const messageKey = (err.message_key as string) || (err.detail as Record<string, unknown>)?.message_key as string;
+    const errCode = (err.error as string) || (err.detail as Record<string, unknown>)?.error as string;
+
+    if (messageKey === 'error.quota_exceeded' || errCode === 'quota_exceeded') {
+      const resetAt = (err.reset_at as string) || (err.detail as Record<string, unknown>)?.reset_at as string;
+      setError({ kind: 'quotaExceeded', resetAt });
+      return;
+    }
+
+    if (messageKey === 'error.service_unavailable' || errCode === 'service_unavailable') {
+      setError({ kind: 'serviceUnavailable' });
+      return;
+    }
+
     const code = err.error as string | undefined;
     if (code === 'concurrent') {
       setError({ kind: 'concurrent' });
@@ -96,6 +110,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
       setError({ kind: 'network' });
     }
   }, []);
+
 
   const submitQuestionFn = useCallback(async (q: string, sessionId?: string | null, connectionId?: string | null) => {
     if (submittingRef.current) {

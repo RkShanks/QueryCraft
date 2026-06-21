@@ -56,6 +56,7 @@ export interface UseAdminRolesOptions {
   onUpdateError?: (error: unknown) => void;
   onDeleteSuccess?: (data: unknown) => void;
   onDeleteError?: (error: unknown) => void;
+  enabled?: boolean;
 }
 
 export const useAdminRoles = (options?: UseAdminRolesOptions) => {
@@ -67,6 +68,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
       client
         .get({ url: '/admin/roles', throwOnError: true })
         .then((res) => res.data as { roles: Role[] }),
+    enabled: options?.enabled !== false,
   });
 
   const createMutation = useMutation({
@@ -186,6 +188,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
       client
         .get({ url: '/admin/sso/group-mappings', throwOnError: true })
         .then((res) => res.data as { mappings: GroupMapping[] }),
+    enabled: options?.enabled !== false,
   });
 
   const createGroupMappingMutation = useMutation({

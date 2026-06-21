@@ -5,6 +5,7 @@ import { ResultTable } from '../components/query/ResultTable';
 import { EvaluatorRejectionBanner } from '../components/query/EvaluatorRejectionBanner';
 import { RefinePromptBanner } from '../components/query/RefinePromptBanner';
 import { TimeoutBanner } from '../components/query/TimeoutBanner';
+import { QuotaExceededBanner } from '../components/query/QuotaExceededBanner';
 import { useQuerySubmit } from '../hooks/useQuerySubmit';
 import type { EvaluatorRejection } from '../api/generated/types.gen';
 import { History, Database, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -187,6 +188,12 @@ export const AskQuestionPage: React.FC = () => {
         '',
         'destructive'
       );
+    } else if (error.kind === 'serviceUnavailable') {
+      showAlert(
+        t('error.service_unavailable'),
+        '',
+        'destructive'
+      );
     }
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [error, t, showAlert]);
@@ -263,6 +270,12 @@ export const AskQuestionPage: React.FC = () => {
             <EvaluatorRejectionBanner
               {...mapEvaluatorRejection(evaluatorRejection)}
             />
+          </section>
+        )}
+
+        {error?.kind === 'quotaExceeded' && !isSubmitting && (
+          <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <QuotaExceededBanner resetAt={error.resetAt} />
           </section>
         )}
 
