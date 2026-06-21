@@ -32,8 +32,8 @@ Coverage mapping (action_type -> test class + call site):
 | 20| access.denied           | TestAccessDeniedEmits                     | role_service / query_service           |
 | 21| audit.verify            | TestAuditVerifyEmits                      | admin_audit.py /admin/audit/verify (T-738) |
 | 22| policy.schema_mismatch  | TestPolicySchemaMismatchEmits             | policy_enforcement drift guard         |
-| 23| quota.config.change     | KNOWN_DEFERRED                            | Wave 18.1 quota admin CRUD             |
-| 24| quota.exceeded          | KNOWN_DEFERRED                            | Wave 18.1 quota enforcement            |
+| 23| quota.config.change     | TestQuotaConfigChangeEmits                | admin_quotas.py (T-798)                 |
+| 24| quota.exceeded          | TestQuotaExceededEmits                    | query_service.py (T-804)               |
 | 25| quota.warning           | KNOWN_DEFERRED                            | Wave 18.1 quota warnings/future use    |
 | 26| hostile.input.blocked   | KNOWN_DEFERRED                            | Wave 18.2 hostile input detection      |
 | 27| hostile.input.flagged   | KNOWN_DEFERRED                            | Wave 18.2 hostile input detection      |
@@ -50,9 +50,9 @@ emission site was deferred to T-738 because the
 emitting before the endpoint exists would create a dead code
 path. T-738 landed both: the endpoint AND its ``AuditService.log``
 call. The Phase 5 coverage matrix is 22/22. Wave 18.0 adds
-9 Phase 6 taxonomy values only; their callers ship in Waves
-18.1, 18.2, and 18.3 and are intentionally listed in
-``KNOWN_DEFERRED`` below until those waves land.
+9 Phase 6 taxonomy values; Waves 18.1 ships 2 callers
+(quota.config.change, quota.exceeded). The remaining 7 are
+intentionally listed in ``KNOWN_DEFERRED`` until Waves 18.2/18.3.
 
 Two-layer verification:
 
@@ -149,8 +149,6 @@ _AUDIT_FORBIDDEN_IN_CONTEXT: tuple[str, ...] = (
 
 
 KNOWN_DEFERRED: dict[str, str] = {
-    "quota.config.change": "Wave 18.1 quota admin CRUD emits quota config changes.",
-    "quota.exceeded": "Wave 18.1 quota enforcement emits quota exhaustion blocks.",
     "quota.warning": "Wave 18.1 quota warning taxonomy is reserved for quota warning callers/future use.",
     "hostile.input.blocked": "Wave 18.2 hostile input detection emits blocked events.",
     "hostile.input.flagged": "Wave 18.2 hostile input detection emits flagged events.",
@@ -871,8 +869,8 @@ class TestAuditActionTypeSourceCodeReference:
                 f"or document the deferral in KNOWN_DEFERRED with a reason."
             )
 
-    def test_coverage_matrix_is_22_of_31_shipped_with_9_deferred(self):
-        """Pin Wave 18.0: 22 callers shipped, 9 Phase 6 callers deferred."""
+    def test_coverage_matrix_is_24_of_31_shipped_with_7_deferred(self):
+        """Pin Wave 18.1: 24 callers shipped, 7 Phase 6 callers deferred."""
         refs = self._enum_references()
         shipped = sorted(a.value for a in AuditActionType)
         with_caller = sorted(v for v, hits in refs.items() if hits)
