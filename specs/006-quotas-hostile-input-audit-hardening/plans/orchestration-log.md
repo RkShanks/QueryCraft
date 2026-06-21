@@ -133,10 +133,31 @@
   - 18.2c coverage + config API: T-836 through T-841.
   - 18.2d audit redaction + query integration + backend gate: T-842 through T-847, T-856.
 
+---
+
+## Wave 18.2a — Detection Foundation
+
+### Review & Merge
+
+- **Date**: 2026-06-22
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/157
+- **Branch**: `phase-6/wave-18.2a-detection-foundation`
+- **Final HEAD**: `1dbf2eb260d7ae5d0e1a863dabf6a84b8c64837f`
+- **Merge Commit**: `9650856d87e299506495ea0fa65d867429b3d572`
+- **Status**: MERGED
+- **Tasks Completed**: T-822 through T-825
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Local Review Gates**: `rtk uv run ruff check src tests`; `rtk uv run pytest tests/unit/test_detection_registry.py tests/unit/test_hostile_detector.py -x --tb=short` (22 passed); `rtk git diff --check`.
+
+### Review Finding Resolved
+
+- Initial backend CI failed on Ruff F401 for unused `DetectionRule` imports in `backend/tests/unit/test_detection_registry.py`.
+- Fix commit `1dbf2eb` added `# noqa: F401` to the protocol-documentation imports; focused gates passed after fix.
+
 ### Current Wave Checkpoint
 
 - **Date**: 2026-06-22
-- **Branch Context**: `main` at `934896b6`
-- **Status**: Wave 18.1 COMPLETE. T-793 through T-821 verified complete.
-- **Next Dispatch**: Wave 18.2a backend hostile input detection foundation, T-822 through T-825 only.
+- **Branch Context**: `main` at `9650856d87e299506495ea0fa65d867429b3d572`
+- **Status**: Wave 18.2a COMPLETE. T-822 through T-825 verified complete.
+- **Next Dispatch**: Wave 18.2b backend built-in detection rules, T-826 through T-835 only.
 - **Frontend Dispatch Hold**: T-848 through T-855 and T-857 after backend/API is available.
