@@ -112,29 +112,29 @@ SC-063, SC-064, SC-071, SC-072, SC-073, SC-074, SC-075
 
 - [ ] T-809 Backend gates Wave 18.1: `cd backend && uv run pytest tests/unit/test_quota_service.py tests/unit/test_quota_repository.py tests/unit/test_quota_enforcement.py tests/unit/test_quota_audit.py tests/unit/test_quota_error_sanitization.py tests/unit/test_quota_fail_closed.py tests/unit/test_quota_reset.py tests/integration/test_quota_admin.py tests/integration/test_execution_quota.py -x --tb=short && uv run ruff check src/ && uv run ruff format --check src/ && git diff --check`. Depends on T-807, T-804, T-805, T-808, T-798. **Dispatch: BE**
 
-- [ ] T-810 [P] Write RED component tests for AdminQuotasPage in `frontend/src/pages/AdminQuotasPage.test.tsx`: test page renders role list with limits; test form allows setting daily_query_limit; test submit calls PUT /admin/quotas/{role_id}; test 403 renders access-denied message; test quota status panel shows used/remaining per dimension; test Arabic locale renders RTL layout. Use MSW handlers mocking `/admin/quotas` API contract. Depends on api-contracts.md quota contract (no backend fixture dependency). **Dispatch: FE**
+- [X] T-810 [P] Write RED component tests for AdminQuotasPage in `frontend/src/pages/AdminQuotasPage.test.tsx`: test page renders role list with limits; test form allows setting daily_query_limit; test submit calls PUT /admin/quotas/{role_id}; test 403 renders access-denied message; test quota status panel shows used/remaining per dimension; test Arabic locale renders RTL layout. Use MSW handlers mocking `/admin/quotas` API contract. Depends on api-contracts.md quota contract (no backend fixture dependency). **Dispatch: FE**
 
-- [ ] T-811 Create `frontend/src/pages/AdminQuotasPage.tsx`: admin page at `/admin/quotas` with quota configuration table (role name, query limit, execution limit, export limit columns), inline edit form (nullable int inputs per dimension, null = uncapped label), save/delete controls. Add permission guard (`admin.quotas.manage`). Follow AdminRolesPage layout pattern. Depends on T-810, T-798. **Dispatch: FE**
+- [X] T-811 Create `frontend/src/pages/AdminQuotasPage.tsx`: admin page at `/admin/quotas` with quota configuration table (role name, query limit, execution limit, export limit columns), inline edit form (nullable int inputs per dimension, null = uncapped label), save/delete controls. Add permission guard (`admin.quotas.manage`). Follow AdminRolesPage layout pattern. Depends on T-810, T-798. **Dispatch: FE**
 
-- [ ] T-812 [P] Create `frontend/src/api/quotas.ts`: typed API client functions `listQuotas()`, `getQuotaStatus()`, `upsertQuota(roleId, data)`, `deleteQuota(roleId)` using fetch/TanStack Query patterns consistent with existing API clients. Depends on T-798. **Dispatch: FE**
+- [X] T-812 [P] Create `frontend/src/api/quotas.ts`: typed API client functions `listQuotas()`, `getQuotaStatus()`, `upsertQuota(roleId, data)`, `deleteQuota(roleId)` using fetch/TanStack Query patterns consistent with existing API clients. Depends on T-798. **Dispatch: FE**
 
-- [ ] T-813 [P] Create `frontend/src/pages/AdminQuotaStatusPage.tsx` or integrate quota status panel into `AdminQuotasPage.tsx`: display per-role consumption table (role, dimension, used/limit/remaining, reset time). Depends on T-812, T-811. **Dispatch: FE**
+- [X] T-813 [P] Create `frontend/src/pages/AdminQuotaStatusPage.tsx` or integrate quota status panel into `AdminQuotasPage.tsx`: display per-role consumption table (role, dimension, used/limit/remaining, reset time). Depends on T-812, T-811. **Dispatch: FE**
 
-- [ ] T-814 [P] Write RED component tests for quota exceeded error display in `frontend/src/components/query/QuotaExceededBanner.test.tsx`: test banner renders with localized message; test reset_at timestamp shown; test no internal counter values shown; test Arabic locale shows Arabic message. No backend fixture dependency. **Dispatch: FE**
+- [X] T-814 [P] Write RED component tests for quota exceeded error display in `frontend/src/components/query/QuotaExceededBanner.test.tsx`: test banner renders with localized message; test reset_at timestamp shown; test no internal counter values shown; test Arabic locale shows Arabic message. No backend fixture dependency. **Dispatch: FE**
 
-- [ ] T-815 Create `frontend/src/components/query/QuotaExceededBanner.tsx`: displays localized quota exceeded error from API response. Integrate into `frontend/src/pages/AskQuestionPage.tsx` (or WorkspacePage) query submission error handling path. Depends on T-814. **Dispatch: FE**
+- [X] T-815 Create `frontend/src/components/query/QuotaExceededBanner.tsx`: displays localized quota exceeded error from API response. Integrate into `frontend/src/pages/AskQuestionPage.tsx` (or WorkspacePage) query submission error handling path. Depends on T-814. **Dispatch: FE**
 
-- [ ] T-816 Add i18n keys for Wave 18.1 to `frontend/src/locales/en.json`: `quota.page_title`, `quota.role_column`, `quota.query_limit`, `quota.execution_limit`, `quota.export_limit`, `quota.uncapped`, `quota.status_title`, `quota.used`, `quota.remaining`, `quota.reset_at`, `error.quota_exceeded`, `error.service_unavailable`. Depends on T-811. **Dispatch: FE**
+- [X] T-816 Add i18n keys for Wave 18.1 to `frontend/src/locales/en.json`: `quota.page_title`, `quota.role_column`, `quota.query_limit`, `quota.execution_limit`, `quota.export_limit`, `quota.uncapped`, `quota.status_title`, `quota.used`, `quota.remaining`, `quota.reset_at`, `error.quota_exceeded`, `error.service_unavailable`. Depends on T-811. **Dispatch: FE**
 
-- [ ] T-817 Add matching Arabic translations (100% key parity) to `frontend/src/locales/ar.json` for all keys added in T-816. Zero English fallback. Depends on T-816. **Dispatch: FE**
+- [X] T-817 Add matching Arabic translations (100% key parity) to `frontend/src/locales/ar.json` for all keys added in T-816. Zero English fallback. Depends on T-816. **Dispatch: FE**
 
-- [ ] T-818 [P] Add route for `/admin/quotas` to `frontend/src/App.tsx` (or router config), wrapped in `PermissionGuard` requiring `admin.quotas.manage`. Add navigation link in admin sidebar/nav. Depends on T-811. **Dispatch: FE**
+- [X] T-818 [P] Add route for `/admin/quotas` to `frontend/src/App.tsx` (or router config), wrapped in `PermissionGuard` requiring `admin.quotas.manage`. Add navigation link in admin sidebar/nav. Depends on T-811. **Dispatch: FE**
 
-- [ ] T-819 [P] Write RTL visual check test in `frontend/src/pages/AdminQuotasPage.test.tsx` (or separate file): render page with `dir="rtl"` and Arabic locale, assert no `text-align: left`, no `margin-left`/`padding-left`/`margin-right`/`padding-right` inline styles, assert logical properties used. Depends on T-811, T-817. **Dispatch: FE**
+- [X] T-819 [P] Write RTL visual check test in `frontend/src/pages/AdminQuotasPage.test.tsx` (or separate file): render page with `dir="rtl"` and Arabic locale, assert no `text-align: left`, no `margin-left`/`padding-left`/`margin-right`/`padding-right` inline styles, assert logical properties used. Depends on T-811, T-817. **Dispatch: FE**
 
-- [ ] T-820 [P] Run i18n key parity test: `cd frontend && npm test -- --run locales/localeCoverage` — all Phase 6 Wave 18.1 keys present in both en.json and ar.json. Fix any gaps. Depends on T-816, T-817. **Dispatch: FE**
+- [X] T-820 [P] Run i18n key parity test: `cd frontend && npm test -- --run locales/localeCoverage` — all Phase 6 Wave 18.1 keys present in both en.json and ar.json. Fix any gaps. Depends on T-816, T-817. **Dispatch: FE**
 
-- [ ] T-821 Frontend gates Wave 18.1: `cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build && npm run lint:css && git diff --check`. All must pass. Depends on T-819, T-820, T-815, T-818. **Dispatch: FE**
+- [X] T-821 Frontend gates Wave 18.1: `cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build && npm run lint:css && git diff --check`. All must pass. Depends on T-819, T-820, T-815, T-818. **Dispatch: FE**
 
 
 ---
