@@ -54,9 +54,9 @@ SC-074 partial, SC-075 partial (foundation gates)
 
 - [X] T-789 [P] Write RED unit tests for enum completeness in `backend/tests/unit/test_phase6_enums.py`: assert all 9 new `AuditActionType` values exist with correct string values, assert `ADMIN_QUOTAS_MANAGE` and `ADMIN_SECURITY_MANAGE` exist in `Permission` enum. Depends on T-783. **Dispatch: BE**
 
-- [ ] T-790 [P] Create `audit/wave-18/` directory and stub files `audit/wave-18/gemini-findings.md` and `audit/wave-18/opus-findings.md` with headers (Phase 6 audit scope, FR-147–FR-180, SC-063–SC-077, status: PENDING). Depends on nothing. **Dispatch: OR**
+- [X] T-790 [P] Create `audit/wave-18/` directory and stub files `audit/wave-18/gemini-findings.md` and `audit/wave-18/opus-findings.md` with headers (Phase 6 audit scope, FR-147–FR-180, SC-063–SC-077, status: PENDING). Depends on nothing. **Dispatch: OR**
 
-- [ ] T-791 [P] Initialize orchestration log at `specs/006-quotas-hostile-input-audit-hardening/plans/orchestration-log.md` with Wave 18.0 dispatch entry (date, wave, branch, dispatcher, status: IN PROGRESS). Depends on nothing. **Dispatch: OR**
+- [X] T-791 [P] Initialize orchestration log at `specs/006-quotas-hostile-input-audit-hardening/plans/orchestration-log.md` with Wave 18.0 dispatch entry (date, wave, branch, dispatcher, status: IN PROGRESS). Depends on nothing. **Dispatch: OR**
 
 - [X] T-792 Run Wave 18.0 backend gates: `cd backend && uv run pytest tests/unit/test_phase6_enums.py tests/contract/test_phase6_contracts.py -x --tb=short && uv run ruff check src/ && uv run ruff format --check src/ && git diff --check`. All must pass before Wave 18.0 PR. Depends on T-779–T-789. **Dispatch: BE**
 
@@ -110,7 +110,7 @@ SC-063, SC-064, SC-071, SC-072, SC-073, SC-074, SC-075
 
 - [X] T-808 [P] Write RED unit tests for quota daily reset in `backend/tests/unit/test_quota_reset.py`: test counter key includes date suffix; test TTL is ≤86400 and >0; test new day generates new key (old key irrelevant). Depends on T-794. **Dispatch: BE**
 
-- [ ] T-809 Backend gates Wave 18.1: `cd backend && uv run pytest tests/unit/test_quota_service.py tests/unit/test_quota_repository.py tests/unit/test_quota_enforcement.py tests/unit/test_quota_audit.py tests/unit/test_quota_error_sanitization.py tests/unit/test_quota_fail_closed.py tests/unit/test_quota_reset.py tests/integration/test_quota_admin.py tests/integration/test_execution_quota.py -x --tb=short && uv run ruff check src/ && uv run ruff format --check src/ && git diff --check`. Depends on T-807, T-804, T-805, T-808, T-798. **Dispatch: BE**
+- [X] T-809 Backend gates Wave 18.1: `cd backend && uv run pytest tests/unit/test_quota_service.py tests/unit/test_quota_repository.py tests/unit/test_quota_enforcement.py tests/unit/test_quota_audit.py tests/unit/test_quota_error_sanitization.py tests/unit/test_quota_fail_closed.py tests/unit/test_quota_reset.py tests/integration/test_quota_admin.py tests/integration/test_execution_quota.py -x --tb=short && uv run ruff check src/ && uv run ruff format --check src/ && git diff --check`. Depends on T-807, T-804, T-805, T-808, T-798. **Dispatch: BE**
 
 - [X] T-810 [P] Write RED component tests for AdminQuotasPage in `frontend/src/pages/AdminQuotasPage.test.tsx`: test page renders role list with limits; test form allows setting daily_query_limit; test submit calls PUT /admin/quotas/{role_id}; test 403 renders access-denied message; test quota status panel shows used/remaining per dimension; test Arabic locale renders RTL layout. Use MSW handlers mocking `/admin/quotas` API contract. Depends on api-contracts.md quota contract (no backend fixture dependency). **Dispatch: FE**
 
