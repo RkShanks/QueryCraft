@@ -40,7 +40,7 @@ class TestDetectionRuleProtocol:
         from app.services.detection.protocol import DetectionRule  # noqa: F401
 
     def test_rule_implementing_protocol_must_have_name_property(self):
-        from app.services.detection.protocol import DetectionResult, DetectionRule
+        from app.services.detection.protocol import DetectionResult, DetectionRule  # noqa: F401
 
         class _ConcreteRule:
             """A minimal rule implementing the protocol."""
@@ -57,7 +57,7 @@ class TestDetectionRuleProtocol:
         assert isinstance(result, DetectionResult)
 
     def test_rule_detect_returns_detection_result(self):
-        from app.services.detection.protocol import DetectionResult, DetectionRule
+        from app.services.detection.protocol import DetectionResult, DetectionRule  # noqa: F401
 
         class _LowConfRule:
             name = "low_conf"
