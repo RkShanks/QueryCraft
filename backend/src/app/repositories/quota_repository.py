@@ -19,14 +19,15 @@ class QuotaRepository:
         result = await self._session.execute(select(RoleQuota).where(RoleQuota.role_id == role_id))
         return result.scalar_one_or_none()
 
-    async def upsert(self, role_id: uuid.UUID, data: RoleQuotaUpsert) -> RoleQuota:
+    async def upsert(self, role_id: uuid.UUID, data: RoleQuotaUpsert, fields_set: set[str] | None = None) -> RoleQuota:
         existing = await self.get(role_id)
         if existing is not None:
-            if data.daily_query_limit is not None:
+            update_fields = fields_set if fields_set is not None else data.model_fields_set
+            if "daily_query_limit" in update_fields:
                 existing.daily_query_limit = data.daily_query_limit
-            if data.daily_execution_limit is not None:
+            if "daily_execution_limit" in update_fields:
                 existing.daily_execution_limit = data.daily_execution_limit
-            if data.daily_export_limit is not None:
+            if "daily_export_limit" in update_fields:
                 existing.daily_export_limit = data.daily_export_limit
             from datetime import UTC, datetime
 

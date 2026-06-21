@@ -69,6 +69,8 @@ async def get_quota_status(
     date_suffix = now.strftime("%Y-%m-%d")
     next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
 
+    from app.db.models.user import User
+
     statuses = []
     for q in quotas:
         dims = {}
@@ -81,13 +83,22 @@ async def get_quota_status(
             used = 0
             if limit_val is not None:
                 try:
-                    keys = await redis.keys(f"quota:*:{dim_name}:{date_suffix}")
-                    for k in keys:
-                        val = await redis.get(k)
-                        if val is not None and k.endswith(f":{dim_name}:{date_suffix}"):
-                            pass
-                except Exception:
-                    pass
+                    # Sum usage across all users with this role
+                    result = await db.execute(select(User).where(User.role_id == q.role_id))
+                    users = list(result.scalars().all())
+                    for user in users:
+                        key = f"quota:{user.id}:{dim_name}:{date_suffix}"
+                        val = await redis.get(key)
+                        if val is not None:
+                            used += int(val)
+                except Exception as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail={
+                            "error": "service_unavailable",
+                            "message_key": "error.service_unavailable",
+                        },
+                    ) from exc
             from app.schemas.quota import QuotaDimensionStatus
 
             dims[dim_name] = QuotaDimensionStatus(
@@ -170,18 +181,19 @@ async def upsert_quota(
 
     body = await request.json()
     data = RoleQuotaUpsert(**body)
+    fields_set = data.model_fields_set
 
     repo = QuotaRepository(db)
     is_new = (await repo.get(role_uuid)) is None
-    quota = await repo.upsert(role_uuid, data)
+    quota = await repo.upsert(role_uuid, data, fields_set=fields_set)
     await db.flush()
 
     dims_changed = []
-    if data.daily_query_limit is not None:
+    if "daily_query_limit" in fields_set:
         dims_changed.append("daily_query_limit")
-    if data.daily_execution_limit is not None:
+    if "daily_execution_limit" in fields_set:
         dims_changed.append("daily_execution_limit")
-    if data.daily_export_limit is not None:
+    if "daily_export_limit" in fields_set:
         dims_changed.append("daily_export_limit")
 
     actor_id = uuid.UUID(_session["user_id"]) if "user_id" in _session else None

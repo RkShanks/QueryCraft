@@ -27,6 +27,18 @@ _DIMENSION_LIMIT_MAP: dict[str, str] = {
     "exports": "daily_export_limit",
 }
 
+_CHECK_SCRIPT = """
+local used = redis.call('INCR', KEYS[1])
+if used == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[2])
+end
+local limit = tonumber(ARGV[1])
+if limit and used > limit then
+    return {0, used, limit}
+end
+return {1, used, limit}
+"""
+
 
 def _seconds_until_midnight_utc(now: datetime | None = None) -> int:
     now = now or datetime.now(UTC)
@@ -50,6 +62,7 @@ class QuotaService:
     def __init__(self, redis: Redis, quota_repo: "QuotaRepository") -> None:
         self._redis = redis
         self._quota_repo = quota_repo
+        self._check_script = redis.register_script(_CHECK_SCRIPT)
 
     async def check_and_increment(
         self,
@@ -92,19 +105,22 @@ class QuotaService:
         now = datetime.now(UTC)
         date_suffix = _today_key_suffix(now)
         key = f"quota:{user_id}:{dimension}:{date_suffix}"
+        ttl = _seconds_until_midnight_utc(now)
+        reset_at = self._next_midnight(now)
 
         try:
-            used = await self._redis.incr(key)
+            result = await self._check_script(
+                keys=[key],
+                args=[str(limit), str(ttl)],
+                client=self._redis,
+            )
         except Exception as exc:
             raise QuotaUnavailableError() from exc
 
-        if used == 1:
-            ttl = _seconds_until_midnight_utc(now)
-            await self._redis.expire(key, ttl)
+        allowed = bool(result[0])
+        used = int(result[1])
 
-        reset_at = self._next_midnight(now)
-
-        if used > limit:
+        if not allowed:
             raise QuotaExceededError(dimension=dimension, reset_at=reset_at.isoformat())
 
         return (used, limit, reset_at)

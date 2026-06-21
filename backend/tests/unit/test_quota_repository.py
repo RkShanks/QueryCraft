@@ -165,6 +165,68 @@ class TestQuotaRepositoryDelete:
         assert result is False
 
 
+class TestQuotaRepositoryUpsertUncap:
+    """QuotaRepository.upsert() can clear a limit back to null (uncapped)."""
+
+    @pytest.mark.asyncio
+    async def test_create_with_limit_then_null_clears_it(self, db_session):
+        role_id = uuid.uuid4()
+        from app.db.models.role import Role
+
+        role = Role(
+            id=role_id,
+            name="UncapRole",
+            description="test",
+            priority=110,
+            permissions=["query.submit"],
+        )
+        db_session.add(role)
+        await db_session.flush()
+
+        repo = QuotaRepository(db_session)
+
+        # Create with a numeric limit
+        data = RoleQuotaUpsert(daily_query_limit=5)
+        result = await repo.upsert(role_id, data)
+        assert result.daily_query_limit == 5
+
+        # PUT with explicit null to uncap
+        data2 = RoleQuotaUpsert(daily_query_limit=None)
+        result2 = await repo.upsert(role_id, data2, fields_set={"daily_query_limit"})
+        assert result2.daily_query_limit is None
+
+    @pytest.mark.asyncio
+    async def test_fields_set_excludes_unchanged_fields(self, db_session):
+        role_id = uuid.uuid4()
+        from app.db.models.role import Role
+
+        role = Role(
+            id=role_id,
+            name="PartialUncapRole",
+            description="test",
+            priority=111,
+            permissions=["query.submit"],
+        )
+        db_session.add(role)
+        await db_session.flush()
+
+        repo = QuotaRepository(db_session)
+
+        # Create with all three limits
+        data = RoleQuotaUpsert(daily_query_limit=10, daily_execution_limit=20, daily_export_limit=30)
+        result = await repo.upsert(role_id, data)
+        assert result.daily_query_limit == 10
+        assert result.daily_execution_limit == 20
+        assert result.daily_export_limit == 30
+
+        # Update only query_limit to null, execution and export should be preserved
+        data2 = RoleQuotaUpsert(daily_query_limit=None)
+        result2 = await repo.upsert(role_id, data2, fields_set={"daily_query_limit"})
+        assert result2.daily_query_limit is None
+        assert result2.daily_execution_limit == 20
+        assert result2.daily_export_limit == 30
+
+
 class TestQuotaRepositoryListAll:
     """QuotaRepository.list_all() returns all configured quotas."""
 

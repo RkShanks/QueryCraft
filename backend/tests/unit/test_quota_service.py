@@ -1,7 +1,7 @@
 """RED unit tests for QuotaService (T-793).
 
 These tests define the contract for QuotaService.check_and_increment():
-- Increments Redis counter and returns (used, limit, reset_at)
+- Increments Redis counter via Lua script and returns (used, limit, reset_at)
 - Raises QuotaExceededError with dimension and reset_at when exhausted
 - Raises QuotaUnavailableError when Redis unreachable
 - Daily TTL key format quota:{user_id}:{dim}:{YYYY-MM-DD} with TTL <= 86400s
@@ -13,8 +13,18 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from redis.asyncio import Redis as AsyncRedis
 
 from app.core.exceptions import QuotaExceededError, QuotaUnavailableError
+
+
+def _make_script(return_value=(1, 5, 10), side_effect=None):
+    async def _script(*args, **kwargs):
+        if side_effect:
+            raise side_effect
+        return return_value
+
+    return _script
 
 
 class TestQuotaServiceCheckAndIncrement:
@@ -22,7 +32,9 @@ class TestQuotaServiceCheckAndIncrement:
 
     @pytest.fixture
     def mock_redis(self):
-        return AsyncMock()
+        redis = AsyncMock(spec=AsyncRedis)
+        redis.register_script.return_value = _make_script((1, 5, 10))
+        return redis
 
     @pytest.fixture
     def mock_quota_repo(self):
@@ -41,9 +53,7 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
-        mock_redis.incr.return_value = 1
-        mock_redis.expire.return_value = True
-        mock_redis.ttl.return_value = 86399
+        service._check_script = _make_script((1, 1, 10))
 
         used, limit, reset_at = await service.check_and_increment(user_id, role_id, "queries")
 
@@ -57,7 +67,7 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_query_limit=5, role_id=role_id)
-        mock_redis.incr.return_value = 6
+        service._check_script = _make_script((0, 6, 5))
 
         with pytest.raises(QuotaExceededError) as exc_info:
             await service.check_and_increment(user_id, role_id, "queries")
@@ -71,7 +81,7 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
-        mock_redis.incr.side_effect = ConnectionError("Redis unreachable")
+        service._check_script = _make_script(side_effect=ConnectionError("Redis unreachable"))
 
         with pytest.raises(QuotaUnavailableError):
             await service.check_and_increment(user_id, role_id, "executions")
@@ -83,12 +93,19 @@ class TestQuotaServiceCheckAndIncrement:
         today = datetime.now(UTC).strftime("%Y-%m-%d")
 
         mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
-        mock_redis.incr.return_value = 1
+        call_args = {}
+
+        async def _capture_script(*args, **kwargs):
+            call_args.update(kwargs)
+            return (1, 1, 10)
+
+        service._check_script = _capture_script
 
         await service.check_and_increment(user_id, role_id, "queries")
 
+        keys = call_args.get("keys", [])
         expected_key = f"quota:{user_id}:queries:{today}"
-        mock_redis.incr.assert_called_once_with(expected_key)
+        assert expected_key in keys
 
     @pytest.mark.asyncio
     async def test_daily_ttl_key_has_ttl_at_most_86400(self, service, mock_redis, mock_quota_repo):
@@ -96,14 +113,19 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
-        mock_redis.incr.return_value = 1
+        call_args = {}
+
+        async def _capture_script(*args, **kwargs):
+            call_args.update(kwargs)
+            return (1, 1, 10)
+
+        service._check_script = _capture_script
 
         await service.check_and_increment(user_id, role_id, "queries")
 
-        call_args = mock_redis.expire.call_args
-        if call_args is not None:
-            ttl = call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get("time", None)
-            assert ttl is not None
+        args = call_args.get("args", [])
+        if len(args) >= 2:
+            ttl = int(args[1])
             assert 0 < ttl <= 86400
 
     @pytest.mark.asyncio
@@ -112,12 +134,20 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_query_limit=None, role_id=role_id)
+        script_called = False
+
+        async def _fail_if_called(*args, **kwargs):
+            nonlocal script_called
+            script_called = True
+            return (1, 1, 10)
+
+        service._check_script = _fail_if_called
 
         used, limit, reset_at = await service.check_and_increment(user_id, role_id, "queries")
 
         assert limit is None
         assert used == 0
-        mock_redis.incr.assert_not_called()
+        assert not script_called
 
     @pytest.mark.asyncio
     async def test_uncapped_execution_limit_always_allows(self, service, mock_redis, mock_quota_repo):
@@ -125,12 +155,20 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_execution_limit=None, role_id=role_id)
+        script_called = False
+
+        async def _fail_if_called(*args, **kwargs):
+            nonlocal script_called
+            script_called = True
+            return (1, 1, 10)
+
+        service._check_script = _fail_if_called
 
         used, limit, reset_at = await service.check_and_increment(user_id, role_id, "executions")
 
         assert limit is None
         assert used == 0
-        mock_redis.incr.assert_not_called()
+        assert not script_called
 
     @pytest.mark.asyncio
     async def test_no_quota_config_always_allows(self, service, mock_redis, mock_quota_repo):
@@ -138,12 +176,20 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = None
+        script_called = False
+
+        async def _fail_if_called(*args, **kwargs):
+            nonlocal script_called
+            script_called = True
+            return (1, 1, 10)
+
+        service._check_script = _fail_if_called
 
         used, limit, reset_at = await service.check_and_increment(user_id, role_id, "queries")
 
         assert limit is None
         assert used == 0
-        mock_redis.incr.assert_not_called()
+        assert not script_called
 
     @pytest.mark.asyncio
     async def test_quota_exceeded_error_has_sanitized_attributes(self, service, mock_redis, mock_quota_repo):
@@ -151,7 +197,7 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_execution_limit=3, role_id=role_id)
-        mock_redis.incr.return_value = 4
+        service._check_script = _make_script((0, 4, 3))
 
         with pytest.raises(QuotaExceededError) as exc_info:
             await service.check_and_increment(user_id, role_id, "executions")
@@ -168,11 +214,11 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
-        mock_redis.incr.return_value = 1
+        service._check_script = _make_script((1, 1, 10))
 
         await service.check_and_increment(user_id, role_id, "queries")
 
-        mock_redis.expire.assert_called_once()
+        mock_redis.register_script.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_subsequent_increment_does_not_set_ttl(self, service, mock_redis, mock_quota_repo):
@@ -180,11 +226,11 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
-        mock_redis.incr.return_value = 2
+        service._check_script = _make_script((1, 2, 10))
 
         await service.check_and_increment(user_id, role_id, "queries")
 
-        mock_redis.expire.assert_not_called()
+        mock_redis.register_script.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execution_dimension_uses_execution_limit(self, service, mock_redis, mock_quota_repo):
@@ -192,7 +238,7 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_execution_limit=20, role_id=role_id)
-        mock_redis.incr.return_value = 5
+        service._check_script = _make_script((1, 5, 20))
 
         used, limit, reset_at = await service.check_and_increment(user_id, role_id, "executions")
 
@@ -205,7 +251,7 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
 
         mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
-        mock_redis.incr.side_effect = ConnectionError("Redis connection lost")
+        service._check_script = _make_script(side_effect=ConnectionError("Redis connection lost"))
 
         with pytest.raises(QuotaUnavailableError):
             await service.check_and_increment(user_id, role_id, "queries")
