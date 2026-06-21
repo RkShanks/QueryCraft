@@ -188,6 +188,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
       client
         .get({ url: '/admin/sso/group-mappings', throwOnError: true })
         .then((res) => res.data as { mappings: GroupMapping[] }),
+    enabled: options?.enabled !== false,
   });
 
   const createGroupMappingMutation = useMutation({

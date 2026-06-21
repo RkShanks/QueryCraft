@@ -169,4 +169,28 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     expect(mappingsDeleted).toHaveLength(1);
     expect(mappingsDeleted[0]).toBe('map-1');
   });
+
+  it('does not fetch roles or group mappings when enabled is false', async () => {
+    let rolesFetched = false;
+    let mappingsFetched = false;
+
+    server.use(
+      http.get('*/admin/roles', () => {
+        rolesFetched = true;
+        return HttpResponse.json({ roles: [] });
+      }),
+      http.get('*/admin/sso/group-mappings', () => {
+        mappingsFetched = true;
+        return HttpResponse.json({ mappings: [] });
+      })
+    );
+
+    renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+
+    // Wait a short time to verify no request fires
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(rolesFetched).toBe(false);
+    expect(mappingsFetched).toBe(false);
+  });
 });
