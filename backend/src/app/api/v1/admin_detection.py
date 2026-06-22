@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.phase6_permissions import require_phase6_admin_permission
@@ -39,18 +39,17 @@ async def get_detection_config(
 
 @router.put("/config", response_model=DetectionThresholdRead)
 async def update_detection_config(
-    request: Request,
+    data: DetectionThresholdUpdate,
     _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_SECURITY_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> DetectionThresholdRead:
     """Update detection threshold configuration and emit audit event.
 
-    Validates block_confidence > flag_confidence via Pydantic schema.
+    FastAPI parses the body as DetectionThresholdUpdate, which validates
+    block_confidence > flag_confidence via a Pydantic model_validator.
+    Invalid input → FastAPI automatically returns 422 (RequestValidationError).
     Emits DETECTION_CONFIG_CHANGE audit event with sanitized context.
     """
-    body = await request.json()
-    # Pydantic validation raises 422 if block <= flag
-    data = DetectionThresholdUpdate(**body)
 
     repo = DetectionConfigRepository(db)
     row = await repo.update(data)

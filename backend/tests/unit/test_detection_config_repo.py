@@ -94,8 +94,7 @@ class TestDetectionConfigRepositoryUpdate:
     @pytest.mark.asyncio
     async def test_update_changes_block_and_flag_confidence(self):
         from app.repositories.detection_config_repository import DetectionConfigRepository
-
-        from app.schemas.detection import DetectionThresholdUpdate  # noqa: I001
+        from app.schemas.detection import DetectionThresholdUpdate
 
         existing = _make_threshold_row(block=0.8, flag=0.5)
         session = _make_session()
@@ -131,8 +130,7 @@ class TestDetectionConfigRepositoryUpdate:
     @pytest.mark.asyncio
     async def test_update_creates_row_if_missing_then_sets_values(self):
         from app.repositories.detection_config_repository import DetectionConfigRepository
-
-        from app.schemas.detection import DetectionThresholdUpdate  # noqa: I001
+        from app.schemas.detection import DetectionThresholdUpdate
 
         session = _make_session()
         result_mock = MagicMock()
@@ -149,8 +147,7 @@ class TestDetectionConfigRepositoryUpdate:
     @pytest.mark.asyncio
     async def test_update_calls_flush(self):
         from app.repositories.detection_config_repository import DetectionConfigRepository
-
-        from app.schemas.detection import DetectionThresholdUpdate  # noqa: I001
+        from app.schemas.detection import DetectionThresholdUpdate
 
         existing = _make_threshold_row()
         session = _make_session()
