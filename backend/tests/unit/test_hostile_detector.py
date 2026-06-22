@@ -56,17 +56,15 @@ class TestHostileInputDetectorNoShortCircuit:
 
                 return DetectionResult(category=self.name, confidence=self._conf, explanation="")
 
-        registry.register(_TrackingRule("first", 0.9))   # would block
+        registry.register(_TrackingRule("first", 0.9))  # would block
         registry.register(_TrackingRule("second", 0.1))  # below flag
-        registry.register(_TrackingRule("third", 0.6))   # would flag
+        registry.register(_TrackingRule("third", 0.6))  # would flag
 
         detector = HostileInputDetector(registry=registry)
         config = _make_mock_config(block=0.8, flag=0.5)
         await detector.detect("some text", config)
 
-        assert calls == ["first", "second", "third"], (
-            "All rules must be called; short-circuiting is forbidden."
-        )
+        assert calls == ["first", "second", "third"], "All rules must be called; short-circuiting is forbidden."
 
 
 class TestDetectionOutcomeBlocked:
