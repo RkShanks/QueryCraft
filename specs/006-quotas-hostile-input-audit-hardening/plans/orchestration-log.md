@@ -154,10 +154,31 @@
 - Initial backend CI failed on Ruff F401 for unused `DetectionRule` imports in `backend/tests/unit/test_detection_registry.py`.
 - Fix commit `1dbf2eb` added `# noqa: F401` to the protocol-documentation imports; focused gates passed after fix.
 
+---
+
+## Wave 18.2b — Built-in Detection Rules
+
+### Review & Merge
+
+- **Date**: 2026-06-22
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/158
+- **Branch**: `phase-6/wave-18.2b-detection-rules`
+- **Final HEAD**: `769cca496f77ae5a8dfee0e5019ab6b665febf79`
+- **Merge Commit**: `80d24d002c30f570426adcbf839201c8a2748347`
+- **Status**: MERGED
+- **Tasks Completed**: T-826 through T-835
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Local Review Gates**: `rtk uv run pytest tests/unit/test_detection_package_registration.py tests/unit/test_rule_prompt_injection.py tests/unit/test_rule_sql_injection.py tests/unit/test_rule_rbac_bypass.py tests/unit/test_rule_schema_exposure.py tests/unit/test_rule_destructive_sql.py -x --tb=short` (109 passed); `rtk uv run ruff check src tests`; `rtk uv run ruff format --check src tests`; `rtk git diff --check`.
+
+### Review Finding Resolved
+
+- Built-in rule modules initially self-registered only when directly imported; `REGISTRY` was empty after a plain `import app.services.detection`.
+- Fix commit `769cca49` imports all built-in rule modules from `backend/src/app/services/detection/__init__.py` and adds package-registration regression coverage.
+
 ### Current Wave Checkpoint
 
 - **Date**: 2026-06-22
-- **Branch Context**: `main` at `9650856d87e299506495ea0fa65d867429b3d572`
-- **Status**: Wave 18.2a COMPLETE. T-822 through T-825 verified complete.
-- **Next Dispatch**: Wave 18.2b backend built-in detection rules, T-826 through T-835 only.
+- **Branch Context**: `main` at `80d24d002c30f570426adcbf839201c8a2748347`
+- **Status**: Wave 18.2b COMPLETE. T-826 through T-835 verified complete.
+- **Next Dispatch**: Wave 18.2c backend detection coverage and admin config API, T-836 through T-841 only.
 - **Frontend Dispatch Hold**: T-848 through T-855 and T-857 after backend/API is available.
