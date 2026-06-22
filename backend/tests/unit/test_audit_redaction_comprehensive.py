@@ -169,6 +169,10 @@ _SAFE_KEYS: tuple[str, ...] = (
     "dimension",
     "reset_at",
     "dims_changed",
+    # T-841 detection.config.change context: boolean flags indicating which
+    # thresholds were updated. Safe — they carry no sensitive value.
+    "block_confidence_updated",
+    "flag_confidence_updated",
 )
 
 

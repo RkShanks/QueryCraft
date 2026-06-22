@@ -37,7 +37,7 @@ Coverage mapping (action_type -> test class + call site):
 | 25| quota.warning           | KNOWN_DEFERRED                            | Wave 18.1 quota warnings/future use    |
 | 26| hostile.input.blocked   | KNOWN_DEFERRED                            | Wave 18.2 hostile input detection      |
 | 27| hostile.input.flagged   | KNOWN_DEFERRED                            | Wave 18.2 hostile input detection      |
-| 28| detection.config.change | KNOWN_DEFERRED                            | Wave 18.2 detection config admin       |
+| 28| detection.config.change | TestDetectionConfigChangeEmits            | api/v1/admin_detection.py (T-841)      |
 | 29| audit.search            | KNOWN_DEFERRED                            | Wave 18.3 audit search                 |
 | 30| audit.export            | KNOWN_DEFERRED                            | Wave 18.3 audit export                 |
 | 31| audit.purge             | KNOWN_DEFERRED                            | Wave 18.3 retention purge-gap marker   |
@@ -51,7 +51,8 @@ emitting before the endpoint exists would create a dead code
 path. T-738 landed both: the endpoint AND its ``AuditService.log``
 call. The Phase 5 coverage matrix is 22/22. Wave 18.0 adds
 9 Phase 6 taxonomy values; Waves 18.1 ships 2 callers
-(quota.config.change, quota.exceeded). The remaining 7 are
+(quota.config.change, quota.exceeded). Wave 18.2c ships 1 more caller
+(detection.config.change). The remaining 6 are
 intentionally listed in ``KNOWN_DEFERRED`` until Waves 18.2/18.3.
 
 Two-layer verification:
@@ -152,7 +153,6 @@ KNOWN_DEFERRED: dict[str, str] = {
     "quota.warning": "Wave 18.1 quota warning taxonomy is reserved for quota warning callers/future use.",
     "hostile.input.blocked": "Wave 18.2 hostile input detection emits blocked events.",
     "hostile.input.flagged": "Wave 18.2 hostile input detection emits flagged events.",
-    "detection.config.change": "Wave 18.2 detection threshold admin updates emit config changes.",
     "audit.search": "Wave 18.3 audit search emits search activity events.",
     "audit.export": "Wave 18.3 audit export emits export activity events.",
     "audit.purge": "Wave 18.3 retention purge-gap handling emits purge markers.",
@@ -869,8 +869,8 @@ class TestAuditActionTypeSourceCodeReference:
                 f"or document the deferral in KNOWN_DEFERRED with a reason."
             )
 
-    def test_coverage_matrix_is_24_of_31_shipped_with_7_deferred(self):
-        """Pin Wave 18.1: 24 callers shipped, 7 Phase 6 callers deferred."""
+    def test_coverage_matrix_is_25_of_31_shipped_with_6_deferred(self):
+        """Pin Wave 18.2c: 25 callers shipped, 6 Phase 6 callers deferred."""
         refs = self._enum_references()
         shipped = sorted(a.value for a in AuditActionType)
         with_caller = sorted(v for v, hits in refs.items() if hits)
