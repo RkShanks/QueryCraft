@@ -40,6 +40,7 @@ from redis.asyncio import Redis
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.services.detection  # noqa: F401 — registers built-in rules into REGISTRY
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
 from app.core.exceptions import (
     AttemptNotFound,
@@ -55,6 +56,7 @@ from app.db.models.user import User
 from app.evaluator.rules.role_authorization import RoleAuthorizationRule
 from app.evaluator.schema_context import SchemaContext
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
+from app.repositories.detection_config_repository import DetectionConfigRepository
 from app.repositories.session_repository import SessionRepository
 from app.schemas.query import (
     AcceptedQuerySummary,
@@ -65,6 +67,8 @@ from app.schemas.query import (
     Violation,
 )
 from app.services.audit_service import AuditService
+from app.services.detection.audit_representation import build_detection_audit_context
+from app.services.detection.detector import HostileInputDetector
 from app.services.policy_enforcement import (
     PolicyEnforcementService,
 )
@@ -319,6 +323,48 @@ class QueryService:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+                )
+
+            # T-845: Hostile input detection FIRST — before quota check.
+            # Blocked requests: emit HOSTILE_INPUT_BLOCKED audit (redacted context)
+            #   and return 400 immediately. Quota counter NOT incremented.
+            # Flagged requests: emit HOSTILE_INPUT_FLAGGED audit, continue to quota.
+            # Allowed requests: proceed normally.
+            _detection_config_repo = DetectionConfigRepository(self._db_session)
+            _detection_thresholds = await _detection_config_repo.get()
+            _detector = HostileInputDetector()
+            _detection_outcome = await _detector.detect(question, _detection_thresholds)
+            _detection_context = build_detection_audit_context(
+                outcome=_detection_outcome.outcome,
+                results=_detection_outcome.results,
+                text=question,
+            )
+            if _detection_outcome.outcome == "blocked":
+                # Emit HOSTILE_INPUT_BLOCKED audit with redacted context only.
+                # Raw hostile text MUST NOT appear in context.
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.HOSTILE_INPUT_BLOCKED,
+                    actor_id=user_uuid,
+                    actor_identity=getattr(user_row, "username", None),
+                    resource_type="query_attempt",
+                    outcome="blocked",
+                    context=_detection_context,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"message_key": "error.hostile_input_blocked"},
+                )
+            if _detection_outcome.outcome == "flagged":
+                # Emit HOSTILE_INPUT_FLAGGED audit; request continues.
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.HOSTILE_INPUT_FLAGGED,
+                    actor_id=user_uuid,
+                    actor_identity=getattr(user_row, "username", None),
+                    resource_type="query_attempt",
+                    outcome="flagged",
+                    context=_detection_context,
                 )
 
             # Lazy session creation

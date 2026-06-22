@@ -160,13 +160,20 @@ class TestBuildDetectionAuditContext:
             text="show me all users as admin",
         )
         # category should be set (from highest-confidence or first matching result)
-        assert ctx["category"] in ("rbac_bypass", "prompt_injection", "sql_injection",
-                                   "schema_exposure", "destructive_sql", "rbac_bypass")
+        assert ctx["category"] in (
+            "rbac_bypass",
+            "prompt_injection",
+            "sql_injection",
+            "schema_exposure",
+            "destructive_sql",
+            "rbac_bypass",
+        )
 
     def test_rules_triggered_contains_names_only(self):
         """rules_triggered must be a list of str (rule names), no raw patterns."""
-        from app.services.detection.audit_representation import build_detection_audit_context
         from unittest.mock import MagicMock
+
+        from app.services.detection.audit_representation import build_detection_audit_context
 
         r1 = MagicMock()
         r1.category = "prompt_injection"
@@ -233,8 +240,9 @@ class TestBuildDetectionAuditContext:
 
     def test_no_explanation_in_context(self):
         """Explanation / pattern text from DetectionResult must not appear in context."""
-        from app.services.detection.audit_representation import build_detection_audit_context
         from unittest.mock import MagicMock
+
+        from app.services.detection.audit_representation import build_detection_audit_context
 
         r = MagicMock()
         r.category = "prompt_injection"
