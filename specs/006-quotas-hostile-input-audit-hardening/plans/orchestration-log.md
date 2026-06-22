@@ -175,10 +175,57 @@
 - Built-in rule modules initially self-registered only when directly imported; `REGISTRY` was empty after a plain `import app.services.detection`.
 - Fix commit `769cca49` imports all built-in rule modules from `backend/src/app/services/detection/__init__.py` and adds package-registration regression coverage.
 
+---
+
+## Wave 18.2c — Detection Coverage and Config API
+
+### Review & Merge
+
+- **Date**: 2026-06-22
+- **PR**: https://github.com/RkShanks/QueryCraft/pull/159
+- **Branch**: `phase-6/wave-18.2c-detection-coverage-config`
+- **Final HEAD**: `211b06e589b650739db2bb7cd8cd8931aefe515e`
+- **Merge Commit**: `0c549429324ce666f723e495e07ef9967df5301f`
+- **Status**: MERGED
+- **Tasks Completed**: T-836 through T-841
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Local Review Gates**: focused detection/admin gates reported by implementer; reviewer confirmed CI green after fixes.
+
+### Review Findings Resolved
+
+- `admin_detection.py` initially instantiated `DetectionThresholdUpdate` manually, which could bypass FastAPI's 422 `RequestValidationError` path. Fix commit `cdf27353` changed PUT body binding to typed `DetectionThresholdUpdate`.
+- Ruff I001 import sorting in `test_detection_config_repo.py` fixed in `cdf27353`.
+- Full backend suite initially failed because `detection.config.change` remained in audit `KNOWN_DEFERRED` and new audit context keys were not in `_SAFE_KEYS`. Fix commit `211b06e5` updated audit coverage/redaction guardrails.
+
+---
+
+## Wave 18.2d — Detection Audit Redaction and Query Integration
+
+### Dispatch
+
+- **Date**: 2026-06-22
+- **Model**: Backend Implementer
+- **T-IDs**: T-842 through T-847, T-856
+- **Branch**: `phase-6/wave-18.2d-detection-integration`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.2c merged; built-in rules and detection config API available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before product edits.
+- Use RTK for shell commands.
+- Follow TDD commit discipline: RED test commit, GREEN implementation commit, docs/gate commit as needed.
+- Run detection before quota in `POST /query/submit`.
+- Blocked hostile input must not increment quota.
+- Hostile input audit logs must never store raw hostile payloads.
+- Blocked response body must contain only `{"message_key":"error.hostile_input_blocked"}`.
+- Flagged input emits `HOSTILE_INPUT_FLAGGED` and continues to quota check.
+- No frontend work in this slice.
+
 ### Current Wave Checkpoint
 
 - **Date**: 2026-06-22
-- **Branch Context**: `main` at `80d24d002c30f570426adcbf839201c8a2748347`
-- **Status**: Wave 18.2b COMPLETE. T-826 through T-835 verified complete.
-- **Next Dispatch**: Wave 18.2c backend detection coverage and admin config API, T-836 through T-841 only.
+- **Branch Context**: `main` at `0c549429324ce666f723e495e07ef9967df5301f`
+- **Status**: Wave 18.2c COMPLETE. T-836 through T-841 verified complete.
+- **Next Dispatch**: Wave 18.2d backend detection audit redaction and query integration dispatched, T-842 through T-847 and T-856.
 - **Frontend Dispatch Hold**: T-848 through T-855 and T-857 after backend/API is available.
