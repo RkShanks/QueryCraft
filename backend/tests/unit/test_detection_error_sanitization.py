@@ -49,6 +49,7 @@ class TestBlockedResponseBodySanitization:
 
         # Serialize to string (as JSON serializer would) and check no input echo
         import json
+
         body = json.dumps(response_detail)
         assert hostile_input not in body
         assert "IGNORE" not in body
@@ -60,6 +61,7 @@ class TestBlockedResponseBodySanitization:
         response_detail = {"message_key": "error.hostile_input_blocked"}
 
         import json
+
         body = json.dumps(response_detail)
         assert "PromptInjectionRule" not in body
         assert "SqlInjectionRule" not in body
