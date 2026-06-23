@@ -72,12 +72,8 @@ class TestNoRawHostilePayloadInAuditLog:
 
         ctx_str = str(ctx)
         # Raw hostile patterns must be redacted
-        assert "IGNORE PREVIOUS INSTRUCTIONS" not in ctx_str, (
-            f"Raw hostile phrase in context: {ctx_str!r}"
-        )
-        assert "reveal the system prompt" not in ctx_str, (
-            f"Raw hostile phrase in context: {ctx_str!r}"
-        )
+        assert "IGNORE PREVIOUS INSTRUCTIONS" not in ctx_str, f"Raw hostile phrase in context: {ctx_str!r}"
+        assert "reveal the system prompt" not in ctx_str, f"Raw hostile phrase in context: {ctx_str!r}"
         # Safe fields must be present
         assert "input_summary" in ctx
         assert "input_hash" in ctx
@@ -93,9 +89,7 @@ class TestNoRawHostilePayloadInAuditLog:
         ctx = await _run_detection_and_build_context(hostile, "flagged")
 
         ctx_str = str(ctx)
-        assert "UNION SELECT" not in ctx_str, (
-            f"Raw SQL injection pattern found in flagged audit context: {ctx_str!r}"
-        )
+        assert "UNION SELECT" not in ctx_str, f"Raw SQL injection pattern found in flagged audit context: {ctx_str!r}"
         assert "input_summary" in ctx
         assert "input_hash" in ctx
 
@@ -107,9 +101,7 @@ class TestNoRawHostilePayloadInAuditLog:
 
         ctx_str = str(ctx)
         # The hostile pattern DROP TABLE must have been redacted
-        assert "DROP TABLE" not in ctx_str, (
-            f"Raw SQL injection hostile pattern in audit context: {ctx_str!r}"
-        )
+        assert "DROP TABLE" not in ctx_str, f"Raw SQL injection hostile pattern in audit context: {ctx_str!r}"
         assert "input_summary" in ctx
         assert "input_hash" in ctx
 
@@ -132,9 +124,7 @@ class TestNoRawHostilePayloadInAuditLog:
         )
 
         allowed_keys = {"category", "confidence", "rules_triggered", "outcome", "input_summary", "input_hash"}
-        assert set(ctx.keys()) == allowed_keys, (
-            f"Unexpected keys in audit context: {set(ctx.keys()) - allowed_keys}"
-        )
+        assert set(ctx.keys()) == allowed_keys, f"Unexpected keys in audit context: {set(ctx.keys()) - allowed_keys}"
         ctx_str = str(ctx)
         assert "xp_cmdshell" not in ctx_str, f"Shell command in context: {ctx_str!r}"
         assert "rm -rf" not in ctx_str, f"Shell payload in context: {ctx_str!r}"
@@ -188,10 +178,6 @@ class TestNoRawHostilePayloadInAuditLog:
         for ctx in audit_log_calls:
             ctx_str = str(ctx)
             assert hostile_input not in ctx_str, (
-                f"Raw hostile input found in AuditService.log context!\n"
-                f"Input: {hostile_input!r}\n"
-                f"Context: {ctx_str!r}"
+                f"Raw hostile input found in AuditService.log context!\nInput: {hostile_input!r}\nContext: {ctx_str!r}"
             )
-            assert "IGNORE PREVIOUS INSTRUCTIONS" not in ctx_str, (
-                f"Raw hostile phrase in audit context: {ctx_str!r}"
-            )
+            assert "IGNORE PREVIOUS INSTRUCTIONS" not in ctx_str, f"Raw hostile phrase in audit context: {ctx_str!r}"

@@ -448,6 +448,7 @@
   "nav.adminQuotas": "الحصص",
   "error.quota_exceeded": "تم الوصول إلى الحد اليومي للاستعلامات. يرجى المحاولة مرة أخرى غداً.",
   "error.service_unavailable": "الخدمة غير متوفرة مؤقتاً. يرجى المحاولة لاحقاً.",
+  "error.hostile_input_blocked": "تم حظر هذا الطلب لأنه يحتوي على محتوى ينتهك سياسة الأمان.",
   "error.validation.invalidUUID": "تنسيق المعرّف غير صالح."
 }
 
