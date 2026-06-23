@@ -213,9 +213,9 @@ SC-064, SC-065, SC-066, SC-067, SC-072, SC-073, SC-074, SC-075
 
 - [X] T-850 [P] Create `frontend/src/api/detection.ts`: typed API client for `getDetectionConfig()` and `updateDetectionConfig(data)`. Depends on T-841. **Dispatch: FE**
 
-- [ ] T-851 [P] Write RED component tests for hostile input blocked error display in `frontend/src/components/query/HostileInputBlockedBanner.test.tsx`: test banner renders localized message; test no rule names, confidence, or pattern shown; test Arabic locale shows Arabic message only. No backend fixture dependency. **Dispatch: FE**
+- [X] T-851 [P] Write RED component tests for hostile input blocked error display in `frontend/src/components/query/HostileInputBlockedBanner.test.tsx`: test banner renders localized message; test no rule names, confidence, or pattern shown; test Arabic locale shows Arabic message only. No backend fixture dependency. **Dispatch: FE**
 
-- [ ] T-852 Create `frontend/src/components/query/HostileInputBlockedBanner.tsx`: displays localized hostile input blocked error from API response. Integrate into query submission error handling path in AskQuestionPage/WorkspacePage. Depends on T-851. **Dispatch: FE**
+- [X] T-852 Create `frontend/src/components/query/HostileInputBlockedBanner.tsx`: displays localized hostile input blocked error from API response. Integrate into query submission error handling path in AskQuestionPage/WorkspacePage. Depends on T-851. **Dispatch: FE**
 
 - [X] T-853 Add i18n keys for Wave 18.2 to `frontend/src/locales/en.json`: `detection.page_title`, `detection.block_threshold`, `detection.flag_threshold`, `detection.save`, `detection.validation_error`, `error.hostile_input_blocked`. Depends on T-849, T-852. **Dispatch: FE**
 

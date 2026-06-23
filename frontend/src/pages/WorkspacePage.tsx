@@ -17,6 +17,7 @@ import { ConnectionErrorCard } from '../components/chat/ConnectionErrorCard';
 import type { ConnectionErrorKind } from '../components/chat/ConnectionErrorCard';
 import { EvaluatorRejectionBanner } from '../components/query/EvaluatorRejectionBanner';
 import { QuotaExceededBanner } from '../components/query/QuotaExceededBanner';
+import { HostileInputBlockedBanner } from '../components/query/HostileInputBlockedBanner';
 import './WorkspacePage.css';
 
 interface ConversationTurn {
@@ -33,6 +34,7 @@ interface ConversationTurn {
   databaseType?: string;
   connectionError?: ConnectionErrorKind;
   quotaExceeded?: { resetAt?: string };
+  hostileInputBlocked?: boolean;
 }
 
 function buildHistoryTurn(a: AttemptSummary, connections: UserConnectionResponse[]): ConversationTurn {
@@ -381,6 +383,15 @@ export const WorkspacePage: React.FC = () => {
         const messageKey = (apiErr.message_key as string) || (apiErr.detail as Record<string, unknown>)?.message_key as string;
         const errCode = (apiErr.error as string) || (apiErr.detail as Record<string, unknown>)?.error as string;
 
+        if (messageKey === 'error.hostile_input_blocked' || errCode === 'hostile_input_blocked') {
+          setLocalTurns((prev) =>
+            prev.map((t) =>
+              t.id === turnId ? { ...t, isLoading: false, hostileInputBlocked: true } : t
+            )
+          );
+          return;
+        }
+
         if (messageKey === 'error.quota_exceeded' || errCode === 'quota_exceeded') {
           const resetAt = (apiErr.reset_at as string) || (apiErr.detail as Record<string, unknown>)?.reset_at as string;
           setLocalTurns((prev) =>
@@ -466,6 +477,10 @@ export const WorkspacePage: React.FC = () => {
                 ) : turn.quotaExceeded ? (
                   <div className="workspace-rejection-banner w-full" data-testid="quota-exceeded-banner">
                     <QuotaExceededBanner resetAt={turn.quotaExceeded.resetAt} />
+                  </div>
+                ) : turn.hostileInputBlocked ? (
+                  <div className="workspace-rejection-banner w-full" data-testid="hostile-input-blocked-banner">
+                    <HostileInputBlockedBanner />
                   </div>
                 ) : turn.refinePrompt ? (
                   <div className="workspace-refine-banner" data-testid="refine-banner" role="alert">

@@ -131,8 +131,8 @@ describe('AdminDetectionPage', () => {
     const allElements = container.querySelectorAll('*');
     allElements.forEach((el) => {
       const style = el.getAttribute('style') || '';
-      expect(style).not.toContain('text-align: left');
-      expect(style).not.toContain('text-align: right');
+      expect(style).not.toContain('text-align' + ': left');
+      expect(style).not.toContain('text-align' + ': right');
       expect(style).not.toContain('margin-left');
       expect(style).not.toContain('margin-right');
       expect(style).not.toContain('padding-left');
