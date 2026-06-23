@@ -55,16 +55,18 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status  # noqa: F401
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status  # noqa: F401
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
 from app.api.v1.phase6_permissions import require_phase6_admin_permission
+from app.core.config import get_settings
 from app.core.dependencies import get_db
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType, Permission
+from app.schemas.audit_search import AuditSearchParams
+from app.services.audit_search_service import AuditSearchService
 from app.services.audit_service import AuditService, VerificationResult
 
 router = APIRouter(prefix="/admin/audit", tags=["Admin Audit"])
@@ -252,7 +254,115 @@ async def get_audit_status(
 
 @router.get("/entries")
 async def search_audit_entries(
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
+    action_type: str | None = Query(default=None),
+    actor_identity: str | None = Query(default=None),
+    outcome: str | None = Query(default=None),
+    resource_type: str | None = Query(default=None),
+    start_date: str | None = Query(default=None),
+    end_date: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
 ):
-    """Permission-gated placeholder for Wave 18.3 audit search."""
-    return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content={"error": "not_implemented"})
+    """GET /admin/audit/entries — filtered, paginated audit log search.
+
+    Permission: ``admin.audit.verify`` (existing Phase 5 permission).
+
+    Behaviour:
+      1. Parse filter params from query string.
+      2. Enforce retention window server-side (entries older than
+         ``AUDIT_RETENTION_MONTHS`` are excluded before pagination).
+      3. Return ``AuditSearchResponse`` with paginated entries.
+      4. Emit ``AUDIT_SEARCH`` audit event whose context contains ONLY:
+         - sanitized filter summary (param names + values, no result content)
+         - pagination metadata (page, page_size)
+         Never log returned entry values in the audit context.
+
+    Response shape: ``AuditSearchResponse``
+    (``entries`` list + ``pagination`` metadata).
+    """
+    try:
+        # Parse dates if provided
+        from datetime import datetime
+
+        parsed_start = None
+        parsed_end = None
+        if start_date:
+            try:
+                parsed_start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": "invalid_date", "message_key": "error.invalid_date", "field": "start_date"},
+                ) from None
+        if end_date:
+            try:
+                parsed_end = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": "invalid_date", "message_key": "error.invalid_date", "field": "end_date"},
+                ) from None
+
+        params = AuditSearchParams(
+            start_date=parsed_start,
+            end_date=parsed_end,
+            action_type=action_type,
+            actor_identity=actor_identity,
+            outcome=outcome,
+            resource_type=resource_type,
+            page=page,
+            page_size=page_size,
+        )
+
+        settings = get_settings()
+        retention_months = settings.AUDIT_RETENTION_MONTHS
+
+        result = await AuditSearchService.search(db, params, retention_months)
+
+        # Build sanitized filter summary — param names + values only.
+        # Never include returned entry content.
+        filter_summary: dict[str, Any] = {}
+        if action_type is not None:
+            filter_summary["action_type"] = action_type
+        if actor_identity is not None:
+            filter_summary["actor_identity"] = actor_identity
+        if outcome is not None:
+            filter_summary["outcome"] = outcome
+        if resource_type is not None:
+            filter_summary["resource_type"] = resource_type
+        if start_date is not None:
+            filter_summary["start_date"] = start_date
+        if end_date is not None:
+            filter_summary["end_date"] = end_date
+
+        actor_identity_val = (_session or {}).get("username") if _session else None
+
+        # Emit AUDIT_SEARCH — context: filter summary + pagination metadata only.
+        # Never include returned entry values.
+        await AuditService.log(
+            db,
+            action=AuditActionType.AUDIT_SEARCH,
+            actor_identity=actor_identity_val,
+            resource_type="audit_log",
+            resource_id=None,
+            outcome="success",
+            context={
+                "filters": filter_summary,
+                "page": page,
+                "page_size": page_size,
+            },
+        )
+
+        await db.commit()
+        return result
+
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal", "message_key": "error.internal"},
+        ) from None

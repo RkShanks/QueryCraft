@@ -38,7 +38,7 @@ Coverage mapping (action_type -> test class + call site):
 | 26| hostile.input.blocked   | TestHostileInputBlockedEmits              | services/query_service.py (T-845)      |
 | 27| hostile.input.flagged   | TestHostileInputFlaggedEmits              | services/query_service.py (T-845)      |
 | 28| detection.config.change | TestDetectionConfigChangeEmits            | api/v1/admin_detection.py (T-841)      |
-| 29| audit.search            | KNOWN_DEFERRED                            | Wave 18.3 audit search                 |
+| 29| audit.search            | TestAuditSearchEmits                      | api/v1/admin_audit.py (T-862)          |
 | 30| audit.export            | KNOWN_DEFERRED                            | Wave 18.3 audit export                 |
 | 31| audit.purge             | KNOWN_DEFERRED                            | Wave 18.3 retention purge-gap marker   |
 
@@ -55,10 +55,10 @@ call. The Phase 5 coverage matrix is 22/22. Wave 18.0 adds
 (detection.config.change). The remaining 6 are
 intentionally listed in ``KNOWN_DEFERRED`` until Waves 18.2/18.3.
 
-Wave 18.2d (T-845) ships two more callers (hostile.input.blocked,
-hostile.input.flagged) in ``query_service.py``. The coverage matrix
-is now **27 of 31** shipped, **4 deferred** (quota.warning,
-audit.search, audit.export, audit.purge).
+Wave 18.3a (T-862) ships one more caller (audit.search) in
+``api/v1/admin_audit.py``. The coverage matrix
+is now **28 of 31** shipped, **3 deferred** (quota.warning,
+audit.export, audit.purge).
 
 Two-layer verification:
 
@@ -156,7 +156,6 @@ _AUDIT_FORBIDDEN_IN_CONTEXT: tuple[str, ...] = (
 
 KNOWN_DEFERRED: dict[str, str] = {
     "quota.warning": "Wave 18.1 quota warning taxonomy is reserved for quota warning callers/future use.",
-    "audit.search": "Wave 18.3 audit search emits search activity events.",
     "audit.export": "Wave 18.3 audit export emits export activity events.",
     "audit.purge": "Wave 18.3 retention purge-gap handling emits purge markers.",
 }
@@ -1141,6 +1140,75 @@ class TestForbiddenTokenSweep:
 
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
             await update_settings_admin(req=body, _session=session, db=db)
+        _assert_no_forbidden_in_contexts(mock_audit)
+
+
+# ── 29. audit.search ──────────────────────────────────────────────────────
+
+
+class TestAuditSearchEmits:
+    """``GET /admin/audit/entries`` emits ``AUDIT_SEARCH`` after a successful
+    search (T-862). The context contains only the sanitized filter summary
+    and pagination metadata — never the returned entry values."""
+
+    def test_action_type_is_shipped(self):
+        assert AuditActionType.AUDIT_SEARCH.value == "audit.search"
+
+    @pytest.mark.asyncio
+    async def test_audit_search_emits_event_with_sanitized_context(self):
+        """Verify AUDIT_SEARCH is emitted with filter summary and pagination only."""
+        from unittest.mock import MagicMock
+
+        from app.schemas.audit_search import AuditSearchPagination, AuditSearchResponse
+
+        _empty_response = AuditSearchResponse(
+            entries=[],
+            pagination=AuditSearchPagination(page=1, page_size=50, total_entries=0, total_pages=1),
+        )
+
+        with patch(
+            "app.services.audit_search_service.AuditSearchService.search",
+            new=AsyncMock(return_value=_empty_response),
+        ):
+            with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
+                from app.api.v1.admin_audit import search_audit_entries
+                from app.db.models.enums import Permission
+
+                _session = {
+                    "role_id": str(uuid.uuid4()),
+                    "permissions": [str(Permission.ADMIN_AUDIT_VERIFY)],
+                    "username": "auditor@test",
+                }
+                db = AsyncMock()
+                db.commit = AsyncMock()
+                request = MagicMock()
+
+                await search_audit_entries(
+                    request=request,
+                    db=db,
+                    _session=_session,
+                    action_type="audit.verify",
+                    actor_identity=None,
+                    outcome=None,
+                    resource_type=None,
+                    start_date=None,
+                    end_date=None,
+                    page=1,
+                    page_size=10,
+                )
+
+        actions = _captured_actions(mock_audit)
+        assert AuditActionType.AUDIT_SEARCH in actions, f"Expected AUDIT_SEARCH in audit calls, got {actions}"
+
+        ctx = _context_for(mock_audit, AuditActionType.AUDIT_SEARCH)
+        # Must have filter summary and pagination
+        assert "filters" in ctx, f"Expected 'filters' key in AUDIT_SEARCH context, got {ctx}"
+        assert "page" in ctx, f"Expected 'page' key in AUDIT_SEARCH context, got {ctx}"
+        assert "page_size" in ctx, f"Expected 'page_size' key in AUDIT_SEARCH context, got {ctx}"
+        # Must NOT contain row_hash, prev_hash, or any returned entry field
+        ctx_str = str(ctx)
+        for forbidden in ("row_hash", "prev_hash"):
+            assert forbidden not in ctx_str, f"AUDIT_SEARCH context must not contain '{forbidden}': {ctx}"
         _assert_no_forbidden_in_contexts(mock_audit)
 
 

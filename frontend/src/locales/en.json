@@ -114,6 +114,7 @@
   "error.sourceDbNotConfigured": "Source database connection is not configured. Please check your environment settings.",
   "error.sourceDbConnectionFailed": "Unable to connect to the database. Please check your connection settings and try again.",
   "error.invalidCursor": "Invalid pagination cursor.",
+  "error.invalid_date": "Invalid date format. Use ISO 8601.",
   "error.schemaTokenLimit": "The database schema is too large ({{tokens}} tokens, limit {{limit}}). Please contact your administrator.",
   "error.acceptConflict": "This query is already being accepted.",
   "error.attemptStateInvalid": "This query attempt is not in a valid state to accept.",
