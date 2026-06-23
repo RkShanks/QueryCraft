@@ -81,6 +81,11 @@ export const Sidebar: React.FC = () => {
     user?.role_name === 'admin' ||
     user?.permissions?.includes('admin.quotas.manage');
 
+  const hasSecurityPermission =
+    user?.role === 'admin' ||
+    user?.role_name === 'admin' ||
+    user?.permissions?.includes('admin.security.manage');
+
 
   const { data, isLoading } = useSessionsList();
   const deletingSessionIds = React.useMemo(() => new Set(toasts.map((t) => t.sessionId)), [toasts]);
@@ -224,6 +229,17 @@ export const Sidebar: React.FC = () => {
           >
             <Shield className="w-4 h-4" />
             {!sidebarCollapsed && (t('nav.adminQuotas') || 'Quotas')}
+          </button>
+        )}
+        {hasSecurityPermission && (
+          <button
+            className="sidebar-nav-btn"
+            onClick={() => navigate('/admin/detection')}
+            aria-label={t('detection.page_title') || 'Detection'}
+            data-testid="sidebar-nav-detection"
+          >
+            <Shield className="w-4 h-4" />
+            {!sidebarCollapsed && (t('detection.page_title') || 'Detection')}
           </button>
         )}
 

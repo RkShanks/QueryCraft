@@ -16,6 +16,7 @@ import { AdminSsoPage } from './pages/AdminSsoPage';
 import { AdminRolesPage } from './pages/AdminRolesPage';
 import { AdminAuditPage } from './pages/AdminAuditPage';
 import { AdminQuotasPage } from './pages/AdminQuotasPage';
+import { AdminDetectionPage } from './pages/AdminDetectionPage';
 import { AppShell } from './components/shell/AppShell';
 
 import { PermissionGuard } from './components/auth/PermissionGuard';
@@ -154,6 +155,16 @@ function App() {
               <AuthenticatedLayout>
                 <PermissionGuard permission="admin.quotas.manage">
                   <AdminQuotasPage />
+                </PermissionGuard>
+              </AuthenticatedLayout>
+            }
+          />
+          <Route
+            path="/admin/detection"
+            element={
+              <AuthenticatedLayout>
+                <PermissionGuard permission="admin.security.manage">
+                  <AdminDetectionPage />
                 </PermissionGuard>
               </AuthenticatedLayout>
             }
