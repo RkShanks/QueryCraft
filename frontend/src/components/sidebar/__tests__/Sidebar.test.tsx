@@ -331,5 +331,42 @@ describe('Sidebar', () => {
     fireEvent.click(screen.getByTestId('sidebar-nav-quotas'));
     expect(mockNavigate).toHaveBeenCalledWith('/admin/quotas');
   });
+
+  it('shows detection and hides other admin buttons when user only has admin.security.manage permission', () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: {
+        data: {
+          id: 'user-security',
+          role: 'member',
+          permissions: ['admin.security.manage'],
+        },
+      },
+      isLoading: false,
+    } as any);
+
+    setup();
+    expect(screen.queryByTestId('sidebar-nav-connections')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sidebar-nav-roles')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sidebar-nav-audit')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sidebar-nav-quotas')).not.toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-nav-detection')).toBeInTheDocument();
+  });
+
+  it('clicking Detection navigates to /admin/detection', () => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: {
+        data: {
+          id: 'user-security',
+          role: 'member',
+          permissions: ['admin.security.manage'],
+        },
+      },
+      isLoading: false,
+    } as any);
+
+    setup();
+    fireEvent.click(screen.getByTestId('sidebar-nav-detection'));
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/detection');
+  });
 });
 
