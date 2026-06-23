@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-06-23
-- **Branch Context**: `main` at `ae2c0f2d25c5e19d6974e2d5053cdd6ac2f6d09c`
-- **Status**: Wave 18.3a COMPLETE. T-858 through T-862 verified complete.
-- **Next Dispatch**: Wave 18.3b backend audit export service, T-863 through T-866.
+- **Branch Context**: `main` at `8dde1a7dbeb6bf4ff7f4b0e8a9024fa0d8accf56`
+- **Status**: Wave 18.3b COMPLETE. T-863 through T-866 verified complete.
+- **Next Dispatch**: Wave 18.3c backend audit export API, T-867 through T-868.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -342,3 +342,44 @@
 - Export output must pass a central redaction pass before serialization.
 - CSV formula injection prevention must tab-prefix cells starting with `=`, `+`, `-`, `@`, or `|`.
 - Checksum must be SHA-256 of the data payload, not of mutable headers around it.
+
+### Review and Merge Result
+
+- **PR**: #163
+- **Merged**: 2026-06-23
+- **Merge Commit**: `8dde1a7dbeb6bf4ff7f4b0e8a9024fa0d8accf56`
+- **Tasks Completed**: T-863 through T-866
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Local Review Gates**: focused export tests passed (48 tests); `ruff check src tests` passed; `ruff format --check src tests` passed; `git diff --check` clean.
+- **Review Result**: no blocking findings.
+
+### Next Dispatch
+
+- Wave 18.3c backend audit export API, T-867 through T-868.
+
+---
+
+## Wave 18.3c — Audit Export API
+
+### Dispatch
+
+- **Date**: 2026-06-23
+- **Model**: Backend Implementer
+- **T-IDs**: T-867 through T-868
+- **Branch**: `phase-6/wave-18.3c-audit-export-api`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3b merged; `AuditExportService`, `AuditSearchService`, and `GET /admin/audit/entries` are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before product edits.
+- Use RTK for shell commands.
+- Follow TDD commit discipline: RED test commit, GREEN implementation commit, docs/gate commit as needed.
+- Keep this slice to `POST /admin/audit/export` only.
+- Do not implement purge markers, verify-chain purge-gap handling, retention endpoint, frontend UI, or final Wave 18.3 backend gate in this slice.
+- Permission is existing `admin.audit.verify`.
+- Export quota must use `QuotaService.check_and_increment(user_id, role_id, "exports")`.
+- Quota exhausted returns 429 with localized `message_key`; quota unavailable returns 503 with localized `message_key`.
+- Export limit > 50,000 must return 422 with localized `message_key`.
+- `AUDIT_EXPORT` context must include only sanitized filter summary and `record_count`; never exported entry values.
+- Response must set correct `Content-Type` and `Content-Disposition` for CSV and JSON downloads.
