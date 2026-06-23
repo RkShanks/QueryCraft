@@ -244,3 +244,31 @@
 - **Status**: Wave 18.2d COMPLETE. T-842 through T-847 and T-856 verified complete.
 - **Next Dispatch**: Wave 18.2e frontend detection UI, T-848 through T-855 and T-857.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
+
+---
+
+## Wave 18.2e — Hostile Input Detection UI
+
+### Dispatch
+
+- **Date**: 2026-06-23
+- **Model**: Frontend Implementer
+- **T-IDs**: T-848 through T-855, and T-857
+- **Branch**: `phase-6/wave-18.2e-detection-ui`
+- **Status**: COMPLETE
+- **Local Review Gates**: `npm test -- --run` (passed), `npm run lint` (passed), `npm run typecheck` (passed), `npm run build` (passed), `npm run lint:css` (passed), `git diff --check` (passed).
+- **PR**: (to be created)
+
+### Scope
+
+- Typed API client (`frontend/src/api/detection.ts`) for config configuration
+- React Query hook (`useAdminDetection.ts`) for config management
+- Config threshold page (`AdminDetectionPage.tsx`) with sliders, numeric inputs, verification (block > flag), status metrics, and access-denied display
+- Error banners (`HostileInputBlockedBanner.tsx`) in both AskQuestionPage and WorkspacePage
+- Dynamic locales (en/ar) translation keys for settings and block errors
+- AppShell sidebar links and App route protection wrapper for permission `admin.security.manage`
+
+### Next Dispatch
+
+- Wave 18.3 Audit Search/Export/Retention, T-858 through T-891.
+

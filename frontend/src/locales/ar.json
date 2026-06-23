@@ -449,7 +449,12 @@
   "error.quota_exceeded": "تم الوصول إلى الحد اليومي للاستعلامات. يرجى المحاولة مرة أخرى غداً.",
   "error.service_unavailable": "الخدمة غير متوفرة مؤقتاً. يرجى المحاولة لاحقاً.",
   "error.hostile_input_blocked": "تم حظر هذا الطلب لأنه يحتوي على محتوى ينتهك سياسة الأمان.",
-  "error.validation.invalidUUID": "تنسيق المعرّف غير صالح."
+  "error.validation.invalidUUID": "تنسيق المعرّف غير صالح.",
+  "detection.page_title": "كشف المدخلات المعادية",
+  "detection.block_threshold": "حد الحظر (0.0 - 1.0)",
+  "detection.flag_threshold": "حد الإبلاغ (0.0 - 1.0)",
+  "detection.save": "حفظ التكوين",
+  "detection.validation_error": "يجب أن يكون حد الحظر أكبر من حد الإبلاغ"
 }
 
 

@@ -21,7 +21,7 @@ export const useAcceptQuery = () => {
   });
 };
 
-type ErrorKind = 'concurrent' | 'llmUnavailable' | 'attemptInvalid' | 'network' | 'connectionRequired' | 'quotaExceeded' | 'serviceUnavailable';
+type ErrorKind = 'concurrent' | 'llmUnavailable' | 'attemptInvalid' | 'network' | 'connectionRequired' | 'quotaExceeded' | 'serviceUnavailable' | 'hostileInputBlocked';
 
 export interface UseQuerySubmitReturn {
   submitQuestion: (q: string, sessionId?: string | null, connectionId?: string | null) => Promise<unknown>;
@@ -85,6 +85,11 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
 
     const messageKey = (err.message_key as string) || (err.detail as Record<string, unknown>)?.message_key as string;
     const errCode = (err.error as string) || (err.detail as Record<string, unknown>)?.error as string;
+
+    if (messageKey === 'error.hostile_input_blocked' || errCode === 'hostile_input_blocked') {
+      setError({ kind: 'hostileInputBlocked' });
+      return;
+    }
 
     if (messageKey === 'error.quota_exceeded' || errCode === 'quota_exceeded') {
       const resetAt = (err.reset_at as string) || (err.detail as Record<string, unknown>)?.reset_at as string;

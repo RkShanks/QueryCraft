@@ -6,6 +6,7 @@ import { EvaluatorRejectionBanner } from '../components/query/EvaluatorRejection
 import { RefinePromptBanner } from '../components/query/RefinePromptBanner';
 import { TimeoutBanner } from '../components/query/TimeoutBanner';
 import { QuotaExceededBanner } from '../components/query/QuotaExceededBanner';
+import { HostileInputBlockedBanner } from '../components/query/HostileInputBlockedBanner';
 import { useQuerySubmit } from '../hooks/useQuerySubmit';
 import type { EvaluatorRejection } from '../api/generated/types.gen';
 import { History, Database, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -276,6 +277,12 @@ export const AskQuestionPage: React.FC = () => {
         {error?.kind === 'quotaExceeded' && !isSubmitting && (
           <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
             <QuotaExceededBanner resetAt={error.resetAt} />
+          </section>
+        )}
+
+        {error?.kind === 'hostileInputBlocked' && !isSubmitting && (
+          <section className="animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <HostileInputBlockedBanner />
           </section>
         )}
 
