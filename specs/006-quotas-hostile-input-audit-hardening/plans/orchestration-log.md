@@ -222,10 +222,25 @@
 - Flagged input emits `HOSTILE_INPUT_FLAGGED` and continues to quota check.
 - No frontend work in this slice.
 
+### Review and Merge Result
+
+- **PR**: #160
+- **Merged**: 2026-06-23
+- **Merge Commit**: `e5444f969fcbf077f092b3f31e473dce7e8dbe34`
+- **Tasks Completed**: T-842 through T-847, T-856
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Local Review Gates**: focused backend blocker gates passed; local full backend suite only failed on missing local DB services, not PR code.
+
+### Review Findings Resolved
+
+- Audit coverage matrix still deferred `hostile.input.blocked` and `hostile.input.flagged` after `query_service.py` shipped the emitters. Fix commit `a0a832bc` marks both as shipped and updates the matrix to 27 of 31 shipped / 4 deferred.
+- Frontend locales lacked `error.hostile_input_blocked`. Fix commit `a0a832bc` adds EN and AR keys.
+- Existing QueryService unit tests with mocked DB sessions crashed on detection config threshold comparison. Fix commit `a0a832bc` adds a unit-test conftest default detector stub for non-detection unit tests.
+
 ### Current Wave Checkpoint
 
-- **Date**: 2026-06-22
-- **Branch Context**: `main` at `0c549429324ce666f723e495e07ef9967df5301f`
-- **Status**: Wave 18.2c COMPLETE. T-836 through T-841 verified complete.
-- **Next Dispatch**: Wave 18.2d backend detection audit redaction and query integration dispatched, T-842 through T-847 and T-856.
-- **Frontend Dispatch Hold**: T-848 through T-855 and T-857 after backend/API is available.
+- **Date**: 2026-06-23
+- **Branch Context**: `main` at `e5444f969fcbf077f092b3f31e473dce7e8dbe34`
+- **Status**: Wave 18.2d COMPLETE. T-842 through T-847 and T-856 verified complete.
+- **Next Dispatch**: Wave 18.2e frontend detection UI, T-848 through T-855 and T-857.
+- **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
