@@ -139,8 +139,6 @@ class TestAuditSearchPagination:
     @pytest.mark.asyncio
     async def test_page_2_returns_different_entries(self, authenticated_client, async_engine_fixture):
         """Page 2 entries differ from page 1 (offset pagination works)."""
-        from sqlalchemy import text
-
         # Ensure at least 6 entries exist via the audit sign-in events
         # that accumulate during the test session.
         resp1 = await authenticated_client.get(
