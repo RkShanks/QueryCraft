@@ -241,8 +241,8 @@
 
 - **Date**: 2026-06-23
 - **Branch Context**: `main` at `e5444f969fcbf077f092b3f31e473dce7e8dbe34`
-- **Status**: Wave 18.2d COMPLETE. T-842 through T-847 and T-856 verified complete.
-- **Next Dispatch**: Wave 18.2e frontend detection UI, T-848 through T-855 and T-857.
+- **Status**: Wave 18.2 COMPLETE. T-822 through T-857 verified complete.
+- **Next Dispatch**: Wave 18.3a backend audit search foundation, T-858 through T-862.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -257,7 +257,7 @@
 - **Branch**: `phase-6/wave-18.2e-detection-ui`
 - **Status**: COMPLETE
 - **Local Review Gates**: `npm test -- --run` (passed), `npm run lint` (passed), `npm run typecheck` (passed), `npm run build` (passed), `npm run lint:css` (passed), `git diff --check` (passed).
-- **PR**: (to be created)
+- **PR**: #161
 
 ### Scope
 
@@ -268,7 +268,39 @@
 - Dynamic locales (en/ar) translation keys for settings and block errors
 - AppShell sidebar links and App route protection wrapper for permission `admin.security.manage`
 
+### Review and Merge Result
+
+- **PR**: #161
+- **Merged**: 2026-06-23
+- **Merge Commit**: `6550c51f7868f39ab762701b2ab2bc46c1079229`
+- **Tasks Completed**: T-848 through T-855, T-857
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Local Review Gates**: focused reviewer check `npm test -- --run AdminDetectionPage HostileInputBlockedBanner Sidebar` passed (44 tests); `git diff --check` clean.
+- **Review Result**: no blocking findings.
+
 ### Next Dispatch
 
-- Wave 18.3 Audit Search/Export/Retention, T-858 through T-891.
+- Wave 18.3a backend audit search foundation, T-858 through T-862.
 
+---
+
+## Wave 18.3a — Audit Search Foundation
+
+### Dispatch
+
+- **Date**: 2026-06-23
+- **Model**: Backend Implementer
+- **T-IDs**: T-858 through T-862
+- **Branch**: `phase-6/wave-18.3a-audit-search`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.2 merged; hostile input audit events are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before product edits.
+- Use RTK for shell commands.
+- Follow TDD commit discipline: RED test commit, GREEN implementation commit, docs/gate commit as needed.
+- Keep this slice to audit search only: migration, `AuditSearchService`, and `GET /admin/audit/entries`.
+- Do not implement export, purge markers, retention endpoint, or frontend UI in this slice.
+- `AUDIT_SEARCH` context must contain only sanitized filter summary and pagination metadata, never returned audit entry values.
+- Search must enforce retention window server-side before pagination.
