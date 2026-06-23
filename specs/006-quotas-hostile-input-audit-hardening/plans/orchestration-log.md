@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-06-23
-- **Branch Context**: `main` at `e5444f969fcbf077f092b3f31e473dce7e8dbe34`
-- **Status**: Wave 18.2 COMPLETE. T-822 through T-857 verified complete.
-- **Next Dispatch**: Wave 18.3a backend audit search foundation, T-858 through T-862.
+- **Branch Context**: `main` at `ae2c0f2d25c5e19d6974e2d5053cdd6ac2f6d09c`
+- **Status**: Wave 18.3a COMPLETE. T-858 through T-862 verified complete.
+- **Next Dispatch**: Wave 18.3b backend audit export service, T-863 through T-866.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -304,3 +304,41 @@
 - Do not implement export, purge markers, retention endpoint, or frontend UI in this slice.
 - `AUDIT_SEARCH` context must contain only sanitized filter summary and pagination metadata, never returned audit entry values.
 - Search must enforce retention window server-side before pagination.
+
+### Review and Merge Result
+
+- **PR**: #162
+- **Merged**: 2026-06-23
+- **Merge Commit**: `ae2c0f2d25c5e19d6974e2d5053cdd6ac2f6d09c`
+- **Tasks Completed**: T-858 through T-862
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Local Review Gates**: `pytest tests/unit -q -m "not integration"` passed (1692 passed, 292 skipped); `ruff check src tests` passed; `git diff --check` clean.
+- **Review Result**: initial CI blockers resolved in `d0b1ad7` (`filters`/`page`/`page_size` safe context keys, `error.invalid_date` EN/AR locale keys). No blocking findings after fix.
+
+### Next Dispatch
+
+- Wave 18.3b backend audit export service, T-863 through T-866.
+
+---
+
+## Wave 18.3b — Audit Export Service
+
+### Dispatch
+
+- **Date**: 2026-06-23
+- **Model**: Backend Implementer
+- **T-IDs**: T-863 through T-866
+- **Branch**: `phase-6/wave-18.3b-audit-export-service`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3a merged; `AuditSearchService` and `GET /admin/audit/entries` are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before product edits.
+- Use RTK for shell commands.
+- Follow TDD commit discipline: RED test commit, GREEN implementation commit, docs/gate commit as needed.
+- Keep this slice to export service only: CSV/JSON export serialization, 50k limit, checksum metadata, formula-injection prevention, and defense-in-depth redaction tests.
+- Do not implement `POST /admin/audit/export`, quota enforcement, purge markers, retention endpoint, or frontend UI in this slice.
+- Export output must pass a central redaction pass before serialization.
+- CSV formula injection prevention must tab-prefix cells starting with `=`, `+`, `-`, `@`, or `|`.
+- Checksum must be SHA-256 of the data payload, not of mutable headers around it.
