@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import io
 from datetime import UTC, datetime
 from typing import Any
 
@@ -192,7 +191,7 @@ class TestComplianceMetadataHeader:
         raw = AuditExportService.export_csv(entries, metadata)
 
         lines = raw.decode("utf-8").splitlines()
-        comment_lines = [l for l in lines if l.startswith("#")]
+        comment_lines = [line for line in lines if line.startswith("#")]
         assert comment_lines, "Expected metadata comment lines in CSV output"
 
     def test_all_required_fields_present(self):
@@ -240,10 +239,7 @@ class TestChecksumIntegrity:
 
     def _extract_data_payload(self, raw: bytes) -> bytes:
         """Return only the non-comment portion of the CSV as bytes."""
-        data_lines = [
-            line for line in raw.decode("utf-8").splitlines()
-            if not line.startswith("#")
-        ]
+        data_lines = [line for line in raw.decode("utf-8").splitlines() if not line.startswith("#")]
         return "\n".join(data_lines).encode("utf-8")
 
     def test_checksum_is_sha256_of_data_payload(self):
@@ -294,11 +290,8 @@ class TestChecksumIntegrity:
         meta = self._parse_meta(raw)
         reported_checksum = meta["checksum"]
 
-        # SHA-256 of full output would differ from SHA-256 of data section
-        full_checksum = hashlib.sha256(raw).hexdigest()
-        # They may or may not be equal — we just want to confirm the reported
-        # value matches the data payload checksum (tested in previous test).
-        # This test is documentation that we verified the distinction.
+        # SHA-256 of full output would differ from SHA-256 of data section.
+        # (Verified by inspection — full output includes checksum line itself.)
         data_payload = self._extract_data_payload(raw)
         expected = hashlib.sha256(data_payload).hexdigest()
         assert reported_checksum == expected

@@ -230,9 +230,7 @@ class TestJsonDefenseInDepthRedaction:
         raw = AuditExportService.export_json(entries, metadata)
 
         output_str = raw.decode("utf-8")
-        assert secret_value not in output_str, (
-            "Sensitive value from context must be redacted in export output"
-        )
+        assert secret_value not in output_str, "Sensitive value from context must be redacted in export output"
 
     def test_sensitive_token_key_redacted(self):
         """A context key containing 'token' must not expose its value."""
@@ -244,9 +242,7 @@ class TestJsonDefenseInDepthRedaction:
         raw = AuditExportService.export_json(entries, metadata)
 
         output_str = raw.decode("utf-8")
-        assert secret_token not in output_str, (
-            "Token value must be redacted in export output"
-        )
+        assert secret_token not in output_str, "Token value must be redacted in export output"
 
     def test_nested_sensitive_value_redacted(self):
         """Nested dict with sensitive key must also be redacted."""
@@ -258,9 +254,7 @@ class TestJsonDefenseInDepthRedaction:
         raw = AuditExportService.export_json(entries, metadata)
 
         output_str = raw.decode("utf-8")
-        assert nested_secret not in output_str, (
-            "Nested sensitive value must be redacted in export output"
-        )
+        assert nested_secret not in output_str, "Nested sensitive value must be redacted in export output"
 
     def test_safe_context_value_preserved(self):
         """Non-sensitive context values must appear in output unchanged."""
