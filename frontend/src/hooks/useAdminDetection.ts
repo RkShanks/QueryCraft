@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getDetectionConfig,
   updateDetectionConfig,
@@ -12,14 +12,22 @@ export interface UseAdminDetectionOptions {
 }
 
 export const useAdminDetection = (options?: UseAdminDetectionOptions) => {
+  const queryClient = useQueryClient();
+
   const configQuery = useQuery<DetectionConfig>({
     queryKey: ['adminDetectionConfig'],
     queryFn: getDetectionConfig,
-    enabled: false,
   });
 
   const updateMutation = useMutation({
     mutationFn: (data: DetectionConfigUpdate) => updateDetectionConfig(data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['adminDetectionConfig'] });
+      options?.onUpdateSuccess?.(data);
+    },
+    onError: (error) => {
+      options?.onUpdateError?.(error);
+    },
   });
 
   return {

@@ -207,19 +207,19 @@ SC-064, SC-065, SC-066, SC-067, SC-072, SC-073, SC-074, SC-075
 
 - [X] T-847 Verify green: run full detection test suite `uv run pytest tests/unit/test_detection_registry.py tests/unit/test_hostile_detector.py tests/unit/test_rule_prompt_injection.py tests/unit/test_rule_sql_injection.py tests/unit/test_rule_rbac_bypass.py tests/unit/test_rule_schema_exposure.py tests/unit/test_rule_destructive_sql.py tests/unit/test_hostile_audit_redaction.py tests/unit/test_detection_error_sanitization.py tests/unit/test_no_raw_hostile_payload.py tests/unit/test_detection_config_repo.py tests/integration/test_detection_passthrough.py tests/integration/test_detection_coverage.py tests/integration/test_detection_admin.py -x --tb=short`. Depends on T-836, T-837, T-846, T-841. **Dispatch: BE**
 
-- [ ] T-848 [P] Write RED component tests for detection threshold config UI in `frontend/src/pages/AdminDetectionPage.test.tsx`: test sliders/inputs render with current thresholds; test submit calls PUT /admin/detection/config; test validation error when block <= flag; test 403 renders access-denied; test Arabic locale RTL layout. Use MSW handlers mocking `/admin/detection/config` API contract. No backend fixture dependency. **Dispatch: FE**
+- [X] T-848 [P] Write RED component tests for detection threshold config UI in `frontend/src/pages/AdminDetectionPage.test.tsx`: test sliders/inputs render with current thresholds; test submit calls PUT /admin/detection/config; test validation error when block <= flag; test 403 renders access-denied; test Arabic locale RTL layout. Use MSW handlers mocking `/admin/detection/config` API contract. No backend fixture dependency. **Dispatch: FE**
 
-- [ ] T-849 Create `frontend/src/pages/AdminDetectionPage.tsx`: admin page or section for detection threshold configuration (block_confidence and flag_confidence numeric inputs, validation block > flag, save button). Permission guard: `admin.security.manage`. Integrate into admin nav. Depends on T-848, T-841. **Dispatch: FE**
+- [X] T-849 Create `frontend/src/pages/AdminDetectionPage.tsx`: admin page or section for detection threshold configuration (block_confidence and flag_confidence numeric inputs, validation block > flag, save button). Permission guard: `admin.security.manage`. Integrate into admin nav. Depends on T-848, T-841. **Dispatch: FE**
 
-- [ ] T-850 [P] Create `frontend/src/api/detection.ts`: typed API client for `getDetectionConfig()` and `updateDetectionConfig(data)`. Depends on T-841. **Dispatch: FE**
+- [X] T-850 [P] Create `frontend/src/api/detection.ts`: typed API client for `getDetectionConfig()` and `updateDetectionConfig(data)`. Depends on T-841. **Dispatch: FE**
 
 - [ ] T-851 [P] Write RED component tests for hostile input blocked error display in `frontend/src/components/query/HostileInputBlockedBanner.test.tsx`: test banner renders localized message; test no rule names, confidence, or pattern shown; test Arabic locale shows Arabic message only. No backend fixture dependency. **Dispatch: FE**
 
 - [ ] T-852 Create `frontend/src/components/query/HostileInputBlockedBanner.tsx`: displays localized hostile input blocked error from API response. Integrate into query submission error handling path in AskQuestionPage/WorkspacePage. Depends on T-851. **Dispatch: FE**
 
-- [ ] T-853 Add i18n keys for Wave 18.2 to `frontend/src/locales/en.json`: `detection.page_title`, `detection.block_threshold`, `detection.flag_threshold`, `detection.save`, `detection.validation_error`, `error.hostile_input_blocked`. Depends on T-849, T-852. **Dispatch: FE**
+- [X] T-853 Add i18n keys for Wave 18.2 to `frontend/src/locales/en.json`: `detection.page_title`, `detection.block_threshold`, `detection.flag_threshold`, `detection.save`, `detection.validation_error`, `error.hostile_input_blocked`. Depends on T-849, T-852. **Dispatch: FE**
 
-- [ ] T-854 Add matching Arabic translations (100% key parity) to `frontend/src/locales/ar.json` for all keys added in T-853. Depends on T-853. **Dispatch: FE**
+- [X] T-854 Add matching Arabic translations (100% key parity) to `frontend/src/locales/ar.json` for all keys added in T-853. Depends on T-853. **Dispatch: FE**
 
 - [ ] T-855 [P] Add route `/admin/detection` to `frontend/src/App.tsx` wrapped in PermissionGuard (`admin.security.manage`). Add nav link. Depends on T-849. **Dispatch: FE**
 

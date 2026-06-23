@@ -430,7 +430,12 @@
   "quota.remaining": "Remaining",
   "quota.reset_at": "Resets at: {{time}}",
   "quota.discovery_warning": "Creating quota configurations for uncapped roles requires role management permission.",
-  "nav.adminQuotas": "Quotas"
+  "nav.adminQuotas": "Quotas",
+  "detection.page_title": "Hostile Input Detection",
+  "detection.block_threshold": "Block Threshold (0.0 - 1.0)",
+  "detection.flag_threshold": "Flag Threshold (0.0 - 1.0)",
+  "detection.save": "Save Configuration",
+  "detection.validation_error": "Block threshold must be greater than flag threshold"
 }
 
 

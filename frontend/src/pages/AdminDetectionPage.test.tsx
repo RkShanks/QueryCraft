@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/server';
@@ -22,8 +22,8 @@ describe('AdminDetectionPage', () => {
     const blockInput = await screen.findByLabelText(/block/i);
     const flagInput = await screen.findByLabelText(/flag/i);
 
-    expect(blockInput).toHaveValue(0.8);
-    expect(flagInput).toHaveValue(0.5);
+    expect(blockInput).toHaveValue('0.8');
+    expect(flagInput).toHaveValue('0.5');
   });
 
   it('submits updated config when inputs are valid', async () => {
@@ -86,14 +86,17 @@ describe('AdminDetectionPage', () => {
 
     fireEvent.click(saveButton);
 
-    const errorMsg = await screen.findByText(/validation_error/i);
+    const errorMsg = await screen.findByText(/greater than/i);
     expect(errorMsg).toBeInTheDocument();
   });
 
   it('renders access-denied state when API returns 403 Forbidden', async () => {
     server.use(
       http.get('/api/v1/admin/detection/config', () => {
-        return new HttpResponse(null, { status: 403 });
+        return HttpResponse.json(
+          { message_key: 'error.forbidden', error: 'Forbidden' },
+          { status: 403 }
+        );
       })
     );
 

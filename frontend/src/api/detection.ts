@@ -1,3 +1,5 @@
+import { client } from './generated/client.gen';
+
 export interface DetectionConfig {
   block_confidence: number;
   flag_confidence: number;
@@ -10,11 +12,20 @@ export interface DetectionConfigUpdate {
 }
 
 export async function getDetectionConfig(): Promise<DetectionConfig> {
-  throw new Error('Not implemented');
+  const res = await client.get({
+    url: '/admin/detection/config',
+    throwOnError: true,
+  });
+  return res.data as DetectionConfig;
 }
 
 export async function updateDetectionConfig(
   data: DetectionConfigUpdate
 ): Promise<DetectionConfig> {
-  throw new Error('Not implemented');
+  const res = await client.put({
+    url: '/admin/detection/config',
+    body: data,
+    throwOnError: true,
+  });
+  return res.data as DetectionConfig;
 }
