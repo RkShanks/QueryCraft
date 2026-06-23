@@ -225,7 +225,7 @@ SC-064, SC-065, SC-066, SC-067, SC-072, SC-073, SC-074, SC-075
 
 - [X] T-856 Backend gates Wave 18.2: `cd backend && uv run pytest tests/unit/test_detection_registry.py tests/unit/test_hostile_detector.py tests/unit/test_rule_prompt_injection.py tests/unit/test_rule_sql_injection.py tests/unit/test_rule_rbac_bypass.py tests/unit/test_rule_schema_exposure.py tests/unit/test_rule_destructive_sql.py tests/unit/test_hostile_audit_redaction.py tests/unit/test_detection_error_sanitization.py tests/unit/test_no_raw_hostile_payload.py tests/unit/test_detection_config_repo.py tests/integration/test_detection_passthrough.py tests/integration/test_detection_coverage.py tests/integration/test_detection_admin.py -x --tb=short && uv run ruff check src/ && uv run ruff format --check src/ && git diff --check`. Depends on T-847. **Dispatch: BE**
 
-- [ ] T-857 Frontend gates Wave 18.2: `cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build && npm run lint:css && git diff --check`. Depends on T-854, T-855, T-852. **Dispatch: FE**
+- [X] T-857 Frontend gates Wave 18.2: `cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build && npm run lint:css && git diff --check`. Depends on T-854, T-855, T-852. **Dispatch: FE**
 
 
 ---

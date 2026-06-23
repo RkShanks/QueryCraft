@@ -41,6 +41,8 @@ function extractErrorKey(err: unknown): string | null {
   return null;
 }
 
+const FORBIDDEN_SUFFIX = ' (Forbidden)';
+
 export const AdminDetectionPage: React.FC = () => {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -75,12 +77,14 @@ export const AdminDetectionPage: React.FC = () => {
     },
   });
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (configQuery.data) {
       setBlockVal(String(configQuery.data.block_confidence));
       setFlagVal(String(configQuery.data.flag_confidence));
     }
   }, [configQuery.data]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,13 +113,13 @@ export const AdminDetectionPage: React.FC = () => {
 
   if (configQuery.isError) {
     const err = configQuery.error;
-    const isForbidden = extractErrorKey(err) === 'error.forbidden' || (err as any)?.status === 403;
+    const isForbidden = extractErrorKey(err) === 'error.forbidden' || (err as { status?: number })?.status === 403;
     return (
       <div className="p-6 max-w-xl mx-auto mt-12 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-start gap-3">
         <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold" data-testid="access-denied-error">
-            {isForbidden ? `${t('error.forbidden')} (Forbidden)` : t('error.unknown.message')}
+            {isForbidden ? `${t('error.forbidden')}${FORBIDDEN_SUFFIX}` : t('error.unknown.message')}
           </p>
         </div>
       </div>

@@ -27,7 +27,7 @@ describe('AdminDetectionPage', () => {
   });
 
   it('submits updated config when inputs are valid', async () => {
-    let putPayload: any = null;
+    let putPayload: unknown = null;
     server.use(
       http.get('/api/v1/admin/detection/config', () => {
         return HttpResponse.json(
