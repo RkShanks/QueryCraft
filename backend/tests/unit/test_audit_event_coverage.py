@@ -156,7 +156,6 @@ _AUDIT_FORBIDDEN_IN_CONTEXT: tuple[str, ...] = (
 
 KNOWN_DEFERRED: dict[str, str] = {
     "quota.warning": "Wave 18.1 quota warning taxonomy is reserved for quota warning callers/future use.",
-    "audit.export": "Wave 18.3 audit export emits export activity events.",
     "audit.purge": "Wave 18.3 retention purge-gap handling emits purge markers.",
 }
 
@@ -960,8 +959,8 @@ class TestAuditActionTypeSourceCodeReference:
                 f"or document the deferral in KNOWN_DEFERRED with a reason."
             )
 
-    def test_coverage_matrix_is_27_of_31_shipped_with_4_deferred(self):
-        """Pin Wave 18.2d: 27 callers shipped, 4 Phase 6 callers deferred."""
+    def test_coverage_matrix_is_28_of_31_shipped_with_3_deferred(self):
+        """Pin Wave 18.3c: 28 callers shipped, 3 Phase 6 callers deferred."""
         refs = self._enum_references()
         shipped = sorted(a.value for a in AuditActionType)
         with_caller = sorted(v for v, hits in refs.items() if hits)
@@ -1209,6 +1208,82 @@ class TestAuditSearchEmits:
         ctx_str = str(ctx)
         for forbidden in ("row_hash", "prev_hash"):
             assert forbidden not in ctx_str, f"AUDIT_SEARCH context must not contain '{forbidden}': {ctx}"
+        _assert_no_forbidden_in_contexts(mock_audit)
+
+
+# ── 30. audit.export ──────────────────────────────────────────────────────
+
+
+class TestAuditExportEmits:
+    """``POST /admin/audit/export`` emits ``AUDIT_EXPORT`` after a successful
+    export (T-868). The context contains only filter_summary and record_count —
+    never the exported entry values."""
+
+    def test_action_type_is_shipped(self):
+        assert AuditActionType.AUDIT_EXPORT.value == "audit.export"
+
+    @pytest.mark.asyncio
+    async def test_audit_export_emits_event_with_sanitized_context(self):
+        """Verify AUDIT_EXPORT is emitted with filter_summary and record_count only."""
+        from unittest.mock import MagicMock
+
+        from app.schemas.audit_search import AuditSearchPagination, AuditSearchResponse
+
+        _empty_response = AuditSearchResponse(
+            entries=[],
+            pagination=AuditSearchPagination(page=1, page_size=50, total_entries=0, total_pages=1),
+        )
+
+        with (
+            patch(
+                "app.services.quota_service.QuotaService.check_and_increment",
+                new=AsyncMock(return_value=(0, None, None)),
+            ),
+            patch(
+                "app.services.audit_export_service.AuditExportService.export_json",
+                return_value=b'{"metadata":{},"entries":[]}',
+            ),
+            patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit,
+        ):
+            from app.api.v1.admin_audit import export_audit_entries
+            from app.db.models.enums import Permission
+
+            _session = {
+                "role_id": str(uuid.uuid4()),
+                "user_id": str(uuid.uuid4()),
+                "permissions": [str(Permission.ADMIN_AUDIT_VERIFY)],
+                "username": "auditor@test",
+            }
+            db = AsyncMock()
+            db.execute = AsyncMock(
+                return_value=MagicMock(
+                    scalar_one=MagicMock(return_value=0),
+                    scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
+                )
+            )
+            db.commit = AsyncMock()
+            redis = AsyncMock()
+            request = MagicMock()
+            request.json = AsyncMock(return_value={"format": "json"})
+
+            await export_audit_entries(
+                request=request,
+                db=db,
+                redis=redis,
+                _session=_session,
+            )
+
+        actions = _captured_actions(mock_audit)
+        assert AuditActionType.AUDIT_EXPORT in actions, f"Expected AUDIT_EXPORT in audit calls, got {actions}"
+
+        ctx = _context_for(mock_audit, AuditActionType.AUDIT_EXPORT)
+        # Must contain filter_summary and record_count
+        assert "filter_summary" in ctx, f"Expected 'filter_summary' key in AUDIT_EXPORT context, got {ctx}"
+        assert "record_count" in ctx, f"Expected 'record_count' key in AUDIT_EXPORT context, got {ctx}"
+        # Must NOT contain row_hash, prev_hash or any raw entry content
+        ctx_str = str(ctx)
+        for forbidden in ("row_hash", "prev_hash"):
+            assert forbidden not in ctx_str, f"AUDIT_EXPORT context must not contain '{forbidden}': {ctx}"
         _assert_no_forbidden_in_contexts(mock_audit)
 
 

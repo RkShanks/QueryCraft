@@ -180,6 +180,13 @@ _SAFE_KEYS: tuple[str, ...] = (
     "filters",
     "page",
     "page_size",
+    # T-868 audit.export context: filter summary and record count emitted by
+    # POST /admin/audit/export. filter_summary is a dict of caller-supplied
+    # filter param names/values only — never exported entry content or secrets.
+    # record_count is an integer count of exported rows.
+    "filter_summary",
+    "record_count",
+    "format",
 )
 
 
