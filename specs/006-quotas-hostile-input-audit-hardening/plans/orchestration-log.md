@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-06-23
-- **Branch Context**: `main` at `8dde1a7dbeb6bf4ff7f4b0e8a9024fa0d8accf56`
-- **Status**: Wave 18.3b COMPLETE. T-863 through T-866 verified complete.
-- **Next Dispatch**: Wave 18.3c backend audit export API, T-867 through T-868.
+- **Branch Context**: `main` at `c931e460c84010edc1366f6ef9df0db6075fefb4`
+- **Status**: Wave 18.3c COMPLETE. T-867 through T-868 verified complete.
+- **Next Dispatch**: Wave 18.3d backend purge marker, T-869 through T-870.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -432,6 +432,40 @@
 - Branch: `phase-6/wave-18.3c-audit-export-api` → `main`
 - 4 commits total: RED (T-867), GREEN (T-868), docs, fix blockers
 
+### Final Review and Merge Result
+
+- **PR**: #164
+- **Merged**: 2026-06-30
+- **Merge Commit**: `c931e460c84010edc1366f6ef9df0db6075fefb4`
+- **Tasks Completed**: T-867 through T-868
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Final Fix**: `94ad416` fixed export 500s for 101 through 50,000 matching entries by adding `AuditSearchService.get_all_entries_for_export()` and avoiding `AuditSearchParams.page_size` (`le=100`) for full export fetches.
+- **Review Result**: no blocking findings after final fix.
+
 ### Next dispatch
 
-Wave 18.3c PR #164 is ready for merge review. After merge, proceed to Wave 18.3d or final Wave 18.3 backend gate (purge markers, verify-chain purge-gap handling, T-869+).
+- Wave 18.3d backend purge marker, T-869 through T-870.
+
+---
+
+## Wave 18.3d — Audit Purge Marker
+
+### Dispatch
+
+- **Date**: 2026-06-30
+- **Model**: Backend Implementer
+- **T-IDs**: T-869 through T-870
+- **Branch**: `phase-6/wave-18.3d-audit-purge-marker`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3c merged; audit search/export APIs and services are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before product edits.
+- Use RTK for shell commands.
+- Follow TDD commit discipline: RED test commit, GREEN implementation commit, docs/gate commit as needed.
+- Keep this slice to purge marker creation only: T-869 RED unit tests and T-870 `AuditService.purge_expired_entries()` changes.
+- Do not implement verify-chain purge-gap handling, purge+verify integration tests, retention endpoint, frontend UI, or final Wave 18.3 backend gate in this slice.
+- Insert the `audit.purge` marker before deleting expired entries and in the same transaction.
+- Marker context must include: `purged_from_seq`, `purged_to_seq`, `purged_count`, `retention_months`, `first_surviving_seq`, `first_surviving_prev_hash`, `last_retained_hash`, `last_retained_seq`.
+- Do not modify existing audit entries. Preserve immutability guards.
