@@ -517,3 +517,14 @@
 - If a matching purge marker exists, treat the gap as intentional and continue verification.
 - If no matching purge marker exists, report the gap as tampering.
 - Do not rewrite or mutate existing audit entries.
+
+### Results
+
+- **T-871** ✅ RED unit tests — `backend/tests/unit/test_verify_chain_purge.py` (375 lines). Tests: normal chain verifies (3 entries, empty, single), purge gap + valid marker returns verified=True (single entry, multi-entry, entries appended after purge), marker first_surviving_prev_hash matches orphaned prev_hash, entries_checked includes survivor+marker, gap with no marker returns verified=False, first_break_at points to orphaned entry, mismatched marker context treated as tampering.
+- **T-872** ✅ GREEN implementation — `backend/src/app/services/audit_service.py` `verify_chain()`. Pre-indexes retained `audit.purge` markers by `first_surviving_seq`. During chain walk, when linkage break detected (`entry.prev_hash != prev_hash`): if matching marker covers it (`first_surviving_prev_hash == entry.prev_hash`), gap is intentional — continue; otherwise report tampering. Row-hash integrity always checked using entry's own `prev_hash`. No entries rewritten or mutated.
+- **Gate**: `uv run pytest tests/unit -q` → **1756 passed, 311 skipped** ✅; `ruff check src tests` → **All checks passed** ✅; `ruff format --check src tests` → **374 files already formatted** ✅.
+- **Commits**: `e2db48d` (RED T-871), `e4babf2` (GREEN T-872).
+
+### Next Dispatch
+
+- Wave 18.3 remaining tasks: T-873 (purge+verify integration test), T-874–T-875 (retention endpoint), T-876 (scheduler docs), T-877–T-878 (permission/retention window tests), T-879 (backend gate).
