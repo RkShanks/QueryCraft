@@ -319,13 +319,42 @@ class AuditService:
 
     @staticmethod
     async def verify_chain(session: AsyncSession) -> VerificationResult:
-        """Walk the audit chain and verify integrity."""
+        """Walk the audit chain and verify integrity.
+
+        Purge-gap handling (T-872)
+        --------------------------
+        When a purge removes expired entries, the first surviving entry
+        will have a ``prev_hash`` that points to a now-deleted predecessor.
+        This looks like a linkage break but is intentional.
+
+        To distinguish an intentional purge gap from tampering, we
+        pre-load all retained ``audit.purge`` markers and index them by
+        ``first_surviving_seq``.  When a linkage break is detected, we
+        check whether a purge marker covers it:
+
+        * If ``marker.context["first_surviving_seq"] == entry.sequence_number``
+          AND ``marker.context["first_surviving_prev_hash"] == entry.prev_hash``,
+          the gap is intentional — continue verification.
+        * Otherwise, report the gap as tampering.
+
+        Row-hash integrity is always checked regardless of purge status.
+        No entries are rewritten or mutated.
+        """
         result = await session.execute(select(AuditLogEntry).order_by(AuditLogEntry.sequence_number.asc()))
         entries = result.scalars().all()
         entries_checked = len(entries)
         verified_at = datetime.now(UTC)
         first_break_at: int | None = None
         prev_hash = "GENESIS"
+
+        # Pre-index retained purge markers by first_surviving_seq so we can
+        # bridge intentional gaps without a second query per entry.
+        purge_markers: dict[int, dict] = {}
+        for e in entries:
+            if e.action_type == AuditActionType.AUDIT_PURGE.value and isinstance(e.context, dict):
+                fss = e.context.get("first_surviving_seq")
+                if isinstance(fss, int):
+                    purge_markers[fss] = e.context
 
         for entry in entries:
             payload = {
@@ -339,10 +368,23 @@ class AuditService:
                 "outcome": entry.outcome,
                 "context": entry.context,
             }
+            # Row-hash integrity: always verified using the entry's own prev_hash.
             expected_hash = _compute_row_hash(payload, entry.prev_hash)
-            if expected_hash != entry.row_hash or entry.prev_hash != prev_hash:
+            if expected_hash != entry.row_hash:
                 first_break_at = entry.sequence_number
                 break
+
+            # Chain linkage check.
+            if entry.prev_hash != prev_hash:
+                # Linkage break detected. Check for a matching purge marker.
+                marker_ctx = purge_markers.get(entry.sequence_number)
+                if marker_ctx and marker_ctx.get("first_surviving_prev_hash") == entry.prev_hash:
+                    # Intentional purge gap — marker covers it. Continue.
+                    pass
+                else:
+                    first_break_at = entry.sequence_number
+                    break
+
             prev_hash = entry.row_hash
 
         return VerificationResult(
