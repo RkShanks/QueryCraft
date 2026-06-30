@@ -469,3 +469,16 @@
 - Insert the `audit.purge` marker before deleting expired entries and in the same transaction.
 - Marker context must include: `purged_from_seq`, `purged_to_seq`, `purged_count`, `retention_months`, `first_surviving_seq`, `first_surviving_prev_hash`, `last_retained_hash`, `last_retained_seq`.
 - Do not modify existing audit entries. Preserve immutability guards.
+
+### Results
+
+- **T-869** ✅ RED unit tests — `backend/tests/unit/test_purge_gap_marker.py` (467 lines). Tests: marker inserted before deletion, no marker when nothing to purge, marker is latest entry, all 8 required context fields, purged_from_seq/purged_to_seq/purged_count/retention_months/first_surviving_seq/first_surviving_prev_hash/last_retained_hash/last_retained_seq, surviving entries unchanged, ORM delete/update on marker raises immutability guard, marker chains into hash sequence (prev_hash and row_hash correct).
+- **T-870** ✅ GREEN implementation — `backend/src/app/services/audit_service.py` `purge_expired_entries()`. Identifies expired entries before deletion; computes boundary metadata; inserts `AUDIT_PURGE` marker via `AuditService.log()` in same transaction BEFORE delete; then deletes expired rows. Returns count of deleted entries. No existing entries rewritten.
+- **Coverage updates**: `audit.purge` removed from `KNOWN_DEFERRED`; coverage matrix updated to **30/31 shipped / 1 deferred** (quota.warning). `TestAuditPurgeEmits` class added.
+- **Redaction safe-keys**: 7 purge context keys added to `_SAFE_KEYS` in `test_audit_redaction_comprehensive.py`.
+- **Gate**: `ruff check`/`format` clean across 373 backend files; **1745 unit tests passed**, 0 failed.
+- **Commits**: `b82cecb` (RED T-869), `baa7ef8` (GREEN T-870 + fixups).
+
+### Next Dispatch
+
+- Wave 18.3 continuation: T-871 verify_chain purge-gap handling, T-872 implementation, T-873 purge+verify integration test, T-874–T-879 retention endpoint + remaining backend tasks.

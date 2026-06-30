@@ -144,6 +144,21 @@ class AuditService:
         Returns the number of rows deleted. ``retention_months`` defaults
         to ``Settings.AUDIT_RETENTION_MONTHS`` (24 months, FR-142).
 
+        Purge-gap marker (T-870)
+        ------------------------
+        Before deleting expired entries this method inserts an
+        ``audit.purge`` marker entry in the **same transaction**.
+        The marker chains normally into the hash sequence and carries
+        boundary metadata needed by ``verify_chain`` to distinguish an
+        intentional purge gap from tampering::
+
+            purged_from_seq, purged_to_seq, purged_count,
+            retention_months, first_surviving_seq,
+            first_surviving_prev_hash, last_retained_hash,
+            last_retained_seq
+
+        When no entries are expired the marker is NOT inserted.
+
         Operational invocation
         ----------------------
         This method is a service primitive; **no internal scheduler is
@@ -154,19 +169,6 @@ class AuditService:
             async with async_session() as session:
                 deleted = await AuditService.purge_expired_entries(session, 24)
                 await session.commit()
-
-        Chain verification after pruning
-        --------------------------------
-        The hash chain was designed to prove no tampering across the
-        full append-only history. Pruning deletes history; the chain
-        can no longer be verified from ``GENESIS``. The retained
-        window is internally consistent, but ``verify_chain`` will
-        honestly report a break at the first surviving row because
-        that row's ``prev_hash`` references a ``row_hash`` of a
-        now-deleted row. This is intentional and documented — the
-        chain is not silently rewritten to "lie" about retained
-        history. Operators should re-issue a baseline ``audit.verify``
-        event after each prune to record the new on-disk state.
 
         Sanitization
         ------------
@@ -181,8 +183,60 @@ class AuditService:
 
         cutoff = cls.compute_retention_cutoff(retention_months)
 
-        result = await session.execute(delete(AuditLogEntry).where(AuditLogEntry.timestamp < cutoff))
-        deleted = result.rowcount or 0
+        # ------------------------------------------------------------------
+        # 1. Identify entries that will be purged (before deletion).
+        # ------------------------------------------------------------------
+        expired_result = await session.execute(
+            select(AuditLogEntry).where(AuditLogEntry.timestamp < cutoff).order_by(AuditLogEntry.sequence_number.asc())
+        )
+        expired_entries = expired_result.scalars().all()
+
+        if not expired_entries:
+            # Nothing to purge — skip marker insertion entirely.
+            return 0
+
+        # ------------------------------------------------------------------
+        # 2. Compute boundary metadata.
+        # ------------------------------------------------------------------
+        first_purged = expired_entries[0]
+        last_purged = expired_entries[-1]
+        purged_count = len(expired_entries)
+
+        # First surviving entry: lowest sequence_number not in the purge set.
+        first_survivor_result = await session.execute(
+            select(AuditLogEntry)
+            .where(AuditLogEntry.timestamp >= cutoff)
+            .order_by(AuditLogEntry.sequence_number.asc())
+            .limit(1)
+        )
+        first_survivor = first_survivor_result.scalar_one_or_none()
+
+        marker_context: dict = {
+            "purged_from_seq": first_purged.sequence_number,
+            "purged_to_seq": last_purged.sequence_number,
+            "purged_count": purged_count,
+            "retention_months": retention_months,
+            "last_retained_hash": last_purged.row_hash,
+            "last_retained_seq": last_purged.sequence_number,
+            "first_surviving_seq": first_survivor.sequence_number if first_survivor else None,
+            "first_surviving_prev_hash": first_survivor.prev_hash if first_survivor else None,
+        }
+
+        # ------------------------------------------------------------------
+        # 3. Insert the audit.purge marker BEFORE deletion (same transaction).
+        # ------------------------------------------------------------------
+        await cls.log(
+            session,
+            action=AuditActionType.AUDIT_PURGE,
+            outcome="success",
+            context=marker_context,
+        )
+
+        # ------------------------------------------------------------------
+        # 4. Delete the expired entries.
+        # ------------------------------------------------------------------
+        del_result = await session.execute(delete(AuditLogEntry).where(AuditLogEntry.timestamp < cutoff))
+        deleted = del_result.rowcount or 0
         _logger.info("Audit retention purge: deleted %d row(s) older than %s", deleted, cutoff.isoformat())
         return deleted
 

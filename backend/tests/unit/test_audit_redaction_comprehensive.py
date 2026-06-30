@@ -187,6 +187,17 @@ _SAFE_KEYS: tuple[str, ...] = (
     "filter_summary",
     "record_count",
     "format",
+    # T-870 audit.purge context: boundary metadata emitted by
+    # AuditService.purge_expired_entries() before deleting expired rows.
+    # All values are integer sequence numbers, hash strings, or counts —
+    # never raw entry content, actor identity, or secrets.
+    "purged_from_seq",
+    "purged_to_seq",
+    "purged_count",
+    "last_retained_hash",
+    "last_retained_seq",
+    "first_surviving_seq",
+    "first_surviving_prev_hash",
 )
 
 
