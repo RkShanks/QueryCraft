@@ -431,26 +431,24 @@ async def export_audit_entries(
         # ── Step 2: export_req already parsed by FastAPI (typed body param) ─
         # Pydantic validation errors surface as 422 — no manual request.json() needed.
 
-        # ── Step 3: Build search params and query ALL matching entries ───────
-        # Reuse AuditSearchService for consistent retention enforcement.
-        # We fetch a large page (up to 50,001) solely to detect the 50k limit;
-        # a genuine paginated result set larger than 50k is rejected below.
+        # ── Steps 3+4: Count + fetch via dedicated export method ────────────
+        # get_all_entries_for_export() reuses the same retention-cutoff and ORM
+        # filter logic as search() but issues a single uncapped SELECT LIMIT
+        # 50_000, bypassing AuditSearchParams.page_size which is capped at 100.
+        # It returns (total_count, entries) in one round-trip.
         settings = get_settings()
         retention_months = settings.AUDIT_RETENTION_MONTHS
 
-        # Use a page_size of 50,001 to detect—but not load—an oversized result.
-        count_params = AuditSearchParams(
-            start_date=export_req.start_date,
-            end_date=export_req.end_date,
+        total_count, entries = await AuditSearchService.get_all_entries_for_export(
+            db,
+            retention_months,
             action_type=export_req.action_type,
             actor_identity=export_req.actor_identity,
             outcome=export_req.outcome,
             resource_type=export_req.resource_type,
-            page=1,
-            page_size=1,  # Minimal page — we only need total_entries for the limit check
+            start_date=export_req.start_date,
+            end_date=export_req.end_date,
         )
-        count_response = await AuditSearchService.search(db, count_params, retention_months)
-        total_count = count_response.pagination.total_entries
 
         # ── Step 4: Enforce 50k limit ───────────────────────────────────────
         if total_count > 50_000:
@@ -458,23 +456,6 @@ async def export_audit_entries(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={"message_key": "error.export_limit_exceeded"},
             )
-
-        # Fetch all rows via AuditSearchService (page_size=50_000 covers the max).
-        # This reuses the service's retention cutoff (relativedelta-aware) and
-        # SQLAlchemy ORM filters — no duplicate raw query logic.
-        all_params = AuditSearchParams(
-            start_date=export_req.start_date,
-            end_date=export_req.end_date,
-            action_type=export_req.action_type,
-            actor_identity=export_req.actor_identity,
-            outcome=export_req.outcome,
-            resource_type=export_req.resource_type,
-            page=1,
-            page_size=min(max(total_count, 1), 50_000),
-        )
-        all_response = await AuditSearchService.search(db, all_params, retention_months)
-        # Convert AuditEntryRead back to ORM-compatible dicts for AuditExportService
-        entries = all_response.entries
 
         # ── Step 5: Serialize via AuditExportService ────────────────────────
         actor_identity_val = _session.get("username") or _session.get("user_id") or ""
