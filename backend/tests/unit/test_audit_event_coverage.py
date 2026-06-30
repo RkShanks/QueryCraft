@@ -40,7 +40,7 @@ Coverage mapping (action_type -> test class + call site):
 | 28| detection.config.change | TestDetectionConfigChangeEmits            | api/v1/admin_detection.py (T-841)      |
 | 29| audit.search            | TestAuditSearchEmits                      | api/v1/admin_audit.py (T-862)          |
 | 30| audit.export            | TestAuditExportEmits                      | api/v1/admin_audit.py (T-868)          |
-| 31| audit.purge             | KNOWN_DEFERRED                            | Wave 18.3 retention purge-gap marker   |
+| 31| audit.purge             | TestAuditPurgeEmits                       | services/audit_service.py (T-870)      |
 
 Honest T-734 scope: T-734 added 5 of 6 missing call sites
 (AUTH_LOGOUT, CONNECTION_CREATE, CONNECTION_UPDATE,
@@ -57,8 +57,9 @@ intentionally listed in ``KNOWN_DEFERRED`` until Waves 18.2/18.3.
 
 Wave 18.3a (T-862) ships one more caller (audit.search) in
 ``api/v1/admin_audit.py``. Wave 18.3c (T-868) ships audit.export.
-The coverage matrix is now **29 of 31** shipped, **2 deferred**
-(quota.warning, audit.purge).
+Wave 18.3d (T-870) ships audit.purge in ``services/audit_service.py``.
+The coverage matrix is now **30 of 31** shipped, **1 deferred**
+(quota.warning).
 
 Two-layer verification:
 
@@ -157,7 +158,6 @@ _AUDIT_FORBIDDEN_IN_CONTEXT: tuple[str, ...] = (
 
 KNOWN_DEFERRED: dict[str, str] = {
     "quota.warning": "Wave 18.1 quota warning taxonomy is reserved for quota warning callers/future use.",
-    "audit.purge": "Wave 18.3 retention purge-gap handling emits purge markers.",
 }
 
 
@@ -960,8 +960,8 @@ class TestAuditActionTypeSourceCodeReference:
                 f"or document the deferral in KNOWN_DEFERRED with a reason."
             )
 
-    def test_coverage_matrix_is_28_of_31_shipped_with_3_deferred(self):
-        """Pin Wave 18.3c: 28 callers shipped, 3 Phase 6 callers deferred."""
+    def test_coverage_matrix_is_30_of_31_shipped_with_1_deferred(self):
+        """Pin Wave 18.3d: 30 callers shipped, 1 Phase 6 caller deferred (quota.warning)."""
         refs = self._enum_references()
         shipped = sorted(a.value for a in AuditActionType)
         with_caller = sorted(v for v, hits in refs.items() if hits)
@@ -1350,7 +1350,33 @@ class TestAuditExportEmits:
         assert ctx.get("record_count") == 150, f"record_count must be 150, got {ctx}"
 
 
-# ── helpers ────────────────────────────────────────────────────────────────
+# ── 31. audit.purge (T-870) ──────────────────────────────────────────────────
+
+
+class TestAuditPurgeEmits:
+    """``AuditService.purge_expired_entries()`` inserts an ``AUDIT_PURGE``
+    marker entry before deleting expired rows (T-870).
+
+    The call site is ``services/audit_service.py``; the marker is emitted
+    via ``AuditService.log(action=AuditActionType.AUDIT_PURGE, ...)``.
+    Full transactional correctness is exercised in
+    ``tests/unit/test_purge_gap_marker.py`` (integration-level DB tests).
+    This class covers the structural contract pinned in the coverage matrix.
+    """
+
+    def test_action_type_is_shipped(self):
+        assert AuditActionType.AUDIT_PURGE.value == "audit.purge"
+
+    def test_audit_purge_referenced_in_audit_service(self):
+        """audit_service.py must contain a call to AuditActionType.AUDIT_PURGE."""
+        from pathlib import Path
+
+        audit_service_path = Path(__file__).parent.parent.parent / "src" / "app" / "services" / "audit_service.py"
+        source = audit_service_path.read_text(encoding="utf-8")
+        assert "AuditActionType.AUDIT_PURGE" in source, (
+            "audit_service.py must reference AuditActionType.AUDIT_PURGE — "
+            "the purge_expired_entries() method must emit the purge-gap marker."
+        )
 
 
 def _unused(x: Iterable[Any] = ()) -> None:
