@@ -239,10 +239,10 @@
 
 ### Current Wave Checkpoint
 
-- **Date**: 2026-06-30
-- **Branch Context**: `main` at `cf90666e18480b0c83503e6e52cb5d307b4e7e7d`
-- **Status**: Wave 18.3d COMPLETE. T-869 through T-870 verified complete.
-- **Next Dispatch**: Wave 18.3e backend verify-chain purge-gap handling, T-871 through T-872.
+- **Date**: 2026-07-01
+- **Branch Context**: `main` at `5f1a516d8d14eb0e153c8a2d78cf308b0b3c4131`
+- **Status**: Wave 18.3e COMPLETE. T-871 through T-872 verified complete.
+- **Next Dispatch**: Wave 18.3f backend purge+verify integration cycle, T-873 only.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -528,3 +528,35 @@
 ### Next Dispatch
 
 - Wave 18.3 remaining tasks: T-873 (purge+verify integration test), T-874–T-875 (retention endpoint), T-876 (scheduler docs), T-877–T-878 (permission/retention window tests), T-879 (backend gate).
+
+### Review and Merge Result
+
+- **PR**: #166
+- **Merged**: 2026-07-01
+- **Merge Commit**: `5f1a516d8d14eb0e153c8a2d78cf308b0b3c4131`
+- **Tasks Completed**: T-871 through T-872
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Local Review Gates**: `pytest tests/unit/test_verify_chain_purge.py -x --tb=short` passed with live Postgres (**11 passed**); `ruff check src tests` passed; `ruff format --check src tests` passed; `git diff --check` clean.
+- **Review Result**: no blocking findings.
+
+---
+
+## Wave 18.3f — Purge + Verify Integration Cycle
+
+### Dispatch
+
+- **Date**: 2026-07-01
+- **Model**: Backend Implementer
+- **T-IDs**: T-873 only
+- **Branch**: `phase-6/wave-18.3f-purge-verify-cycle`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3e merged; purge markers and verify-chain purge-gap handling are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before product edits.
+- Use RTK for shell commands.
+- Follow TDD commit discipline: RED integration-test commit, GREEN/fix commit only if needed, docs/gate commit as needed.
+- Keep this slice to T-873 only: full purge+verify integration test in `backend/tests/integration/test_purge_verify_cycle.py`.
+- Do not implement retention endpoint, scheduler docs, permission tests, retention-window tests, frontend UI, or final Wave 18.3 backend gate in this slice.
+- Test must use live DB fixtures and cover: seed audit entries, call `purge_expired_entries()`, verify `audit.purge` marker exists with correct boundary metadata, call `verify_chain()` and assert verified/ok, append entry after purge, verify chain still valid end-to-end.
