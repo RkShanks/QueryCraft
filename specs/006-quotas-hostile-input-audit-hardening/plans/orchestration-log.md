@@ -398,3 +398,40 @@
 ### Next Dispatch
 
 - Wave 18.3d or final Wave 18.3 backend gate (T-869+, purge markers, verify_chain purge-gap handling) — to be dispatched per orchestrator plan.
+
+---
+
+## Wave 18.3c — Blocker Fix Review + PR
+
+**Date**: 2026-06-30
+**Orchestrator action**: Review of Wave 18.3c branch → identified three blockers → applied fixes directly (user-authorized) → pushed + opened PR.
+
+### Review Findings (pre-fix)
+
+| # | File | Issue |
+|---|------|-------|
+| B1 | `admin_audit.py` `export_audit_entries` | Manual `request.json() + AuditExportRequest(**body)` → Pydantic validation errors swallowed as 500s |
+| B2 | `admin_audit.py` `export_audit_entries` | Inline `timedelta(days=months*30)` retention cutoff and raw SQLAlchemy query duplicates `AuditSearchService` logic |
+| B3 | `test_audit_event_coverage.py` | `audit.export` still in `KNOWN_DEFERRED`; docstring says 28/31 / 3 deferred; unit test uses stale `request.json()` mock pattern |
+
+### Fixes applied (commit `f70690f`)
+
+- **B1**: Replaced `request.json()` + manual construction with `export_req: AuditExportRequest = Body(...)` typed FastAPI dependency. Pydantic 422s now surface correctly.
+- **B2**: Replaced inline cutoff + raw query with `AuditSearchService.search()` — count check (`page_size=1`) then full fetch (`page_size=min(total,50_000)`). Reuses relativedelta-aware retention and ORM filters.
+- **B3**: Removed `audit.export` from `KNOWN_DEFERRED`; updated table row 30; docstring now reads **29/31 shipped / 2 deferred**; unit test updated to typed-param call + `AuditSearchService.search` patch.
+
+### Foundation gates (post-fix)
+
+- `pytest tests/unit -q`: **1742 passed, 295 skipped** ✅
+- `ruff check src/app/api/v1/admin_audit.py tests/unit/test_audit_event_coverage.py`: **All checks passed** ✅
+- `ruff format --check`: **2 files already formatted** ✅
+
+### PR
+
+- **PR #164**: https://github.com/RkShanks/QueryCraft/pull/164
+- Branch: `phase-6/wave-18.3c-audit-export-api` → `main`
+- 4 commits total: RED (T-867), GREEN (T-868), docs, fix blockers
+
+### Next dispatch
+
+Wave 18.3c PR #164 is ready for merge review. After merge, proceed to Wave 18.3d or final Wave 18.3 backend gate (purge markers, verify-chain purge-gap handling, T-869+).
