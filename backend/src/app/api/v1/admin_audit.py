@@ -57,7 +57,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status  # noqa: F401
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status  # noqa: F401
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -377,10 +377,10 @@ async def search_audit_entries(
 
 @router.post("/export")
 async def export_audit_entries(
-    request: Request,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
     _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
+    export_req: AuditExportRequest = Body(...),  # noqa: B008
 ):
     """POST /admin/audit/export — export filtered audit entries as CSV or JSON.
 
@@ -390,7 +390,7 @@ async def export_audit_entries(
       1. Check daily export quota via QuotaService.check_and_increment(user_id, role_id, "exports").
          - QuotaExceededError → 429 with message_key.
          - QuotaUnavailableError → 503 with message_key (fail-closed).
-      2. Parse AuditExportRequest from request body.
+      2. Parse AuditExportRequest from typed FastAPI body param (Pydantic-validated — 422 on bad input).
       3. Query entries via AuditSearchService (enforces retention window).
       4. If filtered count > 50,000 → 422 with message_key.
       5. Serialize via AuditExportService (CSV or JSON with redaction + integrity metadata).
@@ -428,12 +428,18 @@ async def export_audit_entries(
                 detail={"message_key": "error.service_unavailable"},
             ) from exc
 
-        # ── Step 2: Parse request body ──────────────────────────────────────
-        body = await request.json()
-        export_req = AuditExportRequest(**body)
+        # ── Step 2: export_req already parsed by FastAPI (typed body param) ─
+        # Pydantic validation errors surface as 422 — no manual request.json() needed.
 
-        # ── Step 3: Build search params and query entries ───────────────────
-        params = AuditSearchParams(
+        # ── Step 3: Build search params and query ALL matching entries ───────
+        # Reuse AuditSearchService for consistent retention enforcement.
+        # We fetch a large page (up to 50,001) solely to detect the 50k limit;
+        # a genuine paginated result set larger than 50k is rejected below.
+        settings = get_settings()
+        retention_months = settings.AUDIT_RETENTION_MONTHS
+
+        # Use a page_size of 50,001 to detect—but not load—an oversized result.
+        count_params = AuditSearchParams(
             start_date=export_req.start_date,
             end_date=export_req.end_date,
             action_type=export_req.action_type,
@@ -441,35 +447,10 @@ async def export_audit_entries(
             outcome=export_req.outcome,
             resource_type=export_req.resource_type,
             page=1,
-            page_size=100,  # We'll fetch all via a raw query below
+            page_size=1,  # Minimal page — we only need total_entries for the limit check
         )
-
-        settings = get_settings()
-        retention_months = settings.AUDIT_RETENTION_MONTHS
-
-        # Fetch all matching entries (not paginated) for export
-        from datetime import timedelta
-
-        from sqlalchemy import and_
-
-        cutoff = datetime.now(UTC) - timedelta(days=retention_months * 30)
-        filters = [AuditLogEntry.timestamp >= cutoff]
-        if params.action_type is not None:
-            filters.append(AuditLogEntry.action_type == params.action_type)
-        if params.actor_identity is not None:
-            filters.append(AuditLogEntry.actor_identity == params.actor_identity)
-        if params.outcome is not None:
-            filters.append(AuditLogEntry.outcome == params.outcome)
-        if params.resource_type is not None:
-            filters.append(AuditLogEntry.resource_type == params.resource_type)
-        if params.start_date is not None:
-            filters.append(AuditLogEntry.timestamp >= params.start_date)
-        if params.end_date is not None:
-            filters.append(AuditLogEntry.timestamp <= params.end_date)
-
-        # Count first for limit check
-        count_result = await db.execute(select(func.count()).select_from(AuditLogEntry).where(and_(*filters)))
-        total_count = int(count_result.scalar_one())
+        count_response = await AuditSearchService.search(db, count_params, retention_months)
+        total_count = count_response.pagination.total_entries
 
         # ── Step 4: Enforce 50k limit ───────────────────────────────────────
         if total_count > 50_000:
@@ -478,11 +459,22 @@ async def export_audit_entries(
                 detail={"message_key": "error.export_limit_exceeded"},
             )
 
-        # Fetch all rows (within limit)
-        rows_result = await db.execute(
-            select(AuditLogEntry).where(and_(*filters)).order_by(AuditLogEntry.timestamp.desc())
+        # Fetch all rows via AuditSearchService (page_size=50_000 covers the max).
+        # This reuses the service's retention cutoff (relativedelta-aware) and
+        # SQLAlchemy ORM filters — no duplicate raw query logic.
+        all_params = AuditSearchParams(
+            start_date=export_req.start_date,
+            end_date=export_req.end_date,
+            action_type=export_req.action_type,
+            actor_identity=export_req.actor_identity,
+            outcome=export_req.outcome,
+            resource_type=export_req.resource_type,
+            page=1,
+            page_size=min(max(total_count, 1), 50_000),
         )
-        entries = list(rows_result.scalars().all())
+        all_response = await AuditSearchService.search(db, all_params, retention_months)
+        # Convert AuditEntryRead back to ORM-compatible dicts for AuditExportService
+        entries = all_response.entries
 
         # ── Step 5: Serialize via AuditExportService ────────────────────────
         actor_identity_val = _session.get("username") or _session.get("user_id") or ""

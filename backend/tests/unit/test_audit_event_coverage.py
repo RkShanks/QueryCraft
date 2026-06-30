@@ -39,7 +39,7 @@ Coverage mapping (action_type -> test class + call site):
 | 27| hostile.input.flagged   | TestHostileInputFlaggedEmits              | services/query_service.py (T-845)      |
 | 28| detection.config.change | TestDetectionConfigChangeEmits            | api/v1/admin_detection.py (T-841)      |
 | 29| audit.search            | TestAuditSearchEmits                      | api/v1/admin_audit.py (T-862)          |
-| 30| audit.export            | KNOWN_DEFERRED                            | Wave 18.3 audit export                 |
+| 30| audit.export            | TestAuditExportEmits                      | api/v1/admin_audit.py (T-868)          |
 | 31| audit.purge             | KNOWN_DEFERRED                            | Wave 18.3 retention purge-gap marker   |
 
 Honest T-734 scope: T-734 added 5 of 6 missing call sites
@@ -56,9 +56,9 @@ call. The Phase 5 coverage matrix is 22/22. Wave 18.0 adds
 intentionally listed in ``KNOWN_DEFERRED`` until Waves 18.2/18.3.
 
 Wave 18.3a (T-862) ships one more caller (audit.search) in
-``api/v1/admin_audit.py``. The coverage matrix
-is now **28 of 31** shipped, **3 deferred** (quota.warning,
-audit.export, audit.purge).
+``api/v1/admin_audit.py``. Wave 18.3c (T-868) ships audit.export.
+The coverage matrix is now **29 of 31** shipped, **2 deferred**
+(quota.warning, audit.purge).
 
 Two-layer verification:
 
@@ -1225,9 +1225,7 @@ class TestAuditExportEmits:
     @pytest.mark.asyncio
     async def test_audit_export_emits_event_with_sanitized_context(self):
         """Verify AUDIT_EXPORT is emitted with filter_summary and record_count only."""
-        from unittest.mock import MagicMock
-
-        from app.schemas.audit_search import AuditSearchPagination, AuditSearchResponse
+        from app.schemas.audit_search import AuditExportRequest, AuditSearchPagination, AuditSearchResponse
 
         _empty_response = AuditSearchResponse(
             entries=[],
@@ -1238,6 +1236,10 @@ class TestAuditExportEmits:
             patch(
                 "app.services.quota_service.QuotaService.check_and_increment",
                 new=AsyncMock(return_value=(0, None, None)),
+            ),
+            patch(
+                "app.services.audit_search_service.AuditSearchService.search",
+                new=AsyncMock(return_value=_empty_response),
             ),
             patch(
                 "app.services.audit_export_service.AuditExportService.export_json",
@@ -1255,22 +1257,15 @@ class TestAuditExportEmits:
                 "username": "auditor@test",
             }
             db = AsyncMock()
-            db.execute = AsyncMock(
-                return_value=MagicMock(
-                    scalar_one=MagicMock(return_value=0),
-                    scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))),
-                )
-            )
             db.commit = AsyncMock()
             redis = AsyncMock()
-            request = MagicMock()
-            request.json = AsyncMock(return_value={"format": "json"})
+            export_req = AuditExportRequest(format="json")
 
             await export_audit_entries(
-                request=request,
                 db=db,
                 redis=redis,
                 _session=_session,
+                export_req=export_req,
             )
 
         actions = _captured_actions(mock_audit)
