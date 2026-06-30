@@ -367,7 +367,7 @@
 - **Model**: Backend Implementer
 - **T-IDs**: T-867 through T-868
 - **Branch**: `phase-6/wave-18.3c-audit-export-api`
-- **Status**: DISPATCHED
+- **Status**: COMPLETE
 - **Dependency State**: Wave 18.3b merged; `AuditExportService`, `AuditSearchService`, and `GET /admin/audit/entries` are available on `main`.
 
 ### Dispatch Constraints
@@ -383,3 +383,55 @@
 - Export limit > 50,000 must return 422 with localized `message_key`.
 - `AUDIT_EXPORT` context must include only sanitized filter summary and `record_count`; never exported entry values.
 - Response must set correct `Content-Type` and `Content-Disposition` for CSV and JSON downloads.
+
+### Results
+
+- **T-867** ✅ RED integration tests — `backend/tests/integration/test_audit_export.py` (357 lines). Tests: 403 without permission, CSV/JSON download headers, compliance metadata, formula injection, quota 429/503, 422 limit, AUDIT_EXPORT event emission + no-entry-data invariant.
+- **T-868** ✅ GREEN endpoint — `POST /admin/audit/export` in `backend/src/app/api/v1/admin_audit.py`. Quota-gated, 50k-limited, AuditExportService serialization, AUDIT_EXPORT emit (sanitized context only), correct Content-Type/Content-Disposition.
+- **Coverage updates**: `audit.export` removed from `KNOWN_DEFERRED`; coverage matrix updated to 28/31 shipped / 3 deferred. `TestAuditExportEmits` class added to `test_audit_event_coverage.py`.
+- **Redaction safe-keys**: `filter_summary`, `record_count`, `format` added to `_SAFE_KEYS` in `test_audit_redaction_comprehensive.py`.
+- **Localization**: `error.export_limit_exceeded` added to `en.json` and `ar.json`.
+- **Gate**: `ruff check`/`format` clean across all 372 backend files; 1742 unit tests passed, 0 failed.
+- **Commits**: `a084dfb` (RED T-867), `192cd2a` (GREEN T-868 + fixups).
+- **Diff**: 6 files, 645 insertions.
+
+### Next Dispatch
+
+- Wave 18.3d or final Wave 18.3 backend gate (T-869+, purge markers, verify_chain purge-gap handling) — to be dispatched per orchestrator plan.
+
+---
+
+## Wave 18.3c — Blocker Fix Review + PR
+
+**Date**: 2026-06-30
+**Orchestrator action**: Review of Wave 18.3c branch → identified three blockers → applied fixes directly (user-authorized) → pushed + opened PR.
+
+### Review Findings (pre-fix)
+
+| # | File | Issue |
+|---|------|-------|
+| B1 | `admin_audit.py` `export_audit_entries` | Manual `request.json() + AuditExportRequest(**body)` → Pydantic validation errors swallowed as 500s |
+| B2 | `admin_audit.py` `export_audit_entries` | Inline `timedelta(days=months*30)` retention cutoff and raw SQLAlchemy query duplicates `AuditSearchService` logic |
+| B3 | `test_audit_event_coverage.py` | `audit.export` still in `KNOWN_DEFERRED`; docstring says 28/31 / 3 deferred; unit test uses stale `request.json()` mock pattern |
+
+### Fixes applied (commit `f70690f`)
+
+- **B1**: Replaced `request.json()` + manual construction with `export_req: AuditExportRequest = Body(...)` typed FastAPI dependency. Pydantic 422s now surface correctly.
+- **B2**: Replaced inline cutoff + raw query with `AuditSearchService.search()` — count check (`page_size=1`) then full fetch (`page_size=min(total,50_000)`). Reuses relativedelta-aware retention and ORM filters.
+- **B3**: Removed `audit.export` from `KNOWN_DEFERRED`; updated table row 30; docstring now reads **29/31 shipped / 2 deferred**; unit test updated to typed-param call + `AuditSearchService.search` patch.
+
+### Foundation gates (post-fix)
+
+- `pytest tests/unit -q`: **1742 passed, 295 skipped** ✅
+- `ruff check src/app/api/v1/admin_audit.py tests/unit/test_audit_event_coverage.py`: **All checks passed** ✅
+- `ruff format --check`: **2 files already formatted** ✅
+
+### PR
+
+- **PR #164**: https://github.com/RkShanks/QueryCraft/pull/164
+- Branch: `phase-6/wave-18.3c-audit-export-api` → `main`
+- 4 commits total: RED (T-867), GREEN (T-868), docs, fix blockers
+
+### Next dispatch
+
+Wave 18.3c PR #164 is ready for merge review. After merge, proceed to Wave 18.3d or final Wave 18.3 backend gate (purge markers, verify-chain purge-gap handling, T-869+).

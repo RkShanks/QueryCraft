@@ -53,21 +53,28 @@ Resource-id contract for ``audit.verify`` events:
 
 from __future__ import annotations
 
+import uuid
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status  # noqa: F401
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status  # noqa: F401
+from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
 from app.api.v1.phase6_permissions import require_phase6_admin_permission
 from app.core.config import get_settings
-from app.core.dependencies import get_db
+from app.core.dependencies import get_db, get_redis
+from app.core.exceptions import QuotaExceededError, QuotaUnavailableError
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType, Permission
-from app.schemas.audit_search import AuditSearchParams
+from app.repositories.quota_repository import QuotaRepository
+from app.schemas.audit_search import AuditExportRequest, AuditSearchParams
+from app.services.audit_export_service import AuditExportService, ExportLimitExceededError
 from app.services.audit_search_service import AuditSearchService
 from app.services.audit_service import AuditService, VerificationResult
+from app.services.quota_service import QuotaService
 
 router = APIRouter(prefix="/admin/audit", tags=["Admin Audit"])
 
@@ -358,6 +365,170 @@ async def search_audit_entries(
 
         await db.commit()
         return result
+
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal", "message_key": "error.internal"},
+        ) from None
+
+
+@router.post("/export")
+async def export_audit_entries(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
+    _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
+    export_req: AuditExportRequest = Body(...),  # noqa: B008
+):
+    """POST /admin/audit/export — export filtered audit entries as CSV or JSON.
+
+    Permission: ``admin.audit.verify`` (existing Phase 5 permission).
+
+    Behaviour:
+      1. Check daily export quota via QuotaService.check_and_increment(user_id, role_id, "exports").
+         - QuotaExceededError → 429 with message_key.
+         - QuotaUnavailableError → 503 with message_key (fail-closed).
+      2. Parse AuditExportRequest from typed FastAPI body param (Pydantic-validated — 422 on bad input).
+      3. Query entries via AuditSearchService (enforces retention window).
+      4. If filtered count > 50,000 → 422 with message_key.
+      5. Serialize via AuditExportService (CSV or JSON with redaction + integrity metadata).
+      6. Emit AUDIT_EXPORT audit event with only filter_summary and record_count.
+         Never include exported entry values in the context.
+      7. Return file response with correct Content-Type and Content-Disposition headers.
+
+    Security constraints:
+      - No exported entry values in AUDIT_EXPORT context.
+      - No stack traces, raw SQL, driver errors, or secrets in any response.
+    """
+    try:
+        # ── Step 1: Quota check (fail-closed) ──────────────────────────────
+        user_id_str = _session.get("user_id", "")
+        role_id_str = _session.get("role_id", "")
+        try:
+            user_uuid = uuid.UUID(user_id_str) if user_id_str else uuid.uuid4()
+            role_uuid = uuid.UUID(role_id_str) if role_id_str else uuid.uuid4()
+        except ValueError:
+            user_uuid = uuid.uuid4()
+            role_uuid = uuid.uuid4()
+
+        quota_repo = QuotaRepository(db)
+        quota_service = QuotaService(redis=redis, quota_repo=quota_repo)
+        try:
+            await quota_service.check_and_increment(user_uuid, role_uuid, "exports")
+        except QuotaExceededError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={"message_key": "error.quota_exceeded", "reset_at": exc.reset_at},
+            ) from exc
+        except QuotaUnavailableError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"message_key": "error.service_unavailable"},
+            ) from exc
+
+        # ── Step 2: export_req already parsed by FastAPI (typed body param) ─
+        # Pydantic validation errors surface as 422 — no manual request.json() needed.
+
+        # ── Steps 3+4: Count + fetch via dedicated export method ────────────
+        # get_all_entries_for_export() reuses the same retention-cutoff and ORM
+        # filter logic as search() but issues a single uncapped SELECT LIMIT
+        # 50_000, bypassing AuditSearchParams.page_size which is capped at 100.
+        # It returns (total_count, entries) in one round-trip.
+        settings = get_settings()
+        retention_months = settings.AUDIT_RETENTION_MONTHS
+
+        total_count, entries = await AuditSearchService.get_all_entries_for_export(
+            db,
+            retention_months,
+            action_type=export_req.action_type,
+            actor_identity=export_req.actor_identity,
+            outcome=export_req.outcome,
+            resource_type=export_req.resource_type,
+            start_date=export_req.start_date,
+            end_date=export_req.end_date,
+        )
+
+        # ── Step 4: Enforce 50k limit ───────────────────────────────────────
+        if total_count > 50_000:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"message_key": "error.export_limit_exceeded"},
+            )
+
+        # ── Step 5: Serialize via AuditExportService ────────────────────────
+        actor_identity_val = _session.get("username") or _session.get("user_id") or ""
+        export_timestamp = datetime.now(UTC).isoformat()
+
+        # Build sanitized filter summary — param names + values only (no entry content).
+        filter_summary: dict[str, Any] = {}
+        if export_req.action_type is not None:
+            filter_summary["action_type"] = export_req.action_type
+        if export_req.actor_identity is not None:
+            filter_summary["actor_identity"] = export_req.actor_identity
+        if export_req.outcome is not None:
+            filter_summary["outcome"] = export_req.outcome
+        if export_req.resource_type is not None:
+            filter_summary["resource_type"] = export_req.resource_type
+        if export_req.start_date is not None:
+            filter_summary["start_date"] = export_req.start_date.isoformat()
+        if export_req.end_date is not None:
+            filter_summary["end_date"] = export_req.end_date.isoformat()
+        filter_summary["format"] = export_req.format
+
+        metadata = {
+            "export_actor": actor_identity_val,
+            "export_timestamp": export_timestamp,
+            "filter_summary": str(filter_summary),
+            "record_count": len(entries),
+        }
+
+        try:
+            if export_req.format == "csv":
+                payload = AuditExportService.export_csv(entries, metadata)
+            else:
+                payload = AuditExportService.export_json(entries, metadata)
+        except ExportLimitExceededError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"message_key": "error.export_limit_exceeded"},
+            ) from None
+
+        # ── Step 6: Emit AUDIT_EXPORT event ────────────────────────────────
+        # Context: ONLY filter_summary and record_count — never exported entry values.
+        await AuditService.log(
+            db,
+            action=AuditActionType.AUDIT_EXPORT,
+            actor_identity=actor_identity_val,
+            resource_type="audit_log",
+            resource_id=None,
+            outcome="success",
+            context={
+                "filter_summary": filter_summary,
+                "record_count": len(entries),
+            },
+        )
+        await db.commit()
+
+        # ── Step 7: Return file response ────────────────────────────────────
+        filename_ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        if export_req.format == "csv":
+            return Response(
+                content=payload,
+                media_type="text/csv; charset=utf-8",
+                headers={
+                    "Content-Disposition": f'attachment; filename="audit_export_{filename_ts}.csv"',
+                },
+            )
+        else:
+            return Response(
+                content=payload,
+                media_type="application/json; charset=utf-8",
+                headers={
+                    "Content-Disposition": f'attachment; filename="audit_export_{filename_ts}.json"',
+                },
+            )
 
     except HTTPException:
         raise

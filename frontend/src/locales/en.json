@@ -107,6 +107,7 @@
   "error.forbidden": "This request was blocked for security reasons.",
   "error.quota_exceeded": "Daily query limit reached. Please try again tomorrow.",
   "error.service_unavailable": "Service temporarily unavailable. Please try again later.",
+  "error.export_limit_exceeded": "Export limit exceeded. The filtered result contains more than 50,000 entries. Please apply more specific filters.",
   "error.hostile_input_blocked": "This request was blocked because it contains content that violates our security policy.",
   "error.validation.invalidUUID": "Invalid identifier format.",
   "error.policySchemaConflict": "A row filter references a column that no longer exists in the schema. Please ask an administrator to update the policy.",

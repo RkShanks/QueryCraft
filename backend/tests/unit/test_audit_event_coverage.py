@@ -39,7 +39,7 @@ Coverage mapping (action_type -> test class + call site):
 | 27| hostile.input.flagged   | TestHostileInputFlaggedEmits              | services/query_service.py (T-845)      |
 | 28| detection.config.change | TestDetectionConfigChangeEmits            | api/v1/admin_detection.py (T-841)      |
 | 29| audit.search            | TestAuditSearchEmits                      | api/v1/admin_audit.py (T-862)          |
-| 30| audit.export            | KNOWN_DEFERRED                            | Wave 18.3 audit export                 |
+| 30| audit.export            | TestAuditExportEmits                      | api/v1/admin_audit.py (T-868)          |
 | 31| audit.purge             | KNOWN_DEFERRED                            | Wave 18.3 retention purge-gap marker   |
 
 Honest T-734 scope: T-734 added 5 of 6 missing call sites
@@ -56,9 +56,9 @@ call. The Phase 5 coverage matrix is 22/22. Wave 18.0 adds
 intentionally listed in ``KNOWN_DEFERRED`` until Waves 18.2/18.3.
 
 Wave 18.3a (T-862) ships one more caller (audit.search) in
-``api/v1/admin_audit.py``. The coverage matrix
-is now **28 of 31** shipped, **3 deferred** (quota.warning,
-audit.export, audit.purge).
+``api/v1/admin_audit.py``. Wave 18.3c (T-868) ships audit.export.
+The coverage matrix is now **29 of 31** shipped, **2 deferred**
+(quota.warning, audit.purge).
 
 Two-layer verification:
 
@@ -104,6 +104,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -156,7 +157,6 @@ _AUDIT_FORBIDDEN_IN_CONTEXT: tuple[str, ...] = (
 
 KNOWN_DEFERRED: dict[str, str] = {
     "quota.warning": "Wave 18.1 quota warning taxonomy is reserved for quota warning callers/future use.",
-    "audit.export": "Wave 18.3 audit export emits export activity events.",
     "audit.purge": "Wave 18.3 retention purge-gap handling emits purge markers.",
 }
 
@@ -960,8 +960,8 @@ class TestAuditActionTypeSourceCodeReference:
                 f"or document the deferral in KNOWN_DEFERRED with a reason."
             )
 
-    def test_coverage_matrix_is_27_of_31_shipped_with_4_deferred(self):
-        """Pin Wave 18.2d: 27 callers shipped, 4 Phase 6 callers deferred."""
+    def test_coverage_matrix_is_28_of_31_shipped_with_3_deferred(self):
+        """Pin Wave 18.3c: 28 callers shipped, 3 Phase 6 callers deferred."""
         refs = self._enum_references()
         shipped = sorted(a.value for a in AuditActionType)
         with_caller = sorted(v for v, hits in refs.items() if hits)
@@ -1210,6 +1210,144 @@ class TestAuditSearchEmits:
         for forbidden in ("row_hash", "prev_hash"):
             assert forbidden not in ctx_str, f"AUDIT_SEARCH context must not contain '{forbidden}': {ctx}"
         _assert_no_forbidden_in_contexts(mock_audit)
+
+
+# ── 30. audit.export ──────────────────────────────────────────────────────
+
+
+class TestAuditExportEmits:
+    """``POST /admin/audit/export`` emits ``AUDIT_EXPORT`` after a successful
+    export (T-868). The context contains only filter_summary and record_count —
+    never the exported entry values."""
+
+    def test_action_type_is_shipped(self):
+        assert AuditActionType.AUDIT_EXPORT.value == "audit.export"
+
+    @pytest.mark.asyncio
+    async def test_audit_export_emits_event_with_sanitized_context(self):
+        """Verify AUDIT_EXPORT is emitted with filter_summary and record_count only."""
+        from app.schemas.audit_search import AuditExportRequest
+
+        with (
+            patch(
+                "app.services.quota_service.QuotaService.check_and_increment",
+                new=AsyncMock(return_value=(0, None, None)),
+            ),
+            patch(
+                "app.services.audit_search_service.AuditSearchService.get_all_entries_for_export",
+                new=AsyncMock(return_value=(0, [])),
+            ),
+            patch(
+                "app.services.audit_export_service.AuditExportService.export_json",
+                return_value=b'{"metadata":{},"entries":[]}',
+            ),
+            patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit,
+        ):
+            from app.api.v1.admin_audit import export_audit_entries
+            from app.db.models.enums import Permission
+
+            _session = {
+                "role_id": str(uuid.uuid4()),
+                "user_id": str(uuid.uuid4()),
+                "permissions": [str(Permission.ADMIN_AUDIT_VERIFY)],
+                "username": "auditor@test",
+            }
+            db = AsyncMock()
+            db.commit = AsyncMock()
+            redis = AsyncMock()
+            export_req = AuditExportRequest(format="json")
+
+            await export_audit_entries(
+                db=db,
+                redis=redis,
+                _session=_session,
+                export_req=export_req,
+            )
+
+        actions = _captured_actions(mock_audit)
+        assert AuditActionType.AUDIT_EXPORT in actions, f"Expected AUDIT_EXPORT in audit calls, got {actions}"
+
+        ctx = _context_for(mock_audit, AuditActionType.AUDIT_EXPORT)
+        # Must contain filter_summary and record_count
+        assert "filter_summary" in ctx, f"Expected 'filter_summary' key in AUDIT_EXPORT context, got {ctx}"
+        assert "record_count" in ctx, f"Expected 'record_count' key in AUDIT_EXPORT context, got {ctx}"
+        # Must NOT contain row_hash, prev_hash or any raw entry content
+        ctx_str = str(ctx)
+        for forbidden in ("row_hash", "prev_hash"):
+            assert forbidden not in ctx_str, f"AUDIT_EXPORT context must not contain '{forbidden}': {ctx}"
+        _assert_no_forbidden_in_contexts(mock_audit)
+
+    @pytest.mark.asyncio
+    async def test_export_with_more_than_100_entries_does_not_raise_validation_error(self):
+        """Regression: AuditSearchParams.page_size has le=100.
+
+        Any export with 101..50,000 matching entries previously raised
+        ValidationError (swallowed as 500) because the endpoint passed
+        page_size=min(total, 50_000) to AuditSearchParams. The fix is
+        get_all_entries_for_export() which never touches page_size.
+        """
+
+        from app.schemas.audit_search import AuditEntryRead, AuditExportRequest
+
+        # Build 150 minimal AuditEntryRead entries (> 100, < 50,000)
+        def _fake_entry(i: int) -> AuditEntryRead:
+
+            return AuditEntryRead(
+                sequence_number=i,
+                timestamp=__import__("datetime").datetime(2026, 1, 1, tzinfo=UTC),
+                actor_identity="tester",
+                action_type="audit.verify",
+                resource_type="audit_chain",
+                resource_id=None,
+                outcome="success",
+                context={},
+            )
+
+        fake_entries = [_fake_entry(i) for i in range(1, 151)]  # 150 entries
+
+        with (
+            patch(
+                "app.services.quota_service.QuotaService.check_and_increment",
+                new=AsyncMock(return_value=(0, None, None)),
+            ),
+            patch(
+                "app.services.audit_search_service.AuditSearchService.get_all_entries_for_export",
+                new=AsyncMock(return_value=(150, fake_entries)),
+            ),
+            patch(
+                "app.services.audit_export_service.AuditExportService.export_csv",
+                return_value=b"# header\nsequence_number,timestamp,...\n",
+            ),
+            patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit,
+        ):
+            from app.api.v1.admin_audit import export_audit_entries
+            from app.db.models.enums import Permission
+
+            _session = {
+                "role_id": str(uuid.uuid4()),
+                "user_id": str(uuid.uuid4()),
+                "permissions": [str(Permission.ADMIN_AUDIT_VERIFY)],
+                "username": "auditor@test",
+            }
+            db = AsyncMock()
+            db.commit = AsyncMock()
+            redis = AsyncMock()
+            export_req = AuditExportRequest(format="csv")
+
+            # Must not raise — previously this would raise ValidationError
+            # (swallowed as 500) when page_size=150 was passed to AuditSearchParams.
+            response = await export_audit_entries(
+                db=db,
+                redis=redis,
+                _session=_session,
+                export_req=export_req,
+            )
+
+        assert response is not None, "Export with 150 entries must return a Response, not raise"
+        actions = _captured_actions(mock_audit)
+        assert AuditActionType.AUDIT_EXPORT in actions, f"AUDIT_EXPORT must be emitted, got {actions}"
+        ctx = _context_for(mock_audit, AuditActionType.AUDIT_EXPORT)
+        assert ctx.get("record_count") == 150, f"record_count must be 150, got {ctx}"
 
 
 # ── helpers ────────────────────────────────────────────────────────────────
