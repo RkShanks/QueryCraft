@@ -239,10 +239,10 @@
 
 ### Current Wave Checkpoint
 
-- **Date**: 2026-06-23
-- **Branch Context**: `main` at `c931e460c84010edc1366f6ef9df0db6075fefb4`
-- **Status**: Wave 18.3c COMPLETE. T-867 through T-868 verified complete.
-- **Next Dispatch**: Wave 18.3d backend purge marker, T-869 through T-870.
+- **Date**: 2026-06-30
+- **Branch Context**: `main` at `cf90666e18480b0c83503e6e52cb5d307b4e7e7d`
+- **Status**: Wave 18.3d COMPLETE. T-869 through T-870 verified complete.
+- **Next Dispatch**: Wave 18.3e backend verify-chain purge-gap handling, T-871 through T-872.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -479,6 +479,41 @@
 - **Gate**: `ruff check`/`format` clean across 373 backend files; **1745 unit tests passed**, 0 failed.
 - **Commits**: `b82cecb` (RED T-869), `baa7ef8` (GREEN T-870 + fixups).
 
+### Review and Merge Result
+
+- **PR**: #165
+- **Merged**: 2026-06-30
+- **Merge Commit**: `cf90666e18480b0c83503e6e52cb5d307b4e7e7d`
+- **Tasks Completed**: T-869 through T-870
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Local Review Gates**: focused purge/audit guard tests passed (50 passed, 136 skipped); `ruff check src tests` passed; `git diff --check` clean.
+- **Review Result**: no blocking findings.
+
 ### Next Dispatch
 
-- Wave 18.3 continuation: T-871 verify_chain purge-gap handling, T-872 implementation, T-873 purge+verify integration test, T-874–T-879 retention endpoint + remaining backend tasks.
+- Wave 18.3e backend verify-chain purge-gap handling, T-871 through T-872.
+
+---
+
+## Wave 18.3e — Verify Chain Purge-Gap Handling
+
+### Dispatch
+
+- **Date**: 2026-06-30
+- **Model**: Backend Implementer
+- **T-IDs**: T-871 through T-872
+- **Branch**: `phase-6/wave-18.3e-verify-chain-purge-gap`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3d merged; `audit.purge` marker insertion is available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before product edits.
+- Use RTK for shell commands.
+- Follow TDD commit discipline: RED test commit, GREEN implementation commit, docs/gate commit as needed.
+- Keep this slice to verify-chain purge-gap handling only: T-871 RED unit tests and T-872 `AuditService.verify_chain()` changes.
+- Do not implement purge+verify integration tests, retention endpoint, scheduler docs, frontend UI, or final Wave 18.3 backend gate in this slice.
+- If a retained entry has an orphaned `prev_hash`, look for a retained `audit.purge` marker whose `first_surviving_seq` and `first_surviving_prev_hash` match.
+- If a matching purge marker exists, treat the gap as intentional and continue verification.
+- If no matching purge marker exists, report the gap as tampering.
+- Do not rewrite or mutate existing audit entries.
