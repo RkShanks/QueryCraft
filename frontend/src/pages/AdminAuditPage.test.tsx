@@ -787,9 +787,9 @@ describe('AdminAuditPage', () => {
 
       // Verify the elements render with Arabic text
       expect(await screen.findByText('البحث في سجلات التدقيق')).toBeInTheDocument(); // Search title
-      expect(screen.getByText('حفظ سجلات التدقيق')).toBeInTheDocument(); // Retention title
-      expect(screen.getByRole('button', { name: 'تصدير CSV' })).toBeInTheDocument(); // Export button
-      expect(screen.getByRole('button', { name: 'تصدير JSON' })).toBeInTheDocument(); // Export button
+      expect(await screen.findByText('حفظ سجلات التدقيق')).toBeInTheDocument(); // Retention title
+      expect(await screen.findByRole('button', { name: 'تصدير CSV' })).toBeInTheDocument(); // Export button
+      expect(await screen.findByRole('button', { name: 'تصدير JSON' })).toBeInTheDocument(); // Export button
 
       // Scan all elements in the container for physical directional tailwind classes
       const physicalClasses = [
