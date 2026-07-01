@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-01
-- **Branch Context**: `main` at `49b4ecbb9e82c443dd404ab618b2d7029d6b65d0`
-- **Status**: Wave 18.3l COMPLETE. T-884 through T-885 verified complete.
-- **Next Dispatch**: Wave 18.3m frontend i18n/RTL/final gates, T-887 through T-891.
+- **Branch Context**: `main` at `ad29c60a7b1fbc322f7786a02d6d84566e8ba35f`
+- **Status**: Wave 18.3 COMPLETE. T-858 through T-891 verified complete.
+- **Next Dispatch**: Wave 18.4a backend regression/security verification, T-892, T-894, T-895.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -849,3 +849,45 @@
 - Add RTL audit check for search/export/retention UI per T-890. Assert Arabic `dir="rtl"` rendering and no physical directional classes/properties in the relevant rendered audit UI.
 - Run final frontend gate T-891: full frontend tests, lint, typecheck, build, CSS lint, and diff check.
 - Do not implement backend work or new audit features beyond i18n/RTL/gate closure.
+
+### Results
+
+- **T-887** ✅ English locale coverage — Wave 18.3 audit search/export/retention keys verified present and asserted in `frontend/src/locales/localeCoverage.test.ts`.
+- **T-888** ✅ Arabic locale parity — matching Wave 18.3 keys verified present via locale coverage assertions.
+- **T-889** ✅ i18n parity gate — reviewer reran `npm test -- --run locales/localeCoverage` → 295 passed.
+- **T-890** ✅ RTL check — `AdminAuditPage.test.tsx` renders Arabic `dir="rtl"` audit search/export/retention UI and scans for physical directional CSS classes.
+- **T-891** ✅ Frontend gate — reviewer reran `npm test -- --run` → 754 passed; `npm run lint`, `npm run typecheck`, `npm run build`, `npm run lint:css`, and `git diff --check` all passed. CI backend-test and frontend-test both SUCCESS.
+- **Commits**: `8ba2b1d` (locale coverage T-887/T-888), `b846300` (RTL RED T-890), `07c5d9c` (RTL GREEN T-890), `d241e71` (docs T-890), `90fae6d` (docs T-891).
+
+### Review and Merge Result
+
+- **PR**: #174
+- **Merged**: 2026-07-02
+- **Merge Commit**: `ad29c60a7b1fbc322f7786a02d6d84566e8ba35f`
+- **Tasks Completed**: T-887 through T-891
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Review Result**: no blocking findings.
+
+---
+
+## Wave 18.4a — Backend Regression and Security Verification
+
+### Dispatch
+
+- **Date**: 2026-07-02
+- **Model**: Backend Implementer
+- **T-IDs**: T-892, T-894, T-895
+- **Branch**: `phase-6/wave-18.4a-backend-regression-security`
+- **Status**: DISPATCHED
+- **Dependency State**: Waves 18.0 through 18.3 merged to `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before edits.
+- Use RTK for shell commands.
+- Start from latest `main`.
+- Run T-892 first and document pass/fail in the PR report.
+- Implement T-894 cross-dialect quota enforcement verification only after T-892 baseline is known.
+- Implement T-895 Phase 6 sanitization regression test for quota exceeded, hostile blocked, export limit, detection config validation, permission denied, and other Phase 6 endpoint error paths.
+- Ensure tests assert no sensitive/internal values leak: counter values, policy IDs, rule names, patterns, confidence scores, raw hostile text, DB host/port, provider names, stack traces, OIDC/SAML tokens.
+- Keep this slice backend-only. Do not run browser smoke, frontend gates, independent audits, final snapshot, or freeze docs.
