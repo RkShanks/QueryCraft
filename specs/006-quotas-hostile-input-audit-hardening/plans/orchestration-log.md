@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-01
-- **Branch Context**: `main` at `5f1a516d8d14eb0e153c8a2d78cf308b0b3c4131`
-- **Status**: Wave 18.3e COMPLETE. T-871 through T-872 verified complete.
-- **Next Dispatch**: Wave 18.3f backend purge+verify integration cycle, T-873 only.
+- **Branch Context**: `main` at `70bb1c7faedd4efeecc0fae34e248f5016bf8218`
+- **Status**: Wave 18.3f COMPLETE. T-873 verified complete.
+- **Next Dispatch**: Wave 18.3g backend retention status endpoint, T-874 through T-875.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -560,3 +560,43 @@
 - Keep this slice to T-873 only: full purge+verify integration test in `backend/tests/integration/test_purge_verify_cycle.py`.
 - Do not implement retention endpoint, scheduler docs, permission tests, retention-window tests, frontend UI, or final Wave 18.3 backend gate in this slice.
 - Test must use live DB fixtures and cover: seed audit entries, call `purge_expired_entries()`, verify `audit.purge` marker exists with correct boundary metadata, call `verify_chain()` and assert verified/ok, append entry after purge, verify chain still valid end-to-end.
+
+### Results
+
+- **T-873** ✅ RED integration test — `backend/tests/integration/test_purge_verify_cycle.py` (349 lines). Tests: core purge marker + verify cycle, multi-entry purge boundary metadata, append-after-purge chain validity, no-purge/no-marker path, and entries_checked after purge.
+- **Gate**: CI backend-test SUCCESS and frontend-test SUCCESS. Local reviewer run skipped because local Postgres was unavailable at review time; `ruff check src tests` passed, `ruff format --check src tests` passed, `git diff --check` clean.
+- **Commits**: `b77e1ea` (RED T-873), `f1d4ee7` (docs T-873).
+
+### Review and Merge Result
+
+- **PR**: #167
+- **Merged**: 2026-07-01
+- **Merge Commit**: `70bb1c7faedd4efeecc0fae34e248f5016bf8218`
+- **Tasks Completed**: T-873
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Review Result**: no blocking findings.
+
+---
+
+## Wave 18.3g — Audit Retention Status Endpoint
+
+### Dispatch
+
+- **Date**: 2026-07-01
+- **Model**: Backend Implementer
+- **T-IDs**: T-874 through T-875
+- **Branch**: `phase-6/wave-18.3g-audit-retention-status`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3f merged; purge markers, verify-chain purge-gap handling, and purge+verify integration coverage are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before product edits.
+- Use RTK for shell commands.
+- Follow TDD commit discipline: RED unit-test commit, GREEN implementation commit, docs/gate commit as needed.
+- Keep this slice to T-874 and T-875 only.
+- Implement `GET /admin/audit/retention` in `backend/src/app/api/v1/admin_audit.py`.
+- Permission: `admin.audit.verify`.
+- Response must include `retention_months` from `Settings.AUDIT_RETENTION_MONTHS`, latest purge marker timestamp as `last_purge_at` or null, and latest marker `purged_count` or null.
+- Do not display or infer external scheduler timing.
+- Do not implement scheduler docs, search/export permission sweep, retention-window tests, frontend UI, or final Wave 18.3 backend gate in this slice.
