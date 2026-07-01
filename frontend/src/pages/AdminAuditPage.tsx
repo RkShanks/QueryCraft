@@ -375,7 +375,7 @@ export const AdminAuditPage: React.FC = () => {
       {renderStatusDetails()}
 
       {/* Persistent Search Logs Panel */}
-      <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-6 ml-4">
+      <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-6">
         <h2 className="text-xl font-semibold text-white flex items-center gap-2 border-b border-gray-800 pb-3">
           <Shield className="w-5 h-5 text-neon-cyan" />
           {t('audit.search.title')}
