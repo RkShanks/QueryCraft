@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-02
-- **Branch Context**: `main` at `296b19a3b107caca96c97c5632489ec26ca39a0b`
-- **Status**: Guard review Chunk 1 COMPLETE. Backend quota guard fixes merged in PR #175. Wave 18.4a remains ON HOLD.
-- **Next Dispatch**: Guard review Chunk 2, frontend quotas from PR #156.
+- **Branch Context**: `main` at `6b342cc9d71aa13f16a822133e866f48d1c916f0`
+- **Status**: Guard review Chunk 2 COMPLETE. Frontend quota guard fixes merged in PR #176. Wave 18.4a remains ON HOLD.
+- **Next Dispatch**: Guard review Chunk 3, detection backend from PRs #157 through #160.
 - **Frontend Dispatch Hold**: active for Wave 18.4; complete guard chunks 2-8 before resuming Wave 18.4a.
 
 ---
@@ -919,3 +919,29 @@
 - **CI**: backend-test SUCCESS, frontend-test SUCCESS.
 - **Review Result**: no blocking findings after guard fixes.
 - **Wave 18.4a**: remains ON HOLD until guard chunks 2-8 complete.
+
+---
+
+## Guard Review — Chunk 2 Frontend Quotas
+
+### Results
+
+- **Date**: 2026-07-02
+- **Scope**: Frontend quotas from PR #156.
+- **Branch**: `guard/phase6-frontend-quotas-fixes`
+- **PR**: #176
+- **Merge Commit**: `6b342cc9d71aa13f16a822133e866f48d1c916f0`
+- **Status**: COMPLETE
+
+### Findings Fixed
+
+- **High**: Frontend permission gates treated legacy `role: "admin"` / `role_name: "admin"` as equivalent to explicit RBAC permissions. A quota-only local admin could enable role discovery, expose role nav links, and pass route guards, violating the invariant that only `admin.roles.manage` may call role/SSO group-mapping endpoints.
+
+### Review and Merge Result
+
+- **Fix**: added shared `hasPermission()` helper and updated `PermissionGuard`, `Sidebar`, and `AdminQuotasPage` to require explicit `permissions.includes(...)`.
+- **Regression Coverage**: added tests for legacy admin users with only `admin.quotas.manage`.
+- **Reviewer Gate**: focused quota/sidebar/role-hook/permission tests → 54 passed; locale coverage → 295 passed; `npm run lint`, `npm run typecheck`, `npm run lint:css`, `npm run build`, and `git diff --check` passed.
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS.
+- **Review Result**: no blocking findings after guard fixes.
+- **Wave 18.4a**: remains ON HOLD until guard chunks 3-8 complete.
