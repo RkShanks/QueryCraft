@@ -239,11 +239,11 @@
 
 ### Current Wave Checkpoint
 
-- **Date**: 2026-07-01
-- **Branch Context**: `main` at `ad29c60a7b1fbc322f7786a02d6d84566e8ba35f`
-- **Status**: Wave 18.3 COMPLETE. T-858 through T-891 verified complete.
-- **Next Dispatch**: Wave 18.4a backend regression/security verification, T-892, T-894, T-895.
-- **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
+- **Date**: 2026-07-02
+- **Branch Context**: `main` at `296b19a3b107caca96c97c5632489ec26ca39a0b`
+- **Status**: Guard review Chunk 1 COMPLETE. Backend quota guard fixes merged in PR #175. Wave 18.4a remains ON HOLD.
+- **Next Dispatch**: Guard review Chunk 2, frontend quotas from PR #156.
+- **Frontend Dispatch Hold**: active for Wave 18.4; complete guard chunks 2-8 before resuming Wave 18.4a.
 
 ---
 
@@ -878,7 +878,7 @@
 - **Model**: Backend Implementer
 - **T-IDs**: T-892, T-894, T-895
 - **Branch**: `phase-6/wave-18.4a-backend-regression-security`
-- **Status**: DISPATCHED
+- **Status**: DISPATCHED, then HELD pending guard-skills chunk review completion.
 - **Dependency State**: Waves 18.0 through 18.3 merged to `main`.
 
 ### Dispatch Constraints
@@ -891,3 +891,31 @@
 - Implement T-895 Phase 6 sanitization regression test for quota exceeded, hostile blocked, export limit, detection config validation, permission denied, and other Phase 6 endpoint error paths.
 - Ensure tests assert no sensitive/internal values leak: counter values, policy IDs, rule names, patterns, confidence scores, raw hostile text, DB host/port, provider names, stack traces, OIDC/SAML tokens.
 - Keep this slice backend-only. Do not run browser smoke, frontend gates, independent audits, final snapshot, or freeze docs.
+
+---
+
+## Guard Review — Chunk 1 Backend Quotas
+
+### Results
+
+- **Date**: 2026-07-02
+- **Scope**: Backend quotas from PR #155.
+- **Branch**: `guard/phase6-backend-quotas-fixes`
+- **PR**: #175
+- **Merge Commit**: `296b19a3b107caca96c97c5632489ec26ca39a0b`
+- **Status**: COMPLETE
+
+### Findings Fixed
+
+- **High**: Query quota enforcement ran after chat/session/attempt/policy side effects. Fixed in `QueryService` so non-hostile requests check query quota immediately after hostile-input detection and before chat session/attempt/LLM side effects.
+- **High**: Admin quota PUT manually parsed JSON and constructed `RoleQuotaUpsert`, bypassing shared sanitized validation. Fixed by using `validate_body(RoleQuotaUpsert)` while preserving `model_fields_set`.
+- **Mid**: Quota admin 403 integration test did not authenticate under current auth contract. Repaired test user/role setup.
+- **Mid**: Quota repository tests used fixed role names/priorities, causing DB uniqueness collisions. Repaired with generated unique names/priorities.
+- **Mid**: Execution quota integration tests used invalid `connection_id: null` and had an empty fail-closed test. Repaired connection lookup and replaced empty test with real 503 assertion.
+
+### Review and Merge Result
+
+- **Reviewer Gate**: `pytest` quota suite → 59 passed; `ruff check src tests`, `ruff format --check src tests`, and `git diff --check` passed.
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS.
+- **Review Result**: no blocking findings after guard fixes.
+- **Wave 18.4a**: remains ON HOLD until guard chunks 2-8 complete.
