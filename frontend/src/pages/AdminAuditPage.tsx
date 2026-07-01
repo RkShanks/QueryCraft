@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAdminAudit } from '../hooks/useAdminAudit';
 import { Shield, CheckCircle2, XCircle, AlertTriangle, X, RefreshCw, Download } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { searchAuditEntries, exportAuditEntries } from '../api/audit';
+import { searchAuditEntries, exportAuditEntries, getAuditRetention } from '../api/audit';
 
 interface Toast {
   id: string;
@@ -143,6 +143,11 @@ export const AdminAuditPage: React.FC = () => {
     placeholderData: (previousData) => previousData,
   });
 
+  const { data: retentionData, isLoading: isRetentionLoading, isError: isRetentionError } = useQuery({
+    queryKey: ['adminAuditRetention'],
+    queryFn: getAuditRetention,
+  });
+
   const handleVerify = () => {
     verifyMutation.mutate(undefined, {
       onSuccess: (data) => {
@@ -193,7 +198,7 @@ export const AdminAuditPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Total Log Entries Card */}
           <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-2">
             <div className="text-gray-400 text-sm font-medium">{t('admin.audit.totalEntries')}</div>
@@ -254,6 +259,39 @@ export const AdminAuditPage: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Retention Status Card */}
+          <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-2">
+            <div className="text-gray-400 text-sm font-medium">{t('audit.retention.title')}</div>
+            {isRetentionLoading ? (
+              <div className="flex justify-center py-2">
+                <RefreshCw className="w-5 h-5 text-neon-cyan animate-spin" />
+              </div>
+            ) : isRetentionError ? (
+              <div className="text-sm text-red-400">{t('admin.audit.loadError')}</div>
+            ) : retentionData ? (
+              <div className="text-xs text-gray-400 space-y-1">
+                <div>
+                  {t('audit.retention.period')}:{' '}
+                  <span className="text-white font-semibold font-mono">
+                    {t('audit.retention.months', { count: retentionData.retention_months })}
+                  </span>
+                </div>
+                <div>
+                  {t('audit.retention.last_purge')}:{' '}
+                  <span className="text-white">
+                    {retentionData.last_purge_at
+                      ? new Date(retentionData.last_purge_at).toLocaleString()
+                      : t('audit.retention.never')}
+                  </span>
+                </div>
+                <div>
+                  {t('audit.retention.purged_count')}:{' '}
+                  <span className="text-white font-mono">{retentionData.purged_count ?? 0}</span>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 

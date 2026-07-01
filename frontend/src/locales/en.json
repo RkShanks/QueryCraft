@@ -460,7 +460,13 @@
   "detection.block_threshold": "Block Threshold (0.0 - 1.0)",
   "detection.flag_threshold": "Flag Threshold (0.0 - 1.0)",
   "detection.save": "Save Configuration",
-  "detection.validation_error": "Block threshold must be greater than flag threshold"
+  "detection.validation_error": "Block threshold must be greater than flag threshold",
+  "audit.retention.title": "Audit Retention",
+  "audit.retention.period": "Retention Period",
+  "audit.retention.months": "{{count}} months",
+  "audit.retention.last_purge": "Last Purge",
+  "audit.retention.never": "Never",
+  "audit.retention.purged_count": "Purged Count"
 }
 
 

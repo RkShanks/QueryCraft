@@ -147,7 +147,7 @@ describe('AdminAuditPage', () => {
     
     // Total entries display
     expect(await screen.findByText(/Total Log Entries/i)).toBeInTheDocument();
-    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getAllByText('0')[0]).toBeInTheDocument();
 
     // Never verified status
     expect(screen.getByText(/Never verified/i)).toBeInTheDocument();
@@ -682,11 +682,11 @@ describe('AdminAuditPage', () => {
       render(<AdminAuditPage />, { wrapper: createWrapper() });
 
       expect(await screen.findByText('Audit Retention')).toBeInTheDocument();
-      expect(screen.getByText('Retention Period')).toBeInTheDocument();
+      expect(screen.getByText(/Retention Period/)).toBeInTheDocument();
       expect(screen.getByText('24 months')).toBeInTheDocument();
-      expect(screen.getByText('Last Purge')).toBeInTheDocument();
-      expect(screen.getByText(/2026-06-01/)).toBeInTheDocument();
-      expect(screen.getByText('Purged Count')).toBeInTheDocument();
+      expect(screen.getByText(/Last Purge/)).toBeInTheDocument();
+      expect(screen.getByText(/(2026-06-01|6\/1\/2026|01\/06\/2026|1\/6\/2026|6\/1\/26)/)).toBeInTheDocument();
+      expect(screen.getByText(/Purged Count/)).toBeInTheDocument();
       expect(screen.getByText('500')).toBeInTheDocument();
     });
 
@@ -737,9 +737,9 @@ describe('AdminAuditPage', () => {
       render(<AdminAuditPage />, { wrapper: createWrapper() });
 
       expect(await screen.findByText('حفظ سجلات التدقيق')).toBeInTheDocument();
-      expect(screen.getByText('فترة الحفظ')).toBeInTheDocument();
+      expect(screen.getByText(/فترة الحفظ/)).toBeInTheDocument();
       expect(screen.getByText('24 شهر')).toBeInTheDocument();
-      expect(screen.getByText('آخر تطهير')).toBeInTheDocument();
+      expect(screen.getByText(/آخر تطهير/)).toBeInTheDocument();
       expect(screen.getByText('أبداً')).toBeInTheDocument();
     });
   });
