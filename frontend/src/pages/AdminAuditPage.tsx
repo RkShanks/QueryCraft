@@ -81,7 +81,7 @@ export const AdminAuditPage: React.FC = () => {
     });
   };
 
-  const searchParams: any = {
+  const searchParams: Record<string, unknown> = {
     page,
     page_size: 10,
   };
@@ -338,7 +338,7 @@ export const AdminAuditPage: React.FC = () => {
               id="action_type"
               value={actionType}
               onChange={(e) => setActionType(e.target.value)}
-              placeholder="e.g. query.submit"
+              placeholder={t('audit.search.placeholder.action_type')}
               className="bg-gray-950 border border-gray-800 text-white rounded-md px-3 py-2 focus:outline-none focus:border-neon-cyan text-sm w-full placeholder:text-gray-600"
             />
           </div>
@@ -353,7 +353,7 @@ export const AdminAuditPage: React.FC = () => {
               id="actor_identity"
               value={actorIdentity}
               onChange={(e) => setActorIdentity(e.target.value)}
-              placeholder="e.g. user@example.com"
+              placeholder={t('audit.search.placeholder.actor')}
               className="bg-gray-950 border border-gray-800 text-white rounded-md px-3 py-2 focus:outline-none focus:border-neon-cyan text-sm w-full placeholder:text-gray-600"
             />
           </div>
@@ -385,7 +385,7 @@ export const AdminAuditPage: React.FC = () => {
               id="resource_type"
               value={resourceType}
               onChange={(e) => setResourceType(e.target.value)}
-              placeholder="e.g. database"
+              placeholder={t('audit.search.placeholder.resource_type')}
               className="bg-gray-950 border border-gray-800 text-white rounded-md px-3 py-2 focus:outline-none focus:border-neon-cyan text-sm w-full placeholder:text-gray-600"
             />
           </div>

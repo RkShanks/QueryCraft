@@ -28,7 +28,7 @@ describe('audit API client', () => {
   it('should export audit entries', async () => {
     server.use(
       http.post('/api/v1/admin/audit/export', async ({ request }) => {
-        const body = await request.json() as any;
+        const body = (await request.json()) as Record<string, unknown>;
         expect(body.format).toBe('csv');
         return new HttpResponse('csv,data', {
           headers: { 'Content-Type': 'text/csv' },

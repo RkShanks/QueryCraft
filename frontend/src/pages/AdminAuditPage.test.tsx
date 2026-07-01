@@ -9,7 +9,7 @@ const mockLanguageState = { language: 'en' };
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: unknown) => {
       const translations: Record<string, Record<string, string>> = {
         en: {
           'admin.audit.title': 'Tamper-Evident Audit Log Verification',
@@ -85,8 +85,9 @@ vi.mock('react-i18next', () => ({
 
       const lang = mockLanguageState.language;
       let val = translations[lang]?.[key] || key;
-      if (options && typeof options === 'object') {
-        val = val.replace(/\{\{(\w+)\}\}/g, (_, match) => String(options[match] ?? `{{${match}}}`));
+      const opts = options as Record<string, unknown> | undefined;
+      if (opts) {
+        val = val.replace(/\{\{(\w+)\}\}/g, (_, match) => String(opts[match] ?? `{{${match}}}`));
       }
       return val;
     },
@@ -327,7 +328,7 @@ describe('AdminAuditPage', () => {
     });
 
     it('submits search filters correctly to GET /admin/audit/entries', async () => {
-      let requestedParams: Record<string, string> = {};
+      const requestedParams: Record<string, string> = {};
       server.use(
         http.get('/api/v1/admin/audit/entries', ({ request }) => {
           const url = new URL(request.url);

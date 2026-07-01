@@ -19,7 +19,7 @@ export interface AuditEntry {
   resource_type: string | null;
   resource_id: string | null;
   outcome: string;
-  context: Record<string, any>;
+  context: Record<string, unknown>;
 }
 
 export interface AuditSearchResponse {
@@ -51,7 +51,7 @@ export interface AuditRetentionResponse {
 export async function searchAuditEntries(params: AuditSearchParams): Promise<AuditSearchResponse> {
   const res = await client.get({
     url: '/admin/audit/entries',
-    query: params as any,
+    query: params as Record<string, unknown>,
     throwOnError: true,
   });
   return res.data as AuditSearchResponse;
