@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../stores/uiStore';
 import { useSessionsList } from '../../hooks/useSessions';
 import { useSignOut, useCurrentUser } from '../../hooks/useAuth';
+import { hasPermission } from '../../auth/permissions';
 import { SessionItem } from './SessionItem';
 import { UndoToast, type UndoToastItem } from './UndoToast';
 import { Shield } from 'lucide-react';
@@ -61,30 +62,11 @@ export const Sidebar: React.FC = () => {
   const { data: userResponse } = useCurrentUser();
   const user = userResponse?.data;
 
-  const hasConnectionsPermission =
-    user?.role === 'admin' ||
-    user?.role_name === 'admin' ||
-    user?.permissions?.includes('admin.connections.manage');
-
-  const hasRolesPermission =
-    user?.role === 'admin' ||
-    user?.role_name === 'admin' ||
-    user?.permissions?.includes('admin.roles.manage');
-
-  const hasAuditPermission =
-    user?.role === 'admin' ||
-    user?.role_name === 'admin' ||
-    user?.permissions?.includes('admin.audit.verify');
-
-  const hasQuotasPermission =
-    user?.role === 'admin' ||
-    user?.role_name === 'admin' ||
-    user?.permissions?.includes('admin.quotas.manage');
-
-  const hasSecurityPermission =
-    user?.role === 'admin' ||
-    user?.role_name === 'admin' ||
-    user?.permissions?.includes('admin.security.manage');
+  const hasConnectionsPermission = hasPermission(user, 'admin.connections.manage');
+  const hasRolesPermission = hasPermission(user, 'admin.roles.manage');
+  const hasAuditPermission = hasPermission(user, 'admin.audit.verify');
+  const hasQuotasPermission = hasPermission(user, 'admin.quotas.manage');
+  const hasSecurityPermission = hasPermission(user, 'admin.security.manage');
 
 
   const { data, isLoading } = useSessionsList();

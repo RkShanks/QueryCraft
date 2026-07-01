@@ -4,6 +4,7 @@ import { useCurrentUser } from '../hooks/useAuth';
 import { useAdminRoles } from '../hooks/useAdminRoles';
 import { useAdminQuotas } from '../hooks/useAdminQuotas';
 import type { RoleQuotaConfig, RoleQuotaUpsert, QuotaDimensionStatus } from '../api/quotas';
+import { hasPermission } from '../auth/permissions';
 import { Shield, RefreshCw, Trash2, Edit2, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
 
 interface Toast {
@@ -74,10 +75,7 @@ export const AdminQuotasPage: React.FC = () => {
   const { data: userResponse } = useCurrentUser();
   const user = userResponse?.data;
 
-  const hasRolesPermission =
-    user?.role === 'admin' ||
-    user?.role_name === 'admin' ||
-    user?.permissions?.includes('admin.roles.manage');
+  const hasRolesPermission = hasPermission(user, 'admin.roles.manage');
 
   // 2. Fetch roles only if permitted
   const rolesQuery = useAdminRoles({

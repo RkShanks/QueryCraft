@@ -301,7 +301,7 @@ describe('Sidebar', () => {
       data: {
         data: {
           id: 'user-quotas',
-          role: 'member',
+          role: 'admin',
           permissions: ['admin.quotas.manage'],
         },
       },
@@ -369,4 +369,3 @@ describe('Sidebar', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/admin/detection');
   });
 });
-

@@ -122,9 +122,9 @@ describe('AdminQuotasPage', () => {
     expect(uncappedElements.length).toBeGreaterThan(0);
   });
 
-  it('missing roles permission: does NOT call useAdminRoles, lists only configured quota rows, renders discovery warning', () => {
+  it('missing roles permission: does not enable role discovery, lists only configured quota rows, renders discovery warning', () => {
     vi.mocked(useCurrentUser).mockReturnValue({
-      data: { data: { role: 'custom', permissions: ['admin.quotas.manage'] } }, // No admin.roles.manage
+      data: { data: { role: 'admin', permissions: ['admin.quotas.manage'] } },
       isLoading: false,
     } as any);
     
