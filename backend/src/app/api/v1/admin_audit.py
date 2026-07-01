@@ -259,6 +259,69 @@ async def get_audit_status(
     }
 
 
+async def _get_latest_purge_marker(db: AsyncSession) -> AuditLogEntry | None:
+    """Return the most recent ``audit.purge`` marker row, or None.
+
+    Extracted as a module-level coroutine so unit tests can patch it
+    without requiring a live database.
+    """
+    result = await db.execute(
+        select(AuditLogEntry)
+        .where(AuditLogEntry.action_type == str(AuditActionType.AUDIT_PURGE))
+        .order_by(AuditLogEntry.sequence_number.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+@router.get("/retention")
+async def get_audit_retention(
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    _session: dict = Depends(require_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
+):
+    """GET /admin/audit/retention — return retention policy and last purge summary.
+
+    Permission: ``admin.audit.verify``.
+
+    Response 200::
+
+        {
+          "retention_months": 24,
+          "last_purge_at": "2026-06-01T03:00:00+00:00",  # or null
+          "purged_count": 1500                            # or null
+        }
+
+    Fields:
+      - ``retention_months``: the configured minimum retention window from
+        ``Settings.AUDIT_RETENTION_MONTHS`` (FR-142).
+      - ``last_purge_at``: ISO-8601 timestamp of the most recent
+        ``audit.purge`` marker row, or ``null`` when no purge has run.
+      - ``purged_count``: the ``purged_count`` value stored in the most
+        recent ``audit.purge`` marker context, or ``null`` when no purge
+        has run.
+
+    Scheduler timing (e.g. next_purge_at, cron schedule) is deliberately
+    excluded — it is an external operational concern, not surfaced here.
+    """
+    settings = get_settings()
+    retention_months: int = settings.AUDIT_RETENTION_MONTHS
+
+    latest_purge = await _get_latest_purge_marker(db)
+
+    last_purge_at: str | None = None
+    purged_count: int | None = None
+    if latest_purge is not None:
+        last_purge_at = latest_purge.timestamp.isoformat()
+        ctx: dict[str, Any] = dict(latest_purge.context or {})
+        purged_count = ctx.get("purged_count")
+
+    return {
+        "retention_months": retention_months,
+        "last_purge_at": last_purge_at,
+        "purged_count": purged_count,
+    }
+
+
 @router.get("/entries")
 async def search_audit_entries(
     request: Request,

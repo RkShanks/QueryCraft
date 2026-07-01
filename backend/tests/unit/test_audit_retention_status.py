@@ -33,7 +33,6 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Helpers — identical session / app factory pattern from test_audit_endpoints.py
 # ---------------------------------------------------------------------------
@@ -108,15 +107,16 @@ class TestRetentionPermissionEnforcement:
     """GET /admin/audit/retention requires admin.audit.verify permission."""
 
     @pytest.mark.asyncio
-    async def test_no_session_returns_403(self):
+    async def test_no_session_returns_401(self):
+        """No session → require_permission raises 401 unauthorized."""
         app = _make_app(None)
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.get("/api/v1/admin/audit/retention")
-        assert response.status_code == 403
+        assert response.status_code == 401
         data = response.json()
-        assert data["error"] == "forbidden"
-        assert data["message_key"] == "error.forbidden"
+        assert data["error"] == "unauthorized"
+        assert data["message_key"] == "error.unauthorized"
 
     @pytest.mark.asyncio
     async def test_insufficient_permission_returns_403(self):
@@ -147,9 +147,7 @@ class TestRetentionResponseNoPurge:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
 
-        with patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn, patch(
-            "app.core.dependencies.get_db"
-        ):
+        with patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn, patch("app.core.dependencies.get_db"):
             mock_settings = MagicMock()
             mock_settings.AUDIT_RETENTION_MONTHS = 24
             mock_settings_fn.return_value = mock_settings
@@ -173,9 +171,12 @@ class TestRetentionResponseNoPurge:
         """retention_months must come from Settings.AUDIT_RETENTION_MONTHS."""
         app = _make_app(_admin_session())
 
-        with patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn, patch(
-            "app.api.v1.admin_audit._get_latest_purge_marker",
-            new=AsyncMock(return_value=None),
+        with (
+            patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn,
+            patch(
+                "app.api.v1.admin_audit._get_latest_purge_marker",
+                new=AsyncMock(return_value=None),
+            ),
         ):
             mock_settings = MagicMock()
             mock_settings.AUDIT_RETENTION_MONTHS = 36
@@ -213,9 +214,12 @@ class TestRetentionResponseWithPurge:
 
         app = _make_app(_admin_session())
 
-        with patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn, patch(
-            "app.api.v1.admin_audit._get_latest_purge_marker",
-            new=AsyncMock(return_value=marker),
+        with (
+            patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn,
+            patch(
+                "app.api.v1.admin_audit._get_latest_purge_marker",
+                new=AsyncMock(return_value=marker),
+            ),
         ):
             mock_settings = MagicMock()
             mock_settings.AUDIT_RETENTION_MONTHS = 24
@@ -237,9 +241,12 @@ class TestRetentionResponseWithPurge:
 
         app = _make_app(_admin_session())
 
-        with patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn, patch(
-            "app.api.v1.admin_audit._get_latest_purge_marker",
-            new=AsyncMock(return_value=marker),
+        with (
+            patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn,
+            patch(
+                "app.api.v1.admin_audit._get_latest_purge_marker",
+                new=AsyncMock(return_value=marker),
+            ),
         ):
             mock_settings = MagicMock()
             mock_settings.AUDIT_RETENTION_MONTHS = 24
@@ -261,9 +268,12 @@ class TestRetentionResponseWithPurge:
 
         app = _make_app(_admin_session())
 
-        with patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn, patch(
-            "app.api.v1.admin_audit._get_latest_purge_marker",
-            new=AsyncMock(return_value=marker),
+        with (
+            patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn,
+            patch(
+                "app.api.v1.admin_audit._get_latest_purge_marker",
+                new=AsyncMock(return_value=marker),
+            ),
         ):
             mock_settings = MagicMock()
             mock_settings.AUDIT_RETENTION_MONTHS = 24
@@ -298,9 +308,12 @@ class TestRetentionNoSchedulerInfo:
 
         app = _make_app(_admin_session())
 
-        with patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn, patch(
-            "app.api.v1.admin_audit._get_latest_purge_marker",
-            new=AsyncMock(return_value=marker),
+        with (
+            patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn,
+            patch(
+                "app.api.v1.admin_audit._get_latest_purge_marker",
+                new=AsyncMock(return_value=marker),
+            ),
         ):
             mock_settings = MagicMock()
             mock_settings.AUDIT_RETENTION_MONTHS = 24
@@ -313,9 +326,7 @@ class TestRetentionNoSchedulerInfo:
         assert response.status_code == 200
         data = response.json()
         for forbidden_key in ("next_purge_at", "schedule", "interval", "cron"):
-            assert forbidden_key not in data, (
-                f"Scheduler field {forbidden_key!r} must not appear in retention response"
-            )
+            assert forbidden_key not in data, f"Scheduler field {forbidden_key!r} must not appear in retention response"
 
 
 # ---------------------------------------------------------------------------
@@ -336,9 +347,12 @@ class TestRetentionPurgedCountZero:
 
         app = _make_app(_admin_session())
 
-        with patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn, patch(
-            "app.api.v1.admin_audit._get_latest_purge_marker",
-            new=AsyncMock(return_value=marker),
+        with (
+            patch("app.api.v1.admin_audit.get_settings") as mock_settings_fn,
+            patch(
+                "app.api.v1.admin_audit._get_latest_purge_marker",
+                new=AsyncMock(return_value=marker),
+            ),
         ):
             mock_settings = MagicMock()
             mock_settings.AUDIT_RETENTION_MONTHS = 24
