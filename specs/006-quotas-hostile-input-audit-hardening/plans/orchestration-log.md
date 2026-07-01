@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-01
-- **Branch Context**: `main` at `651989efad1b1400d3cce5c0a0eefa4ef7a58ea5`
-- **Status**: Wave 18.3k COMPLETE. T-882 through T-883 verified complete.
-- **Next Dispatch**: Wave 18.3l frontend audit retention panel, T-884 through T-885.
+- **Branch Context**: `main` at `49b4ecbb9e82c443dd404ab618b2d7029d6b65d0`
+- **Status**: Wave 18.3l COMPLETE. T-884 through T-885 verified complete.
+- **Next Dispatch**: Wave 18.3m frontend i18n/RTL/final gates, T-887 through T-891.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -807,3 +807,45 @@
 - Add Arabic locale test for retention panel labels/content.
 - Add only retention-specific EN/AR locale keys needed by this slice; do not mark T-887/T-888 complete unless the full listed Wave 18.3 locale task is implemented.
 - Do not implement full locale task (T-887/T-888), i18n gate (T-889), RTL sweep (T-890), or frontend gate (T-891) in this slice.
+
+### Results
+
+- **T-884** ✅ RED component tests — `frontend/src/pages/AdminAuditPage.test.tsx` covers retention panel values, no-purge "Never" state, and Arabic retention labels/content.
+- **T-885** ✅ Retention status panel — `frontend/src/pages/AdminAuditPage.tsx` uses `getAuditRetention()` to display retention period, last purge timestamp or localized "Never", and purged count.
+- **Locales**: added EN/AR parity for retention-only keys; T-887/T-888 remain open for full Wave 18.3 locale closure.
+- **MSW**: added default `/api/v1/admin/audit/retention` handler to reduce unrelated test noise.
+- **Gate**: reviewer reran `npm test -- --run AdminAuditPage` → 18 passed; `npm run lint`, `npm run typecheck`, `npm run build`, `npm run lint:css`, and `git diff --check` all passed. CI backend-test and frontend-test both SUCCESS.
+- **Commits**: `d0ea742` (RED T-884), `c89ca4b` (GREEN T-885), `728af80` (docs T-884/T-885).
+
+### Review and Merge Result
+
+- **PR**: #173
+- **Merged**: 2026-07-01
+- **Merge Commit**: `49b4ecbb9e82c443dd404ab618b2d7029d6b65d0`
+- **Tasks Completed**: T-884 through T-885
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Review Result**: no blocking findings.
+
+---
+
+## Wave 18.3m — Frontend Audit i18n, RTL, and Gates
+
+### Dispatch
+
+- **Date**: 2026-07-01
+- **Model**: Frontend Implementer
+- **T-IDs**: T-887 through T-891
+- **Branch**: `phase-6/wave-18.3m-audit-frontend-gate`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3l merged; audit search, export controls, retention panel, and all incremental locale keys are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/IMPLEMENTER.md`, `.agents/skills/FRONTEND_GEMINI.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before edits.
+- Use RTK for shell commands.
+- Keep this slice to T-887 through T-891 only.
+- Verify and complete full Wave 18.3 EN/AR locale keys listed in T-887/T-888; many keys already exist from Waves 18.3j through 18.3l, so avoid duplicate keys and only add missing keys if any.
+- Run and, if needed, fix i18n key parity coverage for `cd frontend && npm test -- --run locales/localeCoverage`.
+- Add RTL audit check for search/export/retention UI per T-890. Assert Arabic `dir="rtl"` rendering and no physical directional classes/properties in the relevant rendered audit UI.
+- Run final frontend gate T-891: full frontend tests, lint, typecheck, build, CSS lint, and diff check.
+- Do not implement backend work or new audit features beyond i18n/RTL/gate closure.
