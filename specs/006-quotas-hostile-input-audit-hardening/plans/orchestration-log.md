@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-01
-- **Branch Context**: `main` at `b12f13f8c08698b1281ec4cec8c2cab15532ebca`
-- **Status**: Wave 18.3j COMPLETE. T-886 and T-880 through T-881 verified complete.
-- **Next Dispatch**: Wave 18.3k frontend audit export controls, T-882 through T-883.
+- **Branch Context**: `main` at `651989efad1b1400d3cce5c0a0eefa4ef7a58ea5`
+- **Status**: Wave 18.3k COMPLETE. T-882 through T-883 verified complete.
+- **Next Dispatch**: Wave 18.3l frontend audit retention panel, T-884 through T-885.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -765,3 +765,45 @@
 - Handle 429 quota-exceeded response with localized quota error.
 - Add only export-specific EN/AR locale keys needed by this slice; do not mark T-887/T-888 complete unless the full listed Wave 18.3 locale task is implemented.
 - Do not implement retention panel (T-884/T-885), full locale task (T-887/T-888), i18n gate (T-889), RTL sweep (T-890), or frontend gate (T-891) in this slice.
+
+### Results
+
+- **T-882** ✅ RED component tests — `frontend/src/pages/AdminAuditPage.test.tsx` covers CSV/JSON export requests with current filters, download path, 422 limit toast, and 429 quota toast.
+- **T-883** ✅ Export controls — `frontend/src/pages/AdminAuditPage.tsx` adds CSV/JSON buttons, uses `exportAuditEntries`, triggers Blob download with safe filename, and maps export/quota errors to localized toasts.
+- **Locales**: added EN/AR parity for export-only keys; T-887/T-888 remain open.
+- **Gate**: reviewer reran `npm test -- --run AdminAuditPage` → 15 passed; `npm run lint`, `npm run typecheck`, `npm run build`, `npm run lint:css`, and `git diff --check` all passed. CI backend-test and frontend-test both SUCCESS.
+- **Commits**: `befb318` (RED T-882), `18015b2` (GREEN T-883), `4eec60b` (docs T-882/T-883).
+
+### Review and Merge Result
+
+- **PR**: #172
+- **Merged**: 2026-07-01
+- **Merge Commit**: `651989efad1b1400d3cce5c0a0eefa4ef7a58ea5`
+- **Tasks Completed**: T-882 through T-883
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Review Result**: no blocking findings.
+
+---
+
+## Wave 18.3l — Frontend Audit Retention Panel
+
+### Dispatch
+
+- **Date**: 2026-07-01
+- **Model**: Frontend Implementer
+- **T-IDs**: T-884 through T-885
+- **Branch**: `phase-6/wave-18.3l-audit-retention-panel`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3k merged; audit API client, search UI, and export controls are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/IMPLEMENTER.md`, `.agents/skills/FRONTEND_GEMINI.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before edits.
+- Use RTK for shell commands.
+- Follow frontend TDD: RED component tests, GREEN implementation, docs/gate commit as needed.
+- Keep this slice to retention status display only: T-884 and T-885.
+- Add retention status panel to `AdminAuditPage`; connect to `GET /admin/audit/retention` using existing `getAuditRetention()`.
+- Display `retention_months`, `last_purge_at` formatted datetime or localized “Never”, and `purged_count`.
+- Add Arabic locale test for retention panel labels/content.
+- Add only retention-specific EN/AR locale keys needed by this slice; do not mark T-887/T-888 complete unless the full listed Wave 18.3 locale task is implemented.
+- Do not implement full locale task (T-887/T-888), i18n gate (T-889), RTL sweep (T-890), or frontend gate (T-891) in this slice.
