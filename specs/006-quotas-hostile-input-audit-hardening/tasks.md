@@ -311,7 +311,7 @@ SC-068, SC-069, SC-070, SC-072, SC-073, SC-074, SC-075, SC-077
 
 - [X] T-890 [P] Write RTL check for audit search/export/retention UI: render AdminAuditPage with Arabic locale and `dir="rtl"`; assert no physical directional CSS properties in rendered output; assert filter form and table are RTL-correct. Depends on T-885, T-888. **Dispatch: FE**
 
-- [ ] T-891 Frontend gates Wave 18.3: `cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build && npm run lint:css && git diff --check`. Depends on T-889, T-890, T-883, T-885. **Dispatch: FE**
+- [X] T-891 Frontend gates Wave 18.3: `cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build && npm run lint:css && git diff --check`. Depends on T-889, T-890, T-883, T-885. **Dispatch: FE**
 
 
 ---
