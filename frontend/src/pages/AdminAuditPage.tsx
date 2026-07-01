@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminAudit } from '../hooks/useAdminAudit';
-import { Shield, CheckCircle2, XCircle, AlertTriangle, X, RefreshCw } from 'lucide-react';
+import { Shield, CheckCircle2, XCircle, AlertTriangle, X, RefreshCw, Download } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { searchAuditEntries } from '../api/audit';
+import { searchAuditEntries, exportAuditEntries } from '../api/audit';
 
 interface Toast {
   id: string;
@@ -31,6 +31,51 @@ export const AdminAuditPage: React.FC = () => {
   };
 
   const { statusQuery, verifyMutation } = useAdminAudit();
+
+  const [isExporting, setIsExporting] = useState<'csv' | 'json' | null>(null);
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    setIsExporting(format);
+    try {
+      const blob = await exportAuditEntries({
+        format,
+        start_date: filters.start_date || undefined,
+        end_date: filters.end_date || undefined,
+        action_type: filters.action_type || undefined,
+        actor_identity: filters.actor_identity || undefined,
+        outcome: filters.outcome || undefined,
+        resource_type: filters.resource_type || undefined,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.setAttribute('download', `audit_export_${timestamp}.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      const errorObj = err as Record<string, unknown> | undefined;
+      const messageKey = (errorObj?.message_key as string) || (errorObj?.detail as Record<string, unknown>)?.message_key as string;
+      const isQuotaExceeded =
+        messageKey === 'error.quota_exceeded' ||
+        errorObj?.status === 429 ||
+        errorObj?.status_code === 429 ||
+        (errorObj?.detail as Record<string, unknown>)?.status === 429;
+
+      if (messageKey === 'error.export_limit_exceeded') {
+        addToast('error', t('audit.export.limit_exceeded'));
+      } else if (isQuotaExceeded) {
+        addToast('error', t('audit.export.quota_exceeded'));
+      } else {
+        addToast('error', t('error.unknown.message'));
+      }
+    } finally {
+      setIsExporting(null);
+    }
+  };
 
   // Search Filter Form States
   const [startDate, setStartDate] = useState('');
@@ -398,6 +443,32 @@ export const AdminAuditPage: React.FC = () => {
               className="px-4 py-2 border border-gray-800 text-gray-300 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer"
             >
               {t('audit.search.reset')}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExport('csv')}
+              disabled={isExporting !== null}
+              className="px-4 py-2 border border-gray-800 text-gray-300 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isExporting === 'csv' ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {t('audit.export.csv')}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleExport('json')}
+              disabled={isExporting !== null}
+              className="px-4 py-2 border border-gray-800 text-gray-300 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isExporting === 'json' ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {t('audit.export.json')}
             </button>
             <button
               type="submit"

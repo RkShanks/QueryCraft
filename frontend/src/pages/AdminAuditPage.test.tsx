@@ -517,11 +517,11 @@ describe('AdminAuditPage', () => {
     });
 
     it('triggers CSV export with current search filters on Export CSV click', async () => {
-      let exportBody: any = null;
+      let exportBody: unknown = null;
       server.use(
         http.post('/api/v1/admin/audit/export', async ({ request }) => {
           exportBody = await request.json();
-          return new HttpResponse(new Blob(['col1,col2\nval1,val2']), {
+          return HttpResponse.text('col1,col2\nval1,val2', {
             status: 200,
             headers: {
               'Content-Type': 'text/csv',
@@ -568,11 +568,11 @@ describe('AdminAuditPage', () => {
     });
 
     it('triggers JSON export with current search filters on Export JSON click', async () => {
-      let exportBody: any = null;
+      let exportBody: unknown = null;
       server.use(
         http.post('/api/v1/admin/audit/export', async ({ request }) => {
           exportBody = await request.json();
-          return new HttpResponse(new Blob(['{}']), {
+          return HttpResponse.text('{}', {
             status: 200,
             headers: {
               'Content-Type': 'application/json',
