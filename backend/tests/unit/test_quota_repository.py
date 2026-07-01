@@ -16,6 +16,14 @@ from app.repositories.quota_repository import QuotaRepository
 from app.schemas.quota import RoleQuotaUpsert
 
 
+def _role_name(base: str, role_id: uuid.UUID) -> str:
+    return f"{base}-{role_id.hex[:12]}"
+
+
+def _role_priority(role_id: uuid.UUID) -> int:
+    return 100_000 + role_id.int % 900_000_000
+
+
 class TestQuotaRepositoryGet:
     """QuotaRepository.get() returns RoleQuota or None."""
 
@@ -32,9 +40,9 @@ class TestQuotaRepositoryGet:
 
         role = Role(
             id=role_id,
-            name="TestRole",
+            name=_role_name("TestRole", role_id),
             description="test",
-            priority=100,
+            priority=_role_priority(role_id),
             permissions=["query.submit"],
         )
         db_session.add(role)
@@ -61,9 +69,9 @@ class TestQuotaRepositoryUpsert:
 
         role = Role(
             id=role_id,
-            name="NewRole",
+            name=_role_name("NewRole", role_id),
             description="test",
-            priority=101,
+            priority=_role_priority(role_id),
             permissions=["query.submit"],
         )
         db_session.add(role)
@@ -86,9 +94,9 @@ class TestQuotaRepositoryUpsert:
 
         role = Role(
             id=role_id,
-            name="ExistingRole",
+            name=_role_name("ExistingRole", role_id),
             description="test",
-            priority=102,
+            priority=_role_priority(role_id),
             permissions=["query.submit"],
         )
         db_session.add(role)
@@ -112,9 +120,9 @@ class TestQuotaRepositoryUpsert:
 
         role = Role(
             id=role_id,
-            name="NullFieldsRole",
+            name=_role_name("NullFieldsRole", role_id),
             description="test",
-            priority=103,
+            priority=_role_priority(role_id),
             permissions=["query.submit"],
         )
         db_session.add(role)
@@ -139,9 +147,9 @@ class TestQuotaRepositoryDelete:
 
         role = Role(
             id=role_id,
-            name="DeleteRole",
+            name=_role_name("DeleteRole", role_id),
             description="test",
-            priority=104,
+            priority=_role_priority(role_id),
             permissions=["query.submit"],
         )
         db_session.add(role)
@@ -175,9 +183,9 @@ class TestQuotaRepositoryUpsertUncap:
 
         role = Role(
             id=role_id,
-            name="UncapRole",
+            name=_role_name("UncapRole", role_id),
             description="test",
-            priority=110,
+            priority=_role_priority(role_id),
             permissions=["query.submit"],
         )
         db_session.add(role)
@@ -202,9 +210,9 @@ class TestQuotaRepositoryUpsertUncap:
 
         role = Role(
             id=role_id,
-            name="PartialUncapRole",
+            name=_role_name("PartialUncapRole", role_id),
             description="test",
-            priority=111,
+            priority=_role_priority(role_id),
             permissions=["query.submit"],
         )
         db_session.add(role)
@@ -235,14 +243,14 @@ class TestQuotaRepositoryListAll:
         from app.db.models.role import Role
 
         role_ids = []
-        for i, prio in enumerate([200, 201], start=1):
+        for i in range(1, 3):
             role_id = uuid.uuid4()
             role_ids.append(role_id)
             role = Role(
                 id=role_id,
-                name=f"ListRole{i}",
+                name=_role_name(f"ListRole{i}", role_id),
                 description="test",
-                priority=prio,
+                priority=_role_priority(role_id),
                 permissions=["query.submit"],
             )
             db_session.add(role)

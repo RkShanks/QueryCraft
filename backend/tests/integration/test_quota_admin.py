@@ -32,10 +32,32 @@ class TestQuotaAdminList:
             await conn.execute(
                 text(
                     """
-                    INSERT INTO users (username, display_name, password_hash, role)
-                    VALUES ('quota_no_perms', 'No Perms', :pwd, 'user')
+                    INSERT INTO roles (name, description, priority, permissions, is_builtin)
+                    VALUES (
+                        'QuotaNoPermsRole',
+                        'Quota test role without quota permission',
+                        9101,
+                        '["query.submit"]'::jsonb,
+                        false
+                    )
+                    ON CONFLICT (name) DO UPDATE SET
+                        permissions = EXCLUDED.permissions,
+                        updated_at = now()
+                    """
+                )
+            )
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO users (username, display_name, password_hash, role, role_id, auth_provider)
+                    SELECT 'quota_no_perms', 'No Perms', :pwd, 'admin', id, 'local'
+                    FROM roles
+                    WHERE name = 'QuotaNoPermsRole'
                     ON CONFLICT (username) DO UPDATE SET
                         password_hash = EXCLUDED.password_hash,
+                        role = EXCLUDED.role,
+                        role_id = EXCLUDED.role_id,
+                        auth_provider = EXCLUDED.auth_provider,
                         updated_at = now()
                     """
                 ),
@@ -95,6 +117,30 @@ class TestQuotaAdminPut:
         data = response.json()
         assert data["daily_query_limit"] == 15
         assert data["daily_execution_limit"] == 30
+
+    @pytest.mark.asyncio
+    async def test_put_rejects_invalid_limit_with_sanitized_validation_error(
+        self, authenticated_client, async_engine_fixture
+    ):
+        from sqlalchemy import text
+
+        async with async_engine_fixture.connect() as conn:
+            result = await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
+            row = result.fetchone()
+            role_id = str(row[0])
+
+        response = await authenticated_client.put(
+            f"/api/v1/admin/quotas/{role_id}",
+            json={"daily_query_limit": -1},
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert data["error"] == "validation"
+        assert data["message_key"] == "error.validation.generic"
+        assert "details" in data
+        assert "daily_query_limit" in {detail["field"] for detail in data["details"]}
+        assert "stack" not in data
 
 
 class TestQuotaAdminDelete:
