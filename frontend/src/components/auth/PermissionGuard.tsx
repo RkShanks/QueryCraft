@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useCurrentUser } from '../../hooks/useAuth';
+import { hasPermission } from '../../auth/permissions';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -26,12 +27,7 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({ children, perm
     return <Navigate to="/sign-in" replace />;
   }
 
-  const hasPermission =
-    user.role === 'admin' ||
-    user.role_name === 'admin' ||
-    user.permissions?.includes(permission);
-
-  if (!hasPermission) {
+  if (!hasPermission(user, permission)) {
     return <Navigate to="/" replace />;
   }
 

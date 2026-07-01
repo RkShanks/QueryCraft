@@ -81,7 +81,7 @@ describe('PermissionGuard', () => {
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
   });
 
-  it('renders children if user is an admin by role (bypass check)', () => {
+  it('redirects legacy admin user without the specific permission', () => {
     vi.mocked(useCurrentUser).mockReturnValue({
       data: {
         data: {
@@ -94,14 +94,23 @@ describe('PermissionGuard', () => {
     } as any);
 
     render(
-      <MemoryRouter>
-        <PermissionGuard permission="admin.roles.manage">
-          <div>Protected Content</div>
-        </PermissionGuard>
+      <MemoryRouter initialEntries={['/protected']}>
+        <Routes>
+          <Route
+            path="/protected"
+            element={
+              <PermissionGuard permission="admin.roles.manage">
+                <div>Protected Content</div>
+              </PermissionGuard>
+            }
+          />
+          <Route path="/" element={<div>Home Page</div>} />
+        </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    expect(screen.getByText('Home Page')).toBeInTheDocument();
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 
   it('redirects to home if user is logged in but lacks the permission', () => {
