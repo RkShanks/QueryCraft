@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-01
-- **Branch Context**: `main` at `279cdbcee336ef8eed2997e8f9ab5412c1b8903c`
-- **Status**: Wave 18.3 backend COMPLETE. T-858 through T-879 verified complete.
-- **Next Dispatch**: Wave 18.3j frontend audit API + search UI, T-886 and T-880 through T-881.
+- **Branch Context**: `main` at `b12f13f8c08698b1281ec4cec8c2cab15532ebca`
+- **Status**: Wave 18.3j COMPLETE. T-886 and T-880 through T-881 verified complete.
+- **Next Dispatch**: Wave 18.3k frontend audit export controls, T-882 through T-883.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -721,3 +721,47 @@
 - T-880/T-881: extend `AdminAuditPage` tests and UI for search/filter form, GET `/admin/audit/entries` query params, paginated results table, next/prev page controls, and Arabic/RTL layout for the search/table surface.
 - If new locale keys are needed for this slice, add EN/AR parity for only those keys, but do not mark T-887/T-888 complete unless the full listed Wave 18.3 locale task is implemented.
 - Do not implement export controls (T-882/T-883), retention panel (T-884/T-885), full Wave 18.3 locale task (T-887/T-888), i18n gate (T-889), RTL sweep (T-890), or frontend gate (T-891) in this slice.
+
+### Results
+
+- **T-886** ✅ API client — `frontend/src/api/audit.ts` with `searchAuditEntries`, `exportAuditEntries`, and `getAuditRetention`; `frontend/src/api/audit.test.ts` covers all three.
+- **T-880** ✅ RED component tests — `frontend/src/pages/AdminAuditPage.test.tsx` covers search fields, query params, table rendering, pagination, reset behavior, and Arabic RTL search/table checks.
+- **T-881** ✅ Search UI — `frontend/src/pages/AdminAuditPage.tsx` adds persistent search panel, filters, paginated table, and logical text alignment. Export/retention UI remains deferred.
+- **Locales**: added EN/AR parity for search-only keys needed by this slice; T-887/T-888 remain open.
+- **Gate**: reviewer reran `npm test -- --run AdminAuditPage` → 11 passed; `npm run lint`, `npm run typecheck`, `npm run build`, `npm run lint:css`, and `git diff --check` all passed. CI backend-test and frontend-test both SUCCESS.
+- **Commits**: `94822d8` (RED T-886), `a922ef0` (GREEN T-886), `5256e30` (docs T-886), `a2aa09f` (RED T-880), `f61dd1c` (GREEN T-881), `6bceb8f` (docs T-880/T-881), `ffd1ea4` (lint/type fixes), `0f0905e` (normalize task markers).
+
+### Review and Merge Result
+
+- **PR**: #171
+- **Merged**: 2026-07-01
+- **Merge Commit**: `b12f13f8c08698b1281ec4cec8c2cab15532ebca`
+- **Tasks Completed**: T-886, T-880, T-881
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Review Result**: no blocking findings; reviewer normalized lowercase `[x]` task checkboxes to `[X]` before PR creation.
+
+---
+
+## Wave 18.3k — Frontend Audit Export Controls
+
+### Dispatch
+
+- **Date**: 2026-07-01
+- **Model**: Frontend Implementer
+- **T-IDs**: T-882 through T-883
+- **Branch**: `phase-6/wave-18.3k-audit-export-controls`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3j merged; audit API client and audit search UI are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/IMPLEMENTER.md`, `.agents/skills/FRONTEND_GEMINI.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before edits.
+- Use RTK for shell commands.
+- Follow frontend TDD: RED component tests, GREEN implementation, docs/gate commit as needed.
+- Keep this slice to export controls only: T-882 and T-883.
+- Add CSV and JSON export buttons to `AdminAuditPage`; POST to `/admin/audit/export` using current search filters.
+- On success, trigger file download using response Blob and a safe filename; no raw audit entry data should be rendered into UI.
+- Handle 422 export-limit response with localized “narrow filters” message.
+- Handle 429 quota-exceeded response with localized quota error.
+- Add only export-specific EN/AR locale keys needed by this slice; do not mark T-887/T-888 complete unless the full listed Wave 18.3 locale task is implemented.
+- Do not implement retention panel (T-884/T-885), full locale task (T-887/T-888), i18n gate (T-889), RTL sweep (T-890), or frontend gate (T-891) in this slice.
