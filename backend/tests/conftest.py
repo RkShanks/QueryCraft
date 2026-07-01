@@ -58,6 +58,7 @@ def test_env_vars(test_encryption_key: str) -> dict[str, str]:
         "ADMIN_API_KEY": "test-admin-key-123",
         "LLM_PROVIDER": "ollama",
         "LOG_LEVEL": "DEBUG",
+        "SESSION_COOKIE_SECURE": "false",
         "SOURCE_DB_NAME": "source_analytics",
         "SOURCE_DB_HOST": "localhost",
         "SOURCE_DB_PORT": "5434",
@@ -182,7 +183,12 @@ async def ensure_db_connection(async_engine_fixture):
 
 @pytest_asyncio.fixture
 async def authenticated_client(app_client, ensure_db_connection) -> AsyncGenerator[AsyncClient, None]:
-    """Provide a pre-authenticated httpx client (admin user signed in)."""
+    """Provide a pre-authenticated httpx client (admin user signed in).
+
+    Sets a default ``origin: http://test`` header so that POST/PUT/PATCH/DELETE
+    requests pass the OriginValidatorMiddleware without callers needing to
+    include it explicitly.
+    """
     # Sign in with test admin credentials
     response = await app_client.post(
         "/api/v1/auth/sign-in",
@@ -190,6 +196,8 @@ async def authenticated_client(app_client, ensure_db_connection) -> AsyncGenerat
         headers={"origin": "http://test"},
     )
     assert response.status_code == 200, f"Sign-in failed: {response.text}"
+    # Attach default origin header so mutation endpoints pass CSRF guard
+    app_client.headers.update({"origin": "http://test"})
     yield app_client
 
 

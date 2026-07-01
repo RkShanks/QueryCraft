@@ -36,7 +36,12 @@ class TestAuditSearchPermission:
 
     @pytest.mark.asyncio
     async def test_returns_403_without_permission(self, app_client, async_engine_fixture):
-        """User without admin.audit.verify gets 403."""
+        """User without admin.audit.verify gets 403.
+
+        Uses an admin-role user with no role_id (empty permissions) so that
+        local sign-in succeeds (local login is admin-only) but the
+        admin.audit.verify permission check fails.
+        """
         from argon2 import PasswordHasher
         from sqlalchemy import text
 
@@ -47,9 +52,10 @@ class TestAuditSearchPermission:
                 text(
                     """
                     INSERT INTO users (username, display_name, password_hash, role)
-                    VALUES ('audit_no_perm', 'No Audit Perm', :pwd, 'user')
+                    VALUES ('audit_no_perm', 'No Audit Perm', :pwd, 'admin')
                     ON CONFLICT (username) DO UPDATE SET
                         password_hash = EXCLUDED.password_hash,
+                        role_id = NULL,
                         updated_at = now()
                     """
                 ),
@@ -62,7 +68,7 @@ class TestAuditSearchPermission:
             json={"username": "audit_no_perm", "password": "auditpass"},
             headers={"origin": "http://test"},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, f"Sign-in failed: {resp.text}"
         response = await app_client.get("/api/v1/admin/audit/entries")
         assert response.status_code == 403
 
