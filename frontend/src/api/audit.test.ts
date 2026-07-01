@@ -37,7 +37,8 @@ describe('audit API client', () => {
     );
 
     const blob = await exportAuditEntries({ format: 'csv' });
-    expect(blob).toBeInstanceOf(Blob);
+    expect(blob).toBeDefined();
+    expect(blob.constructor.name).toBe('Blob');
     const text = await blob.text();
     expect(text).toBe('csv,data');
   });
