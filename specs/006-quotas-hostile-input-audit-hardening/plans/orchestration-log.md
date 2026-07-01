@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-01
-- **Branch Context**: `main` at `a0ef02c5359bc747973072fa0a39de3b4834db6c`
-- **Status**: Wave 18.3h COMPLETE. T-876 verified complete.
-- **Next Dispatch**: Wave 18.3i backend final audit hardening gate, T-877 through T-879.
+- **Branch Context**: `main` at `279cdbcee336ef8eed2997e8f9ab5412c1b8903c`
+- **Status**: Wave 18.3 backend COMPLETE. T-858 through T-879 verified complete.
+- **Next Dispatch**: Wave 18.3j frontend audit API + search UI, T-886 and T-880 through T-881.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -680,3 +680,44 @@
 - T-878: retention-window enforcement test for `AuditSearchService.search()`; entries older than retention cutoff excluded and query includes `timestamp >= cutoff`.
 - T-879: run Wave 18.3 backend gate exactly as listed in `tasks.md`, using RTK prefixes.
 - Do not implement frontend audit UI, frontend i18n, frontend gates, Wave 18.4 regression/smoke/audit work, or closeout docs in this slice.
+
+### Results
+
+- **T-877** ✅ RED security tests — `backend/tests/unit/test_audit_search_export_permissions.py` (17-test focused set with T-878). Covered no-session 401, missing-permission 403, and permitted non-403 for entries/export/retention endpoints.
+- **T-878** ✅ RED unit tests — `backend/tests/unit/test_audit_retention_window.py`. Covered retention-window filtering and asserted generated count/data queries include `timestamp >= cutoff`.
+- **T-879** ✅ Backend Wave 18.3 gate — reviewer reran exact backend gate list: **139 passed, 1 skipped**; `ruff check src tests` passed; `ruff format --check src tests` passed; `git diff --check` clean.
+- **Support fixes**: `require_phase6_admin_permission` now returns 401 for no session; `SESSION_COOKIE_SECURE` setting added for HTTP test clients; integration fixtures fixed for admin role permission mapping; audit export test mocks now use Pydantic response objects.
+- **Commits**: `ab2abde` (RED T-877), `3b28d90` (GREEN permission fix), `8c16aae` (RED T-878), `ea7ba42` (docs/gate), `cd20dc9` (integration fixture/model fixes), `f028698` (ruff + strengthened T-878 SQL assertions).
+
+### Review and Merge Result
+
+- **PR**: #170
+- **Merged**: 2026-07-01
+- **Merge Commit**: `279cdbcee336ef8eed2997e8f9ab5412c1b8903c`
+- **Tasks Completed**: T-877 through T-879
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Review Result**: initial Ruff/T-878 assertion blockers fixed; no blocking findings remain.
+
+---
+
+## Wave 18.3j — Frontend Audit API + Search UI
+
+### Dispatch
+
+- **Date**: 2026-07-01
+- **Model**: Frontend Implementer
+- **T-IDs**: T-886, T-880, T-881
+- **Branch**: `phase-6/wave-18.3j-audit-search-ui`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3 backend merged; `/admin/audit/entries`, `/admin/audit/export`, and `/admin/audit/retention` APIs are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/IMPLEMENTER.md`, `.agents/skills/FRONTEND_GEMINI.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before edits.
+- Use RTK for shell commands.
+- Follow frontend TDD: RED component/API tests, GREEN implementation, docs/gate commit as needed.
+- Keep this slice to audit API client plus search UI only: T-886, T-880, T-881.
+- T-886: create/extend `frontend/src/api/audit.ts` with typed API functions for `searchAuditEntries`, `exportAuditEntries`, and `getAuditRetention`. Export/retention controls are not implemented in this slice.
+- T-880/T-881: extend `AdminAuditPage` tests and UI for search/filter form, GET `/admin/audit/entries` query params, paginated results table, next/prev page controls, and Arabic/RTL layout for the search/table surface.
+- If new locale keys are needed for this slice, add EN/AR parity for only those keys, but do not mark T-887/T-888 complete unless the full listed Wave 18.3 locale task is implemented.
+- Do not implement export controls (T-882/T-883), retention panel (T-884/T-885), full Wave 18.3 locale task (T-887/T-888), i18n gate (T-889), RTL sweep (T-890), or frontend gate (T-891) in this slice.
