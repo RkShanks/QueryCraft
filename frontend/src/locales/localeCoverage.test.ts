@@ -147,6 +147,25 @@ describe('Wave 14 i18n key coverage', () => {
     'admin.audit.verifyFailed',
     'admin.audit.emptyState',
     'admin.audit.securityWarning',
+    // Wave 18.3 Audit Search/Export/Retention keys
+    'audit.search.title',
+    'audit.search.date_from',
+    'audit.search.date_to',
+    'audit.search.action_type',
+    'audit.search.actor',
+    'audit.search.outcome',
+    'audit.search.resource_type',
+    'audit.search.submit',
+    'audit.search.reset',
+    'audit.export.csv',
+    'audit.export.json',
+    'audit.export.limit_exceeded',
+    'audit.export.quota_exceeded',
+    'audit.retention.title',
+    'audit.retention.period',
+    'audit.retention.last_purge',
+    'audit.retention.never',
+    'audit.retention.purged_count',
   ];
 
 
