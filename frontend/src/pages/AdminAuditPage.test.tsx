@@ -45,6 +45,10 @@ vi.mock('react-i18next', () => ({
           'audit.search.all_outcomes': 'All Outcomes',
           'audit.search.outcome.success': 'Success',
           'audit.search.outcome.failure': 'Failure',
+          'audit.export.csv': 'Export CSV',
+          'audit.export.json': 'Export JSON',
+          'audit.export.limit_exceeded': 'Export limit exceeded. Please apply more specific filters.',
+          'audit.export.quota_exceeded': 'Daily export quota exceeded. Please try again tomorrow.',
         },
         ar: {
           'admin.audit.title': 'التحقق من سلامة سجل التدقيق المقاوم للتلاعب',
@@ -80,6 +84,10 @@ vi.mock('react-i18next', () => ({
           'audit.search.all_outcomes': 'كل النتائج',
           'audit.search.outcome.success': 'نجاح',
           'audit.search.outcome.failure': 'فشل',
+          'audit.export.csv': 'تصدير CSV',
+          'audit.export.json': 'تصدير JSON',
+          'audit.export.limit_exceeded': 'تم تجاوز حد التصدير. يرجى تطبيق عوامل تصفية أكثر تحديداً.',
+          'audit.export.quota_exceeded': 'تم تجاوز حصة التصدير اليومية. يرجى المحاولة مرة أخرى غداً.',
         }
       };
 
@@ -108,6 +116,8 @@ vi.mock('react-i18next', () => ({
 describe('AdminAuditPage', () => {
   beforeEach(() => {
     mockLanguageState.language = 'en';
+    window.URL.createObjectURL = vi.fn().mockReturnValue('mock-url');
+    window.URL.revokeObjectURL = vi.fn();
   });
   it('should display page title and handle empty/never-verified status', async () => {
     server.use(
@@ -485,6 +495,157 @@ describe('AdminAuditPage', () => {
         expect(th).not.toHaveClass('text-left');
         expect(th).not.toHaveClass('text-right');
       });
+    });
+  });
+
+  describe('Audit Log Export Controls', () => {
+    beforeEach(() => {
+      server.use(
+        http.get('/api/v1/admin/audit/status', () => {
+          return HttpResponse.json({
+            total_entries: 10,
+            last_verification: null,
+          });
+        }),
+        http.get('/api/v1/admin/audit/entries', () => {
+          return HttpResponse.json({
+            entries: [],
+            pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 1 },
+          });
+        })
+      );
+    });
+
+    it('triggers CSV export with current search filters on Export CSV click', async () => {
+      let exportBody: any = null;
+      server.use(
+        http.post('/api/v1/admin/audit/export', async ({ request }) => {
+          exportBody = await request.json();
+          return new HttpResponse(new Blob(['col1,col2\nval1,val2']), {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/csv',
+              'Content-Disposition': 'attachment; filename="export.csv"',
+            },
+          });
+        })
+      );
+
+      const appendSpy = vi.spyOn(document.body, 'appendChild');
+      const removeSpy = vi.spyOn(document.body, 'removeChild');
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const setAttributeSpy = vi.spyOn(HTMLAnchorElement.prototype, 'setAttribute');
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      // Change search filters
+      const actorInput = await screen.findByLabelText('Actor');
+      fireEvent.change(actorInput, { target: { value: 'export-actor@example.com' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+      // Click CSV export
+      const csvBtn = await screen.findByRole('button', { name: 'Export CSV' });
+      fireEvent.click(csvBtn);
+
+      await waitFor(() => {
+        expect(exportBody).toEqual({
+          format: 'csv',
+          actor_identity: 'export-actor@example.com',
+        });
+      });
+
+      expect(window.URL.createObjectURL).toHaveBeenCalled();
+      expect(appendSpy).toHaveBeenCalled();
+      expect(setAttributeSpy).toHaveBeenCalledWith('download', expect.stringMatching(/\.csv$/));
+      expect(clickSpy).toHaveBeenCalled();
+      expect(removeSpy).toHaveBeenCalled();
+      expect(window.URL.revokeObjectURL).toHaveBeenCalled();
+
+      appendSpy.mockRestore();
+      removeSpy.mockRestore();
+      clickSpy.mockRestore();
+      setAttributeSpy.mockRestore();
+    });
+
+    it('triggers JSON export with current search filters on Export JSON click', async () => {
+      let exportBody: any = null;
+      server.use(
+        http.post('/api/v1/admin/audit/export', async ({ request }) => {
+          exportBody = await request.json();
+          return new HttpResponse(new Blob(['{}']), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Disposition': 'attachment; filename="export.json"',
+            },
+          });
+        })
+      );
+
+      const appendSpy = vi.spyOn(document.body, 'appendChild');
+      const removeSpy = vi.spyOn(document.body, 'removeChild');
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const setAttributeSpy = vi.spyOn(HTMLAnchorElement.prototype, 'setAttribute');
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      // Click JSON export
+      const jsonBtn = await screen.findByRole('button', { name: 'Export JSON' });
+      fireEvent.click(jsonBtn);
+
+      await waitFor(() => {
+        expect(exportBody).toEqual({
+          format: 'json',
+        });
+      });
+
+      expect(window.URL.createObjectURL).toHaveBeenCalled();
+      expect(appendSpy).toHaveBeenCalled();
+      expect(setAttributeSpy).toHaveBeenCalledWith('download', expect.stringMatching(/\.json$/));
+      expect(clickSpy).toHaveBeenCalled();
+      expect(removeSpy).toHaveBeenCalled();
+      expect(window.URL.revokeObjectURL).toHaveBeenCalled();
+
+      appendSpy.mockRestore();
+      removeSpy.mockRestore();
+      clickSpy.mockRestore();
+      setAttributeSpy.mockRestore();
+    });
+
+    it('shows localized narrow filters message on 422 error', async () => {
+      server.use(
+        http.post('/api/v1/admin/audit/export', () => {
+          return HttpResponse.json(
+            { detail: { message_key: 'error.export_limit_exceeded' } },
+            { status: 422 }
+          );
+        })
+      );
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      const csvBtn = await screen.findByRole('button', { name: 'Export CSV' });
+      fireEvent.click(csvBtn);
+
+      expect(await screen.findByText('Export limit exceeded. Please apply more specific filters.')).toBeInTheDocument();
+    });
+
+    it('shows localized quota error on 429 quota exceeded error', async () => {
+      server.use(
+        http.post('/api/v1/admin/audit/export', () => {
+          return HttpResponse.json(
+            { detail: { message_key: 'error.quota_exceeded' } },
+            { status: 429 }
+          );
+        })
+      );
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      const jsonBtn = await screen.findByRole('button', { name: 'Export JSON' });
+      fireEvent.click(jsonBtn);
+
+      expect(await screen.findByText('Daily export quota exceeded. Please try again tomorrow.')).toBeInTheDocument();
     });
   });
 });
