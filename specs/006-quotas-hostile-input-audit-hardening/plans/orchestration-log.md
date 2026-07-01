@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-01
-- **Branch Context**: `main` at `29aee8d39bf1e13dcadfd41edb069baee635d16e`
-- **Status**: Wave 18.3g COMPLETE. T-874 through T-875 verified complete.
-- **Next Dispatch**: Wave 18.3h backend audit purge scheduler docs, T-876 only.
+- **Branch Context**: `main` at `a0ef02c5359bc747973072fa0a39de3b4834db6c`
+- **Status**: Wave 18.3h COMPLETE. T-876 verified complete.
+- **Next Dispatch**: Wave 18.3i backend final audit hardening gate, T-877 through T-879.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -641,3 +641,42 @@
 - Document expected behavior: `audit.purge` marker insertion, expired entries deleted, `verify_chain()` accepts valid purge gaps, retention status endpoint reports last purge summary.
 - Explicitly state the platform does not manage, execute, or display external scheduler timing.
 - Do not implement permission sweep tests, retention-window tests, frontend UI, or final Wave 18.3 backend gate in this slice.
+
+### Results
+
+- **T-876** ✅ Operational docs — `docs/operations/audit-purge-scheduler.md` (236 lines). Covers external invocation, standalone runner example, cron, Kubernetes CronJob, systemd timer/service, expected purge marker/deletion/verify_chain behavior, retention status endpoint, and platform non-ownership of scheduler timing.
+- **Gate**: CI backend-test SUCCESS and frontend-test SUCCESS; local `ruff check src tests` passed; `ruff format --check src tests` passed; `git diff --check` clean.
+- **Commits**: `9f84481` (docs T-876), `7903b84` (tasks.md T-876).
+
+### Review and Merge Result
+
+- **PR**: #169
+- **Merged**: 2026-07-01
+- **Merge Commit**: `a0ef02c5359bc747973072fa0a39de3b4834db6c`
+- **Tasks Completed**: T-876
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Review Result**: no blocking findings.
+
+---
+
+## Wave 18.3i — Backend Final Audit Hardening Gate
+
+### Dispatch
+
+- **Date**: 2026-07-01
+- **Model**: Backend Implementer
+- **T-IDs**: T-877 through T-879
+- **Branch**: `phase-6/wave-18.3i-audit-backend-gate`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3h merged; audit search/export, purge marker, verify-chain purge gap, retention status endpoint, and scheduler docs are all available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before edits.
+- Use RTK for shell commands.
+- Follow TDD commit discipline: RED test commits, GREEN/fix commits only if needed, docs/gate commit as needed.
+- Keep this slice to T-877, T-878, and T-879 only.
+- T-877: permission gate tests for `GET /admin/audit/entries`, `POST /admin/audit/export`, and `GET /admin/audit/retention`; no session must be 401, missing permission must be 403, session with `admin.audit.verify` must be non-403.
+- T-878: retention-window enforcement test for `AuditSearchService.search()`; entries older than retention cutoff excluded and query includes `timestamp >= cutoff`.
+- T-879: run Wave 18.3 backend gate exactly as listed in `tasks.md`, using RTK prefixes.
+- Do not implement frontend audit UI, frontend i18n, frontend gates, Wave 18.4 regression/smoke/audit work, or closeout docs in this slice.
