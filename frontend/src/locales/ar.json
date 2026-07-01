@@ -434,7 +434,6 @@
   "admin.audit.emptyState": "لم يتم العثور على أي إدخالات تدقيق.",
   "admin.audit.securityWarningTitle": "تنبيه أمني:",
   "admin.audit.securityWarning": "لا تتوفر أداة إصلاح تلقائي للحفاظ على الأدلة. يرجى الاتصال بمسؤول النظام لاستعادة سلسلة قاعدة البيانات.",
-  "audit.search.title": "البحث في سجلات التدقيق",
   "audit.search.placeholder.action_type": "مثل: query.submit",
   "audit.search.placeholder.actor": "مثل: user@example.com",
   "audit.search.placeholder.resource_type": "مثل: database",
