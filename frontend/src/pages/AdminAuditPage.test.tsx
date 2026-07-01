@@ -743,4 +743,72 @@ describe('AdminAuditPage', () => {
       expect(screen.getByText('أبداً')).toBeInTheDocument();
     });
   });
+
+  describe('RTL and Physical CSS Class Checks', () => {
+    it('avoids physical directional CSS properties in the search, export, and retention UI and validates RTL correctness', async () => {
+      mockLanguageState.language = 'ar';
+
+      server.use(
+        http.get('/api/v1/admin/audit/status', () => {
+          return HttpResponse.json({
+            total_entries: 5,
+            last_verification: null,
+          });
+        }),
+        http.get('/api/v1/admin/audit/retention', () => {
+          return HttpResponse.json({
+            retention_months: 12,
+            last_purge_at: '2026-06-01T12:00:00Z',
+            purged_count: 10,
+          });
+        }),
+        http.get('/api/v1/admin/audit/entries', () => {
+          return HttpResponse.json({
+            entries: [
+              {
+                sequence_number: 1,
+                timestamp: '2026-06-01T12:00:00Z',
+                actor_identity: 'user@example.com',
+                action_type: 'query.submit',
+                outcome: 'success',
+                resource_type: 'database',
+              }
+            ],
+            pagination: { page: 1, page_size: 10, total_entries: 1, total_pages: 1 },
+          });
+        })
+      );
+
+      const { container } = renderWithClient(
+        <div dir="rtl">
+          <AdminAuditPage />
+        </div>
+      );
+
+      // Verify the elements render with Arabic text
+      expect(await screen.findByText('البحث في سجلات التدقيق')).toBeInTheDocument(); // Search title
+      expect(screen.getByText('حفظ سجلات التدقيق')).toBeInTheDocument(); // Retention title
+      expect(screen.getByRole('button', { name: 'تصدير CSV' })).toBeInTheDocument(); // Export button
+      expect(screen.getByRole('button', { name: 'تصدير JSON' })).toBeInTheDocument(); // Export button
+
+      // Scan all elements in the container for physical directional tailwind classes
+      const physicalClasses = [
+        'ml-', 'mr-', 'pl-', 'pr-', 'left-', 'right-', 'text-left', 'text-right',
+        'border-l', 'border-r', 'rounded-l', 'rounded-r', 'rounded-tl', 'rounded-tr', 'rounded-bl', 'rounded-br'
+      ];
+
+      const allElements = container.querySelectorAll('*');
+      allElements.forEach((el) => {
+        const className = el.getAttribute('class') || '';
+        const classes = className.split(/\s+/);
+        classes.forEach((cls) => {
+          physicalClasses.forEach((phys) => {
+            if (cls === phys || (phys.endsWith('-') && cls.startsWith(phys))) {
+              throw new Error(`Physical directional CSS class "${cls}" (matched pattern "${phys}") found on element: ${el.tagName} with class attribute "${className}"`);
+            }
+          });
+        });
+      });
+    });
+  });
 });
