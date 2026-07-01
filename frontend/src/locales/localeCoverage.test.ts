@@ -182,6 +182,7 @@ describe('Wave 14 i18n key coverage', () => {
   it('en.json and ar.json have identical key sets', () => {
     const enKeys = Object.keys(en).sort();
     const arKeys = Object.keys(ar).sort();
+    expect(enKeys.length).toBe(300);
     expect(arKeys).toEqual(enKeys);
   });
 });
