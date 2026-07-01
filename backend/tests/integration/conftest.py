@@ -37,21 +37,30 @@ async def truncate_test_tables(async_engine_fixture):
                 "RESTART IDENTITY CASCADE"
             )
         )
-        # Re-seed the admin user (required by authenticated_client fixture)
+        # Re-seed the admin user (required by authenticated_client fixture).
+        # We resolve the Admin role UUID so that the session's permissions list
+        # is populated correctly (role_obj loaded via role_id FK).
         username = os.environ.get("ADMIN_USERNAME", "admin")
         display_name = os.environ.get("ADMIN_DISPLAY_NAME", "Platform Administrator")
         password = os.environ.get("ADMIN_PASSWORD", "admin123")
         ph = PasswordHasher()
         password_hash = ph.hash(password)
+
+        # Look up the Admin role id (case-insensitive match for robustness)
+        role_result = await conn.execute(text("SELECT id FROM roles WHERE lower(name) = 'admin' LIMIT 1"))
+        role_row = role_result.fetchone()
+        role_id_clause = f"'{role_row[0]}'" if role_row else "NULL"
+
         await conn.execute(
             text(
                 f"""
-                INSERT INTO users (username, display_name, password_hash, role, is_builtin, auth_provider)
-                VALUES ('{username}', '{display_name}', '{password_hash}', 'admin', true, 'local')
+                INSERT INTO users (username, display_name, password_hash, role, role_id, is_builtin, auth_provider)
+                VALUES ('{username}', '{display_name}', '{password_hash}', 'admin', {role_id_clause}, true, 'local')
                 ON CONFLICT (username)
                 DO UPDATE SET
                     display_name = EXCLUDED.display_name,
                     password_hash = EXCLUDED.password_hash,
+                    role_id = EXCLUDED.role_id,
                     updated_at = now(),
                     is_builtin = true,
                     auth_provider = 'local'

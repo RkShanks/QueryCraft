@@ -20,7 +20,12 @@ import pytest
 class TestAuditExportPermission:
     @pytest.mark.asyncio
     async def test_export_403_without_permission(self, app_client, async_engine_fixture):
-        """User without admin.audit.verify gets 403."""
+        """User without admin.audit.verify gets 403.
+
+        Uses an admin-role user with no role_id (empty permissions) so that
+        local sign-in succeeds (local login is admin-only) but the
+        admin.audit.verify permission check fails.
+        """
         from argon2 import PasswordHasher
         from sqlalchemy import text
 
@@ -31,9 +36,10 @@ class TestAuditExportPermission:
                 text(
                     """
                     INSERT INTO users (username, display_name, password_hash, role)
-                    VALUES ('export_no_perm', 'No Export Perm', :pwd, 'user')
+                    VALUES ('export_no_perm', 'No Export Perm', :pwd, 'admin')
                     ON CONFLICT (username) DO UPDATE SET
                         password_hash = EXCLUDED.password_hash,
+                        role_id = NULL,
                         updated_at = now()
                     """
                 ),
@@ -46,10 +52,11 @@ class TestAuditExportPermission:
             json={"username": "export_no_perm", "password": "exportpass"},
             headers={"origin": "http://test"},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, f"Sign-in failed: {resp.text}"
         response = await app_client.post(
             "/api/v1/admin/audit/export",
             json={"format": "csv"},
+            headers={"origin": "http://test"},
         )
         assert response.status_code == 403
 
@@ -342,12 +349,23 @@ class TestAuditExportSelfAuditEvent:
 
 def _make_large_response():
     """Return a fake AuditSearchResponse with enough entries to pass pagination."""
-    from unittest.mock import MagicMock
+    from datetime import UTC, datetime
 
-    from app.schemas.audit_search import AuditSearchPagination, AuditSearchResponse
+    from app.schemas.audit_search import AuditEntryRead, AuditSearchPagination, AuditSearchResponse
 
+    entries = [
+        AuditEntryRead(
+            sequence_number=i,
+            timestamp=datetime.now(UTC),
+            actor_identity="system",
+            action_type="test.action",
+            outcome="success",
+            context={},
+        )
+        for i in range(100)
+    ]
     return AuditSearchResponse(
-        entries=[MagicMock() for _ in range(100)],
+        entries=entries,
         pagination=AuditSearchPagination(
             page=1,
             page_size=100,
