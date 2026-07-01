@@ -13,6 +13,8 @@ vi.mock('react-i18next', () => ({
       const translations: Record<string, Record<string, string>> = {
         en: {
           'admin.audit.title': 'Tamper-Evident Audit Log Verification',
+          'admin.audit.verifyButton': 'Verify Integrity',
+          'admin.audit.verifying': 'Verifying...',
           'admin.audit.totalEntries': 'Total Log Entries',
           'admin.audit.lastVerification': 'Last Verification',
           'admin.audit.neverVerified': 'Never verified',
@@ -46,6 +48,8 @@ vi.mock('react-i18next', () => ({
         },
         ar: {
           'admin.audit.title': 'التحقق من سلامة سجل التدقيق المقاوم للتلاعب',
+          'admin.audit.verifyButton': 'التحقق من السلامة',
+          'admin.audit.verifying': 'جارٍ التحقق...',
           'admin.audit.totalEntries': 'إجمالي إدخالات السجل',
           'admin.audit.lastVerification': 'آخر تحقق',
           'admin.audit.neverVerified': 'لم يتم التحقق منه بعد',
@@ -385,7 +389,18 @@ describe('AdminAuditPage', () => {
           const url = new URL(request.url);
           pageRequested = url.searchParams.get('page') || '1';
           return HttpResponse.json({
-            entries: [],
+            entries: [
+              {
+                sequence_number: 1,
+                timestamp: '2026-07-01T12:00:00Z',
+                actor_identity: 'user@example.com',
+                action_type: 'query.submit',
+                resource_type: 'database',
+                resource_id: 'db-1',
+                outcome: 'success',
+                context: { query: 'SELECT 1;' },
+              },
+            ],
             pagination: {
               page: Number(pageRequested),
               page_size: 5,

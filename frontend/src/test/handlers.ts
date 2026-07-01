@@ -366,4 +366,12 @@ export const handlers = [
     await delay(10);
     return new HttpResponse(null, { status: 204 });
   }),
+
+  // ─────────────────────────── Audit Search ───────────────────────────
+  http.get('/api/v1/admin/audit/entries', () => {
+    return HttpResponse.json({
+      entries: [],
+      pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 1 },
+    });
+  }),
 ];
