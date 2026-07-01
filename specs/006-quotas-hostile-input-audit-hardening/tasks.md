@@ -307,7 +307,7 @@ SC-068, SC-069, SC-070, SC-072, SC-073, SC-074, SC-075, SC-077
 
 - [X] T-888 Add matching Arabic translations (100% key parity) to `frontend/src/locales/ar.json` for all keys added in T-887. Depends on T-887. **Dispatch: FE**
 
-- [ ] T-889 [P] Run i18n key parity test: `cd frontend && npm test -- --run locales/localeCoverage` — all Wave 18.3 keys present in both locales. Depends on T-887, T-888. **Dispatch: FE**
+- [X] T-889 [P] Run i18n key parity test: `cd frontend && npm test -- --run locales/localeCoverage` — all Wave 18.3 keys present in both locales. Depends on T-887, T-888. **Dispatch: FE**
 
 - [ ] T-890 [P] Write RTL check for audit search/export/retention UI: render AdminAuditPage with Arabic locale and `dir="rtl"`; assert no physical directional CSS properties in rendered output; assert filter form and table are RTL-correct. Depends on T-885, T-888. **Dispatch: FE**
 
