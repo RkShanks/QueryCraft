@@ -47,9 +47,7 @@ async def truncate_test_tables(async_engine_fixture):
         password_hash = ph.hash(password)
 
         # Look up the Admin role id (case-insensitive match for robustness)
-        role_result = await conn.execute(
-            text("SELECT id FROM roles WHERE lower(name) = 'admin' LIMIT 1")
-        )
+        role_result = await conn.execute(text("SELECT id FROM roles WHERE lower(name) = 'admin' LIMIT 1"))
         role_row = role_result.fetchone()
         role_id_clause = f"'{role_row[0]}'" if role_row else "NULL"
 

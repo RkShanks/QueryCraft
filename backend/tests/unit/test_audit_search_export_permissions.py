@@ -27,7 +27,6 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Session helpers
 # ---------------------------------------------------------------------------
@@ -113,9 +112,7 @@ def _stub_search_response():
 
     return AuditSearchResponse(
         entries=[],
-        pagination=AuditSearchPagination(
-            page=1, page_size=50, total_entries=0, total_pages=1
-        ),
+        pagination=AuditSearchPagination(page=1, page_size=50, total_entries=0, total_pages=1),
     )
 
 

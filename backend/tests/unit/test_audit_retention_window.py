@@ -18,12 +18,11 @@ FR/SC: FR-170, SC-069
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.schemas.audit_search import AuditSearchParams
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -61,6 +60,15 @@ def _build_mock_session_with_entries(entries):
     return session
 
 
+def _assert_query_has_timestamp_cutoff(query):
+    """Assert that the SQLAlchemy query has a filter matching 'timestamp >= cutoff'."""
+    sql = str(query).lower()
+    normalized = "".join(sql.split())
+    assert "timestamp>=" in normalized, (
+        f"SQL query is missing the timestamp lower-bound retention filter. Compiled SQL:\n{sql}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # T-878.1 — Entries older than retention window absent from results
 # ---------------------------------------------------------------------------
@@ -83,8 +91,8 @@ class TestRetentionWindowExcludesOldEntries:
         from app.services.audit_search_service import AuditSearchService
 
         # 25-month span: some entries within 24 months, one beyond
-        recent_entry = _make_fake_entry(seq=1, offset_days=10)     # 10 days ago → IN window
-        old_entry = _make_fake_entry(seq=2, offset_days=760)        # ~25 months ago → OUTSIDE window
+        recent_entry = _make_fake_entry(seq=1, offset_days=10)  # 10 days ago → IN window
+        _old_entry = _make_fake_entry(seq=2, offset_days=760)  # ~25 months ago → OUTSIDE window
 
         # Simulate the DB correctly filtering via WHERE: the mock only returns
         # recent_entry because the DB WHERE clause excluded old_entry.
@@ -97,6 +105,13 @@ class TestRetentionWindowExcludesOldEntries:
         assert result.pagination.total_entries == 1
         assert len(result.entries) == 1
         assert result.entries[0].sequence_number == 1
+
+        # Check call arguments
+        assert session.execute.call_count == 2
+        count_query = session.execute.call_args_list[0][0][0]
+        data_query = session.execute.call_args_list[1][0][0]
+        _assert_query_has_timestamp_cutoff(count_query)
+        _assert_query_has_timestamp_cutoff(data_query)
 
     @pytest.mark.asyncio
     async def test_no_entries_returned_when_all_outside_window(self):
@@ -118,6 +133,13 @@ class TestRetentionWindowExcludesOldEntries:
 
         assert result.pagination.total_entries == 0
         assert result.entries == []
+
+        # Check call arguments
+        assert session.execute.call_count == 2
+        count_query = session.execute.call_args_list[0][0][0]
+        data_query = session.execute.call_args_list[1][0][0]
+        _assert_query_has_timestamp_cutoff(count_query)
+        _assert_query_has_timestamp_cutoff(data_query)
 
 
 def _count_mock(n: int):
@@ -151,9 +173,7 @@ class TestRetentionWindowAppliedToQuery:
         from app.services.audit_search_service import AuditSearchService
 
         session = AsyncMock()
-        session.execute = AsyncMock(
-            side_effect=[_count_mock(0), _rows_mock([])]
-        )
+        session.execute = AsyncMock(side_effect=[_count_mock(0), _rows_mock([])])
 
         with patch.object(
             AuditSearchService, "_retention_cutoff", wraps=AuditSearchService._retention_cutoff
@@ -182,8 +202,7 @@ class TestRetentionWindowAppliedToQuery:
         upper_bound = now - timedelta(days=690)  # 23 months
 
         assert lower_bound <= cutoff <= upper_bound, (
-            f"cutoff={cutoff!r} not in expected 23–25 month range "
-            f"[{lower_bound!r}, {upper_bound!r}]"
+            f"cutoff={cutoff!r} not in expected 23–25 month range [{lower_bound!r}, {upper_bound!r}]"
         )
 
     @pytest.mark.asyncio
@@ -211,6 +230,8 @@ class TestRetentionWindowAppliedToQuery:
 
         # Exactly two queries issued: COUNT(*) and data SELECT
         assert len(executed_queries) == 2
+        _assert_query_has_timestamp_cutoff(executed_queries[0])
+        _assert_query_has_timestamp_cutoff(executed_queries[1])
 
     @pytest.mark.asyncio
     async def test_search_without_date_filter_still_applies_retention(self):
@@ -240,11 +261,13 @@ class TestRetentionWindowAppliedToQuery:
         with patch.object(
             AuditSearchService, "_retention_cutoff", wraps=AuditSearchService._retention_cutoff
         ) as mock_cutoff:
-            result = await AuditSearchService.search(session, params, retention_months=24)
+            await AuditSearchService.search(session, params, retention_months=24)
             # cutoff must have been computed even with no date filter
             mock_cutoff.assert_called_once_with(24)
 
         assert len(executed_queries) == 2
+        _assert_query_has_timestamp_cutoff(executed_queries[0])
+        _assert_query_has_timestamp_cutoff(executed_queries[1])
 
 
 # ---------------------------------------------------------------------------
@@ -268,9 +291,7 @@ class TestRetentionWindowBoundary:
 
         # Mock session: both count and rows return this entry
         session = AsyncMock()
-        session.execute = AsyncMock(
-            side_effect=[_count_mock(1), _rows_mock([boundary_entry])]
-        )
+        session.execute = AsyncMock(side_effect=[_count_mock(1), _rows_mock([boundary_entry])])
 
         params = AuditSearchParams()
         result = await AuditSearchService.search(session, params, retention_months=24)
@@ -278,6 +299,13 @@ class TestRetentionWindowBoundary:
         # The DB returned it (simulating the >= boundary — the entry is at limit)
         assert result.pagination.total_entries == 1
         assert result.entries[0].sequence_number == 99
+
+        # Check call arguments
+        assert session.execute.call_count == 2
+        count_query = session.execute.call_args_list[0][0][0]
+        data_query = session.execute.call_args_list[1][0][0]
+        _assert_query_has_timestamp_cutoff(count_query)
+        _assert_query_has_timestamp_cutoff(data_query)
 
     @pytest.mark.asyncio
     async def test_entries_spanning_25_months_with_24_month_window(self):
@@ -298,9 +326,7 @@ class TestRetentionWindowBoundary:
         # DB mock correctly excludes it
 
         session = AsyncMock()
-        session.execute = AsyncMock(
-            side_effect=[_count_mock(24), _rows_mock(within_window)]
-        )
+        session.execute = AsyncMock(side_effect=[_count_mock(24), _rows_mock(within_window)])
 
         params = AuditSearchParams()
         result = await AuditSearchService.search(session, params, retention_months=24)
@@ -310,3 +336,10 @@ class TestRetentionWindowBoundary:
         # Confirm no entry older than ~24 months (720 days) would appear
         for entry in result.entries:
             assert entry.sequence_number in range(24)
+
+        # Check call arguments
+        assert session.execute.call_count == 2
+        count_query = session.execute.call_args_list[0][0][0]
+        data_query = session.execute.call_args_list[1][0][0]
+        _assert_query_has_timestamp_cutoff(count_query)
+        _assert_query_has_timestamp_cutoff(data_query)

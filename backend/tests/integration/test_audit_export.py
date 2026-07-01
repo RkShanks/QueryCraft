@@ -61,7 +61,6 @@ class TestAuditExportPermission:
         assert response.status_code == 403
 
 
-
 class TestAuditExportCsv:
     @pytest.mark.asyncio
     async def test_csv_export_returns_file_download(self, authenticated_client):
@@ -350,7 +349,8 @@ class TestAuditExportSelfAuditEvent:
 
 def _make_large_response():
     """Return a fake AuditSearchResponse with enough entries to pass pagination."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     from app.schemas.audit_search import AuditEntryRead, AuditSearchPagination, AuditSearchResponse
 
     entries = [
