@@ -305,7 +305,7 @@ SC-068, SC-069, SC-070, SC-072, SC-073, SC-074, SC-075, SC-077
 
 - [X] T-887 Add i18n keys for Wave 18.3 to `frontend/src/locales/en.json`: `audit.search.title`, `audit.search.date_from`, `audit.search.date_to`, `audit.search.action_type`, `audit.search.actor`, `audit.search.outcome`, `audit.search.resource_type`, `audit.search.submit`, `audit.search.reset`, `audit.export.csv`, `audit.export.json`, `audit.export.limit_exceeded`, `audit.export.quota_exceeded`, `audit.retention.title`, `audit.retention.period`, `audit.retention.last_purge`, `audit.retention.never`, `audit.retention.purged_count`. Depends on T-883, T-885. **Dispatch: FE**
 
-- [ ] T-888 Add matching Arabic translations (100% key parity) to `frontend/src/locales/ar.json` for all keys added in T-887. Depends on T-887. **Dispatch: FE**
+- [X] T-888 Add matching Arabic translations (100% key parity) to `frontend/src/locales/ar.json` for all keys added in T-887. Depends on T-887. **Dispatch: FE**
 
 - [ ] T-889 [P] Run i18n key parity test: `cd frontend && npm test -- --run locales/localeCoverage` — all Wave 18.3 keys present in both locales. Depends on T-887, T-888. **Dispatch: FE**
 
