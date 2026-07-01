@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-01
-- **Branch Context**: `main` at `70bb1c7faedd4efeecc0fae34e248f5016bf8218`
-- **Status**: Wave 18.3f COMPLETE. T-873 verified complete.
-- **Next Dispatch**: Wave 18.3g backend retention status endpoint, T-874 through T-875.
+- **Branch Context**: `main` at `29aee8d39bf1e13dcadfd41edb069baee635d16e`
+- **Status**: Wave 18.3g COMPLETE. T-874 through T-875 verified complete.
+- **Next Dispatch**: Wave 18.3h backend audit purge scheduler docs, T-876 only.
 - **Frontend Dispatch Hold**: cleared; backend/API is available on `main`.
 
 ---
@@ -600,3 +600,44 @@
 - Response must include `retention_months` from `Settings.AUDIT_RETENTION_MONTHS`, latest purge marker timestamp as `last_purge_at` or null, and latest marker `purged_count` or null.
 - Do not display or infer external scheduler timing.
 - Do not implement scheduler docs, search/export permission sweep, retention-window tests, frontend UI, or final Wave 18.3 backend gate in this slice.
+
+### Results
+
+- **T-874** ✅ RED unit tests — `backend/tests/unit/test_audit_retention_status.py` (9 tests). Tests: no session 401, missing permission 403, no-purge null fields, configured retention_months, purge marker timestamp/count, response fields present, no scheduler fields, purged_count=0.
+- **T-875** ✅ GREEN implementation — `backend/src/app/api/v1/admin_audit.py` `GET /admin/audit/retention` plus `_get_latest_purge_marker()`.
+- **Gate**: `pytest tests/unit/test_audit_retention_status.py -x --tb=short` → 9 passed; `ruff check src tests` passed; `ruff format --check src tests` passed; `git diff --check` clean.
+- **Commits**: `4c3e813` (RED T-874), `f63b448` (GREEN T-875), `db583c9` (docs T-874/T-875).
+- **Quirk rolled into skill**: `require_permission` returns 401 for no session and 403 for missing permission.
+
+### Review and Merge Result
+
+- **PR**: #168
+- **Merged**: 2026-07-01
+- **Merge Commit**: `29aee8d39bf1e13dcadfd41edb069baee635d16e`
+- **Tasks Completed**: T-874 through T-875
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS
+- **Review Result**: no blocking findings.
+
+---
+
+## Wave 18.3h — Audit Purge Scheduler Docs
+
+### Dispatch
+
+- **Date**: 2026-07-01
+- **Model**: Backend Implementer
+- **T-IDs**: T-876 only
+- **Branch**: `phase-6/wave-18.3h-audit-purge-scheduler-docs`
+- **Status**: DISPATCHED
+- **Dependency State**: Wave 18.3g merged; purge service, verify-chain handling, purge+verify integration coverage, and retention status endpoint are available on `main`.
+
+### Dispatch Constraints
+
+- Read `.agents/skills/BACKEND_IMPLEMENTER.md`, `.agents/skills/TDD.md`, `.agents/skills/KARPATHY.md`, and `~/.codex/RTK.md` before edits.
+- Use RTK for shell commands.
+- Keep this slice to T-876 only: create `docs/operations/audit-purge-scheduler.md`.
+- Document external scheduler invocation of `AuditService.purge_expired_entries()`.
+- Include example cron expression, Kubernetes CronJob spec, and systemd timer/service configuration.
+- Document expected behavior: `audit.purge` marker insertion, expired entries deleted, `verify_chain()` accepts valid purge gaps, retention status endpoint reports last purge summary.
+- Explicitly state the platform does not manage, execute, or display external scheduler timing.
+- Do not implement permission sweep tests, retention-window tests, frontend UI, or final Wave 18.3 backend gate in this slice.
