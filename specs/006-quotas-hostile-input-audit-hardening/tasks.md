@@ -297,9 +297,9 @@ SC-068, SC-069, SC-070, SC-072, SC-073, SC-074, SC-075, SC-077
 
 - [X] T-883 Add export controls to `frontend/src/pages/AdminAuditPage.tsx`: CSV and JSON export buttons that POST to `/admin/audit/export` with current filter state; handle 422 (limit exceeded) with localized message; handle 429 (export quota exhausted) with localized error; trigger file download on success. Depends on T-882, T-868, T-881. **Dispatch: FE**
 
-- [ ] T-884 [P] Write RED component tests for retention status display in `frontend/src/pages/AdminAuditPage.test.tsx`: test retention panel shows retention_months, last_purge_at (or "Never"), purged_count; test Arabic locale renders retention info in Arabic. Use MSW handler mocking `/admin/audit/retention`. No backend fixture dependency. **Dispatch: FE**
+- [X] T-884 [P] Write RED component tests for retention status display in `frontend/src/pages/AdminAuditPage.test.tsx`: test retention panel shows retention_months, last_purge_at (or "Never"), purged_count; test Arabic locale renders retention info in Arabic. Use MSW handler mocking `/admin/audit/retention`. No backend fixture dependency. **Dispatch: FE**
 
-- [ ] T-885 Add retention status panel to `frontend/src/pages/AdminAuditPage.tsx`: section showing retention_months, last_purge_at (formatted datetime or "Never" localized), purged_count. Connect to `GET /admin/audit/retention`. Depends on T-884, T-875. **Dispatch: FE**
+- [X] T-885 Add retention status panel to `frontend/src/pages/AdminAuditPage.tsx`: section showing retention_months, last_purge_at (formatted datetime or "Never" localized), purged_count. Connect to `GET /admin/audit/retention`. Depends on T-884, T-875. **Dispatch: FE**
 
 - [X] T-886 [P] Create/extend `frontend/src/api/audit.ts`: add typed API functions `searchAuditEntries(params)`, `exportAuditEntries(request)`, `getAuditRetention()`. Follows existing API client patterns. Depends on T-862, T-868, T-875. **Dispatch: FE**
 
