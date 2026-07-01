@@ -367,6 +367,43 @@ class QueryService:
                     context=_detection_context,
                 )
 
+            # T-800/T-845: Query quota check immediately after hostile input detection.
+            # Non-hostile requests spend query quota before chat session, attempt,
+            # policy, or LLM side effects. Blocked hostile requests return above
+            # without incrementing quota.
+            if self._quota_service is not None:
+                user_role_id = getattr(user_row, "role_id", None)
+                if user_role_id is not None:
+                    try:
+                        await self._quota_service.check_and_increment(user_uuid, user_role_id, "queries")
+                    except QuotaExceededError as exc:
+                        await AuditService.log(
+                            self._db_session,
+                            action=AuditActionType.QUOTA_EXCEEDED,
+                            actor_id=user_uuid,
+                            outcome="blocked",
+                            context={
+                                "dimension": "queries",
+                                "reset_at": exc.reset_at,
+                            },
+                        )
+                        raise HTTPException(
+                            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail={
+                                "error": "quota_exceeded",
+                                "message_key": "error.quota_exceeded",
+                                "reset_at": exc.reset_at,
+                            },
+                        ) from exc
+                    except QuotaUnavailableError as exc:
+                        raise HTTPException(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail={
+                                "error": "service_unavailable",
+                                "message_key": "error.service_unavailable",
+                            },
+                        ) from exc
+
             # Lazy session creation
             if chat_session_id is None:
                 new_session = await self._session_repo.create(
@@ -459,43 +496,6 @@ class QueryService:
                     context={"reason": "deny_all"},
                 )
                 return self._role_auth_rejection()
-
-            # T-800: Query quota check before LLM invocation.
-            # If QuotaService is wired, check the "queries" dimension
-            # before any LLM call. Fail-closed: QuotaUnavailableError
-            # blocks the request (no LLM call, no DB execution).
-            if self._quota_service is not None:
-                user_role_id = getattr(user_row, "role_id", None)
-                if user_role_id is not None:
-                    try:
-                        await self._quota_service.check_and_increment(user_uuid, user_role_id, "queries")
-                    except QuotaExceededError as exc:
-                        await AuditService.log(
-                            self._db_session,
-                            action=AuditActionType.QUOTA_EXCEEDED,
-                            actor_id=user_uuid,
-                            outcome="blocked",
-                            context={
-                                "dimension": "queries",
-                                "reset_at": exc.reset_at,
-                            },
-                        )
-                        raise HTTPException(
-                            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                            detail={
-                                "error": "quota_exceeded",
-                                "message_key": "error.quota_exceeded",
-                                "reset_at": exc.reset_at,
-                            },
-                        ) from exc
-                    except QuotaUnavailableError as exc:
-                        raise HTTPException(
-                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail={
-                                "error": "service_unavailable",
-                                "message_key": "error.service_unavailable",
-                            },
-                        ) from exc
 
             # Load conversation history for context
             conversation_history: list[dict] = []

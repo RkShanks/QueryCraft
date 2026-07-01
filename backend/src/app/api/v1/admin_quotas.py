@@ -10,17 +10,18 @@ Endpoints:
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies.validation import validate_body
 from app.api.v1.phase6_permissions import require_phase6_admin_permission
 from app.core.dependencies import get_db, get_redis
 from app.db.models.enums import AuditActionType, Permission
 from app.db.models.role import Role
 from app.repositories.quota_repository import QuotaRepository
-from app.schemas.quota import QuotaListResponse, QuotaStatusResponse, RoleQuotaConfig, RoleQuotaStatus
+from app.schemas.quota import QuotaListResponse, QuotaStatusResponse, RoleQuotaConfig, RoleQuotaStatus, RoleQuotaUpsert
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/admin/quotas", tags=["Admin Quotas"])
@@ -154,12 +155,10 @@ async def get_quota(
 @router.put("/{role_id}")
 async def upsert_quota(
     role_id: str,
-    request: Request,
+    data: RoleQuotaUpsert = Depends(validate_body(RoleQuotaUpsert)),  # noqa: B008
     _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_QUOTAS_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
-    from app.schemas.quota import RoleQuotaUpsert
-
     try:
         role_uuid = uuid.UUID(role_id)
     except ValueError:
@@ -176,8 +175,6 @@ async def upsert_quota(
             detail={"error": "not_found", "message_key": "error.notFound"},
         )
 
-    body = await request.json()
-    data = RoleQuotaUpsert(**body)
     fields_set = data.model_fields_set
 
     repo = QuotaRepository(db)

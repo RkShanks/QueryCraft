@@ -194,6 +194,60 @@ class TestQueryQuotaEnforcement:
         mock_llm.generate_sql.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_quota_exceeded_does_not_create_chat_session(self):
+        from app.services.query_service import QueryService
+
+        mock_repo = AsyncMock()
+        mock_session_repo = AsyncMock()
+        mock_llm = AsyncMock()
+        mock_evaluator = AsyncMock()
+        mock_executor = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_db = AsyncMock()
+        mock_quota_service = AsyncMock()
+
+        user_id = uuid.uuid4()
+        role_id = uuid.uuid4()
+        reset_at = "2026-06-13T00:00:00+00:00"
+
+        mock_quota_service.check_and_increment = AsyncMock(
+            side_effect=QuotaExceededError(dimension="queries", reset_at=reset_at)
+        )
+        mock_redis.get = AsyncMock(return_value=None)
+        mock_redis.set = AsyncMock(return_value=True)
+        mock_redis.delete = AsyncMock()
+        mock_db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=MagicMock(id=user_id, role_id=role_id, username="testuser"))
+            )
+        )
+
+        service = QueryService(
+            accepted_query_repository=mock_repo,
+            session_repository=mock_session_repo,
+            db_session=mock_db,
+            redis=mock_redis,
+            llm=mock_llm,
+            evaluator=mock_evaluator,
+            source_db_executor=mock_executor,
+            llm_provider="test",
+            schema_context="",
+            quota_service=mock_quota_service,
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service.submit_question(
+                http_session_id="test-session",
+                user_id=str(user_id),
+                question="test question",
+            )
+
+        assert exc_info.value.status_code == 429
+        mock_session_repo.create.assert_not_called()
+        mock_session_repo.get_by_id.assert_not_called()
+        mock_llm.generate_sql.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_quota_unavailable_returns_503_fail_closed(self):
         from app.services.query_service import QueryService
 
