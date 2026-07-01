@@ -301,7 +301,7 @@ SC-068, SC-069, SC-070, SC-072, SC-073, SC-074, SC-075, SC-077
 
 - [ ] T-885 Add retention status panel to `frontend/src/pages/AdminAuditPage.tsx`: section showing retention_months, last_purge_at (formatted datetime or "Never" localized), purged_count. Connect to `GET /admin/audit/retention`. Depends on T-884, T-875. **Dispatch: FE**
 
-- [ ] T-886 [P] Create/extend `frontend/src/api/audit.ts`: add typed API functions `searchAuditEntries(params)`, `exportAuditEntries(request)`, `getAuditRetention()`. Follows existing API client patterns. Depends on T-862, T-868, T-875. **Dispatch: FE**
+- [x] T-886 [P] Create/extend `frontend/src/api/audit.ts`: add typed API functions `searchAuditEntries(params)`, `exportAuditEntries(request)`, `getAuditRetention()`. Follows existing API client patterns. Depends on T-862, T-868, T-875. **Dispatch: FE**
 
 - [ ] T-887 Add i18n keys for Wave 18.3 to `frontend/src/locales/en.json`: `audit.search.title`, `audit.search.date_from`, `audit.search.date_to`, `audit.search.action_type`, `audit.search.actor`, `audit.search.outcome`, `audit.search.resource_type`, `audit.search.submit`, `audit.search.reset`, `audit.export.csv`, `audit.export.json`, `audit.export.limit_exceeded`, `audit.export.quota_exceeded`, `audit.retention.title`, `audit.retention.period`, `audit.retention.last_purge`, `audit.retention.never`, `audit.retention.purged_count`. Depends on T-883, T-885. **Dispatch: FE**
 
