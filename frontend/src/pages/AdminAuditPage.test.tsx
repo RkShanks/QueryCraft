@@ -49,6 +49,12 @@ vi.mock('react-i18next', () => ({
           'audit.export.json': 'Export JSON',
           'audit.export.limit_exceeded': 'Export limit exceeded. Please apply more specific filters.',
           'audit.export.quota_exceeded': 'Daily export quota exceeded. Please try again tomorrow.',
+          'audit.retention.title': 'Audit Retention',
+          'audit.retention.period': 'Retention Period',
+          'audit.retention.months': '{{count}} months',
+          'audit.retention.last_purge': 'Last Purge',
+          'audit.retention.never': 'Never',
+          'audit.retention.purged_count': 'Purged Count',
         },
         ar: {
           'admin.audit.title': 'التحقق من سلامة سجل التدقيق المقاوم للتلاعب',
@@ -88,6 +94,12 @@ vi.mock('react-i18next', () => ({
           'audit.export.json': 'تصدير JSON',
           'audit.export.limit_exceeded': 'تم تجاوز حد التصدير. يرجى تطبيق عوامل تصفية أكثر تحديداً.',
           'audit.export.quota_exceeded': 'تم تجاوز حصة التصدير اليومية. يرجى المحاولة مرة أخرى غداً.',
+          'audit.retention.title': 'حفظ سجلات التدقيق',
+          'audit.retention.period': 'فترة الحفظ',
+          'audit.retention.months': '{{count}} شهر',
+          'audit.retention.last_purge': 'آخر تطهير',
+          'audit.retention.never': 'أبداً',
+          'audit.retention.purged_count': 'عدد الإدخالات المطهّرة',
         }
       };
 
@@ -135,7 +147,7 @@ describe('AdminAuditPage', () => {
     
     // Total entries display
     expect(await screen.findByText(/Total Log Entries/i)).toBeInTheDocument();
-    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getAllByText('0')[0]).toBeInTheDocument();
 
     // Never verified status
     expect(screen.getByText(/Never verified/i)).toBeInTheDocument();
@@ -646,6 +658,89 @@ describe('AdminAuditPage', () => {
       fireEvent.click(jsonBtn);
 
       expect(await screen.findByText('Daily export quota exceeded. Please try again tomorrow.')).toBeInTheDocument();
+    });
+  });
+
+  describe('Audit Retention Status Panel', () => {
+    it('renders the retention status panel with correct values when purge has occurred', async () => {
+      server.use(
+        http.get('/api/v1/admin/audit/status', () => {
+          return HttpResponse.json({
+            total_entries: 100,
+            last_verification: null,
+          });
+        }),
+        http.get('/api/v1/admin/audit/retention', () => {
+          return HttpResponse.json({
+            retention_months: 24,
+            last_purge_at: '2026-06-01T12:00:00Z',
+            purged_count: 500,
+          });
+        })
+      );
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      expect(await screen.findByText('Audit Retention')).toBeInTheDocument();
+      expect(screen.getByText(/Retention Period/)).toBeInTheDocument();
+      expect(screen.getByText('24 months')).toBeInTheDocument();
+      expect(screen.getByText(/Last Purge/)).toBeInTheDocument();
+      expect(screen.getByText(/(2026-06-01|6\/1\/2026|01\/06\/2026|1\/6\/2026|6\/1\/26)/)).toBeInTheDocument();
+      expect(screen.getByText(/Purged Count/)).toBeInTheDocument();
+      expect(screen.getByText('500')).toBeInTheDocument();
+    });
+
+    it('renders localized "Never" when no purge has occurred', async () => {
+      server.use(
+        http.get('/api/v1/admin/audit/status', () => {
+          return HttpResponse.json({
+            total_entries: 100,
+            last_verification: null,
+          });
+        }),
+        http.get('/api/v1/admin/audit/retention', () => {
+          return HttpResponse.json({
+            retention_months: 12,
+            last_purge_at: null,
+            purged_count: null,
+          });
+        })
+      );
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      expect(await screen.findByText('Audit Retention')).toBeInTheDocument();
+      expect(screen.getByText('12 months')).toBeInTheDocument();
+      expect(screen.getByText('Never')).toBeInTheDocument();
+      expect(screen.getByText('0')).toBeInTheDocument();
+    });
+
+    it('renders Arabic locale translations in Arabic', async () => {
+      mockLanguageState.language = 'ar';
+
+      server.use(
+        http.get('/api/v1/admin/audit/status', () => {
+          return HttpResponse.json({
+            total_entries: 100,
+            last_verification: null,
+          });
+        }),
+        http.get('/api/v1/admin/audit/retention', () => {
+          return HttpResponse.json({
+            retention_months: 24,
+            last_purge_at: null,
+            purged_count: null,
+          });
+        })
+      );
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      expect(await screen.findByText('حفظ سجلات التدقيق')).toBeInTheDocument();
+      expect(screen.getByText(/فترة الحفظ/)).toBeInTheDocument();
+      expect(screen.getByText('24 شهر')).toBeInTheDocument();
+      expect(screen.getByText(/آخر تطهير/)).toBeInTheDocument();
+      expect(screen.getByText('أبداً')).toBeInTheDocument();
     });
   });
 });

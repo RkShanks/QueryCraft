@@ -374,4 +374,13 @@ export const handlers = [
       pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 1 },
     });
   }),
+
+  // ─────────────────────────── Audit Retention ───────────────────────────
+  http.get('/api/v1/admin/audit/retention', () => {
+    return HttpResponse.json({
+      retention_months: 24,
+      last_purge_at: null,
+      purged_count: null,
+    });
+  }),
 ];
