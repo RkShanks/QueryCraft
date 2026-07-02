@@ -3,7 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { useAdminAudit } from '../hooks/useAdminAudit';
 import { Shield, CheckCircle2, XCircle, AlertTriangle, X, RefreshCw, Download } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { searchAuditEntries, exportAuditEntries, getAuditRetention } from '../api/audit';
+import {
+  searchAuditEntries,
+  exportAuditEntries,
+  getAuditRetention,
+  type AuditExportRequest,
+} from '../api/audit';
 
 interface Toast {
   id: string;
@@ -34,18 +39,74 @@ export const AdminAuditPage: React.FC = () => {
 
   const [isExporting, setIsExporting] = useState<'csv' | 'json' | null>(null);
 
+  // Search Filter Form States
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [actionType, setActionType] = useState('');
+  const [actorIdentity, setActorIdentity] = useState('');
+  const [outcome, setOutcome] = useState('all');
+  const [resourceType, setResourceType] = useState('');
+  const [page, setPage] = useState(1);
+
+  const [filters, setFilters] = useState({
+    start_date: '',
+    end_date: '',
+    action_type: '',
+    actor_identity: '',
+    outcome: '',
+    resource_type: '',
+  });
+
+  const buildFiltersFromInputs = () => ({
+    start_date: startDate ? `${startDate}T00:00:00Z` : '',
+    end_date: endDate ? `${endDate}T23:59:59Z` : '',
+    action_type: actionType,
+    actor_identity: actorIdentity,
+    outcome: outcome === 'all' ? '' : outcome,
+    resource_type: resourceType,
+  });
+
+  const buildExportRequest = (format: 'csv' | 'json'): AuditExportRequest => {
+    const currentFilters = buildFiltersFromInputs();
+    return {
+      format,
+      start_date: currentFilters.start_date || undefined,
+      end_date: currentFilters.end_date || undefined,
+      action_type: currentFilters.action_type || undefined,
+      actor_identity: currentFilters.actor_identity || undefined,
+      outcome: currentFilters.outcome || undefined,
+      resource_type: currentFilters.resource_type || undefined,
+    };
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    setFilters(buildFiltersFromInputs());
+  };
+
+  const handleReset = () => {
+    setStartDate('');
+    setEndDate('');
+    setActionType('');
+    setActorIdentity('');
+    setOutcome('all');
+    setResourceType('');
+    setPage(1);
+    setFilters({
+      start_date: '',
+      end_date: '',
+      action_type: '',
+      actor_identity: '',
+      outcome: '',
+      resource_type: '',
+    });
+  };
+
   const handleExport = async (format: 'csv' | 'json') => {
     setIsExporting(format);
     try {
-      const blob = await exportAuditEntries({
-        format,
-        start_date: filters.start_date || undefined,
-        end_date: filters.end_date || undefined,
-        action_type: filters.action_type || undefined,
-        actor_identity: filters.actor_identity || undefined,
-        outcome: filters.outcome || undefined,
-        resource_type: filters.resource_type || undefined,
-      });
+      const blob = await exportAuditEntries(buildExportRequest(format));
 
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -75,55 +136,6 @@ export const AdminAuditPage: React.FC = () => {
     } finally {
       setIsExporting(null);
     }
-  };
-
-  // Search Filter Form States
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [actionType, setActionType] = useState('');
-  const [actorIdentity, setActorIdentity] = useState('');
-  const [outcome, setOutcome] = useState('all');
-  const [resourceType, setResourceType] = useState('');
-  const [page, setPage] = useState(1);
-
-  const [filters, setFilters] = useState({
-    start_date: '',
-    end_date: '',
-    action_type: '',
-    actor_identity: '',
-    outcome: '',
-    resource_type: '',
-  });
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    setFilters({
-      start_date: startDate ? `${startDate}T00:00:00Z` : '',
-      end_date: endDate ? `${endDate}T23:59:59Z` : '',
-      action_type: actionType,
-      actor_identity: actorIdentity,
-      outcome: outcome === 'all' ? '' : outcome,
-      resource_type: resourceType,
-    });
-  };
-
-  const handleReset = () => {
-    setStartDate('');
-    setEndDate('');
-    setActionType('');
-    setActorIdentity('');
-    setOutcome('all');
-    setResourceType('');
-    setPage(1);
-    setFilters({
-      start_date: '',
-      end_date: '',
-      action_type: '',
-      actor_identity: '',
-      outcome: '',
-      resource_type: '',
-    });
   };
 
   const searchParams: Record<string, unknown> = {
