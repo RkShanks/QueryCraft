@@ -415,3 +415,34 @@ class TestVerifyChainGapWithoutMarker:
 
         assert result.verified is False, "Mismatched marker-only boundary must report tampering"
         assert result.first_break_at == 3
+
+    async def test_later_marker_only_boundary_does_not_mask_tampering(self, db_session):
+        """Marker-only all-purged boundaries are valid only at the retained start."""
+        now = datetime.now(UTC)
+
+        await _seed_entry(db_session, 1, now - timedelta(days=10), "GENESIS")
+
+        fake_deleted_hash = "a" * 64
+        context = {
+            "purged_from_seq": 1,
+            "purged_to_seq": 2,
+            "purged_count": 2,
+            "retention_months": 6,
+            "first_surviving_seq": None,
+            "first_surviving_prev_hash": None,
+            "last_retained_hash": fake_deleted_hash,
+            "last_retained_seq": 2,
+        }
+        await _seed_entry(
+            db_session,
+            3,
+            now - timedelta(days=1),
+            fake_deleted_hash,
+            action=AuditActionType.AUDIT_PURGE.value,
+            context=context,
+        )
+
+        result = await AuditService.verify_chain(db_session)
+
+        assert result.verified is False, "Later marker-only boundary must not cover a linkage break"
+        assert result.first_break_at == 3

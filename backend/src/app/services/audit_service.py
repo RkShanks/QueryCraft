@@ -107,7 +107,10 @@ def _marker_context_matches_gap(entry: AuditLogEntry, marker_ctx: dict | None) -
     return marker_ctx.get("first_surviving_prev_hash") == entry.prev_hash
 
 
-def _purge_marker_is_all_purged_boundary(entry: AuditLogEntry) -> bool:
+def _purge_marker_is_all_purged_boundary(entry: AuditLogEntry, expected_prev_hash: str) -> bool:
+    if expected_prev_hash != "GENESIS":
+        return False
+
     if entry.action_type != AuditActionType.AUDIT_PURGE.value or not isinstance(entry.context, dict):
         return False
 
@@ -412,7 +415,7 @@ class AuditService:
                 # Linkage break detected. Check for a matching purge marker.
                 if _marker_context_matches_gap(
                     entry, purge_markers.get(entry.sequence_number)
-                ) or _purge_marker_is_all_purged_boundary(entry):
+                ) or _purge_marker_is_all_purged_boundary(entry, prev_hash):
                     # Intentional purge gap — marker covers it. Continue.
                     pass
                 else:
