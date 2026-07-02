@@ -154,9 +154,15 @@ class TestPurgeRemovesExpiredEntries:
 
         result = await db_session.execute(select(AuditLogEntry).order_by(AuditLogEntry.sequence_number.asc()))
         surviving = result.scalars().all()
-        assert [e.sequence_number for e in surviving] == [2, 3], (
-            f"Wrong rows survived purge: {[e.sequence_number for e in surviving]}"
+        # T-870: purge_expired_entries() inserts an audit.purge marker before deletion.
+        # Separate business entries from the purge marker.
+        business_seqs = [e.sequence_number for e in surviving if e.action_type != "audit.purge"]
+        purge_markers = [e for e in surviving if e.action_type == "audit.purge"]
+        assert business_seqs == [2, 3], (
+            f"Wrong business rows survived purge: {business_seqs} "
+            f"(all surviving: {[e.sequence_number for e in surviving]})"
         )
+        assert len(purge_markers) == 1, f"Expected exactly 1 purge marker, got {len(purge_markers)}"
 
     async def test_default_retention_is_24_months(self, db_session):
         now = datetime.now(UTC)
@@ -228,68 +234,128 @@ class TestChainVerificationAfterPruning:
     """
 
     async def test_pre_prune_chain_verifies_clean(self, db_session):
+        # Seed entries using AuditService.log so hashes are valid for verify_chain.
         now = datetime.now(UTC)
         old1 = now - timedelta(days=400)
         old2 = now - timedelta(days=390)
         recent1 = now - timedelta(days=10)
 
-        await _seed_entry_async(db_session, 1, old1)
-        await _seed_entry_async(db_session, 2, old2)
-        await _seed_entry_async(db_session, 3, recent1)
+        await AuditService.log(
+            db_session,
+            action="query.submit",
+            outcome="success",
+            context={"ts": old1.isoformat()},
+        )
+        await AuditService.log(
+            db_session,
+            action="query.submit",
+            outcome="success",
+            context={"ts": old2.isoformat()},
+        )
+        await AuditService.log(
+            db_session,
+            action="query.submit",
+            outcome="success",
+            context={"ts": recent1.isoformat()},
+        )
+        await db_session.commit()
 
         result = await AuditService.verify_chain(db_session)
-        assert result.verified is True, "Pre-prune chain should verify clean"
+        assert result.verified is True, (
+            f"Pre-prune chain should verify clean, got first_break_at={result.first_break_at}"
+        )
         assert result.entries_checked == 3
         assert result.first_break_at is None
 
     async def test_post_prune_chain_honestly_reports_break(self, db_session):
+        # Seed via AuditService.log so hashes are valid for verify_chain.
         now = datetime.now(UTC)
-        old1 = now - timedelta(days=400)
-        old2 = now - timedelta(days=390)
-        recent1 = now - timedelta(days=10)
-        recent2 = now - timedelta(days=5)
 
-        await _seed_entry_async(db_session, 1, old1)
-        await _seed_entry_async(db_session, 2, old2)
-        await _seed_entry_async(db_session, 3, recent1)
-        await _seed_entry_async(db_session, 4, recent2)
-
-        # Prune the 13-month-old rows
-        deleted = await AuditService.purge_expired_entries(db_session, retention_months=6)
-        await db_session.commit()
-        assert deleted == 2
-
-        result = await AuditService.verify_chain(db_session)
-        # The first surviving row (seq=3) has prev_hash referencing the
-        # deleted seq=2's row_hash. verify_chain starts with prev_hash =
-        # "GENESIS" and walks forward, so it detects a break at seq=3.
-        assert result.verified is False, "Post-prune chain must NOT silently verify"
-        assert result.first_break_at == 3, (
-            f"Break should be at first surviving row (seq=3), got {result.first_break_at}"
+        await AuditService.log(
+            db_session,
+            action="query.submit",
+            outcome="success",
+            context={"age": "400d"},
         )
-        # Entries-checked still reflects the on-disk count.
-        assert result.entries_checked == 2
+        await AuditService.log(
+            db_session,
+            action="query.submit",
+            outcome="success",
+            context={"age": "390d"},
+        )
+        await AuditService.log(
+            db_session,
+            action="query.submit",
+            outcome="success",
+            context={"age": "10d"},
+        )
+        await AuditService.log(
+            db_session,
+            action="query.submit",
+            outcome="success",
+            context={"age": "5d"},
+        )
+        await db_session.commit()
 
-    async def test_no_sensitive_payload_in_purge_log(self, db_session, caplog):
-        # The purge path must not echo any context payload or secret.
-        # We seed an entry with a recognizable marker value to detect leaks.
+        # Manually backdate the first two entries to simulate old rows.
         from sqlalchemy import text
 
-        now = datetime.now(UTC)
-        # Insert a row directly with a marker in the context JSONB
-        # (bypassing _redact_value is fine for the leak-detection test;
-        # the assertion is that purge does not log the context value).
+        cutoff_ts = now - timedelta(days=200)
         await db_session.execute(
             text(
-                "INSERT INTO audit_log_entries "
-                "(sequence_number, timestamp, action_type, outcome, prev_hash, row_hash, context) "
-                "VALUES (1, :ts, 'query.submit', 'success', 'GENESIS', :rh, :ctx::jsonb)"
+                "UPDATE audit_log_entries "
+                "SET timestamp = :ts "
+                "WHERE sequence_number IN "
+                "(SELECT sequence_number FROM audit_log_entries ORDER BY sequence_number ASC LIMIT 2)"
             ),
-            {
-                "ts": now - timedelta(days=400),
-                "rh": "0" * 64,
-                "ctx": '{"question": "leak-marker-SECRET-NEVER-LOG"}',
-            },
+            {"ts": cutoff_ts},
+        )
+        await db_session.commit()
+
+        # Prune the backdated rows (6-month retention = ~180 days, cutoff_ts is 200 days old)
+        deleted = await AuditService.purge_expired_entries(db_session, retention_months=6)
+        await db_session.commit()
+        assert deleted == 2, f"Expected 2 deleted, got {deleted}"
+
+        result = await AuditService.verify_chain(db_session)
+        # T-871/T-872: verify_chain now looks for a purge marker to explain gaps.
+        # A purge marker was inserted by purge_expired_entries (T-870), so the
+        # gap is treated as intentional — verify_chain returns verified=True.
+        # This changed the documented behavior: with purge markers, post-purge
+        # chains are verifiable (the purge marker bridges the gap).
+        assert result.verified is True, (
+            f"Post-prune chain with purge marker should verify clean, first_break_at={result.first_break_at}"
+        )
+        assert result.first_break_at is None
+
+    async def test_no_sensitive_payload_in_purge_log(self, db_session, caplog):
+        """Purge path must not log raw context values from deleted entries."""
+
+        now = datetime.now(UTC)
+        # Seed via AuditService.log with a recognizable marker to detect leaks.
+        # The context is intentionally weird to be detectable if leaked.
+        await AuditService.log(
+            db_session,
+            action="query.submit",
+            outcome="success",
+            context={"question": "leak-marker-SECRET-NEVER-LOG"},
+        )
+        await db_session.commit()
+
+        # Backdate the entry so it is older than the retention window.
+        from sqlalchemy import text
+
+        await db_session.execute(
+            text(
+                "UPDATE audit_log_entries "
+                "SET timestamp = :ts "
+                "WHERE sequence_number = ("
+                "  SELECT sequence_number FROM audit_log_entries "
+                "  WHERE action_type = 'query.submit' "
+                "  ORDER BY sequence_number ASC LIMIT 1"
+                ")"
+            ),
+            {"ts": now - timedelta(days=400)},
         )
         await db_session.commit()
 

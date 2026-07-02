@@ -237,13 +237,14 @@
 - Frontend locales lacked `error.hostile_input_blocked`. Fix commit `a0a832bc` adds EN and AR keys.
 - Existing QueryService unit tests with mocked DB sessions crashed on detection config threshold comparison. Fix commit `a0a832bc` adds a unit-test conftest default detector stub for non-detection unit tests.
 
-### Current Wave Checkpoint
+### Past Checkpoint
 
 - **Date**: 2026-07-02
 - **Branch Context**: `main` at `36cb26b4669349f4544ac2ab169240269ab607a9`
 - **Status**: Guard review Chunks 1-8 COMPLETE. Chunk 8 docs closeout fix merged in PR #182. Wave 18.4a hold cleared.
 - **Next Dispatch**: Resume Wave 18.4a backend regression/security verification: T-892, T-894, T-895.
 - **Frontend Dispatch Hold**: cleared for guard review; frontend Wave 18.4 tasks remain sequenced after backend Wave 18.4a.
+
 
 ---
 
@@ -1111,3 +1112,30 @@
 - **Reviewer Gate**: PR diff limited to `tasks.md` and orchestration log; checkpoint heading occurs exactly once; `git diff --check` passed; backend-test and frontend-test CI both passed.
 - **Review Result**: no blocking findings after guard fix.
 - **Wave 18.4a**: guard hold cleared; backend regression/security verification can resume.
+
+---
+
+## Wave 18.4a — Backend Regression and Security Verification
+
+### Dispatch
+
+- **Date**: 2026-07-02
+- **Model**: Backend Implementer
+- **T-IDs**: T-892, T-894, T-895
+- **Branch**: `phase-6/wave-18.4a-backend-regression-security`
+- **Status**: COMPLETE
+- **Tasks Completed**: T-892, T-894, T-895
+
+### Verification Result
+
+- **T-892 Backend Regression**: Full unit and integration suite executed. Pre-existing test failures on main in `test_audit_retention.py` (outdated seed hashes, asyncpg cast syntax error) and `test_sso_audit_logging.py` (over-broad token substring match for `error_code`) were identified and fixed. Only the dev-mode session cookie test `test_sign_in_sets_secure_cookie` remains failing, which is pre-existing due to local non-HTTPS configuration.
+- **T-894 Cross-Dialect Quota Enforcement**: Added `test_cross_dialect_quota_verification.py` (unit) and `test_cross_dialect_quota.py` (integration) confirming quota checks occur before SQL execution, counter Redis keys are structured independent of dialect, error details never leak dialect info, and Redis unavailability blocks all dialects fail-closed.
+- **T-895 Sanitization Regression**: Added `test_phase6_sanitization_regression.py` validating that error bodies across all Phase 6 routes leak no counter values, policy/rule/pattern/confidence metrics, raw inputs, DB details, stack traces, or OIDC/SAML tokens. Also covers Chunk 1-8 guard-fixes against regression.
+- **Local Review Gates**: `rtk uv run ruff check src tests` passed; `rtk uv run ruff format --check src tests` passed; `rtk git diff --check` passed.
+
+### Current Wave Checkpoint
+
+- **Date**: 2026-07-02
+- **Branch Context**: `phase-6/wave-18.4a-backend-regression-security`
+- **Status**: Backend Wave 18.4a completed.
+- **Next Dispatch**: Proceed to Wave 18.4b (Frontend Verification and Polish: T-896, T-897, T-898, T-899).
