@@ -262,7 +262,7 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
 
     await expect(page.locator('[data-testid="hostile-input-blocked-banner"]').first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('تم حظر هذا الطلب لأنه يحتوي على محتوى ينتهك سياسة الأمان.')).toBeVisible();
-    
+
     // Verify no input echo in code block (SQL is not shown in SqlDisplay/ResultTable)
     await expect(page.locator('.sql-display')).not.toBeVisible();
     await expect(page.locator('.result-table')).not.toBeVisible();
@@ -289,7 +289,31 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
     await expect(page.locator('table')).toBeVisible();
 
     // 2. Export button (UC-16)
-    await expect(page.getByRole('button', { name: /تصدير/i }).first()).toBeVisible();
+    const csvButton = page.getByRole('button', { name: 'تصدير CSV' });
+    await expect(csvButton).toBeVisible();
+
+    // Set up route mock for POST /api/v1/admin/audit/export
+    let exportRequestBody: { format?: string } = {};
+    await page.route('**/api/v1/admin/audit/export', async (route) => {
+      exportRequestBody = (route.request().postDataJSON() as { format?: string }) || {};
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/csv',
+        body: 'sequence_number,timestamp,actor_identity,action_type,resource_type,resource_id,outcome\n1,2026-07-02T12:00:00Z,admin,user.login,user,admin-uuid,success'
+      });
+    });
+
+    // Trigger CSV export and assert download happens
+    const downloadPromise = page.waitForEvent('download');
+    await csvButton.click();
+    const download = await downloadPromise;
+
+    // Assert request body details
+    expect(exportRequestBody.format).toBeDefined();
+    expect(exportRequestBody.format).toBe('csv');
+
+    // Assert suggested filename ends in .csv
+    expect(download.suggestedFilename().endsWith('.csv')).toBe(true);
 
     // 3. Retention Panel (UC-17)
     await expect(page.getByText('حفظ سجلات التدقيق')).toBeVisible();

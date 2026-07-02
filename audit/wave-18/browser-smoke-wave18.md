@@ -52,3 +52,4 @@
 - Retention panel ("حفظ سجلات التدقيق") properly shows translated months and purged count in Arabic.
 - Quota status panel renders consumption details in RTL.
 - Export buttons (CSV/JSON) are localized.
+- Triggered CSV export by clicking the Arabic "تصدير CSV" button. Verified that the backend POST request contains `{ format: "csv" }` and that a file download is initiated ending with `.csv`.
