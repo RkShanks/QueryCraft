@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-02
-- **Branch Context**: `main` at `92dd46b3036982a96474d43c1e304f67d97e97a7`
-- **Status**: Guard review Chunk 5 COMPLETE. Audit search/export redaction fix merged in PR #179. Wave 18.4a remains ON HOLD.
-- **Next Dispatch**: Guard review Chunk 6, audit purge/verify/retention backend from PRs #165 through #170.
+- **Branch Context**: `main` at `e55c434c3347641fb0ed9297cf8a049b19cdf98b`
+- **Status**: Guard review Chunk 6 COMPLETE. Audit purge/verify marker-boundary fix merged in PR #180. Wave 18.4a remains ON HOLD.
+- **Next Dispatch**: Guard review Chunk 7, audit frontend search/export/retention/i18n/RTL from PRs #171 through #174.
 - **Frontend Dispatch Hold**: active for Wave 18.4; complete guard chunks 2-8 before resuming Wave 18.4a.
 
 ---
@@ -1025,3 +1025,31 @@
 - **CI**: backend-test SUCCESS, frontend-test SUCCESS.
 - **Review Result**: no blocking findings after guard fix.
 - **Wave 18.4a**: remains ON HOLD until guard chunks 6-8 complete.
+
+---
+
+## Guard Review — Chunk 6 Audit Purge/Verify/Retention Backend
+
+### Results
+
+- **Date**: 2026-07-02
+- **Scope**: Audit purge/verify/retention backend and scheduler docs from PRs #165 through #170.
+- **Branch**: `guard/phase6-audit-purge-all-verify-fix`
+- **PR**: #180
+- **Merge Commit**: `e55c434c3347641fb0ed9297cf8a049b19cdf98b`
+- **Status**: COMPLETE
+
+### Findings Fixed
+
+- **High**: `verify_chain()` treated a valid retention purge as tampering when every pre-existing audit row was purged and the retained `audit.purge` marker became the first row.
+- **High review blocker fixed before merge**: marker-only all-purged boundary was initially accepted for later purge markers. The final fix allows marker-only boundaries only when verifier state is still at `GENESIS`.
+
+### Review and Merge Result
+
+- **Fix**: added marker-only boundary handling in `AuditService.verify_chain()` and kept mismatched/later marker-only boundaries classified as tampering.
+- **Regression Coverage**: added unit and integration tests for all-purged purge+verify cycles, appended entries after all-purged markers, mismatched marker-only boundaries, and later marker-only tampering.
+- **Docs**: updated `docs/operations/audit-purge-scheduler.md` to document marker-only boundary behavior.
+- **Reviewer Gate**: focused purge verify tests → 20 passed; focused Chunk 6 suite → 232 passed, 3 known AsyncMock warnings; `ruff check src tests`, `ruff format --check src tests`, and `git diff --check` passed.
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS.
+- **Review Result**: no blocking findings after guard fix.
+- **Wave 18.4a**: remains ON HOLD until guard chunks 7-8 complete.
