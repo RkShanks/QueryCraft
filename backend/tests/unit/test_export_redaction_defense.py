@@ -117,6 +117,28 @@ class TestCsvRedactionDefenseInDepth:
         raw = AuditExportService.export_csv([entry], _make_metadata())
         assert leaked not in raw.decode("utf-8")
 
+    def test_safe_key_bearer_token_value_not_in_csv_output(self):
+        """A token-shaped value under a safe key must be redacted."""
+        from app.services.audit_export_service import AuditExportService
+
+        leaked = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature"
+        entry = _make_entry_with_context({"details": leaked})
+        raw = AuditExportService.export_csv([entry], _make_metadata())
+        output = raw.decode("utf-8")
+        assert leaked not in output
+        assert "[REDACTED]" in output
+
+    def test_safe_key_db_error_value_not_in_csv_output(self):
+        """A DB host/driver-shaped value under a safe key must be redacted."""
+        from app.services.audit_export_service import AuditExportService
+
+        leaked = "asyncpg connection failed for db.internal:5432"
+        entry = _make_entry_with_context({"details": leaked})
+        raw = AuditExportService.export_csv([entry], _make_metadata())
+        output = raw.decode("utf-8")
+        assert leaked not in output
+        assert "db.internal:5432" not in output
+
 
 # ---------------------------------------------------------------------------
 # JSON defense-in-depth
@@ -194,3 +216,26 @@ class TestJsonRedactionDefenseInDepth:
         output = raw.decode("utf-8")
         for i in range(5):
             assert f"secret_{i}" not in output, f"Entry {i} password must be redacted in JSON export"
+
+    def test_safe_key_bearer_token_value_not_in_json_output(self):
+        """A token-shaped value under a safe key must be redacted."""
+        from app.services.audit_export_service import AuditExportService
+
+        leaked = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature"
+        entry = _make_entry_with_context({"details": leaked})
+        raw = AuditExportService.export_json([entry], _make_metadata())
+        output = raw.decode("utf-8")
+        assert leaked not in output
+
+        parsed = json.loads(output)
+        assert parsed["entries"][0]["context"]["details"] == "[REDACTED]"
+
+    def test_safe_key_stack_trace_value_not_in_json_output(self):
+        """A stack-trace-shaped value under a safe key must be redacted."""
+        from app.services.audit_export_service import AuditExportService
+
+        leaked = "Traceback (most recent call last): RuntimeError secret"
+        entry = _make_entry_with_context({"details": leaked})
+        raw = AuditExportService.export_json([entry], _make_metadata())
+        output = raw.decode("utf-8")
+        assert leaked not in output

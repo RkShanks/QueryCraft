@@ -341,6 +341,43 @@ class TestAuditExportSelfAuditEvent:
                 f"audit.export context contains unexpected keys: {extra_keys}. Only {allowed_keys} are permitted."
             )
 
+    @pytest.mark.asyncio
+    async def test_export_redacts_sensitive_filter_values_in_metadata_and_audit(
+        self,
+        authenticated_client,
+        async_engine_fixture,
+    ):
+        """Sensitive caller-supplied filter values must not persist in export metadata or audit.export."""
+        from sqlalchemy import text
+
+        sensitive_filter = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature"
+        response = await authenticated_client.post(
+            "/api/v1/admin/audit/export",
+            json={"format": "csv", "actor_identity": sensitive_filter},
+        )
+        assert response.status_code == 200
+        body = response.content.decode("utf-8")
+        assert sensitive_filter not in body
+        assert "[REDACTED]" in body
+
+        async with async_engine_fixture.connect() as conn:
+            result = await conn.execute(
+                text(
+                    "SELECT context FROM audit_log_entries "
+                    "WHERE action_type = 'audit.export' "
+                    "ORDER BY sequence_number DESC LIMIT 1"
+                )
+            )
+            row = result.fetchone()
+            assert row is not None, "audit.export event must be emitted after POST /export"
+
+            import json
+
+            context = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+            context_text = str(context)
+            assert sensitive_filter not in context_text
+            assert "[REDACTED]" in context_text
+
 
 # ---------------------------------------------------------------------------
 # Helpers
