@@ -1133,9 +1133,18 @@
 - **T-895 Sanitization Regression**: Added `test_phase6_sanitization_regression.py` validating that error bodies across all Phase 6 routes leak no counter values, policy/rule/pattern/confidence metrics, raw inputs, DB details, stack traces, or OIDC/SAML tokens. Also covers Chunk 1-8 guard-fixes against regression.
 - **Local Review Gates**: `rtk uv run ruff check src tests` passed; `rtk uv run ruff format --check src tests` passed; `rtk git diff --check` passed.
 
+### Review and Merge Result
+
+- **PR**: #183
+- **Merge Commit**: `3de3ac1de37e4c78d05027d1b138714034d8727a`
+- **Review Result**: initial review blocked on fake cross-dialect coverage and hand-built sanitization response bodies. Fix commit `1ce993ad3976e4ac0ea73a174cfb6d4bd1eb435a` replaced those with per-dialect connection coverage and route-level sanitization checks.
+- **Reviewer Gate**: focused Wave 18.4a suite passed locally: `52 passed`; `ruff check src tests`, `ruff format --check src tests`, and `git diff --check` passed.
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS.
+- **Status**: MERGED.
+
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-02
-- **Branch Context**: `phase-6/wave-18.4a-backend-regression-security`
-- **Status**: Backend Wave 18.4a completed.
+- **Branch Context**: `main` at `3de3ac1de37e4c78d05027d1b138714034d8727a`
+- **Status**: Backend Wave 18.4a reviewed and merged. T-892, T-894, and T-895 complete.
 - **Next Dispatch**: Proceed to Wave 18.4b (Frontend Verification and Polish: T-896, T-897, T-898, T-899).
