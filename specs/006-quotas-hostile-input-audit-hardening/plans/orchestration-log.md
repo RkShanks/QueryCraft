@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-02
-- **Branch Context**: `main` at `97e47c48a7c1046578feac3dcbe2b2177d66f358`
-- **Status**: Guard review Chunk 4 COMPLETE. Detection frontend i18n fix merged in PR #178. Wave 18.4a remains ON HOLD.
-- **Next Dispatch**: Guard review Chunk 5, audit search/export backend from PRs #162 through #164.
+- **Branch Context**: `main` at `92dd46b3036982a96474d43c1e304f67d97e97a7`
+- **Status**: Guard review Chunk 5 COMPLETE. Audit search/export redaction fix merged in PR #179. Wave 18.4a remains ON HOLD.
+- **Next Dispatch**: Guard review Chunk 6, audit purge/verify/retention backend from PRs #165 through #170.
 - **Frontend Dispatch Hold**: active for Wave 18.4; complete guard chunks 2-8 before resuming Wave 18.4a.
 
 ---
@@ -999,3 +999,29 @@
 - **CI**: backend-test SUCCESS, frontend-test SUCCESS.
 - **Review Result**: no blocking findings after guard fix.
 - **Wave 18.4a**: remains ON HOLD until guard chunks 5-8 complete.
+
+---
+
+## Guard Review — Chunk 5 Audit Search/Export Backend
+
+### Results
+
+- **Date**: 2026-07-02
+- **Scope**: Audit search/export backend from PRs #162 through #164.
+- **Branch**: `guard/phase6-audit-export-redaction-fix`
+- **PR**: #179
+- **Merge Commit**: `92dd46b3036982a96474d43c1e304f67d97e97a7`
+- **Status**: COMPLETE
+
+### Findings Fixed
+
+- **High**: Audit export/filter-summary redaction was key-based only. A stored context or caller-supplied filter value shaped like a token, credential, DB host/driver, or stack trace under a safe key could be emitted in CSV/JSON export metadata or persisted in `audit.search` / `audit.export` context.
+
+### Review and Merge Result
+
+- **Fix**: added value-pattern redaction in `AuditExportService`; sanitized audit search/export filter summaries before self-audit context and export metadata.
+- **Regression Coverage**: added unit and integration tests for safe-key bearer token values, DB/driver-shaped strings, stack-trace-shaped values, and self-audit search/export context redaction.
+- **Reviewer Gate**: focused Chunk 5 suite → 259 passed, 1 skipped, 3 known AsyncMock warnings; `ruff check src tests`, `ruff format --check src tests`, and `git diff --check` passed.
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS.
+- **Review Result**: no blocking findings after guard fix.
+- **Wave 18.4a**: remains ON HOLD until guard chunks 6-8 complete.
