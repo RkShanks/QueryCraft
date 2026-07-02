@@ -210,8 +210,8 @@ This marker context includes cryptographically bound metadata that catalogs the 
 - `retention_months`: The active retention window setting under which the purge ran.
 - `last_retained_hash`: The SHA-256 cryptographic hash of the youngest deleted (purged) entry.
 - `last_retained_seq`: The sequence number of the youngest deleted entry.
-- `first_surviving_seq`: The sequence number of the oldest remaining (surviving) entry.
-- `first_surviving_prev_hash`: The `prev_hash` value of the oldest remaining entry (which points back to the deleted one).
+- `first_surviving_seq`: The sequence number of the oldest remaining (surviving) pre-purge entry, or `null` if every pre-existing entry was purged.
+- `first_surviving_prev_hash`: The `prev_hash` value of the oldest remaining entry (which points back to the deleted one), or `null` if every pre-existing entry was purged.
 
 ### 2. Expired Entries Deletion
 After successfully inserting the marker, all `AuditLogEntry` rows older than the calculated cutoff date are permanently deleted from the database. The entire operation is executed atomically inside a transaction; if either the marker insertion or the deletion fails, the database rolls back to its original state.
@@ -220,6 +220,7 @@ After successfully inserting the marker, all `AuditLogEntry` rows older than the
 Because deleting log entries creates a gap in the sequence numbers and breaks the SHA-256 hash linkage of `prev_hash` on the first surviving entry, the chain validation logic (`verify_chain()`) handles these gaps:
 - When checking the log integrity, if the validator encounters a broken linkage (the `prev_hash` of an entry does not match the previous entry in the log), it looks up the `audit.purge` markers.
 - If it finds a valid `audit.purge` marker where `first_surviving_seq` and `first_surviving_prev_hash` match the orphaned entry's sequence number and `prev_hash` value, it treats the gap as an intentional purge gap.
+- If all previous entries were purged and the marker itself is the first retained row, the validator accepts the marker only when its `last_retained_seq`/`last_retained_hash` metadata matches the deleted boundary.
 - The validator marks this segment as secure and continues verifying the rest of the chain. If no matching marker exists, the validator marks the chain as **tampered** (broken status).
 
 ### 4. Retention Status API Endpoint
