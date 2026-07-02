@@ -14,18 +14,21 @@ Key contracts verified:
    blocks all dialects, not just postgres.
 5. No dialect identifier (postgres/mysql/mssql) leaks into quota error body.
 6. Quota key namespacing is per-user per-dimension (not per-connection/dialect).
+7. Execution quota blocks before source DB executor/adapter execution for each dialect.
 
 FR-152 (quota enforcement), SC-063 (fail-closed), SC-064 (sanitized body).
 """
 
 from __future__ import annotations
 
+import re
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.core.exceptions import QuotaExceededError, QuotaUnavailableError
+from app.services.query_service import QueryService
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -36,10 +39,14 @@ _DIALECTS = ["postgres", "mysql", "mssql"]
 _DIMENSIONS = ["queries", "executions", "exports"]
 
 
-def _make_query_service(*, quota_side_effect=None, quota_return=None):
+def _make_query_service(
+    *,
+    quota_side_effect=None,
+    quota_return=None,
+    dialect="postgres",
+    mock_adapter=None,
+):
     """Build a QueryService with mocked dependencies for quota testing."""
-    from app.services.query_service import QueryService
-
     user_id = uuid.uuid4()
     role_id = uuid.uuid4()
 
@@ -60,16 +67,30 @@ def _make_query_service(*, quota_side_effect=None, quota_return=None):
     mock_redis.set = AsyncMock(return_value=True)
     mock_redis.delete = AsyncMock()
 
+    mock_llm = AsyncMock()
+    mock_llm.generate_sql = AsyncMock(return_value="SELECT 1")
+
+    mock_evaluator = AsyncMock()
+    mock_evaluator.evaluate = AsyncMock(return_value=MagicMock(passed=True, violations=[]))
+
+    mock_session_repo = AsyncMock()
+    mock_new_sess = MagicMock()
+    mock_new_sess.id = uuid.uuid4()
+    mock_session_repo.create = AsyncMock(return_value=mock_new_sess)
+    mock_executor = AsyncMock()
+
     service = QueryService(
         accepted_query_repository=AsyncMock(),
-        session_repository=AsyncMock(),
+        session_repository=mock_session_repo,
         db_session=mock_db,
         redis=mock_redis,
-        llm=AsyncMock(),
-        evaluator=AsyncMock(),
-        source_db_executor=AsyncMock(),
+        llm=mock_llm,
+        evaluator=mock_evaluator,
+        source_db_executor=mock_executor,
         llm_provider="test",
         schema_context="",
+        target_dialect=dialect,
+        source_db_adapter=mock_adapter,
         quota_service=mock_quota_service,
     )
     return service, user_id, role_id, mock_quota_service
@@ -97,7 +118,8 @@ class TestQuotaCheckIsDialectAgnostic:
 
         reset_at = "2026-07-01T00:00:00+00:00"
         service, user_id, role_id, mock_quota = _make_query_service(
-            quota_side_effect=QuotaExceededError(dimension="queries", reset_at=reset_at)
+            quota_side_effect=QuotaExceededError(dimension="queries", reset_at=reset_at),
+            dialect=dialect,
         )
 
         with pytest.raises(HTTPException) as exc_info:
@@ -120,7 +142,9 @@ class TestQuotaCheckIsDialectAgnostic:
         """Redis unavailability (503) blocks submission regardless of dialect."""
         from fastapi import HTTPException
 
-        service, user_id, role_id, mock_quota = _make_query_service(quota_side_effect=QuotaUnavailableError())
+        service, user_id, role_id, mock_quota = _make_query_service(
+            quota_side_effect=QuotaUnavailableError(), dialect=dialect
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await service.submit_question(
@@ -151,8 +175,6 @@ class TestQuotaKeyNamespacingIsPerUser:
 
     def test_quota_key_pattern_excludes_connection_id(self) -> None:
         """Quota key must contain user_id and dimension, not connection_id or dialect."""
-        import re
-
         from app.services.quota_service import _today_key_suffix
 
         user_id = str(uuid.uuid4())
@@ -239,7 +261,13 @@ class TestQuotaErrorBodyNeverLeaksDatabaseInfo:
         }
         body_str = json.dumps(body)
 
-        for forbidden in ["connection_id", "db_host", "db_port", "db_name", "connection_string"]:
+        for forbidden in [
+            "connection_id",
+            "db_host",
+            "db_port",
+            "db_name",
+            "connection_string",
+        ]:
             assert forbidden not in body_str, f"Forbidden field '{forbidden}' found in quota exceeded body"
 
 
@@ -322,3 +350,71 @@ class TestAllQuotaDimensionsDialectAgnostic:
 
         assert exc_info.value.status_code == 429, f"[{dimension}] Expected 429, got {exc_info.value.status_code}"
         assert exc_info.value.detail["message_key"] == "error.quota_exceeded"
+
+
+# ---------------------------------------------------------------------------
+# T-894.7 — Execution quota blocks before source DB executor execution per dialect
+# ---------------------------------------------------------------------------
+
+
+class TestExecutionQuotaBlocksBeforeExecutor:
+    """Verify execution quota blocks before source DB executor/adapter execution for each dialect connection."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("dialect", _DIALECTS)
+    async def test_execution_quota_blocks_before_adapter_execution(self, dialect: str) -> None:
+        """Adapter execute is NOT called when execution quota is exceeded for a given dialect."""
+        from fastapi import HTTPException
+
+        mock_adapter = AsyncMock()
+        mock_adapter.execute = AsyncMock(return_value=MagicMock(columns=[], rows=[]))
+
+        # Queries quota passes (returns 1), but Executions quota is exceeded
+        mock_quota_service = AsyncMock()
+        # Set up check_and_increment to raise QuotaExceededError on the second call (which is the 'executions' check)
+        call_count = 0
+
+        async def _check_and_increment_side_effect(user_id, role_id, dimension):
+            nonlocal call_count
+            if dimension == "executions":
+                raise QuotaExceededError(dimension="executions", reset_at="2026-07-01T00:00:00+00:00")
+            return (1, 100, None)
+
+        mock_quota_service.check_and_increment = AsyncMock(side_effect=_check_and_increment_side_effect)
+
+        service, user_id, role_id, _ = _make_query_service(dialect=dialect, mock_adapter=mock_adapter)
+        service._quota_service = mock_quota_service
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service.submit_question(
+                http_session_id="test-session",
+                user_id=str(user_id),
+                question="show me all orders",
+            )
+
+        assert exc_info.value.status_code == 429
+        # Verify adapter was NEVER called (blocked before database execution)
+        mock_adapter.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("dialect", _DIALECTS)
+    async def test_adapter_executed_when_quota_under_limit(self, dialect: str) -> None:
+        """Adapter execute IS called when execution quota is under the limit."""
+        mock_adapter = AsyncMock()
+        mock_adapter.execute = AsyncMock(return_value=MagicMock(columns=[], rows=[]))
+
+        # Both queries and executions checks succeed
+        mock_quota_service = AsyncMock()
+        mock_quota_service.check_and_increment = AsyncMock(return_value=(1, 100, None))
+
+        service, user_id, role_id, _ = _make_query_service(dialect=dialect, mock_adapter=mock_adapter)
+        service._quota_service = mock_quota_service
+
+        await service.submit_question(
+            http_session_id="test-session",
+            user_id=str(user_id),
+            question="show me all orders",
+        )
+
+        # Verify adapter WAS called (quota checks passed)
+        mock_adapter.execute.assert_called_once()
