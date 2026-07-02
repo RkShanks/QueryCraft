@@ -41,8 +41,6 @@ function extractErrorKey(err: unknown): string | null {
   return null;
 }
 
-const FORBIDDEN_SUFFIX = ' (Forbidden)';
-
 export const AdminDetectionPage: React.FC = () => {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -119,7 +117,7 @@ export const AdminDetectionPage: React.FC = () => {
         <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold" data-testid="access-denied-error">
-            {isForbidden ? `${t('error.forbidden')}${FORBIDDEN_SUFFIX}` : t('error.unknown.message')}
+            {isForbidden ? t('error.forbidden') : t('error.unknown.message')}
           </p>
         </div>
       </div>

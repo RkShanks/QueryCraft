@@ -90,21 +90,28 @@ describe('AdminDetectionPage', () => {
     expect(errorMsg).toBeInTheDocument();
   });
 
-  it('renders access-denied state when API returns 403 Forbidden', async () => {
+  it('renders localized access-denied state without raw backend error text', async () => {
     server.use(
       http.get('/api/v1/admin/detection/config', () => {
         return HttpResponse.json(
-          { message_key: 'error.forbidden', error: 'Forbidden' },
+          {
+            message_key: 'error.forbidden',
+            error: 'Forbidden raw_payload confidence=0.99 stack=trace',
+          },
           { status: 403 }
         );
       })
     );
 
-    renderWithClient(<AdminDetectionPage />);
+    const { container } = renderWithClient(<AdminDetectionPage />);
 
-    // Should display forbidden error
-    const forbiddenText = await screen.findByText(/forbidden/i);
-    expect(forbiddenText).toBeInTheDocument();
+    expect(await screen.findByTestId('access-denied-error')).toHaveTextContent(
+      'This request was blocked for security reasons.'
+    );
+    expect(container).not.toHaveTextContent('Forbidden');
+    expect(container).not.toHaveTextContent('raw_payload');
+    expect(container).not.toHaveTextContent('confidence=0.99');
+    expect(container).not.toHaveTextContent('stack=trace');
   });
 
   it('renders with RTL direction and verified logical classes without physical inline styles', async () => {
