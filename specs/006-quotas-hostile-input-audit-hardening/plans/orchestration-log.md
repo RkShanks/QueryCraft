@@ -1142,9 +1142,43 @@
 - **CI**: backend-test SUCCESS, frontend-test SUCCESS.
 - **Status**: MERGED.
 
-### Current Wave Checkpoint
+### Past Checkpoint
 
 - **Date**: 2026-07-02
 - **Branch Context**: `main` at `3de3ac1de37e4c78d05027d1b138714034d8727a`
 - **Status**: Backend Wave 18.4a reviewed and merged. T-892, T-894, and T-895 complete.
 - **Next Dispatch**: Proceed to Wave 18.4b (Frontend Verification and Polish: T-893, T-896, T-897, T-898, T-899, T-900).
+
+---
+
+## Wave 18.4b — Frontend Verification and Polish
+
+### Dispatch
+
+- **Date**: 2026-07-02
+- **Model**: Frontend Implementer
+- **T-IDs**: T-893, T-896, T-897, T-898, T-899, T-900
+- **Branch**: `phase-6/wave-18.4b-frontend-verification-polish`
+- **Status**: COMPLETE
+- **Tasks Completed**: T-893, T-896, T-897, T-898, T-899, T-900
+
+### Verification Result
+
+- **T-893 Frontend Regression**: full frontend regression passed: Vitest `755 passed`, ESLint passed, typecheck passed, build passed, CSS lint passed, and diff check passed.
+- **T-896 through T-899 Browser Smoke**: Playwright Chromium smoke covered Arabic/RTL desktop quotas, query quota/hostile errors, detection config, audit search/export/retention, quota status, and mobile 375px/768px surfaces.
+- **T-900 Evidence**: consolidated evidence in `audit/wave-18/browser-smoke-wave18.md` with screenshot artifacts for UC-11 through UC-18.
+
+### Review and Merge Result
+
+- **PR**: #184
+- **Merge Commit**: `0958d5d892606bbb6749987e094657be8e5370c4`
+- **Review Result**: initial review blocked because UC-16 only asserted export button visibility. Fix commit `556dddd3e6f6a906a0d48be936bb10c7739cd8de` added a CSV export route mock, clicked Arabic `تصدير CSV`, asserted `{ format: "csv" }`, and verified the `.csv` download event.
+- **Reviewer Gate**: `rtk proxy git diff --check origin/main...HEAD` passed after whitespace fix; backend-test and frontend-test CI both passed.
+- **Status**: MERGED.
+
+### Current Wave Checkpoint
+
+- **Date**: 2026-07-02
+- **Branch Context**: `main` at `0958d5d892606bbb6749987e094657be8e5370c4`
+- **Status**: Wave 18.4b reviewed and merged. T-893 and T-896 through T-900 complete.
+- **Next Dispatch**: Proceed to independent Phase 6 security audits: T-901 Gemini audit and T-902 Opus audit.
