@@ -579,6 +579,38 @@ describe('AdminAuditPage', () => {
       setAttributeSpy.mockRestore();
     });
 
+    it('uses current form values for export even before Search is submitted', async () => {
+      let exportBody: unknown = null;
+      server.use(
+        http.post('/api/v1/admin/audit/export', async ({ request }) => {
+          exportBody = await request.json();
+          return HttpResponse.text('col1,col2\nval1,val2', {
+            status: 200,
+            headers: { 'Content-Type': 'text/csv' },
+          });
+        })
+      );
+
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      fireEvent.change(await screen.findByLabelText('Actor'), {
+        target: { value: 'draft-filter@example.com' },
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+
+      await waitFor(() => {
+        expect(exportBody).toEqual({
+          format: 'csv',
+          actor_identity: 'draft-filter@example.com',
+        });
+      });
+
+      clickSpy.mockRestore();
+    });
+
     it('triggers JSON export with current search filters on Export JSON click', async () => {
       let exportBody: unknown = null;
       server.use(
