@@ -4,7 +4,8 @@
 **Task ID range**: T-779 – T-909
 **Phase 5 closed at**: T-778
 **Generated**: 2026-06-08
-**Source documents**: spec.md, plan.md, data-model.md, contracts/api-contracts.md, research.md, quickstart.md
+**Active repo documents**: tasks.md, plans/orchestration-log.md
+**Generated source artifact note**: Phase 6 source artifacts (`spec.md`, `plan.md`, `data-model.md`, `contracts/api-contracts.md`, `research.md`, `quickstart.md`) are not present in this repository snapshot. Do not reference or freeze those files during closeout unless they are restored before T-907.
 
 ---
 
@@ -363,11 +364,11 @@ SC-076 (0 Critical/High before freeze)
 
 - [ ] T-906 Update orchestration log `specs/006-quotas-hostile-input-audit-hardening/plans/orchestration-log.md`: append Wave 18.4 closeout entry (date, all waves complete, task count T-779–T-909, audit gate PASS, freeze status PENDING AGENTS.md update, final PR merged). Depends on T-905. **Dispatch: OR**
 
-- [ ] T-907 Update Phase 6 status in `specs/006-quotas-hostile-input-audit-hardening/spec.md` header: change `Status: Draft` to `Status: FROZEN`. Append freeze date and final PR reference. Depends on T-905. **Dispatch: OR**
+- [ ] T-907 Record Phase 6 freeze metadata in `specs/006-quotas-hostile-input-audit-hardening/plans/wave-final-snapshot.md` and append the final freeze entry to `specs/006-quotas-hostile-input-audit-hardening/plans/orchestration-log.md`. If `specs/006-quotas-hostile-input-audit-hardening/spec.md` has been restored before closeout, also update its header from `Status: Draft` to `Status: FROZEN` and append the freeze date/final PR reference. Do not create or freeze a placeholder spec file. Depends on T-905. **Dispatch: OR**
 
-- [ ] T-908 Verify `specs/005-sso-rbac-row-column-security/` is still listed as FROZEN and Phase 6 directory exists in `AGENTS.md` phase table. No AGENTS.md edits yet — this is pre-check only. Depends on T-905. **Dispatch: OR**
+- [ ] T-908 Verify `specs/005-sso-rbac-row-column-security/` is still listed as FROZEN and verify the current Phase 6 row in `AGENTS.md` is still pre-freeze (`PLANNED` with directory `—` in this snapshot). No AGENTS.md edits yet; this is a pre-check before T-909. Depends on T-905. **Dispatch: OR**
 
-- [ ] T-909 After final Phase 6 PR merges to main: update `AGENTS.md` Phase table entry for Phase 6 from `ACTIVE` to `FROZEN` with directory `specs/006-quotas-hostile-input-audit-hardening/` and final PR reference. Update Phase 7 row from `PLANNED` to reflect readiness. This is the final task — do NOT execute before T-905 and T-906 complete. Depends on T-906, T-907, T-908. **Dispatch: OR**
+- [ ] T-909 After final Phase 6 PR merges to main: update `AGENTS.md` Phase table entry for Phase 6 from its current pre-freeze state to `FROZEN` with directory `specs/006-quotas-hostile-input-audit-hardening/` and final PR reference. Update Phase 7 row from `PLANNED` to reflect readiness. This is the final task — do NOT execute before T-905, T-906, T-907, and T-908 complete. Depends on T-906, T-907, T-908. **Dispatch: OR**
 
 ---
 
