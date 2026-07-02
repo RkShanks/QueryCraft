@@ -334,13 +334,13 @@ SC-076 (0 Critical/High before freeze)
 
 ---
 
-- [ ] T-892 Run full backend regression on merged main: `cd backend && uv run pytest tests/ -x --tb=short && uv run ruff check src/ && uv run ruff format --check src/ && git diff --check`. Document pass/fail in wave-18.4 PR description. Depends on all Wave 18.0–18.3 backend tasks merged. **Dispatch: BE**
+- [x] T-892 Run full backend regression on merged main: `cd backend && uv run pytest tests/ -x --tb=short && uv run ruff check src/ && uv run ruff format --check src/ && git diff --check`. Document pass/fail in wave-18.4 PR description. Depends on all Wave 18.0–18.3 backend tasks merged. **Dispatch: BE**
 
 - [ ] T-893 [P] Run full frontend regression on merged main: `cd frontend && npm test -- --run && npm run lint && npm run typecheck && npm run build && npm run lint:css && git diff --check`. Document pass/fail. Depends on all Wave 18.0–18.3 frontend tasks merged. **Dispatch: FE**
 
-- [ ] T-894 [P] Cross-dialect quota enforcement verification: write or extend `backend/tests/integration/test_cross_dialect_quota.py` — verify quota enforcement at execution boundary works correctly when source DB is PostgreSQL, MySQL, and MSSQL (execution counter incremented on each dialect's execute call, blocked when exhausted regardless of dialect). Depends on T-802, T-892. **Dispatch: BE**
+- [x] T-894 [P] Cross-dialect quota enforcement verification: write or extend `backend/tests/integration/test_cross_dialect_quota.py` — verify quota enforcement at execution boundary works correctly when source DB is PostgreSQL, MySQL, and MSSQL (execution counter incremented on each dialect's execute call, blocked when exhausted regardless of dialect). Depends on T-802, T-892. **Dispatch: BE**
 
-- [ ] T-895 [P] Write security regression test `backend/tests/unit/test_phase6_sanitization_regression.py`: assert all Phase 6 endpoints return no internal values in error responses (iterate through all error paths for quota exceeded, hostile blocked, export limit, detection config validation, permission denied) and verify none contain: counter values, policy IDs, rule names, patterns, confidence scores, raw hostile text, DB host/port, provider names, stack traces, OIDC/SAML tokens. Depends on T-892. **Dispatch: BE**
+- [x] T-895 [P] Write security regression test `backend/tests/unit/test_phase6_sanitization_regression.py`: assert all Phase 6 endpoints return no internal values in error responses (iterate through all error paths for quota exceeded, hostile blocked, export limit, detection config validation, permission denied) and verify none contain: counter values, policy IDs, rule names, patterns, confidence scores, raw hostile text, DB host/port, provider names, stack traces, OIDC/SAML tokens. Depends on T-892. **Dispatch: BE**
 
 - [ ] T-896 [P] Arabic/RTL browser smoke — desktop: open browser at `/admin/quotas` with Arabic locale; verify UC-11 (quota config page) — all labels Arabic, RTL layout, no English fallback, form inputs RTL. Document screenshot evidence in `audit/wave-18/browser-smoke-wave18.md`. Depends on T-893. **Dispatch: FE**
 

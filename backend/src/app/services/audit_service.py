@@ -38,6 +38,7 @@ class VerificationResult:
 # Secret redaction helpers
 # ---------------------------------------------------------------------------
 
+
 _SENSITIVE_TOKENS: set[str] = {
     "password",
     "secret",
@@ -64,9 +65,28 @@ _SENSITIVE_TOKENS: set[str] = {
     "refreshtoken",
 }
 
+# Explicit safelist of *normalized* composite key names that must never be
+# redacted even though they contain a short sensitive substring.
+# Example: ``error_code`` → ``errorcode`` contains ``"code"`` but is safe.
+# Add here conservatively; each entry must be a genuinely non-secret audit field.
+_NON_SECRET_NORMALIZED: frozenset[str] = frozenset(
+    {
+        "errorcode",  # e.g. error_code = "sso_validation_failed"
+        "statuscode",  # HTTP status codes stored in audit context
+        "postcode",  # postal code (geographic, not secret)
+        "zipcode",  # zip code (geographic, not secret)
+        "hashcode",  # hash codes (non-credential)
+    }
+)
+
 
 def _is_sensitive_key(key: str) -> bool:
     normalized = key.lower().replace("_", "").replace("-", "")
+    # Safelist check: known composite keys that are safe despite containing
+    # a sensitive substring (e.g. ``error_code`` → ``errorcode`` ~ ``code``).
+    if normalized in _NON_SECRET_NORMALIZED:
+        return False
+    # Substring check for sensitive token names.
     return any(token in normalized for token in _SENSITIVE_TOKENS)
 
 
