@@ -240,10 +240,10 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-02
-- **Branch Context**: `main` at `392194f8478eadd8d71975a083d78323dfe6004c`
-- **Status**: Guard review Chunk 7 COMPLETE. Audit frontend export-filter fix merged in PR #181. Wave 18.4a remains ON HOLD.
-- **Next Dispatch**: Guard review Chunk 8, specs/docs/tasks/orchestration/audit files.
-- **Frontend Dispatch Hold**: active for Wave 18.4; complete guard chunks 2-8 before resuming Wave 18.4a.
+- **Branch Context**: `guard/phase6-docs-closeout-drift` from `main` at `c657c91`
+- **Status**: Guard review Chunk 8 found closeout-doc drift. Docs fix PR #182 open. Wave 18.4a remains ON HOLD.
+- **Next Dispatch**: Merge guard Chunk 8 docs fix, then resume Wave 18.4a only after the fix is on `main`.
+- **Frontend Dispatch Hold**: active for Wave 18.4 until guard Chunk 8 fix merges.
 
 ---
 
@@ -1080,3 +1080,26 @@
 - **CI**: backend-test SUCCESS, frontend-test SUCCESS.
 - **Review Result**: no blocking findings after guard fix.
 - **Wave 18.4a**: remains ON HOLD until guard chunk 8 completes.
+
+---
+
+## Guard Review — Chunk 8 Specs/Docs/Tasks/Orchestration
+
+### Results
+
+- **Date**: 2026-07-02
+- **Scope**: Phase 6 specs/tasks/orchestration/audit files and audit purge scheduler docs.
+- **Branch**: `guard/phase6-docs-closeout-drift`
+- **PR**: #182
+- **Status**: PR OPEN
+
+### Findings Fixed
+
+- **High**: `tasks.md` closeout tasks referenced a missing Phase 6 `spec.md` and assumed the `AGENTS.md` Phase 6 row was `ACTIVE`, while current `main` only has `tasks.md` and `plans/orchestration-log.md` under the Phase 6 spec directory and `AGENTS.md` still lists Phase 6 as `PLANNED` with directory `—`. Left unchanged, T-907 through T-909 would send closeout agents to edit nonexistent artifacts or verify false AGENTS state before freeze.
+
+### Review Notes
+
+- The current-wave checkpoint heading occurs exactly once.
+- `docs/operations/audit-purge-scheduler.md` matches current `AuditService.purge_expired_entries()`, marker insertion, marker-only all-purged boundary handling, `verify_chain()`, and retention endpoint behavior.
+- `audit/wave-18/gemini-findings.md` and `audit/wave-18/opus-findings.md` remain correct PENDING placeholders for T-901/T-902.
+- Phase 6 is not marked FROZEN and Wave 18.4a remains ON HOLD.
