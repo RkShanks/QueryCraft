@@ -240,10 +240,10 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-02
-- **Branch Context**: `guard/phase6-docs-closeout-drift` from `main` at `c657c91`
-- **Status**: Guard review Chunk 8 found closeout-doc drift. Docs fix PR #182 open. Wave 18.4a remains ON HOLD.
-- **Next Dispatch**: Merge guard Chunk 8 docs fix, then resume Wave 18.4a only after the fix is on `main`.
-- **Frontend Dispatch Hold**: active for Wave 18.4 until guard Chunk 8 fix merges.
+- **Branch Context**: `main` at `36cb26b4669349f4544ac2ab169240269ab607a9`
+- **Status**: Guard review Chunks 1-8 COMPLETE. Chunk 8 docs closeout fix merged in PR #182. Wave 18.4a hold cleared.
+- **Next Dispatch**: Resume Wave 18.4a backend regression/security verification: T-892, T-894, T-895.
+- **Frontend Dispatch Hold**: cleared for guard review; frontend Wave 18.4 tasks remain sequenced after backend Wave 18.4a.
 
 ---
 
@@ -1091,7 +1091,8 @@
 - **Scope**: Phase 6 specs/tasks/orchestration/audit files and audit purge scheduler docs.
 - **Branch**: `guard/phase6-docs-closeout-drift`
 - **PR**: #182
-- **Status**: PR OPEN
+- **Merge Commit**: `36cb26b4669349f4544ac2ab169240269ab607a9`
+- **Status**: COMPLETE
 
 ### Findings Fixed
 
@@ -1102,4 +1103,11 @@
 - The current-wave checkpoint heading occurs exactly once.
 - `docs/operations/audit-purge-scheduler.md` matches current `AuditService.purge_expired_entries()`, marker insertion, marker-only all-purged boundary handling, `verify_chain()`, and retention endpoint behavior.
 - `audit/wave-18/gemini-findings.md` and `audit/wave-18/opus-findings.md` remain correct PENDING placeholders for T-901/T-902.
-- Phase 6 is not marked FROZEN and Wave 18.4a remains ON HOLD.
+- Phase 6 is not marked FROZEN; freeze remains reserved for T-907 through T-909.
+
+### Review and Merge Result
+
+- **Fix**: closeout tasks now target existing Phase 6 repo artifacts and explicitly avoid creating/freezing a placeholder `spec.md`.
+- **Reviewer Gate**: PR diff limited to `tasks.md` and orchestration log; checkpoint heading occurs exactly once; `git diff --check` passed; backend-test and frontend-test CI both passed.
+- **Review Result**: no blocking findings after guard fix.
+- **Wave 18.4a**: guard hold cleared; backend regression/security verification can resume.
