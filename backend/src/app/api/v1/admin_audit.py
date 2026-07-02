@@ -71,7 +71,7 @@ from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType, Permission
 from app.repositories.quota_repository import QuotaRepository
 from app.schemas.audit_search import AuditExportRequest, AuditSearchParams
-from app.services.audit_export_service import AuditExportService, ExportLimitExceededError
+from app.services.audit_export_service import AuditExportService, ExportLimitExceededError, redact_audit_export_value
 from app.services.audit_search_service import AuditSearchService
 from app.services.audit_service import AuditService, VerificationResult
 from app.services.quota_service import QuotaService
@@ -410,6 +410,8 @@ async def search_audit_entries(
 
         actor_identity_val = (_session or {}).get("username") if _session else None
 
+        safe_filter_summary = redact_audit_export_value(filter_summary)
+
         # Emit AUDIT_SEARCH — context: filter summary + pagination metadata only.
         # Never include returned entry values.
         await AuditService.log(
@@ -420,7 +422,7 @@ async def search_audit_entries(
             resource_id=None,
             outcome="success",
             context={
-                "filters": filter_summary,
+                "filters": safe_filter_summary,
                 "page": page,
                 "page_size": page_size,
             },
@@ -539,11 +541,12 @@ async def export_audit_entries(
         if export_req.end_date is not None:
             filter_summary["end_date"] = export_req.end_date.isoformat()
         filter_summary["format"] = export_req.format
+        safe_filter_summary = redact_audit_export_value(filter_summary)
 
         metadata = {
             "export_actor": actor_identity_val,
             "export_timestamp": export_timestamp,
-            "filter_summary": str(filter_summary),
+            "filter_summary": str(safe_filter_summary),
             "record_count": len(entries),
         }
 
@@ -568,7 +571,7 @@ async def export_audit_entries(
             resource_id=None,
             outcome="success",
             context={
-                "filter_summary": filter_summary,
+                "filter_summary": safe_filter_summary,
                 "record_count": len(entries),
             },
         )
