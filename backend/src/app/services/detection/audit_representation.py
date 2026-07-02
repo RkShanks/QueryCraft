@@ -1,12 +1,4 @@
-"""Detection audit representation helpers (T-843).
-
-Functions:
-- build_redacted_summary(text): first 100 chars with hostile patterns replaced.
-- compute_input_hash(text): SHA-256 hex of raw text.
-- build_detection_audit_context(outcome, results, text): safe audit context dict.
-
-Raw hostile text MUST NEVER appear in the output of any function here.
-"""
+"""Detection audit representation helpers (T-843)."""
 
 from __future__ import annotations
 
@@ -74,15 +66,17 @@ _REDACT_PATTERNS: list[re.Pattern[str]] = [
 ]
 
 _REDACT_PLACEHOLDER = "[REDACTED_PATTERN]"
+_REDACTED_INPUT_SUMMARY = "[REDACTED_INPUT]"
 _MAX_SUMMARY_LEN = 100
 
 
 def build_redacted_summary(text: str) -> str:
     """Return a redacted summary of *text*, at most 100 characters.
 
-    Hostile pattern matches are replaced with ``[REDACTED_PATTERN]``.
-    The result is then truncated to 100 characters.  Raw hostile text
-    MUST NOT appear in the output.
+    Known hostile pattern matches are replaced with
+    ``[REDACTED_PATTERN]``. Detection audit contexts use
+    ``_audit_safe_summary`` so blocked or flagged inputs never store
+    raw user text when this catalogue misses a trigger.
 
     Args:
         text: Raw user input.
@@ -110,6 +104,12 @@ def compute_input_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _audit_safe_summary(outcome: str, text: str) -> str:
+    if outcome in {"blocked", "flagged"}:
+        return _REDACTED_INPUT_SUMMARY
+    return build_redacted_summary(text)
+
+
 def build_detection_audit_context(
     outcome: str,
     results: list[DetectionResult],
@@ -122,7 +122,8 @@ def build_detection_audit_context(
     - ``confidence``: max confidence across all results
     - ``rules_triggered``: list of rule names (strings only; no patterns)
     - ``outcome``: "blocked" | "flagged" | "allowed"
-    - ``input_summary``: redacted, max-100-char summary
+    - ``input_summary``: redacted, max-100-char summary; detected hostile inputs
+      store a constant marker instead of user text
     - ``input_hash``: SHA-256 hex of the raw input
 
     Raw hostile text MUST NEVER appear in the output.
@@ -153,6 +154,6 @@ def build_detection_audit_context(
         "confidence": round(max_confidence, 4),
         "rules_triggered": rules_triggered,
         "outcome": outcome,
-        "input_summary": build_redacted_summary(text),
+        "input_summary": _audit_safe_summary(outcome, text),
         "input_hash": compute_input_hash(text),
     }

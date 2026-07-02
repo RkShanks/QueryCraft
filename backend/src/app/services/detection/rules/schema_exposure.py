@@ -43,16 +43,17 @@ _ENGLISH_PATTERNS: list[re.Pattern[str]] = [
 ]
 
 _ARABIC_PATTERNS: list[re.Pattern[str]] = [
-    # اعرض الجداول — "show the tables"
-    re.compile(r"اعرض\s+الجداول"),
+    # اعرض جميع الجداول — "show all tables"
+    re.compile(r"اعرض\s+(?:جميع\s+)?الجداول"),
     # كلمة مرور قاعدة البيانات — "database password"
     re.compile(r"كلمة\s+مرور\s+قاعدة\s+البيانات"),
     # سلسلة الاتصال — "connection string"
     re.compile(r"سلسلة\s+الاتصال"),
     # متغيرات البيئة — "environment variables"
     re.compile(r"متغيرات\s+البيئة"),
-    # أسماء الأعمدة — "column names"
+    # أسماء/جميع الأعمدة — "column names/all columns"
     re.compile(r"أسماء\s+الأعمدة"),
+    re.compile(r"اعرض\s+(?:جميع\s+)?الأعمدة"),
     # هيكل قاعدة البيانات — "database structure"
     re.compile(r"هيكل\s+قاعدة\s+البيانات"),
 ]
