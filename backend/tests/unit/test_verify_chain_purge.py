@@ -214,6 +214,26 @@ class TestVerifyChainWithValidPurgeMarker:
         )
         assert result.first_break_at is None
 
+    async def test_all_entries_purged_marker_only_verifies(self, db_session):
+        """If every pre-existing row is purged, the retained marker must verify."""
+        now = datetime.now(UTC)
+        old1 = now - timedelta(days=500)
+        old2 = now - timedelta(days=400)
+
+        await _seed_chain(db_session, [old1, old2])
+
+        deleted = await AuditService.purge_expired_entries(db_session, retention_months=6)
+        assert deleted == 2
+
+        result = await AuditService.verify_chain(db_session)
+
+        assert result.verified is True, (
+            "verify_chain must treat the marker as the retained purge boundary "
+            f"when all prior rows were deleted; first_break_at={result.first_break_at!r}"
+        )
+        assert result.first_break_at is None
+        assert result.entries_checked == 1
+
 
 # ---------------------------------------------------------------------------
 # T-871.3 — Purge marker matching: first_surviving_prev_hash linkage
@@ -367,3 +387,31 @@ class TestVerifyChainGapWithoutMarker:
         result = await AuditService.verify_chain(db_session)
 
         assert result.verified is False, "Mismatched purge marker must not cover the gap — must report tampering"
+
+    async def test_marker_only_with_mismatched_boundary_treated_as_tampering(self, db_session):
+        """A marker-only retained log must still match the deleted boundary hash."""
+        now = datetime.now(UTC)
+
+        context = {
+            "purged_from_seq": 1,
+            "purged_to_seq": 2,
+            "purged_count": 2,
+            "retention_months": 6,
+            "first_surviving_seq": None,
+            "first_surviving_prev_hash": None,
+            "last_retained_hash": "b" * 64,
+            "last_retained_seq": 2,
+        }
+        await _seed_entry(
+            db_session,
+            3,
+            now - timedelta(days=1),
+            "a" * 64,
+            action=AuditActionType.AUDIT_PURGE.value,
+            context=context,
+        )
+
+        result = await AuditService.verify_chain(db_session)
+
+        assert result.verified is False, "Mismatched marker-only boundary must report tampering"
+        assert result.first_break_at == 3

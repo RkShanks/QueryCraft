@@ -101,6 +101,36 @@ async def _get_prev_hash(session: AsyncSession, sequence_number: int) -> str:
     return row_hash
 
 
+def _marker_context_matches_gap(entry: AuditLogEntry, marker_ctx: dict | None) -> bool:
+    if marker_ctx is None:
+        return False
+    return marker_ctx.get("first_surviving_prev_hash") == entry.prev_hash
+
+
+def _purge_marker_is_all_purged_boundary(entry: AuditLogEntry) -> bool:
+    if entry.action_type != AuditActionType.AUDIT_PURGE.value or not isinstance(entry.context, dict):
+        return False
+
+    ctx = entry.context
+    if ctx.get("first_surviving_seq") is not None or ctx.get("first_surviving_prev_hash") is not None:
+        return False
+
+    purged_from_seq = ctx.get("purged_from_seq")
+    purged_to_seq = ctx.get("purged_to_seq")
+    purged_count = ctx.get("purged_count")
+    last_retained_seq = ctx.get("last_retained_seq")
+    if not all(isinstance(seq, int) for seq in (purged_from_seq, purged_to_seq, purged_count, last_retained_seq)):
+        return False
+
+    return (
+        purged_count > 0
+        and purged_from_seq <= purged_to_seq
+        and last_retained_seq == purged_to_seq
+        and last_retained_seq < entry.sequence_number
+        and ctx.get("last_retained_hash") == entry.prev_hash
+    )
+
+
 # ---------------------------------------------------------------------------
 # AuditService
 # ---------------------------------------------------------------------------
@@ -335,6 +365,9 @@ class AuditService:
         * If ``marker.context["first_surviving_seq"] == entry.sequence_number``
           AND ``marker.context["first_surviving_prev_hash"] == entry.prev_hash``,
           the gap is intentional — continue verification.
+        * If every previous row was purged and the marker is the first retained
+          row, its own ``last_retained_hash`` boundary must match its
+          ``prev_hash``.
         * Otherwise, report the gap as tampering.
 
         Row-hash integrity is always checked regardless of purge status.
@@ -377,8 +410,9 @@ class AuditService:
             # Chain linkage check.
             if entry.prev_hash != prev_hash:
                 # Linkage break detected. Check for a matching purge marker.
-                marker_ctx = purge_markers.get(entry.sequence_number)
-                if marker_ctx and marker_ctx.get("first_surviving_prev_hash") == entry.prev_hash:
+                if _marker_context_matches_gap(
+                    entry, purge_markers.get(entry.sequence_number)
+                ) or _purge_marker_is_all_purged_boundary(entry):
                     # Intentional purge gap — marker covers it. Continue.
                     pass
                 else:

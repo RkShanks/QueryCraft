@@ -347,3 +347,50 @@ class TestPurgeVerifyCycleIntegration:
         vr = await AuditService.verify_chain(db_session)
         assert vr.verified is True
         assert vr.entries_checked == 2, f"Expected 2 entries checked (survivor + marker), got {vr.entries_checked}"
+
+    async def test_all_entries_purged_marker_only_chain_stays_valid_after_append(self, db_session):
+        """Purging every existing entry leaves a marker boundary that still verifies."""
+        from sqlalchemy import text
+
+        now = datetime.now(UTC)
+        old_ts = now - timedelta(days=400)
+
+        e1 = await _log_entry(db_session, actor_identity="user-all-old-a")
+        e2 = await _log_entry(db_session, actor_identity="user-all-old-b")
+        await db_session.flush()
+
+        for old_entry in (e1, e2):
+            await db_session.execute(
+                text("UPDATE audit_log_entries SET timestamp = :ts WHERE sequence_number = :seq"),
+                {"ts": old_ts, "seq": old_entry.sequence_number},
+            )
+        await db_session.flush()
+
+        deleted = await AuditService.purge_expired_entries(db_session, retention_months=_RETENTION_MONTHS)
+        assert deleted == 2
+
+        marker_result = await db_session.execute(
+            select(AuditLogEntry).where(AuditLogEntry.action_type == AuditActionType.AUDIT_PURGE.value)
+        )
+        marker = marker_result.scalar_one()
+        assert marker.context["first_surviving_seq"] is None
+        assert marker.context["first_surviving_prev_hash"] is None
+        assert marker.context["last_retained_hash"] == e2.row_hash
+
+        verify_after_purge = await AuditService.verify_chain(db_session)
+        assert verify_after_purge.verified is True
+        assert verify_after_purge.entries_checked == 1
+
+        await AuditService.log(
+            db_session,
+            action=AuditActionType.QUERY_SUBMIT,
+            actor_identity="user-after-all-purged",
+            outcome="success",
+            context={},
+        )
+        await db_session.flush()
+
+        verify_after_append = await AuditService.verify_chain(db_session)
+        assert verify_after_append.verified is True
+        assert verify_after_append.first_break_at is None
+        assert verify_after_append.entries_checked == 2
