@@ -8,19 +8,21 @@ Phase 4 verifies and polishes Arabic translations, RTL layout, cross-language
 natural-language query behavior, localized errors, accessibility, responsive RTL,
 and metadata privacy across all surfaces shipped in Phases 1-3.
 
-## Feature Checklist
+## Regression Task Matrix
 
-- English and Arabic locale key parity is 100%.
-- Arabic mode has no English fallback text or raw i18n keys on shipped surfaces.
-- `dir="rtl"` applies and layout mirrors for sign-in, workspace, selector,
-  response cards, history, admin connections, forms, and settings surfaces.
-- SQL/code blocks remain LTR while surrounding card chrome is RTL.
-- Arabic prompts execute against PostgreSQL Pagila, MySQL Sakila, and MSSQL
-  AdventureWorksLT with dialect-correct SQL evidence.
-- Localized validation/errors leak no UUIDs, hostnames, driver strings, stacks,
-  or credentials.
-- RTL accessibility names and status announcements are present.
-- Mobile RTL at 375px and 768px has no horizontal overflow or unusable controls.
+Use `Status` values `Pending`, `Pass`, `Fail`, or `Skipped`. Fill `Evidence`
+with command output paths, screenshot/trace paths, or short notes during the run.
+
+| Task | Status | Evidence |
+|---|---|---|
+| English and Arabic locale key parity is 100%. | Pending | |
+| Arabic mode has no English fallback text or raw i18n keys on shipped surfaces. | Pending | |
+| `dir="rtl"` applies and layout mirrors for sign-in, workspace, selector, response cards, history, admin connections, forms, and settings surfaces. | Pending | |
+| SQL/code blocks remain LTR while surrounding card chrome is RTL. | Pending | |
+| Arabic prompts execute against PostgreSQL Pagila, MySQL Sakila, and MSSQL AdventureWorksLT with dialect-correct SQL evidence. | Pending | |
+| Localized validation/errors leak no UUIDs, hostnames, driver strings, stacks, or credentials. | Pending | |
+| RTL accessibility names and status announcements are present. | Pending | |
+| Mobile RTL at 375px and 768px has no horizontal overflow or unusable controls. | Pending | |
 
 ## Backend Commands
 

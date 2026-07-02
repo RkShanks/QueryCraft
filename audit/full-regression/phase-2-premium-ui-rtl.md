@@ -8,21 +8,21 @@ Phase 2 adds conversational sessions, a premium dark UI shell, response cards,
 feedback signals, Arabic/RTL activation, admin LLM context cap settings,
 real-provider wire-format contract tests, and lifecycle invariant testing.
 
-## Feature Checklist
+## Regression Task Matrix
 
-- New Chat creates a session, focuses prompt input, and stores preview text.
-- Sidebar switches sessions, groups by Today / Previous 7 Days / Older, and
-  supports delete with a 5-second undo window.
-- Follow-up questions include the last N completed attempts according to admin
-  context cap.
-- Response card renders highlighted SQL, result table, copy/regenerate actions,
-  thumbs feedback, implicit feedback, and saved state.
-- Admin settings can read/update LLM context cap in range 0-10.
-- Arabic locale sets `dir="rtl"` and mirrors sidebar, bubbles, prompt input,
-  forms, icons, and response chrome while SQL code remains LTR.
-- LLM wire-format contract tests cover happy path, 429, 5xx, malformed response,
-  and oversized schema context.
-- Lifecycle invariant framework detects lock, feedback, and session-touch leaks.
+Use `Status` values `Pending`, `Pass`, `Fail`, or `Skipped`. Fill `Evidence`
+with command output paths, screenshot/trace paths, or short notes during the run.
+
+| Task | Status | Evidence |
+|---|---|---|
+| New Chat creates a session, focuses prompt input, and stores preview text. | Pending | |
+| Sidebar switches sessions, groups by Today / Previous 7 Days / Older, and supports delete with a 5-second undo window. | Pending | |
+| Follow-up questions include the last N completed attempts according to admin context cap. | Pending | |
+| Response card renders highlighted SQL, result table, copy/regenerate actions, thumbs feedback, implicit feedback, and saved state. | Pending | |
+| Admin settings can read/update LLM context cap in range 0-10. | Pending | |
+| Arabic locale sets `dir="rtl"` and mirrors sidebar, bubbles, prompt input, forms, icons, and response chrome while SQL code remains LTR. | Pending | |
+| LLM wire-format contract tests cover happy path, 429, 5xx, malformed response, and oversized schema context. | Pending | |
+| Lifecycle invariant framework detects lock, feedback, and session-touch leaks. | Pending | |
 
 ## Backend Commands
 

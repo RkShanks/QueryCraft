@@ -10,20 +10,23 @@ evaluate read-only PostgreSQL SQL, execute against the source database, render a
 result table, accept/reject/regenerate, and persist accepted history only. It
 also establishes provider abstraction, i18n keys, and logical CSS foundations.
 
-## Feature Checklist
+## Regression Task Matrix
 
-- Local admin login and session expiry behavior.
-- Unauthenticated users redirected away from platform features.
-- Question validation: non-empty and maximum length.
-- LLM provider selection by config and schema context passed to provider.
-- Evaluator blocks empty SQL, write/DDL SQL, unsafe PostgreSQL functions,
-  multi-statement SQL, and missing schema objects.
-- Read-only source execution, timeout handling, and zero-row result behavior.
-- Accept persists accepted query and history; rejected/evaluator-rejected SQL is
-  not durable history.
-- Reject/regenerate allows one distinct retry and blocks byte-identical retry.
-- History list/detail/filter behavior.
-- User-facing strings and component styles remain i18n/RTL-ready.
+Use `Status` values `Pending`, `Pass`, `Fail`, or `Skipped`. Fill `Evidence`
+with command output paths, screenshot/trace paths, or short notes during the run.
+
+| Task | Status | Evidence |
+|---|---|---|
+| Local admin login and session expiry behavior. | Pending | |
+| Unauthenticated users redirected away from platform features. | Pending | |
+| Question validation rejects empty and over-length prompts. | Pending | |
+| LLM provider selection follows config and receives schema context. | Pending | |
+| Evaluator blocks empty SQL, write/DDL SQL, unsafe PostgreSQL functions, multi-statement SQL, and missing schema objects. | Pending | |
+| Read-only source execution handles success, timeout, and zero-row results. | Pending | |
+| Accept persists accepted query and history; rejected/evaluator-rejected SQL is not durable history. | Pending | |
+| Reject/regenerate allows one distinct retry and blocks byte-identical retry. | Pending | |
+| History list/detail/filter behavior works from UI and API. | Pending | |
+| User-facing strings and component styles remain i18n/RTL-ready. | Pending | |
 
 ## Backend Commands
 

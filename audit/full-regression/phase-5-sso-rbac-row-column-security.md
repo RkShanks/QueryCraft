@@ -9,27 +9,25 @@ end users, local admin safety-net login, role management, group mapping, fixed
 platform permissions, row filters, column masking, user-scoped history, policy
 testing, Arabic/RTL support, and a tamper-evident audit log.
 
-## Feature Checklist
+## Regression Task Matrix
 
-- OIDC and SAML provider configuration, masked secrets, and sanitized validation.
-- End-user OIDC/SAML sign-in validates issuer, audience, signature, expiry,
-  nonce/state or replay controls, and maps groups to roles.
-- Users with no mapped role are denied access.
-- Local password login is restricted to built-in admin; built-in admin cannot be
-  deleted or locked out.
-- Role CRUD supports priority, fixed permissions, allowed tables/columns, row
-  filters with `{user.email}`, `{user.subject_id}`, `{user.role}`, and column
-  masks.
-- Duplicate group mappings are prevented; multi-group resolution uses lowest
-  numeric priority.
-- UI routes and API endpoints enforce permissions.
-- LLM schema context is role-filtered; evaluator blocks disallowed schema.
-- Row filters apply across PostgreSQL, MySQL, and MSSQL; masked columns show a
-  localized indicator.
-- History is scoped per user and rerun re-validates current role policy.
-- Audit log records required security events, is immutable through app paths, and
-  verifies chained hashes.
-- Phase 5 Arabic/RTL surfaces are localized and mirrored.
+Use `Status` values `Pending`, `Pass`, `Fail`, or `Skipped`. Fill `Evidence`
+with command output paths, screenshot/trace paths, or short notes during the run.
+
+| Task | Status | Evidence |
+|---|---|---|
+| OIDC and SAML provider configuration masks secrets and validates sanitized input. | Pending | |
+| End-user OIDC/SAML sign-in validates issuer, audience, signature, expiry, nonce/state or replay controls, and maps groups to roles. | Pending | |
+| Users with no mapped role are denied access. | Pending | |
+| Local password login is restricted to built-in admin; built-in admin cannot be deleted or locked out. | Pending | |
+| Role CRUD supports priority, fixed permissions, allowed tables/columns, row filters with `{user.email}`, `{user.subject_id}`, `{user.role}`, and column masks. | Pending | |
+| Duplicate group mappings are prevented; multi-group resolution uses lowest numeric priority. | Pending | |
+| UI routes and API endpoints enforce permissions. | Pending | |
+| LLM schema context is role-filtered; evaluator blocks disallowed schema. | Pending | |
+| Row filters apply across PostgreSQL, MySQL, and MSSQL; masked columns show a localized indicator. | Pending | |
+| History is scoped per user and rerun re-validates current role policy. | Pending | |
+| Audit log records required security events, is immutable through app paths, and verifies chained hashes. | Pending | |
+| Phase 5 Arabic/RTL surfaces are localized and mirrored. | Pending | |
 
 ## Backend Commands
 

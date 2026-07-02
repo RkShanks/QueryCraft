@@ -14,23 +14,24 @@ configuration; hostile input audit redaction; audit search/export/retention
 hardening; purge-gap markers; export redaction and formula-injection prevention;
 and Arabic/RTL admin UI for the new surfaces.
 
-## Feature Checklist
+## Regression Task Matrix
 
-- Role quota config CRUD and status for query, execution, and export dimensions.
-- Redis-backed daily UTC counters fail closed when unavailable.
-- Query flow order is hostile detection, query quota, then LLM generation.
-- Blocked hostile input does not increment quota and returns only the sanitized
-  hostile-input message key.
-- Built-in detection rules cover prompt injection, SQL injection, RBAC bypass,
-  schema/secret exposure, and destructive SQL in English and Arabic patterns.
-- Detection threshold config validates `block_confidence > flag_confidence`.
-- Hostile blocked/flagged audit entries never persist raw hostile payloads.
-- Audit search supports filters, pagination, retention window, and self-audit.
-- Audit export supports CSV/JSON, 50k limit, checksum metadata, formula-injection
-  prevention, export quota, and defense-in-depth redaction.
-- Retention purge inserts `audit.purge` marker and verify-chain treats valid
-  purge gaps as intentional while detecting unmarked gaps.
-- Phase 6 admin quota/detection/audit surfaces are localized and RTL-safe.
+Use `Status` values `Pending`, `Pass`, `Fail`, or `Skipped`. Fill `Evidence`
+with command output paths, screenshot/trace paths, or short notes during the run.
+
+| Task | Status | Evidence |
+|---|---|---|
+| Role quota config CRUD and status cover query, execution, and export dimensions. | Pending | |
+| Redis-backed daily UTC counters fail closed when unavailable. | Pending | |
+| Query flow order is hostile detection, query quota, then LLM generation. | Pending | |
+| Blocked hostile input does not increment quota and returns only the sanitized hostile-input message key. | Pending | |
+| Built-in detection rules cover prompt injection, SQL injection, RBAC bypass, schema/secret exposure, and destructive SQL in English and Arabic patterns. | Pending | |
+| Detection threshold config validates `block_confidence > flag_confidence`. | Pending | |
+| Hostile blocked/flagged audit entries never persist raw hostile payloads. | Pending | |
+| Audit search supports filters, pagination, retention window, and self-audit. | Pending | |
+| Audit export supports CSV/JSON, 50k limit, checksum metadata, formula-injection prevention, export quota, and defense-in-depth redaction. | Pending | |
+| Retention purge inserts `audit.purge` marker and verify-chain treats valid purge gaps as intentional while detecting unmarked gaps. | Pending | |
+| Phase 6 admin quota/detection/audit surfaces are localized and RTL-safe. | Pending | |
 
 ## Backend Commands
 

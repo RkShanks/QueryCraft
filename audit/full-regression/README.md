@@ -38,6 +38,10 @@ backend/frontend commands, update smoke checks, and record expected evidence.
 Keep old phase behavior intact unless the frozen phase snapshot says it was
 replaced.
 
+Each phase file owns a `Regression Task Matrix` table with `Task`, `Status`, and
+`Evidence` columns. Future runners should update those rows during execution
+instead of replacing them with prose summaries.
+
 For new phases, add one new phase file and one chunk in `runbook.md`. Do not
 rewrite earlier phase files into broad summaries; preserve concrete commands and
 known limitations so a cheap runner can execute one phase at a time.

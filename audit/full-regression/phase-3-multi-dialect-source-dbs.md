@@ -9,20 +9,22 @@ connections; encrypted credentials; schema introspection; per-session database
 selection; dialect-aware prompt/evaluator/execution routing; connection lifecycle
 states; and multi-database UI polish.
 
-## Feature Checklist
+## Regression Task Matrix
 
-- Admin can add, edit, test, disable, enable, and hard-delete eligible source
-  connections.
-- Passwords are encrypted at rest and never returned after save.
-- First successful save runs health check and initial schema introspection.
-- Schema refresh replaces prior metadata and reports failures without using stale
-  data silently.
-- Workspace database selector is per-session, disabled until selected when
-  multiple active connections exist, and auto-selects when exactly one exists.
-- Generated/evaluated SQL matches selected dialect: PostgreSQL, MySQL, or T-SQL.
-- Response cards and history show friendly connection name and database type.
-- Legacy Phase 1/2 rows are backfilled with the migrated PostgreSQL connection.
-- Localized errors sanitize raw driver details and credentials.
+Use `Status` values `Pending`, `Pass`, `Fail`, or `Skipped`. Fill `Evidence`
+with command output paths, screenshot/trace paths, or short notes during the run.
+
+| Task | Status | Evidence |
+|---|---|---|
+| Admin can add, edit, test, disable, enable, and hard-delete eligible source connections. | Pending | |
+| Passwords are encrypted at rest and never returned after save. | Pending | |
+| First successful save runs health check and initial schema introspection. | Pending | |
+| Schema refresh replaces prior metadata and reports failures without using stale data silently. | Pending | |
+| Workspace database selector is per-session, disabled until selected when multiple active connections exist, and auto-selects when exactly one exists. | Pending | |
+| Generated/evaluated SQL matches selected dialect: PostgreSQL, MySQL, or T-SQL. | Pending | |
+| Response cards and history show friendly connection name and database type. | Pending | |
+| Legacy Phase 1/2 rows are backfilled with the migrated PostgreSQL connection. | Pending | |
+| Localized errors sanitize raw driver details and credentials. | Pending | |
 
 ## Backend Commands
 
