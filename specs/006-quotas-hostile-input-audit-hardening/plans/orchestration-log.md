@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-02
-- **Branch Context**: `main` at `6b342cc9d71aa13f16a822133e866f48d1c916f0`
-- **Status**: Guard review Chunk 2 COMPLETE. Frontend quota guard fixes merged in PR #176. Wave 18.4a remains ON HOLD.
-- **Next Dispatch**: Guard review Chunk 3, detection backend from PRs #157 through #160.
+- **Branch Context**: `main` at `70e31982b795aa4426eb7c17e7a19f9badf49594`
+- **Status**: Guard review Chunk 3 COMPLETE. Detection backend redaction/rule fixes merged in PR #177. Wave 18.4a remains ON HOLD.
+- **Next Dispatch**: Guard review Chunk 4, detection frontend UI from PR #161.
 - **Frontend Dispatch Hold**: active for Wave 18.4; complete guard chunks 2-8 before resuming Wave 18.4a.
 
 ---
@@ -945,3 +945,31 @@
 - **CI**: backend-test SUCCESS, frontend-test SUCCESS.
 - **Review Result**: no blocking findings after guard fixes.
 - **Wave 18.4a**: remains ON HOLD until guard chunks 3-8 complete.
+
+---
+
+## Guard Review — Chunk 3 Detection Backend
+
+### Results
+
+- **Date**: 2026-07-02
+- **Scope**: Detection backend foundation/rules/config/integration from PRs #157 through #160.
+- **Branch**: `guard/phase6-detection-redaction-fix`
+- **PR**: #177
+- **Merge Commit**: `70e31982b795aa4426eb7c17e7a19f9badf49594`
+- **Status**: COMPLETE
+
+### Findings Fixed
+
+- **High**: Hostile audit context could store raw hostile payload text when a built-in rule matched a phrase not duplicated in the redaction helper. Fixed blocked/flagged detection audit context to store constant `input_summary: "[REDACTED_INPUT]"`.
+- **High**: Detection coverage exposed Arabic built-in rule gaps for RBAC bypass and schema exposure phrases. Fixed RBAC bypass and schema exposure Arabic patterns.
+- **Mid**: Detection admin permission tests were stale after Phase 5 local-login restrictions and failed before exercising `admin.security.manage`. Fixed test auth setup for admin-role user without the security permission.
+- **Low**: Detection config validation tests checked status only, not sanitized body. Added sanitization assertions.
+
+### Review and Merge Result
+
+- **Regression Coverage**: added real-detector no-raw-payload checks across all five built-in categories.
+- **Reviewer Gate**: focused detection suite → 224 passed; `ruff check src tests`, `ruff format --check src tests`, and `git diff --check` passed.
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS.
+- **Review Result**: no blocking findings after guard fixes.
+- **Wave 18.4a**: remains ON HOLD until guard chunks 4-8 complete.
