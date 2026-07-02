@@ -41,10 +41,12 @@ _ARABIC_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"أظهر\s+كل\s+البيانات"),
     # تجاوز الصلاحيات — "bypass permissions"
     re.compile(r"تجاوز\s+الصلاحيات"),
-    # تجاهل فلاتر الوصول — "ignore access filters"
-    re.compile(r"تجاهل\s+(?:فلاتر|قواعد)\s+الوصول"),
+    # تجاهل فلاتر/قيود الوصول — "ignore access filters/restrictions"
+    re.compile(r"تجاهل\s+(?:فلاتر|قواعد|قيود)\s+الوصول"),
     # عرض كل المستخدمين — "show all users"
     re.compile(r"عرض\s+كل\s+المستخدمين"),
+    # تجاوز سياسة الأمان — "bypass the security policy"
+    re.compile(r"تجاوز\s+سياسة\s+الأمان"),
 ]
 
 _ALL_PATTERNS: list[re.Pattern[str]] = _ENGLISH_PATTERNS + _ARABIC_PATTERNS

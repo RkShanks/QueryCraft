@@ -11,6 +11,71 @@ Tests:
 import pytest
 
 
+async def _sign_in_admin_without_security_permission(
+    app_client,
+    async_engine_fixture,
+    *,
+    username: str,
+    password: str,
+    priority: int,
+) -> None:
+    from argon2 import PasswordHasher
+    from sqlalchemy import text
+
+    role_name = f"{username}_role"
+    async with async_engine_fixture.connect() as conn:
+        password_hash = PasswordHasher().hash(password)
+        await conn.execute(
+            text(
+                """
+                INSERT INTO roles (name, description, priority, permissions, is_builtin)
+                VALUES (:role_name, 'Detection admin test role without security permission', :priority,
+                        '["query.submit"]'::jsonb, false)
+                ON CONFLICT (name) DO UPDATE SET
+                    permissions = EXCLUDED.permissions,
+                    updated_at = now()
+                """
+            ),
+            {"role_name": role_name, "priority": priority},
+        )
+        await conn.execute(
+            text(
+                """
+                INSERT INTO users (username, display_name, password_hash, role, role_id, auth_provider)
+                SELECT :username, 'No Security Permission', :pwd, 'admin', id, 'local'
+                FROM roles
+                WHERE name = :role_name
+                ON CONFLICT (username) DO UPDATE SET
+                    password_hash = EXCLUDED.password_hash,
+                    role = EXCLUDED.role,
+                    role_id = EXCLUDED.role_id,
+                    auth_provider = EXCLUDED.auth_provider,
+                    updated_at = now()
+                """
+            ),
+            {"username": username, "pwd": password_hash, "role_name": role_name},
+        )
+        await conn.commit()
+
+    response = await app_client.post(
+        "/api/v1/auth/sign-in",
+        json={"username": username, "password": password},
+        headers={"origin": "http://test"},
+    )
+    assert response.status_code == 200
+
+
+def _assert_detection_validation_response_is_sanitized(response) -> None:
+    data = response.json()
+    assert data["error"] == "validation"
+    assert data["message_key"] == "error.validation.generic"
+    body = response.text
+    assert "input" not in body
+    assert "stack" not in body
+    assert "0.3" not in body
+    assert "0.8" not in body
+
+
 class TestDetectionAdminGetConfig:
     """GET /admin/detection/config — permission-gated config retrieval."""
 
@@ -35,32 +100,13 @@ class TestDetectionAdminGetConfig:
 
     @pytest.mark.asyncio
     async def test_get_config_403_for_non_admin(self, app_client, async_engine_fixture):
-        from argon2 import PasswordHasher
-        from sqlalchemy import text
-
-        async with async_engine_fixture.connect() as conn:
-            ph = PasswordHasher()
-            password_hash = ph.hash("detectionpass")
-            await conn.execute(
-                text(
-                    """
-                    INSERT INTO users (username, display_name, password_hash, role)
-                    VALUES ('detection_no_perms', 'No Perms', :pwd, 'user')
-                    ON CONFLICT (username) DO UPDATE SET
-                        password_hash = EXCLUDED.password_hash,
-                        updated_at = now()
-                    """
-                ),
-                {"pwd": password_hash},
-            )
-            await conn.commit()
-
-        resp = await app_client.post(
-            "/api/v1/auth/sign-in",
-            json={"username": "detection_no_perms", "password": "detectionpass"},
-            headers={"origin": "http://test"},
+        await _sign_in_admin_without_security_permission(
+            app_client,
+            async_engine_fixture,
+            username="detection_no_security_get",
+            password="detectionpass",
+            priority=9201,
         )
-        assert resp.status_code == 200
         response = await app_client.get("/api/v1/admin/detection/config")
         assert response.status_code == 403
 
@@ -99,6 +145,7 @@ class TestDetectionAdminPutConfig:
             json={"block_confidence": 0.3, "flag_confidence": 0.8},
         )
         assert response.status_code == 422
+        _assert_detection_validation_response_is_sanitized(response)
 
     @pytest.mark.asyncio
     async def test_put_config_block_equal_to_flag_returns_422(self, authenticated_client):
@@ -107,35 +154,17 @@ class TestDetectionAdminPutConfig:
             json={"block_confidence": 0.5, "flag_confidence": 0.5},
         )
         assert response.status_code == 422
+        _assert_detection_validation_response_is_sanitized(response)
 
     @pytest.mark.asyncio
     async def test_put_config_403_for_non_admin(self, app_client, async_engine_fixture):
-        from argon2 import PasswordHasher
-        from sqlalchemy import text
-
-        async with async_engine_fixture.connect() as conn:
-            ph = PasswordHasher()
-            password_hash = ph.hash("detectionpass2")
-            await conn.execute(
-                text(
-                    """
-                    INSERT INTO users (username, display_name, password_hash, role)
-                    VALUES ('detection_no_perms_put', 'No Perms Put', :pwd, 'user')
-                    ON CONFLICT (username) DO UPDATE SET
-                        password_hash = EXCLUDED.password_hash,
-                        updated_at = now()
-                    """
-                ),
-                {"pwd": password_hash},
-            )
-            await conn.commit()
-
-        resp = await app_client.post(
-            "/api/v1/auth/sign-in",
-            json={"username": "detection_no_perms_put", "password": "detectionpass2"},
-            headers={"origin": "http://test"},
+        await _sign_in_admin_without_security_permission(
+            app_client,
+            async_engine_fixture,
+            username="detection_no_security_put",
+            password="detectionpass2",
+            priority=9202,
         )
-        assert resp.status_code == 200
         response = await app_client.put(
             "/api/v1/admin/detection/config",
             json={"block_confidence": 0.9, "flag_confidence": 0.4},

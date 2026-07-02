@@ -33,6 +33,7 @@ _DETECTION_TEST_MODULES = {
     "test_rule_schema_exposure",
     "test_rule_destructive_sql",
     "test_detection_package_registration",
+    "test_no_raw_hostile_payload",
 }
 
 
