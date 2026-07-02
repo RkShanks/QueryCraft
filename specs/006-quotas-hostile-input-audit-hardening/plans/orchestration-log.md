@@ -1234,9 +1234,40 @@
 - **Low**: 2 (`O6-L01` quota TTL precision, `O6-L02` missing-TTL recovery).
 - **Freeze Gate**: PASS from Opus perspective because Critical/High count is zero.
 
-### Current Wave Checkpoint
+### Past Checkpoint
 
 - **Date**: 2026-07-03
 - **Branch Context**: `main` at `3ab3a8883d1cd44f6e0a7c284b612ec27e6a765a`
 - **Status**: T-901 Gemini audit and T-902 Opus audit complete. Both audits passed with 0 Critical and 0 High findings.
 - **Next Dispatch**: T-903 Findings consolidation.
+
+---
+
+## Wave 18.4 - Findings Consolidation
+
+### Results
+
+- **Date**: 2026-07-03
+- **T-ID**: T-903
+- **Consolidation File**: `audit/wave-18/consolidation-report.md`
+- **Branch Context**: `main` at `7fb6823af081e082f3003faa2929d9eb30cdfb33`
+- **Status**: COMPLETE
+
+### Consolidated Audit Result
+
+- **Verdict**: PASS.
+- **Critical**: 0 consolidated unique findings.
+- **High**: 0 consolidated unique findings.
+- **Mid**: 2 consolidated unique findings (`C6-M01` quota config Redis cache, `C6-M02` audit chain verification memory usage).
+- **Low**: 2 consolidated unique findings (`C6-L01` quota TTL precision, `C6-L02` missing-TTL recovery).
+- **Cross-Model Agreement**: 4 findings; Gemini and Opus agreed on all Mid/Low items.
+- **Model-Only Findings**: Gemini-only 0; Opus-only 0.
+- **T-904 Decision**: SKIP. No Critical or High findings require remediation before freeze.
+- **Freeze Gate**: PASS because Critical/High count is zero.
+
+### Current Wave Checkpoint
+
+- **Date**: 2026-07-03
+- **Branch Context**: `main` at `7fb6823af081e082f3003faa2929d9eb30cdfb33`
+- **Status**: T-903 consolidation complete. T-904 skipped by condition because consolidated Critical and High counts are zero.
+- **Next Dispatch**: T-905 final snapshot.

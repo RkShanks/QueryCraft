@@ -356,7 +356,7 @@ SC-076 (0 Critical/High before freeze)
 
 - [x] T-902 Independent security audit — Opus: perform full-wave audit of FR-147–FR-180 and SC-063–SC-077. Write findings to `audit/wave-18/opus-findings.md` with same scope as T-901 but independent analysis. Gate: 0 Critical, 0 High. Depends on T-892, T-895. **Dispatch: OR**
 
-- [ ] T-903 Findings consolidation: read both `audit/wave-18/gemini-findings.md` and `audit/wave-18/opus-findings.md`; produce `audit/wave-18/consolidation-report.md` summarizing: Critical/High/Mid/Low counts, any findings requiring remediation before freeze, any agreed-upon deferred items (with rationale), final gate status (PASS/BLOCK). Depends on T-901, T-902. **Dispatch: OR**
+- [x] T-903 Findings consolidation: read both `audit/wave-18/gemini-findings.md` and `audit/wave-18/opus-findings.md`; produce `audit/wave-18/consolidation-report.md` summarizing: Critical/High/Mid/Low counts, any findings requiring remediation before freeze, any agreed-upon deferred items (with rationale), final gate status (PASS/BLOCK). Depends on T-901, T-902. **Dispatch: OR**
 
 - [ ] T-904 [P] If any Critical or High findings in T-903: create remediation tasks, implement fixes, re-run gates, re-audit. BLOCK freeze until 0 Critical/High. This task is conditional — skip if T-903 shows 0 Critical/High. **Dispatch: BE or FE per finding**
 
