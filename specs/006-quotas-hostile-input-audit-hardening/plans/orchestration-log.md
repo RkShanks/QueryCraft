@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-02
-- **Branch Context**: `main` at `e55c434c3347641fb0ed9297cf8a049b19cdf98b`
-- **Status**: Guard review Chunk 6 COMPLETE. Audit purge/verify marker-boundary fix merged in PR #180. Wave 18.4a remains ON HOLD.
-- **Next Dispatch**: Guard review Chunk 7, audit frontend search/export/retention/i18n/RTL from PRs #171 through #174.
+- **Branch Context**: `main` at `392194f8478eadd8d71975a083d78323dfe6004c`
+- **Status**: Guard review Chunk 7 COMPLETE. Audit frontend export-filter fix merged in PR #181. Wave 18.4a remains ON HOLD.
+- **Next Dispatch**: Guard review Chunk 8, specs/docs/tasks/orchestration/audit files.
 - **Frontend Dispatch Hold**: active for Wave 18.4; complete guard chunks 2-8 before resuming Wave 18.4a.
 
 ---
@@ -1053,3 +1053,30 @@
 - **CI**: backend-test SUCCESS, frontend-test SUCCESS.
 - **Review Result**: no blocking findings after guard fix.
 - **Wave 18.4a**: remains ON HOLD until guard chunks 7-8 complete.
+
+---
+
+## Guard Review — Chunk 7 Audit Frontend UI
+
+### Results
+
+- **Date**: 2026-07-02
+- **Scope**: Audit frontend search/export/retention/i18n/RTL from PRs #171 through #174.
+- **Branch**: `guard/phase6-audit-frontend-export-filters`
+- **PR**: #181
+- **Merge Commit**: `392194f8478eadd8d71975a083d78323dfe6004c`
+- **Status**: COMPLETE
+
+### Findings Fixed
+
+- **High**: `AdminAuditPage.tsx` export used the last submitted filter state, not current form values. If an admin typed a narrowing filter and clicked export before search, the UI could export a broader audit set than indicated by the form.
+
+### Review and Merge Result
+
+- **Fix**: export requests now build from current form inputs; search submit and export share filter normalization.
+- **Regression Coverage**: added test for exporting after typing an actor filter without submitting search first.
+- **Clean Checks**: audit route/sidebar use explicit `admin.audit.verify`; export error UI is localized/sanitized; table does not render context/resource IDs/exported content; EN/AR locale sets are identical.
+- **Reviewer Gate**: focused audit UI/API/locale tests → 320 passed; full frontend tests → 755 passed; `npm run lint`, `npm run typecheck`, `npm run lint:css`, `npm run build`, and `git diff --check` passed.
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS.
+- **Review Result**: no blocking findings after guard fix.
+- **Wave 18.4a**: remains ON HOLD until guard chunk 8 completes.
