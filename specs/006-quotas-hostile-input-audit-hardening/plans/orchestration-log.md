@@ -240,9 +240,9 @@
 ### Current Wave Checkpoint
 
 - **Date**: 2026-07-02
-- **Branch Context**: `main` at `70e31982b795aa4426eb7c17e7a19f9badf49594`
-- **Status**: Guard review Chunk 3 COMPLETE. Detection backend redaction/rule fixes merged in PR #177. Wave 18.4a remains ON HOLD.
-- **Next Dispatch**: Guard review Chunk 4, detection frontend UI from PR #161.
+- **Branch Context**: `main` at `97e47c48a7c1046578feac3dcbe2b2177d66f358`
+- **Status**: Guard review Chunk 4 COMPLETE. Detection frontend i18n fix merged in PR #178. Wave 18.4a remains ON HOLD.
+- **Next Dispatch**: Guard review Chunk 5, audit search/export backend from PRs #162 through #164.
 - **Frontend Dispatch Hold**: active for Wave 18.4; complete guard chunks 2-8 before resuming Wave 18.4a.
 
 ---
@@ -973,3 +973,29 @@
 - **CI**: backend-test SUCCESS, frontend-test SUCCESS.
 - **Review Result**: no blocking findings after guard fixes.
 - **Wave 18.4a**: remains ON HOLD until guard chunks 4-8 complete.
+
+---
+
+## Guard Review — Chunk 4 Detection Frontend UI
+
+### Results
+
+- **Date**: 2026-07-02
+- **Scope**: Detection frontend UI from PR #161.
+- **Branch**: `guard/phase6-detection-ui-i18n-fix`
+- **PR**: #178
+- **Merge Commit**: `97e47c48a7c1046578feac3dcbe2b2177d66f358`
+- **Status**: COMPLETE
+
+### Findings Fixed
+
+- **Mid**: `AdminDetectionPage.tsx` appended hard-coded English `" (Forbidden)"` to a localized 403 message. Removed the suffix so access-denied state stays localized/sanitized.
+
+### Review and Merge Result
+
+- **Clean Checks**: `/admin/detection` route and sidebar use explicit `admin.security.manage`; no legacy admin bypass found. Hostile blocked query UI renders only localized `error.hostile_input_blocked`.
+- **Regression Coverage**: strengthened `AdminDetectionPage.test.tsx` to assert localized access-denied text and absence of raw backend details (`Forbidden`, raw payload text, confidence, stack text).
+- **Reviewer Gate**: focused detection UI/sidebar tests → 34 passed; `npm run lint`, `npm run typecheck`, `npm run lint:css`, `npm run build`, and `git diff --check` passed.
+- **CI**: backend-test SUCCESS, frontend-test SUCCESS.
+- **Review Result**: no blocking findings after guard fix.
+- **Wave 18.4a**: remains ON HOLD until guard chunks 5-8 complete.
