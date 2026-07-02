@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.12, pytest-8.4.2, pluggy-1.6.0
+rootdir: /home/avril/QueryCraft/backend
+configfile: pyproject.toml
+plugins: cov-6.3.0, respx-0.23.1, subtests-0.14.2, anyio-4.13.0, schemathesis-3.39.16, asyncio-0.26.0, hypothesis-6.152.4
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 54 items
+
+tests/acceptance/test_data_modifying_sql_blocked.py E
+
+==================================== ERRORS ====================================
+__ ERROR at setup of test_data_modifying_sql_rejected[DELETE FROM customers] ___
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:345: in _asyncgen_fixture_wrapper
+    result = event_loop.run_until_complete(setup_task)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:340: in setup
+    res = await gen_obj.__anext__()  # type: ignore[union-attr]
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/acceptance/conftest.py:33: in authenticated_acceptance_client
+    assert response.status_code == 200, f"Sign-in failed: {response.text}"
+E   AssertionError: Sign-in failed: {"error":"unauthorized","message_key":"error.unauthorized"}
+E   assert 401 == 200
+E    +  where 401 = <Response [401 Unauthorized]>.status_code
+=========================== short test summary info ============================
+ERROR tests/acceptance/test_data_modifying_sql_blocked.py::test_data_modifying_sql_rejected[DELETE FROM customers]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.96s ===============================
