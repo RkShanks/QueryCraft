@@ -354,7 +354,7 @@ SC-076 (0 Critical/High before freeze)
 
 - [x] T-901 Independent security audit — Gemini: perform full-wave audit of FR-147–FR-180 and SC-063–SC-077 across all Phase 6 merged code. Write findings to `audit/wave-18/gemini-findings.md` including: per-FR verification status, sanitization evidence (no raw payloads, no internal details in errors), quota fail-closed evidence, detection pipeline coverage, export redaction defense-in-depth, purge-gap chain integrity, permission gate coverage. Gate: 0 Critical, 0 High before freeze. Depends on T-892, T-895, T-900. **Dispatch: OR**
 
-- [ ] T-902 Independent security audit — Opus: perform full-wave audit of FR-147–FR-180 and SC-063–SC-077. Write findings to `audit/wave-18/opus-findings.md` with same scope as T-901 but independent analysis. Gate: 0 Critical, 0 High. Depends on T-892, T-895. **Dispatch: OR**
+- [x] T-902 Independent security audit — Opus: perform full-wave audit of FR-147–FR-180 and SC-063–SC-077. Write findings to `audit/wave-18/opus-findings.md` with same scope as T-901 but independent analysis. Gate: 0 Critical, 0 High. Depends on T-892, T-895. **Dispatch: OR**
 
 - [ ] T-903 Findings consolidation: read both `audit/wave-18/gemini-findings.md` and `audit/wave-18/opus-findings.md`; produce `audit/wave-18/consolidation-report.md` summarizing: Critical/High/Mid/Low counts, any findings requiring remediation before freeze, any agreed-upon deferred items (with rationale), final gate status (PASS/BLOCK). Depends on T-901, T-902. **Dispatch: OR**
 
