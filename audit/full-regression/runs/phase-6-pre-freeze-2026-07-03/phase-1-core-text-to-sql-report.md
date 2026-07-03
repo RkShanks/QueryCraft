@@ -10,7 +10,9 @@ HEAD SHA tested: `5c4b855a977da85008b9b5d64c55721af14a40f3`
 
 Result: Chunk 1 stopped at the first required backend gate. The acceptance test setup could not sign in as local admin and received `401 {"error":"unauthorized","message_key":"error.unauthorized"}`. Per the full regression runbook stop conditions, no Phase 2-6 checks were run and no product code was edited.
 
-Chunk 2 status: blocked until the Phase 1 local-admin sign-in failure is resolved or explicitly classified as an environment-only issue by the owner.
+Fix branch update: `test/full-regression-phase-1` now contains a test-harness fix for the local-admin sign-in setup. A targeted acceptance regression test passes after the fix, and the Phase 1 backend unit command passes. The full Phase 1 backend integration/acceptance command still needs a live Docker rerun; Docker daemon access was unavailable after the partial rerun.
+
+Chunk 2 status: still blocked until the Phase 1 backend integration/acceptance gate is rerun successfully with Docker services available, then browser/LLM validation resumes.
 
 ## Regression Task Matrix
 
@@ -28,6 +30,32 @@ Chunk 2 status: blocked until the Phase 1 local-admin sign-in failure is resolve
 | User-facing strings and component styles remain i18n/RTL-ready. | Blocked | Not run because the first backend gate stopped at local admin sign-in failure. |
 
 Task counts: Pass 0, Fail 1, Skipped 0, Blocked 9.
+
+## Fix Branch Rerun Update
+
+Root cause: acceptance tests did not reseed/sync the local built-in admin after Phase 5 local-login/RBAC hardening. Integration tests had their own admin reseed, but acceptance tests signed in against whatever admin row was already present in the persistent test database. When the password or role linkage drifted, `authenticated_acceptance_client` received the expected generic 401 from `AuthService`.
+
+Fix applied:
+
+- Added shared test helper `tests.support.auth_seed.sync_builtin_local_admin()` to upsert the built-in local admin with the configured test password and Admin `role_id` using parameterized SQL.
+- Wired the acceptance authenticated fixture through that helper before sign-in.
+- Reused the helper from integration table-isolation setup, replacing interpolated SQL in `tests/integration/conftest.py`.
+- Added acceptance regression coverage that verifies the authenticated acceptance client reaches `/api/v1/auth/me` as local admin with `role_id` and `query.submit`.
+- Updated Phase 1 submit tests to use a shared `query_submit_payload()` fixture because the current API requires `connection_id`.
+- Tightened `ensure_db_connection` to return a deterministic named healthy/introspected test connection instead of whichever stale connection row appears first.
+
+Rerun evidence:
+
+| Command | Exit | Notes |
+|---|---:|---|
+| `cd backend && rtk uv run pytest tests/acceptance/test_auth_fixture.py -q --tb=short` | 0 | Targeted auth fixture regression passed after fix. |
+| Phase 1 backend integration/acceptance command, rerun after auth fix | 1 | Auth fixture passed and the command advanced to the next test. It then exposed stale Phase 1 submit harness drift: missing `connection_id`, followed by stale/unhealthy arbitrary connection selection. Those harness fixes are included. See `logs/backend-phase1-integration-rerun.log`. |
+| `cd backend && rtk uv run pytest tests/acceptance/test_data_modifying_sql_blocked.py -q --tb=short` | 0 | After deterministic connection fixture update, tests skipped because Docker/Postgres became unavailable. |
+| `cd backend && rtk uv run pytest tests/unit/evaluator tests/unit/llm tests/unit/test_query_service_submit.py tests/unit/test_query_service_accept.py tests/unit/services/test_query_service_reject.py tests/unit/services/test_query_service_regenerate.py tests/unit/test_history_service.py tests/unit/test_schemas_query.py -x --tb=short` | 0 | 242 passed. See `logs/backend-phase1-unit-after-fix.log`. |
+| `cd backend && rtk uv run ruff check src tests` | 0 | Passed. See `logs/backend-ruff-check-after-fix.log`. |
+| `cd backend && rtk uv run ruff format --check src tests` | 0 | Passed. See `logs/backend-ruff-format-after-fix.log`. |
+| `rtk git diff --check` | 0 | Passed. See `logs/git-diff-check-after-fix.log`. |
+| `rtk docker ps` / `rtk docker compose -f docker-compose.dev.yml ps` | 1 | Blocked: Docker daemon unavailable at `unix:///var/run/docker.sock`; QueryCraft ports were not listening. |
 
 ## Commands Run
 
@@ -83,7 +111,13 @@ Skipped. `.env` has `LLM_PROVIDER`, `LLM_API_KEY_GEMINI`, and `LLM_MODEL_NAME` s
 
 - `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/phase-1-core-text-to-sql-report.md`
 - `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/backend-phase1-integration.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/backend-phase1-integration-repro.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/backend-phase1-integration-rerun.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/backend-phase1-unit-after-fix.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/backend-ruff-check-after-fix.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/backend-ruff-format-after-fix.log`
 - `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/git-diff-check.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/git-diff-check-after-fix.log`
 - `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/` (created, empty because browser smoke did not run)
 
 ## Security and Privacy Notes

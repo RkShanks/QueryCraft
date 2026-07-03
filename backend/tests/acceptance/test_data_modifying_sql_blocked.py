@@ -24,7 +24,7 @@ from sqlalchemy import text
         "ALTER TABLE customers ADD COLUMN x INT",
     ],
 )
-async def test_data_modifying_sql_rejected(authenticated_acceptance_client, db_session, bad_sql):
+async def test_data_modifying_sql_rejected(authenticated_acceptance_client, db_session, query_submit_payload, bad_sql):
     """Data-modifying SQL must be rejected before execution."""
     # Count accepted_queries before
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
@@ -36,7 +36,7 @@ async def test_data_modifying_sql_rejected(authenticated_acceptance_client, db_s
     ):
         response = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Do something bad"},
+            json=query_submit_payload("Do something bad"),
             headers={"origin": "http://test"},
         )
 

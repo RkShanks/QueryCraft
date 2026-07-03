@@ -22,7 +22,13 @@ from sqlalchemy import text
         ("SELECT * FROM customer.fake_schema", "customer.fake_schema"),
     ],
 )
-async def test_schema_invalid_sql_rejected(authenticated_acceptance_client, db_session, bad_sql, expected_fragment):
+async def test_schema_invalid_sql_rejected(
+    authenticated_acceptance_client,
+    db_session,
+    query_submit_payload,
+    bad_sql,
+    expected_fragment,
+):
     """Schema-invalid SQL must be rejected before execution."""
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     before = result.scalar()
@@ -33,7 +39,7 @@ async def test_schema_invalid_sql_rejected(authenticated_acceptance_client, db_s
     ):
         response = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Bad schema query"},
+            json=query_submit_payload("Bad schema query"),
             headers={"origin": "http://test"},
         )
 

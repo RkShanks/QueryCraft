@@ -30,7 +30,13 @@ from sqlalchemy import text
         ),
     ],
 )
-async def test_valid_select_passes(authenticated_acceptance_client, db_session, good_sql, expected_min_rows):
+async def test_valid_select_passes(
+    authenticated_acceptance_client,
+    db_session,
+    query_submit_payload,
+    good_sql,
+    expected_min_rows,
+):
     """Valid read-only SQL must pass evaluator, execute, and return results."""
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     before = result.scalar()
@@ -41,7 +47,7 @@ async def test_valid_select_passes(authenticated_acceptance_client, db_session, 
     ):
         response = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Valid query"},
+            json=query_submit_payload("Valid query"),
             headers={"origin": "http://test"},
         )
 

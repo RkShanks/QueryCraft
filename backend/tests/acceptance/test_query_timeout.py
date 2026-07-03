@@ -14,7 +14,12 @@ from sqlalchemy import text
 @pytest.mark.acceptance
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_query_timeout_cancellation_and_cleanup(authenticated_acceptance_client, db_session, redis_client):
+async def test_query_timeout_cancellation_and_cleanup(
+    authenticated_acceptance_client,
+    db_session,
+    redis_client,
+    query_submit_payload,
+):
     """Slow query must timeout, return 504, and leave no orphan state."""
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     before = result.scalar()
@@ -39,7 +44,7 @@ async def test_query_timeout_cancellation_and_cleanup(authenticated_acceptance_c
     ):
         response = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Slow query"},
+            json=query_submit_payload("Slow query"),
             headers={"origin": "http://test"},
         )
 
@@ -64,7 +69,7 @@ async def test_query_timeout_cancellation_and_cleanup(authenticated_acceptance_c
     ):
         recovery = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Fast query"},
+            json=query_submit_payload("Fast query"),
             headers={"origin": "http://test"},
         )
     assert recovery.status_code == 200

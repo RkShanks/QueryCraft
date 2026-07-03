@@ -15,7 +15,12 @@ class TestReconfiguredProviderHandlesNewQuestions:
     """Reconfigured provider integration test."""
 
     @pytest.mark.asyncio
-    async def test_reconfigured_provider_routes_correctly(self, authenticated_client, monkeypatch):
+    async def test_reconfigured_provider_routes_correctly(
+        self,
+        authenticated_client,
+        monkeypatch,
+        query_submit_payload,
+    ):
         """After switching from Ollama to Gemini, new questions route to Gemini."""
         with respx.mock:
             # Phase 1: Ollama
@@ -29,7 +34,7 @@ class TestReconfiguredProviderHandlesNewQuestions:
             # Submit with Ollama
             submit_resp = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "What is 1+1?"},
+                json=query_submit_payload("What is 1+1?"),
                 headers={"origin": "http://test"},
             )
             assert submit_resp.status_code == 200
@@ -53,7 +58,7 @@ class TestReconfiguredProviderHandlesNewQuestions:
             # Submit with Gemini
             new_submit_resp = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "What is 2+2?"},
+                json=query_submit_payload("What is 2+2?"),
                 headers={"origin": "http://test"},
             )
             assert new_submit_resp.status_code == 200

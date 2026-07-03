@@ -12,11 +12,11 @@ class TestQueryRouter:
     """Query router integration tests."""
 
     @pytest.mark.asyncio
-    async def test_submit_success(self, authenticated_client):
+    async def test_submit_success(self, authenticated_client, query_submit_payload):
         """Happy path returns QueryResult with rows."""
         response = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Show me something"},
+            json=query_submit_payload("Show me something"),
             headers={"origin": "http://test"},
         )
         assert response.status_code == 200
@@ -26,27 +26,27 @@ class TestQueryRouter:
         assert data["generated_sql"].startswith("SELECT")
 
     @pytest.mark.asyncio
-    async def test_submit_validation_empty(self, authenticated_client):
+    async def test_submit_validation_empty(self, authenticated_client, query_submit_payload):
         """Empty question returns 400."""
         response = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": ""},
+            json=query_submit_payload(""),
             headers={"origin": "http://test"},
         )
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_submit_unauthenticated(self, app_client):
+    async def test_submit_unauthenticated(self, app_client, query_submit_payload):
         """Unauthenticated request returns 401."""
         response = await app_client.post(
             "/api/v1/query/submit",
-            json={"question": "Hello"},
+            json=query_submit_payload("Hello"),
             headers={"origin": "http://test"},
         )
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_submit_concurrent(self, authenticated_client, redis_client):
+    async def test_submit_concurrent(self, authenticated_client, redis_client, query_submit_payload):
         """Concurrent submission returns 409."""
         # Acquire lock manually
         await redis_client.set("lock:sess-1", "1", nx=True, ex=60)
@@ -56,19 +56,19 @@ class TestQueryRouter:
         # Just verify the endpoint exists and returns appropriate codes
         response = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Another"},
+            json=query_submit_payload("Another"),
             headers={"origin": "http://test"},
         )
         # Either 200 (if lock released quickly) or 409
         assert response.status_code in (200, 409)
 
     @pytest.mark.asyncio
-    async def test_accept_persists(self, authenticated_client):
+    async def test_accept_persists(self, authenticated_client, query_submit_payload):
         """Accept persists to history."""
         # Submit first
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200

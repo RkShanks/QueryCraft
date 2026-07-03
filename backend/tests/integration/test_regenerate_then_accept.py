@@ -15,12 +15,12 @@ class TestRegenerateThenAccept:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_regenerate_then_accept(self, authenticated_client):
+    async def test_regenerate_then_accept(self, authenticated_client, query_submit_payload):
         """Submit, reject (regenerate), then accept regenerated result — expect 201."""
         # Submit a question
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200

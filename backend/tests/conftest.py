@@ -154,15 +154,36 @@ async def app_client(set_test_env) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture
-async def ensure_db_connection(async_engine_fixture):
+async def ensure_db_connection(async_engine_fixture, test_env_vars):
     """Ensure at least one source_database_connections row exists for tests."""
     from sqlalchemy import text
 
-    async with async_engine_fixture.connect() as conn:
-        result = await conn.execute(text("SELECT id FROM source_database_connections LIMIT 1"))
-        row = result.fetchone()
-        if row is None:
-            await conn.execute(
+    from app.core.credential_provider import FernetCredentialProvider
+
+    schema_entries = [
+        ("customer", "customer_id", "integer", True),
+        ("customer", "first_name", "text", False),
+        ("customer", "last_name", "text", False),
+        ("customer", "active", "boolean", False),
+        ("customer", "address_id", "integer", False),
+        ("payment", "payment_id", "integer", True),
+        ("payment", "customer_id", "integer", False),
+        ("payment", "amount", "numeric", False),
+        ("payment", "payment_date", "timestamp", False),
+        ("address", "address_id", "integer", True),
+        ("address", "address", "text", False),
+    ]
+    provider = FernetCredentialProvider(test_env_vars["DB_CREDENTIAL_KEY"])
+    encrypted_password = provider.encrypt(test_env_vars["SOURCE_DB_PASSWORD"])
+
+    async with async_engine_fixture.begin() as conn:
+        result = await conn.execute(
+            text("SELECT id FROM source_database_connections WHERE display_name = :display_name"),
+            {"display_name": test_env_vars["SOURCE_DB_NAME"]},
+        )
+        connection_id = result.scalar_one_or_none()
+        if connection_id is None:
+            result = await conn.execute(
                 text(
                     """
                     INSERT INTO source_database_connections (
@@ -171,14 +192,83 @@ async def ensure_db_connection(async_engine_fixture):
                         schema_introspection_status
                     )
                     VALUES (
-                        gen_random_uuid(), 'Test Source', 'localhost', 5434, 'source_analytics',
-                        'source_readonly', 'enc', 'postgresql', 'active', 'healthy', 'success'
+                        gen_random_uuid(), :display_name, :host, :port, :database_name,
+                        :username, :encrypted_password, 'postgresql', 'active', 'healthy', 'success'
                     )
                     RETURNING id
                     """
-                )
+                ),
+                {
+                    "display_name": test_env_vars["SOURCE_DB_NAME"],
+                    "host": test_env_vars["SOURCE_DB_HOST"],
+                    "port": int(test_env_vars["SOURCE_DB_PORT"]),
+                    "database_name": test_env_vars["SOURCE_DB_NAME"],
+                    "username": test_env_vars["SOURCE_DB_USER"],
+                    "encrypted_password": encrypted_password,
+                },
             )
-            await conn.commit()
+            connection_id = result.scalar_one()
+        else:
+            await conn.execute(
+                text(
+                    """
+                    UPDATE source_database_connections
+                    SET host = :host,
+                        port = :port,
+                        database_name = :database_name,
+                        username = :username,
+                        encrypted_password = :encrypted_password,
+                        database_type = 'postgresql',
+                        lifecycle_state = 'active',
+                        health_status = 'healthy',
+                        schema_introspection_status = 'success',
+                        updated_at = now()
+                    WHERE id = :connection_id
+                    """
+                ),
+                {
+                    "connection_id": connection_id,
+                    "host": test_env_vars["SOURCE_DB_HOST"],
+                    "port": int(test_env_vars["SOURCE_DB_PORT"]),
+                    "database_name": test_env_vars["SOURCE_DB_NAME"],
+                    "username": test_env_vars["SOURCE_DB_USER"],
+                    "encrypted_password": encrypted_password,
+                },
+            )
+
+        await conn.execute(
+            text("DELETE FROM connection_schema_entries WHERE connection_id = :connection_id"),
+            {"connection_id": connection_id},
+        )
+        for table_name, column_name, data_type, is_primary_key in schema_entries:
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO connection_schema_entries (
+                        connection_id, table_name, column_name, column_data_type, is_primary_key
+                    )
+                    VALUES (:connection_id, :table_name, :column_name, :data_type, :is_primary_key)
+                    """
+                ),
+                {
+                    "connection_id": connection_id,
+                    "table_name": table_name,
+                    "column_name": column_name,
+                    "data_type": data_type,
+                    "is_primary_key": is_primary_key,
+                },
+            )
+    return str(connection_id)
+
+
+@pytest.fixture
+def query_submit_payload(ensure_db_connection):
+    """Build a submit request body using the default test connection."""
+
+    def _make_payload(question: str, **extra: Any) -> dict[str, Any]:
+        return {"question": question, "connection_id": ensure_db_connection, **extra}
+
+    return _make_payload
 
 
 @pytest_asyncio.fixture

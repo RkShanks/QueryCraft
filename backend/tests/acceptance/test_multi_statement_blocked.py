@@ -21,7 +21,7 @@ from sqlalchemy import text
         "SELECT * FROM customer; -- inline comment",
     ],
 )
-async def test_multi_statement_sql_rejected(authenticated_acceptance_client, db_session, bad_sql):
+async def test_multi_statement_sql_rejected(authenticated_acceptance_client, db_session, query_submit_payload, bad_sql):
     """Multi-statement SQL must be rejected before execution."""
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     before = result.scalar()
@@ -32,7 +32,7 @@ async def test_multi_statement_sql_rejected(authenticated_acceptance_client, db_
     ):
         response = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Multi statement"},
+            json=query_submit_payload("Multi statement"),
             headers={"origin": "http://test"},
         )
 

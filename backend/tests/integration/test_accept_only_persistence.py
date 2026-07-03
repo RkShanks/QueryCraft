@@ -11,7 +11,7 @@ class TestAcceptOnlyPersistence:
     """Accept-only persistence integration test."""
 
     @pytest.mark.asyncio
-    async def test_reject_does_not_persist(self, authenticated_client, db_session):
+    async def test_reject_does_not_persist(self, authenticated_client, db_session, query_submit_payload):
         """POST /query/reject must not write to accepted_queries."""
         # Get current count
         result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
@@ -20,7 +20,7 @@ class TestAcceptOnlyPersistence:
         # Submit
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Test reject?"},
+            json=query_submit_payload("Test reject?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
@@ -39,14 +39,14 @@ class TestAcceptOnlyPersistence:
         assert after == before
 
     @pytest.mark.asyncio
-    async def test_regenerate_does_not_persist(self, authenticated_client, db_session):
+    async def test_regenerate_does_not_persist(self, authenticated_client, db_session, query_submit_payload):
         """POST /query/regenerate must not write to accepted_queries."""
         result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         before = result.scalar()
 
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Test regenerate?"},
+            json=query_submit_payload("Test regenerate?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200

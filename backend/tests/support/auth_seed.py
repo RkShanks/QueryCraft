@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from app.core.security import hash_password
 from app.db.models.enums import Permission
 
-
 ADMIN_PERMISSIONS = [permission.value for permission in Permission]
 
 

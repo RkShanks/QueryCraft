@@ -11,11 +11,11 @@ class TestSessionConversationFlow:
     """End-to-end session conversation acceptance tests."""
 
     @pytest.mark.asyncio
-    async def test_submit_creates_session_when_none_provided(self, authenticated_client):
+    async def test_submit_creates_session_when_none_provided(self, authenticated_client, query_submit_payload):
         """Submit without session_id creates a new session and returns it."""
         response = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert response.status_code == 200
@@ -25,12 +25,12 @@ class TestSessionConversationFlow:
         assert data["session_id"] is not None
 
     @pytest.mark.asyncio
-    async def test_submit_uses_existing_session(self, authenticated_client):
+    async def test_submit_uses_existing_session(self, authenticated_client, query_submit_payload):
         """Submit with session_id uses the existing session."""
         # First submit creates session
         first = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "First question"},
+            json=query_submit_payload("First question"),
             headers={"origin": "http://test"},
         )
         assert first.status_code == 200
@@ -39,7 +39,7 @@ class TestSessionConversationFlow:
         # Second submit with session_id
         second = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Follow-up", "session_id": session_id},
+            json=query_submit_payload("Follow-up", session_id=session_id),
             headers={"origin": "http://test"},
         )
         assert second.status_code == 200
@@ -47,14 +47,14 @@ class TestSessionConversationFlow:
         assert data["session_id"] == session_id
 
     @pytest.mark.asyncio
-    async def test_implicit_feedback_on_follow_up(self, authenticated_client, db_session):
+    async def test_implicit_feedback_on_follow_up(self, authenticated_client, db_session, query_submit_payload):
         """Follow-up submit applies implicit +1 feedback to prior accepted query."""
         from sqlalchemy import text
 
         # First: submit and accept
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
@@ -81,17 +81,17 @@ class TestSessionConversationFlow:
         # Submit a follow-up in the same session
         follow_up = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Follow-up question", "session_id": session_id},
+            json=query_submit_payload("Follow-up question", session_id=session_id),
             headers={"origin": "http://test"},
         )
         assert follow_up.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_session_list_shows_created_session(self, authenticated_client):
+    async def test_session_list_shows_created_session(self, authenticated_client, query_submit_payload):
         """Created session appears in GET /sessions list."""
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "List me"},
+            json=query_submit_payload("List me"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200

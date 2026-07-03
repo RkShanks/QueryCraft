@@ -27,7 +27,13 @@ from sqlalchemy import text
         ("SET ROLE postgres", "SET"),
     ],
 )
-async def test_unsafe_pattern_rejected(authenticated_acceptance_client, db_session, bad_sql, expected_fragment):
+async def test_unsafe_pattern_rejected(
+    authenticated_acceptance_client,
+    db_session,
+    query_submit_payload,
+    bad_sql,
+    expected_fragment,
+):
     """Unsafe patterns must be rejected before execution."""
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     before = result.scalar()
@@ -38,7 +44,7 @@ async def test_unsafe_pattern_rejected(authenticated_acceptance_client, db_sessi
     ):
         response = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Unsafe pattern"},
+            json=query_submit_payload("Unsafe pattern"),
             headers={"origin": "http://test"},
         )
 

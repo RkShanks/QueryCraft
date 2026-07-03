@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.12, pytest-8.4.2, pluggy-1.6.0
+rootdir: /home/avril/QueryCraft/backend
+configfile: pyproject.toml
+plugins: cov-6.3.0, respx-0.23.1, subtests-0.14.2, anyio-4.13.0, schemathesis-3.39.16, asyncio-0.26.0, hypothesis-6.152.4
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 55 items
+
+tests/acceptance/test_auth_fixture.py .                                  [  1%]
+tests/acceptance/test_data_modifying_sql_blocked.py F
+
+=================================== FAILURES ===================================
+___________ test_data_modifying_sql_rejected[DELETE FROM customers] ____________
+tests/acceptance/test_data_modifying_sql_blocked.py:43: in test_data_modifying_sql_rejected
+    assert response.status_code == 422
+E   assert 400 == 422
+E    +  where 400 = <Response [400 Bad Request]>.status_code
+=========================== short test summary info ============================
+FAILED tests/acceptance/test_data_modifying_sql_blocked.py::test_data_modifying_sql_rejected[DELETE FROM customers]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+========================= 1 failed, 1 passed in 0.81s ==========================
