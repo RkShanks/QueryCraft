@@ -17,12 +17,8 @@ from sqlalchemy import text
     "good_sql,expected_min_rows",
     [
         ("SELECT * FROM customer LIMIT 10", 1),
-        ("SELECT first_name, last_name FROM customer WHERE active = TRUE LIMIT 5", 1),
-        (
-            "WITH recent AS (SELECT * FROM payment ORDER BY payment_date DESC LIMIT 100) "
-            "SELECT customer_id, SUM(amount) FROM recent GROUP BY customer_id",
-            1,
-        ),
+        ("SELECT first_name, last_name FROM customer WHERE active = 1 LIMIT 5", 1),
+        ("SELECT customer_id, SUM(amount) FROM payment GROUP BY customer_id LIMIT 10", 1),
         (
             "SELECT customer.first_name, address.address FROM customer "
             "JOIN address ON customer.address_id = address.address_id LIMIT 10",

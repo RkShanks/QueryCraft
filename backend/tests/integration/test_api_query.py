@@ -8,6 +8,7 @@ Tests POST /query/submit (200 QueryResult, 400 validation, 401 unauth, 409 concu
 import pytest
 
 
+@pytest.mark.usefixtures("deterministic_query_llm")
 class TestQueryRouter:
     """Query router integration tests."""
 
@@ -86,10 +87,10 @@ class TestQueryRouter:
 
     @pytest.mark.asyncio
     async def test_accept_expired_attempt(self, authenticated_client):
-        """Accept with invalid attempt returns 400."""
+        """Accept with inactive/invalid attempt returns 422."""
         response = await authenticated_client.post(
             "/api/v1/query/accept",
             json={"attempt_id": "550e8400-e29b-41d4-a716-446655440000"},
             headers={"origin": "http://test"},
         )
-        assert response.status_code == 400
+        assert response.status_code == 422

@@ -33,4 +33,4 @@ tests/unit/services/test_query_service_regenerate.py .............       [ 92%]
 tests/unit/test_history_service.py ........                              [ 95%]
 tests/unit/test_schemas_query.py ...........                             [100%]
 
-============================= 242 passed in 1.12s ==============================
+============================= 242 passed in 0.95s ==============================

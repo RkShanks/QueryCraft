@@ -7,15 +7,20 @@ asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_defaul
 collected 55 items
 
 tests/acceptance/test_auth_fixture.py .                                  [  1%]
-tests/acceptance/test_data_modifying_sql_blocked.py F
+tests/acceptance/test_data_modifying_sql_blocked.py ......               [ 12%]
+tests/acceptance/test_multi_statement_blocked.py ...                     [ 18%]
+tests/acceptance/test_query_timeout.py .                                 [ 20%]
+tests/acceptance/test_schema_invalid_sql_blocked.py ....                 [ 27%]
+tests/acceptance/test_session_conversation.py ....                       [ 34%]
+tests/acceptance/test_unsafe_pattern_blocked.py .........                [ 50%]
+tests/acceptance/test_valid_select_passes.py ....                        [ 58%]
+tests/integration/test_api_auth.py .......                               [ 70%]
+tests/integration/test_api_query.py ......                               [ 81%]
+tests/integration/test_api_history.py ....                               [ 89%]
+tests/integration/test_accept_only_persistence.py ..                     [ 92%]
+tests/integration/test_regenerate_then_accept.py .                       [ 94%]
+tests/integration/test_evaluator_gate.py .                               [ 96%]
+tests/integration/test_us5_provider_switch.py .                          [ 98%]
+tests/integration/test_us5_reconfigured_provider.py .                    [100%]
 
-=================================== FAILURES ===================================
-___________ test_data_modifying_sql_rejected[DELETE FROM customers] ____________
-tests/acceptance/test_data_modifying_sql_blocked.py:43: in test_data_modifying_sql_rejected
-    assert response.status_code == 422
-E   assert 400 == 422
-E    +  where 400 = <Response [400 Bad Request]>.status_code
-=========================== short test summary info ============================
-FAILED tests/acceptance/test_data_modifying_sql_blocked.py::test_data_modifying_sql_rejected[DELETE FROM customers]
-!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
-========================= 1 failed, 1 passed in 0.81s ==========================
+============================= 55 passed in 14.52s ==============================

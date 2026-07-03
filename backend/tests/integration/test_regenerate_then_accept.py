@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.source_db.adapters import ExecuteResult
+
 
 class TestRegenerateThenAccept:
     """Integration test for accept-after-regenerate flow."""
@@ -17,18 +19,24 @@ class TestRegenerateThenAccept:
     @pytest.mark.asyncio
     async def test_regenerate_then_accept(self, authenticated_client, query_submit_payload):
         """Submit, reject (regenerate), then accept regenerated result — expect 201."""
-        # Submit a question
-        submit_resp = await authenticated_client.post(
-            "/api/v1/query/submit",
-            json=query_submit_payload("What is 1+1?"),
-            headers={"origin": "http://test"},
-        )
-        assert submit_resp.status_code == 200
-        attempt_id = submit_resp.json()["attempt_id"]
-
-        # Regenerate with different SQL
-        with patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_gen:
-            mock_gen.return_value = "SELECT 2 AS id"
+        with (
+            patch(
+                "app.api.v1.query.LLMProviderFactory.from_config",
+                return_value=AsyncMock(generate_sql=AsyncMock(side_effect=["SELECT 1 AS id", "SELECT 2 AS id"])),
+            ),
+            patch(
+                "app.source_db.adapters.PostgresAdapter.execute",
+                new=AsyncMock(return_value=ExecuteResult(columns=["id"], rows=[(1,)])),
+            ),
+        ):
+            # Submit a question
+            submit_resp = await authenticated_client.post(
+                "/api/v1/query/submit",
+                json=query_submit_payload("What is 1+1?"),
+                headers={"origin": "http://test"},
+            )
+            assert submit_resp.status_code == 200
+            attempt_id = submit_resp.json()["attempt_id"]
 
             regenerate_resp = await authenticated_client.post(
                 "/api/v1/query/regenerate",

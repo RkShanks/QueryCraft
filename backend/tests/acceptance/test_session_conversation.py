@@ -4,9 +4,22 @@ Tests lazy session creation, context loading on follow-up, and implicit feedback
 Uses the full app stack with authenticated_client and mock_llm.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 
+@pytest.fixture
+def stub_llm_provider():
+    """Use deterministic SQL generation for conversation acceptance tests."""
+    with patch(
+        "app.api.v1.query.LLMProviderFactory.from_config",
+        return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 1 AS id")),
+    ):
+        yield
+
+
+@pytest.mark.usefixtures("stub_llm_provider")
 class TestSessionConversationFlow:
     """End-to-end session conversation acceptance tests."""
 
