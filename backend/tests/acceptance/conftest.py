@@ -10,6 +10,8 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from tests.support.auth_seed import sync_builtin_local_admin
+
 
 @pytest_asyncio.fixture
 async def acceptance_client(set_test_env) -> AsyncGenerator[AsyncClient, None]:
@@ -23,7 +25,18 @@ async def acceptance_client(set_test_env) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture
-async def authenticated_acceptance_client(acceptance_client, ensure_db_connection) -> AsyncGenerator[AsyncClient, None]:
+async def synced_acceptance_admin(async_engine_fixture, set_test_env) -> None:
+    """Ensure acceptance auth uses the current test admin credentials."""
+    async with async_engine_fixture.begin() as conn:
+        await sync_builtin_local_admin(conn)
+
+
+@pytest_asyncio.fixture
+async def authenticated_acceptance_client(
+    acceptance_client,
+    synced_acceptance_admin,
+    ensure_db_connection,
+) -> AsyncGenerator[AsyncClient, None]:
     """Provide a pre-authenticated httpx client (admin user signed in)."""
     response = await acceptance_client.post(
         "/api/v1/auth/sign-in",
@@ -31,6 +44,7 @@ async def authenticated_acceptance_client(acceptance_client, ensure_db_connectio
         headers={"origin": "http://test"},
     )
     assert response.status_code == 200, f"Sign-in failed: {response.text}"
+    acceptance_client.headers.update({"origin": "http://test"})
     yield acceptance_client
 
 
