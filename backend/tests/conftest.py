@@ -12,9 +12,11 @@ Provides:
 
 import asyncio
 import base64
+import json
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -154,31 +156,175 @@ async def app_client(set_test_env) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture
-async def ensure_db_connection(async_engine_fixture):
+async def ensure_db_connection(async_engine_fixture, test_env_vars):
     """Ensure at least one source_database_connections row exists for tests."""
     from sqlalchemy import text
 
-    async with async_engine_fixture.connect() as conn:
-        result = await conn.execute(text("SELECT id FROM source_database_connections LIMIT 1"))
-        row = result.fetchone()
-        if row is None:
-            await conn.execute(
+    from app.core.credential_provider import FernetCredentialProvider
+
+    schema_entries = [
+        ("customer", "customer_id", "integer", True),
+        ("customer", "first_name", "text", False),
+        ("customer", "last_name", "text", False),
+        ("customer", "active", "integer", False),
+        ("customer", "address_id", "integer", False),
+        ("payment", "payment_id", "integer", True),
+        ("payment", "customer_id", "integer", False),
+        ("payment", "amount", "numeric", False),
+        ("payment", "payment_date", "timestamp", False),
+        ("address", "address_id", "integer", True),
+        ("address", "address", "text", False),
+    ]
+    allowed_tables = [
+        {"table": "customer", "columns": ["customer_id", "first_name", "last_name", "active", "address_id"]},
+        {"table": "payment", "columns": ["payment_id", "customer_id", "amount", "payment_date"]},
+        {"table": "address", "columns": ["address_id", "address"]},
+    ]
+    provider = FernetCredentialProvider(test_env_vars["DB_CREDENTIAL_KEY"])
+    encrypted_password = provider.encrypt(test_env_vars["SOURCE_DB_PASSWORD"])
+
+    async with async_engine_fixture.begin() as conn:
+        result = await conn.execute(
+            text("SELECT id FROM source_database_connections WHERE display_name = :display_name"),
+            {"display_name": test_env_vars["SOURCE_DB_NAME"]},
+        )
+        connection_id = result.scalar_one_or_none()
+        if connection_id is None:
+            result = await conn.execute(
                 text(
                     """
                     INSERT INTO source_database_connections (
                         id, display_name, host, port, database_name, username,
-                        encrypted_password, database_type, lifecycle_state, health_status,
+                        encrypted_password, ssl_mode, database_type, lifecycle_state, health_status,
                         schema_introspection_status
                     )
                     VALUES (
-                        gen_random_uuid(), 'Test Source', 'localhost', 5434, 'source_analytics',
-                        'source_readonly', 'enc', 'postgresql', 'active', 'healthy', 'success'
+                        gen_random_uuid(), :display_name, :host, :port, :database_name,
+                        :username, :encrypted_password, :ssl_mode, 'postgresql', 'active', 'healthy', 'success'
                     )
                     RETURNING id
                     """
-                )
+                ),
+                {
+                    "display_name": test_env_vars["SOURCE_DB_NAME"],
+                    "host": test_env_vars["SOURCE_DB_HOST"],
+                    "port": int(test_env_vars["SOURCE_DB_PORT"]),
+                    "database_name": test_env_vars["SOURCE_DB_NAME"],
+                    "username": test_env_vars["SOURCE_DB_USER"],
+                    "encrypted_password": encrypted_password,
+                    "ssl_mode": test_env_vars["SOURCE_DB_SSL_MODE"],
+                },
             )
-            await conn.commit()
+            connection_id = result.scalar_one()
+        else:
+            await conn.execute(
+                text(
+                    """
+                    UPDATE source_database_connections
+                    SET host = :host,
+                        port = :port,
+                        database_name = :database_name,
+                        username = :username,
+                        encrypted_password = :encrypted_password,
+                        ssl_mode = :ssl_mode,
+                        database_type = 'postgresql',
+                        lifecycle_state = 'active',
+                        health_status = 'healthy',
+                        schema_introspection_status = 'success',
+                        updated_at = now()
+                    WHERE id = :connection_id
+                    """
+                ),
+                {
+                    "connection_id": connection_id,
+                    "host": test_env_vars["SOURCE_DB_HOST"],
+                    "port": int(test_env_vars["SOURCE_DB_PORT"]),
+                    "database_name": test_env_vars["SOURCE_DB_NAME"],
+                    "username": test_env_vars["SOURCE_DB_USER"],
+                    "encrypted_password": encrypted_password,
+                    "ssl_mode": test_env_vars["SOURCE_DB_SSL_MODE"],
+                },
+            )
+
+        await conn.execute(
+            text("DELETE FROM connection_schema_entries WHERE connection_id = :connection_id"),
+            {"connection_id": connection_id},
+        )
+        for table_name, column_name, data_type, is_primary_key in schema_entries:
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO connection_schema_entries (
+                        connection_id, table_name, column_name, column_data_type, is_primary_key
+                    )
+                    VALUES (:connection_id, :table_name, :column_name, :data_type, :is_primary_key)
+                    """
+                ),
+                {
+                    "connection_id": connection_id,
+                    "table_name": table_name,
+                    "column_name": column_name,
+                    "data_type": data_type,
+                    "is_primary_key": is_primary_key,
+                },
+            )
+
+        admin_role_result = await conn.execute(
+            text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1")
+        )
+        admin_role_id = admin_role_result.scalar_one()
+        await conn.execute(
+            text(
+                """
+                INSERT INTO role_connection_policies (
+                    role_id, connection_id, allowed_tables, row_filters, column_masks
+                )
+                VALUES (
+                    :role_id, :connection_id, CAST(:allowed_tables AS jsonb), '[]'::jsonb, '[]'::jsonb
+                )
+                ON CONFLICT (role_id, connection_id)
+                DO UPDATE SET
+                    allowed_tables = EXCLUDED.allowed_tables,
+                    row_filters = '[]'::jsonb,
+                    column_masks = '[]'::jsonb,
+                    updated_at = now()
+                """
+            ),
+            {
+                "role_id": admin_role_id,
+                "connection_id": connection_id,
+                "allowed_tables": json.dumps(allowed_tables),
+            },
+        )
+    return str(connection_id)
+
+
+@pytest.fixture
+def query_submit_payload(ensure_db_connection):
+    """Build a submit request body using the default test connection."""
+
+    def _make_payload(question: str, **extra: Any) -> dict[str, Any]:
+        return {"question": question, "connection_id": ensure_db_connection, **extra}
+
+    return _make_payload
+
+
+@pytest.fixture
+def deterministic_query_llm():
+    """Stub external LLM and source execution for query API integration tests."""
+    from app.source_db.adapters import ExecuteResult
+
+    with (
+        patch(
+            "app.api.v1.query.LLMProviderFactory.from_config",
+            return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 1 AS id")),
+        ),
+        patch(
+            "app.source_db.adapters.PostgresAdapter.execute",
+            new=AsyncMock(return_value=ExecuteResult(columns=["id"], rows=[(1,)])),
+        ),
+    ):
+        yield
 
 
 @pytest_asyncio.fixture

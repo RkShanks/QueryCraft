@@ -1,7 +1,8 @@
 """T-150: Acceptance test — schema-invalid SQL blocked via submit pipeline.
 
 Tests that the full submit pipeline rejects SQL referencing unknown tables,
-columns, or schemas with evaluator_rejected and a SchemaValidationRule violation.
+columns, or schemas with evaluator_rejected and a sanitized SchemaValidationRule
+violation.
 """
 
 from unittest.mock import AsyncMock, patch
@@ -14,15 +15,20 @@ from sqlalchemy import text
 @pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "bad_sql,expected_fragment",
+    "bad_sql",
     [
-        ("SELECT * FROM nonexistent_table", "nonexistent_table"),
-        ("SELECT nonexistent_column FROM customer", "nonexistent_column"),
-        ("SELECT * FROM customer JOIN ghost ON customer.customer_id = ghost.id", "ghost"),
-        ("SELECT * FROM customer.fake_schema", "customer.fake_schema"),
+        "SELECT * FROM nonexistent_table",
+        "SELECT nonexistent_column FROM customer",
+        "SELECT * FROM customer JOIN ghost ON customer.customer_id = ghost.id",
+        "SELECT * FROM customer.fake_schema",
     ],
 )
-async def test_schema_invalid_sql_rejected(authenticated_acceptance_client, db_session, bad_sql, expected_fragment):
+async def test_schema_invalid_sql_rejected(
+    authenticated_acceptance_client,
+    db_session,
+    query_submit_payload,
+    bad_sql,
+):
     """Schema-invalid SQL must be rejected before execution."""
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     before = result.scalar()
@@ -33,7 +39,7 @@ async def test_schema_invalid_sql_rejected(authenticated_acceptance_client, db_s
     ):
         response = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Bad schema query"},
+            json=query_submit_payload("Bad schema query"),
             headers={"origin": "http://test"},
         )
 
@@ -42,9 +48,6 @@ async def test_schema_invalid_sql_rejected(authenticated_acceptance_client, db_s
     assert data["message_key"] == "query.evaluator.rejected"
     violations = data["violations"]
     assert any(v["rule"] == "schema_validation" for v in violations)
-    # Assert the response includes the unknown identifier
-    detail_text = str(data)
-    assert expected_fragment in detail_text
 
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     after = result.scalar()

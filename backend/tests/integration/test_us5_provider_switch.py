@@ -15,7 +15,7 @@ class TestProviderSwitchPreservesHistory:
     """Provider switch integration test."""
 
     @pytest.mark.asyncio
-    async def test_switch_provider_preserves_history(self, authenticated_client, monkeypatch):
+    async def test_switch_provider_preserves_history(self, authenticated_client, monkeypatch, query_submit_payload):
         """Switching LLM provider does not invalidate accepted-query history."""
         with respx.mock:
             # Phase 1: Ollama
@@ -29,7 +29,7 @@ class TestProviderSwitchPreservesHistory:
             # Submit and accept a query with Ollama
             submit_resp = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "What is 1+1?"},
+                json=query_submit_payload("What is 1+1?"),
                 headers={"origin": "http://test"},
             )
             assert submit_resp.status_code == 200
@@ -69,7 +69,7 @@ class TestProviderSwitchPreservesHistory:
             # Submit NEW question — must route to OpenAI
             new_submit_resp = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "What is 2+2?"},
+                json=query_submit_payload("What is 2+2?"),
                 headers={"origin": "http://test"},
             )
             assert new_submit_resp.status_code == 200

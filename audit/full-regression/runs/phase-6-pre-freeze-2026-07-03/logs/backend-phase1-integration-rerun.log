@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.12, pytest-8.4.2, pluggy-1.6.0
+rootdir: /home/avril/QueryCraft/backend
+configfile: pyproject.toml
+plugins: cov-6.3.0, respx-0.23.1, subtests-0.14.2, anyio-4.13.0, schemathesis-3.39.16, asyncio-0.26.0, hypothesis-6.152.4
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 55 items
+
+tests/acceptance/test_auth_fixture.py .                                  [  1%]
+tests/acceptance/test_data_modifying_sql_blocked.py ......               [ 12%]
+tests/acceptance/test_multi_statement_blocked.py ...                     [ 18%]
+tests/acceptance/test_query_timeout.py .                                 [ 20%]
+tests/acceptance/test_schema_invalid_sql_blocked.py ....                 [ 27%]
+tests/acceptance/test_session_conversation.py ....                       [ 34%]
+tests/acceptance/test_unsafe_pattern_blocked.py .........                [ 50%]
+tests/acceptance/test_valid_select_passes.py ....                        [ 58%]
+tests/integration/test_api_auth.py .......                               [ 70%]
+tests/integration/test_api_query.py ......                               [ 81%]
+tests/integration/test_api_history.py ....                               [ 89%]
+tests/integration/test_accept_only_persistence.py ..                     [ 92%]
+tests/integration/test_regenerate_then_accept.py .                       [ 94%]
+tests/integration/test_evaluator_gate.py .                               [ 96%]
+tests/integration/test_us5_provider_switch.py .                          [ 98%]
+tests/integration/test_us5_reconfigured_provider.py .                    [100%]
+
+============================= 55 passed in 14.52s ==============================

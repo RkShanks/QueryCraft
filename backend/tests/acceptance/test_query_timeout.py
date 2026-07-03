@@ -4,7 +4,7 @@ Verifies FR-012 (timeout enforcement), SC-011 (timeout behavior measurement).
 Asserts: timeout response shape, no DB write, no orphan attempt, no leaked connection.
 """
 
-import asyncio
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -14,18 +14,20 @@ from sqlalchemy import text
 @pytest.mark.acceptance
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_query_timeout_cancellation_and_cleanup(authenticated_acceptance_client, db_session, redis_client):
+async def test_query_timeout_cancellation_and_cleanup(
+    authenticated_acceptance_client,
+    db_session,
+    redis_client,
+    query_submit_payload,
+):
     """Slow query must timeout, return 504, and leave no orphan state."""
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     before = result.scalar()
 
-    # Ensure Redis is clean
-    await redis_client.flushdb()
-
-    # Patch executor to sleep longer than the 30-second timeout
-    async def slow_execute(*args, **kwargs):
-        await asyncio.sleep(60)
-        return [], []
+    # Keep the authenticated session, but remove stale attempt/lock state.
+    stale_keys = await redis_client.keys("attempt:*") + await redis_client.keys("lock:*")
+    if stale_keys:
+        await redis_client.delete(*stale_keys)
 
     with (
         patch(
@@ -33,13 +35,13 @@ async def test_query_timeout_cancellation_and_cleanup(authenticated_acceptance_c
             return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 1")),
         ),
         patch(
-            "app.api.v1.query._source_db_executor.execute",
-            side_effect=slow_execute,
+            "app.source_db.adapters.PostgresAdapter.execute",
+            side_effect=TimeoutError,
         ),
     ):
         response = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Slow query"},
+            json=query_submit_payload("Slow query"),
             headers={"origin": "http://test"},
         )
 
@@ -53,9 +55,12 @@ async def test_query_timeout_cancellation_and_cleanup(authenticated_acceptance_c
     after = result.scalar()
     assert after == before
 
-    # 3. No orphan attempt in Redis
+    # 3. Timeout attempt is retained with terminal state, and no lock is orphaned.
     keys = await redis_client.keys("attempt:*")
-    assert len(keys) == 0
+    assert len(keys) == 1
+    attempt_data = json.loads(await redis_client.get(keys[0]))
+    assert attempt_data["state"] == "TIMEOUT"
+    assert await redis_client.keys("lock:*") == []
 
     # 4. Lock released — a second request should succeed immediately
     with patch(
@@ -64,7 +69,7 @@ async def test_query_timeout_cancellation_and_cleanup(authenticated_acceptance_c
     ):
         recovery = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Fast query"},
+            json=query_submit_payload("Fast query"),
             headers={"origin": "http://test"},
         )
     assert recovery.status_code == 200

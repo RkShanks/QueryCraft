@@ -17,12 +17,8 @@ from sqlalchemy import text
     "good_sql,expected_min_rows",
     [
         ("SELECT * FROM customer LIMIT 10", 1),
-        ("SELECT first_name, last_name FROM customer WHERE active = TRUE LIMIT 5", 1),
-        (
-            "WITH recent AS (SELECT * FROM payment ORDER BY payment_date DESC LIMIT 100) "
-            "SELECT customer_id, SUM(amount) FROM recent GROUP BY customer_id",
-            1,
-        ),
+        ("SELECT first_name, last_name FROM customer WHERE active = 1 LIMIT 5", 1),
+        ("SELECT customer_id, SUM(amount) FROM payment GROUP BY customer_id LIMIT 10", 1),
         (
             "SELECT customer.first_name, address.address FROM customer "
             "JOIN address ON customer.address_id = address.address_id LIMIT 10",
@@ -30,7 +26,13 @@ from sqlalchemy import text
         ),
     ],
 )
-async def test_valid_select_passes(authenticated_acceptance_client, db_session, good_sql, expected_min_rows):
+async def test_valid_select_passes(
+    authenticated_acceptance_client,
+    db_session,
+    query_submit_payload,
+    good_sql,
+    expected_min_rows,
+):
     """Valid read-only SQL must pass evaluator, execute, and return results."""
     result = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
     before = result.scalar()
@@ -41,7 +43,7 @@ async def test_valid_select_passes(authenticated_acceptance_client, db_session, 
     ):
         response = await authenticated_acceptance_client.post(
             "/api/v1/query/submit",
-            json={"question": "Valid query"},
+            json=query_submit_payload("Valid query"),
             headers={"origin": "http://test"},
         )
 

@@ -7,16 +7,17 @@ GET /history/{id} (200 detail, 404 not found); uses authenticated_client with pr
 import pytest
 
 
+@pytest.mark.usefixtures("deterministic_query_llm")
 class TestHistoryRouter:
     """History router integration tests."""
 
     @pytest.mark.asyncio
-    async def test_list_history(self, authenticated_client):
+    async def test_list_history(self, authenticated_client, query_submit_payload):
         """GET /history returns list of accepted queries."""
         # Seed an accepted query via accept endpoint
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 2+2?"},
+            json=query_submit_payload("What is 2+2?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
@@ -42,11 +43,11 @@ class TestHistoryRouter:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_history_detail(self, authenticated_client):
+    async def test_get_history_detail(self, authenticated_client, query_submit_payload):
         """GET /history/{id} returns detail."""
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Detail test?"},
+            json=query_submit_payload("Detail test?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
