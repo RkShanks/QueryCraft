@@ -3,95 +3,117 @@
 Run date: 2026-07-04
 Scope: Chunk 2 only - Phase 2 premium UI / RTL / sessions
 
-Branch tested: `fix/phase2-auth-fixture-sync`
-Base HEAD SHA tested: `0ff7f8a2b2d2eb06409fed80428f1537c1edb7ab`
+Branch tested: `fix/phase2-playwright-e2e-config`
+Base HEAD SHA tested: `2ee4bb51c1ff7309b167e0322feda46488a02464`
 
 ## Summary
 
-The Phase 2 backend gate blocker is fixed in the test harness. The original
-failure was shared fixture drift: global `authenticated_client` did not sync the
-built-in local admin before sign-in, while the Phase 1 acceptance-specific
-fixture already did. After adding the sync dependency and updating stale Phase 2
-integration fixtures for the current Phase 5/6 auth/RBAC/query-service
-contracts, the required Phase 2 backend acceptance/integration/contract command
-passes.
+PR #187 is merged and the Phase 2 backend preconditions are clean:
+acceptance/integration/contract `35 passed`; backend unit `40 passed`.
 
-Per the current fix scope, Phase 2 browser/LLM validation was not run. Phases
-3-6 and T-905 were not started. No product code was edited.
+The Phase 2 targeted frontend e2e gate blocker is fixed in the Playwright test
+harness. The original command was reproduced before the fix:
+
+`cd frontend && rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts`
+
+It failed before tests ran with:
+
+`Error: Process from config.webServer was not able to start. Exit code: 1`
+
+Root cause: `frontend/playwright.config.ts` waited for
+`http://localhost:3000`, but the `webServer.command` did not force Vite to
+serve port 3000. The full-regression real-app mode also needs to target the
+already-running Docker frontend at `http://localhost:5173` without starting a
+second Vite server. After the config fix, browser execution exposed stale
+i18n-audit auth mocks: the tests submitted sign-in credentials but did not mock
+the current `/api/v1/auth/sign-in` and `/api/v1/auth/me` cookie-session flow, so
+AuthGuard stayed on `/sign-in`.
+
+Fixes made:
+
+- Playwright now derives one `baseURL` from `E2E_BASE_URL` or
+  `http://localhost:3000`.
+- Default local Playwright mode starts Vite with `--port 3000` and waits on the
+  same URL.
+- External real-app mode skips `webServer` when `E2E_BASE_URL` is set.
+- The i18n audit e2e helper uses sanitized network-boundary auth mocks for the
+  current local-login endpoints.
+
+Both required e2e modes now pass. The Phase 2 browser/LLM real-use smoke was
+not run by request. Phases 3-6 and T-905 were not started.
 
 ## Regression Task Matrix
 
 | Task | Status | Evidence |
 |---|---|---|
-| New Chat creates a session, focuses prompt input, and stores preview text. | Pass | `tests/acceptance/test_session_conversation.py` and `tests/integration/test_sessions.py` passed in `logs/phase2-backend-acceptance-integration-contract.log`. Browser UI smoke remains to resume after merge. |
-| Sidebar switches sessions, groups by Today / Previous 7 Days / Older, and supports delete with a 5-second undo window. | Blocked | Backend session API coverage passed; browser sidebar/delete/undo smoke was intentionally not run in this fix. |
-| Follow-up questions include the last N completed attempts according to admin context cap. | Pass | Session conversation acceptance and admin settings integration coverage passed; live browser follow-up smoke remains to resume after merge. |
-| Response card renders highlighted SQL, result table, copy/regenerate actions, thumbs feedback, implicit feedback, and saved state. | Pass | Backend feedback and session conversation tests passed; browser response-card smoke was intentionally not run in this fix. |
-| Admin settings can read/update LLM context cap in range 0-10. | Pass | `tests/integration/test_admin_settings.py` and `tests/unit/test_admin_settings_unit.py` passed. |
-| Arabic locale sets `dir="rtl"` and mirrors sidebar, bubbles, prompt input, forms, icons, and response chrome while SQL code remains LTR. | Blocked | Frontend RTL gates/browser smoke were intentionally not run in this backend-only fix. |
-| LLM wire-format contract tests cover happy path, 429, 5xx, malformed response, and oversized schema context. | Pass | `tests/contract/test_gemini_contract.py` and `tests/unit/llm/test_gemini_adapter.py` passed. |
-| Lifecycle invariant framework detects lock, feedback, and session-touch leaks. | Pass | `tests/integration/test_f011_lock_leak.py`, `tests/integration/test_feedback.py`, and `tests/unit/llm/test_adapter_lifecycle.py` passed. |
+| New Chat creates a session, focuses prompt input, and stores preview text. | Blocked | Browser smoke was intentionally not run in this harness-fix scope. |
+| Sidebar switches sessions, groups by Today / Previous 7 Days / Older, and supports delete with a 5-second undo window. | Blocked | Browser smoke was intentionally not run in this harness-fix scope. |
+| Follow-up questions include the last N completed attempts according to admin context cap. | Blocked | Live follow-up/browser smoke was intentionally not run in this harness-fix scope. |
+| Response card renders highlighted SQL, result table, copy/regenerate actions, thumbs feedback, implicit feedback, and saved state. | Blocked | Browser smoke was intentionally not run in this harness-fix scope. |
+| Admin settings can read/update LLM context cap in range 0-10. | Blocked | Browser settings smoke was intentionally not run in this harness-fix scope. |
+| Arabic locale sets `dir="rtl"` and mirrors sidebar, bubbles, prompt input, forms, icons, and response chrome while SQL code remains LTR. | Pass | Targeted e2e gate passed in default local mode and external `E2E_BASE_URL=http://localhost:5173` mode. See `logs/phase2-frontend-e2e-rtl-i18n-local.log` and `logs/phase2-frontend-e2e-rtl-i18n-external.log`. |
+| LLM wire-format contract tests cover happy path, 429, 5xx, malformed response, and oversized schema context. | Pass | Backend precondition from PR #187: contract coverage included in `35 passed`. |
+| Lifecycle invariant framework detects lock, feedback, and session-touch leaks. | Pass | Backend precondition from PR #187: lifecycle/session/feedback coverage included in backend gates. |
 
-Task counts after backend fix: Pass 6, Fail 0, Skipped 0, Blocked 2.
+Task counts after e2e harness fix: Pass 3, Fail 0, Skipped 0, Blocked 5.
 
 ## Commands Run
 
 | Command | Exit | Notes |
 |---|---:|---|
-| `rtk git status --short --branch` | 0 | Started on `main`; switched to `fix/phase2-auth-fixture-sync` for edits. |
-| `rtk git rev-parse HEAD` | 0 | Base tested before edits: `0ff7f8a2b2d2eb06409fed80428f1537c1edb7ab`. |
-| `rtk docker compose -f docker-compose.dev.yml ps` | 0 | Compose stack running; backend/frontend up and data services healthy. |
-| `cd backend && rtk uv run pytest tests/acceptance/test_session_conversation.py tests/integration/test_sessions.py tests/integration/test_feedback.py tests/integration/test_admin_settings.py tests/integration/test_f011_lock_leak.py tests/contract/test_gemini_contract.py -x --tb=short` | 0 | 35 passed. See `logs/phase2-backend-acceptance-integration-contract.log`. |
-| `cd backend && rtk uv run pytest tests/unit/test_admin_settings_unit.py tests/unit/test_session_repository.py tests/unit/test_session_extension.py tests/unit/test_feedback_router.py tests/unit/llm/test_gemini_adapter.py tests/unit/llm/test_adapter_lifecycle.py -x --tb=short` | 0 | 40 passed. See `logs/phase2-backend-unit.log`. |
-| `cd backend && rtk uv run ruff check src tests` | 0 | Passed. See `logs/phase2-backend-ruff-check.log`. |
-| `cd backend && rtk uv run ruff format --check src tests` | 0 | Passed. See `logs/phase2-backend-ruff-format.log`. |
-| `rtk git diff --check` | 0 | Passed. |
-
-Not run by request:
-
-- Phase 2 frontend unit/lint/typecheck/build/style/e2e gates.
-- Phase 2 browser smoke.
-- Real Gemini follow-up conversation smoke.
-- Phases 3-6 and T-905.
+| `rtk git checkout -b fix/phase2-playwright-e2e-config` | 0 | Created fix branch before harness edits. |
+| `rtk git rev-parse HEAD` | 0 | Base: `2ee4bb51c1ff7309b167e0322feda46488a02464`. |
+| `cd frontend && rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts` | 1 | Reproduced original pre-fix startup failure. See `logs/phase2-frontend-e2e-rtl-i18n-repro.log`. |
+| `cd frontend && rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts` | 0 | Default local Playwright mode passed: 11 passed. See `logs/phase2-frontend-e2e-rtl-i18n-local.log`. |
+| `cd frontend && E2E_BASE_URL=http://localhost:5173 rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts` | 0 | External real-app frontend mode passed: 11 passed. See `logs/phase2-frontend-e2e-rtl-i18n-external.log`. |
+| `cd frontend && rtk npm test -- --run` | 0 | 63 test files passed; 755 tests passed. See `logs/phase2-frontend-vitest-after-e2e-fix.log`. |
+| `cd frontend && rtk npm run lint` | 0 | ESLint passed. See `logs/phase2-frontend-lint-after-e2e-fix.log`. |
+| `cd frontend && rtk npm run typecheck` | 0 | TypeScript no-emit check passed. See `logs/phase2-frontend-typecheck-after-e2e-fix.log`. |
+| `cd frontend && rtk npm run build` | 0 | Production build passed; Vite emitted the existing large chunk warning. See `logs/phase2-frontend-build-after-e2e-fix.log`. |
+| `cd frontend && rtk npm run lint:css` | 0 | Stylelint passed. See `logs/phase2-frontend-lint-css-after-e2e-fix.log`. |
 
 ## Browser Flows
 
 | Flow | Status | Evidence |
 |---|---|---|
-| Open frontend and sign in through UI. | Blocked | Backend gate is now clean; browser validation intentionally deferred until after merge. |
-| Create new chat/session and submit benign question. | Blocked | Browser validation intentionally deferred until after merge. |
-| Verify response card controls. | Blocked | Browser validation intentionally deferred until after merge. |
-| Create second session and verify session isolation. | Blocked | Browser validation intentionally deferred until after merge. |
-| Verify sidebar grouping. | Blocked | Browser validation intentionally deferred until after merge. |
-| Delete session and undo. | Blocked | Browser validation intentionally deferred until after merge. |
-| Submit follow-up and verify context behavior. | Blocked | Browser validation intentionally deferred until after merge. |
-| Use feedback controls. | Blocked | Browser validation intentionally deferred until after merge. |
-| Visit admin settings and verify context cap behavior. | Blocked | Browser validation intentionally deferred until after merge. |
-| Switch to Arabic and inspect RTL behavior. | Blocked | Browser validation intentionally deferred until after merge. |
+| Open frontend and sign in through UI. | Blocked | Not run by request during this harness-fix task. |
+| Create a new chat/session and submit a benign question. | Blocked | Not run by request during this harness-fix task. |
+| Verify response card renders generated SQL, result table, copy/regenerate/reject/accept controls. | Blocked | Not run by request during this harness-fix task. |
+| Create a second session and verify sidebar/session switching keeps conversation state isolated. | Blocked | Not run by request during this harness-fix task. |
+| Verify sidebar grouping is visible enough to identify current/recent sessions. | Blocked | Not run by request during this harness-fix task. |
+| Delete a session and use undo within the toast window. | Blocked | Not run by request during this harness-fix task. |
+| Submit a follow-up question and verify prior context behavior is functional. | Blocked | Not run by request during this harness-fix task. |
+| Use feedback controls if present. | Blocked | Not run by request during this harness-fix task. |
+| Visit admin settings and verify LLM context cap read/update behavior if exposed. | Blocked | Not run by request during this harness-fix task. |
+| Switch to Arabic locale and verify RTL mirroring while SQL remains LTR. | Blocked | Not run by request during this harness-fix task. |
 
 ## Real LLM Result
 
-Blocked by scope. The backend contract/unit checks passed, but the live Gemini
-follow-up conversation smoke was intentionally not run during this backend
-test-harness fix. No provider secrets were printed or stored.
+Not run by request. The live Gemini follow-up conversation smoke can resume
+after this harness fix merges. Real provider secrets were not printed or stored.
 
 ## Evidence Files
 
 - `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/phase-2-premium-ui-rtl-report.md`
 - `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/phase-2-browser-smoke-evidence.json`
-- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-backend-acceptance-integration-contract.log`
-- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-backend-unit.log`
-- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-backend-ruff-check.log`
-- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-backend-ruff-format.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-e2e-rtl-i18n-repro.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-e2e-rtl-i18n-local.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-e2e-rtl-i18n-external.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-vitest-after-e2e-fix.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-lint-after-e2e-fix.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-typecheck-after-e2e-fix.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-build-after-e2e-fix.log`
+- `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-lint-css-after-e2e-fix.log`
 
-No Phase 2 screenshots were captured because browser validation did not run.
+No Phase 2 browser-smoke screenshots were captured because real-use browser
+validation did not run. No Playwright trace zip was committed or added as
+evidence.
 
 ## Security and Privacy Notes
 
-No secrets, cookies, passwords, full auth payloads, or raw sensitive request
-bodies were stored in Phase 2 evidence. The original auth failure and subsequent
-test-harness checks used sanitized errors only.
+No secrets, cookies, passwords, full auth payloads, raw hostile prompts, or raw
+sensitive request bodies were stored in evidence. E2E auth uses sanitized mock
+user data and route-level HTTP mocks.
 
-Chunk 2 backend validation is clean. Chunk 2 browser/LLM validation can resume
-after this fix merges. Chunk 3 remains blocked until the remaining Chunk 2
-frontend/browser/LLM validation completes.
+Chunk 2 browser/LLM validation can resume after this harness fix merges. Chunk
+3 remains blocked until the remaining Phase 2 browser/LLM validation completes.

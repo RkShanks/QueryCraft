@@ -1,0 +1,2 @@
+> playwright test rtl-snapshots.spec.ts i18n-audit.spec.ts
+Error: Process from config.webServer was not able to start. Exit code: 1

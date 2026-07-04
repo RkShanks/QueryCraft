@@ -1,0 +1,6 @@
+> vitest --passWithNoTests --run
+ RUN  v4.1.5 /home/avril/QueryCraft/frontend
+ Test Files  63 passed (63)
+      Tests  755 passed (755)
+   Start at  08:52:02
+   Duration  9.85s (transform 6.86s, setup 21.52s, import 15.68s, tests 23.66s, environment 62.75s)

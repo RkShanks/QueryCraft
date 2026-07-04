@@ -1,55 +1,86 @@
 {
-  "run_started_at": "2026-07-04T00:07:14Z",
-  "scope": "Chunk 2 - Phase 2 premium UI / RTL / sessions",
-  "branch": "fix/phase2-auth-fixture-sync",
-  "base_head_sha": "0ff7f8a2b2d2eb06409fed80428f1537c1edb7ab",
+  "run_started_at": "2026-07-04T01:39:00Z",
+  "fix_run_started_at": "2026-07-04T05:52:00Z",
+  "scope": "Chunk 2 - Phase 2 frontend e2e harness fix before browser/LLM validation resumes",
+  "branch": "fix/phase2-playwright-e2e-config",
+  "base_head_sha": "2ee4bb51c1ff7309b167e0322feda46488a02464",
   "frontend": "http://localhost:5173",
   "backend": "http://localhost:8000",
-  "backend_gate_status": "Pass",
-  "browser_smoke_status": "Blocked",
-  "real_llm_status": "Blocked",
-  "block_reason": "Browser and live LLM validation were intentionally not run during this backend test-harness fix.",
-  "root_cause": "Global authenticated_client did not sync the built-in local admin before sign-in after Phase 5/6 auth/RBAC hardening.",
-  "harness_updates": [
-    "Shared authenticated_client now depends on synced_local_admin.",
-    "Feedback accepted-query seed now requests ensure_db_connection.",
-    "Admin settings non-admin forbidden test uses a direct low-permission session instead of forbidden local login.",
-    "Admin settings unauthenticated PATCH includes the test Origin header so auth behavior is exercised after CSRF guard.",
-    "F-011 lifecycle tests use valid UUID inputs and async stubs for current detection/session/context/persistence dependencies."
+  "backend_gate_status": "Pass - precondition from PR #187 merge",
+  "frontend_gate_status": "Pass",
+  "browser_smoke_status": "Not run by request",
+  "real_llm_status": "Not run by request",
+  "root_cause": "Playwright default webServer waited for http://localhost:3000 while its command did not force Vite to port 3000. The targeted e2e suite also had stale local-login mocks: sign-in tests submitted credentials but did not mock the current /api/v1/auth/sign-in and /api/v1/auth/me cookie-session flow.",
+  "fix_summary": [
+    "Playwright now derives one baseURL from E2E_BASE_URL or http://localhost:3000.",
+    "Default local mode starts Vite with --port 3000 and waits on the same baseURL.",
+    "External real-app mode skips webServer when E2E_BASE_URL is set, allowing tests to target the already-running Docker frontend at http://localhost:5173.",
+    "The i18n audit e2e helper now uses sanitized network-boundary auth mocks for the current local-login endpoints."
   ],
-  "commands": [
+  "frontend_commands": [
     {
-      "command": "cd backend && rtk uv run pytest tests/acceptance/test_session_conversation.py tests/integration/test_sessions.py tests/integration/test_feedback.py tests/integration/test_admin_settings.py tests/integration/test_f011_lock_leak.py tests/contract/test_gemini_contract.py -x --tb=short",
-      "exit_code": 0,
-      "summary": "35 passed."
+      "command": "cd frontend && rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts",
+      "exit_code": 1,
+      "summary": "Reproduced original failure before fix: Process from config.webServer was not able to start. Exit code: 1.",
+      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-e2e-rtl-i18n-repro.log"
     },
     {
-      "command": "cd backend && rtk uv run pytest tests/unit/test_admin_settings_unit.py tests/unit/test_session_repository.py tests/unit/test_session_extension.py tests/unit/test_feedback_router.py tests/unit/llm/test_gemini_adapter.py tests/unit/llm/test_adapter_lifecycle.py -x --tb=short",
+      "command": "cd frontend && rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts",
       "exit_code": 0,
-      "summary": "40 passed."
+      "summary": "Default local Playwright mode passed: 11 passed.",
+      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-e2e-rtl-i18n-local.log"
     },
     {
-      "command": "cd backend && rtk uv run ruff check src tests",
+      "command": "cd frontend && E2E_BASE_URL=http://localhost:5173 rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts",
       "exit_code": 0,
-      "summary": "All checks passed."
+      "summary": "External real-app frontend mode passed: 11 passed.",
+      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-e2e-rtl-i18n-external.log"
     },
     {
-      "command": "cd backend && rtk uv run ruff format --check src tests",
+      "command": "cd frontend && rtk npm test -- --run",
       "exit_code": 0,
-      "summary": "383 files already formatted."
+      "summary": "63 test files passed; 755 tests passed.",
+      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-vitest-after-e2e-fix.log"
     },
     {
-      "command": "rtk git diff --check",
+      "command": "cd frontend && rtk npm run lint",
       "exit_code": 0,
-      "summary": "Passed."
+      "summary": "ESLint passed.",
+      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-lint-after-e2e-fix.log"
+    },
+    {
+      "command": "cd frontend && rtk npm run typecheck",
+      "exit_code": 0,
+      "summary": "TypeScript no-emit check passed.",
+      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-typecheck-after-e2e-fix.log"
+    },
+    {
+      "command": "cd frontend && rtk npm run build",
+      "exit_code": 0,
+      "summary": "Production build passed; Vite emitted the existing large chunk warning.",
+      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-build-after-e2e-fix.log"
+    },
+    {
+      "command": "cd frontend && rtk npm run lint:css",
+      "exit_code": 0,
+      "summary": "Stylelint passed.",
+      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-lint-css-after-e2e-fix.log"
+    }
+  ],
+  "browser_flows": [
+    {
+      "flow": "Phase 2 browser/LLM real-use smoke",
+      "status": "Not run",
+      "evidence": "Explicitly out of scope for this harness-fix run; can resume after merge."
     }
   ],
   "screenshots": [],
-  "api_observations": [],
   "security_privacy": {
     "secrets_printed": false,
     "cookies_stored": false,
+    "full_auth_payloads_stored": false,
     "raw_sensitive_payloads_stored": false,
-    "notes": "No browser/API smoke ran in this backend-only fix. Test evidence is summarized and sanitized."
+    "trace_zips_committed": false,
+    "notes": "Evidence stores command summaries and paths only. E2E auth data is sanitized mock data, not credentials."
   }
 }
