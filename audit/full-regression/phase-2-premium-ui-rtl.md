@@ -18,7 +18,7 @@ with command output paths, screenshot/trace paths, or short notes during the run
 | New Chat creates a session, focuses prompt input, and stores preview text. | Pending | |
 | Sidebar switches sessions, groups by Today / Previous 7 Days / Older, and supports delete with a 5-second undo window. | Pending | |
 | Follow-up questions include the last N completed attempts according to admin context cap. | Pending | |
-| Response card renders highlighted SQL, result table, copy/regenerate actions, thumbs feedback, implicit feedback, and saved state. | Pending | |
+| Response card renders highlighted SQL, result table, copy/regenerate actions, thumbs feedback, implicit feedback, and saved state. | Pending | Note: Copy, Regenerate, implicit feedback (auto-save), and saved state (delete) ARE present. Thumbs feedback bar was intentionally removed in later-phase refactor (`1ecf7d86`). Accept/Replace replaced by auto-save mechanism (`a187feaf`). The checklist item should be passed as "present with spec drift" — see triage in run report. |
 | Admin settings can read/update LLM context cap in range 0-10. | Pending | |
 | Arabic locale sets `dir="rtl"` and mirrors sidebar, bubbles, prompt input, forms, icons, and response chrome while SQL code remains LTR. | Pending | |
 | LLM wire-format contract tests cover happy path, 429, 5xx, malformed response, and oversized schema context. | Pending | |

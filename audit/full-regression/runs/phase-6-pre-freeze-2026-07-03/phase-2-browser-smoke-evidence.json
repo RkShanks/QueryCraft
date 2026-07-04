@@ -116,6 +116,111 @@
       }
     ]
   },
+  "rerun_after_pr189_2026_07_04": {
+    "scope": "Chunk 2 - Phase 2 browser/real-use validation rerun after PR #189 merge",
+    "branch": "main",
+    "head_sha": "fcfbe99a974db6b757de8f644888117c8057ae4c",
+    "frontend": "http://localhost:5173",
+    "backend": "http://localhost:8000",
+    "preflight": {
+      "git_status": "main...origin/main; old local Phase 1 evidence/traces remain untracked",
+      "head": "fcfbe99a974db6b757de8f644888117c8057ae4c",
+      "docker_compose": "backend/frontend up; postgres platform/source, redis, mysql, and mssql services up; data services healthy where applicable",
+      "ports": {
+        "5173": "listening",
+        "8000": "listening"
+      },
+      "signed_in_admin_connections": {
+        "status": "Pass",
+        "connections_count": 1,
+        "connection_visible": "source_analytics"
+      }
+    },
+    "real_llm": {
+      "status": "Pass",
+      "reason": "A benign query was submitted through the real UI using the configured Gemini provider and returned SQL plus a result table."
+    },
+    "browser_flows": [
+      {
+        "flow": "Open frontend and sign in through UI",
+        "status": "Pass",
+        "evidence": "Signed in as configured local admin through the UI. Screenshot: audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-05-rerun-signed-in.png"
+      },
+      {
+        "flow": "Create a new chat/session and verify prompt focus and draft/preview behavior",
+        "status": "Pass",
+        "evidence": "source_analytics was selected, prompt received focus, and draft text remained in the input. Screenshot: audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-06-rerun-draft-focused.png"
+      },
+      {
+        "flow": "Submit a benign real query using the configured Gemini provider",
+        "status": "Pass",
+        "evidence": "Real query returned a response card. Screenshot: audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-07-rerun-primary-response.png"
+      },
+      {
+        "flow": "Verify response card SQL/result/copy/regenerate/reject/accept controls/saved state",
+        "status": "Fail",
+        "evidence": "SQL and result table rendered, and saved/delete state was visible, but required copy/regenerate controls were missing from the response card. Reject/accept controls were also not exposed in the current auto-save shell. Screenshot: audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-08-rerun-response-card-fail.png"
+      },
+      {
+        "flow": "Verify accepted query appears in History",
+        "status": "Blocked",
+        "evidence": "Stopped at response-card controls blocker before navigating to History."
+      },
+      {
+        "flow": "Create a second session and switch between sessions; verify isolation",
+        "status": "Blocked",
+        "evidence": "Stopped at response-card controls blocker."
+      },
+      {
+        "flow": "Verify sidebar grouping enough to identify current/recent sessions",
+        "status": "Blocked",
+        "evidence": "Stopped at response-card controls blocker."
+      },
+      {
+        "flow": "Delete a session and use undo within the toast window",
+        "status": "Blocked",
+        "evidence": "Stopped at response-card controls blocker."
+      },
+      {
+        "flow": "Submit a follow-up question and verify prior context behavior is functional",
+        "status": "Blocked",
+        "evidence": "Stopped at response-card controls blocker."
+      },
+      {
+        "flow": "Use feedback controls if present",
+        "status": "Blocked",
+        "evidence": "Stopped before feedback inspection because the required response-card controls check failed."
+      },
+      {
+        "flow": "Visit admin settings and verify LLM context cap read/update behavior if exposed",
+        "status": "Blocked",
+        "evidence": "Stopped at response-card controls blocker."
+      },
+      {
+        "flow": "Switch to Arabic locale and verify RTL mirroring while SQL/code remains LTR",
+        "status": "Blocked",
+        "evidence": "Stopped at response-card controls blocker."
+      }
+    ],
+    "screenshots": [
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-05-rerun-signed-in.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-06-rerun-draft-focused.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-07-rerun-primary-response.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-08-rerun-response-card-fail.png"
+    ],
+    "blocker": {
+      "flow": "Response card controls",
+      "summary": "Required copy/regenerate controls were absent from a successful real-query response card; only saved/delete state was visible.",
+      "screenshot": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-08-rerun-response-card-fail.png"
+    },
+    "security_privacy": {
+      "secrets_stored": false,
+      "cookies_stored": false,
+      "full_auth_payloads_stored": false,
+      "raw_sensitive_request_bodies_stored": false,
+      "trace_zips_committed": false
+    }
+  },
   "browser_flows": [
     {
       "flow": "Open frontend and sign in through UI",
@@ -182,6 +287,103 @@
     "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-01-signed-in-workspace.png",
     "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-02-disabled-prompt-no-connection.png"
   ],
+  "remaining_flows_after_spec_drift_2026_07_04": {
+    "scope": "Chunk 2 - Phase 2 remaining browser/user flows after response-card spec-drift triage",
+    "branch": "main",
+    "head_sha": "fcfbe99a974db6b757de8f644888117c8057ae4c",
+    "marker": "P2R-mr69b2ca",
+    "preflight": {
+      "docker_compose": "backend/frontend up; postgres platform/source, redis, mysql, and mssql services up; data services healthy where applicable",
+      "ports": {
+        "5173": "listening",
+        "8000": "listening"
+      },
+      "signed_in_admin_connections": {
+        "status": "Pass",
+        "connections_count": 1,
+        "connection_visible": "source_analytics"
+      }
+    },
+    "real_llm": {
+      "primary_actor_count": {
+        "status": "Pass",
+        "observed_result": "200"
+      },
+      "second_session_film_count": {
+        "status": "Pass",
+        "observed_result": "1000"
+      },
+      "follow_up_customer_count": {
+        "status": "Pass",
+        "observed_result": "599"
+      }
+    },
+    "browser_flows": [
+      {
+        "flow": "Verify accepted/saved query appears in History",
+        "status": "Pass",
+        "evidence": "History filter found saved auto-accepted query for marker P2R-mr69b2ca-A. Screenshot: audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-11-remaining-history-saved-query.png"
+      },
+      {
+        "flow": "Create a second session and switch between sessions; verify isolation",
+        "status": "Pass",
+        "evidence": "Second session returned film count 1000; switching between P2R-mr69b2ca-A and P2R-mr69b2ca-B showed only the active session's workspace turns. Screenshots: phase2-12-remaining-second-session-response.png, phase2-13-remaining-session-switch-isolation.png"
+      },
+      {
+        "flow": "Verify sidebar grouping enough to identify current/recent sessions",
+        "status": "Pass",
+        "evidence": "Sidebar displayed the Today group and current/recent marker previews while switching sessions."
+      },
+      {
+        "flow": "Delete a session/query and use undo if exposed",
+        "status": "Pass",
+        "evidence": "Session delete exposed the 5-second undo toast; Undo restored the session before deletion. Screenshot: audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-15-remaining-delete-undo-toast.png"
+      },
+      {
+        "flow": "Submit a follow-up question and verify prior context behavior is functional",
+        "status": "Pass",
+        "evidence": "Follow-up in the first session returned customer count 599 and remained in the same session. Screenshot: audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-14-remaining-follow-up-context.png"
+      },
+      {
+        "flow": "Use feedback controls if present",
+        "status": "Pass (Spec Drift)",
+        "evidence": "WorkspacePage exposes no response-feedback-bar or thumbs controls in the current contract; implicit feedback/auto-save remains active."
+      },
+      {
+        "flow": "Visit admin settings and verify LLM context cap read/update behavior if exposed",
+        "status": "Pass",
+        "evidence": "Settings read context cap 3, updated it to 4, showed saved state, then restored it to 3. Screenshot: audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-16-remaining-admin-settings-context-cap.png"
+      },
+      {
+        "flow": "Switch to Arabic locale and verify RTL mirroring while SQL/code remains LTR",
+        "status": "Pass",
+        "evidence": "Arabic locale set html/app shell dir=rtl, moved sidebar to the right, showed Arabic shell labels, and expanded SQL highlighter retained dir=ltr. Screenshot: audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-17-remaining-arabic-rtl-workspace.png"
+      }
+    ],
+    "screenshots": [
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-09-remaining-new-chat-focused.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-10-remaining-first-session-response.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-11-remaining-history-saved-query.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-12-remaining-second-session-response.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-13-remaining-session-switch-isolation.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-14-remaining-follow-up-context.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-15-remaining-delete-undo-toast.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-16-remaining-admin-settings-context-cap.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-17-remaining-arabic-rtl-workspace.png"
+    ],
+    "spec_drift": [
+      "Response card Copy/Regenerate controls are absent in some current WorkspacePage renders; SQL/result/Delete remain present and the prior triage classified this as current-contract spec drift.",
+      "WorkspacePage feedback controls are absent; current contract relies on implicit feedback/auto-save."
+    ],
+    "task_counts": {
+      "pass": 8,
+      "fail": 0,
+      "skipped": 0,
+      "blocked": 0,
+      "spec_drift": 2
+    },
+    "chunk_2_status": "Complete; Chunk 3 unblocked"
+  },
   "security_privacy": {
     "secrets_stored": false,
     "cookies_stored": false,
