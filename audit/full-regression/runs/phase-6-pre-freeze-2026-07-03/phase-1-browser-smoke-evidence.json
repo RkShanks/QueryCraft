@@ -1,0 +1,65 @@
+{
+  "started_at": "2026-07-03T23:56:02.129Z",
+  "finished_at": "2026-07-03T23:56:33.734Z",
+  "frontend": "http://localhost:5173",
+  "backend": "http://localhost:8000",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-flash-latest",
+    "credential_present": "[REDACTED]"
+  },
+  "auth": {
+    "initial_me_status": 401,
+    "sign_in_endpoint": "/api/v1/auth/sign-in",
+    "sign_in_status": 200,
+    "me_after_sign_in_status": 200,
+    "role": "admin",
+    "permission_count": 8
+  },
+  "connections": {
+    "list_status": 200,
+    "count": 1,
+    "primary_display_name": "source_analytics",
+    "primary_database_type": "postgresql"
+  },
+  "normal_query": {
+    "status": 200,
+    "kind": "result",
+    "question_summary": "customer count smoke prompt",
+    "generated_sql": "SELECT COUNT(*) FROM customer",
+    "row_count": 1,
+    "result_summary": "count=599"
+  },
+  "accept_history": {
+    "accept_status": 201,
+    "history_contains_accepted_question": true,
+    "history_entry_count_after_accept": 3
+  },
+  "reject_regenerate": {
+    "initial_status": 200,
+    "initial_kind": "result",
+    "reject_status": 200,
+    "reject_outcome": "new-result",
+    "regenerate_status": 200,
+    "regenerate_outcome": "refine"
+  },
+  "unsafe_path": {
+    "prompt_summary": "[REDACTED_UNSAFE_PROMPT]",
+    "submit_status": 400,
+    "message_key": "error.hostile_input_blocked",
+    "ui_message_summary": "generic security policy block message"
+  },
+  "screenshots": [
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase1-rerun-01-open-frontend.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase1-rerun-02-signed-in.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase1-rerun-03-normal-question-outcome.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase1-rerun-04-accepted-result.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase1-rerun-05-history-after-accept.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase1-rerun-06-reject-regenerate.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase1-rerun-07-unsafe-path.png"
+  ],
+  "local_only_artifacts_not_committed": [
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/traces/phase1-browser-smoke-rerun-trace.zip"
+  ],
+  "errors": []
+}
