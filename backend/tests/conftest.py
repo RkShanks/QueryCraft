@@ -31,6 +31,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from tests.support.auth_seed import sync_builtin_local_admin
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -328,7 +330,18 @@ def deterministic_query_llm():
 
 
 @pytest_asyncio.fixture
-async def authenticated_client(app_client, ensure_db_connection) -> AsyncGenerator[AsyncClient, None]:
+async def synced_local_admin(async_engine_fixture, set_test_env) -> None:
+    """Ensure shared auth fixtures use current test admin credentials."""
+    async with async_engine_fixture.begin() as conn:
+        await sync_builtin_local_admin(conn)
+
+
+@pytest_asyncio.fixture
+async def authenticated_client(
+    app_client,
+    synced_local_admin,
+    ensure_db_connection,
+) -> AsyncGenerator[AsyncClient, None]:
     """Provide a pre-authenticated httpx client (admin user signed in).
 
     Sets a default ``origin: http://test`` header so that POST/PUT/PATCH/DELETE

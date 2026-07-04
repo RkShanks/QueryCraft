@@ -27,40 +27,27 @@ class TestAdminSettingsRouter:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_get_settings_non_admin_forbidden(self, app_client, async_engine_fixture):
+    async def test_get_settings_non_admin_forbidden(self, app_client, redis_client):
         """Authenticated non-admin user gets 403 on /admin/settings."""
-        from argon2 import PasswordHasher
-        from sqlalchemy import text
+        from app.core.security import SessionMiddleware
 
-        # Create a non-admin user
-        async with async_engine_fixture.connect() as conn:
-            ph = PasswordHasher()
-            password_hash = ph.hash("userpass")
-            await conn.execute(
-                text(
-                    """
-                    INSERT INTO users (username, display_name, password_hash, role)
-                    VALUES ('regular_user', 'Regular User', :pwd, 'user')
-                    ON CONFLICT (username) DO UPDATE SET
-                        display_name = EXCLUDED.display_name,
-                        password_hash = EXCLUDED.password_hash,
-                        role = EXCLUDED.role,
-                        updated_at = now()
-                    """
-                ),
-                {"pwd": password_hash},
-            )
-            await conn.commit()
-
-        # Sign in as non-admin
-        resp = await app_client.post(
-            "/api/v1/auth/sign-in",
-            json={"username": "regular_user", "password": "userpass"},
-            headers={"origin": "http://test"},
+        session_id = await SessionMiddleware.create_session(
+            redis_client,
+            {
+                "user_id": "00000000-0000-0000-0000-000000000001",
+                "username": "regular_user",
+                "display_name": "Regular User",
+                "role": "user",
+                "role_id": "00000000-0000-0000-0000-000000000002",
+                "permissions": ["query.submit"],
+                "auth_provider": "oidc",
+            },
         )
-        assert resp.status_code == 200, f"Sign-in failed: {resp.text}"
+        app_client.cookies.set(SessionMiddleware.COOKIE_NAME, session_id)
 
         response = await app_client.get("/api/v1/admin/settings")
+        app_client.cookies.clear()
+        await redis_client.delete(f"session:{session_id}")
         assert response.status_code == 403
 
     @pytest.mark.asyncio
@@ -100,5 +87,6 @@ class TestAdminSettingsRouter:
         response = await app_client.patch(
             "/api/v1/admin/settings",
             json={"llm_context_cap": 3},
+            headers={"origin": "http://test"},
         )
         assert response.status_code == 401

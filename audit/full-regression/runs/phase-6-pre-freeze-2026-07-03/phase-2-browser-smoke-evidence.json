@@ -1,0 +1,55 @@
+{
+  "run_started_at": "2026-07-04T00:07:14Z",
+  "scope": "Chunk 2 - Phase 2 premium UI / RTL / sessions",
+  "branch": "fix/phase2-auth-fixture-sync",
+  "base_head_sha": "0ff7f8a2b2d2eb06409fed80428f1537c1edb7ab",
+  "frontend": "http://localhost:5173",
+  "backend": "http://localhost:8000",
+  "backend_gate_status": "Pass",
+  "browser_smoke_status": "Blocked",
+  "real_llm_status": "Blocked",
+  "block_reason": "Browser and live LLM validation were intentionally not run during this backend test-harness fix.",
+  "root_cause": "Global authenticated_client did not sync the built-in local admin before sign-in after Phase 5/6 auth/RBAC hardening.",
+  "harness_updates": [
+    "Shared authenticated_client now depends on synced_local_admin.",
+    "Feedback accepted-query seed now requests ensure_db_connection.",
+    "Admin settings non-admin forbidden test uses a direct low-permission session instead of forbidden local login.",
+    "Admin settings unauthenticated PATCH includes the test Origin header so auth behavior is exercised after CSRF guard.",
+    "F-011 lifecycle tests use valid UUID inputs and async stubs for current detection/session/context/persistence dependencies."
+  ],
+  "commands": [
+    {
+      "command": "cd backend && rtk uv run pytest tests/acceptance/test_session_conversation.py tests/integration/test_sessions.py tests/integration/test_feedback.py tests/integration/test_admin_settings.py tests/integration/test_f011_lock_leak.py tests/contract/test_gemini_contract.py -x --tb=short",
+      "exit_code": 0,
+      "summary": "35 passed."
+    },
+    {
+      "command": "cd backend && rtk uv run pytest tests/unit/test_admin_settings_unit.py tests/unit/test_session_repository.py tests/unit/test_session_extension.py tests/unit/test_feedback_router.py tests/unit/llm/test_gemini_adapter.py tests/unit/llm/test_adapter_lifecycle.py -x --tb=short",
+      "exit_code": 0,
+      "summary": "40 passed."
+    },
+    {
+      "command": "cd backend && rtk uv run ruff check src tests",
+      "exit_code": 0,
+      "summary": "All checks passed."
+    },
+    {
+      "command": "cd backend && rtk uv run ruff format --check src tests",
+      "exit_code": 0,
+      "summary": "383 files already formatted."
+    },
+    {
+      "command": "rtk git diff --check",
+      "exit_code": 0,
+      "summary": "Passed."
+    }
+  ],
+  "screenshots": [],
+  "api_observations": [],
+  "security_privacy": {
+    "secrets_printed": false,
+    "cookies_stored": false,
+    "raw_sensitive_payloads_stored": false,
+    "notes": "No browser/API smoke ran in this backend-only fix. Test evidence is summarized and sanitized."
+  }
+}

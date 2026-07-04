@@ -11,7 +11,7 @@ class TestFeedbackRouter:
     """Feedback router integration tests."""
 
     @pytest.fixture
-    async def accepted_query_id(self, db_session):
+    async def accepted_query_id(self, db_session, ensure_db_connection):
         """Insert an accepted query and return its UUID."""
         result = await db_session.execute(text("SELECT id FROM users WHERE username = 'admin'"))
         user_id = result.fetchone()[0]
