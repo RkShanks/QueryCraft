@@ -1,86 +1,193 @@
 {
-  "run_started_at": "2026-07-04T01:39:00Z",
-  "fix_run_started_at": "2026-07-04T05:52:00Z",
-  "scope": "Chunk 2 - Phase 2 frontend e2e harness fix before browser/LLM validation resumes",
-  "branch": "fix/phase2-playwright-e2e-config",
-  "base_head_sha": "2ee4bb51c1ff7309b167e0322feda46488a02464",
+  "run_started_at": "2026-07-04T09:09:00+03:00",
+  "scope": "Chunk 2 - Phase 2 browser/real-use validation after PR #188 merge",
+  "branch": "main",
+  "head_sha": "bdd23485c9c174fff96130fdd2a0cb2bc9c8f28f",
   "frontend": "http://localhost:5173",
   "backend": "http://localhost:8000",
-  "backend_gate_status": "Pass - precondition from PR #187 merge",
-  "frontend_gate_status": "Pass",
-  "browser_smoke_status": "Not run by request",
-  "real_llm_status": "Not run by request",
-  "root_cause": "Playwright default webServer waited for http://localhost:3000 while its command did not force Vite to port 3000. The targeted e2e suite also had stale local-login mocks: sign-in tests submitted credentials but did not mock the current /api/v1/auth/sign-in and /api/v1/auth/me cookie-session flow.",
-  "fix_summary": [
-    "Playwright now derives one baseURL from E2E_BASE_URL or http://localhost:3000.",
-    "Default local mode starts Vite with --port 3000 and waits on the same baseURL.",
-    "External real-app mode skips webServer when E2E_BASE_URL is set, allowing tests to target the already-running Docker frontend at http://localhost:5173.",
-    "The i18n audit e2e helper now uses sanitized network-boundary auth mocks for the current local-login endpoints."
-  ],
-  "frontend_commands": [
-    {
-      "command": "cd frontend && rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts",
-      "exit_code": 1,
-      "summary": "Reproduced original failure before fix: Process from config.webServer was not able to start. Exit code: 1.",
-      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-e2e-rtl-i18n-repro.log"
-    },
-    {
-      "command": "cd frontend && rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts",
-      "exit_code": 0,
-      "summary": "Default local Playwright mode passed: 11 passed.",
-      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-e2e-rtl-i18n-local.log"
-    },
-    {
-      "command": "cd frontend && E2E_BASE_URL=http://localhost:5173 rtk npm run test:e2e -- rtl-snapshots.spec.ts i18n-audit.spec.ts",
-      "exit_code": 0,
-      "summary": "External real-app frontend mode passed: 11 passed.",
-      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-e2e-rtl-i18n-external.log"
-    },
-    {
-      "command": "cd frontend && rtk npm test -- --run",
-      "exit_code": 0,
-      "summary": "63 test files passed; 755 tests passed.",
-      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-vitest-after-e2e-fix.log"
-    },
-    {
-      "command": "cd frontend && rtk npm run lint",
-      "exit_code": 0,
-      "summary": "ESLint passed.",
-      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-lint-after-e2e-fix.log"
-    },
-    {
-      "command": "cd frontend && rtk npm run typecheck",
-      "exit_code": 0,
-      "summary": "TypeScript no-emit check passed.",
-      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-typecheck-after-e2e-fix.log"
-    },
-    {
-      "command": "cd frontend && rtk npm run build",
-      "exit_code": 0,
-      "summary": "Production build passed; Vite emitted the existing large chunk warning.",
-      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-build-after-e2e-fix.log"
-    },
-    {
-      "command": "cd frontend && rtk npm run lint:css",
-      "exit_code": 0,
-      "summary": "Stylelint passed.",
-      "log": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/logs/phase2-frontend-lint-css-after-e2e-fix.log"
+  "preflight": {
+    "git_status": "main...origin/main; only old untracked Phase 1 evidence plus new Phase 2 screenshots present",
+    "head": "bdd23485c9c174fff96130fdd2a0cb2bc9c8f28f",
+    "docker_compose": "QueryCraft backend/frontend up; postgres, redis, mysql, mssql services healthy where applicable",
+    "ports": {
+      "5173": "listening",
+      "8000": "listening"
     }
-  ],
+  },
+  "provider_observation": {
+    "env_llm_provider": "gemini",
+    "gemini_key_configured": true,
+    "real_llm_status": "Blocked",
+    "reason": "Live query submission was not reached because the real app had no available database connection and disabled the prompt."
+  },
+  "blocker_triage_2026_07_04": {
+    "scope": "Phase 2 real-use no-connection blocker triage/fix",
+    "branch": "fix/phase2-real-use-connection-seed",
+    "head_sha": "bdd23485c9c174fff96130fdd2a0cb2bc9c8f28f",
+    "root_cause": "Stale dev platform DB state after RBAC/source-connection hardening. The configured source_analytics row existed, but was active/untested with no successful schema introspection and no Admin role_connection_policies row. The dbTest-backed Postgres source DB itself was reachable and populated.",
+    "source_db": {
+      "seed_source": "dbTest/init mounted into postgres-source",
+      "reachable": true,
+      "public_tables": 29,
+      "sample_counts": {
+        "actor": 200,
+        "customer": 599,
+        "film": 1000
+      }
+    },
+    "platform_db_before_fix": {
+      "source_connection_rows": 1,
+      "primary_display_name": "source_analytics",
+      "health_status": "untested",
+      "schema_introspection_status": "none",
+      "schema_entries": 0,
+      "admin_role_present": true,
+      "admin_user_role_id_present": true,
+      "admin_policy_count": 0
+    },
+    "fix": {
+      "type": "support/dev-seed harness",
+      "file": "backend/src/seed_e2e_connection.py",
+      "summary": "Updated the existing E2E seed script to repair the configured source connection from backend environment, run normal health/introspection service methods, and seed the built-in Admin role policy from introspected schema entries.",
+      "runtime_repair": "Copied the patched support script into the running backend container and executed it there so it used the same Compose network and environment as the real app."
+    },
+    "platform_db_after_fix": {
+      "primary_display_name": "source_analytics",
+      "lifecycle_state": "active",
+      "health_status": "healthy",
+      "schema_introspection_status": "success",
+      "schema_entries": 171,
+      "admin_policy_count": 1
+    },
+    "api_verification": {
+      "sign_in_status": 200,
+      "user_role": "admin",
+      "permissions_count": 8,
+      "connections_status": 200,
+      "connections_count": 1,
+      "connection_visible": "source_analytics"
+    },
+    "browser_confirmation": {
+      "sign_in": "Pass",
+      "prompt_enabled": true,
+      "connection_visible": true,
+      "benign_query_submitted": true,
+      "response_card_visible": true,
+      "result_observed": "count=200",
+      "generated_sql_persisted": true,
+      "screenshots": [
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-03-prompt-enabled-after-seed.png",
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-04-benign-query-after-seed.png"
+      ]
+    },
+    "commands": [
+      {
+        "command": "docker compose -f docker-compose.dev.yml ps",
+        "status": "Pass"
+      },
+      {
+        "command": "node /tmp/phase2_connection_probe.cjs",
+        "status": "Pass"
+      },
+      {
+        "command": "docker compose -f docker-compose.dev.yml exec -T backend python /tmp/seed_e2e_connection.py",
+        "status": "Pass"
+      },
+      {
+        "command": "node /tmp/phase2_blocker_browser_check.cjs",
+        "status": "Pass"
+      },
+      {
+        "command": "cd backend && rtk uv run pytest tests/unit/api/test_connections.py tests/unit/api/test_admin_connections.py tests/unit/services/test_connection_service.py tests/unit/test_role_connection_policy_model.py tests/unit/test_role_endpoints.py -x --tb=short",
+        "status": "Pass",
+        "result": "73 passed"
+      },
+      {
+        "command": "cd backend && rtk uv run ruff check src/seed_e2e_connection.py",
+        "status": "Pass"
+      },
+      {
+        "command": "cd backend && rtk uv run ruff format --check src/seed_e2e_connection.py",
+        "status": "Pass"
+      },
+      {
+        "command": "rtk git diff --check",
+        "status": "Pass"
+      }
+    ]
+  },
   "browser_flows": [
     {
-      "flow": "Phase 2 browser/LLM real-use smoke",
-      "status": "Not run",
-      "evidence": "Explicitly out of scope for this harness-fix run; can resume after merge."
+      "flow": "Open frontend and sign in through UI",
+      "status": "Pass",
+      "evidence": "Signed in as configured local admin through the UI; credential values not captured."
+    },
+    {
+      "flow": "Create a new chat/session and verify prompt focus/draft/preview behavior",
+      "status": "Fail",
+      "evidence": "After New Chat, prompt textarea was disabled with placeholder: Please add a database connection first. This prevents prompt focus, draft entry, session creation, and preview verification."
+    },
+    {
+      "flow": "Submit benign real query using configured Gemini provider",
+      "status": "Blocked",
+      "evidence": "Blocked by disabled prompt/no available database connection."
+    },
+    {
+      "flow": "Verify response card SQL/result/copy/regenerate/reject/accept/saved state",
+      "status": "Blocked",
+      "evidence": "Blocked before query submission."
+    },
+    {
+      "flow": "Verify accepted query appears in History",
+      "status": "Blocked",
+      "evidence": "Blocked before query submission."
+    },
+    {
+      "flow": "Create second session and verify session isolation",
+      "status": "Blocked",
+      "evidence": "Blocked before first session could be created."
+    },
+    {
+      "flow": "Verify sidebar grouping",
+      "status": "Blocked",
+      "evidence": "Blocked before session creation."
+    },
+    {
+      "flow": "Delete a session and undo",
+      "status": "Blocked",
+      "evidence": "Blocked before session creation."
+    },
+    {
+      "flow": "Submit follow-up question and verify prior context behavior",
+      "status": "Blocked",
+      "evidence": "Blocked before initial query submission."
+    },
+    {
+      "flow": "Use feedback controls if present",
+      "status": "Blocked",
+      "evidence": "Blocked before response card creation."
+    },
+    {
+      "flow": "Admin settings context cap read/update",
+      "status": "Blocked",
+      "evidence": "Not run after first required browser-flow blocker."
+    },
+    {
+      "flow": "Arabic RTL mirroring while SQL/code remains LTR",
+      "status": "Blocked",
+      "evidence": "Not run after first required browser-flow blocker."
     }
   ],
-  "screenshots": [],
+  "screenshots": [
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-01-signed-in-workspace.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase2-02-disabled-prompt-no-connection.png"
+  ],
   "security_privacy": {
-    "secrets_printed": false,
+    "secrets_stored": false,
     "cookies_stored": false,
     "full_auth_payloads_stored": false,
-    "raw_sensitive_payloads_stored": false,
+    "raw_sensitive_request_bodies_stored": false,
     "trace_zips_committed": false,
-    "notes": "Evidence stores command summaries and paths only. E2E auth data is sanitized mock data, not credentials."
+    "notes": "Evidence is summarized. Credentials were read from .env for UI login but not stored in evidence."
   }
 }
