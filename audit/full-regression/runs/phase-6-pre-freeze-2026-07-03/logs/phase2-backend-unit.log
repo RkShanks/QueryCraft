@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.12, pytest-8.4.2, pluggy-1.6.0
+rootdir: /home/avril/QueryCraft/backend
+configfile: pyproject.toml
+plugins: cov-6.3.0, respx-0.23.1, subtests-0.14.2, anyio-4.13.0, schemathesis-3.39.16, asyncio-0.26.0, hypothesis-6.152.4
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 40 items
+
+tests/unit/test_admin_settings_unit.py .                                 [  2%]
+tests/unit/test_session_repository.py ........                           [ 22%]
+tests/unit/test_session_extension.py .........                           [ 45%]
+tests/unit/test_feedback_router.py ..                                    [ 50%]
+tests/unit/llm/test_gemini_adapter.py ........                           [ 70%]
+tests/unit/llm/test_adapter_lifecycle.py ............                    [100%]
+
+============================== 40 passed in 1.26s ==============================
