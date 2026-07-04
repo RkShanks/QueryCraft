@@ -1,11 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 import en from '../../src/locales/en.json' with { type: 'json' };
-import { mockSubmitEvaluatorRejected, mockSubmitTimeout, mockHistoryEmpty, mockConnections } from './helpers/mock-backend';
+import { mockSubmitEvaluatorRejected, mockSubmitTimeout, mockHistoryEmpty, mockConnections, mockLocalAuth } from './helpers/mock-backend';
 
 const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
 const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
 
 async function signIn(page: Page) {
+  await mockLocalAuth(page);
   await mockConnections(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });

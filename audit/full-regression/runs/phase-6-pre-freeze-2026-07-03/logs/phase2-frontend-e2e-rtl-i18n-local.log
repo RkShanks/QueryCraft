@@ -1,0 +1,29 @@
+> playwright test rtl-snapshots.spec.ts i18n-audit.spec.ts
+Running 11 tests using 2 workers
+  ✓   1 [chromium] › tests/e2e/rtl-snapshots.spec.ts:72:3 › RTL visual snapshots › all components render correctly in LTR (1.0s)
+  ✓   2 [chromium] › tests/e2e/i18n-audit.spec.ts:59:3 › T-185: no missing-key placeholders › /sign-in has no raw i18n key strings (1.0s)
+[E2E MOCK] Intercepted /api/v1/connections
+  ✓   3 [chromium] › tests/e2e/rtl-snapshots.spec.ts:94:3 › RTL visual snapshots › all components render correctly in RTL (1.0s)
+[E2E MOCK] Intercepted /api/v1/connections
+  ✓   4 [chromium] › tests/e2e/i18n-audit.spec.ts:63:3 › T-185: no missing-key placeholders › / (ask page) has no raw i18n key strings (1.8s)
+[E2E MOCK] Intercepted /api/v1/connections
+  ✓   5 [chromium] › tests/e2e/i18n-audit.spec.ts:68:3 › T-185: no missing-key placeholders › /history has no raw i18n key strings (1.8s)
+  ✓   6 [chromium] › tests/e2e/i18n-audit.spec.ts:75:3 › T-186: no physical-direction CSS regression › RTL mirrors layout on /sign-in (457ms)
+[E2E MOCK] Intercepted /api/v1/connections
+  ✓   7 [chromium] › tests/e2e/i18n-audit.spec.ts:115:3 › T-186: no physical-direction CSS regression › RTL mirrors layout on /history (1.3s)
+[E2E MOCK] Intercepted /api/v1/connections
+[E2E MOCK] Intercepted /api/v1/connections
+[E2E MOCK] Intercepted /api/v1/connections
+  ✓   8 [chromium] › tests/e2e/i18n-audit.spec.ts:157:3 › F-010: error/modal/empty states have no key leaks › evaluator-rejected /query/submit shows no raw keys (1.9s)
+[E2E MOCK] Intercepted /api/v1/connections
+[E2E MOCK] Intercepted /api/v1/connections
+[E2E MOCK] Intercepted /api/v1/connections
+  ✓   9 [chromium] › tests/e2e/i18n-audit.spec.ts:167:3 › F-010: error/modal/empty states have no key leaks › timeout /query/submit shows no raw keys (1.8s)
+[E2E MOCK] Intercepted /api/v1/connections
+  ✓  10 [chromium] › tests/e2e/i18n-audit.spec.ts:177:3 › F-010: error/modal/empty states have no key leaks › empty /history shows no raw keys (2.3s)
+  ✓  11 [chromium] › tests/e2e/i18n-audit.spec.ts:187:3 › F-004 regression: 2-segment key leak detection › injected 2-segment raw key is flagged by audit (869ms)
+  11 passed (15.1s)
+[2m[WebServer] [22m(node:72373) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+(node:72441) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)

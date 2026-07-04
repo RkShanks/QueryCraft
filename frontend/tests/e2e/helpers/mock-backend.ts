@@ -1,5 +1,5 @@
 import type { Page, Route } from '@playwright/test';
-import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse } from '../../../src/api/generated/types.gen';
+import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse, UserProfile } from '../../../src/api/generated/types.gen';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Playwright page.route() factories for US-2 frontend E2E isolation.
@@ -24,6 +24,55 @@ const REFINE_PROMPT: RefinePrompt = {
   kind: 'refine',
   message_key: 'query.refine.message',
   should_refine: true,
+};
+
+const E2E_USER: UserProfile = {
+  id: 'e2e-user-id',
+  username: 'e2e_user',
+  display_name: 'E2E User',
+  role: 'admin',
+  permissions: [
+    'query.submit',
+    'history.read',
+    'admin.connections.manage',
+    'admin.roles.manage',
+    'admin.audit.verify',
+    'admin.quotas.manage',
+    'admin.security.manage',
+  ],
+  auth_provider: 'local',
+};
+
+/** Intercept cookie-session auth endpoints with the current local-login shape. */
+export const mockLocalAuth = async (page: Page, user: UserProfile = E2E_USER) => {
+  let authenticated = false;
+
+  await page.route('**/api/v1/auth/me', async (route: Route) => {
+    if (!authenticated) {
+      const body: ErrorResponse = { error: 'unauthorized', message_key: 'error.unauthorized' };
+      await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify(body) });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user) });
+  });
+
+  await page.route('**/api/v1/auth/sign-in', async (route: Route) => {
+    authenticated = true;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user) });
+  });
+
+  await page.route('**/api/v1/auth/sign-out', async (route: Route) => {
+    authenticated = false;
+    await route.fulfill({ status: 204 });
+  });
+
+  await page.route('**/api/v1/auth/sso/providers', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ providers: [] }),
+    });
+  });
 };
 
 /** Intercept /query/submit and return a successful QueryResult. */
