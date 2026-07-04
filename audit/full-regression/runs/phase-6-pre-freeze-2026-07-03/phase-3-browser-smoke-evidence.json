@@ -1,0 +1,424 @@
+{
+  "run_started_at": "2026-07-04T15:16:54.242Z",
+  "scope": "Chunk 3 - Phase 3 multi-dialect source DB setup-gap fix and rerun",
+  "branch": "fix/phase3-regression-multidialect-seed",
+  "base_head_sha": "a00f5abbc88fa66b6cb5480845ba89bab9989e84",
+  "frontend": "http://localhost:5173",
+  "backend": "http://localhost:8000",
+  "api_probe": {
+    "sign_in_status": 200,
+    "admin_connections_count": 3,
+    "user_connections_count": 3,
+    "admin_connections": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "table_count": 29
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "table_count": 23
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "table_count": 15
+      }
+    ],
+    "response_secret_fields_present": false,
+    "sanitized_error_check": {
+      "invalid_connection_id_status": 400,
+      "message_key": "error.connection_not_found"
+    }
+  },
+  "source_adapter_smoke": [
+    {
+      "display_name": "source_analytics",
+      "database_type": "postgresql",
+      "sql": "SELECT COUNT(*) FROM actor",
+      "first_row": [
+        200
+      ]
+    },
+    {
+      "display_name": "MySQL Sakila",
+      "database_type": "mysql",
+      "sql": "SELECT COUNT(*) FROM actor",
+      "first_row": [
+        200
+      ]
+    },
+    {
+      "display_name": "MSSQL AdventureWorks",
+      "database_type": "mssql",
+      "sql": "SELECT COUNT(*) FROM SalesLT.Customer",
+      "first_row": [
+        847
+      ]
+    }
+  ],
+  "query_submit_rerun": {
+    "postgresql": {
+      "status": 200,
+      "generated_sql": "SELECT count(*) FROM actor",
+      "first_row": [
+        200
+      ]
+    },
+    "mysql": {
+      "status": 200,
+      "generated_sql": "SELECT COUNT(*) FROM actor",
+      "first_numeric_value": 200,
+      "expected": 200,
+      "matches_expected": true,
+      "rerun_at": "2026-07-05T00:29:46+03:00"
+    },
+    "mssql": {
+      "status": 200,
+      "generated_sql": "SELECT COUNT(*) FROM SalesLT.Customer",
+      "first_numeric_value": 847,
+      "expected": 847,
+      "matches_expected": true,
+      "rerun_at": "2026-07-05T00:57:02+03:00"
+    }
+  },
+  "query_submit_rerun_2026_07_05": {
+    "run_started_at": "2026-07-05T00:29:46+03:00",
+    "sign_in_status": 200,
+    "user_connections_status": 200,
+    "admin_connections_status": 200,
+    "provider_429_cleared": false,
+    "policy_state": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "admin_policy_present": true,
+        "allowed_tables": 29
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "admin_policy_present": true,
+        "allowed_tables": 23
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "admin_policy_present": true,
+        "allowed_tables": 15
+      }
+    ],
+    "user_connections": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql"
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql"
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql"
+      }
+    ],
+    "admin_connections": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success"
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success"
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success"
+      }
+    ],
+    "query_submit": {
+      "mysql": {
+        "status": 200,
+        "generated_sql": "SELECT COUNT(*) FROM actor",
+        "first_numeric_value": 200,
+        "expected": 200,
+        "matches_expected": true
+      },
+      "mssql": {
+        "status": "Blocked",
+        "http_status": 502,
+        "error": "llm_unavailable",
+        "message_key": "error.llmUnavailable",
+        "provider_log_status": "429 Too Many Requests"
+      }
+    },
+    "security_privacy": {
+      "secrets_stored": false,
+      "cookies_stored": false,
+      "full_auth_payloads_stored": false,
+      "raw_sensitive_request_bodies_stored": false
+    }
+  },
+  "query_submit_rerun_2026_07_05_updated_key": {
+    "run_started_at": "2026-07-05T00:47:47+03:00",
+    "backend_recreated_for_updated_provider_env": true,
+    "llm_provider": "gemini",
+    "gemini_key_configured": true,
+    "sign_in_status": 200,
+    "user_connections_status": 200,
+    "admin_connections_status": 200,
+    "provider_429_cleared": false,
+    "policy_state": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "admin_policy_present": true,
+        "allowed_tables": 29
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "admin_policy_present": true,
+        "allowed_tables": 23
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "admin_policy_present": true,
+        "allowed_tables": 15
+      }
+    ],
+    "user_connections": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql"
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql"
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql"
+      }
+    ],
+    "admin_connections": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success"
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success"
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success"
+      }
+    ],
+    "query_submit": {
+      "mysql": {
+        "status": "Blocked",
+        "http_status": 502,
+        "error": "llm_unavailable",
+        "message_key": "error.llmUnavailable",
+        "expected": 200,
+        "provider_log_status": "429 Too Many Requests"
+      },
+      "mssql": {
+        "status": "Blocked",
+        "http_status": 502,
+        "error": "llm_unavailable",
+        "message_key": "error.llmUnavailable",
+        "expected": 847,
+        "provider_log_status": "429 Too Many Requests"
+      }
+    },
+    "security_privacy": {
+      "api_key_stored": false,
+      "secrets_stored": false,
+      "cookies_stored": false,
+      "full_auth_payloads_stored": false,
+      "raw_sensitive_request_bodies_stored": false
+    }
+  },
+  "query_submit_rerun_2026_07_05_saved_env": {
+    "run_started_at": "2026-07-05T00:57:02+03:00",
+    "backend_recreated_for_saved_env": true,
+    "llm_provider": "gemini",
+    "gemini_key_configured": true,
+    "sign_in_status": 200,
+    "user_connections_status": 200,
+    "admin_connections_status": 200,
+    "provider_429_cleared": true,
+    "policy_state": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "admin_policy_present": true,
+        "allowed_tables": 29
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "admin_policy_present": true,
+        "allowed_tables": 23
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql",
+        "health_status": "healthy",
+        "schema_introspection_status": "success",
+        "admin_policy_present": true,
+        "allowed_tables": 15
+      }
+    ],
+    "user_connections": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql"
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql"
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql"
+      }
+    ],
+    "admin_connections": [
+      {
+        "display_name": "source_analytics",
+        "database_type": "postgresql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success"
+      },
+      {
+        "display_name": "MySQL Sakila",
+        "database_type": "mysql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success"
+      },
+      {
+        "display_name": "MSSQL AdventureWorks",
+        "database_type": "mssql",
+        "lifecycle_state": "active",
+        "health_status": "healthy",
+        "schema_introspection_status": "success"
+      }
+    ],
+    "query_submit": {
+      "mysql": {
+        "status": 200,
+        "generated_sql": "SELECT COUNT(*) FROM actor",
+        "first_numeric_value": 200,
+        "expected": 200,
+        "matches_expected": true
+      },
+      "mssql": {
+        "status": 200,
+        "generated_sql": "SELECT COUNT(*) FROM SalesLT.Customer",
+        "first_numeric_value": 847,
+        "expected": 847,
+        "matches_expected": true
+      }
+    },
+    "security_privacy": {
+      "api_key_stored": false,
+      "secrets_stored": false,
+      "cookies_stored": false,
+      "full_auth_payloads_stored": false,
+      "raw_sensitive_request_bodies_stored": false
+    }
+  },
+  "browser_flows": [
+    {
+      "flow": "Sign in through UI",
+      "status": "Pass",
+      "evidence": "Signed in as configured local admin; credentials not captured."
+    },
+    {
+      "flow": "Admin Connections shows all seeded usable dialects",
+      "status": "Pass",
+      "evidence": "Visible: source_analytics, MySQL Sakila, MSSQL AdventureWorks."
+    },
+    {
+      "flow": "Workspace selector can select each usable dialect",
+      "status": "Pass",
+      "evidence": "Options: source_analytics POSTGRESQL | MySQL Sakila MYSQL | MSSQL AdventureWorks MSSQL; selected: source_analytics, MySQL Sakila, MSSQL AdventureWorks."
+    }
+  ],
+  "screenshots": [
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase3-05-admin-connections-all-dialects.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase3-06-selector-all-dialects.png"
+  ],
+  "admin_connections_visible": [
+    "source_analytics",
+    "MySQL Sakila",
+    "MSSQL AdventureWorks"
+  ],
+  "selector_options": [
+    "source_analytics POSTGRESQL",
+    "MySQL Sakila MYSQL",
+    "MSSQL AdventureWorks MSSQL"
+  ],
+  "selected_options": [
+    "source_analytics",
+    "MySQL Sakila",
+    "MSSQL AdventureWorks"
+  ],
+  "security_privacy": {
+    "secrets_stored": false,
+    "cookies_stored": false,
+    "full_auth_payloads_stored": false,
+    "raw_sensitive_request_bodies_stored": false,
+    "trace_zips_committed": false
+  }
+}

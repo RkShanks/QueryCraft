@@ -154,14 +154,18 @@ class ConnectionService:
 
             from app.source_db.schema_introspector import SchemaIntrospector
 
+            introspection_adapter = self._build_adapter(conn)
             introspector = SchemaIntrospector(
-                adapter=self._build_adapter(conn),
+                adapter=introspection_adapter,
                 database_type=conn.database_type,
                 db_session=db_session,
                 connection_id=conn.id,
             )
 
-            result = await introspector.introspect()
+            try:
+                result = await introspector.introspect()
+            finally:
+                await introspection_adapter.close()
             conn.schema_introspection_status = SchemaIntrospectionStatus.SUCCESS
             conn.schema_last_refreshed_at = result["refreshed_at"]
             await self._repo.update(conn)
