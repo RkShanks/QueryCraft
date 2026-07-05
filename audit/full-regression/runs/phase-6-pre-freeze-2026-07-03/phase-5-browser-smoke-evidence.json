@@ -1,0 +1,151 @@
+{
+  "run_started_at": "2026-07-05T10:56:15Z",
+  "last_updated_at": "2026-07-05T11:06:04Z",
+  "scope": "Chunk 5 - Phase 5 SSO/RBAC/row-column-security/audit regression",
+  "branch": "main",
+  "head_sha": "6392497110f10e731d63029a31e62341ba70ead1",
+  "frontend": "http://localhost:5173",
+  "backend": "http://localhost:8000",
+  "preflight": {
+    "docker_services": "Pass - backend, frontend, platform Postgres, source Postgres, Redis, MySQL, and MSSQL running",
+    "ports": {
+      "5173": "listening",
+      "8000": "listening",
+      "5433": "listening",
+      "5434": "listening",
+      "6379": "listening",
+      "3306": "listening",
+      "1433": "listening"
+    },
+    "admin_visible_connections_initial": [
+      "MySQL Sakila",
+      "MSSQL AdventureWorks",
+      "source_analytics"
+    ],
+    "seed_repair_after_required_tests": "Required backend tests mutated shared dev seed state; backend restart restored configured admin password and seed_e2e_connection.py restored PostgreSQL/MySQL/MSSQL healthy introspected connections."
+  },
+  "frontend_e2e_wrapper_triage": {
+    "wave_17_4e_audit_smoke": "Pass - 2 wrapper tests passed with mocked auth/audit APIs.",
+    "wave_17_3o_smoke": "Harness drift - spec mocks connections/roles/schema/query and its broad /sign in/ locator now also matches configured SSO buttons, causing strict-mode failure before Phase 5 assertions.",
+    "non_escalated_browser": "Harness limitation - Chromium launch blocked by sandbox_host_linux Operation not permitted; escalated browser launch worked."
+  },
+  "api_smoke": {
+    "run_id": "phase5_reg_e566430b",
+    "local_admin_login": "Pass",
+    "admin_visible_connections": "Pass - source_analytics, MySQL Sakila, MSSQL AdventureWorks healthy and introspected",
+    "sso_config_masks": "Pass - admin SSO responses returned mask placeholders for client secret, SAML metadata, and certificate fields",
+    "sso_initiate_callback_errors": "Pass - OIDC/SAML initiate and invalid callback paths redirected with safe error codes",
+    "local_nonadmin_login_denied": "Pass - 401 error.unauthorized",
+    "builtin_admin_protection": "Pass - built-in admin role delete returned 403 error.builtinRoleProtected",
+    "role_crud_group_mapping": "Pass - role with three policies created; mapping create 201; duplicate mapping 409",
+    "permission_middleware": "Pass - restricted session denied admin roles API with 403 error.forbidden",
+    "history_user_scope": "Pass - restricted user history list returned only own visible rows",
+    "audit_verify": "Pass - verify-chain returned verified=true",
+    "security_privacy": "No secrets, cookies, full auth payloads, raw sensitive request bodies, or provider payloads stored"
+  },
+  "cross_dialect_policy": {
+    "source_analytics": {
+      "status": "Pass",
+      "row_filter_count": 1,
+      "masked_columns": {
+        "actor": [
+          "last_name"
+        ]
+      },
+      "blocked_message_key": "error.queryBlockedPolicy"
+    },
+    "MySQL Sakila": {
+      "status": "Pass",
+      "row_filter_count": 1,
+      "masked_columns": {
+        "actor": [
+          "last_name"
+        ]
+      },
+      "blocked_message_key": "error.queryBlockedPolicy"
+    },
+    "MSSQL AdventureWorks": {
+      "status": "Pass",
+      "row_filter_count": 1,
+      "masked_columns": {
+        "Customer": [
+          "EmailAddress"
+        ]
+      },
+      "blocked_message_key": "error.queryBlockedPolicy"
+    }
+  },
+  "real_llm_smoke": {
+    "status": "Pass",
+    "allowed_query_status": 200,
+    "allowed_kind": "result",
+    "allowed_row_count": 5,
+    "masked_columns": [
+      "last_name"
+    ],
+    "disallowed_schema_status": 422,
+    "disallowed_message_key": "error.queryBlockedPolicy",
+    "provider_schema_observation": "Inferred from successful restricted allowed query plus disallowed film query blocked by role policy; raw provider prompts were not stored."
+  },
+  "direct_browser_smoke": {
+    "sso_sign_in_page": {
+      "status": "Pass",
+      "evidence": "Historical failing screenshot phase5-sso-signin-providers.png showed active OIDC rendering raw key auth.signIn.sso.button. Follow-up browser smoke against the fixed frontend with mocked public SSO provider list rendered Sign in with Phase5 OIDC and Sign in with Phase5 SAML, kept the sanitized SSO validation error visible, and did not expose the raw key."
+    },
+    "local_admin_sign_in": "Pass - exact local Sign In button reached authenticated workspace",
+    "admin_sso_masks": "Pass - mask placeholders visible; no raw SAML metadata/certificate text rendered",
+    "role_editor": "Pass - priority, fixed permissions, group mapping, real connection policy editor, allowed tables, row-filter controls, and column-mask controls rendered",
+    "non_admin_admin_access": "Pass - API permission smoke returned 403 for restricted session",
+    "restricted_query_flow": "Pass - API/real LLM smoke verified allowed query, masking, and pre-execution disallowed schema block",
+    "history": "Pass - API user-scope check passed",
+    "audit_status_verify": "Pass - real admin audit page displayed status and verify action; API verify-chain passed",
+    "arabic_rtl": "Pass - Arabic admin roles and audit pages rendered with html dir=rtl and localized Arabic security/admin labels"
+  },
+  "blocker_followup": {
+    "status": "Pass",
+    "root_cause": "The SSO sign-in button translation key auth.signIn.sso.button was missing from English and Arabic locale resources; the app missing-key handler returns raw keys in development.",
+    "fix": "Added localized SSO button labels with provider interpolation, added locale coverage, and added SignInPage EN/AR regression assertions for OIDC/SAML provider buttons and no raw key.",
+    "focused_tests": [
+      "cd frontend && rtk npm test -- --run SignInPage: 1 file passed, 7 tests passed",
+      "cd frontend && rtk npm test -- --run localeCoverage: 1 file passed, 297 tests passed",
+      "cd frontend && rtk npm run lint: passed",
+      "cd frontend && rtk npm run typecheck: passed",
+      "cd frontend && rtk npm run build: passed with existing large-chunk warning",
+      "cd frontend && rtk npm run lint:css: passed"
+    ],
+    "browser_result": {
+      "status": "Pass",
+      "url": "http://127.0.0.1:5174/sign-in?error=sso_validation_failed",
+      "oidc_button": "Sign in with Phase5 OIDC",
+      "saml_button": "Sign in with Phase5 SAML",
+      "sanitized_error": "SSO validation failed.",
+      "raw_key_visible": false,
+      "screenshot": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-sso-signin-buttons-fixed.png"
+    }
+  },
+  "screenshots": [
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-sso-signin-providers.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-sso-signin-buttons-fixed.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-admin-signed-in.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-admin-sso-masked.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-admin-roles-policy-editor.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-admin-roles-row-mask-controls.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-admin-audit-verify-real.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-ar-admin-roles.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase5-ar-admin-audit.png"
+  ],
+  "blocker": {
+    "status": "Fixed",
+    "severity": "High",
+    "surface": "SSO sign-in page",
+    "finding": "Configured active OIDC provider originally rendered raw i18n key auth.signIn.sso.button; follow-up fix renders localized provider button text.",
+    "chunk_5_can_resume": true,
+    "chunk_6_unblocked_after_orchestration_acceptance": true
+  },
+  "task_counts": {
+    "pass": 12,
+    "fail": 0,
+    "skipped": 0,
+    "blocked": 0
+  }
+}

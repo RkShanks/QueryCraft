@@ -59,6 +59,7 @@ describe('Wave 14 i18n key coverage', () => {
     'admin.connections.updateError',
     // Wave 17.1 SSO / Admin SSO keys
     'common.or',
+    'auth.signIn.sso.button',
     'error.ssoNoRole',
     'error.ssoValidationFailed',
     'error.ssoProviderUnavailable',
