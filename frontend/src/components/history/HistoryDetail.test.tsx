@@ -76,6 +76,23 @@ describe("HistoryDetail (FR-023, SC-009, T-465)", () => {
     expect(codeEl?.textContent).toContain("SELECT COUNT(*)");
   });
 
+  it("keeps SQL code LTR when rendered inside Arabic RTL chrome", () => {
+    const { container } = render(
+      <div dir="rtl">
+        <MemoryRouter>
+          <HistoryDetail item={sample as typeof sample} />
+        </MemoryRouter>
+      </div>
+    );
+
+    const pre = container.querySelector("pre");
+    const code = container.querySelector("pre code");
+    expect(pre).not.toBeNull();
+    expect(code).not.toBeNull();
+    expect(pre).toHaveAttribute("dir", "ltr");
+    expect(code).toHaveAttribute("dir", "ltr");
+  });
+
   it("renders connection metadata badge when user-facing metadata is present (T-465)", () => {
     setup(sample);
     expect(screen.getByTestId("history-detail-meta")).toBeInTheDocument();
