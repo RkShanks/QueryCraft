@@ -19,18 +19,22 @@ vi.mock('react-i18next', () => ({
         if (key === 'app.title') val = 'QueryCraft';
         else if (key === 'app.subtitle') val = 'منصة تحليلات النص إلى SQL';
         else if (key === 'auth.signIn.title') val = 'تسجيل الدخول';
+        else if (key === 'auth.signIn.sso.button') val = 'تسجيل الدخول باستخدام {{provider}}';
         else if (key === 'error.ssoNotConfigured') val = 'لم يتم تكوين SSO بعد.';
         else if (key === 'error.ssoNoRole') val = 'لا توجد أدوار مخصصة لمجموعات SSO الخاصة بك.';
+        else if (key === 'error.ssoValidationFailed') val = 'فشل التحقق من صحة SSO.';
         else if (key === 'common.or') val = 'أو';
-        else val = options?.defaultValue ?? key;
+        else val = key;
       } else {
         if (key === 'app.title') val = 'QueryCraft';
         else if (key === 'app.subtitle') val = 'Text-to-SQL Analytics Platform';
         else if (key === 'auth.signIn.title') val = 'Sign In';
+        else if (key === 'auth.signIn.sso.button') val = 'Sign in with {{provider}}';
         else if (key === 'error.ssoNotConfigured') val = 'SSO is not configured.';
         else if (key === 'error.ssoNoRole') val = "User SSO groups don't map to any role.";
+        else if (key === 'error.ssoValidationFailed') val = 'SSO validation failed.';
         else if (key === 'common.or') val = 'Or';
-        else val = options?.defaultValue ?? key;
+        else val = key;
       }
 
       if (options && typeof options === 'object') {
@@ -132,7 +136,7 @@ describe('SignInPage', () => {
       (window as any).location = originalLocation;
     });
 
-    it('renders SSO provider buttons when configured', async () => {
+    const configureActiveSsoProviders = () => {
       server.use(
         http.get('*/api/v1/auth/sso/providers', () => {
           return HttpResponse.json({
@@ -151,6 +155,10 @@ describe('SignInPage', () => {
           });
         })
       );
+    };
+
+    it('renders localized SSO provider buttons when configured', async () => {
+      configureActiveSsoProviders();
 
       render(<SignInPage />, { wrapper: createWrapper() });
 
@@ -159,7 +167,22 @@ describe('SignInPage', () => {
 
       expect(oidcButton).toBeInTheDocument();
       expect(samlButton).toBeInTheDocument();
+      expect(screen.queryByText('auth.signIn.sso.button')).not.toBeInTheDocument();
       expect(screen.queryByText(/SSO is not configured/i)).not.toBeInTheDocument();
+    });
+
+    it('renders Arabic SSO provider buttons without raw i18n keys', async () => {
+      mockLanguageState.language = 'ar';
+      configureActiveSsoProviders();
+
+      render(<SignInPage />, { wrapper: createWrapper() });
+
+      const oidcButton = await screen.findByRole('button', { name: /Corporate OIDC/i });
+      const samlButton = await screen.findByRole('button', { name: /Okta SAML/i });
+
+      expect(oidcButton).toHaveTextContent('تسجيل الدخول باستخدام Corporate OIDC');
+      expect(samlButton).toHaveTextContent('تسجيل الدخول باستخدام Okta SAML');
+      expect(screen.queryByText('auth.signIn.sso.button')).not.toBeInTheDocument();
     });
 
     it('redirects to provider login URL on click', async () => {

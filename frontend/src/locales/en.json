@@ -14,6 +14,7 @@
   "auth.signIn.password.placeholder": "Enter your password",
   "auth.signIn.submit": "Sign In",
   "auth.signIn.signingIn": "Signing in...",
+  "auth.signIn.sso.button": "Sign in with {{provider}}",
   "auth.signIn.error.usernameEmpty": "Username cannot be empty.",
   "auth.signIn.error.invalidCredentials": "Invalid username or password",
   "auth.signIn.error.network": "Network error. Please try again.",
@@ -468,5 +469,4 @@
   "audit.retention.never": "Never",
   "audit.retention.purged_count": "Purged Count"
 }
-
 

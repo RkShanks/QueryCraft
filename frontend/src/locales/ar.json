@@ -16,6 +16,7 @@
   "auth.signIn.password.placeholder": "أدخل كلمة المرور",
   "auth.signIn.submit": "تسجيل الدخول",
   "auth.signIn.signingIn": "جارٍ تسجيل الدخول...",
+  "auth.signIn.sso.button": "تسجيل الدخول باستخدام {{provider}}",
   "auth.signIn.error.usernameEmpty": "اسم المستخدم لا يمكن أن يكون فارغاً.",
   "auth.signIn.error.invalidCredentials": "اسم المستخدم أو كلمة المرور غير صحيحة",
   "auth.signIn.error.network": "خطأ في الشبكة. يرجى المحاولة مرة أخرى.",
@@ -487,5 +488,4 @@
   "audit.retention.never": "أبداً",
   "audit.retention.purged_count": "عدد الإدخالات المطهّرة"
 }
-
 
