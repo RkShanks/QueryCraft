@@ -149,8 +149,11 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
             )}
           </button>
         </div>
-        <pre className="mt-1 bg-obsidian-950 p-4 rounded-xl border border-obsidian-800 overflow-x-auto text-obsidian-200 shadow-inner max-h-[300px]">
-          <code className="text-xs font-mono leading-relaxed font-light">{item.generated_sql}</code>
+        <pre
+          className="mt-1 bg-obsidian-950 p-4 rounded-xl border border-obsidian-800 overflow-x-auto text-obsidian-200 shadow-inner max-h-[300px]"
+          dir="ltr"
+        >
+          <code className="text-xs font-mono leading-relaxed font-light" dir="ltr">{item.generated_sql}</code>
         </pre>
       </section>
 

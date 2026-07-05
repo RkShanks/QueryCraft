@@ -1,0 +1,179 @@
+{
+  "run_started_at": "2026-07-05T01:14:37+03:00",
+  "last_updated_at": "2026-07-05T11:09:03+03:00",
+  "scope": "Chunk 4 - Phase 4 Arabic RTL polish regression",
+  "branch": "phase-4/fix-history-sql-ltr",
+  "head_sha": "8b74498f78aa6c8ca430c499abb1c1a83049bbb8",
+  "frontend": "http://localhost:5173",
+  "backend": "http://localhost:8000",
+  "preflight": {
+    "docker_backend_restarted_for_saved_env": true,
+    "admin_auth_status_after_restart": "200 with session cookie present",
+    "llm_provider": "gemini",
+    "llm_api_key_gemini_configured": true,
+    "seed_state": {
+      "postgresql": {
+        "display_name": "source_analytics",
+        "health": "healthy",
+        "schema_status": "success",
+        "tables": 29,
+        "columns": 171,
+        "admin_policy": "present"
+      },
+      "mysql": {
+        "display_name": "MySQL Sakila",
+        "health": "healthy",
+        "schema_status": "success",
+        "tables": 23,
+        "columns": 132,
+        "admin_policy": "present"
+      },
+      "mssql": {
+        "display_name": "MSSQL AdventureWorks",
+        "health": "healthy",
+        "schema_status": "success",
+        "tables": 15,
+        "columns": 142,
+        "admin_policy": "present"
+      }
+    }
+  },
+  "e2e_wrapper_triage": {
+    "minimal_chromium_smoke": "Pass - Chromium launched with escalation and opened http://localhost:5173/sign-in",
+    "playwright_config_external_mode": "Pass - webServer remains disabled when E2E_BASE_URL is set, preserving Docker real-app mode without port conflicts",
+    "wrapper_classification": "Harness limitation - i18n-audit and rtl-snapshots use mocked auth/data; wave_16_3_smoke is real-app oriented but stale for current seeded display names",
+    "sandbox_issue": "Non-escalated Chromium launch failed with sandbox_host_linux.cc Operation not permitted"
+  },
+  "browser_flows": {
+    "sign_in_ui_arabic": {
+      "status": "Pass",
+      "evidence": "Signed in through UI with ?lng=ar; html and app shell were dir=rtl"
+    },
+    "invalid_sign_in_error": {
+      "status": "Pass",
+      "evidence": "Arabic invalid-credentials message rendered without UUIDs, hostnames, driver strings, stacks, credentials, cookies, or raw payloads"
+    },
+    "user_connections_rbac": {
+      "status": "Pass",
+      "evidence": "/api/v1/connections exposed source_analytics, MySQL Sakila, and MSSQL AdventureWorks to signed-in admin"
+    },
+    "admin_connections_health_introspection": {
+      "status": "Pass",
+      "evidence": "Admin API confirmed all three required active rows healthy and schema_introspection_status=success"
+    },
+    "workspace_rtl_localization": {
+      "status": "Pass",
+      "evidence": "Workspace rendered Arabic RTL with no raw i18n keys or unexpected English fallback outside allowed brand/technical strings"
+    },
+    "desktop_overflow": {
+      "status": "Pass",
+      "evidence": "1365px RTL viewport had no horizontal overflow"
+    },
+    "keyboard_tab": {
+      "status": "Pass",
+      "evidence": "Database selector accepted focus and tab moved onward without trapping focus"
+    },
+    "history_admin_settings_mobile": {
+      "status": "Pass",
+      "evidence": "After fix, History SQL/code computed direction is ltr; admin connections/forms, settings, invalid connection API, and mobile 375/768 checks completed"
+    }
+  },
+  "remaining_non_llm_browser_validation": {
+    "workspace_localization_privacy": "Pass - no raw i18n keys, common English UI fallback, or private/internal text found",
+    "workspace_shell_rtl_mirroring": "Pass - sidebar positioned to the right of workspace in RTL desktop layout",
+    "history_localization_privacy": "Pass - no raw i18n keys, common English UI fallback, or private/internal text found",
+    "history_shell_rtl_mirroring": "Pass - sidebar positioned to the right of workspace in RTL desktop layout",
+    "history_desktop_overflow": "Pass - 1365px viewport had no horizontal overflow",
+    "history_sql_code_direction": {
+      "status": "Pass",
+      "pre_direction": "ltr",
+      "code_direction": "ltr",
+      "expected": "ltr",
+      "screenshot": "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-history-code-dir-blocker.png"
+    },
+    "admin_connections_localization_privacy": "Pass - no raw i18n keys, common English UI fallback, or private/internal text found",
+    "admin_connections_shell_rtl_mirroring": "Pass - sidebar positioned to the right of workspace in RTL desktop layout",
+    "admin_connections_desktop_overflow": "Pass - 1365px viewport had no horizontal overflow",
+    "admin_connection_add_form_localization_privacy": "Pass - no raw i18n keys, common English UI fallback, or private/internal text found",
+    "admin_connection_form_validation_privacy": "Pass - blank required-field validation stayed localized/sanitized and did not call provider",
+    "settings_localization_privacy": "Pass - no raw i18n keys, common English UI fallback, or private/internal text found",
+    "settings_shell_rtl_mirroring": "Pass - sidebar positioned to the right of workspace in RTL desktop layout",
+    "settings_validation_privacy": "Pass - invalid numeric setting error stayed localized/sanitized and did not call provider",
+    "settings_desktop_overflow": "Pass - 1365px viewport had no horizontal overflow",
+    "invalid_connection_id_api_privacy": "Pass - HTTP 400 response was sanitized and no provider call was required",
+    "mobile_375_workspace": "Pass - Arabic RTL workspace had no horizontal overflow and visible controls were usable",
+    "mobile_768_workspace": "Pass - Arabic RTL workspace had no horizontal overflow and visible controls were usable"
+  },
+  "arabic_real_query_results": {
+    "postgresql": {
+      "status": "Pass",
+      "display_name": "source_analytics",
+      "expected_value": 200,
+      "successful_sql_evidence": "SELECT count(actor_id) FROM actor",
+      "successful_result_evidence": "200",
+      "sql_dir": "ltr",
+      "note": "Later redundant rerun returned Arabic sanitized LLM unavailable alert before response card; not treated as current blocker because required dialect evidence is present"
+    },
+    "mysql": {
+      "status": "Pass",
+      "display_name": "MySQL Sakila",
+      "expected_value": 200,
+      "sql_evidence": "SELECT COUNT(*) FROM actor",
+      "result_evidence": "200",
+      "sql_dir": "ltr"
+    },
+    "mssql": {
+      "status": "Pass",
+      "display_name": "MSSQL AdventureWorks",
+      "expected_value": 847,
+      "sql_evidence": "SELECT COUNT(*) FROM SalesLT.Customer",
+      "result_evidence": "847",
+      "sql_dir": "ltr"
+    }
+  },
+  "provider_blocker": {
+    "status": "NonBlockingHistorical",
+    "surface": "PostgreSQL Arabic query-submit rerun",
+    "user_visible_error": "Arabic localized LLM unavailable alert",
+    "sanitized": true,
+    "private_data_leaked": false,
+    "chunk_completion_impact": "No longer the active blocker for this continuation because required PostgreSQL/MySQL/MSSQL dialect evidence is already recorded and remaining checks are non-LLM"
+  },
+  "resolved_blocker": {
+    "status": "Pass",
+    "surface": "History detail SQL/code block in Arabic RTL",
+    "observed": "After fix, computed CSS direction is ltr on both pre and code and dir attributes are ltr",
+    "expected": "SQL/code blocks remain ltr while surrounding UI chrome is rtl",
+    "product_impact": false
+  },
+  "screenshots": [
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-sign-in.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-workspace.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-postgres-result.png",
+    "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-mysql-result.png",
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-mssql-result.png",
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-history-code-dir-blocker.png",
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-history.png",
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-admin-connections.png",
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-admin-connection-form-validation.png",
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-settings.png",
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-mobile-375.png",
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase4-ar-mobile-768.png"
+  ],
+  "security_privacy": {
+    "api_keys_stored": false,
+    "cookies_stored": false,
+    "full_auth_payloads_stored": false,
+    "raw_sensitive_request_bodies_stored": false,
+    "trace_zips_committed": false,
+    "secrets_stored": false
+  },
+  "task_counts": {
+    "pass": 45,
+    "fail": 0,
+    "skipped": 0,
+    "blocked": 0
+  },
+  "chunk_status": "Complete",
+  "chunk_5_unblocked": true
+}
