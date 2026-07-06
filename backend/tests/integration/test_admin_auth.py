@@ -2,8 +2,8 @@
 
 Reproduction:
 - POST /admin/refresh-schema with session cookie but no X-Admin-Key → 401/403.
-- With valid X-Admin-Key → 200.
-- Without either → 401.
+- With valid session and X-Admin-Key → 200.
+- Without either → 403 from origin guard.
 """
 
 import pytest
@@ -21,9 +21,9 @@ class TestAdminAuth:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_refresh_schema_with_valid_admin_key_returns_200(self, app_client):
-        """Valid X-Admin-Key allows schema refresh."""
-        resp = await app_client.post(
+    async def test_refresh_schema_with_valid_admin_key_returns_200(self, authenticated_client):
+        """Valid session plus X-Admin-Key allows schema refresh."""
+        resp = await authenticated_client.post(
             "/api/v1/admin/refresh-schema",
             headers={"X-Admin-Key": "test-admin-key-123"},
         )
@@ -33,7 +33,7 @@ class TestAdminAuth:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_refresh_schema_without_any_auth_returns_401(self, app_client):
-        """No session and no X-Admin-Key returns 401."""
+    async def test_refresh_schema_without_any_auth_returns_403(self, app_client):
+        """No origin, session, or X-Admin-Key returns origin-guard 403."""
         resp = await app_client.post("/api/v1/admin/refresh-schema")
-        assert resp.status_code == 401
+        assert resp.status_code == 403

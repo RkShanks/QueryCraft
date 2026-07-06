@@ -4,7 +4,15 @@ Request/response models for role CRUD, connection policies,
 and policy test dry-run results.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+MAX_DB_INTEGER = 2_147_483_647
+
+
+def _reject_control_chars(value: str) -> str:
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        raise ValueError("must not contain control characters")
+    return value
 
 
 class ConnectionPolicyItem(BaseModel):
@@ -14,6 +22,11 @@ class ConnectionPolicyItem(BaseModel):
     allowed_tables: list[dict] = Field(default_factory=list)
     row_filters: list[dict] = Field(default_factory=list)
     column_masks: list[dict] = Field(default_factory=list)
+
+    @field_validator("connection_id")
+    @classmethod
+    def _validate_text_fields(cls, value: str) -> str:
+        return _reject_control_chars(value)
 
 
 class RoleResponse(BaseModel):
@@ -51,10 +64,22 @@ class RoleCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
-    priority: int = Field(..., ge=0)
+    priority: int = Field(..., ge=0, le=MAX_DB_INTEGER)
     permissions: list[str] = Field(default_factory=list)
     group_mappings: list[str] = Field(default_factory=list)
     connection_policies: list[ConnectionPolicyItem] = Field(default_factory=list)
+
+    @field_validator("name", "description")
+    @classmethod
+    def _validate_text_fields(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return _reject_control_chars(value)
+
+    @field_validator("group_mappings")
+    @classmethod
+    def _validate_group_mappings(cls, value: list[str]) -> list[str]:
+        return [_reject_control_chars(item) for item in value]
 
 
 class RoleUpdate(BaseModel):
@@ -62,10 +87,24 @@ class RoleUpdate(BaseModel):
 
     name: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
-    priority: int | None = Field(None, ge=0)
+    priority: int | None = Field(None, ge=0, le=MAX_DB_INTEGER)
     permissions: list[str] | None = None
     group_mappings: list[str] | None = None
     connection_policies: list[ConnectionPolicyItem] | None = None
+
+    @field_validator("name", "description")
+    @classmethod
+    def _validate_text_fields(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return _reject_control_chars(value)
+
+    @field_validator("group_mappings")
+    @classmethod
+    def _validate_group_mappings(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        return [_reject_control_chars(item) for item in value]
 
 
 class PolicyTestRequest(BaseModel):

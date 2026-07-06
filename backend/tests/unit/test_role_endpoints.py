@@ -170,6 +170,34 @@ class TestPermissionEnforcement:
         assert data["message_key"] == "error.forbidden"
 
 
+class TestRoleSchemaValidation:
+    """Schema validation prevents values that cannot be persisted safely."""
+
+    def test_create_priority_above_database_integer_rejected(self):
+        with pytest.raises(ValueError):
+            RoleCreate(name="Oversized", priority=2_147_483_648)
+
+    def test_update_priority_above_database_integer_rejected(self):
+        with pytest.raises(ValueError):
+            RoleUpdate(priority=2_147_483_648)
+
+    def test_create_name_with_control_character_rejected(self):
+        with pytest.raises(ValueError):
+            RoleCreate(name="\x00", priority=10)
+
+    def test_create_description_with_control_character_rejected(self):
+        with pytest.raises(ValueError):
+            RoleCreate(name="Analyst", description="bad\x00value", priority=10)
+
+    def test_create_group_mapping_with_control_character_rejected(self):
+        with pytest.raises(ValueError):
+            RoleCreate(name="Analyst", priority=10, group_mappings=["bad\x00value"])
+
+    def test_update_name_with_control_character_rejected(self):
+        with pytest.raises(ValueError):
+            RoleUpdate(name="\x00")
+
+
 # ── GET /admin/roles ───────────────────────────────────────────────────────
 
 

@@ -24,20 +24,23 @@ os.environ.setdefault("SOURCE_DB_USER", "pagila_user")
 os.environ.setdefault("SOURCE_DB_PASSWORD", "pagila_dev_pwd")
 os.environ.setdefault("SOURCE_DB_SSL_MODE", "disable")
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.main import create_app
 
 
-@pytest.fixture(scope="session")
-def contract_app():
+@pytest_asyncio.fixture
+async def contract_app():
     """FastAPI app instance for contract tests."""
+    from app.db import base as db_base
+
+    db_base._engine = None
+    db_base._session_factory = None
     return create_app()
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def contract_session_cookie(contract_app):
     """Return a valid session_id cookie for an admin user."""
     transport = ASGITransport(app=contract_app)

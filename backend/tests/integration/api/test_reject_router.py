@@ -13,12 +13,17 @@ class TestRejectRouter:
     """Reject router integration tests."""
 
     @pytest.mark.asyncio
-    async def test_reject_success_refine_prompt(self, authenticated_client):
+    async def test_reject_success_refine_prompt(
+        self,
+        authenticated_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """Reject on first attempt returns RefinePrompt (byte-equal with StubLLM)."""
         # Submit a question first
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
@@ -49,7 +54,13 @@ class TestRejectRouter:
         assert data["message_key"] == "error.attemptInvalid"
 
     @pytest.mark.asyncio
-    async def test_reject_cross_session_ownership(self, app_client, redis_client):
+    async def test_reject_cross_session_ownership(
+        self,
+        app_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """Rejecting an attempt from a different session returns 400."""
         # Sign in as session A
         resp_a = await app_client.post(
@@ -63,7 +74,7 @@ class TestRejectRouter:
         # Submit as A
         submit_resp = await app_client.post(
             "/api/v1/query/submit",
-            json={"question": "Ownership test?"},
+            json=query_submit_payload("Ownership test?"),
             headers={"origin": "http://test"},
             cookies=cookies_a,
         )
@@ -92,12 +103,18 @@ class TestRejectRouter:
             assert data["message_key"] == "error.attemptInvalid"
 
     @pytest.mark.asyncio
-    async def test_reject_succeeds_while_lock_held(self, authenticated_client, redis_client):
+    async def test_reject_succeeds_while_lock_held(
+        self,
+        authenticated_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """G-001: Reject while processing lock is held succeeds."""
         # Submit first
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 2+2?"},
+            json=query_submit_payload("What is 2+2?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200

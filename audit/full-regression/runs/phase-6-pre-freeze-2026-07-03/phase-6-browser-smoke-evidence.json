@@ -1,0 +1,100 @@
+{
+  "run_started_at": "2026-07-05T12:20:00Z",
+  "last_updated_at": "2026-07-07T00:00:00Z",
+  "scope": "Chunk 6 - Phase 6 quotas/hostile-input/audit-hardening regression",
+  "branch": "main; backend fixes validated on fix/phase6-backend-regression-blockers",
+  "head_sha": "e059a40f8ee75b68cfe1d1a4dd43da14c6c3d7de",
+  "frontend": "http://localhost:5173",
+  "backend": "http://localhost:8000",
+  "preflight": {
+    "git_status": "main...origin/main with pre-existing modified Phase 5 evidence PNGs and prior untracked regression screenshots/traces",
+    "docker_services": "Pass - backend, frontend, platform Postgres, source Postgres, Redis, MySQL, and MSSQL running",
+    "ports": {
+      "5173": "listening",
+      "8000": "listening",
+      "5433": "listening",
+      "5434": "listening",
+      "6379": "listening",
+      "3306": "listening",
+      "1433": "listening"
+    },
+    "admin_visible_connections": [
+      {
+        "name": "source_analytics",
+        "type": "postgresql",
+        "lifecycle": "active",
+        "health": "healthy",
+        "schema": "success"
+      },
+      {
+        "name": "MySQL Sakila",
+        "type": "mysql",
+        "lifecycle": "active",
+        "health": "healthy",
+        "schema": "success"
+      },
+      {
+        "name": "MSSQL AdventureWorks",
+        "type": "mssql",
+        "lifecycle": "active",
+        "health": "healthy",
+        "schema": "success"
+      }
+    ]
+  },
+  "backend_gates": {
+    "quota_focused": "Pass - 59 passed",
+    "hostile_detection_focused": "Pass - 205 passed",
+    "audit_hardening_focused": "Pass - 149 passed, 1 skipped",
+    "cross_dialect_and_sanitization_focused": "Pass - 52 passed",
+    "full_backend_pytest": {
+      "status": "Pass",
+      "command": "cd backend && rtk uv run pytest tests/ -x --tb=short",
+      "result": "2478 passed, 4 skipped, 16 warnings, 35 subtests passed in 684.32s",
+      "sanitized_observation": "Backend blocker chain resolved without weakening Phase 6 ordering. Timeout coverage now reaches timeout path under isolated quotas; source read-only invariant blocks CREATE; secure-cookie endpoint regression opts into production cookie settings."
+    },
+    "ruff_check": "Pass - All checks passed after Ruff sorted four changed-file import blocks",
+    "ruff_format_check": "Pass - 384 files already formatted"
+  },
+  "frontend_gates": {
+    "status": "Pending",
+    "reason": "Not run by backend regression finisher; resume Chunk 6 from frontend/browser Phase 6 gates."
+  },
+  "browser_flows": {
+    "status": "Pending",
+    "reason": "Not run by backend regression finisher; resume Chunk 6 from browser Phase 6 flows.",
+    "screenshots": []
+  },
+  "api_security_checks": {
+    "status": "Partial",
+    "focused_backend_coverage": "Quota, detection, audit search/export/retention, purge verify, cross-dialect quota, and sanitization regression suites passed.",
+    "manual_live_api_checks": "Pending after backend gate completion; not run by backend regression finisher."
+  },
+  "real_llm_smoke": {
+    "status": "Pending",
+    "reason": "Not run by backend regression finisher."
+  },
+  "blocker": {
+    "status": "Resolved",
+    "severity": "High",
+    "surface": "Backend full regression gate",
+    "finding": "Backend full regression blocker chain resolved on fix/phase6-backend-regression-blockers.",
+    "classification": "Test/setup drift fixes: acceptance quota isolation for timeout coverage, deterministic source Postgres read-only schema privileges, production secure-cookie setting isolation for endpoint regression test. Phase 6 order remains hostile detection, query quota, then LLM/provider/timeout path.",
+    "raw_sensitive_payload_stored": false
+  },
+  "security_privacy": {
+    "secrets_stored": false,
+    "cookies_stored": false,
+    "raw_hostile_payloads_stored": false,
+    "provider_payloads_stored": false,
+    "trace_zips_stored": false
+  },
+  "task_counts": {
+    "pass": 13,
+    "fail": 0,
+    "skipped": 0,
+    "blocked": 10
+  },
+  "chunk_6_complete": false,
+  "full_pre_freeze_regression_complete": false
+}

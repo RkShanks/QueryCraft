@@ -6,27 +6,50 @@ Tests POST /query/regenerate with an authenticated user.
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import text
+
+
+async def _set_max_regenerate_attempts(async_engine_fixture, value: int) -> None:
+    async with async_engine_fixture.begin() as conn:
+        await conn.execute(
+            text(
+                """
+                INSERT INTO app_config (key, value, updated_at)
+                VALUES ('max_regenerate_attempts', CAST(:value AS jsonb), now())
+                ON CONFLICT (key) DO UPDATE
+                SET value = EXCLUDED.value,
+                    updated_at = now()
+                """
+            ),
+            {"value": str(value)},
+        )
 
 
 class TestRegenerateRouter:
     """Regenerate router integration tests."""
 
     @pytest.mark.asyncio
-    async def test_regenerate_success_query_result(self, authenticated_client):
+    async def test_regenerate_success_query_result(
+        self,
+        authenticated_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """Regenerate with fresh SQL returns QueryResult (attempt #2)."""
         # Submit a question first
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
         attempt_id = submit_resp.json()["attempt_id"]
 
-        # Patch StubLLM to return different SQL on regenerate
-        with patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_gen:
-            mock_gen.return_value = "SELECT 2 AS id"
-
+        # Patch LLM factory to return different SQL on regenerate
+        with patch(
+            "app.api.v1.query.LLMProviderFactory.from_config",
+            return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 2 AS id")),
+        ):
             regenerate_resp = await authenticated_client.post(
                 "/api/v1/query/regenerate",
                 json={"attempt_id": attempt_id},
@@ -37,16 +60,21 @@ class TestRegenerateRouter:
         data = regenerate_resp.json()
         assert data["kind"] == "result"
         assert data["attempt_number"] == 2
-        assert data["is_last_auto_retry"] is True
+        assert data["is_last_auto_retry"] is False
         assert data["generated_sql"] == "SELECT 2 AS id"
 
     @pytest.mark.asyncio
-    async def test_regenerate_byte_equal_returns_refine_prompt(self, authenticated_client):
+    async def test_regenerate_byte_equal_returns_refine_prompt(
+        self,
+        authenticated_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """Inv 4: Regenerate with identical SQL returns RefinePrompt."""
         # Submit a question first
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
@@ -65,21 +93,30 @@ class TestRegenerateRouter:
         assert data["should_refine"] is True
 
     @pytest.mark.asyncio
-    async def test_regenerate_max_retry_returns_refine_prompt(self, authenticated_client):
+    async def test_regenerate_max_retry_returns_refine_prompt(
+        self,
+        authenticated_client,
+        query_submit_payload,
+        deterministic_query_llm,
+        async_engine_fixture,
+    ):
         """Two regenerates in a row: second hits max-retry -> RefinePrompt."""
+        await _set_max_regenerate_attempts(async_engine_fixture, 1)
+
         # Submit a question first
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
         attempt_id = submit_resp.json()["attempt_id"]
 
         # First regenerate with patched LLM returning different SQL
-        with patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_gen:
-            mock_gen.return_value = "SELECT 2 AS id"
-
+        with patch(
+            "app.api.v1.query.LLMProviderFactory.from_config",
+            return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 2 AS id")),
+        ):
             regen1_resp = await authenticated_client.post(
                 "/api/v1/query/regenerate",
                 json={"attempt_id": attempt_id},
@@ -117,20 +154,28 @@ class TestRegenerateRouter:
         assert data["message_key"] == "error.attemptInvalid"
 
     @pytest.mark.asyncio
-    async def test_regenerate_succeeds_while_lock_held(self, authenticated_client, redis_client):
+    async def test_regenerate_succeeds_while_lock_held(
+        self,
+        authenticated_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """G-001: Regenerate while processing lock is held succeeds."""
         # Submit first
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 2+2?"},
+            json=query_submit_payload("What is 2+2?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
         attempt_id = submit_resp.json()["attempt_id"]
 
         # Regenerate should succeed because lock is held by submit and active_attempt matches
-        with patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_gen:
-            mock_gen.return_value = "SELECT 2 AS id"
+        with patch(
+            "app.api.v1.query.LLMProviderFactory.from_config",
+            return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 2 AS id")),
+        ):
             regenerate_resp = await authenticated_client.post(
                 "/api/v1/query/regenerate",
                 json={"attempt_id": attempt_id},

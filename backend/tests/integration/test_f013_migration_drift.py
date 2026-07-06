@@ -9,6 +9,8 @@ Reproduction test (EXPECTED TO FAIL on current main — RED).
 import logging
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import text
 
 
@@ -24,6 +26,10 @@ async def test_f013_startup_refuses_or_warns_on_alembic_drift(async_engine_fixtu
     - app refuses to start (raises RuntimeError), OR
     - app emits a structured WARN log with event='migration_drift_detected'
     """
+    alembic_cfg = Config("alembic.ini")
+    script = ScriptDirectory.from_config(alembic_cfg)
+    head_revision = script.get_current_head()
+
     # 1. Roll back alembic_version to '001'
     async with async_engine_fixture.connect() as conn:
         await conn.execute(text("UPDATE alembic_version SET version_num = '001'"))
@@ -48,7 +54,7 @@ async def test_f013_startup_refuses_or_warns_on_alembic_drift(async_engine_fixtu
 
     # 4. Restore alembic_version so subsequent tests are not broken
     async with async_engine_fixture.connect() as conn:
-        await conn.execute(text("UPDATE alembic_version SET version_num = '003'"))
+        await conn.execute(text("UPDATE alembic_version SET version_num = :head"), {"head": head_revision})
         await conn.commit()
 
     # 5. Assert desired behaviour

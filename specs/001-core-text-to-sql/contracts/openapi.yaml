@@ -142,11 +142,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/QueryResult'
         '400':
-          description: Question validation failed (empty, too long, etc.).
+          description: Question validation failed, or selected connection is unavailable.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
+                anyOf:
+                - $ref: '#/components/schemas/ValidationErrorResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Not authenticated.
           content:
@@ -219,6 +221,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Attempt is missing, expired, owned by another session, or not executable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /query/reject:
     post:
       operationId: rejectQuery
@@ -269,6 +277,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Attempt is missing, expired, owned by another session, or not executable.
           content:
             application/json:
               schema:
@@ -334,6 +348,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Attempt is missing, expired, owned by another session, or not executable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '502':
           description: LLM provider unreachable or returned an error.
           content:
@@ -388,6 +408,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HistoryListResponse'
+        '400':
+          description: Cursor is malformed or cannot be decoded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Not authenticated.
           content:
@@ -429,6 +455,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Query ID is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
     delete:
       operationId: deleteHistoryEntry
       tags:
@@ -460,6 +492,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Query ID is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
   /sessions:
     post:
       operationId: createSession
@@ -540,6 +578,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Session ID is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
     delete:
       operationId: deleteSession
       tags:
@@ -571,6 +615,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Session ID is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
   /connections:
     get:
       operationId: listUserConnections
@@ -587,9 +637,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UserConnectionResponse'
+                $ref: '#/components/schemas/UserConnectionListResponse'
         '401':
           description: Not authenticated.
           content:
@@ -644,6 +692,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Session ID or request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
   /feedback/{attemptId}:
     patch:
       operationId: updateFeedback
@@ -805,6 +859,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Admin role required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Schema exceeds configured token limit.
           content:
@@ -825,7 +885,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConnectionListResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConnectionResponse'
     post:
       operationId: createAdminConnection
       tags:
@@ -876,6 +938,12 @@ paths:
                 $ref: '#/components/schemas/ConnectionResponse'
         '404':
           description: Connection not found
+        '422':
+          description: Connection ID is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
     put:
       operationId: updateAdminConnection
       tags:
@@ -905,6 +973,12 @@ paths:
                 $ref: '#/components/schemas/ConnectionResponse'
         '404':
           description: Connection not found
+        '422':
+          description: Connection ID or request body is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
     delete:
       operationId: deleteAdminConnection
       tags:
@@ -926,6 +1000,12 @@ paths:
           description: Connection not found
         '409':
           description: Connection is referenced
+        '422':
+          description: Connection ID is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
   /admin/connections/{connectionId}/disable:
     post:
       operationId: disableAdminConnection
@@ -952,6 +1032,12 @@ paths:
           description: Connection not found
         '409':
           description: Already disabled
+        '422':
+          description: Connection ID is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
   /admin/connections/{connectionId}/enable:
     post:
       operationId: enableAdminConnection
@@ -978,6 +1064,12 @@ paths:
           description: Connection not found
         '409':
           description: Already active
+        '422':
+          description: Connection ID is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
   /admin/connections/{connectionId}/test:
     post:
       operationId: testAdminConnection
@@ -1002,6 +1094,12 @@ paths:
                 $ref: '#/components/schemas/ConnectionTestResult'
         '404':
           description: Connection not found
+        '422':
+          description: Connection ID is not a valid UUID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
   /auth/sso/providers:
     get:
       operationId: listSsoProviders
@@ -1079,6 +1177,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Provider configuration is invalid or missing protocol-specific required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/roles:
     get:
       operationId: listRoles
@@ -1137,6 +1241,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Role payload is invalid.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/ValidationErrorResponse'
+                - $ref: '#/components/schemas/ErrorResponse'
   /admin/audit/verify:
     post:
       operationId: verifyAuditChain
@@ -1946,6 +2058,15 @@ components:
           - postgresql
           - mysql
           - mssql
+    UserConnectionListResponse:
+      type: object
+      required:
+      - connections
+      properties:
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserConnectionResponse'
     SessionConnectionUpdate:
       type: object
       required:
@@ -2384,14 +2505,9 @@ components:
           content:
             application/json:
               schema:
-                type: object
-                required:
-                - connections
-                properties:
-                  connections:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ConnectionResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConnectionResponse'
     post:
       operationId: createAdminConnection
       tags:

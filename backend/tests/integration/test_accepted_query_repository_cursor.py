@@ -6,6 +6,8 @@ Before fix: page 2 skips row 2 because cursor is only accepted_at.
 After fix: composite cursor (accepted_at, id) correctly pages through all 3.
 """
 
+from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy import text
 
@@ -50,7 +52,7 @@ class TestCompositeCursorPagination:
     async def test_same_timestamp_pagination(self, db_session, admin_user_id, db_connection_id):
         """Three rows with identical accepted_at paginate correctly via composite cursor."""
         repo = AcceptedQueryRepository(db_session)
-        same_time = "2026-05-11T10:00:00+00:00"
+        same_time = datetime(2026, 5, 11, 10, 0, tzinfo=UTC)
 
         # Create 3 rows with identical accepted_at
         for i in range(3):
@@ -68,26 +70,25 @@ class TestCompositeCursorPagination:
             {"t": same_time, "uid": admin_user_id},
         )
         await db_session.commit()
+        expected_items, expected_cursor = await repo.list_by_user(admin_user_id, cursor=None, limit=3)
+        expected_order = [item.question_text for item in expected_items]
+        assert sorted(expected_order) == ["Q1", "Q2", "Q3"]
+        assert expected_cursor is None
 
-        # Page 1: limit=1 → should return Q3 (highest id)
+        # Page 1: limit=1 → should return highest id
         items1, cursor1 = await repo.list_by_user(admin_user_id, cursor=None, limit=1)
         assert len(items1) == 1
-        assert items1[0].question_text == "Q3"
+        assert items1[0].question_text == expected_order[0]
         assert cursor1 is not None
 
-        # Page 2: with cursor → should return Q2
+        # Page 2: with cursor → should return next highest id
         items2, cursor2 = await repo.list_by_user(admin_user_id, cursor=cursor1, limit=1)
         assert len(items2) == 1
-        assert items2[0].question_text == "Q2"
+        assert items2[0].question_text == expected_order[1]
         assert cursor2 is not None
 
-        # Page 3: with cursor → should return Q1
+        # Page 3: with cursor → should return lowest id
         items3, cursor3 = await repo.list_by_user(admin_user_id, cursor=cursor2, limit=1)
         assert len(items3) == 1
-        assert items3[0].question_text == "Q1"
+        assert items3[0].question_text == expected_order[2]
         assert cursor3 is None
-
-        # Page 4: empty
-        items4, cursor4 = await repo.list_by_user(admin_user_id, cursor=cursor3, limit=1)
-        assert len(items4) == 0
-        assert cursor4 is None

@@ -14,14 +14,27 @@ import pytest
 from sqlalchemy import text
 
 
+async def _clear_attempt_state(redis_client) -> None:
+    keys = await redis_client.keys("attempt:*")
+    keys.extend(await redis_client.keys("active_attempt:*"))
+    if keys:
+        await redis_client.delete(*keys)
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestSubmitAttemptIntegration:
     """Integration tests for QueryService + AttemptStore (T-212)."""
 
-    async def test_successful_submit_creates_attempt_with_states(self, authenticated_client, db_session, redis_client):
+    async def test_successful_submit_creates_attempt_with_states(
+        self,
+        authenticated_client,
+        db_session,
+        redis_client,
+        query_submit_payload,
+    ):
         """Happy path: attempt transitions PENDING→GENERATED→EVALUATED→EXECUTED."""
-        await redis_client.flushdb()
+        await _clear_attempt_state(redis_client)
 
         with patch(
             "app.api.v1.query.LLMProviderFactory.from_config",
@@ -29,7 +42,7 @@ class TestSubmitAttemptIntegration:
         ):
             response = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "What is one?"},
+                json=query_submit_payload("What is one?"),
                 headers={"origin": "http://test"},
             )
 
@@ -61,10 +74,14 @@ class TestSubmitAttemptIntegration:
         assert row[0] == attempt_id
 
     async def test_evaluator_rejected_submit_creates_rejected_attempt(
-        self, authenticated_client, db_session, redis_client
+        self,
+        authenticated_client,
+        db_session,
+        redis_client,
+        query_submit_payload,
     ):
         """Evaluator rejection: attempt transitions to REJECTED, no accepted_queries row."""
-        await redis_client.flushdb()
+        await _clear_attempt_state(redis_client)
         before = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         before_count = before.scalar()
 
@@ -74,7 +91,7 @@ class TestSubmitAttemptIntegration:
         ):
             response = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "Drop something"},
+                json=query_submit_payload("List customer names by city"),
                 headers={"origin": "http://test"},
             )
 
@@ -93,9 +110,15 @@ class TestSubmitAttemptIntegration:
         after = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         assert after.scalar() == before_count
 
-    async def test_timeout_submit_creates_timeout_attempt(self, authenticated_client, db_session, redis_client):
+    async def test_timeout_submit_creates_timeout_attempt(
+        self,
+        authenticated_client,
+        db_session,
+        redis_client,
+        query_submit_payload,
+    ):
         """Timeout: attempt transitions to TIMEOUT, no accepted_queries row."""
-        await redis_client.flushdb()
+        await _clear_attempt_state(redis_client)
         before = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         before_count = before.scalar()
 
@@ -112,10 +135,14 @@ class TestSubmitAttemptIntegration:
                 "app.api.v1.query._source_db_executor.execute",
                 side_effect=slow_execute,
             ),
+            patch(
+                "app.source_db.adapters.PostgresAdapter.execute",
+                side_effect=slow_execute,
+            ),
         ):
             response = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "Slow query"},
+                json=query_submit_payload("List customer names by city"),
                 headers={"origin": "http://test"},
             )
 
@@ -136,7 +163,7 @@ class TestSubmitAttemptIntegration:
 
     async def test_reject_validates_attempt_ownership(self, authenticated_client, redis_client):
         """Reject endpoint requires attempt_id to exist and be owned by session."""
-        await redis_client.flushdb()
+        await _clear_attempt_state(redis_client)
 
         # Store an attempt for a different session
         await redis_client.set(
@@ -158,4 +185,4 @@ class TestSubmitAttemptIntegration:
             json={"attempt_id": "foreign-attempt"},
             headers={"origin": "http://test"},
         )
-        assert response.status_code == 400
+        assert response.status_code == 422

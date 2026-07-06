@@ -46,6 +46,26 @@ class TestDisabledConnectionBlocked:
     """Verify disabled/unhealthy/non-introspected connections are blocked at dependency level."""
 
     @pytest.mark.asyncio
+    async def test_malformed_connection_id_returns_sanitized_400(self):
+        """Malformed connection IDs must not escape as raw UUID errors."""
+        from fastapi import HTTPException
+
+        from app.api.v1.query import _build_query_service_for_connection
+
+        with pytest.raises(HTTPException) as exc_info:
+            await _build_query_service_for_connection(
+                connection_id="not-a-uuid",
+                db=AsyncMock(),
+                redis=AsyncMock(),
+            )
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == {
+            "error": "connection_not_found",
+            "message_key": "error.connection_not_found",
+        }
+
+    @pytest.mark.asyncio
     async def test_disabled_connection_raises_400(self):
         """_build_query_service_for_connection raises 400 for disabled connection."""
         from fastapi import HTTPException

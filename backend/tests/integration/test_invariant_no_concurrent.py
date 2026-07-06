@@ -13,7 +13,13 @@ class TestInvariantNoConcurrent:
     """Invariant 3: No concurrent submissions integration test."""
 
     @pytest.mark.asyncio
-    async def test_submit_concurrent_returns_409(self, authenticated_client, redis_client):
+    async def test_submit_concurrent_returns_409(
+        self,
+        authenticated_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """Submit while processing lock is held returns 409."""
         session_id = authenticated_client.cookies.get("session_id")
         assert session_id
@@ -24,7 +30,7 @@ class TestInvariantNoConcurrent:
         try:
             response = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "Concurrent test?"},
+                json=query_submit_payload("Concurrent test?"),
                 headers={"origin": "http://test"},
             )
             assert response.status_code == 409
@@ -36,17 +42,23 @@ class TestInvariantNoConcurrent:
         # After releasing the lock, submit should succeed
         response = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Concurrent test?"},
+            json=query_submit_payload("Concurrent test?"),
             headers={"origin": "http://test"},
         )
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_reject_succeeds_while_lock_held(self, authenticated_client, redis_client):
+    async def test_reject_succeeds_while_lock_held(
+        self,
+        authenticated_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """Reject while processing lock is held succeeds (G-001)."""
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Concurrent reject test?"},
+            json=query_submit_payload("Concurrent reject test?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
@@ -56,8 +68,10 @@ class TestInvariantNoConcurrent:
         assert session_id
 
         # Lock is held by submit; reject should succeed
-        with patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_gen:
-            mock_gen.return_value = "SELECT 2 AS id"
+        with patch(
+            "app.api.v1.query.LLMProviderFactory.from_config",
+            return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 2 AS id")),
+        ):
             response = await authenticated_client.post(
                 "/api/v1/query/reject",
                 json={"attempt_id": attempt_id},
@@ -66,11 +80,17 @@ class TestInvariantNoConcurrent:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_regenerate_succeeds_while_lock_held(self, authenticated_client, redis_client):
+    async def test_regenerate_succeeds_while_lock_held(
+        self,
+        authenticated_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """Regenerate while processing lock is held succeeds (G-001)."""
         submit_resp = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "Concurrent regenerate test?"},
+            json=query_submit_payload("Concurrent regenerate test?"),
             headers={"origin": "http://test"},
         )
         assert submit_resp.status_code == 200
@@ -80,8 +100,10 @@ class TestInvariantNoConcurrent:
         assert session_id
 
         # Lock is held by submit; regenerate should succeed
-        with patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_gen:
-            mock_gen.return_value = "SELECT 2 AS id"
+        with patch(
+            "app.api.v1.query.LLMProviderFactory.from_config",
+            return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 2 AS id")),
+        ):
             response = await authenticated_client.post(
                 "/api/v1/query/regenerate",
                 json={"attempt_id": attempt_id},
@@ -90,7 +112,13 @@ class TestInvariantNoConcurrent:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_lock_ttl_expires_allows_retry(self, authenticated_client, redis_client):
+    async def test_lock_ttl_expires_allows_retry(
+        self,
+        authenticated_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """If the lock TTL expires, a subsequent request should succeed."""
         session_id = authenticated_client.cookies.get("session_id")
         assert session_id
@@ -110,7 +138,7 @@ class TestInvariantNoConcurrent:
         # Request should now succeed
         response = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "TTL test?"},
+            json=query_submit_payload("TTL test?"),
             headers={"origin": "http://test"},
         )
         assert response.status_code == 200

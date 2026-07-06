@@ -22,4 +22,5 @@ async def test_phase6_admin_endpoints_reject_unauthenticated_requests(path):
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get(path, headers={"origin": "http://test"})
 
-    assert response.status_code == 403
+    assert response.status_code == 401
+    assert response.json()["message_key"] == "error.unauthorized"
