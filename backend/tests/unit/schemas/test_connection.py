@@ -67,6 +67,18 @@ class TestConnectionCreate:
                 password="",
             )
 
+    def test_control_character_rejected(self):
+        with pytest.raises(ValueError):
+            ConnectionCreate(
+                display_name="Test DB",
+                database_type=DatabaseType.POSTGRESQL,
+                host="localhost",
+                port=5432,
+                database_name="\x00",
+                username="user",
+                password="secret",
+            )
+
 
 class TestConnectionUpdate:
     """Verify ConnectionUpdate schema validation."""
@@ -79,6 +91,10 @@ class TestConnectionUpdate:
     def test_null_password_keeps_existing(self):
         req = ConnectionUpdate(password=None)
         assert req.password is None
+
+    def test_control_character_rejected(self):
+        with pytest.raises(ValueError):
+            ConnectionUpdate(database_name="\x00")
 
 
 class TestConnectionResponse:

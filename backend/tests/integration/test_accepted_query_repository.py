@@ -5,6 +5,7 @@ verifies FK constraints and index usage.
 """
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import text
@@ -63,20 +64,30 @@ class TestAcceptedQueryRepository:
     async def test_list_by_user_returns_reverse_chrono(self, db_session, admin_user_id, db_connection_id):
         """list_by_user returns entries in reverse chronological order."""
         repo = AcceptedQueryRepository(db_session)
-        await repo.create(
+        q1 = await repo.create(
             user_id=admin_user_id,
             database_connection_id=db_connection_id,
             question_text="Q1",
             generated_sql="SELECT 1",
             llm_provider="ollama",
         )
-        await repo.create(
+        q2 = await repo.create(
             user_id=admin_user_id,
             database_connection_id=db_connection_id,
             question_text="Q2",
             generated_sql="SELECT 2",
             llm_provider="ollama",
         )
+        base_time = datetime(2026, 5, 11, 10, 0, tzinfo=UTC)
+        await db_session.execute(
+            text("UPDATE accepted_queries SET accepted_at = :accepted_at WHERE id = :id"),
+            {"accepted_at": base_time, "id": q1.id},
+        )
+        await db_session.execute(
+            text("UPDATE accepted_queries SET accepted_at = :accepted_at WHERE id = :id"),
+            {"accepted_at": base_time + timedelta(minutes=1), "id": q2.id},
+        )
+        await db_session.commit()
         items, next_cursor = await repo.list_by_user(admin_user_id, cursor=None, limit=10)
         assert len(items) == 2
         assert items[0].question_text == "Q2"

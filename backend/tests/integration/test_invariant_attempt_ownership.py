@@ -2,7 +2,7 @@
 
 Sign in as user A, submit a question, capture the attempt_id from Redis,
 sign in as user B (new session), attempt reject/regenerate/accept with the
-attempt_id and assert HTTP 400 (AttemptOwnershipViolation).
+attempt_id and assert HTTP 422 (sanitized invalid attempt response).
 
 GET /attempts/{id} is not defined in openapi.yaml so we skip that path.
 """
@@ -17,8 +17,14 @@ class TestEphemeralAttemptOwnership:
     """Ephemeral attempt ownership integration test."""
 
     @pytest.mark.asyncio
-    async def test_accept_with_wrong_session_returns_400(self, app_client, redis_client):
-        """Accepting another session's attempt returns 400."""
+    async def test_accept_with_wrong_session_returns_422(
+        self,
+        app_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
+        """Accepting another session's attempt returns sanitized invalid-attempt response."""
         # Sign in as user A
         resp_a = await app_client.post(
             "/api/v1/auth/sign-in",
@@ -31,7 +37,7 @@ class TestEphemeralAttemptOwnership:
         # Submit as A
         submit_resp = await app_client.post(
             "/api/v1/query/submit",
-            json={"question": "Ownership test?"},
+            json=query_submit_payload("Ownership test?"),
             headers={"origin": "http://test"},
             cookies=cookies_a,
         )
@@ -54,12 +60,18 @@ class TestEphemeralAttemptOwnership:
             headers={"origin": "http://test"},
             cookies=cookies_b,
         )
-        assert accept_resp.status_code == 400
+        assert accept_resp.status_code == 422
         assert accept_resp.json()["message_key"] == "error.attemptInvalid"
 
     @pytest.mark.asyncio
-    async def test_reject_with_wrong_session_returns_400(self, app_client, redis_client):
-        """Rejecting another session's attempt returns 400."""
+    async def test_reject_with_wrong_session_returns_422(
+        self,
+        app_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
+        """Rejecting another session's attempt returns sanitized invalid-attempt response."""
         # Sign in as user A
         resp_a = await app_client.post(
             "/api/v1/auth/sign-in",
@@ -72,7 +84,7 @@ class TestEphemeralAttemptOwnership:
         # Submit as A
         submit_resp = await app_client.post(
             "/api/v1/query/submit",
-            json={"question": "Ownership reject test?"},
+            json=query_submit_payload("Ownership reject test?"),
             headers={"origin": "http://test"},
             cookies=cookies_a,
         )
@@ -96,12 +108,18 @@ class TestEphemeralAttemptOwnership:
                 json={"attempt_id": attempt_id},
                 headers={"origin": "http://test"},
             )
-            assert reject_resp.status_code == 400
+            assert reject_resp.status_code == 422
             assert reject_resp.json()["message_key"] == "error.attemptInvalid"
 
     @pytest.mark.asyncio
-    async def test_regenerate_with_wrong_session_returns_400(self, app_client, redis_client):
-        """Regenerating another session's attempt returns 400."""
+    async def test_regenerate_with_wrong_session_returns_422(
+        self,
+        app_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
+        """Regenerating another session's attempt returns sanitized invalid-attempt response."""
         # Sign in as user A
         resp_a = await app_client.post(
             "/api/v1/auth/sign-in",
@@ -114,7 +132,7 @@ class TestEphemeralAttemptOwnership:
         # Submit as A
         submit_resp = await app_client.post(
             "/api/v1/query/submit",
-            json={"question": "Ownership regenerate test?"},
+            json=query_submit_payload("Ownership regenerate test?"),
             headers={"origin": "http://test"},
             cookies=cookies_a,
         )
@@ -138,11 +156,17 @@ class TestEphemeralAttemptOwnership:
                 json={"attempt_id": attempt_id},
                 headers={"origin": "http://test"},
             )
-            assert regen_resp.status_code == 400
+            assert regen_resp.status_code == 422
             assert regen_resp.json()["message_key"] == "error.attemptInvalid"
 
     @pytest.mark.asyncio
-    async def test_session_a_still_works_after_ownership_violation(self, app_client, redis_client):
+    async def test_session_a_still_works_after_ownership_violation(
+        self,
+        app_client,
+        redis_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """Session A can still reject its own attempt after B's violation."""
         # Sign in as user A
         resp_a = await app_client.post(
@@ -156,7 +180,7 @@ class TestEphemeralAttemptOwnership:
         # Submit as A
         submit_resp = await app_client.post(
             "/api/v1/query/submit",
-            json={"question": "Idempotency test?"},
+            json=query_submit_payload("Idempotency test?"),
             headers={"origin": "http://test"},
             cookies=cookies_a,
         )
@@ -179,7 +203,7 @@ class TestEphemeralAttemptOwnership:
                 json={"attempt_id": attempt_id},
                 headers={"origin": "http://test"},
             )
-            assert reject_resp.status_code == 400
+            assert reject_resp.status_code == 422
 
         # Session A can still reject its own attempt
         reject_resp_a = await app_client.post(

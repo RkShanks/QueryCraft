@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 
 from tests.support.auth_seed import sync_builtin_local_admin
 
@@ -32,9 +33,31 @@ async def synced_acceptance_admin(async_engine_fixture, set_test_env) -> None:
 
 
 @pytest_asyncio.fixture
+async def unconstrained_acceptance_quotas(async_engine_fixture, redis_client) -> None:
+    """Keep non-quota acceptance tests from inheriting quota-test state."""
+    async with async_engine_fixture.begin() as conn:
+        await conn.execute(
+            text(
+                """
+                DELETE FROM role_quotas
+                WHERE role_id IN (
+                    SELECT id FROM roles
+                    WHERE name = 'Admin' AND is_builtin = true
+                )
+                """
+            )
+        )
+
+    quota_keys = await redis_client.keys("quota:*")
+    if quota_keys:
+        await redis_client.delete(*quota_keys)
+
+
+@pytest_asyncio.fixture
 async def authenticated_acceptance_client(
     acceptance_client,
     synced_acceptance_admin,
+    unconstrained_acceptance_quotas,
     ensure_db_connection,
 ) -> AsyncGenerator[AsyncClient, None]:
     """Provide a pre-authenticated httpx client (admin user signed in)."""

@@ -89,8 +89,16 @@ async def _build_query_service_for_connection(
     Validates connection is active + healthy + introspected.
     Uses connection-specific schema and dialect.
     """
+    try:
+        conn_uuid = uuid.UUID(connection_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
+        ) from exc
+
     conn_repo = ConnectionRepository(db)
-    conn = await conn_repo.get_by_id(uuid.UUID(connection_id))
+    conn = await conn_repo.get_by_id(conn_uuid)
     if conn is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -7,6 +7,12 @@ Violation, AcceptQueryRequest, RejectQueryRequest, RefinePrompt, AcceptedQuerySu
 from pydantic import BaseModel, Field, field_validator
 
 
+def _reject_control_chars(value: str) -> str:
+    if any(ord(char) < 32 for char in value):
+        raise ValueError("Attempt ID contains invalid control characters")
+    return value
+
+
 class SubmitQuestionRequest(BaseModel):
     """POST /query/submit request body."""
 
@@ -69,17 +75,32 @@ class AcceptQueryRequest(BaseModel):
     attempt_id: str = Field(..., min_length=1)
     session_id: str | None = Field(default=None, min_length=1)
 
+    @field_validator("attempt_id")
+    @classmethod
+    def validate_attempt_id(cls, value: str) -> str:
+        return _reject_control_chars(value)
+
 
 class RejectQueryRequest(BaseModel):
     """POST /query/reject request body."""
 
     attempt_id: str = Field(..., min_length=1)
 
+    @field_validator("attempt_id")
+    @classmethod
+    def validate_attempt_id(cls, value: str) -> str:
+        return _reject_control_chars(value)
+
 
 class RegenerateQueryRequest(BaseModel):
     """POST /query/regenerate request body."""
 
     attempt_id: str = Field(..., min_length=1)
+
+    @field_validator("attempt_id")
+    @classmethod
+    def validate_attempt_id(cls, value: str) -> str:
+        return _reject_control_chars(value)
 
 
 class RefinePrompt(BaseModel):

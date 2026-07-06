@@ -14,6 +14,7 @@ from app.schemas.query import (
     EvaluatorRejection,
     QueryResult,
     RefinePrompt,
+    RegenerateQueryRequest,
     RejectQueryRequest,
     SubmitQuestionRequest,
     Violation,
@@ -114,6 +115,11 @@ class TestAcceptQueryRequest:
         req = AcceptQueryRequest(attempt_id="550e8400-e29b-41d4-a716-446655440000")
         assert req.attempt_id == "550e8400-e29b-41d4-a716-446655440000"
 
+    def test_rejects_control_character_attempt_id(self):
+        with pytest.raises(ValidationError) as exc_info:
+            AcceptQueryRequest(attempt_id="\x00")
+        assert "attempt_id" in str(exc_info.value)
+
 
 class TestRejectQueryRequest:
     """Validation for reject payload."""
@@ -121,4 +127,18 @@ class TestRejectQueryRequest:
     def test_requires_attempt_id(self):
         with pytest.raises(ValidationError) as exc_info:
             RejectQueryRequest(attempt_id="")
+        assert "attempt_id" in str(exc_info.value)
+
+    def test_rejects_control_character_attempt_id(self):
+        with pytest.raises(ValidationError) as exc_info:
+            RejectQueryRequest(attempt_id="\x00")
+        assert "attempt_id" in str(exc_info.value)
+
+
+class TestRegenerateQueryRequest:
+    """Validation for regenerate payload."""
+
+    def test_rejects_control_character_attempt_id(self):
+        with pytest.raises(ValidationError) as exc_info:
+            RegenerateQueryRequest(attempt_id="\x00")
         assert "attempt_id" in str(exc_info.value)

@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 
@@ -20,6 +20,13 @@ class ConnectionCreate(BaseModel):
     password: str = Field(..., min_length=1)
     ssl_mode: str = Field(default="require", min_length=1)
 
+    @field_validator("display_name", "host", "database_name", "username", "password", "ssl_mode")
+    @classmethod
+    def reject_control_chars(cls, value: str) -> str:
+        if any(ord(char) < 32 for char in value):
+            raise ValueError("Connection fields cannot contain control characters")
+        return value
+
 
 class ConnectionUpdate(BaseModel):
     """Request body for updating an existing connection."""
@@ -32,6 +39,13 @@ class ConnectionUpdate(BaseModel):
     username: str | None = Field(default=None, min_length=1)
     password: str | None = None  # null/omitted = keep existing
     ssl_mode: str | None = Field(default=None, min_length=1)
+
+    @field_validator("display_name", "host", "database_name", "username", "password", "ssl_mode")
+    @classmethod
+    def reject_control_chars(cls, value: str | None) -> str | None:
+        if value is not None and any(ord(char) < 32 for char in value):
+            raise ValueError("Connection fields cannot contain control characters")
+        return value
 
 
 class ConnectionResponse(BaseModel):

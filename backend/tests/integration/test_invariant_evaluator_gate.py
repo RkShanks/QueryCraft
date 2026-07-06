@@ -24,7 +24,14 @@ class TestInvariantEvaluatorGate:
             ("unsafe_pattern", "evaluator.violation.unsafePattern"),
         ],
     )
-    async def test_evaluator_fail_never_calls_executor(self, authenticated_client, rule_name, message_key):
+    async def test_evaluator_fail_never_calls_executor(
+        self,
+        authenticated_client,
+        rule_name,
+        message_key,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """If evaluator fails, source DB executor must not be called."""
         eval_result = EvaluatorResult(
             passed=False,
@@ -42,7 +49,7 @@ class TestInvariantEvaluatorGate:
         ):
             response = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "Test question?"},
+                json=query_submit_payload("List customer names by city"),
                 headers={"origin": "http://test"},
             )
 

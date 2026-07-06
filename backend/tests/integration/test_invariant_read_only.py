@@ -7,8 +7,42 @@ path.
 
 import asyncpg
 import pytest
+import pytest_asyncio
 
 from app.source_db.connector import SourceDBConnector
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def enforce_app_source_read_only_schema_privileges():
+    """Keep source DB privilege drift from hiding read-only invariant failures."""
+    conn = await asyncpg.connect(
+        host="localhost",
+        port=5434,
+        database="source_analytics",
+        user="source_readonly",
+        password="source_dev",
+    )
+    try:
+        await conn.execute("DROP TABLE IF EXISTS test_table_inv5")
+        await conn.execute("ALTER DATABASE source_analytics OWNER TO source_readonly")
+        await conn.execute("ALTER SCHEMA public OWNER TO postgres")
+        await conn.execute("REVOKE CREATE ON SCHEMA public FROM PUBLIC")
+        await conn.execute("REVOKE CREATE ON SCHEMA public FROM pagila_readonly")
+        await conn.execute("REVOKE CREATE ON SCHEMA public FROM pagila_user")
+    finally:
+        await conn.close()
+    yield
+    conn = await asyncpg.connect(
+        host="localhost",
+        port=5434,
+        database="source_analytics",
+        user="source_readonly",
+        password="source_dev",
+    )
+    try:
+        await conn.execute("DROP TABLE IF EXISTS test_table_inv5")
+    finally:
+        await conn.close()
 
 
 class TestReadOnlySourceDB:

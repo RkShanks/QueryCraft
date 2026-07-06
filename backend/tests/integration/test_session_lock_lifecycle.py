@@ -22,30 +22,39 @@ class TestSessionLockLifecycle:
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_submit_blocks_concurrent_submit(self, authenticated_client):
-        """Submit A then immediately submit B → 409."""
+    async def test_completed_submit_releases_lock_for_next_submit(
+        self,
+        authenticated_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
+        """Submit A completes, then submit B succeeds because the lock was released."""
         submit_a = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_a.status_code == 200
 
         submit_b = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 2+2?"},
+            json=query_submit_payload("What is 2+2?"),
             headers={"origin": "http://test"},
         )
-        assert submit_b.status_code == 409
-        assert submit_b.json()["message_key"] == "error.concurrent"
+        assert submit_b.status_code == 200
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_accept_releases_lock(self, authenticated_client):
+    async def test_accept_releases_lock(
+        self,
+        authenticated_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """Accept A then submit B → 200."""
         submit_a = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_a.status_code == 200
@@ -60,26 +69,32 @@ class TestSessionLockLifecycle:
 
         submit_b = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 2+2?"},
+            json=query_submit_payload("What is 2+2?"),
             headers={"origin": "http://test"},
         )
         assert submit_b.status_code == 200
 
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_accept_old_attempt_after_regenerate_fails(self, authenticated_client):
+    async def test_accept_old_attempt_after_regenerate_fails(
+        self,
+        authenticated_client,
+        query_submit_payload,
+        deterministic_query_llm,
+    ):
         """G-004: Submit A, reject A, accept old A → 410/422."""
         submit_a = await authenticated_client.post(
             "/api/v1/query/submit",
-            json={"question": "What is 1+1?"},
+            json=query_submit_payload("What is 1+1?"),
             headers={"origin": "http://test"},
         )
         assert submit_a.status_code == 200
         attempt_id = submit_a.json()["attempt_id"]
 
-        with patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_gen:
-            mock_gen.return_value = "SELECT 2 AS id"
-
+        with patch(
+            "app.api.v1.query.LLMProviderFactory.from_config",
+            return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 2 AS id")),
+        ):
             reject_resp = await authenticated_client.post(
                 "/api/v1/query/reject",
                 json={"attempt_id": attempt_id},

@@ -35,7 +35,7 @@ async def seeded_history(async_engine_fixture, authenticated_client):
                     "db_conn_id": db_conn_id,
                     "question": f"Test question {i}",
                     "sql": f"SELECT {i}",
-                    "offset": i,
+                    "offset": str(i),
                 },
             )
         await conn.commit()
@@ -58,9 +58,14 @@ async def test_history_first_page_includes_total(authenticated_client, seeded_hi
 @pytest.mark.integration
 async def test_history_subsequent_page_omits_total(authenticated_client, seeded_history):
     """Subsequent page requests (with cursor) MAY omit `total` (perf optimization)."""
-    r = await authenticated_client.get("/api/v1/history?cursor=abc")
+    first = await authenticated_client.get("/api/v1/history?limit=1")
+    assert first.status_code == 200
+    cursor = first.json().get("next_cursor")
+    assert cursor is not None
+
+    r = await authenticated_client.get("/api/v1/history", params={"cursor": cursor})
     assert r.status_code == 200
     body = r.json()
-    # Either omitted or present — both acceptable per spec
-    if "total" in body:
+    # Omitted/null is acceptable for subsequent pages; if populated, it must be an int.
+    if body.get("total") is not None:
         assert isinstance(body["total"], int)

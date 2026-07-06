@@ -19,6 +19,14 @@ GRANT CONNECT ON DATABASE source_analytics TO pagila_readonly;
 -- Schema usage on public
 GRANT USAGE ON SCHEMA public TO pagila_readonly;
 
+-- PostgreSQL's historical public schema defaults may grant CREATE to PUBLIC.
+-- The app connector must stay read-only even if it inherits SELECT-only table
+-- grants through pagila_readonly, so make schema creation explicitly admin-only.
+ALTER SCHEMA public OWNER TO postgres;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+REVOKE CREATE ON SCHEMA public FROM pagila_readonly;
+REVOKE CREATE ON SCHEMA public FROM pagila_user;
+
 -- SELECT on every existing table in public
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO pagila_readonly;
 

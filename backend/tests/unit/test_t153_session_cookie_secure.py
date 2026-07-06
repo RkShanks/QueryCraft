@@ -18,11 +18,16 @@ from app.main import create_app
 
 
 @pytest.fixture
-async def client():
+async def client(monkeypatch):
+    monkeypatch.setenv("SESSION_COOKIE_SECURE", "true")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
     app = create_app()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="https://test") as c:
         yield c
+    get_settings.cache_clear()
 
 
 @pytest.mark.integration

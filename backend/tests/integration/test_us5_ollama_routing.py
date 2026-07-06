@@ -15,7 +15,7 @@ class TestOllamaExclusiveRouting:
     """Ollama-exclusive routing integration test."""
 
     @pytest.mark.asyncio
-    async def test_ollama_routes_exclusively(self, authenticated_client):
+    async def test_ollama_routes_exclusively(self, authenticated_client, query_submit_payload):
         """When configured for Ollama, no cloud provider endpoints are contacted."""
         with respx.mock:
             ollama_route = respx.post("http://localhost:11434/api/generate").mock(
@@ -41,7 +41,7 @@ class TestOllamaExclusiveRouting:
 
             submit_resp = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "Show me something"},
+                json=query_submit_payload("Show me something"),
                 headers={"origin": "http://test"},
             )
             assert submit_resp.status_code == 200

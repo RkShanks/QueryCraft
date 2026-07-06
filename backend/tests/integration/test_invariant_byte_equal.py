@@ -14,16 +14,21 @@ class TestInvariantByteEqual:
     """Invariant 4: Byte-equal duplicate detection integration test."""
 
     @pytest.mark.asyncio
-    async def test_byte_equal_duplicate_returns_refine_prompt(self, authenticated_client):
+    async def test_byte_equal_duplicate_returns_refine_prompt(
+        self,
+        authenticated_client,
+        query_submit_payload,
+    ):
         """Regenerate with byte-equal SQL returns RefinePrompt; evaluator/executor not called."""
         # Stub LLM to always return the same SQL
-        with patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = "SELECT 1 AS id"
-
+        with patch(
+            "app.api.v1.query.LLMProviderFactory.from_config",
+            return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 1 AS id")),
+        ):
             # Initial submit
             submit_resp = await authenticated_client.post(
                 "/api/v1/query/submit",
-                json={"question": "What is 1+1?"},
+                json=query_submit_payload("What is 1+1?"),
                 headers={"origin": "http://test"},
             )
             assert submit_resp.status_code == 200
@@ -32,12 +37,13 @@ class TestInvariantByteEqual:
         # Now regenerate with the same StubLLM (which returns identical SQL)
         # Patch evaluator and executor to verify they are NOT called
         with (
-            patch("app.llm.stub.StubLLM.generate_sql", new_callable=AsyncMock) as mock_llm,
+            patch(
+                "app.api.v1.query.LLMProviderFactory.from_config",
+                return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 1 AS id")),
+            ),
             patch("app.evaluator.pipeline.Evaluator.evaluate") as mock_eval,
             patch("app.source_db.executor.SourceDBExecutor.execute") as mock_exec,
         ):
-            mock_llm.return_value = "SELECT 1 AS id"
-
             regen_resp = await authenticated_client.post(
                 "/api/v1/query/regenerate",
                 json={"attempt_id": attempt_id},
