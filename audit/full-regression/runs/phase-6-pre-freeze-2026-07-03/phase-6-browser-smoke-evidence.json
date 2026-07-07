@@ -1,41 +1,23 @@
 {
   "run_started_at": "2026-07-05T12:20:00Z",
-  "last_updated_at": "2026-07-07T00:00:00Z",
+  "last_updated_at": "2026-07-06T23:58:00Z",
   "scope": "Chunk 6 - Phase 6 quotas/hostile-input/audit-hardening regression",
-  "branch": "main; backend fixes validated on fix/phase6-backend-regression-blockers",
-  "head_sha": "e059a40f8ee75b68cfe1d1a4dd43da14c6c3d7de",
+  "branch": "main",
+  "head_sha": "287e75ed30446327efb2f7acd7c1ed5e80f0c81c",
   "frontend": "http://localhost:5173",
   "backend": "http://localhost:8000",
   "preflight": {
-    "git_status": "main...origin/main with pre-existing modified Phase 5 evidence PNGs and prior untracked regression screenshots/traces",
-    "docker_services": "Pass - backend, frontend, platform Postgres, source Postgres, Redis, MySQL, and MSSQL running",
-    "ports": {
-      "5173": "listening",
-      "8000": "listening",
-      "5433": "listening",
-      "5434": "listening",
-      "6379": "listening",
-      "3306": "listening",
-      "1433": "listening"
-    },
+    "git_status": "main...origin/main with pre-existing modified Phase 5 evidence PNGs and prior untracked Phase 1/2 screenshots/traces",
+    "docker_services": "Pass after backend container rebuild/recreate; backend, frontend, platform Postgres, source Postgres, Redis, MySQL, and MSSQL running",
+    "setup_repairs": [
+      "Rebuilt/recreated backend container after local restart exposed a missing uvicorn/runtime dependency path in the stale container.",
+      "Repaired local source_analytics setup by pointing the platform connection row at postgres-source:5432 for Docker-network access.",
+      "Refreshed source_analytics schema and restored Admin role_connection_policy from 172 schema entries / 30 tables."
+    ],
     "admin_visible_connections": [
       {
         "name": "source_analytics",
         "type": "postgresql",
-        "lifecycle": "active",
-        "health": "healthy",
-        "schema": "success"
-      },
-      {
-        "name": "MySQL Sakila",
-        "type": "mysql",
-        "lifecycle": "active",
-        "health": "healthy",
-        "schema": "success"
-      },
-      {
-        "name": "MSSQL AdventureWorks",
-        "type": "mssql",
         "lifecycle": "active",
         "health": "healthy",
         "schema": "success"
@@ -50,38 +32,83 @@
     "full_backend_pytest": {
       "status": "Pass",
       "command": "cd backend && rtk uv run pytest tests/ -x --tb=short",
-      "result": "2478 passed, 4 skipped, 16 warnings, 35 subtests passed in 684.32s",
-      "sanitized_observation": "Backend blocker chain resolved without weakening Phase 6 ordering. Timeout coverage now reaches timeout path under isolated quotas; source read-only invariant blocks CREATE; secure-cookie endpoint regression opts into production cookie settings."
+      "result": "2478 passed, 4 skipped, 16 warnings, 35 subtests passed in 684.32s"
     },
-    "ruff_check": "Pass - All checks passed after Ruff sorted four changed-file import blocks",
+    "ruff_check": "Pass - All checks passed",
     "ruff_format_check": "Pass - 384 files already formatted"
   },
   "frontend_gates": {
-    "status": "Pending",
-    "reason": "Not run by backend regression finisher; resume Chunk 6 from frontend/browser Phase 6 gates."
+    "unit": "Pass - 63 files, 759 tests",
+    "lint": "Pass",
+    "typecheck": "Pass",
+    "build": "Pass - Vite large chunk warnings only",
+    "lint_css": "Pass",
+    "e2e_wave_18_4b": "Pass - 4 passed"
   },
   "browser_flows": {
-    "status": "Pending",
-    "reason": "Not run by backend regression finisher; resume Chunk 6 from browser Phase 6 flows.",
-    "screenshots": []
+    "status": "Pass",
+    "admin_quotas": {
+      "signed_in": true,
+      "rtl": "rtl",
+      "update_status": 200,
+      "success_ui": true,
+      "quota_only_roles_or_sso_calls": 0
+    },
+    "admin_detection": {
+      "rtl": "rtl",
+      "invalid_validation_visible": true,
+      "valid_update_status": 200
+    },
+    "audit": {
+      "rtl": "rtl",
+      "csv_download_filename": "audit_export_2026-07-06T23-56-46-003Z.csv",
+      "json_download_filename": "audit_export_2026-07-06T23-56-46-066Z.json",
+      "export_used_current_unsent_filters": true,
+      "retention_visible": true,
+      "pagination_note": "Live API pagination passed; narrowed hostile-input UI filter did not render next/previous controls."
+    },
+    "rtl_mobile": {
+      "375": {
+        "dir": "rtl",
+        "horizontal_overflow": false
+      },
+      "768": {
+        "dir": "rtl",
+        "horizontal_overflow": false
+      }
+    },
+    "screenshots": [
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase6-admin-quotas-live-ar.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase6-admin-detection-live-ar.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase6-admin-audit-live-ar.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase6-mobile-375-audit-live-ar.png",
+      "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/screenshots/phase6-mobile-768-audit-live-ar.png"
+    ],
+    "visible_sensitive_leak_found": false
   },
   "api_security_checks": {
-    "status": "Partial",
-    "focused_backend_coverage": "Quota, detection, audit search/export/retention, purge verify, cross-dialect quota, and sanitization regression suites passed.",
-    "manual_live_api_checks": "Pending after backend gate completion; not run by backend regression finisher."
+    "status": "Pass",
+    "quota_admin": "Pass - list/status/update high/update low/restore all returned expected statuses",
+    "quota_exceeded": "Pass - 429 error.quota_exceeded with reset_at only; no generated_sql or attempt_id",
+    "hostile_blocked": "Pass - 400 error.hostile_input_blocked with message_key only; query quota used count unchanged",
+    "detection_config": "Pass - GET 200, invalid threshold 422 error.validation.generic, valid update 200, restored original thresholds",
+    "audit_search": "Pass - filters and page 1/page 2 pagination returned 200; hostile filter returned sanitized entries/no leaks",
+    "audit_export": "Pass - CSV and JSON downloads returned 200 with filenames and no sensitive metadata leaks",
+    "audit_retention": "Pass - retention_months, last_purge_at/never, purged_count fields returned",
+    "sanitization": "Pass - sampled API/UI responses and export metadata contained no raw hostile payload, rule names, patterns, stack traces, DB host, token, provider payload, password, or secret"
   },
   "real_llm_smoke": {
-    "status": "Pending",
-    "reason": "Not run by backend regression finisher."
+    "status": "Pass",
+    "benign_under_quota": "Pass - POST /query/submit returned 200 kind=result with generated_sql and numeric row_count",
+    "hostile_before_quota_llm": "Pass - hostile prompt returned 400 before quota increment and no generated_sql",
+    "over_quota_before_llm": "Pass - benign over quota returned 429 with no generated_sql and no attempt_id"
   },
-  "blocker": {
-    "status": "Resolved",
-    "severity": "High",
-    "surface": "Backend full regression gate",
-    "finding": "Backend full regression blocker chain resolved on fix/phase6-backend-regression-blockers.",
-    "classification": "Test/setup drift fixes: acceptance quota isolation for timeout coverage, deterministic source Postgres read-only schema privileges, production secure-cookie setting isolation for endpoint regression test. Phase 6 order remains hostile detection, query quota, then LLM/provider/timeout path.",
-    "raw_sensitive_payload_stored": false
-  },
+  "blockers": [],
+  "setup_gaps": [
+    "Local Docker backend had to be rebuilt/recreated after stale container restart failed with missing uvicorn.",
+    "A failed in-container uv run attempt damaged that container venv; recreating the backend from the rebuilt image restored dependencies.",
+    "Local .env source DB host values are host-oriented, while the Docker backend needs Docker-network hostnames; source_analytics row was repaired in the platform DB for this run."
+  ],
   "security_privacy": {
     "secrets_stored": false,
     "cookies_stored": false,
@@ -90,11 +117,11 @@
     "trace_zips_stored": false
   },
   "task_counts": {
-    "pass": 13,
+    "pass": 23,
     "fail": 0,
     "skipped": 0,
-    "blocked": 10
+    "blocked": 0
   },
-  "chunk_6_complete": false,
-  "full_pre_freeze_regression_complete": false
+  "chunk_6_complete": true,
+  "full_pre_freeze_regression_complete": true
 }
