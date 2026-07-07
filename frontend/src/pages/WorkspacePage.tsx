@@ -219,7 +219,18 @@ export const WorkspacePage: React.FC = () => {
     }
   }, [activeSessionId, renderedSessionId]);
 
-  const historyAttempts = (sessionDetail?.attempts ?? []).filter((a) => !deletedSavedIds.has(a.id));
+  const localSavedIdsWithActiveAttempt = React.useMemo(
+    () =>
+      new Set(
+        localTurns
+          .filter((t) => t.savedQueryId && t.attemptId && !deletedSavedIds.has(t.savedQueryId))
+          .map((t) => t.savedQueryId as string)
+      ),
+    [localTurns, deletedSavedIds]
+  );
+  const historyAttempts = (sessionDetail?.attempts ?? []).filter(
+    (a) => !deletedSavedIds.has(a.id) && !localSavedIdsWithActiveAttempt.has(a.id)
+  );
   const historyAttemptIds = React.useMemo(() => new Set(historyAttempts.map((a) => a.id)), [historyAttempts]);
   const dedupedLocalTurns = React.useMemo(
     () =>

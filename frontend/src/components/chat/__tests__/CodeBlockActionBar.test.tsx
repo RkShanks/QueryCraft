@@ -56,4 +56,11 @@ describe('CodeBlockActionBar', () => {
     fireEvent.click(screen.getByTestId('action-regenerate'));
     expect(onRegenerate).toHaveBeenCalledWith('attempt-42');
   });
+
+  it('keeps copy visible and omits regenerate without an active attempt', () => {
+    render(<CodeBlockActionBar sql="SELECT 1;" />);
+
+    expect(screen.getByTestId('action-copy')).toBeInTheDocument();
+    expect(screen.queryByTestId('action-regenerate')).not.toBeInTheDocument();
+  });
 });

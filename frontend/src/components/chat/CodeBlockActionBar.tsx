@@ -5,8 +5,8 @@ import './CodeBlockActionBar.css';
 
 interface CodeBlockActionBarProps {
   sql: string;
-  attemptId: string;
-  onRegenerate: (attemptId: string) => void;
+  attemptId?: string;
+  onRegenerate?: (attemptId: string) => void;
 }
 
 export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
@@ -28,8 +28,11 @@ export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
   }, [sql]);
 
   const handleRegenerate = useCallback(() => {
+    if (!attemptId || !onRegenerate) return;
     onRegenerate(attemptId);
   }, [attemptId, onRegenerate]);
+
+  const canRegenerate = !!attemptId && !!onRegenerate;
 
   return (
     <div className="code-block-action-bar" data-testid="code-block-action-bar">
@@ -41,14 +44,16 @@ export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
       >
         {copied ? <span className="copy-confirmed">{t('common.copy')} ✓</span> : <Copy className="action-icon" />}
       </button>
-      <button
-        className="action-btn"
-        onClick={handleRegenerate}
-        data-testid="action-regenerate"
-        title={t('common.regenerate')}
-      >
-        <RefreshCw className="action-icon" />
-      </button>
+      {canRegenerate && (
+        <button
+          className="action-btn"
+          onClick={handleRegenerate}
+          data-testid="action-regenerate"
+          title={t('common.regenerate')}
+        >
+          <RefreshCw className="action-icon" />
+        </button>
+      )}
     </div>
   );
 };
