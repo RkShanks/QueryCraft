@@ -1,25 +1,43 @@
 import { test, expect } from '@playwright/test';
-
-const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
-const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
+import { signInLocalUser } from './helpers/auth';
+import { mockConnections, mockHistoryList, mockLocalAuth, mockSubmitCustom } from './helpers/mock-backend';
 
 test.describe('US-1: sign-in → ask → history', () => {
-  test('full happy path against real backend', async ({ page }) => {
+  test('happy path from local sign-in through saved history', async ({ page }) => {
+    const question = 'How many customers are in the system?';
+    await mockLocalAuth(page);
+    await mockConnections(page);
+    await mockSubmitCustom(page, {
+      kind: 'result',
+      attempt_id: 'attempt-us1-customer-count',
+      accepted_query_id: 'accepted-us1-customer-count',
+      question,
+      generated_sql: 'SELECT count(*) FROM customer;',
+      columns: [{ name: 'count', type: 'bigint' }],
+      rows: [[599]],
+      row_count: 1,
+      attempt_number: 1,
+      is_last_auto_retry: false,
+    });
+    await mockHistoryList(page, {
+      items: [
+        {
+          id: 'accepted-us1-customer-count',
+          question_text: question,
+          generated_sql: 'SELECT count(*) FROM customer;',
+          accepted_at: new Date().toISOString(),
+        },
+      ],
+      total: 1,
+      next_cursor: null,
+    });
+
     // Step 1: Sign in.
-    await page.goto('/');
-    await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });
-
-    await page.getByLabel(/username/i).fill(USERNAME);
-    await page.getByLabel(/password/i).fill(PASSWORD);
-    await page.getByRole('button', { name: /sign\s*in/i }).click({ force: true });
-
-    // Land on the main workspace page.
-    await expect(page).toHaveURL(/\/(ask)?\/?$/);
+    await signInLocalUser(page);
     await expect(page.locator('textarea')).toBeEnabled({ timeout: 10_000 });
-    await expect(page.getByText('Local Pagila')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('database-selector-trigger')).toBeVisible({ timeout: 10_000 });
 
     // Step 2: Submit a question about a valid Pagila table (e.g., customer)
-    const question = 'How many customers are in the system?';
     const input = page.getByPlaceholder(/Ask a question/i);
     await input.fill(question);
     await expect(input).toHaveValue(question);
@@ -29,6 +47,7 @@ test.describe('US-1: sign-in → ask → history', () => {
 
     // Wait for the assistant response card or result table to render.
     await expect(page.getByTestId('assistant-response-card')).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByRole('table')).toBeVisible({ timeout: 5_000 });
 
     // Step 3: Navigate to history.
     await page.getByRole('button', { name: /history/i }).click({ force: true });

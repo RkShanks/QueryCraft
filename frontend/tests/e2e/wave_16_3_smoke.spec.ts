@@ -1,8 +1,6 @@
 import { test, expect } from '@playwright/test';
 import * as path from 'path';
-
-const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
-const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
+import { signInLocalUser } from './helpers/auth';
 
 const EVIDENCE_DIR = path.resolve('../specs/004-arabic-rtl-verification-polish/evidence/wave-16.3');
 
@@ -13,13 +11,7 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
 
     // Step 1: Sign in
     console.log('Signing in...');
-    await page.goto('/');
-    await page.waitForURL(/\/sign-in/);
-    await page.getByLabel(/username/i).fill(USERNAME);
-    await page.getByLabel(/password/i).fill(PASSWORD);
-    await page.getByRole('button', { name: /sign\s*in/i }).click({ force: true });
-
-    await page.waitForURL(/\/(ask)?\/?$/);
+    await signInLocalUser(page);
     await expect(page.getByTestId('database-selector-trigger')).toBeVisible({ timeout: 10_000 });
     console.log('Sign in successful. Landed on workspace page.');
 

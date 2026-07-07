@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
+import { signInLocalUser } from './helpers/auth';
 
 const USERNAME = process.env.E2E_ADMIN_USERNAME || 'admin';
 const PASSWORD = process.env.E2E_ADMIN_PASSWORD;
@@ -11,12 +12,7 @@ async function signIn(page: Page) {
   if (!PASSWORD) {
     throw new Error('E2E_ADMIN_PASSWORD environment variable is not defined.');
   }
-  await page.goto('/');
-  await expect(page).toHaveURL(/\/sign-in/, { timeout: 15_000 });
-  await page.getByLabel(/username/i).fill(USERNAME);
-  await page.getByLabel(/password/i).fill(PASSWORD);
-  await page.getByRole('button', { name: /sign\s*in/i }).click({ force: true });
-  await expect(page).toHaveURL(/\/(ask)?\/?$/);
+  await signInLocalUser(page, { username: USERNAME, password: PASSWORD });
 }
 
 test.describe('Wave 17.3o — Policy Editor and Masked Column Indicator', () => {
