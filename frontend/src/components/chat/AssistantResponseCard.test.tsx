@@ -65,4 +65,11 @@ describe('AssistantResponseCard connection metadata', () => {
     expect(screen.getByText('Test DB')).toBeInTheDocument();
     expect(screen.getByText('MS SQL Server')).toBeInTheDocument();
   });
+
+  it('renders copy without regenerate when SQL exists but no active attempt is available', () => {
+    render(<AssistantResponseCard sql="SELECT 1;" />);
+
+    expect(screen.getByTestId('action-copy')).toBeInTheDocument();
+    expect(screen.queryByTestId('action-regenerate')).not.toBeInTheDocument();
+  });
 });

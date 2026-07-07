@@ -28,7 +28,7 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation();
-  const hasActions = !!attemptId && !!onRegenerate;
+  const hasSqlActions = sql.trim().length > 0;
   const hasMeta = !!connectionName && !!databaseType;
 
   const typeLabelKey = databaseType
@@ -54,7 +54,7 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
             <SqlCodeBlock code={sql} />
           </div>
 
-          {hasActions && (
+          {hasSqlActions && (
             <CodeBlockActionBar
               sql={sql}
               attemptId={attemptId}

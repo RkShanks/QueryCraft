@@ -55,7 +55,7 @@ describe('WorkspacePage first-submit UX', () => {
     expect(state.activeSessionId).toBe('550e8400-e29b-41d4-a716-446655440003');
   }, 10000);
 
-  it('renders Delete button on result turn when accepted_query_id is returned', async () => {
+  it('renders copy, regenerate, and delete actions on successful live submit', async () => {
     server.use(
       http.get('/api/v1/sessions/:sessionId', async () => {
         return HttpResponse.json({
@@ -76,6 +76,45 @@ describe('WorkspacePage first-submit UX', () => {
     }, { timeout: 5000 });
 
     // auto-save returns accepted_query_id so delete button should appear
+    expect(screen.getByTestId('action-copy')).toBeInTheDocument();
+    expect(screen.getByTestId('action-regenerate')).toBeInTheDocument();
+    expect(screen.getByTestId('action-delete-result')).toBeInTheDocument();
+  }, 10000);
+
+  it('keeps live attempt actions when refreshed session history contains the saved result', async () => {
+    server.use(
+      http.get('/api/v1/sessions/:sessionId', async ({ params }) => {
+        return HttpResponse.json({
+          id: params.sessionId as string,
+          preview_text: '',
+          created_at: new Date().toISOString(),
+          last_activity_at: new Date().toISOString(),
+          attempts: [
+            {
+              id: 'f9e8d7c6-b5a4-4c3b-2a1d-0e9f8d7c6b5a',
+              question_text: 'How many actors?',
+              generated_sql: 'SELECT COUNT(*) FROM users;',
+              accepted_at: new Date().toISOString(),
+              saved: true,
+              feedback: 1,
+              result_columns: [{ name: 'count', type: 'bigint' }],
+              result_rows: [[42]],
+              result_row_count: 1,
+            },
+          ],
+        }, { status: 200 });
+      }),
+    );
+
+    renderWithClient(<WorkspacePage />);
+    await typeAndSubmit('How many actors?');
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('assistant-response-card')).toHaveLength(1);
+    }, { timeout: 5000 });
+
+    expect(screen.getByTestId('action-copy')).toBeInTheDocument();
+    expect(screen.getByTestId('action-regenerate')).toBeInTheDocument();
     expect(screen.getByTestId('action-delete-result')).toBeInTheDocument();
   }, 10000);
 
@@ -116,6 +155,8 @@ describe('WorkspacePage first-submit UX', () => {
     expect(screen.getByText('count')).toBeInTheDocument();
     expect(screen.getByText('42')).toBeInTheDocument();
     expect(screen.getByTestId('result-table')).toBeInTheDocument();
+    expect(screen.getByTestId('action-copy')).toBeInTheDocument();
+    expect(screen.queryByTestId('action-regenerate')).not.toBeInTheDocument();
     expect(screen.getByTestId('action-delete-result')).toBeInTheDocument();
   }, 10000);
 

@@ -1,0 +1,145 @@
+{
+  "run_date": "2026-07-07",
+    "branch": "main",
+    "head": "43000af7cb7eb4f72374b5d1c6fca79708d2c1a7",
+    "fix_branch": "fix/phase2-response-card-actions",
+    "scope": "Phase 2 current-HEAD browser/API blocker isolation, live-LLM retry, and response-card blocker fix verification",
+  "checks": {
+    "local_admin_sign_in": {
+      "status": "Pass",
+      "evidence": "Browser sign-in reached workspace; sidebar visible. Direct API sign-in returned 200 with Admin role and eight permissions."
+    },
+    "stack_rebuild_recreate": {
+      "status": "Pass",
+      "evidence": "docker compose up -d --build --force-recreate rebuilt backend/frontend images and recreated backend, frontend, platform/source Postgres, Redis, MySQL, and MSSQL containers."
+    },
+    "env_presence": {
+      "status": "Pass",
+      "evidence": "Required provider, platform DB, source DB, Redis, encryption, and admin env keys were present; values were not printed."
+    },
+    "source_connections_admin_policy": {
+      "status": "Pass",
+      "evidence": "seed_e2e_connection.py reported source_analytics, MySQL Sakila, and MSSQL AdventureWorks healthy with schema_status=success and admin_policy=present."
+    },
+    "direct_live_api_submit": {
+      "status": "Pass",
+      "evidence": "Signed-in Admin direct API submit against source_analytics returned 200 result, row_count=5, columns_count=2, generated_sql present."
+    },
+    "browser_live_submit_retry": {
+      "status": "Setup-dependent",
+      "evidence": "Browser submit returned 502; backend log showed Gemini generateContent HTTP 429 Too Many Requests."
+    },
+    "direct_live_api_retry": {
+      "status": "Setup-dependent",
+      "evidence": "Direct API retry returned 502 with sanitized error.llmUnavailable; backend log again showed Gemini generateContent HTTP 429."
+    },
+    "direct_live_api_retry_2026_07_07_later": {
+      "status": "Setup-dependent",
+      "evidence": "Later bounded live-LLM retry made two signed-in Admin direct API submit attempts against source_analytics. Both returned HTTP 502 with sanitized error.llmUnavailable and no generated SQL. Backend logs showed Gemini generateContent HTTP 429 Too Many Requests for the first retry attempt."
+    },
+    "updated_gemini_key_backend_recreate": {
+      "status": "Pass",
+      "evidence": "After the owner updated the Gemini API key, backend was force-recreated so the process picked up the new .env value. Gemini key presence was confirmed without printing the value."
+    },
+    "direct_live_api_after_key_update": {
+      "status": "Pass",
+      "evidence": "Signed-in Admin direct API submit against source_analytics returned HTTP 200, kind=result, row_count=5, columns_count=2, generated_sql present, and session_id present."
+    },
+    "browser_live_submit_after_key_update": {
+      "status": "Pass",
+      "evidence": "Browser New Chat live submit returned HTTP 200 through /query/submit and rendered one response card with result table, SQL block, and delete action."
+    },
+    "browser_follow_up_after_key_update": {
+      "status": "Pass",
+      "evidence": "Browser follow-up question in the same session returned HTTP 200 and rendered a second response card; both user questions remained visible in-session."
+    },
+        "browser_regenerate_after_key_update": {
+            "status": "Partial",
+            "evidence": "Current live response cards did not render copy or regenerate controls, only SQL/table/delete. Direct API regenerate using the saved attempt ID returned HTTP 422 with sanitized error.attemptInvalid / attempt_not_active, so replacement result could not be verified."
+        },
+        "response_card_fix_branch_browser_regenerate": {
+            "status": "Pass",
+            "evidence": "On fix/phase2-response-card-actions with rebuilt containers, browser live submit returned HTTP 200 result and rendered copy, regenerate, and delete actions. Copy clicked successfully. Regenerate request used the live active attempt_id, did not use accepted_query_id, returned HTTP 200 kind=result, and rendered copy/regenerate/delete after replacement."
+        },
+        "response_card_fix_branch_leakage": {
+            "status": "Pass",
+            "evidence": "Focused browser output scan after live submit/regenerate found no raw provider errors, API keys, stack traces, DB hosts/passwords, or untranslated keys."
+        },
+    "session_history_after_key_update": {
+      "status": "Pass",
+      "evidence": "Session detail API found the live browser session with two saved attempts and result payloads. Browser history listed the follow-up row, first live browser row, and direct API smoke row with source_analytics POSTGRESQL metadata."
+    },
+    "leakage_after_key_update": {
+      "status": "Pass",
+      "evidence": "Browser/API output scan found no raw provider errors, API keys, stack traces, DB hosts/passwords, or untranslated keys."
+    },
+    "browser_live_rows_2026_07_07_later": {
+      "status": "Superseded",
+      "evidence": "Superseded by the updated-key retry: browser live submit, follow-up, and history passed; regenerate remains partial due current response-card/API contract."
+    },
+    "new_chat_clears_workspace": {
+      "status": "Pass",
+      "evidence": "Browser New Chat cleared active sidebar selection; prompt focus was not observed."
+    },
+    "sidebar_grouping": {
+      "status": "Pass",
+      "evidence": "Browser sidebar showed Today grouping and current successful live-result session preview."
+    },
+    "session_switching_workspace_isolation": {
+      "status": "Pass",
+      "evidence": "Browser switched empty session to populated session; empty session did not show populated question, populated session did."
+    },
+    "delete_session_undo_restore": {
+      "status": "Pass",
+      "evidence": "Browser delete displayed undo toast; clicking Undo restored the session."
+    },
+    "delete_session_permanent_expiry": {
+      "status": "Pass",
+      "evidence": "Browser delete followed by 5.6 second wait removed the throwaway session."
+    },
+    "llm_context_cap_settings": {
+      "status": "Pass",
+      "evidence": "Browser settings read context cap 3, updated to 2, then restored to 3."
+    },
+    "response_card_current_contract": {
+      "status": "Partial",
+      "evidence": "Historical card loaded from successful live API result showed SQL block, result table, connection metadata, and delete. Local-turn copy/regenerate could not be refreshed because provider quota blocked browser live submit; historical card had copyCount=0, regenCount=0. Old thumbs/accept/reject UI was absent."
+    },
+    "arabic_rtl_surfaces": {
+      "status": "Pass",
+      "evidence": "Browser /?lng=ar had html dir=rtl, lang=ar, and Arabic New Chat text."
+    },
+    "mobile_responsive_smoke": {
+      "status": "Pass",
+      "evidence": "390x844 Arabic workspace had no horizontal document overflow."
+    }
+  },
+  "api_status_observed": {
+    "auth/me": 200,
+    "auth/sso/providers": 200,
+    "auth/sign-in": 200,
+    "connections": 200,
+    "sessions": 200,
+    "session_detail": 200,
+    "admin/settings": 200,
+    "query/submit_initial_direct": 200,
+    "query/submit_browser_retry": 502,
+    "query/submit_direct_retry": 502,
+    "query/submit_later_direct_retry_1": 502,
+    "query/submit_later_direct_retry_2": 502,
+        "query/submit_after_key_update_direct": 200,
+        "query/submit_after_key_update_browser": 200,
+        "query/regenerate_after_key_update": 422,
+        "query/regenerate_after_response_card_fix": 200
+    },
+    "classification": {
+        "502_root_cause": "Resolved after owner updated Gemini API key and backend was recreated. Direct API and browser submits returned HTTP 200 after the update.",
+        "response_card_root_cause": "Confirmed product blocker: session-history refresh/dedupe replaced the live local turn carrying the active attempt_id with a saved-history card carrying only accepted_query_id, so regenerate was not rendered. The fix branch prefers live local turns with active attempt IDs over duplicate saved-history rows and decouples copy from regenerate.",
+        "product_blocker": "confirmed_and_fixed_on_branch_pending_pr_merge",
+        "source_connection_or_decryption_drift": false,
+        "stale_container_runtime_mismatch": "Initial risk removed by rebuild/recreate before testing.",
+        "phase_2_complete": false,
+        "phase_3_unblocked": false,
+        "remaining_gap": "After the fix PR merges, rerun only the remaining response-card/regenerate rows on main and then create the Phase 2 evidence-only PR."
+    }
+}
