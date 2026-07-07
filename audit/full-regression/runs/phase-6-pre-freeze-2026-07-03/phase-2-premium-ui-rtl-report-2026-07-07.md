@@ -4,11 +4,12 @@ Scope: Phase 2 matrix rows only. Phases 3-6, T-905, and freeze work were not sta
 
 ## Tested Revision
 
-- Branch: `main`
-- HEAD: `43000af7cb7eb4f72374b5d1c6fca79708d2c1a7`
+- Branch: `main` / evidence-only branch `chore/phase2-response-card-evidence`
+- HEAD tested after blocker fix merge: `c756e8217884646ce49aa1362cb9e3c516392891`
+- Original Phase 2 base HEAD: `43000af7cb7eb4f72374b5d1c6fca79708d2c1a7`
 - Requested base main: `43000af7cb7eb4f72374b5d1c6fca79708d2c1a7`
-- Fix branch under test: `fix/phase2-response-card-actions` based on `43000af7cb7eb4f72374b5d1c6fca79708d2c1a7`
-- Evidence branch/PR: blocker fix PR pending; Phase 2 real-user response-card rows must be rerun on `main` after merge before Phase 2 closure.
+- Fix PR: `#198` merged; squash commit `c756e8217884646ce49aa1362cb9e3c516392891`
+- Evidence branch/PR: evidence-only PR pending from `chore/phase2-response-card-evidence`.
 - Worktree guard: pre-existing dirty Phase 5 PNG evidence and old full-regression screenshots/traces were present before this run. They were not staged or intentionally modified.
 
 ## 502 Root Cause Classification
@@ -30,7 +31,7 @@ Classification: the Gemini 429/provider quota blocker is resolved after the key 
 
 The provider-side 502 gap is closed. A separate product blocker was then confirmed in the response-card action path: live submit returned both `attempt_id` and `accepted_query_id`, but session-history dedupe replaced the live local turn with a saved-history card that did not carry an active attempt ID. Saved accepted-query IDs are not valid regenerate substitutes and returned sanitized HTTP 422 `error.attemptInvalid` / `attempt_not_active`.
 
-Fix-branch verification: `fix/phase2-response-card-actions` decoupled copy from regenerate and changed workspace turn merging to prefer a live local turn with an active attempt ID over the duplicate saved-history row. Focused real-browser verification on rebuilt containers showed live submit HTTP 200 with copy/regenerate/delete visible, copy clicked, regenerate request used the original active `attempt_id` and not the `accepted_query_id`, regenerate returned HTTP 200 `kind=result`, and no raw provider errors, keys, stack traces, DB hosts/passwords, or untranslated keys appeared.
+Fix verification: PR `#198` decoupled copy from regenerate and changed workspace turn merging to prefer a live local turn with an active attempt ID over the duplicate saved-history row. Focused real-browser verification on merged `main` at `c756e8217884646ce49aa1362cb9e3c516392891` showed live submit HTTP 200 with copy/regenerate/delete visible, copy clicked, regenerate request used the original active `attempt_id` and not the `accepted_query_id`, regenerate returned HTTP 200 `kind=result`, and no raw provider errors, keys, stack traces, DB hosts/passwords, or untranslated keys appeared.
 
 ## Commands Run
 
@@ -60,6 +61,7 @@ Fix-branch verification: `fix/phase2-response-card-actions` decoupled copy from 
 | `cd frontend && rtk npm run build` | 0 | Production build passed; existing Vite chunk-size warning only. |
 | `docker compose -f docker-compose.dev.yml up -d --build --force-recreate frontend` | 0 | Rebuilt/recreated frontend; compose also recreated backend, so seed verification was rerun. |
 | Fix-branch browser response-card/regenerate probe | 0 | Sign-in, source selection, live submit, copy, regenerate, and post-regenerate controls passed on rebuilt containers. |
+| Merged-main browser response-card/regenerate probe | 0 | After PR `#198` merged, sign-in, source selection, live submit, copy, regenerate, and post-regenerate controls passed on rebuilt containers. |
 
 Additional evidence: `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/phase-2-current-head-browser-evidence-2026-07-07.json`.
 
@@ -78,9 +80,9 @@ Additional evidence: `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/p
 | Browser live submit | Pass | Browser New Chat live submit returned 200 through `/query/submit` and rendered a response card with result table, SQL block, and delete action. |
 | Follow-up query uses prior context | Pass live / Pass automated | Browser follow-up in the same session returned 200 and rendered a second response card; session detail later showed two saved attempts. |
 | LLM context cap read/update/restore | Pass | Browser settings read cap `3`, updated to `2`, then restored to `3`. |
-| Regenerate replacement result | Pass on fix branch | Current `main` had no visible regenerate control. On `fix/phase2-response-card-actions`, live card rendered regenerate and `/query/regenerate` returned HTTP 200 `kind=result` using the active `attempt_id`, not the saved `accepted_query_id`. |
+| Regenerate replacement result | Pass | After PR `#198` merged, live card rendered regenerate and `/query/regenerate` returned HTTP 200 `kind=result` using the active `attempt_id`, not the saved `accepted_query_id`. |
 | Session/history reflects saved attempts | Pass | Session detail API showed the live browser session with two saved attempts and result payloads. Browser history listed the follow-up, live first turn, and direct API smoke rows with `source_analytics` metadata. |
-| Response-card current contract | Pass on fix branch | Browser live response card showed SQL block, result table, metadata, copy, regenerate, and delete. Old thumbs/accept/reject UI was absent, consistent with current contract. |
+| Response-card current contract | Pass | Browser live response card showed SQL block, result table, metadata, copy, regenerate, and delete. Old thumbs/accept/reject UI was absent, consistent with current contract. |
 | Arabic/RTL Phase 2 surfaces | Pass | Browser `/?lng=ar` had `dir=rtl`, `lang=ar`, and Arabic New Chat text. Prior RTL/i18n e2e gates passed in the existing report history. |
 | Mobile/basic responsive | Pass | Browser 390x844 Arabic workspace had no horizontal document overflow. |
 | Browser/API leakage | Pass | Evidence and observed API/browser output did not print secrets, cookies, provider keys, DB passwords, raw tokens, or provider payloads. |
@@ -95,8 +97,8 @@ Additional evidence: `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/p
 | P2-FR-034 | Pass | Browser sidebar showed Today grouping and current preview. | Current HEAD evidence refreshed. |
 | P2-FR-035 | Pass | Browser live follow-up returned 200 in the same session after Gemini key update; session detail showed two saved attempts. | Live context path refreshed on current HEAD. |
 | P2-FR-036 | Pass | Existing automated feedback suites passed in prior gate run; current response delete/autosave state visible. | Old explicit thumbs UI absent from current workspace. |
-| P2-FR-037 | Pass on fix branch | Focused browser probe on `fix/phase2-response-card-actions` showed copy visible on successful live submit and still visible after regenerate. | Needs rerun on `main` after fix PR merge. |
-| P2-FR-038 | Pass on fix branch | Focused browser probe showed regenerate visible, request body used the active `attempt_id`, did not use `accepted_query_id`, and returned HTTP 200 `kind=result`. | Needs rerun on `main` after fix PR merge. |
+| P2-FR-037 | Pass | Focused browser probe on merged `main` showed copy visible on successful live submit and still visible after regenerate. | Current HEAD refreshed after blocker fix merge. |
+| P2-FR-038 | Pass | Focused browser probe showed regenerate visible, request body used the active `attempt_id`, did not use `accepted_query_id`, and returned HTTP 200 `kind=result`. | Current HEAD refreshed after blocker fix merge. |
 | P2-FR-039 | Pass | Existing feedback API/component coverage passed in prior gate run. | Old thumbs UI absent from current workspace contract. |
 | P2-FR-040 | Pass | Browser settings read/update/restore passed: `3 -> 2 -> 3`. | Current HEAD evidence refreshed. |
 | P2-FR-041 | Pass | Browser Arabic route showed `dir=rtl`, `lang=ar`, Arabic New Chat text. | Existing RTL/i18n e2e gates also green. |
@@ -108,7 +110,7 @@ Additional evidence: `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/p
 | P2-FR-047 | Pass | Simulated Gemini contract tests passed in prior gate run; after key update direct and browser live submits returned 200. | Provider quota blocker cleared. |
 | P2-FR-048 | Pass | Lifecycle invariant tests passed in prior gate run. | No browser check required. |
 | P2-FR-049 | Pass | Browser desktop shell usable; 390x844 Arabic workspace had no horizontal overflow. | Current HEAD evidence refreshed. |
-| P2-FR-050 | Pass on fix branch | Browser live response cards showed SQL/table/metadata/copy/regenerate/delete. | Explicit old thumbs/accept UI absent; current contract verified on fix branch and needs rerun on `main` after merge. |
+| P2-FR-050 | Pass | Browser live response cards showed SQL/table/metadata/copy/regenerate/delete. | Explicit old thumbs/accept UI absent; current contract verified on merged `main`. |
 | P2-FR-051 | Pass | Browser sidebar logo/nav/New Chat/grouped list/delete controls exercised. | Current HEAD evidence refreshed. |
 | P2-FR-052 | Pass | Browser prompt and database selector exercised in EN/AR. | Prompt focus after New Chat was false; no blocker found. |
 | P2-FR-053 | Pass | Browser Arabic route activated RTL shell; existing RTL component/e2e coverage remains green. | No overlap/overflow observed in mobile smoke. |
@@ -121,15 +123,15 @@ Additional evidence: `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/p
 ## Counts
 
 - Matrix rows total: 28
-- Pass: 25
-- Pass on fix branch pending merge/rerun on `main`: 3
+- Pass: 28
+- Pass on fix branch pending merge/rerun on `main`: 0
 - Partial: 0
 - Setup-dependent: 0
 - Deferred: 0
 - Failed: 0
 - Product blockers found: 0
 - Current real-user browser/API flows refreshed: sign-in, New Chat clear, source selection, sidebar grouping, session switch/isolation, delete/undo/permanent delete, settings update/restore, response-card render from successful live result, Arabic RTL, mobile smoke.
-- Live LLM status: after the owner updated the Gemini key and backend was recreated, direct API submit, browser live submit, and browser follow-up passed. On the fix branch, browser regenerate replacement result also passed and used the active `attempt_id`.
+- Live LLM status: after the owner updated the Gemini key and backend was recreated, direct API submit, browser live submit, and browser follow-up passed. After PR `#198` merged, browser regenerate replacement result also passed on `main` and used the active `attempt_id`.
 
 ## Security and Privacy
 
@@ -139,8 +141,8 @@ No secrets, cookies, provider keys, DB passwords, raw tokens, raw provider paylo
 
 Phase 2 automated gates remain complete and green per the prior run history, and current-HEAD real-user browser/API coverage is substantially refreshed.
 
-Phase 2 is not fully complete for exhaustive real-user closure until the response-card fix PR is merged and the three fix-branch response-card rows are rerun on `main`. The Gemini/provider quota condition is cleared after the key update.
+Phase 2 exhaustive real-user closure is complete on merged `main` at `c756e8217884646ce49aa1362cb9e3c516392891`. The Gemini/provider quota condition is cleared after the key update, and the response-card regenerate/copy blocker is fixed by PR `#198`.
 
-Phase 3 remains not unblocked by this execution because the response-card blocker fix has not yet merged and the final `main` evidence-only Phase 2 PR has not been created.
+Phase 3 is unblocked after the evidence-only Phase 2 PR is merged.
 
-Next step before Phase 3: merge the response-card fix PR, rerun only the remaining response-card/regenerate rows on `main`, then create the Phase 2 evidence-only PR.
+Next step before Phase 3: merge the evidence-only Phase 2 PR.
