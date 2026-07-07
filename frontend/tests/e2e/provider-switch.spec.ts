@@ -1,19 +1,13 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 import type { QueryResult, AcceptedQuerySummary, AcceptedQueryDetail, HistoryListResponse } from '../../src/api/generated/types.gen';
 
-import { mockConnections } from './helpers/mock-backend';
-
-const USERNAME = process.env.E2E_TEST_USERNAME ?? 'e2e_user';
-const PASSWORD = process.env.E2E_TEST_PASSWORD ?? 'e2e_password_123';
+import { mockConnections, mockLocalAuth } from './helpers/mock-backend';
+import { signInLocalUser } from './helpers/auth';
 
 async function signIn(page: Page) {
+  await mockLocalAuth(page);
   await mockConnections(page);
-  await page.goto('/');
-  await expect(page).toHaveURL(/\/sign-in/, { timeout: 5_000 });
-  await page.getByLabel(/username/i).fill(USERNAME);
-  await page.getByLabel(/password/i).fill(PASSWORD);
-  await page.getByRole('button', { name: /sign\s*in/i }).click();
-  await expect(page).toHaveURL(/\/(ask)?\/?$/);
+  await signInLocalUser(page);
   await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 }
 
