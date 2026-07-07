@@ -1,9 +1,11 @@
 {
   "run_date": "2026-07-07",
     "branch": "main",
-    "head": "43000af7cb7eb4f72374b5d1c6fca79708d2c1a7",
-    "fix_branch": "fix/phase2-response-card-actions",
-    "scope": "Phase 2 current-HEAD browser/API blocker isolation, live-LLM retry, and response-card blocker fix verification",
+    "head": "c756e8217884646ce49aa1362cb9e3c516392891",
+    "original_phase_2_base_head": "43000af7cb7eb4f72374b5d1c6fca79708d2c1a7",
+    "evidence_branch": "chore/phase2-response-card-evidence",
+    "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/198",
+    "scope": "Phase 2 current-HEAD browser/API blocker isolation, live-LLM retry, response-card blocker fix verification, and merged-main rerun",
   "checks": {
     "local_admin_sign_in": {
       "status": "Pass",
@@ -54,12 +56,16 @@
       "evidence": "Browser follow-up question in the same session returned HTTP 200 and rendered a second response card; both user questions remained visible in-session."
     },
         "browser_regenerate_after_key_update": {
-            "status": "Partial",
-            "evidence": "Current live response cards did not render copy or regenerate controls, only SQL/table/delete. Direct API regenerate using the saved attempt ID returned HTTP 422 with sanitized error.attemptInvalid / attempt_not_active, so replacement result could not be verified."
+            "status": "Superseded",
+            "evidence": "Pre-fix current live response cards did not render copy or regenerate controls, only SQL/table/delete. Direct API regenerate using the saved attempt ID returned HTTP 422 with sanitized error.attemptInvalid / attempt_not_active. Superseded by PR #198 and merged-main browser regenerate pass."
         },
         "response_card_fix_branch_browser_regenerate": {
             "status": "Pass",
             "evidence": "On fix/phase2-response-card-actions with rebuilt containers, browser live submit returned HTTP 200 result and rendered copy, regenerate, and delete actions. Copy clicked successfully. Regenerate request used the live active attempt_id, did not use accepted_query_id, returned HTTP 200 kind=result, and rendered copy/regenerate/delete after replacement."
+        },
+        "response_card_merged_main_browser_regenerate": {
+            "status": "Pass",
+            "evidence": "After PR #198 merged to main at c756e8217884646ce49aa1362cb9e3c516392891, rebuilt containers plus refreshed seed showed browser live submit HTTP 200 result with copy, regenerate, and delete actions. Copy clicked successfully. Regenerate request used the live active attempt_id, did not use accepted_query_id, returned HTTP 200 kind=result, and rendered copy/regenerate/delete after replacement."
         },
         "response_card_fix_branch_leakage": {
             "status": "Pass",
@@ -73,9 +79,9 @@
       "status": "Pass",
       "evidence": "Browser/API output scan found no raw provider errors, API keys, stack traces, DB hosts/passwords, or untranslated keys."
     },
-    "browser_live_rows_2026_07_07_later": {
-      "status": "Superseded",
-      "evidence": "Superseded by the updated-key retry: browser live submit, follow-up, and history passed; regenerate remains partial due current response-card/API contract."
+        "browser_live_rows_2026_07_07_later": {
+            "status": "Superseded",
+            "evidence": "Superseded by the updated-key retry and PR #198 merged-main rerun: browser live submit, follow-up, history, copy, regenerate, and delete passed."
     },
     "new_chat_clears_workspace": {
       "status": "Pass",
@@ -101,9 +107,9 @@
       "status": "Pass",
       "evidence": "Browser settings read context cap 3, updated to 2, then restored to 3."
     },
-    "response_card_current_contract": {
-      "status": "Partial",
-      "evidence": "Historical card loaded from successful live API result showed SQL block, result table, connection metadata, and delete. Local-turn copy/regenerate could not be refreshed because provider quota blocked browser live submit; historical card had copyCount=0, regenCount=0. Old thumbs/accept/reject UI was absent."
+        "response_card_current_contract": {
+            "status": "Pass",
+            "evidence": "After PR #198 merged, live response card showed SQL block, result table, connection metadata, copy, regenerate, and delete. Regenerate used active attempt_id and returned HTTP 200 kind=result. Old thumbs/accept/reject UI was absent."
     },
     "arabic_rtl_surfaces": {
       "status": "Pass",
@@ -130,16 +136,17 @@
         "query/submit_after_key_update_direct": 200,
         "query/submit_after_key_update_browser": 200,
         "query/regenerate_after_key_update": 422,
-        "query/regenerate_after_response_card_fix": 200
+        "query/regenerate_after_response_card_fix": 200,
+        "query/regenerate_after_merge_main_rerun": 200
     },
     "classification": {
         "502_root_cause": "Resolved after owner updated Gemini API key and backend was recreated. Direct API and browser submits returned HTTP 200 after the update.",
-        "response_card_root_cause": "Confirmed product blocker: session-history refresh/dedupe replaced the live local turn carrying the active attempt_id with a saved-history card carrying only accepted_query_id, so regenerate was not rendered. The fix branch prefers live local turns with active attempt IDs over duplicate saved-history rows and decouples copy from regenerate.",
-        "product_blocker": "confirmed_and_fixed_on_branch_pending_pr_merge",
+        "response_card_root_cause": "Confirmed product blocker: session-history refresh/dedupe replaced the live local turn carrying the active attempt_id with a saved-history card carrying only accepted_query_id, so regenerate was not rendered. PR #198 prefers live local turns with active attempt IDs over duplicate saved-history rows and decouples copy from regenerate.",
+        "product_blocker": "confirmed_fixed_and_merged",
         "source_connection_or_decryption_drift": false,
         "stale_container_runtime_mismatch": "Initial risk removed by rebuild/recreate before testing.",
-        "phase_2_complete": false,
-        "phase_3_unblocked": false,
-        "remaining_gap": "After the fix PR merges, rerun only the remaining response-card/regenerate rows on main and then create the Phase 2 evidence-only PR."
+        "phase_2_complete": true,
+        "phase_3_unblocked": "after_evidence_only_pr_merge",
+        "remaining_gap": "Merge the Phase 2 evidence-only PR before starting Phase 3."
     }
 }
