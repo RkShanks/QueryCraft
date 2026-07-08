@@ -274,9 +274,9 @@ class TestConnectionServiceHardDeleteGuard:
             await service.hard_delete(conn_id)
 
     @pytest.mark.asyncio
-    async def test_delete_blocked_by_schema_entries(self):
+    async def test_delete_removes_schema_entries(self):
         from app.repositories.connection_repository import ConnectionRepository
-        from app.services.connection_service import ConnectionReferencedError, ConnectionService
+        from app.services.connection_service import ConnectionService
 
         key = Fernet.generate_key().decode()
         mock_repo = MagicMock(spec=ConnectionRepository)
@@ -284,12 +284,14 @@ class TestConnectionServiceHardDeleteGuard:
         mock_repo.get_by_id = AsyncMock(return_value=_make_conn(id=conn_id))
         mock_repo.is_referenced_by_accepted_queries = AsyncMock(return_value=False)
         mock_repo.is_referenced_by_sessions = AsyncMock(return_value=False)
-        mock_repo.has_schema_entries = AsyncMock(return_value=True)
+        mock_repo.delete_schema_entries = AsyncMock()
+        mock_repo.delete = AsyncMock()
 
         service = ConnectionService(mock_repo, key)
+        await service.hard_delete(conn_id)
 
-        with pytest.raises(ConnectionReferencedError):
-            await service.hard_delete(conn_id)
+        mock_repo.delete_schema_entries.assert_called_once_with(conn_id)
+        mock_repo.delete.assert_called_once_with(conn_id)
 
     @pytest.mark.asyncio
     async def test_delete_succeeds_when_unreferenced(self):
@@ -302,12 +304,13 @@ class TestConnectionServiceHardDeleteGuard:
         mock_repo.get_by_id = AsyncMock(return_value=_make_conn(id=conn_id))
         mock_repo.is_referenced_by_accepted_queries = AsyncMock(return_value=False)
         mock_repo.is_referenced_by_sessions = AsyncMock(return_value=False)
-        mock_repo.has_schema_entries = AsyncMock(return_value=False)
+        mock_repo.delete_schema_entries = AsyncMock()
         mock_repo.delete = AsyncMock()
 
         service = ConnectionService(mock_repo, key)
         await service.hard_delete(conn_id)
 
+        mock_repo.delete_schema_entries.assert_called_once_with(conn_id)
         mock_repo.delete.assert_called_once_with(conn_id)
 
 

@@ -356,7 +356,8 @@ class ConnectionService:
     ) -> None:
         """Hard-delete a connection only if unreferenced.
 
-        Blocked if referenced by accepted_queries, sessions, or schema entries.
+        Blocked if referenced by accepted_queries or sessions. Cached schema
+        entries are removed with the connection.
         Emits a ``connection.delete`` audit entry when ``db_session``
         is provided.
         """
@@ -370,9 +371,7 @@ class ConnectionService:
         if await self._repo.is_referenced_by_sessions(connection_id):
             raise ConnectionReferencedError()
 
-        if await self._repo.has_schema_entries(connection_id):
-            raise ConnectionReferencedError()
-
+        await self._repo.delete_schema_entries(connection_id)
         await self._repo.delete(connection_id)
 
         if db_session is not None:
