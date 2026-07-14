@@ -108,7 +108,7 @@ Read `phase-3-multi-dialect-source-dbs.md`.
 Backend:
 
 ```bash
-cd backend && rtk uv run pytest tests/unit/db/test_migration_006_phase3.py tests/unit/source_db tests/unit/api/test_admin_connections.py tests/unit/api/test_connections.py tests/unit/api/test_session_connection.py tests/unit/api/test_query_connection_routing.py tests/unit/evaluator/test_dialect_evaluator.py tests/unit/evaluator/test_dialect_validation.py tests/integration/api/test_admin_refresh_schema.py -x --tb=short
+cd backend && rtk uv run pytest tests/unit/db/test_migration_006_phase3.py tests/unit/source_db tests/unit/api/test_admin_connections.py tests/unit/api/test_connections.py tests/unit/api/test_session_connection.py tests/unit/api/test_query_connection_routing.py tests/unit/api/test_admin_refresh_schema.py tests/unit/evaluator/test_dialect_evaluator.py tests/unit/evaluator/test_dialect_validation.py -x --tb=short
 ```
 
 Frontend/browser:

@@ -1,6 +1,8 @@
-"""T-118: Admin refresh-schema router integration test.
+"""T-118: Admin refresh-schema router API tests.
 
 Tests POST /admin/refresh-schema with admin key auth and cache invalidation.
+This endpoint uses the legacy source-schema adapter and does not require the
+shared platform-database truncation fixture used by integration tests.
 """
 
 from unittest.mock import patch
@@ -9,9 +11,11 @@ import pytest
 
 from app.api.v1 import admin as admin_module
 
+pytestmark = pytest.mark.integration
+
 
 class TestAdminRefreshSchema:
-    """Admin refresh-schema integration tests."""
+    """Verify the legacy admin refresh-schema endpoint."""
 
     @pytest.mark.asyncio
     async def test_refresh_schema_success(self, app_client):
@@ -56,27 +60,23 @@ class TestAdminRefreshSchema:
     @pytest.mark.asyncio
     async def test_refresh_schema_invalidates_cache(self, app_client):
         """Refresh invalidates the introspector cache."""
-        # Ensure introspector exists
         introspector = admin_module._get_introspector()
-
-        # First refresh populates cache
-        resp1 = await app_client.post(
+        response = await app_client.post(
             "/api/v1/admin/refresh-schema",
             headers={"origin": "http://test", "X-Admin-Key": "test-admin-key-123"},
         )
-        assert resp1.status_code == 200
+        assert response.status_code == 200
         assert introspector._cache is not None
         first_cached_at = introspector._cached_at
 
-        # Second refresh should update _cached_at (proving cache was refreshed)
         with patch.object(introspector, "_fetch_schema") as mock_fetch:
             mock_fetch.return_value = introspector._cache
 
-            resp2 = await app_client.post(
+            response = await app_client.post(
                 "/api/v1/admin/refresh-schema",
                 headers={"origin": "http://test", "X-Admin-Key": "test-admin-key-123"},
             )
-            assert resp2.status_code == 200
+            assert response.status_code == 200
             mock_fetch.assert_awaited_once()
 
         assert introspector._cached_at >= first_cached_at
