@@ -43,7 +43,11 @@ class SourceDBAdapter(Protocol):
         """Run a lightweight health check (SELECT 1 or dialect equivalent).
 
         Returns:
-            True if the connection is healthy, False otherwise.
+            True if the connection is healthy.
+
+        Raises:
+            Exception: Source-driver failures for the connection service to
+                classify into a sanitized health status.
         """
         ...
 
@@ -109,14 +113,11 @@ class PostgresAdapter:
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""
-        try:
-            if self._pool is None:
-                await self.connect()
-            async with self._pool.acquire() as conn:
-                await conn.execute("SELECT 1")
-            return True
-        except Exception:
-            return False
+        if self._pool is None:
+            await self.connect()
+        async with self._pool.acquire() as conn:
+            await conn.execute("SELECT 1")
+        return True
 
     async def close(self) -> None:
         """Close the asyncpg pool."""
@@ -183,14 +184,11 @@ class MySQLAdapter:
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""
-        try:
-            if self._pool is None:
-                await self.connect()
-            async with self._pool.acquire() as conn, conn.cursor() as cursor:
-                await cursor.execute("SELECT 1")
-            return True
-        except Exception:
-            return False
+        if self._pool is None:
+            await self.connect()
+        async with self._pool.acquire() as conn, conn.cursor() as cursor:
+            await cursor.execute("SELECT 1")
+        return True
 
     async def close(self) -> None:
         """Close the asyncmy pool.
@@ -259,14 +257,11 @@ class MSSQLAdapter:
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""
-        try:
-            if self._pool is None:
-                await self.connect()
-            async with self._pool.acquire() as conn, conn.cursor() as cur:
-                await cur.execute("SELECT 1")
-            return True
-        except Exception:
-            return False
+        if self._pool is None:
+            await self.connect()
+        async with self._pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute("SELECT 1")
+        return True
 
     async def close(self) -> None:
         """Close the aioodbc pool.
