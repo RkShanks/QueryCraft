@@ -126,12 +126,14 @@ class ConnectionService:
         Updates connection health_status and schema_introspection_status.
         Errors are caught and statuses marked as FAILED — connection is not rolled back.
         """
+        health_succeeded = False
         try:
             adapter = self._build_adapter(conn)
             healthy = await adapter.health_check()
             await adapter.close()
 
             if healthy:
+                health_succeeded = True
                 conn.health_status = HealthStatus.HEALTHY
                 conn.last_health_check_at = datetime.now(UTC)
                 conn.health_error_category = None
@@ -169,7 +171,11 @@ class ConnectionService:
             conn.schema_introspection_status = SchemaIntrospectionStatus.SUCCESS
             conn.schema_last_refreshed_at = result["refreshed_at"]
             await self._repo.update(conn)
-        except Exception:
+        except Exception as exc:
+            if not health_succeeded:
+                conn.health_status = HealthStatus.UNHEALTHY
+                conn.last_health_check_at = datetime.now(UTC)
+                conn.health_error_category = self._classify_error(str(exc))
             conn.schema_introspection_status = SchemaIntrospectionStatus.FAILED
             with contextlib.suppress(Exception):
                 await self._repo.update(conn)
@@ -389,13 +395,27 @@ class ConnectionService:
     def _classify_error(error_msg: str) -> str:
         """Classify a connection error into a category."""
         error_lower = error_msg.lower()
-        if "authentication" in error_lower or "password" in error_lower or "role" in error_lower:
+        if any(
+            marker in error_lower for marker in ("authentication", "password", "access denied", "login failed", "role")
+        ):
             return "auth_failed"
-        if "connection refused" in error_lower or "network" in error_lower or "unreachable" in error_lower:
+        if any(
+            marker in error_lower
+            for marker in (
+                "connection refused",
+                "connectionrefusederror",
+                "connect call failed",
+                "network",
+                "unreachable",
+                "no route to host",
+            )
+        ):
             return "network_unreachable"
-        if "database" in error_lower and "not exist" in error_lower:
+        if "database" in error_lower and (
+            "not exist" in error_lower or "does not exist" in error_lower or "unknown" in error_lower
+        ):
             return "db_not_found"
-        if "timeout" in error_lower:
+        if "timeout" in error_lower or "timed out" in error_lower:
             return "timeout"
         return "unknown"
 

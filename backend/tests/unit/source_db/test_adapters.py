@@ -173,8 +173,8 @@ async def test_postgres_adapter_close() -> None:
 
 
 @pytest.mark.asyncio
-async def test_postgres_adapter_health_failure() -> None:
-    """PostgresAdapter health check returns False on connection error."""
+async def test_postgres_adapter_health_failure_propagates_driver_error() -> None:
+    """Driver failures reach the service for sanitized categorization."""
     from app.core.credential_provider import FernetCredentialProvider
     from app.source_db.adapters import PostgresAdapter
 
@@ -196,8 +196,8 @@ async def test_postgres_adapter_health_failure() -> None:
     )
     adapter._pool = fake_pool
 
-    result = await adapter.health_check()
-    assert result is False
+    with pytest.raises(ConnectionError, match="fake execute failure"):
+        await adapter.health_check()
 
 
 # ---------------------------------------------------------------------------

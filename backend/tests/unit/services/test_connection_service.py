@@ -154,6 +154,36 @@ class TestConnectionServiceCreate:
         assert result.schema_introspection_status == SchemaIntrospectionStatus.FAILED
 
     @pytest.mark.asyncio
+    async def test_create_auto_introspect_auth_failure_is_categorized(self):
+        """Regression: real adapter errors must not collapse to unknown on first save."""
+        from app.repositories.connection_repository import ConnectionRepository
+        from app.services.connection_service import ConnectionService
+
+        key = Fernet.generate_key().decode()
+        mock_repo = MagicMock(spec=ConnectionRepository)
+        conn_id = uuid4()
+
+        def capture_create(conn):
+            conn.id = conn_id
+            conn.created_at = datetime.now(UTC)
+            conn.updated_at = datetime.now(UTC)
+            return conn
+
+        mock_repo.create = AsyncMock(side_effect=capture_create)
+        mock_repo.update = AsyncMock()
+        adapter = AsyncMock()
+        adapter.health_check = AsyncMock(side_effect=ConnectionError("password authentication failed"))
+        adapter.close = AsyncMock()
+        service = ConnectionService(mock_repo, key, get_db_session=lambda: MagicMock())
+        service._build_adapter = MagicMock(return_value=adapter)
+
+        result = await service.create(_make_create_request())
+
+        assert result.health_status == HealthStatus.UNHEALTHY
+        assert result.health_error_category == "auth_failed"
+        assert result.schema_introspection_status == SchemaIntrospectionStatus.FAILED
+
+    @pytest.mark.asyncio
     async def test_create_auto_introspect_exception(self):
         """Create marks status as FAILED when introspection raises."""
         from app.repositories.connection_repository import ConnectionRepository
@@ -232,6 +262,37 @@ class TestConnectionServiceLifecycle:
         result = await service.enable(conn.id)
 
         assert result.lifecycle_state == LifecycleState.ACTIVE
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("driver_error", "expected_category"),
+        [
+            ("password authentication failed", "auth_failed"),
+            ("Connect call failed", "network_unreachable"),
+        ],
+    )
+    async def test_health_check_driver_failure_is_categorized(self, driver_error, expected_category):
+        """Health retries expose a stable category without the driver text."""
+        from app.repositories.connection_repository import ConnectionRepository
+        from app.services.connection_service import ConnectionService
+
+        key = Fernet.generate_key().decode()
+        conn = _make_conn()
+        repo = MagicMock(spec=ConnectionRepository)
+        repo.get_by_id = AsyncMock(return_value=conn)
+        repo.update = AsyncMock(return_value=conn)
+        adapter = AsyncMock()
+        adapter.health_check = AsyncMock(side_effect=ConnectionError(driver_error))
+        adapter.close = AsyncMock()
+        service = ConnectionService(repo, key)
+        service._build_adapter = MagicMock(return_value=adapter)
+
+        result = await service.test_connection(conn.id)
+
+        assert result.status == "unhealthy"
+        assert result.error_category == expected_category
+        assert result.message_key == f"error.connection_{expected_category}"
+        assert conn.health_error_category == expected_category
 
 
 class TestConnectionServiceHardDeleteGuard:
