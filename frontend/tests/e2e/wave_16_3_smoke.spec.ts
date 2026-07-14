@@ -15,11 +15,11 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
     await expect(page.getByTestId('database-selector-trigger')).toBeVisible({ timeout: 10_000 });
     console.log('Sign in successful. Landed on workspace page.');
 
-    // --- PostgreSQL Pagila Smoke Test ---
-    console.log('Starting PostgreSQL Pagila smoke test...');
+    // --- PostgreSQL source_analytics Smoke Test ---
+    console.log('Starting PostgreSQL source_analytics smoke test...');
     // Open selector and select PostgreSQL
     await page.getByTestId('database-selector-trigger').click();
-    await page.getByRole('option', { name: 'PostgreSQL Pagila' }).click();
+    await page.getByRole('option', { name: 'source_analytics' }).click();
 
     // Now textarea should be enabled
     const pgInput = page.locator('textarea');
@@ -31,7 +31,7 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
     // Wait for card
     const pgCard = page.locator('[data-testid="assistant-response-card"]').first();
     await expect(pgCard).toBeVisible({ timeout: 45_000 });
-    await expect(pgCard.getByText('PostgreSQL Pagila')).toBeVisible();
+    await expect(pgCard.getByText('source_analytics')).toBeVisible();
     await expect(pgCard.getByText('PostgreSQL', { exact: true })).toBeVisible();
 
     // Expand SQL display
@@ -135,7 +135,7 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
     await page.waitForURL(/\/history/);
 
     // Verify history table contains correct entries with localized metadata
-    await expect(page.getByText('PostgreSQL Pagila').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('source_analytics').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('MySQL Sakila').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('MSSQL AdventureWorks').first()).toBeVisible({ timeout: 10_000 });
 
