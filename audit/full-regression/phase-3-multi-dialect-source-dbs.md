@@ -30,7 +30,7 @@ with command output paths, screenshot/trace paths, or short notes during the run
 
 ```bash
 cd backend && rtk uv run pytest tests/unit/db/test_migration_006_phase3.py tests/unit/db/test_source_database_connection_model.py tests/unit/db/test_connection_schema.py tests/unit/db/test_session_connection_id.py tests/unit/source_db tests/unit/api/test_admin_connections.py tests/unit/api/test_connections.py tests/unit/api/test_session_connection.py tests/unit/api/test_query_connection_routing.py -x --tb=short
-cd backend && rtk uv run pytest tests/unit/evaluator/test_dialect_evaluator.py tests/unit/evaluator/test_dialect_validation.py tests/unit/evaluator/test_read_only.py tests/unit/test_cross_dialect_verification.py tests/integration/api/test_admin_refresh_schema.py -x --tb=short
+cd backend && rtk uv run pytest tests/unit/evaluator/test_dialect_evaluator.py tests/unit/evaluator/test_dialect_validation.py tests/unit/evaluator/test_read_only.py tests/unit/test_cross_dialect_verification.py tests/unit/api/test_admin_refresh_schema.py -x --tb=short
 cd backend && rtk uv run ruff check src tests
 cd backend && rtk uv run ruff format --check src tests
 ```
