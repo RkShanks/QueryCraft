@@ -640,7 +640,7 @@ class TestConnectionDeleteEmits:
         repo.get_by_id = AsyncMock(return_value=conn)
         repo.is_referenced_by_accepted_queries = AsyncMock(return_value=False)
         repo.is_referenced_by_sessions = AsyncMock(return_value=False)
-        repo.has_schema_entries = AsyncMock(return_value=False)
+        repo.delete_schema_entries = AsyncMock(return_value=None)
         repo.delete = AsyncMock(return_value=None)
 
         service = ConnectionService(
@@ -658,6 +658,7 @@ class TestConnectionDeleteEmits:
 
         actions = _captured_actions(mock_audit)
         assert AuditActionType.CONNECTION_DELETE in actions, f"Expected CONNECTION_DELETE in audit calls, got {actions}"
+        repo.delete_schema_entries.assert_awaited_once_with(conn.id)
         _assert_no_forbidden_in_contexts(mock_audit)
 
 
@@ -1111,7 +1112,7 @@ class TestForbiddenTokenSweep:
         repo.get_by_id = AsyncMock(return_value=conn)
         repo.is_referenced_by_accepted_queries = AsyncMock(return_value=False)
         repo.is_referenced_by_sessions = AsyncMock(return_value=False)
-        repo.has_schema_entries = AsyncMock(return_value=False)
+        repo.delete_schema_entries = AsyncMock(return_value=None)
         repo.delete = AsyncMock(return_value=None)
         service = ConnectionService(
             repository=repo,

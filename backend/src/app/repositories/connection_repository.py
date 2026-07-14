@@ -90,6 +90,14 @@ class ConnectionRepository:
         count = raw.scalar()
         return count > 0
 
+    async def delete_schema_entries(self, connection_id: uuid.UUID) -> None:
+        """Delete cached schema introspection entries for a connection."""
+        await self._db_session.execute(
+            text("DELETE FROM connection_schema_entries WHERE connection_id = :id"),
+            {"id": str(connection_id)},
+        )
+        await self._db_session.flush()
+
     async def get_schema_entries(self, connection_id: uuid.UUID) -> list[ConnectionSchemaEntry]:
         """Get all schema entries for a connection."""
         result = await self._db_session.execute(
