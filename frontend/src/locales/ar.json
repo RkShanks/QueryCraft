@@ -240,6 +240,9 @@
   "admin.connections.addError": "فشل في إضافة الاتصال",
   "admin.connections.updateSuccess": "تم تحديث الاتصال بنجاح",
   "admin.connections.updateError": "فشل في تحديث الاتصال",
+  "admin.connections.disableSuccess": "تم تعطيل الاتصال بنجاح",
+  "admin.connections.enableSuccess": "تم تفعيل الاتصال بنجاح",
+  "admin.connections.deleteSuccess": "تم حذف الاتصال بنجاح",
   "admin.connections.empty": "لا توجد اتصالات قواعد بيانات مكونة.",
   "admin.connections.type.postgresql": "PostgreSQL",
   "admin.connections.type.mysql": "MySQL",
@@ -488,4 +491,3 @@
   "audit.retention.never": "أبداً",
   "audit.retention.purged_count": "عدد الإدخالات المطهّرة"
 }
-

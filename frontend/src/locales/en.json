@@ -226,6 +226,9 @@
   "admin.connections.addError": "Failed to add connection",
   "admin.connections.updateSuccess": "Connection updated successfully",
   "admin.connections.updateError": "Failed to update connection",
+  "admin.connections.disableSuccess": "Connection disabled successfully",
+  "admin.connections.enableSuccess": "Connection enabled successfully",
+  "admin.connections.deleteSuccess": "Connection deleted successfully",
   "admin.connections.empty": "No database connections configured.",
   "admin.connections.type.postgresql": "PostgreSQL",
   "admin.connections.type.mysql": "MySQL",
@@ -469,4 +472,3 @@
   "audit.retention.never": "Never",
   "audit.retention.purged_count": "Purged Count"
 }
-
