@@ -475,7 +475,12 @@ export const WorkspacePage: React.FC = () => {
               <div key={turn.id} className="workspace-message-pair">
                 <UserBubble text={turn.question} />
                 {turn.isLoading ? (
-                  <div className="workspace-assistant-loading" data-testid="assistant-loading">
+                  <div
+                    className="workspace-assistant-loading"
+                    data-testid="assistant-loading"
+                    role="status"
+                    aria-live="polite"
+                  >
                     <div className="workspace-spinner-small" />
                     <span>{t('query.status.processing')}</span>
                   </div>

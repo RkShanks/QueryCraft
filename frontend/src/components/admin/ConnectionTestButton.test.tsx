@@ -59,6 +59,8 @@ describe('ConnectionTestButton', () => {
     const button = screen.getByRole('button', { name: /Testing.../i });
     expect(button).toBeInTheDocument();
     expect(button).toBeDisabled();
+    expect(button.parentElement).toHaveAttribute('aria-live', 'polite');
+    expect(button.parentElement).toHaveTextContent(/Testing.../i);
   });
 
   it('success state renders localized success message and latency', () => {
