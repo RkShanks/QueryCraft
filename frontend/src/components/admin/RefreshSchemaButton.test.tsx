@@ -36,6 +36,11 @@ describe('RefreshSchemaButton', () => {
     expect(button).not.toBeDisabled();
   });
 
+  it('announces schema refresh status changes', () => {
+    const { container } = render(<RefreshSchemaButton connectionId="conn-123" />);
+    expect(container.firstElementChild).toHaveAttribute('aria-live', 'polite');
+  });
+
   it('click invokes refresh schema mutation with the given connectionId', () => {
     render(<RefreshSchemaButton connectionId="conn-123" />);
 

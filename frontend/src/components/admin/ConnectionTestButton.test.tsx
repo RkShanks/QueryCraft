@@ -36,6 +36,11 @@ describe('ConnectionTestButton', () => {
     expect(button).not.toBeDisabled();
   });
 
+  it('announces connection test status changes', () => {
+    const { container } = render(<ConnectionTestButton connectionId="test-id-123" />);
+    expect(container.firstElementChild).toHaveAttribute('aria-live', 'polite');
+  });
+
   it('click invokes test connection mutation with the given connectionId', () => {
     render(<ConnectionTestButton connectionId="test-id-123" />);
 
