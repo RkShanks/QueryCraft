@@ -1,0 +1,110 @@
+{
+  "generated_at": "2026-07-22",
+  "branch": "main",
+  "product_head_tested": "7cce728596716c556c486385e8942854444fea74",
+  "scope": "Phase 3 only; Phase 4, T-905, and freeze work were not started.",
+  "phase_3_closure": {
+    "complete": true,
+    "phase_4_unblocked": true,
+    "counts": {
+      "pass": 36,
+      "fail": 0,
+      "partial": 0,
+      "setup_dependent_incomplete": 0,
+      "not_run": 0,
+      "deferred": 0
+    },
+    "password_value_exposed": false,
+    "schema_password_marker_note": "A source schema can contain a column named password; this is schema metadata, not a returned connection credential."
+  },
+  "environment": {
+    "docker_required_services_healthy": true,
+    "admin_policy_present_for_all_sources": true,
+    "source_connections": [
+      {"display_name": "source_analytics", "database_type": "postgresql", "health": "healthy", "schema": "success", "tables": 30, "columns": 172},
+      {"display_name": "MySQL Sakila", "database_type": "mysql", "health": "healthy", "schema": "success", "tables": 23, "columns": 132},
+      {"display_name": "MSSQL AdventureWorks", "database_type": "mssql", "health": "healthy", "schema": "success", "tables": 15, "columns": 142}
+    ]
+  },
+  "automated_gates": {
+    "phase_3_backend": "pass: 203 focused tests; one pre-existing async mock warning",
+    "backend_style": "pass: ruff check and format check",
+    "frontend": "pass: 762 tests, lint, typecheck, logical-CSS audit, and build",
+    "locale_and_css": "pass: 306 checks",
+    "icon_audit": "pass: no inline SVG or extra icon library findings",
+    "read_only": "pass: write/create/drop blocked before execution for all three dialects"
+  },
+  "provider_checks": {
+    "live_gemini": {
+      "configured": true,
+      "availability": "upstream_503",
+      "application_response": "sanitized_502_llm_unavailable",
+      "matrix_disposition": "external availability observation; approved deterministic fallback used"
+    },
+    "deterministic_query_submit_pipeline": {
+      "status": "pass",
+      "path": "real QueryCraft /api/v1/query/submit with evaluator, quota, session/attempt persistence, and real source adapters",
+      "results": [
+        {"display_name": "source_analytics", "database_type": "postgresql", "sql": "SELECT COUNT(*) AS actor_count FROM actor", "count": 200},
+        {"display_name": "MySQL Sakila", "database_type": "mysql", "sql": "SELECT COUNT(*) AS actor_count FROM actor", "count": 200},
+        {"display_name": "MSSQL AdventureWorks", "database_type": "mssql", "sql": "SELECT COUNT(*) AS customer_count FROM SalesLT.Customer", "count": 847}
+      ],
+      "response_cards": {"friendly_display_name_and_type": true, "raw_uuid_fallback": false}
+    }
+  },
+  "browser_api_evidence": {
+    "admin_connections": {"three_sources_visible": true, "all_healthy_and_introspected": true, "credential_values_returned": false},
+    "temporary_lifecycle": {
+      "healthy_postgresql_mysql_mssql": {"create": true, "test": true, "introspect": true, "update": true, "delete": true},
+      "unhealthy": {"saved": true, "failed_status": true, "retry_sanitized": true, "refresh_error_sanitized": true, "selector_available": false},
+      "cleanup": {"temporary_connections": 0, "temporary_schema_entries": 0, "admin_and_selector_clear": true}
+    },
+    "failure_paths": {"categorized_auth_network_api": true, "english_localized": true, "arabic_localized": true, "raw_driver_or_stack_visible": false},
+    "selector_and_sessions": {"all_usable_sources_listed": true, "rtl_interaction": true, "one_active_auto_selection": true, "disable_enable_and_rejected_submission": true, "session_connection_persists_after_reload": true},
+    "security": {"raw_credentials": false, "provider_keys": false, "hosts": false, "cookies_or_tokens": false, "stack_traces": false, "untranslated_keys": false},
+    "browser_state_after_run": {"signed_out": true, "storage_cleared": true, "password_field_empty": true}
+  },
+  "historical_remediation": {
+    "P3-FR-061": "PR #200 remediated the stale referenced-delete behavior; current eligible deletes returned 204 and removed schema records.",
+    "P3-FR-086": "The stale browser-smoke failure was replaced by current Chrome DevTools lifecycle and deterministic-pipeline evidence.",
+    "P3-FR-084": "PR #206 added localized Admin connection disable/enable/delete success messages and coverage."
+  },
+  "matrix_rows": [
+    {"id": "P3-FR-059", "status": "Pass", "evidence": "browser three-dialect healthy lifecycle"},
+    {"id": "P3-FR-060", "status": "Pass", "evidence": "browser empty edit password and serialization"},
+    {"id": "P3-FR-061", "status": "Pass", "evidence": "browser delete and zero schema cleanup"},
+    {"id": "P3-FR-062", "status": "Pass", "evidence": "credential absence checks"},
+    {"id": "P3-FR-063", "status": "Pass", "evidence": "healthy and categorized failure checks"},
+    {"id": "P3-FR-064", "status": "Pass", "evidence": "persisted status API/UI"},
+    {"id": "P3-FR-065", "status": "Pass", "evidence": "three real introspections"},
+    {"id": "P3-FR-066", "status": "Pass", "evidence": "schema refresh"},
+    {"id": "P3-FR-067", "status": "Pass", "evidence": "schema summary"},
+    {"id": "P3-FR-068", "status": "Pass", "evidence": "failed schema status and retry"},
+    {"id": "P3-FR-069", "status": "Pass", "evidence": "deterministic real query-submit pipeline"},
+    {"id": "P3-FR-070", "status": "Pass", "evidence": "prompt/dialect gate"},
+    {"id": "P3-FR-071", "status": "Pass", "evidence": "dialect evaluator gate"},
+    {"id": "P3-FR-072", "status": "Pass", "evidence": "read-only gate"},
+    {"id": "P3-FR-073", "status": "Pass", "evidence": "browser selector"},
+    {"id": "P3-FR-074", "status": "Pass", "evidence": "selector names/types"},
+    {"id": "P3-FR-075", "status": "Pass", "evidence": "browser submit-switch-submit"},
+    {"id": "P3-FR-076", "status": "Pass", "evidence": "browser response card metadata"},
+    {"id": "P3-FR-077", "status": "Pass", "evidence": "no/all-unhealthy automated coverage"},
+    {"id": "P3-FR-078", "status": "Pass", "evidence": "EN/AR sanitized failure paths"},
+    {"id": "P3-FR-079", "status": "Pass", "evidence": "inline query error coverage"},
+    {"id": "P3-FR-080", "status": "Pass", "evidence": "Admin Connections browser smoke"},
+    {"id": "P3-FR-081", "status": "Pass", "evidence": "RTL selector browser check"},
+    {"id": "P3-FR-082", "status": "Pass", "evidence": "local admin browser auth"},
+    {"id": "P3-FR-083", "status": "Pass", "evidence": "current icon audit"},
+    {"id": "P3-FR-084", "status": "Pass", "evidence": "current locale audit"},
+    {"id": "P3-FR-085", "status": "Pass", "evidence": "current logical CSS audit"},
+    {"id": "P3-FR-086", "status": "Pass", "evidence": "current Chrome DevTools smoke"},
+    {"id": "P3-FR-087", "status": "Pass", "evidence": "migration gate"},
+    {"id": "P3-FR-088", "status": "Pass", "evidence": "one-active browser auto-selection"},
+    {"id": "P3-FR-089", "status": "Pass", "evidence": "browser disable/enable/rejection"},
+    {"id": "P3-FR-090", "status": "Pass", "evidence": "independent lifecycle/health checks"},
+    {"id": "P3-FR-091", "status": "Pass", "evidence": "migration backfill gate"},
+    {"id": "P3-FR-092", "status": "Pass", "evidence": "retry/refusal gate"},
+    {"id": "P3-FR-093", "status": "Pass", "evidence": "browser healthy/unhealthy save and cleanup"},
+    {"id": "P3-FR-094", "status": "Pass", "evidence": "browser session persistence"}
+  ]
+}
