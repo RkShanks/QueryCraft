@@ -82,6 +82,7 @@ export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
   }
 
   return (
+    <div aria-live="polite">
     <button
       type="button"
       onClick={handleTest}
@@ -111,5 +112,6 @@ export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
         t('admin.connections.test')
       )}
     </button>
+    </div>
   );
 };

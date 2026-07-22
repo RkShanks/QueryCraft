@@ -100,7 +100,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
   }
 
   return (
-    <div className="relative text-start">
+    <div className="relative text-start" aria-live="polite">
       <button
         type="button"
         onClick={handleRefresh}
