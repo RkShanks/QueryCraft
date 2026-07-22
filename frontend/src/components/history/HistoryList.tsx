@@ -128,7 +128,10 @@ export const HistoryList: React.FC<HistoryListProps> = ({
 
               {/* Generated SQL Monospace Pill */}
               <div className="w-full">
-                <code className="text-[11px] font-mono bg-obsidian-950/70 text-obsidian-300 px-2 py-1.5 rounded-lg border border-obsidian-800/40 block truncate max-w-full font-light">
+                <code
+                  className="text-[11px] font-mono bg-obsidian-950/70 text-obsidian-300 px-2 py-1.5 rounded-lg border border-obsidian-800/40 block truncate max-w-full font-light"
+                  dir="ltr"
+                >
                   {item.generated_sql}
                 </code>
               </div>

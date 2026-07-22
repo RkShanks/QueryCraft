@@ -96,6 +96,11 @@ describe('HistoryList', () => {
     expect(screen.getByText('SELECT ... FROM payment')).toBeInTheDocument();
   });
 
+  it('keeps compact history SQL previews LTR in Arabic chrome (P4-FR-100)', () => {
+    setup(sample);
+    expect(screen.getByText('SELECT COUNT(*) FROM customer')).toHaveAttribute('dir', 'ltr');
+  });
+
   it('row is keyboard accessible (tabIndex + Enter/Space)', () => {
     const onSelect = vi.fn();
     setup(sample, { onSelect });
