@@ -65,9 +65,11 @@ describe('AssistantResponseCard', () => {
     expect(screen.getByTestId('action-delete-result')).toBeInTheDocument();
   });
 
-  it('does not render action bar when attemptId is missing', () => {
+  it('keeps copy available and omits regeneration when attemptId is missing', () => {
     render(<AssistantResponseCard sql="SELECT 1;" />);
-    expect(screen.queryByTestId('code-block-action-bar')).not.toBeInTheDocument();
+    expect(screen.getByTestId('code-block-action-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('action-copy')).toBeInTheDocument();
+    expect(screen.queryByTestId('action-regenerate')).not.toBeInTheDocument();
   });
 
   it('renders result table when result is provided', () => {
