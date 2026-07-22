@@ -57,6 +57,9 @@ describe('Wave 14 i18n key coverage', () => {
     'admin.connections.addError',
     'admin.connections.updateSuccess',
     'admin.connections.updateError',
+    'admin.connections.disableSuccess',
+    'admin.connections.enableSuccess',
+    'admin.connections.deleteSuccess',
     // Wave 17.1 SSO / Admin SSO keys
     'common.or',
     'auth.signIn.sso.button',
