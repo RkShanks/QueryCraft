@@ -24,31 +24,15 @@
   overflow: auto;
 }
 
-/* Responsive: collapse sidebar on small screens */
 @media (width <= 768px) {
   .app-shell-sidebar {
     position: fixed;
     inset-block: 0;
     inset-inline-start: 0;
     z-index: 50;
-    transform: translateX(0);
-    transition: transform 0.3s ease, width 0.3s ease;
   }
 
-  .app-shell[dir="rtl"] .app-shell-sidebar {
-    transform: translateX(0);
-  }
-
-  .app-shell.sidebar-collapsed .app-shell-sidebar {
-    width: 280px;
-    transform: translateX(-100%);
-  }
-
-  .app-shell[dir="rtl"].sidebar-collapsed .app-shell-sidebar {
-    transform: translateX(100%);
-  }
-
-  .app-shell-workspace {
-    margin-inline-start: 0;
+  .app-shell.sidebar-collapsed .app-shell-workspace {
+    margin-inline-start: 64px;
   }
 }

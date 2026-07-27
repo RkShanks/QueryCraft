@@ -108,4 +108,33 @@ test.describe('RTL visual snapshots', () => {
     await page.getByTestId('session-item-session-1').click();
     await expect(page.getByTestId('assistant-response-card')).toBeVisible({ timeout: 10_000 });
   });
+
+  for (const viewportWidth of [375, 768]) {
+    test(`mobile RTL sidebar toggle remains reachable at ${viewportWidth}px`, async ({ page }) => {
+      await page.setViewportSize({ width: viewportWidth, height: 860 });
+      await page.goto('/?lng=ar');
+
+      const shell = page.getByTestId('app-shell');
+      const toggle = page.getByTestId('sidebar-toggle');
+      const sidebar = page.getByTestId('app-shell-sidebar');
+      await expect(toggle).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+      await expect(shell).toHaveAttribute('dir', 'rtl');
+
+      await toggle.click();
+      await expect(shell).toHaveClass(/sidebar-collapsed/);
+      await expect(sidebar).toHaveCSS('width', '64px');
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+      const bounds = await toggle.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.x).toBeLessThan(viewportWidth);
+      expect(bounds!.x + bounds!.width).toBeGreaterThan(0);
+
+      await toggle.click();
+      await expect(shell).not.toHaveClass(/sidebar-collapsed/);
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    });
+  }
 });
