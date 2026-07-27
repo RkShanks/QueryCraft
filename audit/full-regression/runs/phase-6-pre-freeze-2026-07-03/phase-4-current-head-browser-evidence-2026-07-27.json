@@ -1,0 +1,66 @@
+{
+  "run_date": "2026-07-27",
+  "scope": "Phase 4 Arabic RTL verification and polish only",
+  "tested_product": {
+    "branch": "main",
+    "head_sha": "76a918f18239631668f7c60ec05674f40cea4622"
+  },
+  "matrix_rows": [
+    {"id": "P4-FR-095", "status": "Pass", "evidence": "Current Arabic browser smoke across sign-in, workspace, selector, History, Admin Connections, and form; i18n gate passed.", "notes": "No unintended English fallback outside allowed technical names and SQL."},
+    {"id": "P4-FR-096", "status": "Pass", "evidence": "Locale parity gate passed: 308 tests.", "notes": "EN and AR key sets match."},
+    {"id": "P4-FR-097", "status": "Pass", "evidence": "Chrome DevTools confirmed html lang=ar dir=rtl and app shell dir=rtl.", "notes": "Desktop and mobile shell checks passed."},
+    {"id": "P4-FR-098", "status": "Pass", "evidence": "Current no-physical gate passed: 4 tests.", "notes": "Final fixes use logical CSS properties."},
+    {"id": "P4-FR-099", "status": "Pass", "evidence": "Current Chrome DevTools desktop checks plus PR #213 viewport regression.", "notes": "RTL sidebar, dropdown, and Admin form were usable without clipping."},
+    {"id": "P4-FR-100", "status": "Pass", "evidence": "Current History detail SQL blocks computed LTR in RTL chrome; response-card evidence retained.", "notes": "No document overflow."},
+    {"id": "P4-FR-101", "status": "Pass", "evidence": "Real QueryCraft Arabic pipeline: PostgreSQL 200, MySQL 200, MSSQL TOP success.", "notes": "Dialect-valid read-only SQL executed."},
+    {"id": "P4-FR-102", "status": "Pass", "evidence": "Arabic controlled multi-statement refusal and PR #211 evaluator coverage.", "notes": "Valid TOP accepted; two statements rejected."},
+    {"id": "P4-FR-103", "status": "Pass", "evidence": "Arabic controlled refusal rendered for sanitized HTTP 422.", "notes": "No result or accepted history entry."},
+    {"id": "P4-FR-104", "status": "Pass", "evidence": "Arabic form-validation browser check and validation/i18n gates.", "notes": "Feedback localized and sanitized."},
+    {"id": "P4-FR-105", "status": "Pass", "evidence": "Forced failure checks and current browser/API leakage sweep.", "notes": "No internal or sensitive data rendered."},
+    {"id": "P4-FR-106", "status": "Pass", "evidence": "Arabic connection health/introspection/error coverage and message-key gates.", "notes": "Connection-state feedback localized."},
+    {"id": "P4-FR-107", "status": "Pass", "evidence": "Current DOM accessibility-name check and Arabic Admin form inspection.", "notes": "All sampled visible controls had names."},
+    {"id": "P4-FR-108", "status": "Pass", "evidence": "Real connection test status occurred within aria-live=polite; PR #209 regression coverage.", "notes": "Arabic changed status was announced."},
+    {"id": "P4-FR-109", "status": "Pass", "evidence": "Current real keyboard Tab traversal through sidebar and workspace controls.", "notes": "No focus trap or skipped critical navigation control."},
+    {"id": "P4-FR-110", "status": "Pass", "evidence": "Real Arabic app at 375px and 768px.", "notes": "No horizontal document overflow; critical controls visible."},
+    {"id": "P4-FR-111", "status": "Pass", "evidence": "Real selector, prompt, Admin form, and History interactions at 375px and 768px.", "notes": "Sidebar cycle preserved access."},
+    {"id": "P4-FR-112", "status": "Pass", "evidence": "Real source-adapter results: PostgreSQL 200, MySQL 200, MSSQL 847.", "notes": "All three required dialect fixtures executed."},
+    {"id": "P4-FR-113", "status": "Pass", "evidence": "Current Arabic History list/detail inspection.", "notes": "Friendly connection metadata and type badge; no UUID."},
+    {"id": "P4-FR-114", "status": "Pass", "evidence": "Current desktop/mobile DOM scans and privacy/message/audit automated gates.", "notes": "No raw key or sensitive/internal data recorded."}
+  ],
+  "browser": {
+    "desktop_arabic_rtl": "Pass",
+    "mobile_375_arabic_rtl": "Pass",
+    "mobile_768_arabic_rtl": "Pass",
+    "keyboard_tab_order": "Pass",
+    "polite_live_status": "Pass",
+    "controlled_multistatement_refusal": "Pass"
+  },
+  "provider_evidence": {
+    "live_gemini": "Real three-dialect execution evidence retained where available.",
+    "deterministic_provider": "Used only for the controlled harmless multi-statement evaluator refusal through the real submit pipeline."
+  },
+  "merged_fixes": [
+    "PR #209 aria-live status coverage",
+    "PR #211 dialect-aware single-statement evaluator",
+    "PR #212 mobile RTL sidebar toggle",
+    "PR #213 source selector viewport placement"
+  ],
+  "privacy": {
+    "credentials_recorded": false,
+    "cookies_or_tokens_recorded": false,
+    "request_bodies_recorded": false,
+    "traces_recorded": false,
+    "screenshots_recorded": false,
+    "raw_controlled_sql_recorded": false
+  },
+  "counts": {
+    "Pass": 20,
+    "Fail": 0,
+    "Partial": 0,
+    "Setup-dependent": 0,
+    "Not run": 0,
+    "Deferred": 0
+  },
+  "phase_4_complete": true,
+  "phase_5_unblocked": true
+}
