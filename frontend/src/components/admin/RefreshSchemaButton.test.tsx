@@ -59,6 +59,8 @@ describe('RefreshSchemaButton', () => {
     const button = screen.getByRole('button', { name: /Refreshing.../i });
     expect(button).toBeInTheDocument();
     expect(button).toBeDisabled();
+    expect(button.parentElement).toHaveAttribute('aria-live', 'polite');
+    expect(button.parentElement).toHaveTextContent(/Refreshing.../i);
   });
 
   it('success state renders localized success message with counts', () => {

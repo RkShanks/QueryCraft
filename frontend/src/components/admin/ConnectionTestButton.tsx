@@ -82,34 +82,36 @@ export const ConnectionTestButton: React.FC<ConnectionTestButtonProps> = ({
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleTest}
-      disabled={disabled || testMutation.isPending}
-      className={buttonClasses}
-    >
-      {testMutation.isPending ? (
-        <>
-          <Loader2 className="w-4 h-4 animate-spin me-2" />
-          {t('admin.connections.testing')}
-        </>
-      ) : isHealthyResult && testMutation.data ? (
-        <>
-          <CheckCircle2 className="w-4 h-4 shrink-0 me-2" />
-          <span>
-            {t('admin.connections.testSuccess', {
-              latency: testMutation.data.latency_ms ?? 0,
-            })}
-          </span>
-        </>
-      ) : isErrorState && errorMessage ? (
-        <>
-          <AlertCircle className="w-4 h-4 shrink-0 me-2" />
-          <span className="text-xs text-start">{errorMessage}</span>
-        </>
-      ) : (
-        t('admin.connections.test')
-      )}
-    </button>
+    <div aria-live="polite">
+      <button
+        type="button"
+        onClick={handleTest}
+        disabled={disabled || testMutation.isPending}
+        className={buttonClasses}
+      >
+        {testMutation.isPending ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin me-2" />
+            {t('admin.connections.testing')}
+          </>
+        ) : isHealthyResult && testMutation.data ? (
+          <>
+            <CheckCircle2 className="w-4 h-4 shrink-0 me-2" />
+            <span>
+              {t('admin.connections.testSuccess', {
+                latency: testMutation.data.latency_ms ?? 0,
+              })}
+            </span>
+          </>
+        ) : isErrorState && errorMessage ? (
+          <>
+            <AlertCircle className="w-4 h-4 shrink-0 me-2" />
+            <span className="text-xs text-start">{errorMessage}</span>
+          </>
+        ) : (
+          t('admin.connections.test')
+        )}
+      </button>
+    </div>
   );
 };

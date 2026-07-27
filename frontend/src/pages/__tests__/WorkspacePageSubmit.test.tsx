@@ -40,7 +40,10 @@ describe('WorkspacePage first-submit UX', () => {
     await typeAndSubmit('How many actors?');
 
     await waitFor(() => {
-      expect(screen.getByTestId('assistant-loading')).toBeInTheDocument();
+      const loading = screen.getByTestId('assistant-loading');
+      expect(loading).toHaveAttribute('role', 'status');
+      expect(loading).toHaveAttribute('aria-live', 'polite');
+      expect(loading).toHaveTextContent('Analyzing your question...');
     });
 
     expect(screen.getByText('How many actors?')).toBeInTheDocument();
