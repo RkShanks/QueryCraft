@@ -16,6 +16,7 @@ from app.core.encryption import encrypt
 from app.db.models.enums import SsoProtocol
 from app.db.models.sso_provider import SsoProvider
 from app.services.sso_service import SsoService
+from tests.e2e_support.mock_identity_provider import MockIdentityProvider
 
 
 class TestSsoServiceSamlInitiation:
@@ -80,6 +81,30 @@ class TestSsoServiceSamlInitiation:
             rebuilt_xml = sso_service._build_saml_authn_request(saml_provider, "p5a-request")
 
         assert rebuilt_xml == authn_request_xml
+
+    def test_valid_signed_assertion_extracts_issuer_with_supported_parser_api(self, sso_service):
+        """Regression: callback must not call nonexistent OneLogin Auth methods."""
+        sso_service._settings.BASE_URL = "http://querycraft.localhost:19080"
+        sso_service._settings.PLATFORM_ENCRYPTION_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+        mock_provider = MockIdentityProvider(
+            issuer="http://idp.localhost:19090",
+            client_id="p5a-client",
+            backend_url="http://querycraft.localhost:19080",
+        )
+        saml_provider = SsoProvider(
+            protocol=SsoProtocol.SAML,
+            display_name="Test SAML",
+            saml_entity_id="urn:p5a-querycraft-sp",
+            saml_metadata_url="http://idp.localhost:19090/metadata",
+            group_claim_name="groups",
+            encrypted_saml_certificate=encrypt(
+                mock_provider.certificate_pem(), sso_service._settings.PLATFORM_ENCRYPTION_KEY
+            ),
+        )
+
+        attrs = sso_service._parse_saml_assertion(saml_provider, mock_provider.saml_response("request-1"))
+
+        assert attrs["issuer"] == mock_provider.issuer
 
     @pytest.mark.asyncio
     async def test_initiate_saml_generates_request_id(self, sso_service, saml_provider, mock_redis):
