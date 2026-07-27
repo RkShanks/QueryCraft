@@ -30,6 +30,7 @@ from urllib.parse import urlencode
 import httpx
 from redis.asyncio import Redis
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -807,28 +808,34 @@ class SsoService:
             if username_result.scalar_one_or_none() is not None:
                 raise SsoIdentityCollisionError()
 
-            # Create new user
-            user = User(
-                username=username,
-                display_name=username,
-                password_hash=None,
-                role_id=role.id,
-                auth_provider=str(auth_provider),
-            )
-            self._db.add(user)
-            await self._db.flush()
-            await self._db.refresh(user)
+            savepoint = await self._db.begin_nested()
+            try:
+                user = User(
+                    username=username,
+                    display_name=username,
+                    password_hash=None,
+                    role_id=role.id,
+                    auth_provider=str(auth_provider),
+                )
+                self._db.add(user)
+                await self._db.flush()
 
-            identity = UserIdentity(
-                user_id=user.id,
-                provider=str(auth_provider),
-                subject_id=subject_id,
-                email=email,
-                sso_groups=groups,
-                last_login_at=datetime.now(UTC),
-            )
-            self._db.add(identity)
-            await self._db.flush()
+                identity = UserIdentity(
+                    user_id=user.id,
+                    provider=str(auth_provider),
+                    subject_id=subject_id,
+                    email=email,
+                    sso_groups=groups,
+                    last_login_at=datetime.now(UTC),
+                )
+                self._db.add(identity)
+                await self._db.flush()
+            except IntegrityError as exc:
+                await savepoint.rollback()
+                raise SsoIdentityCollisionError() from exc
+            else:
+                await savepoint.commit()
+            await self._db.refresh(user)
         else:
             # Update existing identity
             identity.sso_groups = groups
