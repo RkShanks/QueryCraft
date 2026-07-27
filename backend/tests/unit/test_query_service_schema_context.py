@@ -64,6 +64,33 @@ class StubRepo:
         return m
 
 
+class TopSqlStubLLM:
+    async def generate_sql(self, **kwargs):
+        return "SELECT TOP 5 * FROM SalesLT.Customer"
+
+
+class MssqlResultAdapter:
+    async def execute(self, sql, params):
+        return MagicMock(
+            columns=[{"name": "CustomerID", "type": "int"}],
+            rows=[[1]],
+        )
+
+
+class FakeRedis:
+    async def set(self, key, value, nx=False, ex=None):
+        return True
+
+    async def get(self, key):
+        return None
+
+    async def delete(self, key):
+        pass
+
+    async def eval(self, script, num_keys, *args):
+        return 1
+
+
 def _make_db_session():
     """AsyncMock db_session that routes execute() by SQL content."""
     db = AsyncMock()
@@ -87,19 +114,6 @@ def _make_db_session():
 @pytest.mark.asyncio
 async def test_submit_question_passes_schema_context():
     llm = StubLLM()
-
-    class FakeRedis:
-        async def set(self, key, value, nx=False, ex=None):
-            return True
-
-        async def get(self, key):
-            return None
-
-        async def delete(self, key):
-            pass
-
-        async def eval(self, script, num_keys, *args):
-            return 1
 
     session_repo = MagicMock()
     session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
@@ -135,6 +149,56 @@ async def test_submit_question_passes_schema_context():
     )
     assert len(llm.calls) == 1
     assert llm.calls[0]["schema_context"] == "TABLE customers (id INT, name TEXT)"
+
+
+@pytest.mark.asyncio
+async def test_tsql_top_query_reaches_adapter_after_evaluator_passes():
+    """A valid T-SQL TOP response produces results through the query path."""
+    from app.evaluator.pipeline import Evaluator
+    from app.evaluator.rules.dialect_validation import DialectValidationRule
+    from app.evaluator.rules.empty_sql import EmptySqlRule
+    from app.evaluator.rules.read_only import ReadOnlyRule
+    from app.evaluator.rules.schema_validation import SchemaValidationRule
+    from app.evaluator.rules.single_statement import SingleStatementRule
+    from app.evaluator.rules.unsafe_pattern import UnsafePatternRule
+    from app.evaluator.schema_context import Column, SchemaContext, Table
+
+    schema_context = SchemaContext(
+        tables=[Table(name="SalesLT.Customer", columns=[Column(name="CustomerID", data_type="int")])]
+    )
+    session_repo = MagicMock()
+    session_repo.create = AsyncMock(return_value=MagicMock(id="550e8400-e29b-41d4-a716-446655440001"))
+    service = QueryService(
+        accepted_query_repository=StubRepo(),
+        session_repository=session_repo,
+        db_session=_make_db_session(),
+        redis=FakeRedis(),
+        llm=TopSqlStubLLM(),
+        evaluator=Evaluator(
+            rules=[
+                EmptySqlRule(),
+                DialectValidationRule(dialect="tsql"),
+                ReadOnlyRule(dialect="tsql"),
+                SingleStatementRule(dialect="tsql"),
+                SchemaValidationRule(schema_context, dialect="tsql"),
+                UnsafePatternRule(dialect="tsql"),
+            ]
+        ),
+        source_db_executor=StubExecutor(),
+        source_db_adapter=MssqlResultAdapter(),
+        schema_context=schema_context,
+        target_dialect="tsql",
+    )
+
+    result = await service.submit_question(
+        http_session_id="http-session-1",
+        user_id="550e8400-e29b-41d4-a716-446655440000",
+        question="Show the first customers",
+    )
+
+    assert result.kind == "result"
+    assert result.generated_sql == "SELECT TOP 5 * FROM SalesLT.Customer"
+    assert result.row_count == 1
 
 
 @pytest.mark.asyncio

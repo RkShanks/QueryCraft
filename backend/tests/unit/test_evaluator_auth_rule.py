@@ -522,7 +522,7 @@ class TestPipelineRegistration:
         evaluator = Evaluator(
             rules=[
                 ReadOnlyRule(dialect="postgres"),
-                SingleStatementRule(),
+                SingleStatementRule(dialect="postgres"),
                 SchemaValidationRule(),
                 RoleAuthorizationRule(allowed_tables=_POLICY_ORDERS),
             ]
@@ -552,7 +552,7 @@ class TestPipelineRegistration:
         pipeline = EvaluatorPipeline(
             rules=[
                 ReadOnlyRule(dialect="postgres"),
-                SingleStatementRule(),
+                SingleStatementRule(dialect="postgres"),
             ]
         )
         pipeline.add_rule(RoleAuthorizationRule(allowed_tables=_POLICY_ORDERS))
@@ -566,7 +566,7 @@ class TestPipelineRegistration:
         evaluator = Evaluator(
             rules=[
                 ReadOnlyRule(dialect="postgres"),
-                SingleStatementRule(),
+                SingleStatementRule(dialect="postgres"),
                 SchemaValidationRule(),
                 RoleAuthorizationRule(allowed_tables=_POLICY_ORDERS),
             ]
