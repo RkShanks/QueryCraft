@@ -52,6 +52,10 @@ class SsoValidationError(Exception):
         super().__init__(message)
 
 
+class SsoIdentityCollisionError(SsoValidationError):
+    """Internal classification for an SSO username ownership collision."""
+
+
 class SsoService:
     """Orchestrates OIDC and SAML SSO flows with role resolution."""
 
@@ -129,6 +133,18 @@ class SsoService:
             else:
                 safe[k] = v
         return safe
+
+    async def _audit_identity_collision(self) -> None:
+        await AuditService.log(
+            self._db,
+            action=AuditActionType.AUTH_LOGIN_FAILURE,
+            resource_type="sso_callback",
+            outcome="failure",
+            context=self._safe_audit_context(
+                error_code="sso_validation_failed",
+                reason="identity_collision",
+            ),
+        )
 
     async def process_oidc_callback(
         self,
@@ -219,6 +235,9 @@ class SsoService:
                 groups=groups,
                 auth_provider=AuthProvider.OIDC,
             )
+        except SsoIdentityCollisionError:
+            await self._audit_identity_collision()
+            raise
         except SsoValidationError:
             await AuditService.log(
                 self._db,
@@ -578,6 +597,9 @@ class SsoService:
                 groups=groups,
                 auth_provider=AuthProvider.SAML,
             )
+        except SsoIdentityCollisionError:
+            await self._audit_identity_collision()
+            raise
         except SsoValidationError:
             await AuditService.log(
                 self._db,
@@ -783,7 +805,7 @@ class SsoService:
             username = email or subject_id
             username_result = await self._db.execute(select(User.id).where(User.username == username))
             if username_result.scalar_one_or_none() is not None:
-                raise SsoValidationError()
+                raise SsoIdentityCollisionError()
 
             # Create new user
             user = User(
