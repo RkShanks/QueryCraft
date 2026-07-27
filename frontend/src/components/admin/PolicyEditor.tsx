@@ -561,17 +561,24 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
                               </select>
 
                               {cm.table && (
-                                <select
-                                  value={cm.columns[0] || ''}
-                                  data-testid={`mask-column-select-${cm.table}`}
-                                  onChange={e => handleToggleColumnMask(idx, e.target.value)}
-                                  className="flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-sm text-white"
-                                >
-                                  <option value="">-- {t('admin.roles.form.columns')} --</option>
+                                <fieldset className="flex-1 flex flex-wrap gap-2">
+                                  <legend className="sr-only">{t('admin.roles.form.maskColumns')}</legend>
                                   {(activePolicy.allowed_tables.find(t => t.table === cm.table)?.columns || []).map(col => (
-                                    <option key={col} value={col}>{col}</option>
+                                    <label
+                                      key={col}
+                                      className="inline-flex items-center gap-1.5 rounded border border-gray-800 bg-gray-950 px-2 py-1 text-xs text-gray-300 cursor-pointer"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={cm.columns.includes(col)}
+                                        data-testid={`mask-column-checkbox-${cm.table}-${col}`}
+                                        onChange={() => handleToggleColumnMask(idx, col)}
+                                        className="accent-neon-cyan rounded"
+                                      />
+                                      <span>{col}</span>
+                                    </label>
                                   ))}
-                                </select>
+                                </fieldset>
                               )}
 
                               <button

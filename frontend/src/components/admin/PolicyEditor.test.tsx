@@ -214,12 +214,11 @@ describe('PolicyEditor', () => {
 
     fireEvent.change(maskTableSelect, { target: { value: 'users' } });
 
-    const maskColumnSelect = screen.getByTestId('mask-column-select-users') as HTMLSelectElement;
-    expect(maskColumnSelect).toBeInTheDocument();
-    expect(maskColumnSelect.value).toBe('');
+    const maskColumnCheckbox = screen.getByTestId('mask-column-checkbox-users-email') as HTMLInputElement;
+    expect(maskColumnCheckbox).not.toBeChecked();
 
-    fireEvent.change(maskColumnSelect, { target: { value: 'email' } });
-    expect(maskColumnSelect.value).toBe('email');
+    fireEvent.click(maskColumnCheckbox);
+    expect(maskColumnCheckbox).toBeChecked();
 
     const saveButton = screen.getByRole('button', { name: /Save/i });
     fireEvent.click(saveButton);
@@ -242,5 +241,38 @@ describe('PolicyEditor', () => {
         ],
       },
     ]);
+  });
+
+  it('shows and preserves every column in an existing multi-column mask', () => {
+    const policies = [
+      {
+        connection_id: 'conn-1',
+        allowed_tables: [
+          {
+            table: 'users',
+            columns: ['id', 'name', 'email'],
+          },
+        ],
+        row_filters: [],
+        column_masks: [
+          {
+            table: 'users',
+            columns: ['name', 'email'],
+          },
+        ],
+      },
+    ];
+
+    render(<PolicyEditor policies={policies} onChange={mockOnChange} />);
+    fireEvent.click(screen.getByTitle('Edit'));
+
+    const nameMask = screen.getByTestId('mask-column-checkbox-users-name') as HTMLInputElement;
+    const emailMask = screen.getByTestId('mask-column-checkbox-users-email') as HTMLInputElement;
+    expect(nameMask).toBeChecked();
+    expect(emailMask).toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: /Save/i }));
+
+    expect(mockOnChange).toHaveBeenCalledWith(policies);
   });
 });
