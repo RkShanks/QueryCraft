@@ -4,11 +4,15 @@ Tests AuthnRequest generation, state storage in Redis, and redirect URL.
 All external calls mocked — pure unit tests.
 """
 
+import base64
 import json
+import zlib
 from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.parse import quote
 
 import pytest
 
+from app.core.encryption import encrypt
 from app.db.models.enums import SsoProtocol
 from app.db.models.sso_provider import SsoProvider
 from app.services.sso_service import SsoService
@@ -53,6 +57,29 @@ class TestSsoServiceSamlInitiation:
             mock_settings.return_value = settings
             service = SsoService(mock_db_session, mock_redis)
             return service
+
+    def test_raw_deflate_authn_request_is_decoded_for_redirect_rebuild(self, sso_service):
+        """Regression: python3-saml emits raw-DEFLATE data for Redirect binding."""
+        sso_service._settings.BASE_URL = "http://querycraft.localhost:15173"
+        sso_service._settings.PLATFORM_ENCRYPTION_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+        authn_request_xml = "<AuthnRequest ID='p5a-request'/>"
+        compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+        raw_deflate = compressor.compress(authn_request_xml.encode()) + compressor.flush()
+        encoded_request = quote(base64.b64encode(raw_deflate).decode())
+        mock_auth = MagicMock()
+        mock_auth.login.return_value = f"https://idp.example.com/sso?SAMLRequest={encoded_request}"
+        saml_provider = SsoProvider(
+            protocol=SsoProtocol.SAML,
+            display_name="Test SAML",
+            saml_entity_id="https://app.example.com/sp",
+            saml_metadata_url="https://idp.example.com/metadata",
+            encrypted_saml_certificate=encrypt("test-certificate", sso_service._settings.PLATFORM_ENCRYPTION_KEY),
+        )
+
+        with patch("onelogin.saml2.auth.OneLogin_Saml2_Auth", return_value=mock_auth):
+            rebuilt_xml = sso_service._build_saml_authn_request(saml_provider, "p5a-request")
+
+        assert rebuilt_xml == authn_request_xml
 
     @pytest.mark.asyncio
     async def test_initiate_saml_generates_request_id(self, sso_service, saml_provider, mock_redis):

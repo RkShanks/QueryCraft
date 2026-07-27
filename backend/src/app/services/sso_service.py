@@ -23,6 +23,7 @@ import json
 import os
 import secrets
 import time
+import zlib
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 
@@ -366,9 +367,7 @@ class SsoService:
         stored = json.dumps({"provider_id": str(provider.id)})
         await self._redis.set(f"sso:saml:request:{request_id}", stored, ex=ttl)
 
-        encoded_request = base64.b64encode(__import__("zlib").compress(authn_request_xml.encode("utf-8"))).decode(
-            "utf-8"
-        )
+        encoded_request = base64.b64encode(zlib.compress(authn_request_xml.encode("utf-8"))).decode("utf-8")
         params = {
             "SAMLRequest": encoded_request,
             "RelayState": request_id,
@@ -437,7 +436,7 @@ class SsoService:
             return saml_request
         # Decode and return the XML
         compressed = base64.b64decode(encoded_request)
-        return __import__("zlib").decompress(compressed).decode("utf-8")
+        return zlib.decompress(compressed, -zlib.MAX_WBITS).decode("utf-8")
 
     def _get_idp_entity_id(self, provider: SsoProvider) -> str:
         """Return IdP entity ID from metadata URL.
