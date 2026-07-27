@@ -780,10 +780,15 @@ class SsoService:
         identity = identity_result.scalar_one_or_none()
 
         if identity is None:
+            username = email or subject_id
+            username_result = await self._db.execute(select(User.id).where(User.username == username))
+            if username_result.scalar_one_or_none() is not None:
+                raise SsoValidationError()
+
             # Create new user
             user = User(
-                username=email or subject_id,
-                display_name=email or subject_id,
+                username=username,
+                display_name=username,
                 password_hash=None,
                 role_id=role.id,
                 auth_provider=str(auth_provider),
