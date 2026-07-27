@@ -2,6 +2,7 @@
 
 from authlib.jose import jwt
 from lxml import etree
+from onelogin.saml2.auth import OneLogin_Saml2_Auth
 
 from tests.e2e_support.mock_identity_provider import MockIdentityProvider
 
@@ -40,3 +41,38 @@ def test_saml_response_contains_a_signed_assertion_bound_to_the_request():
 
     assert response.get("InResponseTo") == "request-1"
     assert response.xpath("//*[local-name()='Assertion']//*[local-name()='Signature']")
+
+
+def test_saml_response_is_accepted_by_the_same_assertion_parser_as_querycraft():
+    """Regression: the mock assertion signature must reference its assertion ID."""
+    provider = _provider()
+    auth = OneLogin_Saml2_Auth(
+        {
+            "https": "off",
+            "http_host": "querycraft.localhost:19080",
+            "script_name": "/api/v1/auth/sso/saml/callback",
+            "server_port": "80",
+            "get_data": {},
+            "post_data": {"SAMLResponse": provider.saml_response("request-1")},
+        },
+        {
+            "sp": {
+                "entityId": "urn:p5a-querycraft-sp",
+                "assertionConsumerService": {
+                    "url": "http://querycraft.localhost:19080/api/v1/auth/sso/saml/callback",
+                    "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
+                },
+            },
+            "idp": {
+                "entityId": provider.issuer,
+                "singleSignOnService": {"url": f"{provider.issuer}/sso"},
+                "x509cert": provider.certificate_pem(),
+            },
+            "security": {"wantAssertionsSigned": True, "wantMessagesSigned": False},
+        },
+    )
+
+    auth.process_response()
+
+    assert auth.get_errors() == []
+    assert auth.is_authenticated()
