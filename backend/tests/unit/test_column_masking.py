@@ -34,6 +34,7 @@ from app.services.policy_enforcement import PolicyEnforcementService
 def _result(
     columns: list[tuple[str, str]] | None = None,
     rows: list[list] | None = None,
+    generated_sql: str = "SELECT id, email, ssn FROM users",
 ) -> QueryResult:
     """Build a ``QueryResult`` with sensible defaults for masking tests."""
     if columns is None:
@@ -47,7 +48,7 @@ def _result(
         attempt_id="att-1",
         session_id="sess-1",
         question="q",
-        generated_sql="SELECT id, email, ssn FROM users",
+        generated_sql=generated_sql,
         columns=[ColumnMeta(name=n, type=t) for n, t in columns],
         rows=rows,
         row_count=len(rows),
@@ -195,6 +196,24 @@ class TestCaseInsensitiveMatching:
         out = PolicyEnforcementService.apply_column_masks(_result(), masks)
         assert all(row[1] == "***" for row in out.rows)
         assert all(row[2] == "***" for row in out.rows)
+
+
+# ──────────────────────────── Projection lineage ────────────────────────────
+
+
+class TestProjectionLineage:
+    def test_phase5b1_alias_projection_never_exposes_masked_value(self) -> None:
+        result = _result(
+            columns=[("contact", "text")],
+            rows=[["private@example.test"]],
+            generated_sql="SELECT email AS contact FROM users",
+        )
+        masks = [{"table": "users", "columns": ["email"]}]
+
+        masked = PolicyEnforcementService.apply_column_masks(result, masks)
+
+        assert masked.rows == [["***"]]
+        assert masked.columns[0].masked is True
 
 
 # ──────────────────────────── Dialect independence ────────────────────────────
