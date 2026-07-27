@@ -137,4 +137,40 @@ test.describe('RTL visual snapshots', () => {
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
   }
+
+  test('RTL source selector keeps every connection option inside the viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 720 });
+    await page.route('**/connections', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          connections: [
+            { id: 'connection-postgres', display_name: 'Analytics', database_type: 'postgresql' },
+            { id: 'connection-mysql', display_name: 'Sakila', database_type: 'mysql' },
+            { id: 'connection-mssql', display_name: 'Sales', database_type: 'mssql' },
+          ],
+        }),
+      });
+    });
+
+    await page.goto('/?lng=ar');
+    const trigger = page.getByTestId('database-selector-trigger');
+    await expect(trigger).toBeVisible({ timeout: 10_000 });
+    await trigger.click();
+
+    const listbox = page.getByTestId('database-selector-list');
+    await expect(listbox).toBeVisible();
+    await expect(listbox).toHaveCSS('direction', 'rtl');
+    const options = page.getByRole('option');
+    await expect(options).toHaveCount(3);
+    const viewportHeight = page.viewportSize()!.height;
+
+    for (const option of await options.all()) {
+      const bounds = await option.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.y).toBeGreaterThanOrEqual(0);
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewportHeight);
+    }
+  });
 });
