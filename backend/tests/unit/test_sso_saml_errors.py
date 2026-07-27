@@ -90,6 +90,12 @@ class TestSsoServiceSamlErrors:
             or "saml" in str(exc_info.value).lower()
         )
 
+    def test_unix_assertion_expiry_is_accepted(self, sso_service, saml_provider, base_attributes):
+        """OneLogin exposes a valid NotOnOrAfter value as a Unix timestamp."""
+        base_attributes["not_on_or_after"] = int((datetime.now(UTC) + timedelta(hours=1)).timestamp())
+
+        sso_service._validate_saml_assertion(base_attributes, saml_provider)
+
     @pytest.mark.asyncio
     async def test_replayed_assertion_rejected(self, sso_service, saml_provider, mock_redis, base_attributes):
         """Reusing same assertion ID is rejected (replay protection)."""

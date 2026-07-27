@@ -722,7 +722,10 @@ class SsoService:
 
         not_on_or_after_str = attrs.get("not_on_or_after")
         if not_on_or_after_str:
-            not_on_or_after = datetime.fromisoformat(not_on_or_after_str.replace("Z", "+00:00"))
+            if isinstance(not_on_or_after_str, (int, float)):
+                not_on_or_after = datetime.fromtimestamp(not_on_or_after_str, tz=UTC)
+            else:
+                not_on_or_after = datetime.fromisoformat(not_on_or_after_str.replace("Z", "+00:00"))
             if not_on_or_after < now - self._clock_skew_tolerance:
                 raise SsoValidationError("SSO assertion expired")
 
