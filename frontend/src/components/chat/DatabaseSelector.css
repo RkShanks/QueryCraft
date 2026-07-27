@@ -39,7 +39,7 @@
 
 .database-selector-list {
   position: absolute;
-  inset-block-start: calc(100% + 0.25rem);
+  inset-block-end: calc(100% + 0.25rem);
   inset-inline-start: 0;
   z-index: 50;
   min-width: 16rem;
