@@ -164,7 +164,7 @@ class TestSsoServiceOidcAuditLogging:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),  # identity lookup
-                    FakeResult([user]),  # user lookup after flush (not used directly)
+                    FakeResult([]),  # username collision lookup
                 ]
             )
 
@@ -228,7 +228,7 @@ class TestSsoServiceOidcAuditLogging:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),
-                    FakeResult([user]),
+                    FakeResult([]),
                 ]
             )
 
@@ -274,7 +274,7 @@ class TestSsoServiceOidcAuditLogging:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),
-                    FakeResult([user]),
+                    FakeResult([]),
                 ]
             )
 
@@ -316,7 +316,7 @@ class TestSsoServiceOidcAuditLogging:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),
-                    FakeResult([user]),
+                    FakeResult([]),
                 ]
             )
 
@@ -402,7 +402,7 @@ class TestSsoServiceSamlAuditLogging:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),
-                    FakeResult([user]),
+                    FakeResult([]),
                 ]
             )
 
@@ -480,7 +480,7 @@ class TestSsoServiceSamlAuditLogging:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),
-                    FakeResult([user]),
+                    FakeResult([]),
                 ]
             )
 
@@ -534,7 +534,7 @@ class TestSsoServiceSamlAuditLogging:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),
-                    FakeResult([user]),
+                    FakeResult([]),
                 ]
             )
 
@@ -584,7 +584,7 @@ class TestSsoServiceSamlAuditLogging:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),
-                    FakeResult([user]),
+                    FakeResult([]),
                 ]
             )
 
@@ -987,7 +987,7 @@ class TestSsoLoginAuditCleanup:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),
-                    FakeResult([user]),
+                    FakeResult([]),
                 ]
             )
 
@@ -1050,7 +1050,7 @@ class TestSsoLoginAuditCleanup:
             mock_db.execute = AsyncMock(
                 side_effect=[
                     FakeResult([]),
-                    FakeResult([user]),
+                    FakeResult([]),
                 ]
             )
 
