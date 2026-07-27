@@ -638,14 +638,15 @@ class PolicyEnforcementService:
     def apply_column_masks(
         result: QueryResult,
         column_masks: list[dict[str, Any]] | None,
+        dialect: str | None = None,
     ) -> QueryResult:
         """Apply role-configured column masks to a post-execution result.
 
         Per ADR-19 / FR-132: replace cell values in configured sensitive
         columns with ``"***"`` and set ``ColumnMeta.masked = True`` for
         the affected columns. Operates on the ``QueryResult`` after the
-        underlying query has executed — dialect-independent (the dialect
-        produced the rows; masking only walks the materialized cells).
+        underlying query has executed. Cell replacement only walks the
+        materialized rows; projection lineage uses the source dialect.
 
         Contract:
         - Returns a NEW ``QueryResult`` instance. The input is never
@@ -658,6 +659,8 @@ class PolicyEnforcementService:
           (new instance, all values preserved, no ``masked`` flag set).
         - Column matching is case-insensitive (postgres lower-folds, MSSQL
           is case-insensitive by default, MySQL depends on collation).
+        - Aliased and nested projections are matched through SQL lineage.
+          ``dialect`` selects the parser for PostgreSQL, MySQL, or T-SQL.
         - A configured column that is NOT present in the result is a
           silent no-op — its value was never returned to the service, so
           no leak is possible. This is intentionally different from the
@@ -730,6 +733,7 @@ class PolicyEnforcementService:
                 result.generated_sql,
                 col.name,
                 masks_by_name,
+                dialect,
             )
             new_columns.append(ColumnMeta(name=col.name, type=col.type, masked=is_masked))
             if is_masked:
@@ -766,15 +770,14 @@ def _projection_references_masked_column(
     sql: str,
     output_column: str,
     masked_columns: dict[str, None],
+    dialect: str | None,
 ) -> bool:
+    lineage_dialect = _SQLGLOT_DIALECT.get(dialect, dialect) if dialect else None
     try:
-        projection_lineage = lineage(output_column, sql)
-    except SqlglotError:
+        projection_lineage = lineage(output_column, sql, dialect=lineage_dialect)
+    except (SqlglotError, ValueError):
         return True
-    return any(
-        node.name.rsplit(".", 1)[-1].lower() in masked_columns
-        for node in projection_lineage.walk()
-    )
+    return any(node.name.rsplit(".", 1)[-1].lower() in masked_columns for node in projection_lineage.walk())
 
 
 def _next_postgres_index(stmt: exp.Expression, sqlglot_dialect: str) -> int:

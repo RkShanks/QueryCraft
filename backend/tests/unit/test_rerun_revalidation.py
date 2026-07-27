@@ -629,7 +629,7 @@ class TestRerunColumnMaskingPreserved:
             allowed_tables=[
                 {"table": "orders", "columns": ["id", "customer_id", "ssn"]},
             ],
-            column_masks=[{"table": "orders", "column": "ssn"}],
+            column_masks=[{"table": "orders", "columns": ["ssn"]}],
         )
 
         async def _provider(uid, cid):
@@ -641,42 +641,12 @@ class TestRerunColumnMaskingPreserved:
             generated_sql="SELECT orders.ssn FROM orders",
         )
 
-        # Capture calls to apply_column_masks; return a sentinel
-        # result so we can assert masking was applied.
-        masking_calls: list[dict] = []
-
-        from app.schemas.query import ColumnMeta, QueryResult
-
-        def _apply_masks(result, masks):
-            masking_calls.append({"result": result, "masks": masks})
-            # Return a real QueryResult with the masked values so
-            # the rerun path returns a model-valid response.
-            return QueryResult(
-                kind="result",
-                attempt_id=result.attempt_id,
-                session_id=result.session_id,
-                question=result.question,
-                generated_sql=result.generated_sql,
-                columns=[
-                    ColumnMeta(name="ssn", type="text", masked=True),
-                ],
-                rows=[["***"]],
-                row_count=1,
-                attempt_number=1,
-                is_last_auto_retry=False,
-                accepted_query_id=result.accepted_query_id,
-            )
-
-        # Row filter stub: no row filters, so apply_row_filters is
-        # not expected to be called.
-        def _apply_filters(sql, row_filters, **kwargs):
-            raise AssertionError("apply_row_filters should not be called when no row_filters are configured")
+        from app.schemas.query import QueryResult
 
         service, deps = _make_rerun_service(
             accepted_query=accepted,
             policy_provider=_provider,
-            apply_row_filters=_apply_filters,
-            apply_column_masks=_apply_masks,
+            executor=_RecordingExecutor(columns=["ssn"], rows=[["private-value"]]),
         )
 
         result = await service.rerun_accepted_query(
@@ -689,13 +659,8 @@ class TestRerunColumnMaskingPreserved:
         assert isinstance(result, QueryResult)
         assert len(deps["executor"].calls) == 1
         assert deps["executor"].calls[0]["sql"] == "SELECT orders.ssn FROM orders"
-        # Masking was applied.
-        assert len(masking_calls) == 1, (
-            f"expected apply_column_masks called once, got {len(masking_calls)}: {masking_calls!r}"
-        )
-        assert masking_calls[0]["masks"] == [{"table": "orders", "column": "ssn"}]
-        # The returned QueryResult is the masked one.
         assert result.rows == [["***"]]
+        assert result.columns[0].masked is True
         # No LLM call.
         if hasattr(service._llm, "generate_sql"):
             service._llm.generate_sql.assert_not_called()

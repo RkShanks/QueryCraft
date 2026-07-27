@@ -1,9 +1,9 @@
 """Tests for T-706: column masking service.
 
 Covers FR-132 / SC-052. ``PolicyEnforcementService.apply_column_masks()``
-operates on a ``QueryResult`` after execution (post-query, dialect-independent)
-and replaces values in configured columns with ``"***"`` while setting
-``ColumnMeta.masked = True`` for the affected columns.
+operates on a ``QueryResult`` after execution and replaces values in configured
+columns with ``"***"`` while setting ``ColumnMeta.masked = True`` for the
+affected columns. Projection lineage is parsed with the source dialect.
 
 Config shape (mirrors ``role_connection_policies.column_masks``):
     [{"table": "orders", "columns": ["ssn", "salary"]}]
@@ -232,8 +232,7 @@ class TestProjectionLineage:
             ),
             (
                 "tsql",
-                "SELECT TOP 1 contact FROM "
-                "(SELECT EmailAddress AS contact FROM SalesLT.Customer) AS scoped_customer",
+                "SELECT TOP 1 contact FROM (SELECT EmailAddress AS contact FROM SalesLT.Customer) AS scoped_customer",
                 {"table": "Customer", "columns": ["EmailAddress"]},
             ),
         ],
@@ -261,9 +260,8 @@ class TestProjectionLineage:
 
 class TestDialectIndependence:
     """Masking operates on the post-execution ``QueryResult`` regardless of
-    which dialect produced the rows. We only verify that the column name in
-    the result is matched (case-insensitively) — dialect is not threaded
-    through ``apply_column_masks``.
+    which dialect produced the rows. Direct result-column matching remains
+    case-insensitive and independent of projection syntax.
     """
 
     @pytest.mark.parametrize(
@@ -283,6 +281,7 @@ class TestDialectIndependence:
         out = PolicyEnforcementService.apply_column_masks(r, _MASKS)
         assert all(row[1] == "***" for row in out.rows)
         assert out.rows[0][0] == 1
+
 
 # ──────────────────────────── Unknown / malformed config ────────────────────────────
 
