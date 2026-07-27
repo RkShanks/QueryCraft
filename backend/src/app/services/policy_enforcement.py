@@ -36,6 +36,8 @@ from typing import Any
 
 import sqlglot
 from sqlglot import exp
+from sqlglot.errors import SqlglotError
+from sqlglot.lineage import lineage
 
 from app.core.exceptions import PolicySchemaConflictError
 from app.db.models.enums import AuditActionType
@@ -724,7 +726,11 @@ class PolicyEnforcementService:
         new_columns: list[ColumnMeta] = []
         mask_indices: list[int] = []
         for idx, col in enumerate(result.columns):
-            is_masked = col.name.lower() in masks_by_name
+            is_masked = col.name.lower() in masks_by_name or _projection_references_masked_column(
+                result.generated_sql,
+                col.name,
+                masks_by_name,
+            )
             new_columns.append(ColumnMeta(name=col.name, type=col.type, masked=is_masked))
             if is_masked:
                 mask_indices.append(idx)
@@ -754,6 +760,21 @@ class PolicyEnforcementService:
             is_last_auto_retry=result.is_last_auto_retry,
             accepted_query_id=result.accepted_query_id,
         )
+
+
+def _projection_references_masked_column(
+    sql: str,
+    output_column: str,
+    masked_columns: dict[str, None],
+) -> bool:
+    try:
+        projection_lineage = lineage(output_column, sql)
+    except SqlglotError:
+        return True
+    return any(
+        node.name.rsplit(".", 1)[-1].lower() in masked_columns
+        for node in projection_lineage.walk()
+    )
 
 
 def _next_postgres_index(stmt: exp.Expression, sqlglot_dialect: str) -> int:

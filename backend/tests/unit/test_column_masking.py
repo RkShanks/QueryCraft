@@ -235,7 +235,11 @@ class TestDialectIndependence:
         # name casing. All three should be masked.
         columns = [(f"{dialect}_id", "integer"), ("ssn", "text")]
         rows = [[1, "111-22-3333"], [2, "444-55-6666"]]
-        r = _result(columns=columns, rows=rows)
+        r = _result(
+            columns=columns,
+            rows=rows,
+            generated_sql=f"SELECT {dialect}_id, ssn FROM users",
+        )
         out = PolicyEnforcementService.apply_column_masks(r, _MASKS)
         assert all(row[1] == "***" for row in out.rows)
         assert out.rows[0][0] == 1
