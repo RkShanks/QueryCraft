@@ -254,6 +254,47 @@ class TestProjectionLineage:
         assert masked.rows == [["***"]]
         assert masked.columns[0].masked is True
 
+    @pytest.mark.parametrize(
+        ("dialect", "generated_sql", "id_column", "mask"),
+        [
+            (
+                "postgres",
+                "SELECT customer_id, email AS contact FROM customer WHERE email = $1",
+                "customer_id",
+                {"table": "customer", "columns": ["email"]},
+            ),
+            (
+                "mysql",
+                "SELECT customer_id, email AS contact FROM customer WHERE email = %s",
+                "customer_id",
+                {"table": "customer", "columns": ["email"]},
+            ),
+            (
+                "tsql",
+                "SELECT CustomerID, EmailAddress AS contact FROM SalesLT.Customer WHERE EmailAddress = ?",
+                "CustomerID",
+                {"table": "Customer", "columns": ["EmailAddress"]},
+            ),
+        ],
+    )
+    def test_driver_placeholders_do_not_mask_unrelated_projection(
+        self,
+        dialect: str,
+        generated_sql: str,
+        id_column: str,
+        mask: dict,
+    ) -> None:
+        result = _result(
+            columns=[(id_column, "integer"), ("contact", "text")],
+            rows=[[7, "private@example.test"]],
+            generated_sql=generated_sql,
+        )
+
+        masked = PolicyEnforcementService.apply_column_masks(result, [mask], dialect=dialect)
+
+        assert masked.rows == [[7, "***"]]
+        assert [column.masked for column in masked.columns] == [False, True]
+
 
 # ──────────────────────────── Dialect independence ────────────────────────────
 
