@@ -214,12 +214,11 @@ describe('PolicyEditor', () => {
 
     fireEvent.change(maskTableSelect, { target: { value: 'users' } });
 
-    const maskColumnSelect = screen.getByTestId('mask-column-select-users') as HTMLSelectElement;
-    expect(maskColumnSelect).toBeInTheDocument();
-    expect(maskColumnSelect.value).toBe('');
+    const maskColumnCheckbox = screen.getByTestId('mask-column-checkbox-users-email') as HTMLInputElement;
+    expect(maskColumnCheckbox).not.toBeChecked();
 
-    fireEvent.change(maskColumnSelect, { target: { value: 'email' } });
-    expect(maskColumnSelect.value).toBe('email');
+    fireEvent.click(maskColumnCheckbox);
+    expect(maskColumnCheckbox).toBeChecked();
 
     const saveButton = screen.getByRole('button', { name: /Save/i });
     fireEvent.click(saveButton);
