@@ -777,6 +777,7 @@ class QueryService:
                 masked_result = self._policy.apply_column_masks(
                     masked_result,
                     role_policy.column_masks,
+                    dialect=self._target_dialect,
                 )
                 # Refresh ColumnMeta list from the masked result so
                 # the masked flags are reflected in the response.
@@ -1245,6 +1246,7 @@ class QueryService:
                 masked_result = self._policy.apply_column_masks(
                     masked_result,
                     role_policy.column_masks,
+                    dialect=self._target_dialect,
                 )
                 column_metas = list(masked_result.columns)
                 rows = masked_result.rows
@@ -1486,6 +1488,7 @@ class QueryService:
             masked_result = self._policy.apply_column_masks(
                 masked_result,
                 role_policy.column_masks,
+                dialect=self._target_dialect,
             )
 
         return masked_result

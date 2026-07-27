@@ -1,9 +1,9 @@
 """Tests for T-706: column masking service.
 
 Covers FR-132 / SC-052. ``PolicyEnforcementService.apply_column_masks()``
-operates on a ``QueryResult`` after execution (post-query, dialect-independent)
-and replaces values in configured columns with ``"***"`` while setting
-``ColumnMeta.masked = True`` for the affected columns.
+operates on a ``QueryResult`` after execution and replaces values in configured
+columns with ``"***"`` while setting ``ColumnMeta.masked = True`` for the
+affected columns. Projection lineage is parsed with the source dialect.
 
 Config shape (mirrors ``role_connection_policies.column_masks``):
     [{"table": "orders", "columns": ["ssn", "salary"]}]
@@ -34,6 +34,7 @@ from app.services.policy_enforcement import PolicyEnforcementService
 def _result(
     columns: list[tuple[str, str]] | None = None,
     rows: list[list] | None = None,
+    generated_sql: str = "SELECT id, email, ssn FROM users",
 ) -> QueryResult:
     """Build a ``QueryResult`` with sensible defaults for masking tests."""
     if columns is None:
@@ -47,7 +48,7 @@ def _result(
         attempt_id="att-1",
         session_id="sess-1",
         question="q",
-        generated_sql="SELECT id, email, ssn FROM users",
+        generated_sql=generated_sql,
         columns=[ColumnMeta(name=n, type=t) for n, t in columns],
         rows=rows,
         row_count=len(rows),
@@ -197,14 +198,70 @@ class TestCaseInsensitiveMatching:
         assert all(row[2] == "***" for row in out.rows)
 
 
+# ──────────────────────────── Projection lineage ────────────────────────────
+
+
+class TestProjectionLineage:
+    @pytest.mark.parametrize(
+        ("dialect", "generated_sql", "mask"),
+        [
+            (
+                "postgres",
+                "SELECT email AS contact FROM users",
+                {"table": "users", "columns": ["email"]},
+            ),
+            (
+                "postgres",
+                "SELECT contact FROM (SELECT email AS contact FROM users) AS scoped_users",
+                {"table": "users", "columns": ["email"]},
+            ),
+            (
+                "mysql",
+                "SELECT `email` AS `contact` FROM `users`",
+                {"table": "users", "columns": ["email"]},
+            ),
+            (
+                "mysql",
+                "SELECT contact FROM (SELECT email AS contact FROM users) AS scoped_users",
+                {"table": "users", "columns": ["email"]},
+            ),
+            (
+                "tsql",
+                "SELECT TOP 1 [EmailAddress] AS [contact] FROM [SalesLT].[Customer]",
+                {"table": "Customer", "columns": ["EmailAddress"]},
+            ),
+            (
+                "tsql",
+                "SELECT TOP 1 contact FROM (SELECT EmailAddress AS contact FROM SalesLT.Customer) AS scoped_customer",
+                {"table": "Customer", "columns": ["EmailAddress"]},
+            ),
+        ],
+    )
+    def test_phase5b1_projection_forms_never_expose_masked_value(
+        self,
+        dialect: str,
+        generated_sql: str,
+        mask: dict,
+    ) -> None:
+        result = _result(
+            columns=[("contact", "text")],
+            rows=[["private@example.test"]],
+            generated_sql=generated_sql,
+        )
+
+        masked = PolicyEnforcementService.apply_column_masks(result, [mask], dialect=dialect)
+
+        assert masked.rows == [["***"]]
+        assert masked.columns[0].masked is True
+
+
 # ──────────────────────────── Dialect independence ────────────────────────────
 
 
 class TestDialectIndependence:
     """Masking operates on the post-execution ``QueryResult`` regardless of
-    which dialect produced the rows. We only verify that the column name in
-    the result is matched (case-insensitively) — dialect is not threaded
-    through ``apply_column_masks``.
+    which dialect produced the rows. Direct result-column matching remains
+    case-insensitive and independent of projection syntax.
     """
 
     @pytest.mark.parametrize(
@@ -216,20 +273,14 @@ class TestDialectIndependence:
         # name casing. All three should be masked.
         columns = [(f"{dialect}_id", "integer"), ("ssn", "text")]
         rows = [[1, "111-22-3333"], [2, "444-55-6666"]]
-        r = _result(columns=columns, rows=rows)
+        r = _result(
+            columns=columns,
+            rows=rows,
+            generated_sql=f"SELECT {dialect}_id, ssn FROM users",
+        )
         out = PolicyEnforcementService.apply_column_masks(r, _MASKS)
         assert all(row[1] == "***" for row in out.rows)
         assert out.rows[0][0] == 1
-
-    def test_no_dialect_parameter_required(self) -> None:
-        """``apply_column_masks`` signature does not accept a dialect param.
-        Regression guard: if someone adds one, masking is no longer
-        post-query-only.
-        """
-        import inspect
-
-        sig = inspect.signature(PolicyEnforcementService.apply_column_masks)
-        assert "dialect" not in sig.parameters
 
 
 # ──────────────────────────── Unknown / malformed config ────────────────────────────
