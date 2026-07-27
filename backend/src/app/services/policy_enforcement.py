@@ -773,11 +773,23 @@ def _projection_references_masked_column(
     dialect: str | None,
 ) -> bool:
     lineage_dialect = _SQLGLOT_DIALECT.get(dialect, dialect) if dialect else None
+    lineage_sql = _replace_lineage_placeholders(sql, dialect)
     try:
-        projection_lineage = lineage(output_column, sql, dialect=lineage_dialect)
+        projection_lineage = lineage(output_column, lineage_sql, dialect=lineage_dialect)
     except (SqlglotError, ValueError):
         return True
     return any(node.name.rsplit(".", 1)[-1].lower() in masked_columns for node in projection_lineage.walk())
+
+
+def _replace_lineage_placeholders(sql: str, dialect: str | None) -> str:
+    """Replace driver bind tokens with inert literals before lineage parsing."""
+    if dialect in ("postgres", "postgresql"):
+        return _replace_outside_strings_regex(sql, r"\$\d+", "NULL")
+    if dialect == "mysql":
+        return _replace_outside_strings(sql, "%s", "NULL")
+    if dialect in ("mssql", "tsql"):
+        return _replace_outside_strings(sql, "?", "NULL")
+    return sql
 
 
 def _next_postgres_index(stmt: exp.Expression, sqlglot_dialect: str) -> int:

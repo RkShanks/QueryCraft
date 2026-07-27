@@ -406,7 +406,11 @@ async def _build_masked_result(
     )
 
     # Apply column masks.
-    masked = PolicyEnforcementService.apply_column_masks(result=result, column_masks=_column_masks(table))
+    masked = PolicyEnforcementService.apply_column_masks(
+        result=result,
+        column_masks=_column_masks(table),
+        dialect=dialect,
+    )
 
     # Verify masked cells are '***' and ColumnMeta.masked=True.
     ssn_idx = db_columns.index("ssn")

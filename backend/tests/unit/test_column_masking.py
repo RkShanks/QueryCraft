@@ -255,22 +255,24 @@ class TestProjectionLineage:
         assert masked.columns[0].masked is True
 
     @pytest.mark.parametrize(
-        ("dialect", "generated_sql", "mask"),
+        ("dialect", "generated_sql", "id_column", "mask"),
         [
             (
                 "postgres",
                 "SELECT customer_id, email AS contact FROM customer WHERE email = $1",
+                "customer_id",
                 {"table": "customer", "columns": ["email"]},
             ),
             (
                 "mysql",
                 "SELECT customer_id, email AS contact FROM customer WHERE email = %s",
+                "customer_id",
                 {"table": "customer", "columns": ["email"]},
             ),
             (
                 "tsql",
-                "SELECT CustomerID, EmailAddress AS contact "
-                "FROM SalesLT.Customer WHERE EmailAddress = ?",
+                "SELECT CustomerID, EmailAddress AS contact FROM SalesLT.Customer WHERE EmailAddress = ?",
+                "CustomerID",
                 {"table": "Customer", "columns": ["EmailAddress"]},
             ),
         ],
@@ -279,10 +281,11 @@ class TestProjectionLineage:
         self,
         dialect: str,
         generated_sql: str,
+        id_column: str,
         mask: dict,
     ) -> None:
         result = _result(
-            columns=[("customer_id", "integer"), ("contact", "text")],
+            columns=[(id_column, "integer"), ("contact", "text")],
             rows=[[7, "private@example.test"]],
             generated_sql=generated_sql,
         )
