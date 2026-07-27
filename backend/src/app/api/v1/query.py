@@ -66,9 +66,9 @@ async def _get_query_service(
             rules=[
                 EmptySqlRule(),
                 ReadOnlyRule(dialect="postgres"),
-                SingleStatementRule(),
+                SingleStatementRule(dialect="postgres"),
                 SchemaValidationRule(schema_context, dialect="postgres"),
-                UnsafePatternRule(),
+                UnsafePatternRule(dialect="postgres"),
             ]
         ),
         source_db_executor=_source_db_executor,
@@ -187,9 +187,9 @@ async def _build_query_service_for_connection(
                 EmptySqlRule(),
                 DialectValidationRule(dialect=dialect),
                 ReadOnlyRule(dialect=dialect),
-                SingleStatementRule(),
+                SingleStatementRule(dialect=dialect),
                 SchemaValidationRule(schema_context, dialect=dialect),
-                UnsafePatternRule(),
+                UnsafePatternRule(dialect=dialect),
             ]
         ),
         source_db_executor=_source_db_executor,

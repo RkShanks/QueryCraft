@@ -52,9 +52,9 @@ def service_with_real_evaluator(mock_deps):
         evaluator=Evaluator(
             rules=[
                 ReadOnlyRule(dialect="postgres"),
-                SingleStatementRule(),
+                SingleStatementRule(dialect="postgres"),
                 SchemaValidationRule(),
-                UnsafePatternRule(),
+                UnsafePatternRule(dialect="postgres"),
             ]
         ),
         source_db_executor=mock_deps["executor"],

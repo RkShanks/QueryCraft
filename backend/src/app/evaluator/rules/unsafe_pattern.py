@@ -2,6 +2,7 @@
 
 import sqlglot
 from sqlglot import exp
+from sqlglot.errors import ParseError, TokenError
 
 from app.evaluator.schema_context import SchemaContext
 
@@ -77,7 +78,8 @@ class UnsafePatternRule:
 
     name = "unsafe_pattern"
 
-    def __init__(self):
+    def __init__(self, dialect: str):
+        self.dialect = dialect
         self._forbidden_functions = set(_FORBIDDEN_FUNCTIONS)
 
     def add_pattern(self, pattern: str) -> None:
@@ -87,8 +89,8 @@ class UnsafePatternRule:
     async def evaluate(self, sql: str, schema: SchemaContext | None) -> tuple[bool, str | None]:
         """Reject SQL containing forbidden functions, system tables, or statements."""
         try:
-            parsed = sqlglot.parse(sql, read="postgres")
-        except Exception:
+            parsed = sqlglot.parse(sql, read=self.dialect)
+        except (ParseError, TokenError):
             return False, "Unable to parse SQL"
 
         if not parsed or parsed[0] is None:

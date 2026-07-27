@@ -8,7 +8,7 @@ from app.evaluator.schema_context import SchemaContext
 
 @pytest.fixture
 def rule() -> UnsafePatternRule:
-    return UnsafePatternRule()
+    return UnsafePatternRule(dialect="postgres")
 
 
 # --- Reject cases ---
