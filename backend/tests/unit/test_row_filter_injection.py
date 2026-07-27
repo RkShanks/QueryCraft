@@ -90,6 +90,20 @@ class TestNoExistingWhereGetsWhere:
         assert "?" in result.sql
         assert result.params == ("analyst",)
 
+    def test_filter_added_for_tsql_api_dialect(self) -> None:
+        """The query API routes MSSQL connections through ``tsql``."""
+        sql = "SELECT TOP 10 id FROM orders"
+        result = PolicyEnforcementService.apply_row_filters(
+            sql=sql,
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="tsql",
+        )
+        assert "TOP 10" in result.sql
+        assert "region = ?" in result.sql
+        assert result.params == ("analyst",)
+
 
 # ──────────────────────── AND-conjunction when WHERE exists ────────────────────────
 
