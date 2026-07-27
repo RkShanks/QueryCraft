@@ -27,6 +27,9 @@ Conversation history:
 """
 
 DIALECT_INSTRUCTION_TEMPLATE = "- Generate SQL in {dialect} dialect. Use {dialect}-specific syntax and conventions.\n"
+TSQL_SINGLE_STATEMENT_INSTRUCTION = (
+    "- For SQL Server, return one SELECT statement only. Never emit USE; use TOP for row limits.\n"
+)
 
 
 def build_prompt(
@@ -59,6 +62,8 @@ def build_prompt(
     if target_dialect:
         tmpl = DIALECT_INSTRUCTION_TEMPLATE.format(dialect=target_dialect)
         dialect_instruction = f"TARGET_DIALECT: {target_dialect}\n{tmpl}"
+        if target_dialect.lower() == "tsql":
+            dialect_instruction += TSQL_SINGLE_STATEMENT_INSTRUCTION
 
     return PROMPT_TEMPLATE.format(
         schema_yaml=schema_context or "",

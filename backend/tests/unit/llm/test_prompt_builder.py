@@ -53,13 +53,16 @@ class TestPromptBuilderDialectParameterization:
         assert "TARGET_DIALECT: mysql" in prompt
 
     def test_tsql_dialect_in_prompt(self):
-        """T-SQL dialect instruction appears in prompt."""
+        """T-SQL prompts require a single SELECT without USE."""
         prompt = build_prompt(
             "Show all records",
             "records:\n  - id: integer",
             target_dialect="tsql",
         )
         assert "TARGET_DIALECT: tsql" in prompt
+        assert "one SELECT statement only" in prompt
+        assert "Never emit USE" in prompt
+        assert "use TOP for row limits" in prompt
 
     def test_no_dialect_when_none(self):
         """TARGET_DIALECT instruction is absent when dialect is None."""
