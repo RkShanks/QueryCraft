@@ -154,7 +154,8 @@ class MockIdentityProvider:
             "Value", "urn:oasis:names:tc:SAML:2.0:status:Success"
         )
         assertion = etree.SubElement(response, f"{{{SAML_ASSERTION_NS}}}Assertion")
-        assertion.set("ID", f"_p5a_assertion_{secrets.token_hex(8)}")
+        assertion_id = f"_p5a_assertion_{secrets.token_hex(8)}"
+        assertion.set("ID", assertion_id)
         assertion.set("Version", "2.0")
         assertion.set("IssueInstant", _iso_now())
         etree.SubElement(assertion, f"{{{SAML_ASSERTION_NS}}}Issuer").text = self.issuer
@@ -171,19 +172,26 @@ class MockIdentityProvider:
         conditions.set("NotOnOrAfter", _iso_now(timedelta(minutes=5)))
         restriction = etree.SubElement(conditions, f"{{{SAML_ASSERTION_NS}}}AudienceRestriction")
         etree.SubElement(restriction, f"{{{SAML_ASSERTION_NS}}}Audience").text = "urn:p5a-querycraft-sp"
+        authn_statement = etree.SubElement(assertion, f"{{{SAML_ASSERTION_NS}}}AuthnStatement")
+        authn_statement.set("AuthnInstant", _iso_now())
+        authn_context = etree.SubElement(authn_statement, f"{{{SAML_ASSERTION_NS}}}AuthnContext")
+        etree.SubElement(
+            authn_context, f"{{{SAML_ASSERTION_NS}}}AuthnContextClassRef"
+        ).text = "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport"
         attributes = etree.SubElement(assertion, f"{{{SAML_ASSERTION_NS}}}AttributeStatement")
         for name, values in (("email", [self.identity.email]), ("groups", self.identity.groups)):
             attribute = etree.SubElement(attributes, f"{{{SAML_ASSERTION_NS}}}Attribute")
             attribute.set("Name", name)
             for value in values:
                 etree.SubElement(attribute, f"{{{SAML_ASSERTION_NS}}}AttributeValue").text = value
-        self._sign(assertion)
+        self._sign(assertion, assertion_id)
         return etree.tostring(response, xml_declaration=True, encoding="utf-8")
 
-    def _sign(self, assertion: etree._Element) -> None:
+    def _sign(self, assertion: etree._Element, assertion_id: str) -> None:
+        xmlsec.tree.add_ids(assertion, ["ID"])
         signature = xmlsec.template.create(assertion, xmlsec.Transform.EXCL_C14N, xmlsec.Transform.RSA_SHA256, ns="ds")
         assertion.insert(1, signature)
-        reference = xmlsec.template.add_reference(signature, xmlsec.Transform.SHA256, uri="")
+        reference = xmlsec.template.add_reference(signature, xmlsec.Transform.SHA256, uri=f"#{assertion_id}")
         xmlsec.template.add_transform(reference, xmlsec.Transform.ENVELOPED)
         xmlsec.template.add_transform(reference, xmlsec.Transform.EXCL_C14N)
         key_info = xmlsec.template.ensure_key_info(signature)
