@@ -10,7 +10,8 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.enums import AuthProvider
+from app.db.models.audit_log_entry import AuditLogEntry
+from app.db.models.enums import AuditActionType, AuthProvider
 from app.db.models.role import Role
 from app.db.models.sso_group_mapping import SsoGroupMapping
 from app.db.models.sso_provider import SsoProvider
@@ -150,3 +151,60 @@ async def test_new_oidc_identity_cannot_claim_saml_username(db_session, redis_cl
     await db_session.refresh(existing_user)
     assert existing_user.role_id == existing_role.id
     assert await redis_client.keys("session:*") == []
+
+
+@pytest.mark.asyncio
+async def test_identity_collision_audit_is_sanitized_authentication_failure(db_session, redis_client):
+    existing_role, _incoming_role, mapped_group = await _roles_and_mapping(db_session)
+    shared_email = "audit-collision@example.test"
+    await _seed_identity(
+        db_session,
+        role=existing_role,
+        provider=AuthProvider.SAML,
+        subject_id="sensitive-saml-subject",
+        email=shared_email,
+    )
+
+    service = SsoService(db_session, redis_client)
+    with pytest.raises(SsoValidationError):
+        await _oidc_login(
+            service,
+            _oidc_provider(),
+            redis_client,
+            subject_id="sensitive-oidc-subject",
+            email=shared_email,
+            groups=[mapped_group],
+        )
+
+    failure_entry = await db_session.scalar(
+        select(AuditLogEntry)
+        .where(AuditLogEntry.action_type == str(AuditActionType.AUTH_LOGIN_FAILURE))
+        .order_by(AuditLogEntry.id.desc())
+        .limit(1)
+    )
+    assert failure_entry is not None
+    assert failure_entry.outcome == "failure"
+    assert failure_entry.context == {
+        "error_code": "[REDACTED]",
+        "reason": "identity_collision",
+    }
+
+    stored_failure = json.dumps(
+        {
+            "actor_identity": failure_entry.actor_identity,
+            "resource_id": failure_entry.resource_id,
+            "context": failure_entry.context,
+        }
+    ).lower()
+    for forbidden in (
+        shared_email,
+        "sensitive-saml-subject",
+        "sensitive-oidc-subject",
+        "oidc",
+        "saml",
+        "constraint",
+        "insert into",
+        "localhost",
+        "traceback",
+    ):
+        assert forbidden not in stored_failure
