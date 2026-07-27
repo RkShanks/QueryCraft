@@ -79,6 +79,7 @@ _DIALECT_PARAM_STYLE: dict[str, str] = {
     "postgresql": "numbered",
     "mysql": "positional",
     "mssql": "positional",
+    "tsql": "positional",
 }
 
 # Map our public dialect name to the sqlglot dialect name used for parsing
@@ -88,6 +89,7 @@ _SQLGLOT_DIALECT: dict[str, str] = {
     "postgresql": "postgres",
     "mysql": "mysql",
     "mssql": "tsql",
+    "tsql": "tsql",
 }
 
 # Allowed identity placeholders. Anything else inside ``{...}`` is rejected.
@@ -516,8 +518,8 @@ class PolicyEnforcementService:
                 on every column reference in every filter.
             user_context: Mapping with resolved user values for
                 placeholder binding.
-            dialect: Target driver dialect (one of ``postgres``,
-                ``mysql``, ``mssql``).
+            dialect: Target dialect (``postgres``, ``mysql``, or the
+                MSSQL aliases ``mssql`` / ``tsql``).
             audit_hook: Optional callable invoked with
                 ``(AuditActionType, payload)`` when a drift is
                 detected. The payload contains the admin-configured
@@ -846,7 +848,7 @@ def _render_placeholders_for_driver(sql_str: str, dialect: str, start_index: int
     characters inside ``'...'`` or ``"..."`` string literals are
     never touched (PR #126 fix).
     """
-    if dialect in ("mssql",):
+    if dialect in ("mssql", "tsql"):
         return sql_str
     if dialect in ("mysql",):
         return _replace_outside_strings(sql_str, "?", "%s")
