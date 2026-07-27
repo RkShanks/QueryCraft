@@ -7,7 +7,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.audit_log_entry import AuditLogEntry
@@ -92,6 +92,37 @@ async def _table_count(db: AsyncSession, model: type[User] | type[UserIdentity])
     count = await db.scalar(select(func.count()).select_from(model))
     assert count is not None
     return count
+
+
+async def _install_username_race_trigger(db: AsyncSession, username: str) -> None:
+    assert "'" not in username
+    suffix = uuid4().hex
+    function_name = f"test_sso_username_race_{suffix}"
+    trigger_name = f"test_sso_username_race_trigger_{suffix}"
+    await db.execute(
+        text(
+            f"""
+            CREATE FUNCTION {function_name}() RETURNS trigger AS $$
+            BEGIN
+                IF NEW.username = '{username}' THEN
+                    RAISE unique_violation
+                        USING MESSAGE = 'race-sensitive unique constraint collision';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql
+            """
+        )
+    )
+    await db.execute(
+        text(
+            f"""
+            CREATE TRIGGER {trigger_name}
+            BEFORE INSERT ON users
+            FOR EACH ROW EXECUTE FUNCTION {function_name}()
+            """
+        )
+    )
 
 
 async def _oidc_login(
@@ -208,3 +239,47 @@ async def test_identity_collision_audit_is_sanitized_authentication_failure(db_s
         "traceback",
     ):
         assert forbidden not in stored_failure
+
+
+@pytest.mark.asyncio
+async def test_database_uniqueness_race_rolls_back_identity_and_preserves_audit(db_session, redis_client):
+    _existing_role, _incoming_role, mapped_group = await _roles_and_mapping(db_session)
+    colliding_email = "database-race-collision@example.test"
+    await _install_username_race_trigger(db_session, colliding_email)
+    user_count = await _table_count(db_session, User)
+    identity_count = await _table_count(db_session, UserIdentity)
+
+    service = SsoService(db_session, redis_client)
+    with pytest.raises(SsoValidationError, match=r"^SSO validation failed$") as collision:
+        await _oidc_login(
+            service,
+            _oidc_provider(),
+            redis_client,
+            subject_id="database-race-subject",
+            email=colliding_email,
+            groups=[mapped_group],
+        )
+
+    failure_text = str(collision.value).lower()
+    for forbidden in (
+        colliding_email,
+        "database-race-subject",
+        "race-sensitive",
+        "constraint",
+        "insert into",
+        "localhost",
+        "traceback",
+    ):
+        assert forbidden not in failure_text
+
+    assert await _table_count(db_session, User) == user_count
+    assert await _table_count(db_session, UserIdentity) == identity_count
+    failure_entry = await db_session.scalar(
+        select(AuditLogEntry)
+        .where(AuditLogEntry.action_type == str(AuditActionType.AUTH_LOGIN_FAILURE))
+        .order_by(AuditLogEntry.id.desc())
+        .limit(1)
+    )
+    assert failure_entry is not None
+    assert failure_entry.context["reason"] == "identity_collision"
+    assert await redis_client.keys("session:*") == []
