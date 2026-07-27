@@ -202,15 +202,55 @@ class TestCaseInsensitiveMatching:
 
 
 class TestProjectionLineage:
-    def test_phase5b1_alias_projection_never_exposes_masked_value(self) -> None:
+    @pytest.mark.parametrize(
+        ("dialect", "generated_sql", "mask"),
+        [
+            (
+                "postgres",
+                "SELECT email AS contact FROM users",
+                {"table": "users", "columns": ["email"]},
+            ),
+            (
+                "postgres",
+                "SELECT contact FROM (SELECT email AS contact FROM users) AS scoped_users",
+                {"table": "users", "columns": ["email"]},
+            ),
+            (
+                "mysql",
+                "SELECT `email` AS `contact` FROM `users`",
+                {"table": "users", "columns": ["email"]},
+            ),
+            (
+                "mysql",
+                "SELECT contact FROM (SELECT email AS contact FROM users) AS scoped_users",
+                {"table": "users", "columns": ["email"]},
+            ),
+            (
+                "tsql",
+                "SELECT TOP 1 [EmailAddress] AS [contact] FROM [SalesLT].[Customer]",
+                {"table": "Customer", "columns": ["EmailAddress"]},
+            ),
+            (
+                "tsql",
+                "SELECT TOP 1 contact FROM "
+                "(SELECT EmailAddress AS contact FROM SalesLT.Customer) AS scoped_customer",
+                {"table": "Customer", "columns": ["EmailAddress"]},
+            ),
+        ],
+    )
+    def test_phase5b1_projection_forms_never_expose_masked_value(
+        self,
+        dialect: str,
+        generated_sql: str,
+        mask: dict,
+    ) -> None:
         result = _result(
             columns=[("contact", "text")],
             rows=[["private@example.test"]],
-            generated_sql="SELECT email AS contact FROM users",
+            generated_sql=generated_sql,
         )
-        masks = [{"table": "users", "columns": ["email"]}]
 
-        masked = PolicyEnforcementService.apply_column_masks(result, masks)
+        masked = PolicyEnforcementService.apply_column_masks(result, [mask], dialect=dialect)
 
         assert masked.rows == [["***"]]
         assert masked.columns[0].masked is True
@@ -243,17 +283,6 @@ class TestDialectIndependence:
         out = PolicyEnforcementService.apply_column_masks(r, _MASKS)
         assert all(row[1] == "***" for row in out.rows)
         assert out.rows[0][0] == 1
-
-    def test_no_dialect_parameter_required(self) -> None:
-        """``apply_column_masks`` signature does not accept a dialect param.
-        Regression guard: if someone adds one, masking is no longer
-        post-query-only.
-        """
-        import inspect
-
-        sig = inspect.signature(PolicyEnforcementService.apply_column_masks)
-        assert "dialect" not in sig.parameters
-
 
 # ──────────────────────────── Unknown / malformed config ────────────────────────────
 
