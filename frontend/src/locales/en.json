@@ -112,6 +112,7 @@
   "error.hostile_input_blocked": "This request was blocked because it contains content that violates our security policy.",
   "error.validation.invalidUUID": "Invalid identifier format.",
   "error.policySchemaConflict": "A row filter references a column that no longer exists in the schema. Please ask an administrator to update the policy.",
+  "error.filterValidationFailed": "Invalid row filter. Subqueries, functions, comments, set operations, and multiple statements are not allowed.",
   "error.notFound": "The requested resource was not found.",
   "error.sourceDbNotConfigured": "Source database connection is not configured. Please check your environment settings.",
   "error.sourceDbConnectionFailed": "Unable to connect to the database. Please check your connection settings and try again.",

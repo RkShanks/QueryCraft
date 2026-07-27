@@ -1183,3 +1183,105 @@ class TestRoleConnectionPolicyPersistence:
         assert detail["error"] == "validation"
         assert "duplicate" in detail["message_key"].lower()
         assert str(conn_id) not in str(detail)
+
+
+class TestRoleConnectionPolicyRowFilterValidation:
+    """FR-131: role writes reject unsafe row filters before persistence."""
+
+    @staticmethod
+    def _session() -> dict:
+        return {
+            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "permissions": ["admin.roles.manage"],
+            "username": "admin",
+        }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "row_filter",
+        [
+            "email IN (SELECT email FROM customer)",
+            "LOWER(email) = {user.email}",
+            "email = {user.email} -- ignored",
+            "email = {user.email} UNION SELECT email FROM customer",
+            "email = {user.email}; SELECT 1",
+            "missing_filter_column = {user.email}",
+        ],
+        ids=[
+            "subquery",
+            "function",
+            "comment",
+            "union",
+            "multi-statement",
+            "missing-column",
+        ],
+    )
+    async def test_update_rejects_invalid_row_filter_before_commit(self, row_filter: str):
+        from app.api.v1.admin_roles import update_role
+        from app.db.models.enums import DatabaseType
+
+        role_id = uuid.uuid4()
+        connection_id = uuid.uuid4()
+        role = _make_role(name="Restricted", priority=41, role_id=role_id)
+
+        connection = MagicMock()
+        connection.id = connection_id
+        connection.database_type = DatabaseType.POSTGRESQL
+
+        schema_entry = MagicMock()
+        schema_entry.table_name = "customer"
+        schema_entry.column_name = "email"
+        schema_entry.column_data_type = "text"
+        schema_entry.is_primary_key = False
+
+        persisted = MagicMock()
+        persisted.id = uuid.uuid4()
+        persisted.connection_id = connection_id
+        persisted.allowed_tables = [{"table": "customer", "columns": ["email"]}]
+        persisted.row_filters = [{"table": "customer", "filter": row_filter}]
+        persisted.column_masks = []
+
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                FakeResult(role),
+                FakeResult([]),
+                FakeResult([]),
+                FakeResult(role),
+                FakeResult([connection_id]),
+                FakeResult([connection]),
+                FakeResult([schema_entry]),
+                FakeResult(None),
+                FakeResult([persisted]),
+            ]
+        )
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+        mock_db.add = MagicMock()
+
+        request = MagicMock()
+        request.state.session = self._session()
+        body = RoleUpdate(
+            name="Restricted",
+            priority=41,
+            permissions=["query.submit"],
+            connection_policies=[
+                {
+                    "connection_id": str(connection_id),
+                    "allowed_tables": [{"table": "customer", "columns": ["email"]}],
+                    "row_filters": [{"table": "customer", "filter": row_filter}],
+                    "column_masks": [],
+                }
+            ],
+        )
+
+        with pytest.raises(HTTPException) as exc:
+            await update_role(request=request, role_id=str(role_id), body=body, db=mock_db)
+
+        assert exc.value.status_code == 422
+        assert exc.value.detail == {
+            "error": "filter_validation_failed",
+            "message_key": "error.filterValidationFailed",
+        }
+        assert row_filter not in str(exc.value.detail)
+        mock_db.commit.assert_not_awaited()

@@ -138,6 +138,50 @@ async def _validate_policy_input(db: AsyncSession, parsed_conn_ids: list[uuid.UU
         )
 
 
+def _row_filter_validation_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail={
+            "error": "filter_validation_failed",
+            "message_key": "error.filterValidationFailed",
+        },
+    )
+
+
+async def _validate_policy_row_filters(
+    db: AsyncSession,
+    policies,
+    parsed_conn_ids: list[uuid.UUID],
+) -> None:
+    """Validate every configured row filter against its connection schema."""
+    connection_repo = ConnectionRepository(db)
+    for policy, connection_id in zip(policies, parsed_conn_ids, strict=True):
+        if not policy.row_filters:
+            continue
+
+        connection = await connection_repo.get_by_id(connection_id)
+        if connection is None:
+            raise _row_filter_validation_error()
+        schema_entries = await connection_repo.get_schema_entries(connection_id)
+        schema = _build_schema_from_entries(schema_entries)
+        dialect = _resolve_dialect(connection.database_type)
+
+        for row_filter in policy.row_filters:
+            table_name = row_filter.get("table")
+            filter_sql = row_filter.get("filter")
+            if not isinstance(table_name, str) or not isinstance(filter_sql, str):
+                raise _row_filter_validation_error()
+            try:
+                PolicyEnforcementService.validate_row_filter(
+                    filter_sql,
+                    schema,
+                    table_name,
+                    dialect=dialect,
+                )
+            except ValueError:
+                raise _row_filter_validation_error() from None
+
+
 async def _replace_role_connection_policies(db: AsyncSession, role_id: uuid.UUID, policies) -> list[dict]:
     """Replace all `role_connection_policies` rows for a role.
 
@@ -151,6 +195,7 @@ async def _replace_role_connection_policies(db: AsyncSession, role_id: uuid.UUID
     """
     parsed_conn_ids = _parse_policy_connection_ids(policies)
     await _validate_policy_input(db, parsed_conn_ids)
+    await _validate_policy_row_filters(db, policies, parsed_conn_ids)
 
     await db.execute(delete(RoleConnectionPolicy).where(RoleConnectionPolicy.role_id == role_id))
 

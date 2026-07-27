@@ -390,4 +390,27 @@ describe('AdminRolesPage', () => {
     expect(screen.queryByText(/uuid-1234/i)).toBeNull();
     expect(screen.queryByText(/secret-key-data/i)).toBeNull();
   });
+
+  it('renders the localized save-time row-filter validation error', () => {
+    let capturedOnUpdateError: ((err: unknown) => void) | undefined;
+
+    vi.mocked(useAdminRoles).mockImplementation((opts: any) => {
+      capturedOnUpdateError = opts?.onUpdateError;
+      return mockEmptyRoles as any;
+    });
+
+    render(<AdminRolesPage />);
+
+    act(() => {
+      capturedOnUpdateError!({
+        detail: {
+          error: 'filter_validation_failed',
+          message_key: 'error.filterValidationFailed',
+        },
+      });
+    });
+
+    expect(screen.getByText('error.filterValidationFailed')).toBeInTheDocument();
+    expect(screen.queryByText('filter_validation_failed')).not.toBeInTheDocument();
+  });
 });

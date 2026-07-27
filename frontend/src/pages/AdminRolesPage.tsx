@@ -19,7 +19,8 @@ const ALLOWED_ERROR_KEYS = new Set([
   'error.conflict.duplicateGroupMapping',
   'error.forbidden',
   'error.unauthorized',
-  'error.builtinRoleProtected'
+  'error.builtinRoleProtected',
+  'error.filterValidationFailed'
 ]);
 
 const AVAILABLE_PERMISSIONS = [
