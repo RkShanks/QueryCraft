@@ -30,6 +30,7 @@ from urllib.parse import urlencode
 import httpx
 from redis.asyncio import Redis
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -50,6 +51,10 @@ class SsoValidationError(Exception):
     def __init__(self, message: str = "SSO validation failed"):
         self.message = message
         super().__init__(message)
+
+
+class SsoIdentityCollisionError(SsoValidationError):
+    """Internal classification for an SSO username ownership collision."""
 
 
 class SsoService:
@@ -129,6 +134,18 @@ class SsoService:
             else:
                 safe[k] = v
         return safe
+
+    async def _audit_identity_collision(self) -> None:
+        await AuditService.log(
+            self._db,
+            action=AuditActionType.AUTH_LOGIN_FAILURE,
+            resource_type="sso_callback",
+            outcome="failure",
+            context=self._safe_audit_context(
+                error_code="sso_validation_failed",
+                reason="identity_collision",
+            ),
+        )
 
     async def process_oidc_callback(
         self,
@@ -219,6 +236,9 @@ class SsoService:
                 groups=groups,
                 auth_provider=AuthProvider.OIDC,
             )
+        except SsoIdentityCollisionError:
+            await self._audit_identity_collision()
+            raise
         except SsoValidationError:
             await AuditService.log(
                 self._db,
@@ -578,6 +598,9 @@ class SsoService:
                 groups=groups,
                 auth_provider=AuthProvider.SAML,
             )
+        except SsoIdentityCollisionError:
+            await self._audit_identity_collision()
+            raise
         except SsoValidationError:
             await AuditService.log(
                 self._db,
@@ -780,28 +803,39 @@ class SsoService:
         identity = identity_result.scalar_one_or_none()
 
         if identity is None:
-            # Create new user
-            user = User(
-                username=email or subject_id,
-                display_name=email or subject_id,
-                password_hash=None,
-                role_id=role.id,
-                auth_provider=str(auth_provider),
-            )
-            self._db.add(user)
-            await self._db.flush()
-            await self._db.refresh(user)
+            username = email or subject_id
+            username_result = await self._db.execute(select(User.id).where(User.username == username))
+            if username_result.scalar_one_or_none() is not None:
+                raise SsoIdentityCollisionError()
 
-            identity = UserIdentity(
-                user_id=user.id,
-                provider=str(auth_provider),
-                subject_id=subject_id,
-                email=email,
-                sso_groups=groups,
-                last_login_at=datetime.now(UTC),
-            )
-            self._db.add(identity)
-            await self._db.flush()
+            savepoint = await self._db.begin_nested()
+            try:
+                user = User(
+                    username=username,
+                    display_name=username,
+                    password_hash=None,
+                    role_id=role.id,
+                    auth_provider=str(auth_provider),
+                )
+                self._db.add(user)
+                await self._db.flush()
+
+                identity = UserIdentity(
+                    user_id=user.id,
+                    provider=str(auth_provider),
+                    subject_id=subject_id,
+                    email=email,
+                    sso_groups=groups,
+                    last_login_at=datetime.now(UTC),
+                )
+                self._db.add(identity)
+                await self._db.flush()
+            except IntegrityError as exc:
+                await savepoint.rollback()
+                raise SsoIdentityCollisionError() from exc
+            else:
+                await savepoint.commit()
+            await self._db.refresh(user)
         else:
             # Update existing identity
             identity.sso_groups = groups

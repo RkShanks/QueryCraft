@@ -326,6 +326,7 @@ class TestSsoServiceConcurrentSessions:
     def mock_db(self):
         db = AsyncMock()
         db.execute = AsyncMock()
+        db.add = MagicMock()
         db.flush = AsyncMock()
         db.refresh = AsyncMock()
         return db
@@ -363,11 +364,12 @@ class TestSsoServiceConcurrentSessions:
             mock_resolve_role.return_value = role
             with patch.object(sso_service._db, "execute") as mock_execute:
                 # First execute: identity lookup (None -> create)
-                # Second execute: user lookup after identity creation
+                # Second execute: username collision lookup
                 identity_result = MagicMock()
                 identity_result.scalar_one_or_none.return_value = None
 
                 user_result = MagicMock()
+                user_result.scalar_one_or_none.return_value = None
                 user_result.scalar_one.return_value = user
 
                 mock_execute.side_effect = [identity_result, user_result]
@@ -412,6 +414,7 @@ class TestSsoServiceConcurrentSessions:
                 identity_result = MagicMock()
                 identity_result.scalar_one_or_none.return_value = None
                 user_result = MagicMock()
+                user_result.scalar_one_or_none.return_value = None
                 user_result.scalar_one.return_value = user
                 mock_execute.side_effect = [identity_result, user_result]
 
@@ -455,6 +458,7 @@ class TestSsoServiceConcurrentSessions:
                 identity_result = MagicMock()
                 identity_result.scalar_one_or_none.return_value = None
                 user_result = MagicMock()
+                user_result.scalar_one_or_none.return_value = None
                 user_result.scalar_one.return_value = user
                 mock_execute.side_effect = [identity_result, user_result]
 
@@ -497,6 +501,7 @@ class TestSsoServiceConcurrentSessions:
                 identity_result = MagicMock()
                 identity_result.scalar_one_or_none.return_value = None
                 user_result = MagicMock()
+                user_result.scalar_one_or_none.return_value = None
                 user_result.scalar_one.return_value = user
                 mock_execute.side_effect = [identity_result, user_result]
 
@@ -548,6 +553,7 @@ class TestSsoServiceConcurrentSessions:
                 identity_result = MagicMock()
                 identity_result.scalar_one_or_none.return_value = None
                 user_result = MagicMock()
+                user_result.scalar_one_or_none.return_value = None
                 user_result.scalar_one.return_value = user
                 mock_execute.side_effect = [identity_result, user_result]
 
