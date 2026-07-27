@@ -15,6 +15,26 @@ from app.db.models.enums import SsoProtocol
 from app.db.models.sso_provider import SsoProvider
 from app.services.sso_service import SsoService, SsoValidationError
 
+SUCCESSFUL_RESPONSE_XML = (
+    '<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" '
+    'xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"><saml:Assertion>'
+    "<saml:Issuer>https://idp.example.com</saml:Issuer>"
+    '<saml:Conditions NotBefore="2026-07-27T17:00:00Z" />'
+    "</saml:Assertion></samlp:Response>"
+)
+
+
+def _successful_mock_auth() -> MagicMock:
+    auth = MagicMock()
+    auth.process_response = MagicMock()
+    auth.get_errors = MagicMock(return_value=[])
+    auth.get_nameid = MagicMock(return_value="user-subject-123")
+    auth.get_attribute = MagicMock(return_value=None)
+    auth.get_last_response_xml = MagicMock(return_value=SUCCESSFUL_RESPONSE_XML)
+    auth.get_last_assertion_not_on_or_after = MagicMock(return_value=None)
+    auth.get_last_assertion_id = MagicMock(return_value="assertion-123")
+    return auth
+
 
 class TestSsoServiceSamlBoundary:
     """SAML python3-saml boundary sanitization unit tests."""
@@ -64,15 +84,7 @@ class TestSsoServiceSamlBoundary:
 
         def capture_init(req, settings_dict):
             captured_settings["settings_dict"] = settings_dict
-            mock_auth = MagicMock()
-            mock_auth.process_response = MagicMock()
-            mock_auth.get_errors = MagicMock(return_value=[])
-            mock_auth.get_nameid = MagicMock(return_value="user-subject-123")
-            mock_auth.get_attribute = MagicMock(return_value=None)
-            mock_auth.get_issuer = MagicMock(return_value="https://idp.example.com")
-            mock_auth.get_session_not_on_or_after = MagicMock(return_value=None)
-            mock_auth.get_last_assertion_id = MagicMock(return_value="assertion-123")
-            return mock_auth
+            return _successful_mock_auth()
 
         with patch("app.services.sso_service.decrypt", return_value="dummy-cert-pem"):
             with patch("onelogin.saml2.auth.OneLogin_Saml2_Auth", side_effect=capture_init):
@@ -86,21 +98,41 @@ class TestSsoServiceSamlBoundary:
 
         def capture_init(req, settings_dict):
             captured_settings["settings_dict"] = settings_dict
-            mock_auth = MagicMock()
-            mock_auth.process_response = MagicMock()
-            mock_auth.get_errors = MagicMock(return_value=[])
-            mock_auth.get_nameid = MagicMock(return_value="user-subject-123")
-            mock_auth.get_attribute = MagicMock(return_value=None)
-            mock_auth.get_issuer = MagicMock(return_value="https://idp.example.com")
-            mock_auth.get_session_not_on_or_after = MagicMock(return_value=None)
-            mock_auth.get_last_assertion_id = MagicMock(return_value="assertion-123")
-            return mock_auth
+            return _successful_mock_auth()
 
         with patch("app.services.sso_service.decrypt", return_value="dummy-cert-pem"):
             with patch("onelogin.saml2.auth.OneLogin_Saml2_Auth", side_effect=capture_init):
                 sso_service._parse_saml_assertion(saml_provider, "saml-response-xml")
 
         assert captured_settings["settings_dict"]["sp"]["entityId"] == saml_provider.saml_entity_id
+
+    def test_metadata_extracts_issuer_and_not_before_from_valid_response(self, sso_service):
+        issuer, not_before = sso_service._saml_assertion_metadata(SUCCESSFUL_RESPONSE_XML)
+
+        assert issuer == "https://idp.example.com"
+        assert not_before == "2026-07-27T17:00:00Z"
+
+    @pytest.mark.parametrize("response_xml", [None, "", object(), "<samlp:Response>"])
+    def test_invalid_metadata_response_is_sanitized(self, sso_service, response_xml):
+        with pytest.raises(SsoValidationError) as exc_info:
+            sso_service._saml_assertion_metadata(response_xml)
+
+        assert str(exc_info.value) == "SSO assertion validation failed"
+
+    def test_missing_issuer_metadata_is_sanitized_without_raw_details(self, sso_service):
+        response_xml = (
+            '<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" '
+            'xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"><saml:Assertion>'
+            "<saml:Conditions /></saml:Assertion></samlp:Response>"
+        )
+
+        with pytest.raises(SsoValidationError) as exc_info:
+            sso_service._saml_assertion_metadata(response_xml)
+
+        error_message = str(exc_info.value)
+        assert "https://idp.example.com" not in error_message
+        assert "samlp:Response" not in error_message
+        assert error_message == "SSO assertion validation failed"
 
     def test_process_response_exception_sanitized(self, sso_service, saml_provider):
         """process_response() exception with raw XML/hostname/cert becomes sanitized SsoValidationError."""

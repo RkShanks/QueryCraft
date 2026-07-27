@@ -668,15 +668,36 @@ class SsoService:
         if errors:
             raise SsoValidationError("SSO assertion validation failed")
 
+        issuer, not_before = self._saml_assertion_metadata(auth.get_last_response_xml())
         return {
             "subject_id": auth.get_nameid(),
             "email": auth.get_attribute("email")[0] if auth.get_attribute("email") else "",
             "groups": auth.get_attribute(provider.group_claim_name) or [],
-            "issuer": auth.get_issuer(),
-            "not_before": auth.get_session_not_on_or_after(),
-            "not_on_or_after": auth.get_session_not_on_or_after(),
+            "issuer": issuer,
+            "not_before": not_before,
+            "not_on_or_after": auth.get_last_assertion_not_on_or_after(),
             "assertion_id": auth.get_last_assertion_id(),
         }
+
+    @staticmethod
+    def _saml_assertion_metadata(response_xml: str | bytes | None) -> tuple[str, str | None]:
+        """Extract issuer and Conditions start after parser signature validation."""
+        from onelogin.saml2.xml_utils import OneLogin_Saml2_XML
+
+        if not response_xml or not isinstance(response_xml, (str, bytes)):
+            raise SsoValidationError("SSO assertion validation failed")
+        try:
+            response_dom = OneLogin_Saml2_XML.to_etree(response_xml)
+            issuer_nodes = OneLogin_Saml2_XML.query(response_dom, "/samlp:Response/saml:Assertion/saml:Issuer")
+            condition_nodes = OneLogin_Saml2_XML.query(response_dom, "/samlp:Response/saml:Assertion/saml:Conditions")
+            if not issuer_nodes or not issuer_nodes[0].text:
+                raise SsoValidationError("SSO assertion validation failed")
+            not_before = condition_nodes[0].get("NotBefore") if condition_nodes else None
+            return issuer_nodes[0].text, not_before
+        except SsoValidationError:
+            raise
+        except Exception as exc:
+            raise SsoValidationError("SSO assertion validation failed") from exc
 
     def _validate_saml_assertion(self, attrs: dict, provider: SsoProvider) -> None:
         """Validate SAML assertion attributes per S-002.
