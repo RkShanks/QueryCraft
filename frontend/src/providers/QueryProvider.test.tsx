@@ -7,7 +7,10 @@ function ExpiredSessionProbe() {
   useQuery({
     queryKey: ['expired-session-probe'],
     queryFn: async () => {
-      throw { status: 401 };
+      throw {
+        error: 'unauthorized',
+        message_key: 'error.unauthorized',
+      };
     },
     retry: false,
   });
