@@ -437,6 +437,53 @@ class TestSubmitSuccessAuditLogging:
         ], f"Audit calls in unexpected order: {actions}"
 
 
+@pytest.mark.asyncio
+class TestRerunAuditLogging:
+    """Allowed accepted-query reruns emit a dedicated sanitized event."""
+
+    async def test_successful_rerun_logs_query_rerun_without_sql_context(self):
+        from app.db.models.enums import AuditActionType
+
+        connection_id = uuid.UUID("770e8400-e29b-41d4-a716-446655440000")
+        accepted_query_id = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
+        policy = _RolePolicy(
+            user_id=uuid.UUID(_AUDIT_KNOWN_USER_ID),
+            role_id=uuid.UUID("660e8400-e29b-41d4-a716-446655440000"),
+            connection_id=connection_id,
+            allowed_tables=[{"table": "orders", "columns": ["id"]}],
+        )
+        service, deps = _make_service(
+            adapter=_RecordingAdapter(),
+            policies_by_connection={connection_id: policy},
+        )
+        deps["repo"].get_by_id = AsyncMock(
+            return_value=MagicMock(
+                id=accepted_query_id,
+                generated_sql="SELECT orders.id FROM orders",
+                database_connection_id=connection_id,
+                session_id=None,
+                question_text="List orders",
+            )
+        )
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            result = await service.rerun_accepted_query(
+                accepted_query_id=str(accepted_query_id),
+                user_id=deps["user_id"],
+            )
+
+        assert result is not None
+        assert _audit_actions(mock_audit) == [AuditActionType.QUERY_RERUN]
+        call = mock_audit.await_args.kwargs
+        assert call["resource_type"] == "accepted_query"
+        assert call["resource_id"] == str(accepted_query_id)
+        assert call["outcome"] == "success"
+        assert call["context"] == {}
+
+
 # ── 2. Evaluator validation failure ────────────────────────────────────
 
 
