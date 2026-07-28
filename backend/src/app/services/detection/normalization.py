@@ -28,9 +28,9 @@ def normalize_detection_text(text: str) -> str:
     for character in compatibility_text:
         if character in _ZERO_WIDTH_SEPARATORS:
             normalized_characters.append(" ")
-        elif character == _ARABIC_TATWEEL or unicodedata.combining(character):
-            continue
-        elif unicodedata.category(character) == "Cf":
+        elif (
+            character == _ARABIC_TATWEEL or unicodedata.combining(character) or unicodedata.category(character) == "Cf"
+        ):
             continue
         else:
             normalized_characters.append(character)
