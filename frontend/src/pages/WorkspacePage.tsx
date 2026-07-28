@@ -397,7 +397,9 @@ export const WorkspacePage: React.FC = () => {
         if (messageKey === 'error.hostile_input_blocked' || errCode === 'hostile_input_blocked') {
           setLocalTurns((prev) =>
             prev.map((t) =>
-              t.id === turnId ? { ...t, isLoading: false, hostileInputBlocked: true } : t
+              t.id === turnId
+                ? { ...t, question: '', isLoading: false, hostileInputBlocked: true }
+                : t
             )
           );
           return;
@@ -473,7 +475,7 @@ export const WorkspacePage: React.FC = () => {
           <div className="workspace-messages">
             {allTurns.map((turn) => (
               <div key={turn.id} className="workspace-message-pair">
-                <UserBubble text={turn.question} />
+                {!turn.hostileInputBlocked && <UserBubble text={turn.question} />}
                 {turn.isLoading ? (
                   <div
                     className="workspace-assistant-loading"
