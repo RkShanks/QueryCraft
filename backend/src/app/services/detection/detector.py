@@ -61,7 +61,7 @@ class HostileInputDetector:
         Returns:
             DetectionOutcome with aggregated outcome, all results, and max confidence.
         """
-        detection_text = " ".join(text.split())
+        detection_text = " ".join(text.replace("\u200b", " ").split())
         rules = self._registry.list_rules()
         results: list[DetectionResult] = []
 
