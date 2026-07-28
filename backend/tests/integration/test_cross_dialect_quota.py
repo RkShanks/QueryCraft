@@ -218,6 +218,9 @@ class TestCrossDialectQuotaIntegration:
         from app.core.dependencies import get_redis
 
         class FailRedis:
+            async def get(self, *a, **kw):
+                raise ConnectionError("redis unavailable")
+
             async def set(self, *a, **kw):
                 return True
 

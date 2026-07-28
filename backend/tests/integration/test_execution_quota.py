@@ -82,6 +82,9 @@ class TestExecutionQuotaIntegration:
         from app.core.dependencies import get_redis
 
         class QuotaFailingRedis:
+            async def get(self, *args, **kwargs):
+                raise ConnectionError("redis unavailable")
+
             async def set(self, *args, **kwargs):
                 return True
 

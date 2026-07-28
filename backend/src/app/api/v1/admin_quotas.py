@@ -18,13 +18,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.validation import validate_body
 from app.api.v1.phase6_permissions import require_phase6_admin_permission
 from app.core.dependencies import get_db, get_redis
+from app.core.exceptions import QuotaUnavailableError
 from app.db.models.enums import AuditActionType, Permission
 from app.db.models.role import Role
+from app.db.models.role_quota import RoleQuota
 from app.repositories.quota_repository import QuotaRepository
 from app.schemas.quota import QuotaListResponse, QuotaStatusResponse, RoleQuotaConfig, RoleQuotaStatus, RoleQuotaUpsert
 from app.services.audit_service import AuditService
+from app.services.quota_service import QuotaService
 
 router = APIRouter(prefix="/admin/quotas", tags=["Admin Quotas"])
+
+
+async def _refresh_quota_cache(
+    redis: Redis,
+    role_id: uuid.UUID,
+    quota_config: RoleQuota | None,
+) -> None:
+    try:
+        await QuotaService.refresh_config_cache(redis, role_id, quota_config)
+    except QuotaUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": "service_unavailable", "message_key": "error.service_unavailable"},
+        ) from exc
 
 
 @router.get("", response_model=QuotaListResponse)
@@ -158,6 +175,7 @@ async def upsert_quota(
     data: RoleQuotaUpsert = Depends(validate_body(RoleQuotaUpsert)),  # noqa: B008
     _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_QUOTAS_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
 ):
     try:
         role_uuid = uuid.UUID(role_id)
@@ -205,6 +223,8 @@ async def upsert_quota(
             "dims_changed": dims_changed,
         },
     )
+    await db.commit()
+    await _refresh_quota_cache(redis, role_uuid, quota)
 
     return RoleQuotaConfig(
         role_id=quota.role_id,
@@ -222,6 +242,7 @@ async def delete_quota(
     role_id: str,
     _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_QUOTAS_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
 ):
     try:
         role_uuid = uuid.UUID(role_id)
@@ -250,3 +271,5 @@ async def delete_quota(
         outcome="success",
         context={"action": "removed", "role_id": role_id},
     )
+    await db.commit()
+    await _refresh_quota_cache(redis, role_uuid, None)
