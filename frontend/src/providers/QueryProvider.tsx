@@ -2,9 +2,18 @@
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
+type ApiError = {
+  status?: number;
+  response?: { status?: number };
+  error?: string;
+  message_key?: string;
+};
+
 function handle401(error: unknown) {
-  const apiError = error as { status?: number; response?: { status?: number } } | undefined;
-  if (apiError?.status === 401 || apiError?.response?.status === 401) {
+  const apiError = error as ApiError | undefined;
+  const isUnauthorizedPayload =
+    apiError?.error === 'unauthorized' && apiError.message_key === 'error.unauthorized';
+  if (apiError?.status === 401 || apiError?.response?.status === 401 || isUnauthorizedPayload) {
     window.history.replaceState({}, '', '/sign-in?error=session_expired');
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
