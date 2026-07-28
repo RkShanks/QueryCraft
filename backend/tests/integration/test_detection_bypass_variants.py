@@ -63,3 +63,15 @@ async def test_arabic_canonicalization_variants_are_blocked(hostile_text: str) -
     outcome = await HostileInputDetector(REGISTRY).detect(hostile_text, thresholds)
 
     assert outcome.outcome == "blocked"
+
+
+@pytest.mark.asyncio
+async def test_sql_comment_separated_keywords_are_blocked() -> None:
+    thresholds = DetectionThresholdConfig(block_confidence=0.8, flag_confidence=0.5)
+
+    outcome = await HostileInputDetector(REGISTRY).detect(
+        "UNION/**/SELECT account_id",
+        thresholds,
+    )
+
+    assert outcome.outcome == "blocked"
