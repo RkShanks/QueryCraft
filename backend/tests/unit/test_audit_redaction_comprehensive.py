@@ -160,6 +160,10 @@ _SAFE_KEYS: tuple[str, ...] = (
     "action",
     "sso_group_value",
     "role_id",
+    # Authentication mechanism and assigned role labels are audit metadata;
+    # neither field contains credentials or provider configuration.
+    "auth_provider",
+    "role_name",
     # T-738 audit.verify context: chain walk result metadata.
     # verified/entries_checked/first_break_at are safe — they describe
     # the audit chain walk outcome, not any sensitive value.

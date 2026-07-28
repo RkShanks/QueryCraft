@@ -26,10 +26,15 @@ async def sign_in(
     request: Request,
     response: Response,
     payload: SignInRequest,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     auth_service: AuthService = Depends(_get_auth_service),  # noqa: B008
 ):
     """POST /auth/sign-in — authenticate and set session cookie."""
-    profile, session_id = await auth_service.sign_in(payload.username, payload.password)
+    profile, session_id = await auth_service.sign_in(
+        payload.username,
+        payload.password,
+        db_session=db,
+    )
     settings = get_settings()
     SessionMiddleware.set_cookie(response, session_id, secure=settings.SESSION_COOKIE_SECURE)
     return profile

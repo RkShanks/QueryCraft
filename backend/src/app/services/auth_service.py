@@ -5,6 +5,7 @@ import json
 import os
 import time
 import uuid
+from typing import Never
 
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
@@ -32,13 +33,19 @@ class AuthService:
         self._redis = redis
         self._settings = settings or get_settings()
 
-    async def sign_in(self, username: str, password: str) -> tuple[UserProfile, str]:
+    async def sign_in(
+        self,
+        username: str,
+        password: str,
+        db_session: AsyncSession | None = None,
+    ) -> tuple[UserProfile, str]:
         """Authenticate user and create a Redis-backed session.
 
         Phase 5 (FR-120): Local password login is admin-only.
         - SSO users (auth_provider != 'local') are rejected with generic 401.
         - Non-admin local users are rejected with generic 401.
         - Generic error prevents account existence or auth-provider leak.
+        - When a database session is provided, every attempt is durably audited.
         """
         user = await self._repo.get_by_username(username)
 
@@ -47,25 +54,40 @@ class AuthService:
             detail={"error": "unauthorized", "message_key": "error.unauthorized"},
         )
 
-        if user is None:
+        async def reject_login() -> Never:
+            if db_session is not None:
+                await AuditService.log(
+                    db_session,
+                    action=AuditActionType.AUTH_LOGIN_FAILURE,
+                    resource_type="session",
+                    outcome="failure",
+                    context={
+                        "auth_provider": "local",
+                        "error_code": "unauthorized",
+                    },
+                )
+                await db_session.commit()
             raise _unauthorized
+
+        if user is None:
+            await reject_login()
 
         # Phase 5: only local admin users may use local password login
         auth_provider = getattr(user, "auth_provider", "local")
         auth_provider = auth_provider if isinstance(auth_provider, str) else "local"
 
         if auth_provider != "local":
-            raise _unauthorized
+            await reject_login()
 
         if user.password_hash is None or not verify_password(password, user.password_hash):
-            raise _unauthorized
+            await reject_login()
 
         # Non-admin local users are also rejected (admin-only local login)
         user_role = getattr(user, "role", "")
         if not isinstance(user_role, str):
             user_role = ""
         if user_role != "admin":
-            raise _unauthorized
+            await reject_login()
 
         session_id = os.urandom(32).hex()
 
@@ -124,6 +146,27 @@ class AuthService:
             permissions=permissions,
             auth_provider=auth_provider,
         )
+
+        if db_session is not None:
+            try:
+                await AuditService.log(
+                    db_session,
+                    action=AuditActionType.AUTH_LOGIN_SUCCESS,
+                    actor_id=user.id,
+                    actor_identity=user.username,
+                    resource_type="user",
+                    resource_id=str(user.id),
+                    outcome="success",
+                    context={
+                        "auth_provider": "local",
+                        "role_name": role_name,
+                    },
+                )
+                await db_session.commit()
+            except Exception:
+                await self.sign_out(session_id)
+                raise
+
         return profile, session_id
 
     async def _enforce_concurrent_session_limit(
