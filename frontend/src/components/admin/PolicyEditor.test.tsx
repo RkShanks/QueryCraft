@@ -148,6 +148,32 @@ describe('PolicyEditor', () => {
     ]);
   });
 
+  it('keeps policy identifiers and expressions left-to-right inside RTL pages', () => {
+    render(
+      <div dir="rtl">
+        <PolicyEditor policies={[]} onChange={mockOnChange} />
+      </div>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Add Connection Policy/i }));
+    const connectionSelect = screen.getByLabelText(/Select Connection/i) as HTMLSelectElement;
+    fireEvent.change(connectionSelect, { target: { value: 'conn-1' } });
+
+    expect(screen.getByText('users')).toHaveAttribute('dir', 'ltr');
+    fireEvent.click(screen.getByTestId('table-checkbox-users'));
+    expect(screen.getByText('email')).toHaveAttribute('dir', 'ltr');
+
+    fireEvent.click(screen.getByRole('button', { name: /Add Row Filter/i }));
+    const filterTableSelect = screen.getAllByRole('combobox')[1];
+    const filterExpression = screen.getByPlaceholderText(/e.g. department_id = {user.role}/i);
+    expect(filterTableSelect).toHaveAttribute('dir', 'ltr');
+    expect(filterExpression).toHaveAttribute('dir', 'ltr');
+
+    fireEvent.click(screen.getByRole('button', { name: /Add Column Mask/i }));
+    const maskTableSelect = screen.getAllByRole('combobox')[2];
+    expect(maskTableSelect).toHaveAttribute('dir', 'ltr');
+  });
+
   it('validates filter expressions and displays validation feedback', () => {
     render(<PolicyEditor policies={[]} onChange={mockOnChange} />);
 

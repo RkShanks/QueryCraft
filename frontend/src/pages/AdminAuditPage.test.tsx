@@ -400,9 +400,10 @@ describe('AdminAuditPage', () => {
       render(<AdminAuditPage />, { wrapper: createWrapper() });
 
       expect(await screen.findByText('user@example.com')).toBeInTheDocument();
-      expect(screen.getByText('query.submit')).toBeInTheDocument();
+      expect(screen.getByLabelText('Action Type')).toHaveAttribute('dir', 'ltr');
+      expect(screen.getByText('query.submit')).toHaveAttribute('dir', 'ltr');
       expect(screen.getByText('success')).toBeInTheDocument();
-      expect(screen.getByText('database')).toBeInTheDocument();
+      expect(screen.getByText('database')).toHaveAttribute('dir', 'ltr');
     });
 
     it('handles pagination next/prev buttons and info text', async () => {
