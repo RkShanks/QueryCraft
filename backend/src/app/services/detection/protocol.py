@@ -12,6 +12,16 @@ from __future__ import annotations
 import dataclasses
 from typing import Protocol, runtime_checkable
 
+BUILTIN_RULE_NAMES = frozenset(
+    {
+        "prompt_injection",
+        "sql_injection",
+        "rbac_bypass",
+        "schema_exposure",
+        "destructive_sql",
+    }
+)
+
 
 @dataclasses.dataclass
 class DetectionResult:

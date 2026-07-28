@@ -45,6 +45,7 @@ from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt
 from app.core.exceptions import (
     AttemptNotFound,
     AttemptOwnershipViolation,
+    DetectionUnavailableError,
     PolicySchemaConflictError,
     QuotaExceededError,
     QuotaUnavailableError,
@@ -350,10 +351,19 @@ class QueryService:
             #   and return 400 immediately. Quota counter NOT incremented.
             # Flagged requests: emit HOSTILE_INPUT_FLAGGED audit, continue to quota.
             # Allowed requests: proceed normally.
-            _detection_config_repo = DetectionConfigRepository(self._db_session)
-            _detection_thresholds = await _detection_config_repo.get()
-            _detector = HostileInputDetector()
-            _detection_outcome = await _detector.detect(question, _detection_thresholds)
+            try:
+                _detection_config_repo = DetectionConfigRepository(self._db_session)
+                _detection_thresholds = await _detection_config_repo.get_for_detection()
+                _detector = HostileInputDetector()
+                _detection_outcome = await _detector.detect(question, _detection_thresholds)
+            except DetectionUnavailableError:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={
+                        "error": "service_unavailable",
+                        "message_key": "error.service_unavailable",
+                    },
+                ) from None
             _detection_context = build_detection_audit_context(
                 outcome=_detection_outcome.outcome,
                 results=_detection_outcome.results,

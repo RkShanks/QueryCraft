@@ -45,7 +45,7 @@ def mock_executor():
 @pytest.fixture
 def service(mock_repo, redis_client, mock_evaluator, mock_executor, monkeypatch):
     monkeypatch.setattr(
-        "app.services.query_service.DetectionConfigRepository.get",
+        "app.services.query_service.DetectionConfigRepository.get_for_detection",
         AsyncMock(return_value=SimpleNamespace(block_confidence=0.8, flag_confidence=0.5)),
     )
     monkeypatch.setattr(

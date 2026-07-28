@@ -21,6 +21,7 @@ contract module.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -38,6 +39,7 @@ _DETECTION_TEST_MODULES = {
     "test_rule_schema_exposure",
     "test_rule_destructive_sql",
     "test_detection_package_registration",
+    "test_detection_config_repo",
     "test_detection_fail_closed",
     "test_no_raw_hostile_payload",
 }
@@ -72,9 +74,20 @@ def _stub_hostile_detector_as_allowed(request: pytest.FixtureRequest):
 
     _allowed = DetectionOutcome(outcome="allowed", results=[], max_confidence=0.0)
 
-    with patch(
-        "app.services.detection.detector.HostileInputDetector.detect",
-        new=AsyncMock(return_value=_allowed),
+    with (
+        patch(
+            "app.services.detection.detector.HostileInputDetector.detect",
+            new=AsyncMock(return_value=_allowed),
+        ),
+        patch(
+            "app.services.query_service.DetectionConfigRepository.get_for_detection",
+            new=AsyncMock(
+                return_value=SimpleNamespace(
+                    block_confidence=0.8,
+                    flag_confidence=0.5,
+                )
+            ),
+        ),
     ):
         yield
 
