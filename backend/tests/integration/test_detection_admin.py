@@ -157,6 +157,24 @@ class TestDetectionAdminPutConfig:
         _assert_detection_validation_response_is_sanitized(response)
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"block_confidence": "0.9", "flag_confidence": "0.4"},
+            {"block_confidence": True, "flag_confidence": False},
+        ],
+        ids=["numeric-strings", "booleans"],
+    )
+    async def test_put_config_rejects_coerced_json_types(self, authenticated_client, payload):
+        response = await authenticated_client.put(
+            "/api/v1/admin/detection/config",
+            json=payload,
+        )
+
+        assert response.status_code == 422
+        _assert_detection_validation_response_is_sanitized(response)
+
+    @pytest.mark.asyncio
     async def test_put_config_403_for_non_admin(self, app_client, async_engine_fixture):
         await _sign_in_admin_without_security_permission(
             app_client,
