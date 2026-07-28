@@ -14,7 +14,7 @@ function ExpiredSessionProbe() {
     },
     retry: false,
   });
-  return query.isError ? <span>query rejected</span> : null;
+  return query.isError ? <span data-testid="query-rejected" /> : null;
 }
 
 describe('QueryProvider session expiry handling', () => {
@@ -49,7 +49,7 @@ describe('QueryProvider session expiry handling', () => {
       </QueryProvider>
     );
 
-    await screen.findByText('query rejected');
+    await screen.findByTestId('query-rejected');
 
     expect(window.location.pathname).toBe('/sign-in');
     expect(window.location.search).toBe('?error=sso_validation_failed');
