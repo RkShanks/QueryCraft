@@ -1,0 +1,253 @@
+{
+  "run_date": "2026-07-28",
+  "scope": "Phase 6A quotas only",
+  "starting_synchronized_head": "3ff9afad8511dac5070cd43f3873409eb65630f3",
+  "tested_product_head": "4aff12b76686bd2788a7d1c6f12852e112e2c794",
+  "excluded_scope": [
+    "Phase 6B detection",
+    "audit hardening beyond quota-event verification",
+    "Phase 6 final closure",
+    "T-905",
+    "freeze work",
+    "implementation-surface gap audit"
+  ],
+  "runtime": {
+    "platform_database": "isolated",
+    "redis": "disposable isolated state",
+    "browser_drivers": [
+      "Chrome DevTools MCP",
+      "headless Chromium"
+    ],
+    "provider_correctness_dependency": false,
+    "normal_development_state_disrupted": false,
+    "sensitive_values_retained": false,
+    "fresh_repository_screenshots_staged": false
+  },
+  "totals": {
+    "Pass": 9,
+    "Fail": 0,
+    "Partial": 0,
+    "Setup-dependent": 0,
+    "Not run": 0,
+    "Deferred": 0
+  },
+  "matrix": [
+    {
+      "id": "P6-FR-147",
+      "status": "Pass",
+      "automated_evidence": "Repository, admin API, validation, permission, cache-refresh, and audit suites passed.",
+      "browser_api_evidence": "Administrator CRUD and negative responses passed; reset/delete returned 204; quota-only administration loaded successfully.",
+      "notes": "Nullable limits are uncapped and audit context omits limit/counter values."
+    },
+    {
+      "id": "P6-FR-148",
+      "status": "Pass",
+      "automated_evidence": "Isolated real-Redis concurrency and dimension coverage passed 10/10 with unit and cross-dialect support.",
+      "browser_api_evidence": "Public status responses remained sanitized; no internal cache identifier or stored counter value was retained.",
+      "notes": "Atomic saturation, user/dimension/day isolation, independence, and uncapped behavior passed."
+    },
+    {
+      "id": "P6-FR-149",
+      "status": "Pass",
+      "automated_evidence": "Focused frontend/locale suites passed 316/316; full Vitest passed 65 files and 785 tests; all frontend build and lint gates passed.",
+      "browser_api_evidence": "Desktop EN/AR, 375px EN, and 768px AR passed with complete content, zero overflow, zero physical-direction drift, and zero forbidden requests.",
+      "notes": "Loading, empty, success, unavailable, 403, validation, edit, status, and uncapped/reset states are localized."
+    },
+    {
+      "id": "P6-FR-150",
+      "status": "Pass",
+      "automated_evidence": "Real 60-second cache, hit, expiry, immediate refresh, minimal serialization, stale-write, and concurrent invalidation tests passed.",
+      "browser_api_evidence": "Administrator changes were visible immediately after upsert/reset.",
+      "notes": "Cache failures remain fail closed and unrelated role/security data is absent."
+    },
+    {
+      "id": "P6-FR-151",
+      "status": "Pass",
+      "automated_evidence": "Deterministic query, execution, export, sanitization, fail-closed, and cross-dialect ordering suites passed; focused post-fix selection passed 49/49.",
+      "browser_api_evidence": "A real zero-quota benign query returned 429 before query-side LLM/chat/attempt work; temporary state was restored.",
+      "notes": "Each dimension blocks before its relevant downstream side effect and under-limit paths proceed exactly once."
+    },
+    {
+      "id": "P6-FR-152",
+      "status": "Pass",
+      "automated_evidence": "Quota error sanitization, cross-dialect response, Phase 6 sanitization, and localized banner suites passed.",
+      "browser_api_evidence": "The real 429 contained only error, message_key, and contract-allowed reset_at fields.",
+      "notes": "No usage, limit, policy, role internals, SQL, provider detail, host, or stack appeared."
+    },
+    {
+      "id": "P6-FR-153",
+      "status": "Pass",
+      "automated_evidence": "Disposable outage/timeout/recovery passed 1/1; isolated malformed data/script and recovery tests passed; endpoint spies verified sanitized 503 and no downstream work.",
+      "browser_api_evidence": "Recovery used disposable state without restarting the application or disrupting development services.",
+      "notes": "Unavailable, timeout, malformed response, and script failure paths fail closed."
+    },
+    {
+      "id": "P6-FR-154",
+      "status": "Pass",
+      "automated_evidence": "Fractional-midnight TTL, missing-expiry repair, valid-expiry preservation, new-day isolation, and concurrent rollover passed in real Redis.",
+      "browser_api_evidence": "No browser check required.",
+      "notes": "The prior TTL precision and missing-expiry deferrals are closed."
+    },
+    {
+      "id": "P6-FR-155",
+      "status": "Pass",
+      "automated_evidence": "Durable query/execution denial audit tests and sanitized configuration-audit tests passed.",
+      "browser_api_evidence": "Audit API searches returned configuration-change entries and two representative denial entries; denial context contained only dimension and reset_at.",
+      "notes": "The reproduced transaction rollback defect is fixed; no sensitive audit values were retained."
+    }
+  ],
+  "fixes": [
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/239",
+      "classification": [
+        "missing required 60-second quota configuration cache",
+        "atomic counter overshoot",
+        "UTC-midnight TTL zero-floor",
+        "missing-expiry repair gap",
+        "malformed script response fail-closed gap"
+      ],
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/240",
+      "classification": [
+        "missing quota UI empty/error/validation states",
+        "unsafe numeric parsing",
+        "narrow-layout quota content clipping"
+      ],
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/241",
+      "classification": [
+        "quota-denial audit event rolled back with HTTP 429"
+      ],
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    }
+  ],
+  "automated_validation": {
+    "backend": [
+      {
+        "gate": "focused cache/TTL/counter/admin/enforcement/reset/audit/fail-closed/cross-dialect/export/sanitization selection",
+        "result": "145 passed"
+      },
+      {
+        "gate": "focused audit durability/enforcement/fail-closed/sanitization/cross-dialect/admin/execution selection",
+        "result": "49 passed"
+      },
+      {
+        "gate": "isolated real-Redis cache/concurrency/TTL/boundary/error suite",
+        "result": "10 passed"
+      },
+      {
+        "gate": "disposable Redis outage/timeout/recovery",
+        "result": "1 passed"
+      },
+      {
+        "gate": "full pytest after final production fix",
+        "result": "2554 passed; 15 skipped; 6 pre-existing warnings; 35 subtests passed"
+      },
+      {
+        "gate": "Ruff check and format check",
+        "result": "passed; 395 files already formatted"
+      }
+    ],
+    "frontend": [
+      {
+        "gate": "focused Admin Quotas and locale selection",
+        "result": "316 passed"
+      },
+      {
+        "gate": "full Vitest",
+        "result": "65 files and 785 tests passed"
+      },
+      {
+        "gate": "ESLint, typecheck, production build, and CSS lint",
+        "result": "passed"
+      }
+    ],
+    "diff_check": "passed",
+    "required_ci": {
+      "backend-test": "passed",
+      "frontend-test": "passed"
+    }
+  },
+  "browser_api_validation": {
+    "administrator": {
+      "quota_list": 200,
+      "quota_upsert": 200,
+      "malformed_body": 422,
+      "invalid_value": 400,
+      "missing_role": 404,
+      "malformed_role_identifier": 400,
+      "reset_to_uncapped": 204
+    },
+    "quota_only_administrator": {
+      "role_management_requests_from_quota_page": 0,
+      "sso_mapping_requests_from_quota_page": 0,
+      "direct_role_management_response": 403,
+      "direct_sso_mapping_response": 403
+    },
+    "quota_denial": {
+      "status": 429,
+      "message_key": "error.quota_exceeded",
+      "response_fields": [
+        "error",
+        "message_key",
+        "reset_at"
+      ],
+      "sanitized": true
+    },
+    "audit_search": {
+      "configuration_change_search": 200,
+      "quota_denial_search": 200,
+      "representative_denial_entries_found": 2,
+      "denial_context_fields": [
+        "dimension",
+        "reset_at"
+      ],
+      "sanitized": true
+    },
+    "responsive": [
+      {
+        "viewport": "375x812",
+        "locale": "en",
+        "direction": "ltr",
+        "no_page_overflow": true,
+        "all_cards_and_actions_fit": true,
+        "physical_direction_classes": 0,
+        "forbidden_requests": 0
+      },
+      {
+        "viewport": "768x1024",
+        "locale": "ar",
+        "direction": "rtl",
+        "no_page_overflow": true,
+        "all_cards_and_actions_fit": true,
+        "physical_direction_classes": 0,
+        "forbidden_requests": 0
+      }
+    ]
+  },
+  "safety": {
+    "credentials_or_cookies_in_evidence": false,
+    "internal_cache_identifiers_in_evidence": false,
+    "stored_counter_values_in_evidence": false,
+    "sensitive_payloads_in_evidence": false,
+    "pre_existing_dirty_artifacts_touched": false
+  },
+  "closure": {
+    "phase_6a_complete": true,
+    "phase_6b_unblocked": true,
+    "phase_6b_started": false
+  }
+}
