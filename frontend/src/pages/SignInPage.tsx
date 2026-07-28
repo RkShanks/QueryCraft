@@ -33,12 +33,13 @@ export const SignInPage: React.FC = () => {
       sso_validation_failed: 'error.ssoValidationFailed',
       sso_provider_unavailable: 'error.ssoProviderUnavailable',
       sso_not_configured: 'error.ssoNotConfigured',
+      session_expired: 'error.unauthorized',
     };
     const key = mappedKeys[code] || 'error.ssoValidationFailed';
     return t(key);
   };
 
-  const ssoError = getSanitizedErrorMessage(errorParam);
+  const sanitizedError = getSanitizedErrorMessage(errorParam);
 
   return (
     <div 
@@ -76,11 +77,11 @@ export const SignInPage: React.FC = () => {
             {t('auth.signIn.title')}
           </h2>
 
-          {/* Mapped Localized/Sanitized SSO Error Alert */}
-          {ssoError && (
+          {/* Mapped localized and sanitized authentication error alert. */}
+          {sanitizedError && (
             <div className="mb-6 p-4 rounded-xl border border-rose-900/30 bg-rose-950/10 text-sm text-rose-400 flex items-start gap-2.5 animate-shake">
               <XCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-500" />
-              <span className="flex-1">{ssoError}</span>
+              <span className="flex-1">{sanitizedError}</span>
             </div>
           )}
 

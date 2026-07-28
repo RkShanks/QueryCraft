@@ -23,6 +23,7 @@ vi.mock('react-i18next', () => ({
         else if (key === 'error.ssoNotConfigured') val = 'لم يتم تكوين SSO بعد.';
         else if (key === 'error.ssoNoRole') val = 'لا توجد أدوار مخصصة لمجموعات SSO الخاصة بك.';
         else if (key === 'error.ssoValidationFailed') val = 'فشل التحقق من صحة SSO.';
+        else if (key === 'error.unauthorized') val = 'انتهت صلاحية جلستك أو لم تقم بتسجيل الدخول. يرجى تسجيل الدخول مرة أخرى.';
         else if (key === 'common.or') val = 'أو';
         else val = key;
       } else {
@@ -33,6 +34,7 @@ vi.mock('react-i18next', () => ({
         else if (key === 'error.ssoNotConfigured') val = 'SSO is not configured.';
         else if (key === 'error.ssoNoRole') val = "User SSO groups don't map to any role.";
         else if (key === 'error.ssoValidationFailed') val = 'SSO validation failed.';
+        else if (key === 'error.unauthorized') val = 'Your session has expired or you are not signed in. Please sign in again.';
         else if (key === 'common.or') val = 'Or';
         else val = key;
       }
@@ -240,6 +242,32 @@ describe('SignInPage', () => {
 
       const errorText = await screen.findByText(/User SSO groups don't map to any role/i);
       expect(errorText).toBeInTheDocument();
+    });
+
+    it.each([
+      ['en', /Your session has expired or you are not signed in/i],
+      ['ar', /انتهت صلاحية جلستك أو لم تقم بتسجيل الدخول/i],
+    ])('displays the sanitized expired-session message in %s', async (language, expectedMessage) => {
+      mockLanguageState.language = language;
+      const testQueryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+          },
+        },
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/sign-in?error=session_expired']}>
+          <QueryClientProvider client={testQueryClient}>
+            <SignInPage />
+          </QueryClientProvider>
+        </MemoryRouter>
+      );
+
+      const errorText = await screen.findByText(expectedMessage);
+      expect(errorText).toBeInTheDocument();
+      expect(errorText).not.toHaveTextContent('session_expired');
     });
   });
 });
