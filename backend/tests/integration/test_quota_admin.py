@@ -10,7 +10,13 @@ Tests GET/PUT/DELETE /admin/quotas endpoints:
 - PUT emits quota.config.change audit event
 """
 
+import uuid
+from unittest.mock import AsyncMock
+
 import pytest
+
+from app.db.models.role_quota import RoleQuota
+from app.services.quota_service import QuotaService
 
 
 class TestQuotaAdminList:
@@ -212,3 +218,81 @@ class TestQuotaAdminAuditEvent:
             assert entry is not None
             context = entry[0] if isinstance(entry[0], dict) else __import__("json").loads(entry[0])
             assert "role_id" in context or "dims_changed" in context or "action" in context
+
+
+class TestQuotaAdminCacheRefresh:
+    @pytest.mark.asyncio
+    async def test_upsert_and_delete_change_warm_cache_immediately(
+        self,
+        authenticated_client,
+        async_engine_fixture,
+        redis_client,
+    ):
+        from sqlalchemy import text
+
+        async with async_engine_fixture.connect() as conn:
+            role_id = (
+                await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
+            ).scalar_one()
+
+        await redis_client.delete(
+            f"quota_config:{role_id}",
+            f"quota_config_revision:{role_id}",
+        )
+        stale_quota = RoleQuota(role_id=role_id, daily_query_limit=10)
+        quota_repo = AsyncMock()
+        quota_repo.get.return_value = stale_quota
+        service = QuotaService(redis=redis_client, quota_repo=quota_repo)
+        user_id = uuid.uuid4()
+
+        assert (await service.check_and_increment(user_id, role_id, "queries"))[1] == 10
+
+        response = await authenticated_client.put(
+            f"/api/v1/admin/quotas/{role_id}",
+            json={"daily_query_limit": 2},
+        )
+        assert response.status_code == 200
+        assert (await service.check_and_increment(user_id, role_id, "queries"))[1] == 2
+
+        response = await authenticated_client.delete(f"/api/v1/admin/quotas/{role_id}")
+        assert response.status_code == 204
+        assert (await service.check_and_increment(user_id, role_id, "queries"))[1] is None
+        assert quota_repo.get.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_cache_refresh_failure_returns_sanitized_503(
+        self,
+        authenticated_client,
+        async_engine_fixture,
+    ):
+        from sqlalchemy import text
+
+        from app.core.dependencies import get_redis
+
+        class CacheFailingRedis:
+            async def incr(self, _key):
+                raise ConnectionError("internal cache endpoint unavailable")
+
+        async with async_engine_fixture.connect() as conn:
+            role_id = (
+                await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
+            ).scalar_one()
+
+        async def failing_cache():
+            yield CacheFailingRedis()
+
+        app = authenticated_client._transport.app
+        app.dependency_overrides[get_redis] = failing_cache
+        try:
+            response = await authenticated_client.put(
+                f"/api/v1/admin/quotas/{role_id}",
+                json={"daily_query_limit": 4},
+            )
+        finally:
+            app.dependency_overrides.pop(get_redis, None)
+
+        assert response.status_code == 503
+        assert response.json() == {
+            "error": "service_unavailable",
+            "message_key": "error.service_unavailable",
+        }

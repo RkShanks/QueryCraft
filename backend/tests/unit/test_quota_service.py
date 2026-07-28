@@ -10,12 +10,13 @@ These tests define the contract for QuotaService.check_and_increment():
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 from redis.asyncio import Redis as AsyncRedis
 
 from app.core.exceptions import QuotaExceededError, QuotaUnavailableError
+from app.db.models.role_quota import RoleQuota
 
 
 def _make_script(return_value=(1, 5, 10), side_effect=None):
@@ -34,6 +35,9 @@ class TestQuotaServiceCheckAndIncrement:
     def mock_redis(self):
         redis = AsyncMock(spec=AsyncRedis)
         redis.register_script.return_value = _make_script((1, 5, 10))
+        redis.get = AsyncMock(return_value=None)
+        redis.set = AsyncMock(return_value=True)
+        redis.incr = AsyncMock(return_value=1)
         return redis
 
     @pytest.fixture
@@ -52,7 +56,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_query_limit=10, role_id=role_id)
         service._check_script = _make_script((1, 1, 10))
 
         used, limit, reset_at = await service.check_and_increment(user_id, role_id, "queries")
@@ -66,7 +70,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_query_limit=5, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_query_limit=5, role_id=role_id)
         service._check_script = _make_script((0, 6, 5))
 
         with pytest.raises(QuotaExceededError) as exc_info:
@@ -80,7 +84,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_execution_limit=10, role_id=role_id)
         service._check_script = _make_script(side_effect=ConnectionError("Redis unreachable"))
 
         with pytest.raises(QuotaUnavailableError):
@@ -92,7 +96,7 @@ class TestQuotaServiceCheckAndIncrement:
         user_id = uuid.uuid4()
         today = datetime.now(UTC).strftime("%Y-%m-%d")
 
-        mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_query_limit=10, role_id=role_id)
         call_args = {}
 
         async def _capture_script(*args, **kwargs):
@@ -112,7 +116,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_query_limit=10, role_id=role_id)
         call_args = {}
 
         async def _capture_script(*args, **kwargs):
@@ -133,7 +137,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_query_limit=None, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_query_limit=None, role_id=role_id)
         script_called = False
 
         async def _fail_if_called(*args, **kwargs):
@@ -154,7 +158,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_execution_limit=None, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_execution_limit=None, role_id=role_id)
         script_called = False
 
         async def _fail_if_called(*args, **kwargs):
@@ -196,7 +200,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_execution_limit=3, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_execution_limit=3, role_id=role_id)
         service._check_script = _make_script((0, 4, 3))
 
         with pytest.raises(QuotaExceededError) as exc_info:
@@ -213,7 +217,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_query_limit=10, role_id=role_id)
         service._check_script = _make_script((1, 1, 10))
 
         await service.check_and_increment(user_id, role_id, "queries")
@@ -225,7 +229,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_query_limit=10, role_id=role_id)
         service._check_script = _make_script((1, 2, 10))
 
         await service.check_and_increment(user_id, role_id, "queries")
@@ -237,7 +241,7 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_execution_limit=20, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_execution_limit=20, role_id=role_id)
         service._check_script = _make_script((1, 5, 20))
 
         used, limit, reset_at = await service.check_and_increment(user_id, role_id, "executions")
@@ -250,8 +254,27 @@ class TestQuotaServiceCheckAndIncrement:
         role_id = uuid.uuid4()
         user_id = uuid.uuid4()
 
-        mock_quota_repo.get.return_value = MagicMock(daily_query_limit=10, role_id=role_id)
+        mock_quota_repo.get.return_value = RoleQuota(daily_query_limit=10, role_id=role_id)
         service._check_script = _make_script(side_effect=ConnectionError("Redis connection lost"))
+
+        with pytest.raises(QuotaUnavailableError):
+            await service.check_and_increment(user_id, role_id, "queries")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "malformed_response",
+        [None, [], [2, 1, 10], [1, -1, 10], ["allowed", 1, 10]],
+    )
+    async def test_p6_fr_153_malformed_script_response_fails_closed(
+        self,
+        service,
+        mock_quota_repo,
+        malformed_response,
+    ):
+        role_id = uuid.uuid4()
+        user_id = uuid.uuid4()
+        mock_quota_repo.get.return_value = RoleQuota(daily_query_limit=10, role_id=role_id)
+        service._check_script = _make_script(malformed_response)
 
         with pytest.raises(QuotaUnavailableError):
             await service.check_and_increment(user_id, role_id, "queries")

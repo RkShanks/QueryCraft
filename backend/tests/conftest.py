@@ -13,6 +13,7 @@ Provides:
 import asyncio
 import base64
 import json
+import os
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
@@ -52,8 +53,11 @@ def test_encryption_key() -> str:
 def test_env_vars(test_encryption_key: str) -> dict[str, str]:
     """Environment variables for test settings."""
     return {
-        "DATABASE_URL": "postgresql+asyncpg://querycraft:querycraft_dev@localhost:5433/querycraft",
-        "REDIS_URL": "redis://localhost:6379/1",
+        "DATABASE_URL": os.environ.get(
+            "QUERYCRAFT_TEST_DATABASE_URL",
+            "postgresql+asyncpg://querycraft:querycraft_dev@localhost:5433/querycraft",
+        ),
+        "REDIS_URL": os.environ.get("QUERYCRAFT_TEST_REDIS_URL", "redis://localhost:6379/1"),
         "PLATFORM_ENCRYPTION_KEY": test_encryption_key,
         "ALLOWED_ORIGINS": "http://localhost:3000,http://test",
         "ADMIN_USERNAME": "admin",

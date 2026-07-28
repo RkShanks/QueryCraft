@@ -40,6 +40,11 @@ class TestQuotaDailyReset:
         ttl = _seconds_until_midnight_utc(now)
         assert 0 < ttl <= 2
 
+    def test_c6_l01_final_fractional_second_keeps_positive_ttl(self):
+        now = datetime(2026, 6, 12, 23, 59, 59, 999999, tzinfo=UTC)
+        ttl = _seconds_until_midnight_utc(now)
+        assert ttl == 1
+
     def test_new_day_generates_new_key(self):
         day1 = datetime(2026, 6, 12, 15, 0, 0, tzinfo=UTC)
         day2 = datetime(2026, 6, 13, 10, 0, 0, tzinfo=UTC)
