@@ -75,3 +75,15 @@ async def test_sql_comment_separated_keywords_are_blocked() -> None:
     )
 
     assert outcome.outcome == "blocked"
+
+
+@pytest.mark.asyncio
+async def test_schema_documentation_request_is_allowed() -> None:
+    thresholds = DetectionThresholdConfig(block_confidence=0.8, flag_confidence=0.5)
+
+    outcome = await HostileInputDetector(REGISTRY).detect(
+        "Show schema documentation for the reporting model",
+        thresholds,
+    )
+
+    assert outcome.outcome == "allowed"
