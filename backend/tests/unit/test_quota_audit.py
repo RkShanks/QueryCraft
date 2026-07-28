@@ -76,6 +76,7 @@ class TestQuotaExceededAuditEvent:
                     "reset_at": "2026-06-13T00:00:00+00:00",
                 },
             )
+            mock_db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_execution_quota_exceeded_emits_audit_event(self):
@@ -161,6 +162,7 @@ class TestQuotaExceededAuditEvent:
                     "reset_at": "2026-06-13T00:00:00+00:00",
                 },
             )
+            mock_db.commit.assert_awaited_once()
 
     def test_quota_exceeded_context_has_dimension_and_reset_at_no_counters(self):
         context = {
