@@ -139,6 +139,17 @@ class TestDetectionAdminPutConfig:
         assert data["flag_confidence"] == pytest.approx(0.45)
 
     @pytest.mark.asyncio
+    async def test_put_config_accepts_exact_numeric_boundaries(self, authenticated_client):
+        response = await authenticated_client.put(
+            "/api/v1/admin/detection/config",
+            json={"block_confidence": 1.0, "flag_confidence": 0.0},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["block_confidence"] == pytest.approx(1.0)
+        assert response.json()["flag_confidence"] == pytest.approx(0.0)
+
+    @pytest.mark.asyncio
     async def test_put_config_block_less_than_flag_returns_422(self, authenticated_client):
         response = await authenticated_client.put(
             "/api/v1/admin/detection/config",
@@ -153,6 +164,75 @@ class TestDetectionAdminPutConfig:
             "/api/v1/admin/detection/config",
             json={"block_confidence": 0.5, "flag_confidence": 0.5},
         )
+        assert response.status_code == 422
+        _assert_detection_validation_response_is_sanitized(response)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"block_confidence": "0.9", "flag_confidence": "0.4"},
+            {"block_confidence": True, "flag_confidence": False},
+        ],
+        ids=["numeric-strings", "booleans"],
+    )
+    async def test_put_config_rejects_coerced_json_types(self, authenticated_client, payload):
+        response = await authenticated_client.put(
+            "/api/v1/admin/detection/config",
+            json=payload,
+        )
+
+        assert response.status_code == 422
+        _assert_detection_validation_response_is_sanitized(response)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"block_confidence": -0.1, "flag_confidence": 0.0},
+            {"block_confidence": 1.1, "flag_confidence": 0.5},
+            {"block_confidence": None, "flag_confidence": 0.4},
+            {"block_confidence": 0.9, "flag_confidence": None},
+            {"block_confidence": "high", "flag_confidence": "low"},
+            {"flag_confidence": 0.4},
+            {"block_confidence": 0.9},
+        ],
+        ids=[
+            "below-range",
+            "above-range",
+            "null-block",
+            "null-flag",
+            "arbitrary-strings",
+            "missing-block",
+            "missing-flag",
+        ],
+    )
+    async def test_put_config_rejects_invalid_payloads(self, authenticated_client, payload):
+        response = await authenticated_client.put(
+            "/api/v1/admin/detection/config",
+            json=payload,
+        )
+
+        assert response.status_code == 422
+        _assert_detection_validation_response_is_sanitized(response)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "content",
+        [
+            b"{",
+            b'{"block_confidence":NaN,"flag_confidence":0.4}',
+            b'{"block_confidence":Infinity,"flag_confidence":0.4}',
+        ],
+        ids=["malformed", "nan", "infinity"],
+    )
+    async def test_put_config_rejects_invalid_raw_json(self, authenticated_client, content):
+        response = await authenticated_client.put(
+            "/api/v1/admin/detection/config",
+            content=content,
+            headers={"content-type": "application/json"},
+        )
+
         assert response.status_code == 422
         _assert_detection_validation_response_is_sanitized(response)
 
