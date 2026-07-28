@@ -1,5 +1,6 @@
 """Permission-gate denials must be durably audited without leaking request data."""
 
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -8,11 +9,15 @@ from httpx import ASGITransport, AsyncClient
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.dependencies.permissions import require_permission
-from app.db.base import get_db
 from app.db.models.enums import AuditActionType, Permission
 
 
-def _protected_app(session: dict | None, db: AsyncMock) -> FastAPI:
+@asynccontextmanager
+async def _db_context(db):
+    yield db
+
+
+def _protected_app(session: dict | None) -> FastAPI:
     class SessionInjectionMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request: Request, call_next):
             request.state.session = session
@@ -20,11 +25,6 @@ def _protected_app(session: dict | None, db: AsyncMock) -> FastAPI:
 
     app = FastAPI()
     app.add_middleware(SessionInjectionMiddleware)
-
-    async def override_db():
-        return db
-
-    app.dependency_overrides[get_db] = override_db
 
     @app.get("/protected")
     async def protected(
@@ -35,31 +35,55 @@ def _protected_app(session: dict | None, db: AsyncMock) -> FastAPI:
     return app
 
 
+@pytest.mark.parametrize(
+    ("session", "expected_status", "expected_actor", "expected_reason"),
+    [
+        (
+            {
+                "username": "restricted-user",
+                "role_id": "restricted-role",
+                "permissions": [Permission.QUERY_SUBMIT.value],
+            },
+            403,
+            "restricted-user",
+            "missing_permission",
+        ),
+        (None, 401, None, "unauthenticated"),
+    ],
+)
 @pytest.mark.asyncio
-async def test_authenticated_permission_denial_is_durably_audited():
+async def test_permission_denial_is_durably_audited(
+    session,
+    expected_status,
+    expected_actor,
+    expected_reason,
+):
     db = AsyncMock()
-    app = _protected_app(
-        {
-            "username": "restricted-user",
-            "role_id": "restricted-role",
-            "permissions": [Permission.QUERY_SUBMIT.value],
-        },
-        db,
-    )
+    app = _protected_app(session)
 
-    with patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as audit_log:
+    def session_factory():
+        return _db_context(db)
+
+    with (
+        patch(
+            "app.api.dependencies.permissions.get_async_session_factory",
+            return_value=session_factory,
+        ) as get_session_factory,
+        patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as audit_log,
+    ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get("/protected")
 
-    assert response.status_code == 403
+    assert response.status_code == expected_status
+    get_session_factory.assert_called_once_with()
     audit_log.assert_awaited_once_with(
         db,
         action=AuditActionType.ACCESS_DENIED,
-        actor_identity="restricted-user",
+        actor_identity=expected_actor,
         resource_type="authorization",
         outcome="denied",
         context={
-            "reason": "missing_permission",
+            "reason": expected_reason,
             "request_method": "GET",
             "required_permissions": [Permission.ADMIN_AUDIT_VERIFY.value],
         },
@@ -70,32 +94,6 @@ async def test_authenticated_permission_denial_is_durably_audited():
 
 
 @pytest.mark.asyncio
-async def test_unauthenticated_permission_denial_is_durably_audited():
-    db = AsyncMock()
-    app = _protected_app(None, db)
-
-    with patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as audit_log:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.get("/protected")
-
-    assert response.status_code == 401
-    audit_log.assert_awaited_once_with(
-        db,
-        action=AuditActionType.ACCESS_DENIED,
-        actor_identity=None,
-        resource_type="authorization",
-        outcome="denied",
-        context={
-            "reason": "unauthenticated",
-            "request_method": "GET",
-            "required_permissions": [Permission.ADMIN_AUDIT_VERIFY.value],
-        },
-    )
-    db.commit.assert_awaited_once_with()
-    assert "admin.audit.verify" not in response.text
-
-
-@pytest.mark.asyncio
 async def test_authorized_request_does_not_emit_access_denied():
     db = AsyncMock()
     app = _protected_app(
@@ -103,14 +101,17 @@ async def test_authorized_request_does_not_emit_access_denied():
             "username": "authorized-user",
             "role_id": "authorized-role",
             "permissions": [Permission.ADMIN_AUDIT_VERIFY.value],
-        },
-        db,
+        }
     )
 
-    with patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as audit_log:
+    with (
+        patch("app.api.dependencies.permissions.get_async_session_factory") as get_session_factory,
+        patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as audit_log,
+    ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get("/protected")
 
     assert response.status_code == 200
+    get_session_factory.assert_not_called()
     audit_log.assert_not_awaited()
     db.commit.assert_not_awaited()

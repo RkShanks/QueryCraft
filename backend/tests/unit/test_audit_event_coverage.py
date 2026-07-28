@@ -29,7 +29,7 @@ Coverage mapping (action_type -> test class + call site):
 | 17| connection.update       | TestConnectionUpdateEmits                 | connection_service.update (T-734 add)  |
 | 18| connection.delete       | TestConnectionDeleteEmits                 | connection_service.hard_delete (T-734) |
 | 19| admin.config.change     | TestAdminConfigChangeEmits                | admin.py /admin/settings (T-734 add)   |
-| 20| access.denied           | TestAccessDeniedEmits                     | role_service / query_service           |
+| 20| access.denied           | TestAccessDeniedEmits                     | permissions / role_service / query_service |
 | 21| audit.verify            | TestAuditVerifyEmits                      | admin_audit.py /admin/audit/verify (T-738) |
 | 22| policy.schema_mismatch  | TestPolicySchemaMismatchEmits             | policy_enforcement drift guard         |
 | 23| quota.config.change     | TestQuotaConfigChangeEmits                | admin_quotas.py (T-798)                 |
@@ -718,10 +718,12 @@ class TestAdminConfigChangeEmits:
 
 
 class TestAccessDeniedEmits:
-    """``require_permission`` does NOT log by design (it raises 403).
-    The deny emit happens at the service layer (role_service built-in
-    guard, query_service deny-all + role-auth paths). See
-    test_rbac_audit_logging.py + test_query_audit_logging.py."""
+    """Permission 401/403 responses durably log at the dependency boundary.
+
+    Service-level built-in-role and query-policy guards also emit denials.
+    See test_permission_denial_audit.py, test_rbac_audit_logging.py, and
+    test_query_audit_logging.py.
+    """
 
     def test_action_type_is_shipped(self):
         assert AuditActionType.ACCESS_DENIED.value == "access.denied"
