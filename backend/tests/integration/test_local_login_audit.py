@@ -40,7 +40,7 @@ class TestLocalLoginAudit:
         app_client,
         async_engine_fixture,
     ):
-        attempted_username = "unknown-user"
+        attempted_username = "admin"
         response = await app_client.post(
             "/api/v1/auth/sign-in",
             json={"username": attempted_username, "password": "wrong-password"},
