@@ -1494,4 +1494,14 @@ class QueryService:
                 dialect=self._target_dialect,
             )
 
+        await AuditService.log(
+            self._db_session,
+            action=AuditActionType.QUERY_RERUN,
+            actor_id=user_uuid,
+            resource_type="accepted_query",
+            resource_id=str(aq_uuid),
+            outcome="success",
+            context={},
+        )
+
         return masked_result

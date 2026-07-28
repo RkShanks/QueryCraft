@@ -67,6 +67,8 @@ class AuditActionType(enum.StrEnum):
     QUERY_EXECUTE = "query.execute"
     QUERY_ACCEPT = "query.accept"
     QUERY_REJECT = "query.reject"
+    QUERY_HISTORY_VIEW = "query.history.view"
+    QUERY_RERUN = "query.rerun"
     ROLE_CREATE = "role.create"
     ROLE_UPDATE = "role.update"
     ROLE_DELETE = "role.delete"

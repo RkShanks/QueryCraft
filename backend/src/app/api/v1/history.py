@@ -37,7 +37,11 @@ router = APIRouter(prefix="/history", tags=["History"])
 
 
 def _get_history_service(db: AsyncSession = Depends(get_db)) -> HistoryService:  # noqa: B008
-    return HistoryService(AcceptedQueryRepository(db), ConnectionRepository(db))
+    return HistoryService(
+        AcceptedQueryRepository(db),
+        ConnectionRepository(db),
+        db_session=db,
+    )
 
 
 @router.get("", response_model=HistoryListResponse)
@@ -57,6 +61,7 @@ async def list_history(
         user_id=current_user_id,
         cursor=cursor,
         limit=limit,
+        actor_identity=(_session or {}).get("username"),
     )
 
 
@@ -73,7 +78,11 @@ async def get_history_entry(
     ``user_id = current_user.id`` (FR-134 / SC-053); a query
     belonging to another user returns 404.
     """
-    return await service.get_detail(query_id, current_user_id)
+    return await service.get_detail(
+        query_id,
+        current_user_id,
+        actor_identity=(_session or {}).get("username"),
+    )
 
 
 @router.delete("/{query_id}", status_code=status.HTTP_204_NO_CONTENT)

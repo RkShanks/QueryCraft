@@ -38,7 +38,7 @@ class TestSsoProtocolEnum:
 
 
 class TestAuditActionTypeEnum:
-    """T-604: AuditActionType enum — all 22 action types."""
+    """T-604: AuditActionType enum — all shipped action types."""
 
     def test_all_members_present(self):
         expected = {
@@ -52,6 +52,8 @@ class TestAuditActionTypeEnum:
             "query.execute",
             "query.accept",
             "query.reject",
+            "query.history.view",
+            "query.rerun",
             "role.create",
             "role.update",
             "role.delete",

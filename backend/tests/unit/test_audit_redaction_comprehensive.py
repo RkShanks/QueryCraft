@@ -158,6 +158,7 @@ _SAFE_KEYS: tuple[str, ...] = (
     "rules",
     "protocol",
     "action",
+    "operation",
     "sso_group_value",
     "role_id",
     # Authentication mechanism and assigned role labels are audit metadata;
