@@ -88,6 +88,52 @@ class TestDetectionConfigRepositoryGet:
         assert row.flag_confidence == pytest.approx(0.5)
 
 
+class TestDetectionConfigRepositoryForDetection:
+    """Runtime detection reads require one finite, ordered singleton."""
+
+    @pytest.mark.asyncio
+    async def test_missing_runtime_config_fails_closed(self):
+        from app.core.exceptions import DetectionUnavailableError
+        from app.repositories.detection_config_repository import DetectionConfigRepository
+
+        session = _make_session()
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = None
+        session.execute.return_value = result_mock
+
+        with pytest.raises(DetectionUnavailableError):
+            await DetectionConfigRepository(session).get_for_detection()
+
+        session.add.assert_not_called()
+        session.flush.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("block", "flag"),
+        [
+            (float("nan"), 0.5),
+            (0.8, float("nan")),
+            (float("inf"), 0.5),
+            (0.8, float("-inf")),
+            (0.5, 0.5),
+            (0.4, 0.5),
+            (1.1, 0.5),
+            (0.8, -0.1),
+        ],
+    )
+    async def test_broken_runtime_config_fails_closed(self, block: float, flag: float):
+        from app.core.exceptions import DetectionUnavailableError
+        from app.repositories.detection_config_repository import DetectionConfigRepository
+
+        session = _make_session()
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = _make_threshold_row(block=block, flag=flag)
+        session.execute.return_value = result_mock
+
+        with pytest.raises(DetectionUnavailableError):
+            await DetectionConfigRepository(session).get_for_detection()
+
+
 class TestDetectionConfigRepositoryUpdate:
     """update() changes values and validates block > flag."""
 
