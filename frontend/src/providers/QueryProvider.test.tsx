@@ -1,10 +1,10 @@
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { useQuery } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { QueryProvider, queryClient } from './QueryProvider';
 
 function ExpiredSessionProbe() {
-  useQuery({
+  const query = useQuery({
     queryKey: ['expired-session-probe'],
     queryFn: async () => {
       throw {
@@ -14,7 +14,7 @@ function ExpiredSessionProbe() {
     },
     retry: false,
   });
-  return null;
+  return query.isError ? <span data-testid="query-rejected" /> : null;
 }
 
 describe('QueryProvider session expiry handling', () => {
@@ -38,5 +38,20 @@ describe('QueryProvider session expiry handling', () => {
       expect(window.location.pathname).toBe('/sign-in');
       expect(window.location.search).toBe('?error=session_expired');
     });
+  });
+
+  it('preserves an explicit SSO callback error on the sign-in route', async () => {
+    window.history.replaceState({}, '', '/sign-in?error=sso_validation_failed');
+
+    render(
+      <QueryProvider>
+        <ExpiredSessionProbe />
+      </QueryProvider>
+    );
+
+    await screen.findByTestId('query-rejected');
+
+    expect(window.location.pathname).toBe('/sign-in');
+    expect(window.location.search).toBe('?error=sso_validation_failed');
   });
 });

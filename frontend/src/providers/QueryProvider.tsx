@@ -13,10 +13,12 @@ function handle401(error: unknown) {
   const apiError = error as ApiError | undefined;
   const isUnauthorizedPayload =
     apiError?.error === 'unauthorized' && apiError.message_key === 'error.unauthorized';
-  if (apiError?.status === 401 || apiError?.response?.status === 401 || isUnauthorizedPayload) {
-    window.history.replaceState({}, '', '/sign-in?error=session_expired');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  }
+  const isUnauthorized =
+    apiError?.status === 401 || apiError?.response?.status === 401 || isUnauthorizedPayload;
+  if (!isUnauthorized || window.location.pathname === '/sign-in') return;
+
+  window.history.replaceState({}, '', '/sign-in?error=session_expired');
+  window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 const queryClient = new QueryClient({
