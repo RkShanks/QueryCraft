@@ -1,0 +1,473 @@
+{
+  "run_date": "2026-07-28",
+  "scope": "Phase 5B2 current-head regression with accepted Phase 5A and Phase 5B1 handoffs",
+  "starting_synchronized_head": "cd98d13cf1d1a210599ccaff19436fd4b9995217",
+  "tested_product_head": "db5688aaee2dd8e65719908520f3b2765398d6ce",
+  "runtime": {
+    "platform": "isolated",
+    "browser_driver": "Chrome DevTools MCP",
+    "source_database_access": "read-only",
+    "normal_platform_audit_chain_mutated": false,
+    "sensitive_probe_values_persisted_in_evidence": false
+  },
+  "prior_handoffs": {
+    "phase_5a": {
+      "status": "accepted",
+      "pass_count": 15,
+      "live_flows_repeated_in_this_segment": false,
+      "merged_pr_range": "215-220"
+    },
+    "phase_5b1": {
+      "status": "accepted",
+      "pass_count": 9,
+      "live_flows_repeated_in_this_segment": false,
+      "merged_pr_range": "221-225"
+    }
+  },
+  "matrix": [
+    {
+      "id": "P5-FR-115",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-116",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-117",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-118",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-119",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-120",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-121",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-122",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-123",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-124",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-125",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-126",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-127",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-145",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-146",
+      "status": "Pass",
+      "segment": "Phase 5A",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-128",
+      "status": "Pass",
+      "segment": "Phase 5B1",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-129",
+      "status": "Pass",
+      "segment": "Phase 5B1",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-130",
+      "status": "Pass",
+      "segment": "Phase 5B1",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-131",
+      "status": "Pass",
+      "segment": "Phase 5B1",
+      "evidence_basis": "accepted handoff plus merged fixes 223-224"
+    },
+    {
+      "id": "P5-FR-132",
+      "status": "Pass",
+      "segment": "Phase 5B1",
+      "evidence_basis": "accepted handoff plus merged fixes 221-222 and 225"
+    },
+    {
+      "id": "P5-FR-133",
+      "status": "Pass",
+      "segment": "Phase 5B1",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-134",
+      "status": "Pass",
+      "segment": "Phase 5B1",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-135",
+      "status": "Pass",
+      "segment": "Phase 5B1",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-136",
+      "status": "Pass",
+      "segment": "Phase 5B1",
+      "evidence_basis": "accepted handoff"
+    },
+    {
+      "id": "P5-FR-137",
+      "status": "Pass",
+      "segment": "Phase 5B2",
+      "evidence_basis": "fresh automated and Chrome DevTools locale sweep"
+    },
+    {
+      "id": "P5-FR-138",
+      "status": "Pass",
+      "segment": "Phase 5B2",
+      "evidence_basis": "fresh logical CSS audits and responsive browser matrix"
+    },
+    {
+      "id": "P5-FR-139",
+      "status": "Pass",
+      "segment": "Phase 5B2",
+      "evidence_basis": "fresh localized and sanitized auth/session error scenarios"
+    },
+    {
+      "id": "P5-FR-140",
+      "status": "Pass",
+      "segment": "Phase 5B2",
+      "evidence_basis": "fresh representative event run including final restricted access denials"
+    },
+    {
+      "id": "P5-FR-141",
+      "status": "Pass",
+      "segment": "Phase 5B2",
+      "evidence_basis": "fresh valid, immutable, purge-gap, marker-only, concurrent, and tampered-chain checks"
+    },
+    {
+      "id": "P5-FR-142",
+      "status": "Pass",
+      "segment": "Phase 5B2",
+      "evidence_basis": "fresh current retention contract and purge verification"
+    },
+    {
+      "id": "P5-FR-143",
+      "status": "Pass",
+      "segment": "Phase 5B2",
+      "evidence_basis": "fresh write/search/export denial-context redaction scans"
+    },
+    {
+      "id": "P5-FR-144",
+      "status": "Pass",
+      "segment": "Phase 5B2",
+      "evidence_basis": "fresh real admin, restricted SSO, and legacy role access checks"
+    }
+  ],
+  "automated_validation": {
+    "backend": [
+      {
+        "gate": "initial focused Phase 5 selection",
+        "result": "679 passed; 3 existing warnings"
+      },
+      {
+        "gate": "current Phase 6 audit search/export/purge selection",
+        "result": "30 passed; 1 expected skip"
+      },
+      {
+        "gate": "focused audit, chain, immutability, retention, redaction, history, and query selection",
+        "result": "518 passed; 1 expected skip"
+      },
+      {
+        "gate": "full unit suite after generic permission-denial fix",
+        "result": "2241 passed; 6 existing warnings"
+      },
+      {
+        "gate": "exact final backend CI pytest command",
+        "result": "2230 passed; 13 deselected; 6 existing warnings"
+      },
+      {
+        "gate": "final shared Phase 5/6 permission, sanitization, retention, and audit selection",
+        "result": "36 passed"
+      },
+      {
+        "gate": "Ruff check and format check",
+        "result": "passed; 392 files already formatted"
+      }
+    ],
+    "frontend": [
+      {
+        "gate": "focused Phase 5 selection",
+        "result": "418 passed"
+      },
+      {
+        "gate": "full Vitest",
+        "result": "64 files and 778 tests passed"
+      },
+      {
+        "gate": "ESLint, typecheck, build, CSS lint, locale parity, and logical CSS audits",
+        "result": "passed"
+      },
+      {
+        "gate": "responsive live assertions",
+        "result": "18 of 18 passed"
+      }
+    ],
+    "ci": {
+      "backend_test": "green",
+      "frontend_test": "green"
+    },
+    "final_full_gate_commands": [
+      {
+        "command": "cd backend && rtk uv run pytest tests/unit -q -m \"not integration\"",
+        "result": "2230 passed; 13 deselected; 6 existing warnings"
+      },
+      {
+        "command": "cd backend && rtk uv run ruff check src tests",
+        "result": "passed"
+      },
+      {
+        "command": "cd backend && rtk uv run ruff format --check src tests",
+        "result": "passed; 392 files already formatted"
+      },
+      {
+        "command": "cd frontend && rtk npm test -- --run",
+        "result": "64 files and 778 tests passed"
+      },
+      {
+        "command": "cd frontend && rtk npm run lint",
+        "result": "passed"
+      },
+      {
+        "command": "cd frontend && rtk npm run typecheck",
+        "result": "passed"
+      },
+      {
+        "command": "cd frontend && rtk npm run build",
+        "result": "passed with existing chunk-size warning only"
+      },
+      {
+        "command": "cd frontend && rtk npm run lint:css",
+        "result": "passed"
+      }
+    ]
+  },
+  "browser_api": {
+    "locale_and_layout": {
+      "languages": [
+        "English",
+        "Arabic"
+      ],
+      "viewports": [
+        "desktop",
+        "375px",
+        "768px"
+      ],
+      "surfaces": [
+        "sign-in and SSO",
+        "roles and mappings",
+        "policy editor",
+        "masked indicators",
+        "authorization errors",
+        "audit verify, status, search, export, and retention"
+      ],
+      "raw_translation_key_visible": false,
+      "arabic_english_fallback_visible": false,
+      "incoherent_overflow_found": false,
+      "technical_identifiers_ltr": true
+    },
+    "auth_session_errors": {
+      "scenarios": [
+        "invalid OIDC callback",
+        "invalid SAML callback",
+        "unmapped role",
+        "identity collision",
+        "expired or invalid session",
+        "unauthenticated request",
+        "forbidden request"
+      ],
+      "languages": [
+        "English",
+        "Arabic"
+      ],
+      "sanitized": true,
+      "forbidden_patterns_visible": false
+    },
+    "audit_access": {
+      "admin": {
+        "verify": 200,
+        "status": 200,
+        "search": 200,
+        "retention": 200,
+        "json_export": 200,
+        "csv_export": 200
+      },
+      "restricted_sso": {
+        "audit_navigation_visible": false,
+        "verify": 403,
+        "status": 403,
+        "search": 403,
+        "retention": 403,
+        "export": 403,
+        "response_keys": [
+          "error",
+          "message_key"
+        ],
+        "sensitive_pattern_visible": false
+      },
+      "legacy_lowercase_admin": {
+        "bypass_succeeded": false,
+        "audit_navigation_visible": false,
+        "audit_api_status": 403
+      },
+      "final_product_head_denial_audit": {
+        "persisted_count_at_least_five": true,
+        "actor_attributed": true,
+        "context_shape_sanitized": true,
+        "forbidden_patterns_absent": true,
+        "admin_search_status": 200,
+        "admin_verify_status": 200,
+        "chain_verified": true,
+        "first_break_is_null": true
+      }
+    }
+  },
+  "audit_integrity": {
+    "representative_pre_purge_entry_count": 35,
+    "required_event_categories_present": true,
+    "required_event_categories": [
+      "login success and failure",
+      "SSO success and failure",
+      "provider change",
+      "role change",
+      "mapping change",
+      "policy change",
+      "allowed and blocked query",
+      "history and rerun",
+      "unauthorized admin denial",
+      "audit administration"
+    ],
+    "required_failed_action_contexts_sanitized": true,
+    "history_and_rerun_present": true,
+    "application_mutation_status": 404,
+    "application_deletion_status": 404,
+    "valid_chain_verified": true,
+    "purge_gap": {
+      "purged_count": 2,
+      "api_verified": true,
+      "first_break_is_null": true,
+      "latest_purge_present": true,
+      "status_count_matches": true
+    },
+    "marker_only": {
+      "verified": true,
+      "post_append_verified": true,
+      "configured_retention_months": 24,
+      "retention_window_search_completed": true
+    },
+    "isolated_tamper": {
+      "verified": false,
+      "first_break_matches_modified_entry": true
+    }
+  },
+  "redaction": {
+    "provider_secret_absent": true,
+    "generated_bad_login_value_absent": true,
+    "certificate_absent": true,
+    "sensitive_filter_value_absent": true,
+    "raw_hostile_payload_absent": true,
+    "generic_forbidden_patterns_absent": true,
+    "csv_integrity_metadata_present": true,
+    "json_integrity_metadata_present": true,
+    "permission_denial_context_limited_to_static_metadata": true
+  },
+  "fix_pull_requests": [
+    226,
+    227,
+    228,
+    229,
+    230,
+    231,
+    232,
+    233,
+    234,
+    235,
+    236,
+    237
+  ],
+  "cleanup": {
+    "isolated_containers_remaining": 0,
+    "isolated_networks_remaining": 0,
+    "isolated_volumes_remaining": 0,
+    "isolated_images_remaining": 0,
+    "temporary_helpers_remaining": 0,
+    "mock_idps_remaining": 0,
+    "normal_frontend_http_status": 200,
+    "normal_backend_http_status": 200
+  },
+  "status_totals": {
+    "Pass": 32,
+    "Fail": 0,
+    "Partial": 0,
+    "Setup-dependent": 0,
+    "Not run": 0,
+    "Deferred": 0
+  },
+  "phase_5_complete": true,
+  "phase_6_unblocked": true,
+  "phase_6_started_in_this_run": false
+}
