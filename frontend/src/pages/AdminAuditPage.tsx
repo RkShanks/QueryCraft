@@ -429,6 +429,7 @@ export const AdminAuditPage: React.FC = () => {
               {t('audit.search.action_type')}
             </label>
             <input
+              dir="ltr"
               type="text"
               id="action_type"
               value={actionType}
@@ -444,6 +445,7 @@ export const AdminAuditPage: React.FC = () => {
               {t('audit.search.actor')}
             </label>
             <input
+              dir="auto"
               type="text"
               id="actor_identity"
               value={actorIdentity}
@@ -476,6 +478,7 @@ export const AdminAuditPage: React.FC = () => {
               {t('audit.search.resource_type')}
             </label>
             <input
+              dir="ltr"
               type="text"
               id="resource_type"
               value={resourceType}
@@ -555,12 +558,12 @@ export const AdminAuditPage: React.FC = () => {
                 <tbody className="divide-y divide-gray-800/50">
                   {searchData.entries.map((entry) => (
                     <tr key={entry.sequence_number} className="hover:bg-gray-900/30 transition-colors">
-                      <td className="px-4 py-3 text-start text-white font-mono">{entry.sequence_number}</td>
-                      <td className="px-4 py-3 text-start text-gray-300 font-mono text-xs whitespace-nowrap">
+                      <td dir="ltr" className="px-4 py-3 text-start text-white font-mono">{entry.sequence_number}</td>
+                      <td dir="ltr" className="px-4 py-3 text-start text-gray-300 font-mono text-xs whitespace-nowrap">
                         {new Date(entry.timestamp).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-start text-gray-300 whitespace-nowrap">{entry.actor_identity || '-'}</td>
-                      <td className="px-4 py-3 text-start text-gray-300 whitespace-nowrap font-mono text-xs">{entry.action_type}</td>
+                      <td dir="auto" className="px-4 py-3 text-start text-gray-300 whitespace-nowrap">{entry.actor_identity || '-'}</td>
+                      <td dir="ltr" className="px-4 py-3 text-start text-gray-300 whitespace-nowrap font-mono text-xs">{entry.action_type}</td>
                       <td className="px-4 py-3 text-start">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
@@ -572,7 +575,7 @@ export const AdminAuditPage: React.FC = () => {
                           {entry.outcome}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-start text-gray-300 font-mono text-xs">{entry.resource_type || '-'}</td>
+                      <td dir="ltr" className="px-4 py-3 text-start text-gray-300 font-mono text-xs">{entry.resource_type || '-'}</td>
                     </tr>
                   ))}
                 </tbody>

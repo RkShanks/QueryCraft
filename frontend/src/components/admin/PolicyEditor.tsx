@@ -428,7 +428,7 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
                                   onChange={() => handleTableToggle(table.table_name, table.columns.map(c => c.column_name))}
                                   className="accent-neon-cyan rounded"
                                 />
-                                <span>{table.table_name}</span>
+                                <span dir="ltr">{table.table_name}</span>
                               </label>
 
                               {isTableAllowed && tableConfig && (
@@ -445,7 +445,10 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
                                           onChange={() => handleColumnToggle(table.table_name, col.column_name)}
                                           className="accent-neon-cyan rounded"
                                         />
-                                        <span className={isColAllowed ? "text-gray-200 font-medium" : ""}>
+                                        <span
+                                          dir="ltr"
+                                          className={isColAllowed ? "text-gray-200 font-medium" : ""}
+                                        >
                                           {col.column_name}
                                         </span>
                                       </label>
@@ -486,6 +489,7 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
                             <div key={idx} className="flex flex-col gap-2 p-3 bg-gray-900 border border-gray-850 rounded-lg">
                               <div className="flex gap-2 items-center">
                                 <select
+                                  dir="ltr"
                                   value={rf.table}
                                   onChange={e => handleUpdateRowFilter(idx, 'table', e.target.value)}
                                   className="bg-gray-950 border border-gray-800 rounded px-2 py-1 text-sm text-white"
@@ -496,6 +500,7 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
                                   ))}
                                 </select>
                                 <input
+                                  dir="ltr"
                                   type="text"
                                   value={rf.filter}
                                   onChange={e => handleUpdateRowFilter(idx, 'filter', e.target.value)}
@@ -550,6 +555,7 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
                           {activePolicy.column_masks.map((cm, idx) => (
                             <div key={idx} className="flex gap-2 items-center p-3 bg-gray-900 border border-gray-850 rounded-lg">
                               <select
+                                dir="ltr"
                                 value={cm.table}
                                 onChange={e => handleUpdateColumnMaskTable(idx, e.target.value)}
                                 className="bg-gray-950 border border-gray-800 rounded px-2 py-1 text-sm text-white"
@@ -575,7 +581,7 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
                                         onChange={() => handleToggleColumnMask(idx, col)}
                                         className="accent-neon-cyan rounded"
                                       />
-                                      <span>{col}</span>
+                                      <span dir="ltr">{col}</span>
                                     </label>
                                   ))}
                                 </fieldset>
