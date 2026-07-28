@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 
 import pytest
 from sqlalchemy import select, text
@@ -60,11 +61,7 @@ async def test_waiting_writer_reloads_latest_sequence_after_allocator_lock(async
 
         async with session_factory() as verification_session:
             rows = list(
-                (
-                    await verification_session.execute(
-                        select(AuditLogEntry).order_by(AuditLogEntry.sequence_number)
-                    )
-                )
+                (await verification_session.execute(select(AuditLogEntry).order_by(AuditLogEntry.sequence_number)))
                 .scalars()
                 .all()
             )
@@ -75,6 +72,8 @@ async def test_waiting_writer_reloads_latest_sequence_after_allocator_lock(async
     finally:
         if second_task is not None and not second_task.done():
             second_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await second_task
         await first_session.rollback()
         await second_session.rollback()
         await first_session.close()
