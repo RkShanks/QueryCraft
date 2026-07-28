@@ -351,6 +351,9 @@ class QueryService:
                     outcome="blocked",
                     context=_detection_context,
                 )
+                # The request exits via HTTPException, so persist the security
+                # event before the request-scoped transaction is rolled back.
+                await self._db_session.commit()
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail={"message_key": "error.hostile_input_blocked"},
