@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { AdminQuotasPage } from './AdminQuotasPage';
@@ -120,4 +120,24 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
       expect(updateRequests).toBe(0);
     }
   );
+
+  it('P6-FR-149 exposes complete compact quota summaries for narrow layouts', async () => {
+    installQuotaOnlyHandlers();
+
+    renderWithClient(<AdminQuotasPage />);
+
+    const configSummary = await screen.findByRole('article', {
+      name: 'analyst quota configuration',
+    });
+    expect(within(configSummary).getByText('Daily Query Limit')).toBeInTheDocument();
+    expect(within(configSummary).getByText('Daily SQL Execution Limit')).toBeInTheDocument();
+    expect(within(configSummary).getByText('Daily Audit Export Limit')).toBeInTheDocument();
+    expect(within(configSummary).getByTitle('Edit')).toBeInTheDocument();
+    expect(within(configSummary).getByTitle('Reset to uncapped')).toBeInTheDocument();
+
+    const statusSummary = screen.getByRole('article', {
+      name: 'analyst quota status',
+    });
+    expect(within(statusSummary).getByText('Resets at')).toBeInTheDocument();
+  });
 });
