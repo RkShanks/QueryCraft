@@ -399,6 +399,9 @@ class QueryService:
                     outcome="flagged",
                     context=_detection_context,
                 )
+                # Downstream quota or generation failures roll back their own
+                # transaction; preserve the security event before continuing.
+                await self._db_session.commit()
 
             # T-800/T-845: Query quota check immediately after hostile input detection.
             # Non-hostile requests spend query quota before chat session, attempt,

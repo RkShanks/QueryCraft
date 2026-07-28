@@ -117,3 +117,73 @@ async def test_rule_failure_returns_sanitized_503_before_downstream_work(monkeyp
         "message_key": "error.service_unavailable",
     }
     _assert_no_downstream_side_effects(spies, redis)
+
+
+@pytest.mark.asyncio
+async def test_flagged_audit_commits_before_single_quota_check(monkeypatch):
+    from app.core.exceptions import QuotaExceededError
+    from app.db.models.enums import AuditActionType
+    from app.services.detection.detector import DetectionOutcome
+    from app.services.detection.protocol import DetectionResult
+
+    user_id = uuid.uuid4()
+    thresholds = MagicMock(block_confidence=0.9, flag_confidence=0.5)
+    db_session = AsyncMock()
+    db_session.execute = AsyncMock(
+        side_effect=[
+            _user_result(user_id),
+            MagicMock(scalar_one_or_none=MagicMock(return_value=thresholds)),
+        ]
+    )
+    redis = FakeRedis()
+    service, spies = _service_with_spies(db_session, redis)
+    events: list[str] = []
+
+    async def _audit_spy(*args, **kwargs):
+        if kwargs["action"] == AuditActionType.HOSTILE_INPUT_FLAGGED:
+            events.append("flagged_audit")
+
+    async def _commit_spy():
+        events.append("commit")
+
+    async def _quota_spy(*args, **kwargs):
+        events.append("quota")
+        raise QuotaExceededError(dimension="queries", reset_at="2026-07-29T00:00:00+00:00")
+
+    db_session.commit.side_effect = _commit_spy
+    spies["quota"].check_and_increment.side_effect = _quota_spy
+    monkeypatch.setattr(
+        "app.services.query_service.HostileInputDetector.detect",
+        AsyncMock(
+            return_value=DetectionOutcome(
+                outcome="flagged",
+                results=[
+                    DetectionResult(
+                        category="rbac_bypass",
+                        confidence=0.8,
+                        explanation="test",
+                    )
+                ],
+                max_confidence=0.8,
+            )
+        ),
+    )
+    audit_spy = AsyncMock(side_effect=_audit_spy)
+    monkeypatch.setattr("app.services.query_service.AuditService.log", audit_spy)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.submit_question(
+            http_session_id="flagged-order",
+            user_id=str(user_id),
+            question="ordinary request",
+        )
+
+    assert exc_info.value.status_code == 429
+    assert events[:3] == ["flagged_audit", "commit", "quota"]
+    assert events.count("flagged_audit") == 1
+    spies["quota"].check_and_increment.assert_awaited_once()
+    spies["sessions"].create.assert_not_awaited()
+    spies["history"].create.assert_not_awaited()
+    spies["llm"].generate_sql.assert_not_awaited()
+    spies["evaluator"].evaluate.assert_not_awaited()
+    spies["executor"].execute.assert_not_awaited()
