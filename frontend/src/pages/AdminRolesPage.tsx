@@ -482,6 +482,7 @@ export const AdminRolesPage: React.FC = () => {
                       {role.permissions.map((p) => (
                         <span
                           key={p}
+                          dir="ltr"
                           className="px-1.5 py-0.5 rounded text-xs font-mono bg-gray-800 text-gray-400 border border-gray-700/50"
                         >
                           {p}

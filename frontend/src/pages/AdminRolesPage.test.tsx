@@ -153,6 +153,19 @@ describe('AdminRolesPage', () => {
     expect(screen.getByText('admins')).toBeInTheDocument();
   });
 
+  it('isolates raw permission identifiers from the surrounding RTL direction', () => {
+    vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
+    render(
+      <div dir="rtl">
+        <AdminRolesPage />
+      </div>
+    );
+
+    screen.getAllByText('query.submit').forEach((permission) => {
+      expect(permission).toHaveAttribute('dir', 'ltr');
+    });
+  });
+
   it('shows creation form when clicking Add Role', () => {
     vi.mocked(useAdminRoles).mockReturnValue(mockEmptyRoles as any);
     render(<AdminRolesPage />);
