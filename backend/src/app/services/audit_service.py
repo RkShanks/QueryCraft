@@ -23,6 +23,11 @@ except ImportError:  # pragma: no cover - dateutil is a runtime dep
 
 _logger = logging.getLogger(__name__)
 
+# Stable PostgreSQL transaction-level advisory lock for allocating the next
+# audit sequence number. The value is an application namespace identifier,
+# not data-derived, and stays within PostgreSQL's signed BIGINT range.
+_AUDIT_SEQUENCE_LOCK_ID = 0x5143524146540001
+
 
 @dataclass(frozen=True)
 class VerificationResult:
@@ -330,7 +335,15 @@ class AuditService:
                 row_hash="mock",
             )
 
-        # Acquire next sequence number with row-level lock
+        # Serialize sequence allocation across transactions. The advisory lock
+        # must be acquired in a separate statement so a waiter gets a fresh
+        # READ COMMITTED snapshot before reading the latest committed entry.
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(:lock_id)"),
+            {"lock_id": _AUDIT_SEQUENCE_LOCK_ID},
+        )
+
+        # Keep the latest row locked while deriving its chained successor.
         result = await session.execute(
             text("SELECT sequence_number FROM audit_log_entries ORDER BY sequence_number DESC LIMIT 1 FOR UPDATE")
         )
