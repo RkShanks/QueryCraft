@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from math import isfinite
 
 from sqlalchemy import select
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import DetectionUnavailableError
 from app.db.models.detection_config import DetectionThresholdConfig
 from app.schemas.detection import DetectionThresholdUpdate
 
@@ -40,6 +43,33 @@ class DetectionConfigRepository:
         self._session.add(row)
         await self._session.flush()
         return row
+
+    async def get_for_detection(self) -> DetectionThresholdConfig:
+        """Return one valid runtime config or fail closed.
+
+        The administrative read path may initialize the singleton. The query
+        path must never repair missing or corrupt security configuration as a
+        side effect of processing user input.
+        """
+        result = await self._session.execute(select(DetectionThresholdConfig))
+        try:
+            row = result.scalar_one_or_none()
+        except MultipleResultsFound:
+            raise DetectionUnavailableError() from None
+
+        if row is None or not self._has_valid_thresholds(row):
+            raise DetectionUnavailableError()
+        return row
+
+    @staticmethod
+    def _has_valid_thresholds(row: DetectionThresholdConfig) -> bool:
+        block = row.block_confidence
+        flag = row.flag_confidence
+        values_are_finite_numbers = all(
+            isinstance(value, (int, float)) and not isinstance(value, bool) and isfinite(value)
+            for value in (block, flag)
+        )
+        return values_are_finite_numbers and 0.0 <= flag < block <= 1.0
 
     async def update(self, data: DetectionThresholdUpdate) -> DetectionThresholdConfig:
         """Update block/flag confidence on the singleton row.

@@ -306,13 +306,32 @@ async def ensure_db_connection(async_engine_fixture, test_env_vars):
 
 
 @pytest.fixture
-def query_submit_payload(ensure_db_connection):
+def query_submit_payload(ensure_db_connection, ensure_detection_config):
     """Build a submit request body using the default test connection."""
 
     def _make_payload(question: str, **extra: Any) -> dict[str, Any]:
         return {"question": question, "connection_id": ensure_db_connection, **extra}
 
     return _make_payload
+
+
+@pytest_asyncio.fixture
+async def ensure_detection_config(async_engine_fixture) -> None:
+    """Ensure query tests start with one valid detection singleton."""
+    async with async_engine_fixture.begin() as conn:
+        count = int(await conn.scalar(text("SELECT COUNT(*) FROM detection_threshold_config")) or 0)
+        if count != 1:
+            await conn.execute(text("DELETE FROM detection_threshold_config"))
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO detection_threshold_config (
+                        block_confidence, flag_confidence
+                    )
+                    VALUES (0.8, 0.5)
+                    """
+                )
+            )
 
 
 @pytest.fixture
@@ -345,6 +364,7 @@ async def authenticated_client(
     app_client,
     synced_local_admin,
     ensure_db_connection,
+    ensure_detection_config,
 ) -> AsyncGenerator[AsyncClient, None]:
     """Provide a pre-authenticated httpx client (admin user signed in).
 

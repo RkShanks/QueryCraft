@@ -59,6 +59,7 @@ async def authenticated_acceptance_client(
     synced_acceptance_admin,
     unconstrained_acceptance_quotas,
     ensure_db_connection,
+    ensure_detection_config,
 ) -> AsyncGenerator[AsyncClient, None]:
     """Provide a pre-authenticated httpx client (admin user signed in)."""
     response = await acceptance_client.post(

@@ -2,9 +2,8 @@
 
 T-845 fix: ``HostileInputDetector.detect`` is now called inside
 ``QueryService.submit_question`` before the quota check. Existing
-QueryService unit tests use a mocked DB session where
-``DetectionConfigRepository.get()`` returns a ``MagicMock`` row, causing
-``float >= MagicMock`` TypeErrors in the threshold comparison.
+QueryService unit tests use a mocked DB session that does not contain
+a real detection configuration row.
 
 The fix is an autouse fixture that stubs ``HostileInputDetector.detect``
 to always return an "allowed" ``DetectionOutcome`` for unit tests that
@@ -21,6 +20,7 @@ contract module.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -38,6 +38,8 @@ _DETECTION_TEST_MODULES = {
     "test_rule_schema_exposure",
     "test_rule_destructive_sql",
     "test_detection_package_registration",
+    "test_detection_config_repo",
+    "test_detection_fail_closed",
     "test_no_raw_hostile_payload",
 }
 
@@ -50,16 +52,16 @@ _PERMISSION_AUDIT_TEST_MODULES = {
 def _stub_hostile_detector_as_allowed(request: pytest.FixtureRequest):
     """Stub HostileInputDetector.detect → "allowed" for non-detection unit tests.
 
-    Skips the stub for detection-specific test modules (``_DETECTION_TEST_MODULES``)
-    so the real detector, rule, and registry logic is exercised there.
+        Skips the stub for detection-specific test modules (``_DETECTION_TEST_MODULES``)
+        so the real detector, rule, and registry logic is exercised there.
 
-    For every other test, this prevents the detection threshold comparison
-    (``float >= MagicMock``) from failing in QueryService unit tests that
-    supply a mocked DB session.
+    For every other test, this supplies valid thresholds and prevents the
+    detection step from coupling unrelated QueryService tests to detection
+    configuration persistence.
 
-    Detection-specific tests that want to control the outcome can also call
-    ``patch.object(HostileInputDetector, "detect", ...)`` inside their own
-    test scope, which takes precedence over this outer fixture anyway.
+        Detection-specific tests that want to control the outcome can also call
+        ``patch.object(HostileInputDetector, "detect", ...)`` inside their own
+        test scope, which takes precedence over this outer fixture anyway.
     """
     module_name = request.module.__name__.split(".")[-1]
     if module_name in _DETECTION_TEST_MODULES:
@@ -71,9 +73,20 @@ def _stub_hostile_detector_as_allowed(request: pytest.FixtureRequest):
 
     _allowed = DetectionOutcome(outcome="allowed", results=[], max_confidence=0.0)
 
-    with patch(
-        "app.services.detection.detector.HostileInputDetector.detect",
-        new=AsyncMock(return_value=_allowed),
+    with (
+        patch(
+            "app.services.detection.detector.HostileInputDetector.detect",
+            new=AsyncMock(return_value=_allowed),
+        ),
+        patch(
+            "app.services.query_service.DetectionConfigRepository.get_for_detection",
+            new=AsyncMock(
+                return_value=SimpleNamespace(
+                    block_confidence=0.8,
+                    flag_confidence=0.5,
+                )
+            ),
+        ),
     ):
         yield
 

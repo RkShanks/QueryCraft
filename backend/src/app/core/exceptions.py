@@ -230,6 +230,19 @@ class QuotaUnavailableError(QueryCraftError):
         )
 
 
+# ─── Hostile-input detection ───
+
+
+class DetectionUnavailableError(QueryCraftError):
+    """Raised when hostile-input detection cannot make a safe decision."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Detection service unavailable",
+            message_key="error.service_unavailable",
+        )
+
+
 # ─── RBAC / Lockout Prevention ───
 
 

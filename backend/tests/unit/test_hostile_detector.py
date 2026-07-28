@@ -220,3 +220,78 @@ class TestDetectionOutcomeStructure:
         outcome = await detector.detect("text", config)
 
         assert outcome.max_confidence == pytest.approx(0.85)
+
+
+class TestDetectionFailClosed:
+    """Broken production state and rule failures cannot produce an allowed outcome."""
+
+    @pytest.mark.asyncio
+    async def test_production_registry_missing_builtin_fails_closed(self, monkeypatch):
+        from app.core.exceptions import DetectionUnavailableError
+        from app.services.detection.detector import HostileInputDetector
+        from app.services.detection.protocol import REGISTRY
+
+        monkeypatch.delitem(REGISTRY._rules, "prompt_injection")
+
+        with pytest.raises(DetectionUnavailableError):
+            await HostileInputDetector().detect("ordinary request", _make_mock_config())
+
+    @pytest.mark.asyncio
+    async def test_rule_exception_fails_closed(self):
+        from app.core.exceptions import DetectionUnavailableError
+        from app.services.detection.detector import HostileInputDetector
+        from app.services.detection.protocol import RuleRegistry
+
+        class _BrokenRule:
+            name = "broken"
+
+            def detect(self, text: str):
+                raise RuntimeError("sensitive rule failure")
+
+        registry = RuleRegistry()
+        registry.register(_BrokenRule())
+
+        with pytest.raises(DetectionUnavailableError, match="Detection service unavailable"):
+            await HostileInputDetector(registry).detect("ordinary request", _make_mock_config())
+
+    @pytest.mark.asyncio
+    async def test_invalid_rule_result_fails_closed(self):
+        from app.core.exceptions import DetectionUnavailableError
+        from app.services.detection.detector import HostileInputDetector
+        from app.services.detection.protocol import DetectionResult, RuleRegistry
+
+        class _InvalidResultRule:
+            name = "invalid_result"
+
+            def detect(self, text: str) -> DetectionResult:
+                return DetectionResult(category="invalid", confidence=float("nan"), explanation="")
+
+        registry = RuleRegistry()
+        registry.register(_InvalidResultRule())
+
+        with pytest.raises(DetectionUnavailableError):
+            await HostileInputDetector(registry).detect("ordinary request", _make_mock_config())
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("block", "flag"),
+        [
+            (float("nan"), 0.5),
+            (float("inf"), 0.5),
+            (0.5, 0.5),
+            (0.4, 0.5),
+        ],
+    )
+    async def test_invalid_thresholds_fail_closed(self, block: float, flag: float):
+        from app.core.exceptions import DetectionUnavailableError
+        from app.services.detection.detector import HostileInputDetector
+        from app.services.detection.protocol import RuleRegistry
+
+        registry = RuleRegistry()
+        registry.register(_make_rule("custom", 0.0))
+
+        with pytest.raises(DetectionUnavailableError):
+            await HostileInputDetector(registry).detect(
+                "ordinary request",
+                _make_mock_config(block=block, flag=flag),
+            )

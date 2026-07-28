@@ -42,7 +42,14 @@ class TestEvaluatorGate:
                 )
             )
         )
-        detection_config_result = MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+        detection_config_result = MagicMock(
+            scalar_one_or_none=MagicMock(
+                return_value=SimpleNamespace(
+                    block_confidence=0.8,
+                    flag_confidence=0.5,
+                )
+            )
+        )
         app_config_result = MagicMock(scalar_one_or_none=MagicMock(return_value=None))
         db_session = MagicMock()
         db_session.execute = AsyncMock(side_effect=[user_result, detection_config_result, app_config_result])
