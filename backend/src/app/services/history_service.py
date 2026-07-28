@@ -4,20 +4,29 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidCursorError
+from app.db.models.enums import AuditActionType
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.repositories.connection_repository import ConnectionRepository
 from app.schemas.history import AcceptedQueryDetail, HistoryListResponse
 from app.schemas.query import AcceptedQuerySummary
+from app.services.audit_service import AuditService
 
 
 class HistoryService:
     """Read-only history operations."""
 
-    def __init__(self, repository: AcceptedQueryRepository, connection_repository: ConnectionRepository | None = None):
+    def __init__(
+        self,
+        repository: AcceptedQueryRepository,
+        connection_repository: ConnectionRepository | None = None,
+        db_session: AsyncSession | None = None,
+    ):
         self._repo = repository
         self._connection_repo = connection_repository
+        self._db_session = db_session
 
     async def _connection_metadata(self, connection_id: Any) -> dict[str, str | None]:
         if not connection_id or self._connection_repo is None:
@@ -31,7 +40,13 @@ class HistoryService:
             "database_type": database_type,
         }
 
-    async def list_history(self, user_id: str, cursor: str | None = None, limit: int = 100) -> HistoryListResponse:
+    async def list_history(
+        self,
+        user_id: str,
+        cursor: str | None = None,
+        limit: int = 100,
+        actor_identity: str | None = None,
+    ) -> HistoryListResponse:
         """Return paginated accepted queries."""
         from uuid import UUID
 
@@ -59,9 +74,25 @@ class HistoryService:
         total = None
         if cursor is None:
             total = await self._repo.count_by_user(UUID(user_id))
+        if self._db_session is not None:
+            await AuditService.log(
+                self._db_session,
+                action=AuditActionType.QUERY_HISTORY_VIEW,
+                actor_id=UUID(user_id),
+                actor_identity=actor_identity,
+                resource_type="accepted_query_history",
+                resource_id=None,
+                outcome="success",
+                context={"operation": "list"},
+            )
         return HistoryListResponse(items=summaries, total=total, next_cursor=next_cursor)
 
-    async def get_detail(self, query_id: uuid.UUID, user_id: str) -> AcceptedQueryDetail:
+    async def get_detail(
+        self,
+        query_id: uuid.UUID,
+        user_id: str,
+        actor_identity: str | None = None,
+    ) -> AcceptedQueryDetail:
         """Return a single accepted query detail."""
         from uuid import UUID
 
@@ -73,7 +104,7 @@ class HistoryService:
             )
 
         metadata = await self._connection_metadata(query.database_connection_id)
-        return AcceptedQueryDetail(
+        detail = AcceptedQueryDetail(
             id=str(query.id),
             question_text=query.question_text,
             generated_sql=query.generated_sql,
@@ -86,6 +117,18 @@ class HistoryService:
             result_rows=query.result_rows,
             result_row_count=query.result_row_count,
         )
+        if self._db_session is not None:
+            await AuditService.log(
+                self._db_session,
+                action=AuditActionType.QUERY_HISTORY_VIEW,
+                actor_id=UUID(user_id),
+                actor_identity=actor_identity,
+                resource_type="accepted_query",
+                resource_id=str(query.id),
+                outcome="success",
+                context={"operation": "detail"},
+            )
+        return detail
 
     async def delete_entry(self, query_id: uuid.UUID, user_id: str) -> bool:
         """Delete a single accepted query entry. Returns True if deleted, False if not found."""

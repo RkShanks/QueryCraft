@@ -2,7 +2,7 @@
 
 Per FR-140 / SC-059 / SC-061: every shipped audit
  action type must have at least one emitting call site
- in the codebase. This test enumerates all 31 audit
+ in the codebase. This test enumerates all 33 audit
 action types in ``AuditActionType`` and asserts each is
 called by the service / endpoint responsible for it.
 
@@ -41,6 +41,8 @@ Coverage mapping (action_type -> test class + call site):
 | 29| audit.search            | TestAuditSearchEmits                      | api/v1/admin_audit.py (T-862)          |
 | 30| audit.export            | TestAuditExportEmits                      | api/v1/admin_audit.py (T-868)          |
 | 31| audit.purge             | TestAuditPurgeEmits                       | services/audit_service.py (T-870)      |
+| 32| query.history.view      | test_history_audit_logging                | services/history_service.py            |
+| 33| query.rerun             | TestRerunAuditLogging                     | services/query_service.py              |
 
 Honest T-734 scope: T-734 added 5 of 6 missing call sites
 (AUTH_LOGOUT, CONNECTION_CREATE, CONNECTION_UPDATE,
@@ -58,8 +60,9 @@ intentionally listed in ``KNOWN_DEFERRED`` until Waves 18.2/18.3.
 Wave 18.3a (T-862) ships one more caller (audit.search) in
 ``api/v1/admin_audit.py``. Wave 18.3c (T-868) ships audit.export.
 Wave 18.3d (T-870) ships audit.purge in ``services/audit_service.py``.
-The coverage matrix is now **30 of 31** shipped, **1 deferred**
-(quota.warning).
+The coverage matrix is now **32 of 33** shipped, **1 deferred**
+(quota.warning). The two additional Phase 5 regression actions cover
+allowed history access and accepted-query reruns.
 
 Two-layer verification:
 
@@ -222,7 +225,7 @@ def _assert_no_forbidden_in_contexts(mock_audit: AsyncMock) -> None:
 class TestAuditActionTypeEnumeration:
     """Sanity-check the AuditActionType enum used by the coverage test.
 
-    The shipped enum has 31 values: 22 Phase 5 values plus
+    The shipped enum has 33 values: 24 Phase 5 values plus
     9 Phase 6 taxonomy values introduced in Wave 18.0.
     If a future wave adds or removes values, this test
     surfaces the change explicitly so the coverage matrix
@@ -230,10 +233,9 @@ class TestAuditActionTypeEnumeration:
     """
 
     def test_action_type_count_matches_data_model(self):
-        # Phase 6 data-model.md lists 31 action types. Keep this
-        # aligned with that contract.
-        assert len(list(AuditActionType)) == 31, (
-            f"AuditActionType count changed (was 31, now "
+        # The current shipped contract contains 33 action types.
+        assert len(list(AuditActionType)) == 33, (
+            f"AuditActionType count changed (was 33, now "
             f"{len(list(AuditActionType))}). Update the coverage matrix in "
             f"this test module and FR-140 / SC-059 documentation."
         )
@@ -872,6 +874,8 @@ class TestAggregateCoverage:
             "query.execute",
             "query.accept",
             "query.reject",
+            "query.history.view",
+            "query.rerun",
             "role.create",
             "role.update",
             "role.delete",
