@@ -47,8 +47,26 @@ describe('Auth Hooks', () => {
       );
 
       const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
-      
+
       await waitFor(() => expect(result.current.isError).toBe(true));
+    });
+
+    it('preserves the expired-session redirect when a protected-route check races navigation', async () => {
+      server.use(
+        http.get('/api/v1/auth/me', () => {
+          return HttpResponse.json(
+            { error: 'unauthorized', message_key: 'error.unauthorized' },
+            { status: 401 }
+          );
+        })
+      );
+      window.history.replaceState({}, '', '/history');
+
+      const { result } = renderHook(() => useCurrentUser(), { wrapper: createWrapper() });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      expect(window.location.pathname).toBe('/sign-in');
+      expect(window.location.search).toBe('?error=session_expired');
     });
   });
 
