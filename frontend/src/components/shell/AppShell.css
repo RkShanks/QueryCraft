@@ -26,13 +26,31 @@
 
 @media (width <= 768px) {
   .app-shell-sidebar {
-    position: fixed;
-    inset-block: 0;
-    inset-inline-start: 0;
-    z-index: 50;
+    position: sticky;
+    inset-block-start: 0;
+    width: 64px;
+    height: 100vh;
+    z-index: 10;
   }
 
+  .app-shell-workspace,
   .app-shell.sidebar-collapsed .app-shell-workspace {
-    margin-inline-start: 64px;
+    margin-inline-start: 0;
+  }
+
+  .app-shell-sidebar .sidebar {
+    padding-inline: 0.5rem;
+  }
+
+  .app-shell-sidebar .sidebar-header,
+  .app-shell-sidebar .sidebar-sessions {
+    display: none;
+  }
+
+  .app-shell-sidebar .sidebar-new-chat-btn,
+  .app-shell-sidebar .sidebar-nav-btn,
+  .app-shell-sidebar .sidebar-sign-out-btn {
+    padding-inline: 0.5rem;
+    font-size: 0;
   }
 }
