@@ -1,32 +1,14 @@
 /* eslint-disable react-refresh/only-export-components */
 import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-
-type ApiError = {
-  status?: number;
-  response?: { status?: number };
-  error?: string;
-  message_key?: string;
-};
-
-function handle401(error: unknown) {
-  const apiError = error as ApiError | undefined;
-  const isUnauthorizedPayload =
-    apiError?.error === 'unauthorized' && apiError.message_key === 'error.unauthorized';
-  const isUnauthorized =
-    apiError?.status === 401 || apiError?.response?.status === 401 || isUnauthorizedPayload;
-  if (!isUnauthorized || window.location.pathname === '/sign-in') return;
-
-  window.history.replaceState({}, '', '/sign-in?error=session_expired');
-  window.dispatchEvent(new PopStateEvent('popstate'));
-}
+import { handleSessionExpiry } from '../auth/sessionExpiry';
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
-    onError: handle401,
+    onError: (error) => handleSessionExpiry(error),
   }),
   mutationCache: new MutationCache({
-    onError: handle401,
+    onError: (error) => handleSessionExpiry(error),
   }),
   defaultOptions: {
     queries: {
