@@ -13,6 +13,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
+from app.services.detection.normalization import normalize_detection_text
 from app.services.detection.protocol import REGISTRY, DetectionResult, RuleRegistry
 
 if TYPE_CHECKING:
@@ -61,11 +62,12 @@ class HostileInputDetector:
         Returns:
             DetectionOutcome with aggregated outcome, all results, and max confidence.
         """
+        detection_text = normalize_detection_text(text)
         rules = self._registry.list_rules()
         results: list[DetectionResult] = []
 
         for rule in rules:
-            result = rule.detect(text)
+            result = rule.detect(detection_text)
             results.append(result)
 
         max_confidence = max((r.confidence for r in results), default=0.0)
