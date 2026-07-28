@@ -162,6 +162,26 @@ class QueryService:
         """Release the processing lock only if we own it."""
         return await release_lock_if_owned(session_id, owner, self._redis)
 
+    async def _persist_quota_exceeded_audit(
+        self,
+        user_id: uuid.UUID,
+        dimension: str,
+        reset_at: str,
+    ) -> None:
+        """Persist a quota denial without committing pending request side effects."""
+        await self._db_session.rollback()
+        await AuditService.log(
+            self._db_session,
+            action=AuditActionType.QUOTA_EXCEEDED,
+            actor_id=user_id,
+            outcome="blocked",
+            context={
+                "dimension": dimension,
+                "reset_at": reset_at,
+            },
+        )
+        await self._db_session.commit()
+
     async def _get_llm_context_cap(self) -> int:
         """Read llm_context_cap from app_config (default 3)."""
         result = await self._db_session.execute(text("SELECT value FROM app_config WHERE key = 'llm_context_cap'"))
@@ -380,15 +400,10 @@ class QueryService:
                     try:
                         await self._quota_service.check_and_increment(user_uuid, user_role_id, "queries")
                     except QuotaExceededError as exc:
-                        await AuditService.log(
-                            self._db_session,
-                            action=AuditActionType.QUOTA_EXCEEDED,
-                            actor_id=user_uuid,
-                            outcome="blocked",
-                            context={
-                                "dimension": "queries",
-                                "reset_at": exc.reset_at,
-                            },
+                        await self._persist_quota_exceeded_audit(
+                            user_uuid,
+                            "queries",
+                            exc.reset_at,
                         )
                         raise HTTPException(
                             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -652,15 +667,10 @@ class QueryService:
                     try:
                         await self._quota_service.check_and_increment(user_uuid, user_role_id, "executions")
                     except QuotaExceededError as exc:
-                        await AuditService.log(
-                            self._db_session,
-                            action=AuditActionType.QUOTA_EXCEEDED,
-                            actor_id=user_uuid,
-                            outcome="blocked",
-                            context={
-                                "dimension": "executions",
-                                "reset_at": exc.reset_at,
-                            },
+                        await self._persist_quota_exceeded_audit(
+                            user_uuid,
+                            "executions",
+                            exc.reset_at,
                         )
                         raise HTTPException(
                             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
