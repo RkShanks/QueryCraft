@@ -9,6 +9,7 @@ from httpx import ASGITransport, AsyncClient
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.dependencies.permissions import require_permission
+from app.api.v1.phase6_permissions import require_phase6_admin_permission
 from app.db.models.enums import AuditActionType, Permission
 
 
@@ -17,7 +18,7 @@ async def _db_context(db):
     yield db
 
 
-def _protected_app(session: dict | None) -> FastAPI:
+def _protected_app(session: dict | None, permission_dependency=None) -> FastAPI:
     class SessionInjectionMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request: Request, call_next):
             request.state.session = session
@@ -25,10 +26,11 @@ def _protected_app(session: dict | None) -> FastAPI:
 
     app = FastAPI()
     app.add_middleware(SessionInjectionMiddleware)
+    permission_dependency = permission_dependency or require_permission(Permission.ADMIN_AUDIT_VERIFY)
 
     @app.get("/protected")
     async def protected(
-        _session: dict = Depends(require_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
+        _session: dict = Depends(permission_dependency),  # noqa: B008
     ):
         return {"ok": True}
 
@@ -51,15 +53,29 @@ def _protected_app(session: dict | None) -> FastAPI:
         (None, 401, None, "unauthenticated"),
     ],
 )
+@pytest.mark.parametrize(
+    "permission_dependency",
+    [
+        pytest.param(
+            require_permission(Permission.ADMIN_AUDIT_VERIFY),
+            id="phase5-gate",
+        ),
+        pytest.param(
+            require_phase6_admin_permission(Permission.ADMIN_AUDIT_VERIFY),
+            id="phase6-gate",
+        ),
+    ],
+)
 @pytest.mark.asyncio
 async def test_permission_denial_is_durably_audited(
     session,
     expected_status,
     expected_actor,
     expected_reason,
+    permission_dependency,
 ):
     db = AsyncMock()
-    app = _protected_app(session)
+    app = _protected_app(session, permission_dependency)
 
     def session_factory():
         return _db_context(db)
