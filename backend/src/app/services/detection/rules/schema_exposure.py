@@ -35,7 +35,10 @@ _ENGLISH_PATTERNS: list[re.Pattern[str]] = [
     # "API key / secret key / access token"
     re.compile(r"\b(?:api|secret|access)\s+(?:key|token)\b", re.IGNORECASE),
     # "show schema"
-    re.compile(r"\bshow\b.{0,30}\bschema\b", re.IGNORECASE),
+    re.compile(
+        r"\bshow\b.{0,30}\bschema\b(?!\s+(?:documentation|docs?|diagram|glossary)\b)",
+        re.IGNORECASE,
+    ),
     # "information_schema" (already in SQL injection, but double-coverage acceptable)
     re.compile(r"\binformation_schema\b", re.IGNORECASE),
     # "dump database / dump schema"
