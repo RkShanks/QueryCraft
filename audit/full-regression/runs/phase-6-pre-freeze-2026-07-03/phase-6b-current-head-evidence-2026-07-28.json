@@ -1,0 +1,340 @@
+{
+  "run_date": "2026-07-28",
+  "scope": "Phase 6B hostile-input detection only",
+  "starting_synchronized_head": "58d74aa357464ccc1997f0436092539390e88784",
+  "tested_product_head": "ef525f0e6d13f8a497693322689b985679e75dee",
+  "excluded_scope": [
+    "Phase 6C audit hardening",
+    "final Phase 6 closure",
+    "T-905",
+    "freeze work",
+    "implementation-surface gap audit"
+  ],
+  "runtime": {
+    "platform_database": "isolated",
+    "redis": "isolated database 15",
+    "browser_drivers": [
+      "Chrome DevTools MCP",
+      "headless Chromium"
+    ],
+    "deterministic_pipeline_spies": true,
+    "real_llm_benign_passthrough_count": 1,
+    "normal_development_state_disrupted": false,
+    "sensitive_values_retained": false,
+    "fresh_repository_screenshots_staged": false
+  },
+  "totals": {
+    "Pass": 10,
+    "Fail": 0,
+    "Partial": 0,
+    "Setup-dependent": 0,
+    "Not run": 0,
+    "Deferred": 0
+  },
+  "matrix": [
+    {
+      "id": "P6-FR-156",
+      "status": "Pass",
+      "automated_evidence": "Exactly five production rules, all-rule execution, three-way aggregation, exact threshold boundaries, and fail-closed downstream-spy coverage passed.",
+      "browser_api_evidence": "Eight concurrent cold-start reads returned 200 with one singleton row; missing and corrupt configuration returned sanitized 503 before quota.",
+      "notes": "Invalid configuration, registry state, rule execution, or rule output cannot silently disable production detection."
+    },
+    {
+      "id": "P6-FR-157",
+      "status": "Pass",
+      "automated_evidence": "English and Arabic clear-hostile and weaker-signal tests passed for all five categories.",
+      "browser_api_evidence": "Representative blocked and flagged requests traversed the isolated API; browser output exposed no category or rule detail.",
+      "notes": "Prompt injection, SQL injection, RBAC bypass, schema exposure, and destructive SQL coverage passed."
+    },
+    {
+      "id": "P6-FR-158",
+      "status": "Pass",
+      "automated_evidence": "Workspace/banner tests passed 16/16 and sanitization suites verified the minimal response contract.",
+      "browser_api_evidence": "EN/LTR and AR/RTL banners localized; textbox cleared; rejected user bubble absent; DOM leakage false; API 400 body only message_key.",
+      "notes": "Browser echo defect fixed by PR #247."
+    },
+    {
+      "id": "P6-FR-159",
+      "status": "Pass",
+      "automated_evidence": "Deterministic spies proved detection, quota, then evaluator/LLM ordering and exactly-once continuation for allowed/flagged input.",
+      "browser_api_evidence": "Blocked requests created no downstream state and consumed no quota; one benign real-LLM request reached evaluator policy.",
+      "notes": "Detection does not replace evaluator authorization."
+    },
+    {
+      "id": "P6-FR-160",
+      "status": "Pass",
+      "automated_evidence": "Case, spacing, punctuation, multiline, SQL-comment, zero-width, compatibility, bidi, Arabic mark/tatweel, mixed-language, benign-corpus, and bounded-runtime tests passed.",
+      "browser_api_evidence": "Localized blocked flow passed; no additional browser behavior was required.",
+      "notes": "The supported contract is bounded heuristic canonicalization, not arbitrary encoding or semantic-attack detection."
+    },
+    {
+      "id": "P6-FR-161",
+      "status": "Pass",
+      "automated_evidence": "Register/list, duplicate rejection, custom structural rule, fresh/stable imports, exact built-in count, and invalid-state fail-closed coverage passed.",
+      "browser_api_evidence": "Concurrent live reads produced one durable singleton configuration row.",
+      "notes": "Extensibility remains available without permitting an empty or incomplete production registry."
+    },
+    {
+      "id": "P6-FR-162",
+      "status": "Pass",
+      "automated_evidence": "Full configuration validation, permission, concurrency, audit, frontend, and responsive suites passed.",
+      "browser_api_evidence": "Real read/update required exact security permission; three insufficient sessions returned 403; EN/AR desktop and both narrow viewports passed.",
+      "notes": "Configuration audit context stored only two boolean updated markers and passed its leakage scan."
+    },
+    {
+      "id": "P6-FR-163",
+      "status": "Pass",
+      "automated_evidence": "Durability, redaction, ordering, no-raw-payload, search, and export suites passed.",
+      "browser_api_evidence": "Flagged audit count increased by one; blocked count increased by three; search/export returned 200 with false original-value scans.",
+      "notes": "Flagged input continued once and blocked input stopped immediately."
+    },
+    {
+      "id": "P6-FR-164",
+      "status": "Pass",
+      "automated_evidence": "Context allowlist/redaction suites and the deterministic blocked-audit-write-failure composition check passed.",
+      "browser_api_evidence": "Blocked/flagged stored contexts and blocked browser/API output passed value-safe leakage scans.",
+      "notes": "Audit failure propagates before quota or any later side effect and cannot expose or allow the blocked request."
+    },
+    {
+      "id": "P6-FR-165",
+      "status": "Pass",
+      "automated_evidence": "Detection/lifecycle suites found no suspension or lockout mutation path.",
+      "browser_api_evidence": "Three blocked attempts left quota, user, and role unchanged; emitted zero suspension events; retained a 200 session; later benign processing remained available.",
+      "notes": "No hidden lockout or unsupported suspension audit event occurred."
+    }
+  ],
+  "fixes": [
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/243",
+      "severity": "High",
+      "classification": "Unicode/comment/formatting bypass normalization and benign schema-documentation false positive",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/244",
+      "severity": "High",
+      "classification": "Missing/corrupt configuration and invalid production registry/rule state did not fail closed",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/245",
+      "severity": "Mid",
+      "classification": "Detection threshold API coerced numeric strings and booleans",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/246",
+      "severity": "High",
+      "classification": "Flagged hostile-input audit rolled back with later quota denial",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/247",
+      "severity": "High",
+      "classification": "Rejected hostile input remained rendered in the workspace",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    }
+  ],
+  "automated_validation": {
+    "backend": [
+      {
+        "gate": "discovered 42-file detection/rule/config/audit/query/quota-ordering/evaluator/sanitization selection",
+        "result": "672 passed; 11 skipped"
+      },
+      {
+        "gate": "deterministic blocked-audit-write-failure composition",
+        "result": "1 passed"
+      },
+      {
+        "gate": "full pytest",
+        "result": "2612 passed; 15 skipped; 5 non-failing warnings; 35 subtests passed"
+      },
+      {
+        "gate": "Ruff check and format check",
+        "result": "passed; 398 files already formatted"
+      }
+    ],
+    "frontend": [
+      {
+        "gate": "focused WorkspacePage and HostileInputBlockedBanner",
+        "result": "16 passed"
+      },
+      {
+        "gate": "full Vitest",
+        "result": "65 files and 786 tests passed"
+      },
+      {
+        "gate": "ESLint, typecheck, production build, and CSS lint",
+        "result": "passed"
+      },
+      {
+        "gate": "live responsive Playwright",
+        "result": "1 passed; four locale/viewport combinations"
+      }
+    ],
+    "diff_check": "passed",
+    "required_ci": {
+      "backend-test": "passed",
+      "frontend-test": "passed"
+    }
+  },
+  "browser_api_validation": {
+    "configuration": {
+      "read_status": 200,
+      "update_status": 200,
+      "invalid_status": 422,
+      "concurrent_read_count": 8,
+      "concurrent_read_statuses_all_200": true,
+      "singleton_row_count": 1,
+      "defaults_restored": true
+    },
+    "permissions": [
+      {
+        "profile": "exact-security",
+        "read_status": 200,
+        "update_status": 200
+      },
+      {
+        "profile": "restricted",
+        "read_status": 403,
+        "update_status": 403
+      },
+      {
+        "profile": "quota-only",
+        "read_status": 403,
+        "update_status": 403
+      },
+      {
+        "profile": "legacy-lowercase-admin",
+        "read_status": 403,
+        "update_status": 403
+      }
+    ],
+    "blocked_response": {
+      "status": 400,
+      "message_key": "error.hostile_input_blocked",
+      "response_fields": [
+        "message_key"
+      ],
+      "forbidden_details_present": false,
+      "payload_echoed": false
+    },
+    "localized_browser": [
+      {
+        "locale": "en",
+        "direction": "ltr",
+        "localized": true,
+        "payload_visible": false,
+        "textbox_cleared": true,
+        "rejected_user_bubble_present": false
+      },
+      {
+        "locale": "ar",
+        "direction": "rtl",
+        "localized": true,
+        "payload_visible": false,
+        "textbox_cleared": true,
+        "rejected_user_bubble_present": false
+      }
+    ],
+    "responsive": [
+      {
+        "viewport": "375x812",
+        "locale": "en",
+        "direction": "ltr",
+        "document_overflow": false,
+        "controls_outside_viewport": false
+      },
+      {
+        "viewport": "375x812",
+        "locale": "ar",
+        "direction": "rtl",
+        "document_overflow": false,
+        "controls_outside_viewport": false
+      },
+      {
+        "viewport": "768x1024",
+        "locale": "en",
+        "direction": "ltr",
+        "document_overflow": false,
+        "controls_outside_viewport": false
+      },
+      {
+        "viewport": "768x1024",
+        "locale": "ar",
+        "direction": "rtl",
+        "document_overflow": false,
+        "controls_outside_viewport": false
+      }
+    ],
+    "durability_and_continuity": {
+      "flagged_audit_delta": 1,
+      "blocked_attempt_count": 3,
+      "blocked_audit_delta": 3,
+      "quota_audit_delta": 0,
+      "quota_unchanged": true,
+      "user_unchanged": true,
+      "role_unchanged": true,
+      "suspension_event_count": 0,
+      "session_status_after_attempts": 200,
+      "raw_payload_in_context": false
+    },
+    "audit_search_export": {
+      "search_status": 200,
+      "export_status": 200,
+      "payload_in_search": false,
+      "payload_in_export": false
+    },
+    "configuration_audit": {
+      "action_type": "detection.config.change",
+      "outcome": "success",
+      "context_fields": [
+        "block_confidence_updated",
+        "flag_confidence_updated"
+      ],
+      "forbidden_value_leak": false
+    },
+    "benign_real_llm_passthrough": {
+      "detection_blocked": false,
+      "downstream_status": 422,
+      "message_key": "error.queryBlockedPolicy",
+      "evaluator_authorization_preserved": true,
+      "provider_details_retained": false
+    }
+  },
+  "safety": {
+    "credentials_or_cookies_in_evidence": false,
+    "hostile_probes_in_evidence": false,
+    "matched_patterns_in_evidence": false,
+    "raw_audit_rows_in_evidence": false,
+    "provider_details_in_evidence": false,
+    "pre_existing_dirty_artifacts_touched": false
+  },
+  "cleanup": {
+    "isolated_application_stopped": true,
+    "isolated_vite_stopped": true,
+    "isolated_platform_database_dropped": true,
+    "isolated_redis_database_flushed": true,
+    "temporary_probe_config_and_test_files_deleted": true
+  },
+  "closure": {
+    "phase_6b_complete": true,
+    "phase_6c_unblocked": true,
+    "phase_6c_started": false
+  }
+}
