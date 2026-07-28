@@ -3,9 +3,10 @@ import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@ta
 import type { ReactNode } from 'react';
 
 function handle401(error: unknown) {
-  const err = error as { status?: number; response?: { status?: number } } | undefined;
-  if (err?.status === 401 || err?.response?.status === 401) {
-    window.location.href = '/sign-in';
+  const apiError = error as { status?: number; response?: { status?: number } } | undefined;
+  if (apiError?.status === 401 || apiError?.response?.status === 401) {
+    window.history.replaceState({}, '', '/sign-in?error=session_expired');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   }
 }
 
