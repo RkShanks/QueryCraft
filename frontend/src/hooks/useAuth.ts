@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { signIn, getMe, signOut, listSsoProviders } from '../api/generated/sdk.gen';
 import type { SignInData } from '../api/generated/types.gen';
+import { handleSessionExpiry } from '../auth/sessionExpiry';
 
 export const useSignIn = () => {
   const queryClient = useQueryClient();
@@ -15,7 +16,15 @@ export const useSignIn = () => {
 export const useCurrentUser = () => {
   return useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => getMe({ throwOnError: true }),
+    queryFn: async () => {
+      const sourcePath = window.location.pathname;
+      try {
+        return await getMe({ throwOnError: true });
+      } catch (error) {
+        handleSessionExpiry(error, sourcePath);
+        throw error;
+      }
+    },
     retry: false,
   });
 };
