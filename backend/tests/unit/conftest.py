@@ -12,6 +12,11 @@ are not exercising detection logic themselves.
 
 The conftest opts out by test module name for the files that exercise
 real detector, rule, and registry behaviour.
+
+Permission-gate denials also write through a dedicated database transaction.
+Unit tests for unrelated routers run without PostgreSQL, so the same autouse
+isolation pattern stubs that side effect except in the focused denial-audit
+contract module.
 """
 
 from __future__ import annotations
@@ -34,6 +39,10 @@ _DETECTION_TEST_MODULES = {
     "test_rule_destructive_sql",
     "test_detection_package_registration",
     "test_no_raw_hostile_payload",
+}
+
+_PERMISSION_AUDIT_TEST_MODULES = {
+    "test_permission_denial_audit",
 }
 
 
@@ -65,5 +74,20 @@ def _stub_hostile_detector_as_allowed(request: pytest.FixtureRequest):
     with patch(
         "app.services.detection.detector.HostileInputDetector.detect",
         new=AsyncMock(return_value=_allowed),
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _stub_permission_denial_audit(request: pytest.FixtureRequest):
+    """Keep unrelated unit tests independent from the platform database."""
+    module_name = request.module.__name__.split(".")[-1]
+    if module_name in _PERMISSION_AUDIT_TEST_MODULES:
+        yield
+        return
+
+    with patch(
+        "app.api.dependencies.permissions._audit_access_denied",
+        new=AsyncMock(),
     ):
         yield
