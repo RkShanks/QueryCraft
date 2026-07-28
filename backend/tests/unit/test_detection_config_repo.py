@@ -11,6 +11,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sqlalchemy.exc import MultipleResultsFound
 
 
 def _make_session():
@@ -128,6 +129,19 @@ class TestDetectionConfigRepositoryForDetection:
         session = _make_session()
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = _make_threshold_row(block=block, flag=flag)
+        session.execute.return_value = result_mock
+
+        with pytest.raises(DetectionUnavailableError):
+            await DetectionConfigRepository(session).get_for_detection()
+
+    @pytest.mark.asyncio
+    async def test_multiple_runtime_configs_fail_closed(self):
+        from app.core.exceptions import DetectionUnavailableError
+        from app.repositories.detection_config_repository import DetectionConfigRepository
+
+        session = _make_session()
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.side_effect = MultipleResultsFound()
         session.execute.return_value = result_mock
 
         with pytest.raises(DetectionUnavailableError):

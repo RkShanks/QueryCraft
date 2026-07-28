@@ -30,13 +30,12 @@ class TestPackageRegistration:
         assert not missing, f"Built-in rules not registered after package import: {sorted(missing)}"
 
     def test_registry_contains_exactly_five_builtin_rules(self):
-        """All 5 expected rule names present (extra rules are ok, missing are not)."""
+        """The production singleton contains only the five built-in rules."""
         import app.services.detection  # noqa: F401
         from app.services.detection.protocol import REGISTRY
 
         registered_names = {r.name for r in REGISTRY.list_rules()}
-        for name in EXPECTED_RULE_NAMES:
-            assert name in registered_names, f"Missing built-in rule: {name!r}"
+        assert registered_names == EXPECTED_RULE_NAMES
 
     def test_registry_not_empty_after_package_import(self):
         """Sanity: REGISTRY must have at least one rule after package import."""

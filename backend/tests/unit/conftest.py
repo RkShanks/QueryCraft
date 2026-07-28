@@ -2,9 +2,8 @@
 
 T-845 fix: ``HostileInputDetector.detect`` is now called inside
 ``QueryService.submit_question`` before the quota check. Existing
-QueryService unit tests use a mocked DB session where
-``DetectionConfigRepository.get()`` returns a ``MagicMock`` row, causing
-``float >= MagicMock`` TypeErrors in the threshold comparison.
+QueryService unit tests use a mocked DB session that does not contain
+a real detection configuration row.
 
 The fix is an autouse fixture that stubs ``HostileInputDetector.detect``
 to always return an "allowed" ``DetectionOutcome`` for unit tests that
@@ -53,16 +52,16 @@ _PERMISSION_AUDIT_TEST_MODULES = {
 def _stub_hostile_detector_as_allowed(request: pytest.FixtureRequest):
     """Stub HostileInputDetector.detect → "allowed" for non-detection unit tests.
 
-    Skips the stub for detection-specific test modules (``_DETECTION_TEST_MODULES``)
-    so the real detector, rule, and registry logic is exercised there.
+        Skips the stub for detection-specific test modules (``_DETECTION_TEST_MODULES``)
+        so the real detector, rule, and registry logic is exercised there.
 
-    For every other test, this prevents the detection threshold comparison
-    (``float >= MagicMock``) from failing in QueryService unit tests that
-    supply a mocked DB session.
+    For every other test, this supplies valid thresholds and prevents the
+    detection step from coupling unrelated QueryService tests to detection
+    configuration persistence.
 
-    Detection-specific tests that want to control the outcome can also call
-    ``patch.object(HostileInputDetector, "detect", ...)`` inside their own
-    test scope, which takes precedence over this outer fixture anyway.
+        Detection-specific tests that want to control the outcome can also call
+        ``patch.object(HostileInputDetector, "detect", ...)`` inside their own
+        test scope, which takes precedence over this outer fixture anyway.
     """
     module_name = request.module.__name__.split(".")[-1]
     if module_name in _DETECTION_TEST_MODULES:

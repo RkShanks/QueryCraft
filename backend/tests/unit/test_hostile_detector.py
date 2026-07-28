@@ -255,6 +255,24 @@ class TestDetectionFailClosed:
             await HostileInputDetector(registry).detect("ordinary request", _make_mock_config())
 
     @pytest.mark.asyncio
+    async def test_invalid_rule_result_fails_closed(self):
+        from app.core.exceptions import DetectionUnavailableError
+        from app.services.detection.detector import HostileInputDetector
+        from app.services.detection.protocol import DetectionResult, RuleRegistry
+
+        class _InvalidResultRule:
+            name = "invalid_result"
+
+            def detect(self, text: str) -> DetectionResult:
+                return DetectionResult(category="invalid", confidence=float("nan"), explanation="")
+
+        registry = RuleRegistry()
+        registry.register(_InvalidResultRule())
+
+        with pytest.raises(DetectionUnavailableError):
+            await HostileInputDetector(registry).detect("ordinary request", _make_mock_config())
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("block", "flag"),
         [
