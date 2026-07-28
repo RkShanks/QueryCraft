@@ -11,9 +11,9 @@ All registered rules are always executed — no short-circuit.
 from __future__ import annotations
 
 import dataclasses
-import unicodedata
 from typing import TYPE_CHECKING
 
+from app.services.detection.normalization import normalize_detection_text
 from app.services.detection.protocol import REGISTRY, DetectionResult, RuleRegistry
 
 if TYPE_CHECKING:
@@ -62,8 +62,7 @@ class HostileInputDetector:
         Returns:
             DetectionOutcome with aggregated outcome, all results, and max confidence.
         """
-        compatibility_text = unicodedata.normalize("NFKC", text)
-        detection_text = " ".join(compatibility_text.replace("\u200b", " ").split())
+        detection_text = normalize_detection_text(text)
         rules = self._registry.list_rules()
         results: list[DetectionResult] = []
 
