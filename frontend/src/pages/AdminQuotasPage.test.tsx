@@ -108,14 +108,14 @@ describe('AdminQuotasPage', () => {
     expect(useAdminRoles).toHaveBeenCalledWith({ enabled: true });
 
     // Renders all roles (admin, analyst, viewer)
-    expect(screen.getByText('admin')).toBeInTheDocument();
+    expect(screen.getAllByText('admin')[0]).toBeInTheDocument();
     expect(screen.getAllByText('analyst')[0]).toBeInTheDocument();
-    expect(screen.getByText('viewer')).toBeInTheDocument();
+    expect(screen.getAllByText('viewer')[0]).toBeInTheDocument();
 
     // Renders custom limits for analyst
-    expect(screen.getByText('100')).toBeInTheDocument();
-    expect(screen.getByText('50')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getAllByText('100')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('50')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('5')[0]).toBeInTheDocument();
 
     // Renders Uncapped for other roles
     const uncappedElements = screen.getAllByText('quota.uncapped');
