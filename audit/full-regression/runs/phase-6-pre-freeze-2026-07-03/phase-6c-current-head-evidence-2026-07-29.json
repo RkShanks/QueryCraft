@@ -1,0 +1,442 @@
+{
+  "run_date": "2026-07-29",
+  "scope": "Phase 6C audit hardening only",
+  "starting_synchronized_head": "f34f1c8d3e17a2e877fb4d74a425fef0e20f0867",
+  "tested_product_head": "991f7e38bdc9dcbf0b0fa5c9c00532652ec69a9c",
+  "evidence_pr": null,
+  "excluded_scope": [
+    "Phase 6D",
+    "T-905",
+    "final Phase 6 closure and freeze work",
+    "implementation-surface gap audit"
+  ],
+  "runtime": {
+    "platform_postgres": "disposable isolated service",
+    "source_postgres": "disposable isolated service",
+    "redis": "disposable isolated service",
+    "backend": "disposable isolated service",
+    "frontend": "disposable isolated service",
+    "browser_drivers": [
+      "Chrome DevTools MCP",
+      "headless Chromium"
+    ],
+    "scheduler_mode": "documented one-shot external invocation",
+    "normal_development_audit_data_tampered_or_purged": false,
+    "sensitive_values_retained": false,
+    "fresh_phase_6c_screenshots_staged": true
+  },
+  "totals": {
+    "Pass": 11,
+    "Fail": 0,
+    "Partial": 0,
+    "Setup-dependent": 0,
+    "Not run": 0,
+    "Deferred": 0
+  },
+  "matrix": [
+    {
+      "id": "P6-FR-166",
+      "status": "Pass",
+      "automated_evidence": "Filter, validation, retention, redaction, parameterization, stable ordering, permission, and migration-index suites passed.",
+      "browser_api_evidence": "Real isolated API returned exact empty, 1, 100, 101, and 50000 sets; combined and Unicode filters matched; malformed values returned 422; expired and sensitive values were absent.",
+      "notes": "Every search intersects the requested window with the UTC calendar-month retention cutoff and orders timestamp then sequence descending."
+    },
+    {
+      "id": "P6-FR-167",
+      "status": "Pass",
+      "automated_evidence": "Empty, first, middle, last, beyond-last, 1/100 boundaries, invalid/overflow inputs, equal timestamps, snapshot consistency, and concurrent append tests passed.",
+      "browser_api_evidence": "A 50000-row result produced 500 exact pages; pages 1, 250, 500, and 501 had consistent metadata; equal-timestamp traversal had no duplicate or missing rows.",
+      "notes": "Offset pagination is internally bounded by one count and upper-sequence snapshot; later requests can observe inserts under the documented cross-request contract."
+    },
+    {
+      "id": "P6-FR-168",
+      "status": "Pass",
+      "automated_evidence": "CSV/JSON, quota, permission, limit, boundary, redaction, and no-partial-response suites passed at 0, 1, 100, 101, 50000, and 50001 rows.",
+      "browser_api_evidence": "Allowed real exports returned 200 with correct count, type, disposition, and safe filename. Boundary/denial statuses were 422, 429, 503, and 403; denied UI flows created no object URL.",
+      "notes": "Arabic/Unicode, delimiter, quote, line-break, and nested-context cases remained parseable."
+    },
+    {
+      "id": "P6-FR-169",
+      "status": "Pass",
+      "automated_evidence": "Actor, UTC timestamp, sanitized filter summary, format, count, and checksum metadata tests passed for zero and maximum exports.",
+      "browser_api_evidence": "Independent CSV and canonical-JSON checksum recomputation matched at small and 50000-row boundaries; metadata counts matched parsed rows and contained no row or sensitive filter values.",
+      "notes": "Checksums cover emitted records and exclude the metadata wrapper."
+    },
+    {
+      "id": "P6-FR-170",
+      "status": "Pass",
+      "automated_evidence": "Recursive redaction covered nested collections, key case variants, safe-looking keys, authorization and credential shapes, database material, hosts, stack details, hostile content, federation material, and bounded encoded representations.",
+      "browser_api_evidence": "Search, CSV, and JSON live scans reported sensitive_probe_absence true at the maximum boundary while redaction markers remained present.",
+      "notes": "Evidence stores boolean absence results only."
+    },
+    {
+      "id": "P6-FR-171",
+      "status": "Pass",
+      "automated_evidence": "All documented formula operators and leading spaces, tabs, line breaks, BOM/control prefixes passed for entry and metadata cells; emitted CSV reparsed successfully.",
+      "browser_api_evidence": "All 5 live formula-shaped rows were conservatively prefixed, 101 rows reparsed exactly, and legitimate Arabic/Unicode survived.",
+      "notes": "The conservative prefixing contract was preserved."
+    },
+    {
+      "id": "P6-FR-172",
+      "status": "Pass",
+      "automated_evidence": "Search/export self-audit, allowlisted summary/count/format, recursion suppression, repetition, and sanitized failure suites passed.",
+      "browser_api_evidence": "Repeated live searches produced linear one-event-per-operation growth; stored events contained no result row, resource value, sensitive filter content, or exported data.",
+      "notes": "Self-audit writes do not recursively audit themselves."
+    },
+    {
+      "id": "P6-FR-173",
+      "status": "Pass",
+      "automated_evidence": "Month-end, leap-year, timezone-aware, exact/just-before cutoff, older request, and search/export/purge equivalence tests passed.",
+      "browser_api_evidence": "Three live expired rows were absent from search/export and excluded from counts/checksums; the exact documented purge removed those 3 rows.",
+      "notes": "UTC calendar-month subtraction is used, never months multiplied by 30 days."
+    },
+    {
+      "id": "P6-FR-174",
+      "status": "Pass",
+      "automated_evidence": "Runner, packaging, no-op, success, repeat, rollback, failure exit, and calendar cutoff suites passed; cron/Kubernetes/systemd examples passed docs-guard source verification.",
+      "browser_api_evidence": "The exact documented command succeeded against isolated Postgres, then repeated as a no-op, emitted only the purged count, and exposed no scheduling or next-run field.",
+      "notes": "No permanent scheduler was installed."
+    },
+    {
+      "id": "P6-FR-175",
+      "status": "Pass",
+      "automated_evidence": "All purge/marker/tamper/rollback/immutability/concurrency/exact-break scenarios passed. A 1001-row regression observed three keyset batches capped at 500, including cross-boundary marker and tamper cases.",
+      "browser_api_evidence": "A valid chain over 50000 rows verified before and after a 3-row purge with an exact marker; verification stayed bounded and reported no break.",
+      "notes": "C6-M02 is resolved with a documented 500-row batch, upper sequence snapshot, exact entries_checked/first_break_at, and no complete retained-log all()."
+    },
+    {
+      "id": "P6-FR-176",
+      "status": "Pass",
+      "automated_evidence": "Retention client/panel parsing and never-purged, post-purge, loading, empty, malformed, unavailable, forbidden, locale, accessibility, and responsive suites passed.",
+      "browser_api_evidence": "The real panel showed retention months 24 and purged count 3 with a purge timestamp. EN/AR at 1440, 768, and 375 had no raw keys, overflow, or clipping; restricted APIs returned 403.",
+      "notes": "Narrow results use labeled cards, desktop retains the table, and no scheduler internals are exposed."
+    }
+  ],
+  "fixes": [
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/249",
+      "classification": "C6-M02 Mid availability/performance hardening",
+      "merge_commit": "bfc15ccc3418609358bff34ce03bbfc2c5e26a2f",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/250",
+      "classification": "audit search and pagination security/correctness regression",
+      "merge_commit": "4993079b2f23ee219b42c4ee66bd5f463c0e46b0",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/251",
+      "classification": "audit export security regression",
+      "merge_commit": "ea4f259bda9f34ca1d891ecfbce92a307d4a66cd",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/252",
+      "classification": "external purge operational invocation defect",
+      "merge_commit": "e38f963f2c4f8cf7d3ae8f11c1e08b1d0f391c57",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/253",
+      "classification": "purge-marker chain-integrity defect",
+      "merge_commit": "f5c96582e6e44b715eba880cdee7cdec848c78d6",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/254",
+      "classification": "audit-index migration rollback defect",
+      "merge_commit": "17f7513aa91cecb9bc821f530d31f4faf678275a",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/255",
+      "classification": "Admin Audit retention response fail-closed defect",
+      "merge_commit": "aecafd825367d5268a454c123f0e953f0f879049",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    },
+    {
+      "pr": "https://github.com/RkShanks/QueryCraft/pull/256",
+      "classification": "Admin Audit responsive clipping defect",
+      "merge_commit": "991f7e38bdc9dcbf0b0fa5c9c00532652ec69a9c",
+      "ci": {
+        "backend-test": "passed",
+        "frontend-test": "passed"
+      }
+    }
+  ],
+  "automated_validation": {
+    "backend": [
+      {
+        "gate": "focused search/export/redaction slice",
+        "result": "704 passed; 2 skipped"
+      },
+      {
+        "gate": "focused purge/verify slice",
+        "result": "48 passed"
+      },
+      {
+        "gate": "affected audit/quota/retention slice",
+        "result": "812 passed; 12 skipped"
+      },
+      {
+        "gate": "relevant migration unit suite",
+        "result": "19 passed"
+      },
+      {
+        "gate": "isolated Postgres migration cycle",
+        "result": "008 to 009 to 008 passed; inherited action, actor, and timestamp indexes remained"
+      },
+      {
+        "gate": "full pytest",
+        "result": "2684 passed; 17 skipped; 4 non-failing warnings; 35 subtests passed"
+      },
+      {
+        "gate": "Ruff check and format check",
+        "result": "passed; 405 files already formatted"
+      }
+    ],
+    "frontend": [
+      {
+        "gate": "Admin Audit page, audit API client, locale, and RTL coverage",
+        "result": "passed within full Vitest"
+      },
+      {
+        "gate": "full Vitest",
+        "result": "65 files and 802 tests passed"
+      },
+      {
+        "gate": "ESLint, typecheck, production build, and CSS lint",
+        "result": "passed; build emitted only the existing non-failing chunk-size warning"
+      },
+      {
+        "gate": "live responsive Playwright/Chromium",
+        "result": "6 locale/viewport combinations plus loading, error, and permission states passed"
+      }
+    ],
+    "diff_check": "passed",
+    "fix_pr_ci": {
+      "range": "249-256",
+      "backend-test": "passed",
+      "frontend-test": "passed"
+    }
+  },
+  "browser_api_validation": {
+    "search": {
+      "filter_result_counts": [
+        0,
+        1,
+        100,
+        101,
+        50000
+      ],
+      "combined_filters_exact": true,
+      "unicode_preserved": true,
+      "retention_excluded_expired": true,
+      "injection_like_value_treated_as_data": true,
+      "invalid_inputs_all_422": true,
+      "sensitive_probe_absence": true,
+      "redaction_marker_present": true
+    },
+    "pagination": {
+      "total_records": 50000,
+      "page_size": 100,
+      "total_pages": 500,
+      "first_page_consistent": true,
+      "middle_page_consistent": true,
+      "last_page_consistent": true,
+      "beyond_last_empty": true,
+      "equal_timestamp_stable": true,
+      "duplicate_or_missing_rows": false
+    },
+    "export": {
+      "successful_boundaries": [
+        0,
+        1,
+        100,
+        101,
+        50000
+      ],
+      "over_limit_status": 422,
+      "quota_denied_status": 429,
+      "quota_unavailable_status": 503,
+      "permission_denied_status": 403,
+      "denials_had_content_disposition": false,
+      "denied_ui_object_url_count": 0,
+      "csv_checksum_independently_verified": true,
+      "json_checksum_independently_verified": true,
+      "csv_parseable": true,
+      "unicode_preserved": true,
+      "safe_filenames": true,
+      "content_types_and_dispositions_correct": true,
+      "metadata_complete": true,
+      "metadata_row_values_absent": true,
+      "metadata_sensitive_filters_absent": true,
+      "sensitive_probe_absence": true,
+      "redaction_marker_present": true
+    },
+    "formula_defense": {
+      "live_formula_shaped_rows": 5,
+      "all_conservatively_prefixed": true,
+      "metadata_coverage_automated": true,
+      "unicode_preserved": true
+    },
+    "self_audit": {
+      "linear_one_event_per_operation": true,
+      "recursive_logging_observed": false,
+      "result_rows_absent": true,
+      "resource_values_absent": true,
+      "sensitive_filters_absent": true,
+      "exported_data_absent": true
+    },
+    "purge_and_verify": {
+      "expired_rows_before_purge": 3,
+      "purged_rows": 3,
+      "expired_rows_visible_after_purge": 0,
+      "purge_markers": 1,
+      "verified_before_purge": true,
+      "verified_after_purge": true,
+      "first_break_at": null,
+      "entries_checked_over_50000": true,
+      "verification_batch_size": 500,
+      "upper_sequence_snapshot": true
+    },
+    "retention": {
+      "status": 200,
+      "months": 24,
+      "last_purge_timestamp_present": true,
+      "purged_count": 3,
+      "scheduler_fields_absent": true
+    },
+    "scheduler": {
+      "exact_documented_invocation_status": 0,
+      "successful_purge_count": 3,
+      "repeated_no_op_count": 0,
+      "rollback_and_failure_exit_automated": true,
+      "internal_schedule_present": false,
+      "next_run_surface_present": false
+    },
+    "permissions": {
+      "search_status": 403,
+      "retention_status": 403,
+      "export_status": 403
+    },
+    "responsive": [
+      {
+        "viewport": "1440px",
+        "locale": "en",
+        "direction": "ltr",
+        "document_overflow": false,
+        "clipped_fields_or_actions": false,
+        "raw_locale_keys": false
+      },
+      {
+        "viewport": "1440px",
+        "locale": "ar",
+        "direction": "rtl",
+        "document_overflow": false,
+        "clipped_fields_or_actions": false,
+        "raw_locale_keys": false
+      },
+      {
+        "viewport": "768px",
+        "locale": "en",
+        "direction": "ltr",
+        "document_overflow": false,
+        "clipped_fields_or_actions": false,
+        "raw_locale_keys": false
+      },
+      {
+        "viewport": "768px",
+        "locale": "ar",
+        "direction": "rtl",
+        "document_overflow": false,
+        "clipped_fields_or_actions": false,
+        "raw_locale_keys": false
+      },
+      {
+        "viewport": "375px",
+        "locale": "en",
+        "direction": "ltr",
+        "document_overflow": false,
+        "clipped_fields_or_actions": false,
+        "raw_locale_keys": false
+      },
+      {
+        "viewport": "375px",
+        "locale": "ar",
+        "direction": "rtl",
+        "document_overflow": false,
+        "clipped_fields_or_actions": false,
+        "raw_locale_keys": false
+      }
+    ],
+    "panel_states": {
+      "never_purged": true,
+      "post_purge": true,
+      "loading": true,
+      "empty": true,
+      "malformed": true,
+      "unavailable": true,
+      "forbidden": true
+    }
+  },
+  "screenshots": [
+    "screenshots/phase-6c-admin-audit-en-1440.png",
+    "screenshots/phase-6c-admin-audit-en-768.png",
+    "screenshots/phase-6c-admin-audit-en-375.png",
+    "screenshots/phase-6c-admin-audit-ar-1440.png",
+    "screenshots/phase-6c-admin-audit-ar-768.png",
+    "screenshots/phase-6c-admin-audit-ar-375.png"
+  ],
+  "safety": {
+    "credentials_or_cookies_in_evidence": false,
+    "sensitive_filter_values_in_evidence": false,
+    "hostile_probe_values_in_evidence": false,
+    "raw_audit_rows_in_evidence": false,
+    "exported_row_values_in_evidence": false,
+    "stack_details_in_evidence": false,
+    "federation_material_in_evidence": false,
+    "pre_existing_dirty_artifacts_touched": false
+  },
+  "cleanup": {
+    "isolated_backend_stopped": true,
+    "isolated_frontend_stopped": true,
+    "isolated_session_helper_stopped": true,
+    "isolated_containers_removed": true,
+    "isolated_network_removed": true,
+    "isolated_volumes_removed": true,
+    "isolated_databases_removed": true,
+    "temporary_scripts_removed": true,
+    "temporary_exports_remaining": false,
+    "permanent_scheduler_installed": false,
+    "normal_backend_http_status": 200,
+    "normal_frontend_http_status": 200
+  },
+  "closure": {
+    "phase_6c_complete": true,
+    "phase_6d_unblocked": true,
+    "phase_6d_started": false
+  }
+}
