@@ -31,6 +31,32 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
   </QueryClientProvider>
 );
 
+const legacyConnectionWithSensitiveExtras = (runtimeProbes: string[]) => ({
+  id: '1',
+  display_name: 'Test DB',
+  database_type: 'postgresql',
+  host: runtimeProbes[0],
+  port: 5432,
+  database_name: 'app',
+  username: runtimeProbes[1],
+  ssl_mode: 'require',
+  lifecycle_state: 'active',
+  health_status: 'healthy',
+  last_health_check_at: null,
+  health_error_category: null,
+  schema_introspection_status: 'success',
+  schema_last_refreshed_at: null,
+  created_at: '2026-07-29T00:00:00Z',
+  updated_at: '2026-07-29T00:00:00Z',
+  password: runtimeProbes[2],
+  encrypted_password: runtimeProbes[3],
+  database_url: runtimeProbes[4],
+  Host: runtimeProbes[5],
+  USERNAME: runtimeProbes[5],
+  metadata: { label: runtimeProbes[6] },
+  display_hint: btoa(runtimeProbes[7]),
+});
+
 describe('useConnections', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,26 +93,8 @@ describe('useConnections', () => {
     ['a raw array', (connection: Record<string, unknown>) => [connection]],
     ['a wrapped object', (connection: Record<string, unknown>) => ({ connections: [connection] })],
   ])('normalizes %s response into a cache-safe connection list', async (_name, responseShape) => {
-    const runtimeProbes = Array.from({ length: 3 }, () => crypto.randomUUID());
-    const legacyConnection = {
-      id: '1',
-      display_name: 'Test DB',
-      database_type: 'postgresql',
-      host: runtimeProbes[0],
-      port: 5432,
-      database_name: 'app',
-      username: runtimeProbes[1],
-      ssl_mode: 'require',
-      lifecycle_state: 'active',
-      health_status: 'healthy',
-      last_health_check_at: null,
-      health_error_category: null,
-      schema_introspection_status: 'success',
-      schema_last_refreshed_at: null,
-      created_at: '2026-07-29T00:00:00Z',
-      updated_at: '2026-07-29T00:00:00Z',
-      metadata: { label: runtimeProbes[2] },
-    };
+    const runtimeProbes = Array.from({ length: 8 }, () => crypto.randomUUID());
+    const legacyConnection = legacyConnectionWithSensitiveExtras(runtimeProbes);
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
       data: responseShape(legacyConnection),
       response: new Response(),
@@ -109,32 +117,7 @@ describe('useConnections', () => {
     const runtimeProbes = Array.from({ length: 8 }, () => crypto.randomUUID());
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
       data: {
-        connections: [
-          {
-            id: '1',
-            display_name: 'Test DB',
-            database_type: 'postgresql',
-            host: runtimeProbes[0],
-            port: 5432,
-            database_name: 'app',
-            username: runtimeProbes[1],
-            ssl_mode: 'require',
-            lifecycle_state: 'active',
-            health_status: 'healthy',
-            last_health_check_at: null,
-            health_error_category: null,
-            schema_introspection_status: 'success',
-            schema_last_refreshed_at: null,
-            created_at: '2026-07-29T00:00:00Z',
-            updated_at: '2026-07-29T00:00:00Z',
-            password: runtimeProbes[2],
-            encrypted_password: runtimeProbes[3],
-            database_url: runtimeProbes[4],
-            Host: runtimeProbes[5],
-            metadata: { label: runtimeProbes[6] },
-            display_hint: btoa(runtimeProbes[7]),
-          },
-        ],
+        connections: [legacyConnectionWithSensitiveExtras(runtimeProbes)],
       },
       response: new Response(),
       request: new Request('http://localhost'),
@@ -178,30 +161,7 @@ describe('useConnections', () => {
 
   it('keeps write-only and unexpected fields out of connection mutation results', async () => {
     const runtimeProbes = Array.from({ length: 8 }, () => crypto.randomUUID());
-    const legacyConnectionResponse = {
-      id: '1',
-      display_name: 'Test DB',
-      database_type: 'postgresql',
-      host: runtimeProbes[0],
-      port: 5432,
-      database_name: 'app',
-      username: runtimeProbes[1],
-      ssl_mode: 'require',
-      lifecycle_state: 'active',
-      health_status: 'healthy',
-      last_health_check_at: null,
-      health_error_category: null,
-      schema_introspection_status: 'success',
-      schema_last_refreshed_at: null,
-      created_at: '2026-07-29T00:00:00Z',
-      updated_at: '2026-07-29T00:00:00Z',
-      password: runtimeProbes[2],
-      encrypted_password: runtimeProbes[3],
-      database_url: runtimeProbes[4],
-      USERNAME: runtimeProbes[5],
-      metadata: { label: runtimeProbes[6] },
-      display_hint: btoa(runtimeProbes[7]),
-    };
+    const legacyConnectionResponse = legacyConnectionWithSensitiveExtras(runtimeProbes);
     const sdkResponse = {
       data: legacyConnectionResponse,
       response: new Response(),
