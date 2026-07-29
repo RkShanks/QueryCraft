@@ -1,0 +1,320 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-07-29",
+  "scope": "Cross-Phase A only",
+  "expected_starting_main": "7ee642f4d5fcbc8e7a4b74a07fa14e701f138569",
+  "starting_main_synchronized": true,
+  "tested_product_head": "a3f1253f00ba40bb791086b5f9bdfa7256f9ca39",
+  "excluded_scope": [
+    "Cross-Phase B",
+    "XP-007 and later rows",
+    "implementation-surface gap audit",
+    "independent final audit",
+    "T-905",
+    "freeze work",
+    "real-provider smoke"
+  ],
+  "requirements": [
+    {
+      "id": "XP-001",
+      "status": "Pass",
+      "automated": {
+        "passed": 229,
+        "categories": [
+          "local authentication",
+          "OIDC",
+          "SAML",
+          "callback validation",
+          "session lifecycle",
+          "sanitization"
+        ]
+      },
+      "browser_api": {
+        "local_admin_success": true,
+        "generic_local_denial_equivalent": true,
+        "mapped_oidc_success": true,
+        "mapped_saml_success": true,
+        "unmapped_identity_denied": true,
+        "replay_denied": true,
+        "expired_callback_denied": true,
+        "invalid_state_denied": true,
+        "invalid_nonce_denied": true,
+        "invalid_signature_or_assertion_denied": true,
+        "cross_provider_collision_denied": true,
+        "sign_out_invalidated_session": true,
+        "expired_and_invalid_session_denied": true,
+        "user_switch_cleared_prior_state": true
+      },
+      "leakage_absence": {
+        "enumeration_detail": true,
+        "federation_material": true,
+        "callback_content": true,
+        "cookie_content": true,
+        "provider_internals": true,
+        "constraint_detail": true
+      }
+    },
+    {
+      "id": "XP-002",
+      "status": "Pass",
+      "automated": {
+        "passed": 250,
+        "warnings": 1,
+        "categories": [
+          "connection health",
+          "routing",
+          "schema introspection",
+          "role policy",
+          "dialects",
+          "sanitization"
+        ]
+      },
+      "browser_api": {
+        "postgresql_real_source": true,
+        "mysql_real_source": true,
+        "mssql_real_source": true,
+        "single_connection_auto_selected": true,
+        "multiple_connections_require_selection": true,
+        "selection_persisted_per_session": true,
+        "session_switch_restored_selection": true,
+        "invalid_selection_failed_without_reroute": true,
+        "no_healthy_connection_localized_and_disabled": true,
+        "temporary_connection_state_removed": true
+      },
+      "query_facing_leakage_absence": {
+        "credentials": true,
+        "driver_internals": true,
+        "source_locations": true,
+        "encrypted_fields": true
+      },
+      "admin_contract_note": "The privileged Phase 3 connection-management contract retains non-secret endpoint metadata and returned no credential or encrypted value."
+    },
+    {
+      "id": "XP-003",
+      "status": "Pass",
+      "automated": {
+        "passed": 103,
+        "skipped": 1,
+        "current_policy_rerun_denial": true,
+        "policy_restoration_rerun_success": true,
+        "masked_storage_and_rerun": true
+      },
+      "browser_api": {
+        "two_isolated_sso_users": true,
+        "list_scoped": true,
+        "direct_id_scoped": true,
+        "cursor_and_total_scoped": true,
+        "session_detail_scoped": true,
+        "delete_scoped": true,
+        "browser_switch_cleared_prior_state": true,
+        "stored_results_masked": true
+      },
+      "surface_note": "The current public API has no standalone rerun route; the locked behavior passed at the existing service composition boundary without starting the excluded surface-gap audit."
+    },
+    {
+      "id": "XP-004",
+      "status": "Pass",
+      "automated": {
+        "passed": 543,
+        "skipped": 1,
+        "warnings": 2,
+        "exact_export_boundary": true,
+        "recursive_redaction": true,
+        "csv_formula_defense": true,
+        "checksum_recomputed_and_matched": true
+      },
+      "browser_api": {
+        "admin_search_filter_paginate": true,
+        "csv_export": true,
+        "json_export": true,
+        "retention_visible": true,
+        "chain_verified": true,
+        "restricted_user_sanitized_403": true,
+        "export_quota_denial": true,
+        "quota_restored": true
+      },
+      "audit_self_logging_absence": {
+        "result_rows": true,
+        "sensitive_filter_content": true,
+        "identity_claims": true,
+        "credentials": true,
+        "source_values": true
+      }
+    },
+    {
+      "id": "XP-005",
+      "status": "Pass",
+      "automated": {
+        "shared_pipeline_slice_passed": 519,
+        "exact_composition_slice_passed": 72,
+        "hostile_stopped_before_quota_and_downstream": true,
+        "query_quota_stopped_before_generation": true,
+        "unauthorized_schema_absent_before_provider": true,
+        "unsafe_sql_stopped_before_execution": true,
+        "execution_quota_stopped_before_adapter": true,
+        "safe_stages_called_once": true,
+        "dependency_failures_sanitized_and_fail_closed": true
+      },
+      "browser_api": {
+        "real_api_composition": true,
+        "deterministic_call_counters": true,
+        "three_dialects_safe_flow": true
+      }
+    },
+    {
+      "id": "XP-006",
+      "status": "Pass",
+      "automated": {
+        "shared_prompt_privacy_slice_passed": 519,
+        "policy_edit_next_request": true,
+        "connection_switch_cleared_prior_context": true,
+        "invalid_connection_prevented_provider": true
+      },
+      "approved_schema_identifiers": {
+        "postgresql": [
+          "public.actor.actor_id",
+          "public.actor.first_name"
+        ],
+        "mysql": [
+          "actor.actor_id",
+          "actor.first_name"
+        ],
+        "mssql": [
+          "SalesLT.Address.AddressID",
+          "SalesLT.Address.AddressLine1"
+        ]
+      },
+      "provider_context_absence": {
+        "disallowed_tables_or_columns": true,
+        "hidden_schema": true,
+        "identity_claims": true,
+        "row_filter_values": true,
+        "mask_definitions": true,
+        "permission_names": true,
+        "role_internals": true,
+        "credentials": true,
+        "source_locations": true,
+        "other_connections": true,
+        "prior_connection_schema": true
+      },
+      "evidence_contains_complete_prompts": false
+    }
+  ],
+  "totals": {
+    "Pass": 6,
+    "Fail": 0,
+    "Partial": 0,
+    "Setup-dependent": 0,
+    "Not run": 0,
+    "Deferred": 0
+  },
+  "source_derived_query_order": [
+    "validate question",
+    "resolve and validate selected connection",
+    "lock session and validate current user",
+    "run hostile detection",
+    "write redacted blocked or flagged audit outcome",
+    "enforce query quota",
+    "create or validate session and attempt",
+    "load current role policy",
+    "load caller-scoped conversation history",
+    "filter schema by current role policy",
+    "invoke provider with selected dialect and filtered schema",
+    "run base evaluator",
+    "run role authorization evaluator",
+    "bind row filter",
+    "enforce execution quota",
+    "execute through selected adapter",
+    "audit and mask result",
+    "persist and return masked result"
+  ],
+  "locked_order_invariants": {
+    "detection_before_query_quota": true,
+    "query_quota_before_generation": true,
+    "filtered_schema_before_provider": true,
+    "evaluation_before_source_execution": true,
+    "execution_quota_before_adapter": true,
+    "matrix_source_order_drift": false
+  },
+  "gates": {
+    "backend_pytest": {
+      "passed": 2686,
+      "skipped": 17,
+      "subtests_passed": 35,
+      "warnings": 4
+    },
+    "ruff_check": true,
+    "ruff_format_files": 407,
+    "frontend_vitest_files": 65,
+    "frontend_vitest_passed": 804,
+    "eslint": true,
+    "typecheck": true,
+    "build": true,
+    "build_existing_chunk_warning_only": true,
+    "css_lint": true,
+    "playwright_passed": 32,
+    "playwright_intentionally_skipped": 3,
+    "chrome_devtools_real_browser": true,
+    "diff_check_after_evidence": true
+  },
+  "defects": [
+    {
+      "pull_request": 263,
+      "classification": "test-harness isolation",
+      "production_code_changed": false,
+      "backend_ci": "Pass",
+      "frontend_ci": "Pass",
+      "merged": true
+    },
+    {
+      "pull_request": 264,
+      "classification": "Playwright test-harness isolation",
+      "production_code_changed": false,
+      "backend_ci": "Pass",
+      "frontend_ci": "Pass",
+      "merged": true
+    },
+    {
+      "pull_request": 265,
+      "classification": "Playwright locator",
+      "production_code_changed": false,
+      "backend_ci": "Pass",
+      "frontend_ci": "Pass",
+      "merged": true
+    }
+  ],
+  "cleanup": {
+    "isolated_containers_remaining": 0,
+    "isolated_networks_remaining": 0,
+    "isolated_volumes_remaining": 0,
+    "temporary_helpers_removed": true,
+    "temporary_identity_providers_removed": true,
+    "temporary_sessions_users_roles_policies_removed": true,
+    "temporary_connection_schema_policy_state_removed": true,
+    "mysql_source_restored_to_prior_stopped_state": true,
+    "mssql_source_restored_to_prior_stopped_state": true,
+    "normal_frontend_http_status": 200,
+    "normal_backend_http_status": 200
+  },
+  "artifact_handling": {
+    "initial_legacy_sweep_wrote_repository_evidence_paths": true,
+    "already_dirty_phase5_pngs_affected": true,
+    "tracked_wave18_pngs_affected": 10,
+    "protected_artifacts_staged": false,
+    "protected_artifacts_deleted": false,
+    "protected_artifacts_reverted": false,
+    "subsequent_screenshot_runs_used_removed_disposable_storage": true,
+    "pre_existing_phase1_phase2_screenshots_or_traces_edited": false
+  },
+  "evidence_safety": {
+    "complete_prompts_retained": false,
+    "identity_or_filter_values_retained": false,
+    "credentials_or_federation_material_retained": false,
+    "source_locations_retained": false,
+    "source_result_values_retained": false,
+    "raw_audit_rows_retained": false,
+    "approved_schema_identifiers_only": true
+  },
+  "cross_phase_b_unblocked": true,
+  "cross_phase_b_started": false
+}
