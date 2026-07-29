@@ -7,7 +7,10 @@ import io
 import json
 import logging
 import secrets
+from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import quote
+
+import pytest
 
 from app.core.logging import get_logger, redact_log_event, setup_logging
 
@@ -116,3 +119,40 @@ def test_logging_setup_redacts_rendered_failures_and_suppresses_sensitive_transp
     assert safe_operation_preserved is True
     assert transport_info_suppressed is True
     assert access_log_disabled is True
+
+
+@pytest.mark.asyncio
+async def test_lifespan_startup_log_omits_redis_configuration():
+    from app.main import lifespan
+
+    runtime_probe = secrets.token_urlsafe(24)
+    settings = MagicMock()
+    settings.LOG_LEVEL = "INFO"
+    settings.REDIS_URL = f"redis://account:{runtime_probe}@cache.internal/0"
+    settings.DATABASE_URL = "postgresql://platform"
+    settings.DB_CREDENTIAL_KEY = "runtime-key"
+    application_logger = MagicMock()
+
+    with (
+        patch("app.main.get_settings", return_value=settings),
+        patch("app.main.setup_logging"),
+        patch("app.main.init_redis", new_callable=AsyncMock),
+        patch("app.main._check_alembic_drift", new_callable=AsyncMock),
+        patch("app.main.init_credential_provider"),
+        patch("app.main._upsert_source_db_connection", new_callable=AsyncMock),
+        patch("app.main._sync_admin_user", new_callable=AsyncMock),
+        patch("app.main.LLMProviderFactory.shutdown_all", new_callable=AsyncMock),
+        patch("app.main.SessionMiddleware._instances", []),
+        patch("app.main.close_redis", new_callable=AsyncMock),
+        patch("app.main.dispose_engine", new_callable=AsyncMock),
+        patch("app.main.logger", application_logger),
+    ):
+        async with lifespan(MagicMock()):
+            pass
+
+    probe_leaked = runtime_probe in str(application_logger.mock_calls)
+    redis_event_logged = any(call.args == ("redis_connected",) for call in application_logger.info.call_args_list)
+    application_logger.reset_mock()
+
+    assert probe_leaked is False
+    assert redis_event_logged is True
