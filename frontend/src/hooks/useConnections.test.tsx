@@ -1,8 +1,14 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useConnections } from './useConnections';
-import { listAdminConnections } from '../api/generated/sdk.gen';
+import {
+  createAdminConnection,
+  disableAdminConnection,
+  enableAdminConnection,
+  listAdminConnections,
+  updateAdminConnection,
+} from '../api/generated/sdk.gen';
 
 vi.mock('../api/generated/sdk.gen', () => ({
   listAdminConnections: vi.fn(),
@@ -126,6 +132,89 @@ describe('useConnections', () => {
       ].sort()
     );
     expect(vi.mocked(listAdminConnections).mock.calls[0]?.[0]?.cache).toBe('no-store');
+  });
+
+  it('keeps write-only and unexpected fields out of connection mutation results', async () => {
+    const runtimeProbes = Array.from({ length: 8 }, () => crypto.randomUUID());
+    const legacyConnectionResponse = {
+      id: '1',
+      display_name: 'Test DB',
+      database_type: 'postgresql',
+      host: runtimeProbes[0],
+      port: 5432,
+      database_name: 'app',
+      username: runtimeProbes[1],
+      ssl_mode: 'require',
+      lifecycle_state: 'active',
+      health_status: 'healthy',
+      last_health_check_at: null,
+      health_error_category: null,
+      schema_introspection_status: 'success',
+      schema_last_refreshed_at: null,
+      created_at: '2026-07-29T00:00:00Z',
+      updated_at: '2026-07-29T00:00:00Z',
+      password: runtimeProbes[2],
+      encrypted_password: runtimeProbes[3],
+      database_url: runtimeProbes[4],
+      USERNAME: runtimeProbes[5],
+      metadata: { label: runtimeProbes[6] },
+      display_hint: btoa(runtimeProbes[7]),
+    };
+    const sdkResponse = {
+      data: legacyConnectionResponse,
+      response: new Response(),
+      request: new Request('http://localhost'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+    vi.mocked(listAdminConnections).mockResolvedValue({
+      data: { connections: [] },
+      response: new Response(),
+      request: new Request('http://localhost'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    vi.mocked(createAdminConnection).mockResolvedValueOnce(sdkResponse);
+    vi.mocked(updateAdminConnection).mockResolvedValueOnce(sdkResponse);
+    vi.mocked(disableAdminConnection).mockResolvedValueOnce(sdkResponse);
+    vi.mocked(enableAdminConnection).mockResolvedValueOnce(sdkResponse);
+
+    const { result } = renderHook(() => useConnections(), { wrapper });
+    await waitFor(() => expect(result.current.listQuery.isSuccess).toBe(true));
+
+    let mutationResults: Array<Record<string, unknown>> = [];
+    await act(async () => {
+      mutationResults = [
+        await result.current.createMutation.mutateAsync({
+          display_name: 'Test DB',
+          database_type: 'postgresql',
+          host: crypto.randomUUID(),
+          port: 5432,
+          database_name: 'app',
+          username: crypto.randomUUID(),
+          password: crypto.randomUUID(),
+        }),
+        await result.current.updateMutation.mutateAsync({ id: '1', data: {} }),
+        await result.current.disableMutation.mutateAsync('1'),
+        await result.current.enableMutation.mutateAsync('1'),
+      ];
+    });
+
+    const serializedResults = JSON.stringify(mutationResults);
+    expect(runtimeProbes.every((probe) => !serializedResults.includes(probe))).toBe(true);
+    expect(
+      mutationResults.every(
+        (connection) =>
+          !Object.hasOwn(connection, 'host') &&
+          !Object.hasOwn(connection, 'username') &&
+          !Object.hasOwn(connection, 'password') &&
+          !Object.hasOwn(connection, 'encrypted_password') &&
+          !Object.hasOwn(connection, 'database_url') &&
+          !Object.hasOwn(connection, 'metadata')
+      )
+    ).toBe(true);
+    expect(vi.mocked(createAdminConnection).mock.calls[0]?.[0]?.cache).toBe('no-store');
+    expect(vi.mocked(updateAdminConnection).mock.calls[0]?.[0]?.cache).toBe('no-store');
+    expect(vi.mocked(disableAdminConnection).mock.calls[0]?.[0]?.cache).toBe('no-store');
+    expect(vi.mocked(enableAdminConnection).mock.calls[0]?.[0]?.cache).toBe('no-store');
   });
 
   it('handles empty state data', async () => {
