@@ -4,7 +4,7 @@ Contract tested:
 - JSON output is valid JSON
 - Metadata wrapper present with required fields:
   export_actor, export_timestamp, filter_summary, record_count, checksum
-- No formula injection concerns (JSON inherently safe — verify no tab-prefixing added)
+- Formula-shaped strings are redacted without CSV-specific tab-prefixing
 - 50k limit respected (ExportLimitExceededError raised on > 50_000)
 - Defense-in-depth redaction: mock entry with unexpected sensitive value in context
   must not appear in export output
@@ -170,11 +170,10 @@ class TestJsonMetadataWrapper:
         assert len(checksum) == 64  # SHA-256 hex
 
 
-class TestJsonNoFormulaTabbing:
-    """JSON is inherently safe; no tab-prefixing should be applied to JSON values."""
+class TestJsonFormulaRedaction:
+    """Formula-shaped strings are removed without CSV-specific tab prefixes."""
 
-    def test_formula_prefix_not_tab_modified_in_json(self):
-        """Values like '=FORMULA' must appear verbatim in JSON (no tab injection)."""
+    def test_formula_prefix_is_redacted_without_tab_in_json(self):
         from app.services.audit_export_service import AuditExportService
 
         entries = [_make_entry(action_type="=formula_injection_attempt")]
@@ -182,9 +181,8 @@ class TestJsonNoFormulaTabbing:
         raw = AuditExportService.export_json(entries, metadata)
 
         parsed = json.loads(raw.decode("utf-8"))
-        # In JSON there is no formula injection risk; value must be verbatim
         entry = parsed["entries"][0]
-        assert entry["action_type"] == "=formula_injection_attempt"
+        assert entry["action_type"] == "[REDACTED]"
         assert not entry["action_type"].startswith("\t")
 
 

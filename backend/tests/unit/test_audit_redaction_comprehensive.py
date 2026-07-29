@@ -3,10 +3,10 @@
 Per FR-143 / SC-061: no secret, credential, token, or host /
 schema / SQL / driver-error / stack-trace value may appear in
 any audit entry ``context`` across all action types. The
-shipped ``AuditService.log`` calls ``_redact_value(context)``
-which performs a recursive, case-insensitive, snake-camel
-normalizing walk of the dict and replaces the value of any
-sensitive key with ``"[REDACTED]"``.
+shipped ``AuditService.log`` calls the shared
+``redact_audit_value(context)`` helper, which recursively
+redacts both sensitive keys and recognized secret-shaped
+string values.
 
 The previous wave's narrow smoke test
 (``test_audit_redaction.py``) covers a handful of patterns for
@@ -41,14 +41,8 @@ one action type. This module expands that surface to:
    containing forbidden patterns (PEM cert marker, SAML XML
    base64 prefix, IP:port tuple, raw SQL fragment, driver
    name, stack-trace marker, raw secret string). The sweep
-   is a backstop for the runtime key-based redaction.
-
-The runtime helper is **key-based** — values in safe-named
-keys are NOT scrubbed. That is by design (the helper
-otherwise has to guess at value-shape, which is brittle and
-forbiddingly slow on large contexts). The structural sweep
-above enforces the inverse contract: callers MUST NOT pass
-secrets under safe-named keys.
+   remains a backstop for call-site mistakes and unrecognized
+   future secret formats.
 """
 
 from __future__ import annotations
@@ -100,11 +94,8 @@ _FORBIDDEN_KEY_TOKENS: tuple[str, ...] = (
 
 
 # Forbidden VALUE patterns that the structural sweep checks
-# for. The runtime redaction is key-based, so these are
-# checked at the source-code level only — they would only
-# appear in ``context=`` literals if a future maintainer
-# accidentally passes a raw secret / host / driver-error /
-# stack-trace value.
+# for. The source-code sweep remains a defense-in-depth check
+# alongside runtime key- and value-shape redaction.
 _FORBIDDEN_VALUE_PATTERNS: tuple[str, ...] = (
     "-----BEGIN CERT-----",
     "-----BEGIN RSA PRIVATE KEY-----",
@@ -475,17 +466,13 @@ class TestDeepNestingRedacts:
         assert entry.context["events"][0]["type"] == "login"
         assert entry.context["events"][1]["type"] == "logout"
 
-    async def test_secret_in_dict_in_list_in_dict(self, db_session):
+    async def test_unstructured_string_in_dict_in_list_is_preserved(self, db_session):
         entry = await AuditService.log(
             db_session,
             action=AuditActionType.QUERY_SUBMIT,
-            context={"headers": {"set-cookie": [{"name": "session", "value": "raw-token-value"}]}},
+            context={"events": {"items": [{"name": "reference", "value": "reference-label"}]}},
         )
-        # ``value`` is not a sensitive key, so the helper does NOT
-        # scrub it. Document the contract here: the structural
-        # sweep below ensures callers do not pass raw tokens
-        # under safe-named keys like ``value``.
-        assert entry.context["headers"]["set-cookie"][0]["value"] == "raw-token-value"
+        assert entry.context["events"]["items"][0]["value"] == "reference-label"
 
 
 # ---------------------------------------------------------------------------
@@ -504,10 +491,10 @@ class TestRedactionEdgeCases:
     """
 
     async def test_redaction_is_idempotent(self, db_session):
-        from app.services.audit_service import _redact_value
+        from app.services.audit_redaction import redact_audit_value
 
-        once = _redact_value({"password": "x", "ok": "y"})
-        twice = _redact_value(once)
+        once = redact_audit_value({"password": "x", "ok": "y"})
+        twice = redact_audit_value(once)
         assert once == twice, f"Redaction is not idempotent: {once!r} vs {twice!r}"
         assert twice["password"] == "[REDACTED]"
         assert twice["ok"] == "y"
@@ -547,10 +534,9 @@ class TestNoLiteralSecretsInEmitSiteContexts:
     that passes a literal ``context={...}`` dict must not embed
     a forbidden value pattern (PEM cert, SAML base64 prefix,
     raw SQL fragment, IP:port, driver name, stack-trace
-    marker, raw secret string). The runtime helper is
-    key-based, so this static sweep is the only guard against
-    a future maintainer passing a secret under a safe-named
-    key like ``notes`` or ``description``.
+    marker, raw secret string). This static sweep supplements
+    runtime key- and value-shape redaction for future formats
+    that the central helper does not yet recognize.
 
     Call sites that build the context dict dynamically
     (e.g. ``context=audit_context``) are NOT covered by this
