@@ -11,6 +11,7 @@ import {
 } from '../api/generated/sdk.gen';
 import type {
   ConnectionCreate,
+  ConnectionListResponse,
   ConnectionResponse,
   ConnectionUpdate,
 } from '../api/generated/types.gen';
@@ -50,15 +51,23 @@ const normalizeConnection = (connection: ConnectionResponse): ConnectionView => 
   updated_at: connection.updated_at,
 });
 
+const normalizeConnectionList = (
+  connectionList: ConnectionListResponse | ConnectionResponse[]
+) => ({
+  connections: (Array.isArray(connectionList) ? connectionList : connectionList.connections).map(
+    normalizeConnection
+  ),
+});
+
 export const useConnections = () => {
   const queryClient = useQueryClient();
 
   const listQuery = useQuery({
     queryKey: ['adminConnections'],
     queryFn: () =>
-      listAdminConnections({ throwOnError: true, cache: 'no-store' }).then((response) => ({
-        connections: response.data.connections.map(normalizeConnection),
-      })),
+      listAdminConnections({ throwOnError: true, cache: 'no-store' }).then((response) =>
+        normalizeConnectionList(response.data)
+      ),
   });
 
   const createMutation = useMutation({
