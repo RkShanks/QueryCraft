@@ -89,15 +89,15 @@ describe('ConnectionForm', () => {
     expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
   });
 
-  it('submit payload for unchanged edit password omits password', () => {
+  it('unchanged edit submission omits every blank write-only field', () => {
     const initialValues: ConnectionResponse = {
       id: '123-uuid',
       display_name: 'My Custom PG',
       database_type: 'postgresql',
-      host: 'pg.custom.com',
+      host: crypto.randomUUID(),
       port: 9999,
       database_name: 'custom_db',
-      username: 'custom_user',
+      username: crypto.randomUUID(),
       ssl_mode: 'require',
       lifecycle_state: 'active',
       health_status: 'healthy',
@@ -117,19 +117,21 @@ describe('ConnectionForm', () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     const submittedPayload = onSubmit.mock.calls[0][0];
-    expect(submittedPayload.password).toBeUndefined();
+    expect(Object.hasOwn(submittedPayload, 'host')).toBe(false);
+    expect(Object.hasOwn(submittedPayload, 'username')).toBe(false);
+    expect(Object.hasOwn(submittedPayload, 'password')).toBe(false);
     expect(submittedPayload.display_name).toBe('My Custom PG');
   });
 
-  it('submit payload for changed password includes the new password', () => {
+  it('edit submission includes only replacements typed into write-only fields', () => {
     const initialValues: ConnectionResponse = {
       id: '123-uuid',
       display_name: 'My Custom PG',
       database_type: 'postgresql',
-      host: 'pg.custom.com',
+      host: crypto.randomUUID(),
       port: 9999,
       database_name: 'custom_db',
-      username: 'custom_user',
+      username: crypto.randomUUID(),
       ssl_mode: 'require',
       lifecycle_state: 'active',
       health_status: 'healthy',
@@ -144,15 +146,19 @@ describe('ConnectionForm', () => {
     const onSubmit = vi.fn();
     render(<ConnectionForm {...defaultProps} initialValues={initialValues} onSubmit={onSubmit} />);
 
-    const passwordInput = screen.getByLabelText(/Password/i);
-    fireEvent.change(passwordInput, { target: { value: 'new-secret-123' } });
+    const replacements = Array.from({ length: 3 }, () => crypto.randomUUID());
+    fireEvent.change(screen.getByLabelText(/Host/i), { target: { value: replacements[0] } });
+    fireEvent.change(screen.getByLabelText(/Username/i), { target: { value: replacements[1] } });
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: replacements[2] } });
 
     const submitButton = screen.getByRole('button', { name: /Save Changes/i });
     fireEvent.click(submitButton);
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     const submittedPayload = onSubmit.mock.calls[0][0];
-    expect(submittedPayload.password).toBe('new-secret-123');
+    expect(submittedPayload.host === replacements[0]).toBe(true);
+    expect(submittedPayload.username === replacements[1]).toBe(true);
+    expect(submittedPayload.password === replacements[2]).toBe(true);
   });
 
   it('basic validation prevents submit when required fields are empty', () => {
