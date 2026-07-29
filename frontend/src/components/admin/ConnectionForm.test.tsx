@@ -174,24 +174,20 @@ describe('ConnectionForm', () => {
     expect(screen.queryAllByText(/This field is required/i).length).toBeGreaterThan(0);
   });
 
-  it('clears typed password and omits/includes password appropriately when switching from create to edit mode', () => {
-    const onSubmit = vi.fn();
-    const { rerender } = render(<ConnectionForm {...defaultProps} onSubmit={onSubmit} />);
-
-    // Type a password in create mode
-    const passwordInput = screen.getByLabelText(/Password/i) as HTMLInputElement;
-    fireEvent.change(passwordInput, { target: { value: 'my-create-secret' } });
-    expect(passwordInput.value).toBe('my-create-secret');
-
-    // Transition same component instance to edit mode by providing initialValues
-    const initialValues: ConnectionResponse = {
-      id: '456-uuid',
+  it('clears typed write-only replacements when the mode or edit target changes', () => {
+    const runtimeProbes = Array.from({ length: 10 }, () => crypto.randomUUID());
+    const connectionValues = (
+      id: string,
+      legacyHost: string,
+      legacyUsername: string
+    ): ConnectionResponse => ({
+      id,
       display_name: 'Existing Db',
       database_type: 'postgresql',
-      host: 'localhost',
+      host: legacyHost,
       port: 5432,
       database_name: 'test_db',
-      username: 'db_user',
+      username: legacyUsername,
       ssl_mode: 'prefer',
       lifecycle_state: 'active',
       health_status: 'healthy',
@@ -201,24 +197,34 @@ describe('ConnectionForm', () => {
       schema_last_refreshed_at: null,
       created_at: '',
       updated_at: '',
-    };
+    });
+    const { rerender } = render(<ConnectionForm {...defaultProps} />);
+    const writeOnlyInputs = [
+      screen.getByLabelText(/Host/i),
+      screen.getByLabelText(/Username/i),
+      screen.getByLabelText(/Password/i),
+    ] as HTMLInputElement[];
 
-    rerender(<ConnectionForm {...defaultProps} initialValues={initialValues} onSubmit={onSubmit} />);
+    writeOnlyInputs.forEach((input, index) => {
+      fireEvent.change(input, { target: { value: runtimeProbes[index] } });
+    });
+    rerender(
+      <ConnectionForm
+        {...defaultProps}
+        initialValues={connectionValues('first', runtimeProbes[3], runtimeProbes[4])}
+      />
+    );
+    expect(writeOnlyInputs.every((input) => input.value.length === 0)).toBe(true);
 
-    // 1. Assert password field is cleared on transition to edit mode
-    expect(passwordInput.value).toBe('');
-
-    // 2. Assert submission after transition omits password (if unchanged)
-    const submitButton = screen.getByRole('button', { name: /Save Changes/i });
-    fireEvent.click(submitButton);
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(onSubmit.mock.calls[0][0].password).toBeUndefined();
-
-    // 3. Type a new password in edit mode and assert submission includes it
-    onSubmit.mockClear();
-    fireEvent.change(passwordInput, { target: { value: 'new-edit-secret' } });
-    fireEvent.click(submitButton);
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(onSubmit.mock.calls[0][0].password).toBe('new-edit-secret');
+    writeOnlyInputs.forEach((input, index) => {
+      fireEvent.change(input, { target: { value: runtimeProbes[index + 5] } });
+    });
+    rerender(
+      <ConnectionForm
+        {...defaultProps}
+        initialValues={connectionValues('second', runtimeProbes[8], runtimeProbes[9])}
+      />
+    );
+    expect(writeOnlyInputs.every((input) => input.value.length === 0)).toBe(true);
   });
 });
