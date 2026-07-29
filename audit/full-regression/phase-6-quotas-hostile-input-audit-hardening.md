@@ -21,17 +21,17 @@ with command output paths, screenshot/trace paths, or short notes during the run
 
 | Task | Status | Evidence |
 |---|---|---|
-| Role quota config CRUD and status cover query, execution, and export dimensions. | Pending | |
-| Redis-backed daily UTC counters fail closed when unavailable. | Pending | |
-| Query flow order is hostile detection, query quota, then LLM generation. | Pending | |
-| Blocked hostile input does not increment quota and returns only the sanitized hostile-input message key. | Pending | |
-| Built-in detection rules cover prompt injection, SQL injection, RBAC bypass, schema/secret exposure, and destructive SQL in English and Arabic patterns. | Pending | |
-| Detection threshold config validates `block_confidence > flag_confidence`. | Pending | |
-| Hostile blocked/flagged audit entries never persist raw hostile payloads. | Pending | |
-| Audit search supports filters, pagination, retention window, and self-audit. | Pending | |
-| Audit export supports CSV/JSON, 50k limit, checksum metadata, formula-injection prevention, export quota, and defense-in-depth redaction. | Pending | |
-| Retention purge inserts `audit.purge` marker and verify-chain treats valid purge gaps as intentional while detecting unmarked gaps. | Pending | |
-| Phase 6 admin quota/detection/audit surfaces are localized and RTL-safe. | Pending | |
+| Role quota config CRUD and status cover query, execution, and export dimensions. | Pass | Phase 6A accepted report plus the 2026-07-29 consolidated current-head report. |
+| Redis-backed daily UTC counters fail closed when unavailable. | Pass | Phase 6A accepted report plus the 2026-07-29 consolidated current-head report. |
+| Query flow order is hostile detection, query quota, then LLM generation. | Pass | Accepted Phase 6A/6B reports and the current-head integrated flow. |
+| Blocked hostile input does not increment quota and returns only the sanitized hostile-input message key. | Pass | Accepted Phase 6B report and the current-head browser/API flow. |
+| Built-in detection rules cover prompt injection, SQL injection, RBAC bypass, schema/secret exposure, and destructive SQL in English and Arabic patterns. | Pass | Phase 6B accepted report. |
+| Detection threshold config validates `block_confidence > flag_confidence`. | Pass | Phase 6B accepted report plus the current-head validation matrix. |
+| Hostile blocked/flagged audit entries never persist raw hostile payloads. | Pass | Phase 6B accepted report plus current-head DOM, storage, history, and audit absence checks. |
+| Audit search supports filters, pagination, retention window, and self-audit. | Pass | Phase 6C accepted report plus current-head filtered search. |
+| Audit export supports CSV/JSON, 50k limit, checksum metadata, formula-injection prevention, export quota, and defense-in-depth redaction. | Pass | Phase 6C accepted report plus current-head CSV/JSON downloads. |
+| Retention purge inserts `audit.purge` marker and verify-chain treats valid purge gaps as intentional while detecting unmarked gaps. | Pass | Phase 6C accepted report. |
+| Phase 6 admin quota/detection/audit surfaces are localized and RTL-safe. | Pass | Accepted Phase 6A/6B/6C reports plus the current-head 18-combination browser matrix. |
 
 ## Backend Commands
 
@@ -107,13 +107,11 @@ hostile payloads in evidence.
 
 ## Known Local Skips / Limitations
 
-- Full backend regression may still expose local non-HTTPS secure-cookie behavior
-  if run outside the configured CI/container context; report this separately.
-- Consolidated Mid/Low backlog from T-903 remains non-blocking: quota config
-  Redis cache absence, verify-chain memory usage, quota TTL precision, and
-  missing-TTL repair.
-- No Chrome DevTools MCP tool is exposed in the current Codex session; use
-  Playwright unless a runner starts/attaches a CDP-capable browser.
+- None for the Phase 6 requirement matrix. The former quota-cache, bounded
+  verification, quota-TTL, and missing-expiry items were implemented and
+  accepted in the Phase 6A and Phase 6C reports.
+- Chrome DevTools MCP and no-artifact Playwright checks were both available for
+  the final current-head run.
 
 ## Evidence To Capture
 

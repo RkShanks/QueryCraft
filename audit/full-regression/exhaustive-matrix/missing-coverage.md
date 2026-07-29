@@ -11,14 +11,14 @@ This file consolidates rows whose status is not ordinary automated or existing b
 | Phase 3 | 0 | 6 | 1 | 0 |
 | Phase 4 | 0 | 3 | 1 | 0 |
 | Phase 5 | 0 | 3 | 0 | 0 |
-| Phase 6 | 1 | 1 | 0 | 1 |
+| Phase 6 | 0 | 0 | 0 | 0 |
 | Cross-phase | 0 | 5 | 3 | 2 |
 
 ## Missing Coverage
 
 | Row | What is missing | What is needed |
 |---|---|---|
-| P6-FR-150 | Phase 6 task/audit sources planned a 60-second Redis quota config cache, but both Gemini and Opus audits found current behavior reads quota config directly from the repository. | Either implement the Redis config cache with focused tests for 60-second TTL and immediate admin-change semantics, or explicitly update the Phase 6 current contract/closeout to say direct DB reads are intentional. |
+| None | Phase 6 has no missing exhaustive row after the 2026-07-29 closeout. | — |
 
 ## Setup-Dependent Rows
 
@@ -39,7 +39,6 @@ This file consolidates rows whose status is not ordinary automated or existing b
 | P5-FR-117 | OIDC IdP, mocked or live. | Run OIDC authorization code flow with callback validation and role assignment. |
 | P5-FR-118 | SAML IdP, mocked or live. | Run SAML login/ACS flow with assertion validation and replay/expiry negatives. |
 | P5-FR-131 | Real DBs for row-filter execution differences across dialects. | Execute restricted-role queries on PG/MySQL/MSSQL and prove filtered results differ. |
-| P6-FR-174 | External purge scheduler environment. | Review or execute external scheduler invocation outside the app; verify purge marker behavior through automated service tests. |
 | XP-001 | End-to-end auth with local admin and SSO. | Run local admin login plus mapped/unmapped SSO scenarios. |
 | XP-002 | Multi-DB services. | Add/select/query PG/MySQL/MSSQL; verify current single-connection degenerate behavior. |
 | XP-013 | Redis degraded-service simulation. | Stop or mock Redis for session/lock/quota paths and verify fail-closed behavior per path. |
@@ -60,6 +59,5 @@ This file consolidates rows whose status is not ordinary automated or existing b
 
 | Row | Prior decision | Follow-up |
 |---|---|---|
-| P6-FR-154 | Consolidated Wave 18 audit recorded TTL edge cases C6-L01 and C6-L02 as Low, non-blocking quota hardening. | Keep as backlog unless owner pulls it into a hardening wave. |
 | XP-009 | Phase 5 final snapshot deferred two Low mobile clipping issues: admin roles table actions at 375px and SSO group mapping add button at 375px. | Re-check in mobile sweep; fix if owner promotes mobile polish. |
 | XP-016 | User explicitly prohibited T-905/freeze in this task. | Do not start freeze from this PR. |
