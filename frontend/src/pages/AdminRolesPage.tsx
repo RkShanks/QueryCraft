@@ -302,6 +302,7 @@ export const AdminRolesPage: React.FC = () => {
                 {t('admin.roles.form.priority')}
               </label>
               <input
+                dir="ltr"
                 id="rolePriority"
                 type="number"
                 min="0"
