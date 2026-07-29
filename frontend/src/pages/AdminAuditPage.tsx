@@ -23,6 +23,9 @@ interface LastVerification {
   verified_at: string;
 }
 
+const RESPONSIVE_AUDIT_CELL_CLASS =
+  'flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden';
+
 export const AdminAuditPage: React.FC = () => {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -574,7 +577,7 @@ export const AdminAuditPage: React.FC = () => {
                     >
                       <td
                         data-label="#"
-                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                        className={RESPONSIVE_AUDIT_CELL_CLASS}
                       >
                         <span dir="ltr" className="min-w-0 text-end text-white font-mono lg:text-start">
                           {entry.sequence_number}
@@ -582,7 +585,7 @@ export const AdminAuditPage: React.FC = () => {
                       </td>
                       <td
                         data-label={t('audit.search.timestamp')}
-                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                        className={RESPONSIVE_AUDIT_CELL_CLASS}
                       >
                         <span
                           dir="ltr"
@@ -593,7 +596,7 @@ export const AdminAuditPage: React.FC = () => {
                       </td>
                       <td
                         data-label={t('audit.search.actor')}
-                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                        className={RESPONSIVE_AUDIT_CELL_CLASS}
                       >
                         <span dir="auto" className="min-w-0 break-words text-end text-gray-300 lg:text-start">
                           {entry.actor_identity || '-'}
@@ -601,7 +604,7 @@ export const AdminAuditPage: React.FC = () => {
                       </td>
                       <td
                         data-label={t('audit.search.action_type')}
-                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                        className={RESPONSIVE_AUDIT_CELL_CLASS}
                       >
                         <span
                           dir="ltr"
@@ -612,7 +615,7 @@ export const AdminAuditPage: React.FC = () => {
                       </td>
                       <td
                         data-label={t('audit.search.outcome')}
-                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                        className={RESPONSIVE_AUDIT_CELL_CLASS}
                       >
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
@@ -626,7 +629,7 @@ export const AdminAuditPage: React.FC = () => {
                       </td>
                       <td
                         data-label={t('audit.search.resource_type')}
-                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                        className={RESPONSIVE_AUDIT_CELL_CLASS}
                       >
                         <span
                           dir="ltr"
