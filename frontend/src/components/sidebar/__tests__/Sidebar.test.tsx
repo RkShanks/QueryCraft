@@ -4,6 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from '../Sidebar';
 import { useUIStore } from '../../../stores/uiStore';
 import { createWrapper } from '../../../test/utils';
+import i18n from '../../../i18n';
 
 const mockSessions = [
   {
@@ -231,6 +232,49 @@ describe('Sidebar', () => {
     const settingsButtons = screen.getAllByLabelText('Settings');
     expect(historyButtons.length).toBeGreaterThanOrEqual(1);
     expect(settingsButtons.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it.each([
+    ['en', 'New Chat', 'New conversation'],
+    ['ar', 'محادثة جديدة', 'محادثة جديدة'],
+  ])(
+    'collapsed sidebar exposes localized New Chat and session names in %s',
+    async (language, newChatName, fallbackSessionName) => {
+      await i18n.changeLanguage(language);
+      try {
+        useUIStore.getState().toggleSidebar();
+        setup([
+          mockSessions[0],
+          {
+            ...mockSessions[1],
+            preview_text: null,
+          },
+        ]);
+
+        expect(screen.getByTestId('sidebar-new-chat')).toHaveAccessibleName(newChatName);
+        expect(screen.getByTestId('session-item-sess-today-1')).toHaveAccessibleName(
+          'Today session'
+        );
+        expect(screen.getByTestId('session-item-sess-3days')).toHaveAccessibleName(
+          fallbackSessionName
+        );
+      } finally {
+        await i18n.changeLanguage('en');
+      }
+    }
+  );
+
+  it.each(['Enter', ' '])('collapsed session remains keyboard-activatable with %s', (key) => {
+    useUIStore.getState().toggleSidebar();
+    setup([mockSessions[0]]);
+    const session = screen.getByTestId('session-item-sess-today-1');
+
+    session.focus();
+    expect(session).toHaveFocus();
+    fireEvent.keyDown(session, { key });
+
+    expect(useUIStore.getState().activeSessionId).toBe('sess-today-1');
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   it('shows roles and hides connections when user only has admin.roles.manage permission', () => {
