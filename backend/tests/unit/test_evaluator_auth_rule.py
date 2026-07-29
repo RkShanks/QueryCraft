@@ -75,6 +75,21 @@ def _schema() -> SchemaContext:
     )
 
 
+def _actor_schema() -> SchemaContext:
+    return SchemaContext(
+        tables=[
+            Table(
+                name="actor",
+                columns=[
+                    Column(name="actor_id", type="integer"),
+                    Column(name="first_name", type="text"),
+                    Column(name="last_name", type="text"),
+                ],
+            ),
+        ]
+    )
+
+
 # Two common policies reused across tests.
 _POLICY_ORDERS = [{"table": "orders", "columns": ["id", "customer_id", "ssn"]}]
 _POLICY_ORDERS_CUSTOMERS = [
@@ -327,6 +342,29 @@ class TestAliasesAndQualifiers:
             "SELECT id, ssn FROM orders o",
             _schema(),
         )
+        assert result == (True, None)
+
+
+# ────────────────────── Common table expressions ──────────────────────
+
+
+class TestCommonTableExpressions:
+    @pytest.mark.asyncio
+    async def test_xp007_valid_postgres_cte_projection_is_authorized(self) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "actor", "columns": ["actor_id", "first_name"]},
+            ],
+        )
+
+        result = await rule.evaluate(
+            "WITH recent AS ("
+            "SELECT actor_id, first_name FROM actor"
+            ") "
+            "SELECT actor_id, first_name FROM recent ORDER BY actor_id",
+            _actor_schema(),
+        )
+
         assert result == (True, None)
 
 
