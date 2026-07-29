@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useConnections } from '../hooks/useConnections';
+import { useConnections, type ConnectionView } from '../hooks/useConnections';
 import { Database, Plus, RefreshCw, Server, Power, PowerOff, CheckCircle2, XCircle, HelpCircle, X } from 'lucide-react';
 import { ConnectionForm } from '../components/admin/ConnectionForm';
 import { ConnectionTestButton } from '../components/admin/ConnectionTestButton';
 import { RefreshSchemaButton } from '../components/admin/RefreshSchemaButton';
 import { ConnectionActions } from '../components/admin/ConnectionActions';
-import type { ConnectionResponse, ConnectionCreate, ConnectionUpdate } from '../api/generated/types.gen';
+import type { ConnectionCreate, ConnectionUpdate } from '../api/generated/types.gen';
 import { getSafeConnectionErrorKey } from '../components/admin/connectionErrorMessages';
 
 interface Toast {
@@ -19,7 +19,7 @@ export const AdminConnectionsPage: React.FC = () => {
   const { t } = useTranslation();
   const { listQuery, createMutation, updateMutation } = useConnections();
   const [isAdding, setIsAdding] = useState(false);
-  const [editingConnection, setEditingConnection] = useState<ConnectionResponse | undefined>(undefined);
+  const [editingConnection, setEditingConnection] = useState<ConnectionView | undefined>(undefined);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = (type: 'success' | 'error', message: string) => {
@@ -94,9 +94,7 @@ export const AdminConnectionsPage: React.FC = () => {
     );
   }
 
-  const connections: ConnectionResponse[] = Array.isArray(listQuery.data)
-    ? (listQuery.data as ConnectionResponse[])
-    : ((listQuery.data as { connections?: ConnectionResponse[] } | undefined)?.connections) || [];
+  const connections = listQuery.data?.connections ?? [];
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
