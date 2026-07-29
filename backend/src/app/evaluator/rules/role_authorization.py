@@ -366,8 +366,11 @@ class RoleAuthorizationRule:
                 for name, (node, source) in scope.selected_sources.items()
             }
             for node, source in scope.selected_sources.values():
-                if isinstance(node, exp.Table) and isinstance(source, Scope):
-                    logical_table_ids.add(id(node))
+                if isinstance(source, Scope):
+                    if self._scope_output_columns(source) is None:
+                        return None
+                    if isinstance(node, exp.Table):
+                        logical_table_ids.add(id(node))
             scope_column_ids = self._logical_column_ids(scope, sources, policy_by_table)
             if scope_column_ids is None:
                 return None
@@ -387,7 +390,8 @@ class RoleAuthorizationRule:
             if column.table:
                 source = sources.get(column.table.lower())
                 if isinstance(source, Scope):
-                    if column.name.lower() not in self._scope_output_columns(source):
+                    output_columns = self._scope_output_columns(source)
+                    if output_columns is None or column.name.lower() not in output_columns:
                         return None
                     logical_column_ids.add(id(column))
                 continue
@@ -409,7 +413,8 @@ class RoleAuthorizationRule:
         policy_by_table: dict[str, set[str]],
     ) -> bool:
         if isinstance(source, Scope):
-            return column_name.lower() in self._scope_output_columns(source)
+            output_columns = self._scope_output_columns(source)
+            return bool(output_columns and column_name.lower() in output_columns)
         physical_table = self._resolve_table_name(source, policy_by_table)
         return bool(
             physical_table
@@ -417,8 +422,13 @@ class RoleAuthorizationRule:
         )
 
     @staticmethod
-    def _scope_output_columns(scope: Scope) -> set[str]:
-        output_columns = scope.outer_columns or scope.expression.named_selects
+    def _scope_output_columns(scope: Scope) -> set[str] | None:
+        projected_columns = scope.expression.named_selects
+        if scope.outer_columns:
+            if "*" in projected_columns or len(scope.outer_columns) != len(projected_columns):
+                return None
+            return {column.lower() for column in scope.outer_columns}
+        output_columns = projected_columns
         return {column.lower() for column in output_columns if column != "*"}
 
     @staticmethod
