@@ -21,6 +21,7 @@ from httpx import ASGITransport, AsyncClient
 from app.db.models.role import Role
 from app.db.models.sso_group_mapping import SsoGroupMapping
 from app.schemas.group_mapping import GroupMappingCreate
+from tests.unit.permission_test_helpers import use_test_session_current_role
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -83,6 +84,7 @@ class TestPermissionEnforcement:
             return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.add_middleware(SessionInjectionMiddleware)
         app.add_exception_handler(HTTPException, _http_exc_handler)
         app.include_router(router, prefix="/api/v1")
@@ -466,6 +468,7 @@ class TestRouteLevelStatusCodes:
         from app.core.dependencies import get_db
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.include_router(router, prefix="/api/v1")
 
         async def override_db():

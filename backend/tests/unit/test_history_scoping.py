@@ -34,6 +34,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from httpx import ASGITransport, AsyncClient
 
 from app.core.dependencies import get_db, get_redis, require_active_user
+from tests.unit.permission_test_helpers import use_test_session_current_role
 
 # ── Constants ──────────────────────────────────────────────────────────────
 
@@ -262,6 +263,7 @@ def _make_app(
         )
 
     app = FastAPI()
+    use_test_session_current_role(app)
     app.add_middleware(SessionInjectionMiddleware)
     app.add_exception_handler(HTTPException, _http_exc_handler)
     app.include_router(history_router, prefix="/api/v1")

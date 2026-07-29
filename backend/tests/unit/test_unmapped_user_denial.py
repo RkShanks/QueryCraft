@@ -10,7 +10,7 @@ Tests:
 - Built-in admin with role_id present → allowed (preserved)
 """
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI, HTTPException, Request
@@ -18,6 +18,10 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies.permissions import require_permission
 from app.db.models.enums import Permission
+from tests.unit.permission_test_helpers import (
+    evaluate_permission_dependency,
+    use_test_session_current_role,
+)
 
 
 def _make_request(session_data: dict | None) -> Request:
@@ -43,6 +47,7 @@ def _make_app_with_session(session_data: dict | None) -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
 
     app = FastAPI()
+    use_test_session_current_role(app)
     app.add_middleware(SessionInjectionMiddleware)
     app.add_exception_handler(HTTPException, _http_exception_handler)
     return app
@@ -66,7 +71,7 @@ class TestUnmappedUserDirect:
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
         detail = exc.value.detail
         assert detail["error"] == "forbidden"
@@ -83,7 +88,7 @@ class TestUnmappedUserDirect:
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
         detail = exc.value.detail
         assert detail["error"] == "forbidden"
@@ -101,7 +106,7 @@ class TestUnmappedUserDirect:
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
 
     @pytest.mark.asyncio
@@ -117,7 +122,7 @@ class TestUnmappedUserDirect:
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         detail_str = str(exc.value.detail).lower()
         assert "550e8400" not in detail_str
         assert "alice" not in detail_str
@@ -136,7 +141,7 @@ class TestUnmappedUserDirect:
             }
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
-        result = await dep(request)
+        result = await evaluate_permission_dependency(dep, request)
         assert result == request.state.session
 
     @pytest.mark.asyncio
@@ -151,7 +156,7 @@ class TestUnmappedUserDirect:
         )
         dep = require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
 
     @pytest.mark.asyncio
@@ -160,7 +165,7 @@ class TestUnmappedUserDirect:
         request = _make_request(None)
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 401
 
 
@@ -404,10 +409,9 @@ class TestUnmappedUserRouteLevel:
             assert data["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
-    async def test_admin_roles_unmapped_user_does_not_run_get_db(self):
-        """GET /admin/roles unmapped user returns 403 before get_db dependency executes."""
+    async def test_admin_roles_unmapped_user_does_not_run_role_service(self):
+        """GET /admin/roles denies an unmapped user before listing roles."""
         from app.api.v1.admin_roles import router
-        from app.core.dependencies import get_db
 
         app = _make_app_with_session(
             {
@@ -417,23 +421,18 @@ class TestUnmappedUserRouteLevel:
         )
         app.include_router(router, prefix="/api/v1")
 
-        async def override_get_db():
-            raise HTTPException(
-                status_code=503,
-                detail={"error": "dependency_ran", "message_key": "dependency.ran"},
-            )
-
-        app.dependency_overrides[get_db] = override_get_db
-
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get("/api/v1/admin/roles")
+        with patch(
+            "app.api.v1.admin_roles.RoleService.list_roles",
+            new_callable=AsyncMock,
+        ) as list_roles:
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.get("/api/v1/admin/roles")
             assert response.status_code == 403
             data = response.json()
             assert data["error"] == "forbidden"
             assert data["message_key"] == "error.forbidden"
-            assert "dependency_ran" not in str(data)
-            assert "dependency.ran" not in str(data)
+        list_roles.assert_not_awaited()
 
 
 class TestNonStringRoleId:
@@ -451,7 +450,7 @@ class TestNonStringRoleId:
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
         detail = exc.value.detail
         assert detail["error"] == "forbidden"
@@ -469,7 +468,7 @@ class TestNonStringRoleId:
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
 
     @pytest.mark.asyncio
@@ -484,7 +483,7 @@ class TestNonStringRoleId:
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
 
     @pytest.mark.asyncio
@@ -499,7 +498,7 @@ class TestNonStringRoleId:
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
 
     @pytest.mark.asyncio
@@ -514,7 +513,7 @@ class TestNonStringRoleId:
         )
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         detail_str = str(exc.value.detail).lower()
         assert "nested" not in detail_str
         assert "dict" not in detail_str

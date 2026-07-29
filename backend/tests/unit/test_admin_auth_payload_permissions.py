@@ -1,4 +1,4 @@
-"""TDD tests for SMOKE-001 — Built-in admin session must include full Admin role permissions.
+"""Built-in admin sessions must include current Admin role permissions.
 
 Post-freeze full browser smoke found that the built-in admin session stored
 in Redis lacks ``admin.audit.verify`` (and the other Admin role permissions)
@@ -6,11 +6,9 @@ in the ``/api/v1/auth/me`` payload. The ``PermissionGuard`` on ``/admin/audit``
 then redirects the admin to ``/``.
 
 These tests pin down the contract:
-* ``AuthService.sign_in`` must populate the Redis session with all permissions
-  from the user's ``role_obj`` (the built-in Admin role has six).
-* ``AuthService.get_me`` must refresh a stale Redis session whose ``permissions``
-  list is empty (e.g. created before the fix landed) by re-reading the role
-  from the database and updating the session in-place.
+* ``AuthService.sign_in`` populates Redis from the user's current ``role_obj``.
+* ``AuthService.get_me`` re-reads the role and refreshes Redis so grants and
+  revocations are reflected on the next request.
 * ``UserRepository.get_by_username`` / ``get_by_id`` must eagerly load
   ``User.role_obj`` so the relationship is available without a second round-trip
   (defence in depth — the model already declares ``lazy="selectin"``, but an
@@ -36,6 +34,8 @@ BUILTIN_ADMIN_PERMISSIONS = {
     "admin.roles.manage",
     "admin.sso.manage",
     "admin.audit.verify",
+    "admin.quotas.manage",
+    "admin.security.manage",
 }
 
 
@@ -43,7 +43,7 @@ async def _ensure_admin_has_role(db_session) -> uuid.UUID:
     """Make sure the seeded admin user points at the built-in Admin role.
 
     Returns the Admin role's UUID. Tests that need a fully-wired admin user
-    (role_id → Admin role with all six permissions) call this first.
+    (role_id → Admin role with the full permission set) call this first.
     """
     role_row = (
         await db_session.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true"))
@@ -72,8 +72,8 @@ class TestSignInBuiltinAdminPermissions:
     """sign_in must populate the Redis session with the full Admin permission set."""
 
     @pytest.mark.asyncio
-    async def test_sign_in_returns_all_six_admin_permissions(self, db_session, redis_client):
-        """Built-in admin login returns the six Admin role permissions on the profile."""
+    async def test_sign_in_returns_all_admin_permissions(self, db_session, redis_client):
+        """Built-in admin login returns all Admin role permissions on the profile."""
         await _ensure_admin_has_role(db_session)
         repo = UserRepository(db_session)
         service = AuthService(repo, redis_client)
@@ -104,7 +104,7 @@ class TestSignInBuiltinAdminPermissions:
 
 
 class TestGetMeRefreshesStaleSession:
-    """get_me must refresh a session whose permissions list is empty."""
+    """get_me must refresh session role data from the database."""
 
     @pytest.mark.asyncio
     async def test_get_me_refreshes_empty_permissions_from_role(self, db_session, redis_client):
@@ -139,7 +139,7 @@ class TestGetMeRefreshesStaleSession:
 
         profile = await service.get_me(session_id)
 
-        # The response must include all six Admin permissions
+        # The response must include all Admin permissions
         for perm in BUILTIN_ADMIN_PERMISSIONS:
             assert perm in profile.permissions, f"get_me did not refresh stale session: missing {perm}"
 
@@ -149,8 +149,12 @@ class TestGetMeRefreshesStaleSession:
             assert perm in refreshed["permissions"]
 
     @pytest.mark.asyncio
-    async def test_get_me_returns_session_permissions_when_not_stale(self, db_session, redis_client):
-        """A session that already has permissions is returned as-is (no unnecessary refresh)."""
+    async def test_get_me_replaces_nonempty_session_permissions_from_role(
+        self,
+        db_session,
+        redis_client,
+    ):
+        """A non-empty stale permission snapshot is replaced from the current role."""
         await _ensure_admin_has_role(db_session)
         repo = UserRepository(db_session)
         service = AuthService(repo, redis_client)
@@ -175,10 +179,13 @@ class TestGetMeRefreshesStaleSession:
 
         profile = await service.get_me(session_id)
 
-        # Session data is the source of truth when not stale
-        assert profile.role_name == "CustomRole"
-        assert "query.submit" in profile.permissions
-        assert "admin.audit.verify" not in profile.permissions
+        assert profile.role_name == "Admin"
+        for perm in BUILTIN_ADMIN_PERMISSIONS:
+            assert perm in profile.permissions
+
+        refreshed = json.loads(await redis_client.get(f"session:{session_id}"))
+        assert refreshed["role_name"] == "Admin"
+        assert set(refreshed["permissions"]) >= BUILTIN_ADMIN_PERMISSIONS
 
 
 class TestUserRepositoryEagerLoadsRoleObj:

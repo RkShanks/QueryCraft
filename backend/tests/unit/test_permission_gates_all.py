@@ -21,6 +21,10 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies.permissions import require_permission
 from app.db.models.enums import Permission
+from tests.unit.permission_test_helpers import (
+    evaluate_permission_dependency,
+    use_test_session_current_role,
+)
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -69,7 +73,7 @@ class TestRequirePermissionDirect:
         request = _make_request_with_permissions(None)
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 401
         detail = exc.value.detail
         assert detail["error"] == "unauthorized"
@@ -80,7 +84,7 @@ class TestRequirePermissionDirect:
         request = _make_request_with_permissions(["query.submit"])
         dep = require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
         detail = exc.value.detail
         assert detail["error"] == "forbidden"
@@ -90,14 +94,14 @@ class TestRequirePermissionDirect:
     async def test_correct_permission_returns_session(self):
         request = _make_request_with_permissions([Permission.QUERY_SUBMIT.value])
         dep = require_permission(Permission.QUERY_SUBMIT)
-        result = await dep(request)
+        result = await evaluate_permission_dependency(dep, request)
         assert result == request.state.session
 
     @pytest.mark.asyncio
     async def test_multiple_permissions_one_matches(self):
         request = _make_request_with_permissions(["query.submit", "query.history.view"])
         dep = require_permission(Permission.QUERY_SUBMIT, Permission.ADMIN_ROLES_MANAGE)
-        result = await dep(request)
+        result = await evaluate_permission_dependency(dep, request)
         assert result == request.state.session
 
     @pytest.mark.asyncio
@@ -105,7 +109,7 @@ class TestRequirePermissionDirect:
         request = _make_request_with_permissions([])
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         assert exc.value.status_code == 403
 
     @pytest.mark.asyncio
@@ -113,7 +117,7 @@ class TestRequirePermissionDirect:
         request = _make_request_with_permissions(["query.submit"])
         dep = require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)
         with pytest.raises(HTTPException) as exc:
-            await dep(request)
+            await evaluate_permission_dependency(dep, request)
         detail = exc.value.detail
         assert "admin.connections.manage" not in str(detail).lower()
         assert "query.submit" not in str(detail).lower()
@@ -472,6 +476,7 @@ def _make_app_with_session(session_data: dict | None) -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
 
     app = FastAPI()
+    use_test_session_current_role(app)
     app.add_middleware(SessionInjectionMiddleware)
     app.add_exception_handler(HTTPException, _http_exception_handler)
     return app

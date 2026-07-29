@@ -42,6 +42,7 @@ import pytest
 from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 
+from app.api.dependencies.permissions import CurrentRole, get_current_role
 from app.core.dependencies import get_db, require_active_user
 from app.core.exceptions import QuotaExceededError, QuotaUnavailableError
 from app.db.models.enums import (
@@ -169,10 +170,29 @@ def _assert_safe_error_body(body: dict, context: str) -> None:
 class TestRouteSanitizationRegression:
     """End-to-end route tests calling the actual FastAPI app to check sanitization."""
 
+    @pytest.fixture(autouse=True)
+    def current_role_database(self):
+        def set_current_role(role_id: str, permissions: list[str]) -> None:
+            self._current_role = (uuid.UUID(role_id), "Current role", permissions)
+
+        self._current_role: CurrentRole | None = None
+        self._set_current_role = set_current_role
+        with patch(
+            "app.api.dependencies.permissions.AuditService.log",
+            new_callable=AsyncMock,
+        ):
+            yield
+
     @pytest.fixture
     def app_instance(self):
         """Create a fresh FastAPI instance for tests."""
-        return create_app()
+        app = create_app()
+
+        async def resolve_current_role() -> CurrentRole | None:
+            return self._current_role
+
+        app.dependency_overrides[get_current_role] = resolve_current_role
+        return app
 
     @pytest.fixture
     async def client(self, app_instance):
@@ -185,6 +205,7 @@ class TestRouteSanitizationRegression:
 
     async def _setup_session(self, redis_client, user_id: str, role_id: str, perms: list[str]) -> str:
         """Create an active session in the real Redis database."""
+        self._set_current_role(role_id, perms)
         session_id = str(uuid.uuid4())
         session_data = {
             "user_id": user_id,
