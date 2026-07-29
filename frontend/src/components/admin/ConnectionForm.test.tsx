@@ -43,15 +43,17 @@ describe('ConnectionForm', () => {
     expect(portInput.value).toBe('1433');
   });
 
-  it('edit mode renders existing non-sensitive values', () => {
+  it('edit mode renders non-sensitive values but never redisplays legacy write-only fields', () => {
+    const legacyHost = crypto.randomUUID();
+    const legacyUsername = crypto.randomUUID();
     const initialValues: ConnectionResponse = {
       id: '123-uuid',
       display_name: 'My Custom PG',
       database_type: 'postgresql',
-      host: 'pg.custom.com',
+      host: legacyHost,
       port: 9999,
       database_name: 'custom_db',
-      username: 'custom_user',
+      username: legacyUsername,
       ssl_mode: 'require',
       lifecycle_state: 'active',
       health_status: 'healthy',
@@ -67,40 +69,24 @@ describe('ConnectionForm', () => {
 
     expect((screen.getByLabelText(/Display Name/i) as HTMLInputElement).value).toBe('My Custom PG');
     expect((screen.getByLabelText(/Database Type/i) as HTMLSelectElement).value).toBe('postgresql');
-    expect((screen.getByLabelText(/Host/i) as HTMLInputElement).value).toBe('pg.custom.com');
     expect((screen.getByLabelText(/Port/i) as HTMLInputElement).value).toBe('9999');
     expect((screen.getByLabelText(/Database Name/i) as HTMLInputElement).value).toBe('custom_db');
-    expect((screen.getByLabelText(/Username/i) as HTMLInputElement).value).toBe('custom_user');
     expect((screen.getByLabelText(/SSL Mode/i) as HTMLInputElement).value).toBe('require');
 
-    expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
-  });
-
-  it('edit mode never displays a real password', () => {
-    const initialValues: ConnectionResponse = {
-      id: '123-uuid',
-      display_name: 'My Custom PG',
-      database_type: 'postgresql',
-      host: 'pg.custom.com',
-      port: 9999,
-      database_name: 'custom_db',
-      username: 'custom_user',
-      ssl_mode: 'require',
-      lifecycle_state: 'active',
-      health_status: 'healthy',
-      last_health_check_at: null,
-      health_error_category: null,
-      schema_introspection_status: 'success',
-      schema_last_refreshed_at: null,
-      created_at: '',
-      updated_at: '',
-    };
-
-    render(<ConnectionForm {...defaultProps} initialValues={initialValues} />);
-
+    const hostInput = screen.getByLabelText(/Host/i) as HTMLInputElement;
+    const usernameInput = screen.getByLabelText(/Username/i) as HTMLInputElement;
     const passwordInput = screen.getByLabelText(/Password/i) as HTMLInputElement;
+
+    expect(hostInput.value.length).toBe(0);
+    expect(usernameInput.value.length).toBe(0);
     expect(passwordInput.value).toBe('');
-    expect(passwordInput.placeholder).toBe('••••••••');
+    expect(hostInput.value === legacyHost).toBe(false);
+    expect(usernameInput.value === legacyUsername).toBe(false);
+    expect(hostInput.placeholder).toBe('Leave blank to preserve existing value');
+    expect(usernameInput.placeholder).toBe('Leave blank to preserve existing value');
+    expect(passwordInput.placeholder).toBe('Leave blank to preserve existing value');
+    expect(screen.getAllByText('Leave blank to preserve existing value')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
   });
 
   it('submit payload for unchanged edit password omits password', () => {
