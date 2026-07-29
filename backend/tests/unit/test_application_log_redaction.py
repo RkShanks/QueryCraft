@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import base64
+import io
 import json
+import logging
 import secrets
 from urllib.parse import quote
 
-from app.core.logging import redact_log_event
+from app.core.logging import get_logger, redact_log_event, setup_logging
 
 
 def test_log_processor_redacts_nested_sensitive_values_and_preserves_operations():
@@ -59,3 +61,58 @@ def test_log_processor_redacts_nested_sensitive_values_and_preserves_operations(
     assert details_redacted is True
     assert sensitive_fields_redacted is True
     assert safe_operations_preserved is True
+
+
+def test_logging_setup_redacts_rendered_failures_and_suppresses_sensitive_transports():
+    runtime_probe = secrets.token_urlsafe(24)
+    output = io.StringIO()
+    application_logger = logging.getLogger("querycraft.test.application_log_redaction")
+    handler = logging.StreamHandler(output)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    original_handlers = application_logger.handlers[:]
+    original_level = application_logger.level
+    original_propagate = application_logger.propagate
+    transport_loggers = [logging.getLogger(name) for name in ("httpx", "httpcore", "uvicorn.access")]
+    original_transport_state = [(logger.level, logger.disabled) for logger in transport_loggers]
+
+    try:
+        for transport_logger in transport_loggers:
+            transport_logger.setLevel(logging.INFO)
+            transport_logger.disabled = False
+        setup_logging("INFO")
+        application_logger.handlers = [handler]
+        application_logger.setLevel(logging.INFO)
+        application_logger.propagate = False
+
+        try:
+            raise RuntimeError(runtime_probe)
+        except RuntimeError:
+            get_logger("querycraft.test.application_log_redaction").error(
+                "operation_failed",
+                exc_info=True,
+                stack_info=True,
+                Identity_Claims={"subject": runtime_probe},
+                count=1,
+            )
+
+        rendered_log = output.getvalue()
+        probe_leaked = runtime_probe in rendered_log
+        redaction_rendered = "[REDACTED]" in rendered_log
+        safe_operation_preserved = "operation_failed" in rendered_log and '"count": 1' in rendered_log
+        transport_info_suppressed = all(logger.level >= logging.WARNING for logger in transport_loggers[:2])
+        access_log_disabled = transport_loggers[2].disabled
+        output.seek(0)
+        output.truncate(0)
+    finally:
+        application_logger.handlers = original_handlers
+        application_logger.setLevel(original_level)
+        application_logger.propagate = original_propagate
+        for transport_logger, (level, disabled) in zip(transport_loggers, original_transport_state, strict=True):
+            transport_logger.setLevel(level)
+            transport_logger.disabled = disabled
+
+    assert probe_leaked is False
+    assert redaction_rendered is True
+    assert safe_operation_preserved is True
+    assert transport_info_suppressed is True
+    assert access_log_disabled is True
