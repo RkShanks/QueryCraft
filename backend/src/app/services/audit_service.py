@@ -126,17 +126,66 @@ async def _get_prev_hash(session: AsyncSession, sequence_number: int) -> str:
     return row_hash
 
 
-def _marker_context_matches_gap(entry: AuditLogEntry, marker_ctx: dict | None) -> bool:
-    if marker_ctx is None:
+def _is_marker_int(value: Any) -> bool:
+    return type(value) is int
+
+
+def _marker_row_hash_is_valid(marker: AuditLogEntry) -> bool:
+    return marker.row_hash == _compute_row_hash(_audit_entry_payload(marker), marker.prev_hash)
+
+
+def _marker_matches_gap(entry: AuditLogEntry, marker: AuditLogEntry | None) -> bool:
+    """Validate the complete purge boundary before accepting a retained gap."""
+    if (
+        marker is None
+        or marker.action_type != AuditActionType.AUDIT_PURGE.value
+        or marker.outcome != "success"
+        or not isinstance(marker.context, dict)
+        or not _marker_row_hash_is_valid(marker)
+    ):
         return False
-    return marker_ctx.get("first_surviving_prev_hash") == entry.prev_hash
+
+    ctx = marker.context
+    purged_from_seq = ctx.get("purged_from_seq")
+    purged_to_seq = ctx.get("purged_to_seq")
+    purged_count = ctx.get("purged_count")
+    retention_months = ctx.get("retention_months")
+    last_retained_seq = ctx.get("last_retained_seq")
+    if not all(
+        _is_marker_int(value)
+        for value in (
+            purged_from_seq,
+            purged_to_seq,
+            purged_count,
+            retention_months,
+            last_retained_seq,
+        )
+    ):
+        return False
+
+    return (
+        marker.sequence_number > entry.sequence_number
+        and purged_count > 0
+        and retention_months >= 0
+        and purged_from_seq <= purged_to_seq
+        and purged_count == purged_to_seq - purged_from_seq + 1
+        and purged_to_seq == entry.sequence_number - 1
+        and last_retained_seq == purged_to_seq
+        and ctx.get("last_retained_hash") == entry.prev_hash
+        and ctx.get("first_surviving_seq") == entry.sequence_number
+        and ctx.get("first_surviving_prev_hash") == entry.prev_hash
+    )
 
 
 def _purge_marker_is_all_purged_boundary(entry: AuditLogEntry, expected_prev_hash: str) -> bool:
     if expected_prev_hash != "GENESIS":
         return False
 
-    if entry.action_type != AuditActionType.AUDIT_PURGE.value or not isinstance(entry.context, dict):
+    if (
+        entry.action_type != AuditActionType.AUDIT_PURGE.value
+        or entry.outcome != "success"
+        or not isinstance(entry.context, dict)
+    ):
         return False
 
     ctx = entry.context
@@ -146,15 +195,27 @@ def _purge_marker_is_all_purged_boundary(entry: AuditLogEntry, expected_prev_has
     purged_from_seq = ctx.get("purged_from_seq")
     purged_to_seq = ctx.get("purged_to_seq")
     purged_count = ctx.get("purged_count")
+    retention_months = ctx.get("retention_months")
     last_retained_seq = ctx.get("last_retained_seq")
-    if not all(isinstance(seq, int) for seq in (purged_from_seq, purged_to_seq, purged_count, last_retained_seq)):
+    if not all(
+        _is_marker_int(value)
+        for value in (
+            purged_from_seq,
+            purged_to_seq,
+            purged_count,
+            retention_months,
+            last_retained_seq,
+        )
+    ):
         return False
 
     return (
         purged_count > 0
+        and retention_months >= 0
         and purged_from_seq <= purged_to_seq
+        and purged_count == purged_to_seq - purged_from_seq + 1
         and last_retained_seq == purged_to_seq
-        and last_retained_seq < entry.sequence_number
+        and entry.sequence_number == purged_to_seq + 1
         and ctx.get("last_retained_hash") == entry.prev_hash
     )
 
@@ -201,13 +262,13 @@ async def _verification_batch(
     return list(batch_result.scalars())
 
 
-async def _purge_marker_context_for_gap(
+async def _purge_marker_for_gap(
     session: AsyncSession,
     first_surviving_sequence: int,
     upper_sequence: int,
-) -> dict | None:
+) -> AuditLogEntry | None:
     marker_result = await session.execute(
-        select(AuditLogEntry.context)
+        select(AuditLogEntry)
         .where(
             AuditLogEntry.sequence_number <= upper_sequence,
             AuditLogEntry.action_type == AuditActionType.AUDIT_PURGE.value,
@@ -217,6 +278,37 @@ async def _purge_marker_context_for_gap(
         .limit(1)
     )
     return marker_result.scalar_one_or_none()
+
+
+async def _marker_predecessor_link_is_valid(
+    session: AsyncSession,
+    marker: AuditLogEntry,
+) -> bool:
+    predecessor_result = await session.execute(
+        select(AuditLogEntry.row_hash).where(AuditLogEntry.sequence_number == marker.sequence_number - 1).limit(1)
+    )
+    predecessor_hash = predecessor_result.scalar_one_or_none()
+    return predecessor_hash is not None and predecessor_hash == marker.prev_hash
+
+
+async def _purge_marker_covers_gap(
+    session: AsyncSession,
+    entry: AuditLogEntry,
+    upper_sequence: int,
+) -> bool:
+    marker = await _purge_marker_for_gap(
+        session,
+        entry.sequence_number,
+        upper_sequence,
+    )
+    return (
+        marker is not None
+        and _marker_matches_gap(
+            entry,
+            marker,
+        )
+        and await _marker_predecessor_link_is_valid(session, marker)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -458,12 +550,12 @@ class AuditService:
         To distinguish an intentional purge gap from tampering, a bounded
         marker lookup runs only when a linkage break is detected:
 
-        * If ``marker.context["first_surviving_seq"] == entry.sequence_number``
-          AND ``marker.context["first_surviving_prev_hash"] == entry.prev_hash``,
-          the gap is intentional — continue verification.
+        * A later marker may cover the gap only when its row hash, predecessor
+          link, complete purge range, retained boundary, and first-survivor
+          metadata are internally consistent.
         * If every previous row was purged and the marker is the first retained
-          row, its own ``last_retained_hash`` boundary must match its
-          ``prev_hash``.
+          row, its range and ``last_retained_hash`` boundary must match its
+          sequence and ``prev_hash``.
         * Otherwise, report the gap as tampering.
 
         Row-hash integrity is always checked regardless of purge status.
@@ -501,15 +593,12 @@ class AuditService:
                     break
 
                 if entry.prev_hash != prev_hash:
-                    marker_context = await _purge_marker_context_for_gap(
+                    marker_covers_gap = await _purge_marker_covers_gap(
                         session,
-                        entry.sequence_number,
+                        entry,
                         upper_sequence,
                     )
-                    if not (
-                        _marker_context_matches_gap(entry, marker_context)
-                        or _purge_marker_is_all_purged_boundary(entry, prev_hash)
-                    ):
+                    if not (marker_covers_gap or _purge_marker_is_all_purged_boundary(entry, prev_hash)):
                         first_break_at = entry.sequence_number
                         break
 

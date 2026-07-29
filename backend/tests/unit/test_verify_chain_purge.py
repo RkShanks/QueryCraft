@@ -446,3 +446,119 @@ class TestVerifyChainGapWithoutMarker:
 
         assert result.verified is False, "Later marker-only boundary must not cover a linkage break"
         assert result.first_break_at == 3
+
+    async def test_incoherent_fake_marker_does_not_cover_gap(self, db_session):
+        """Matching two fields is insufficient when the purge range is impossible."""
+        now = datetime.now(UTC)
+        deleted_hash = "a" * 64
+        survivor = await _seed_entry(
+            db_session,
+            2,
+            now - timedelta(days=2),
+            deleted_hash,
+        )
+        fake_context = {
+            "purged_from_seq": 99,
+            "purged_to_seq": 99,
+            "purged_count": 1,
+            "retention_months": 6,
+            "first_surviving_seq": 2,
+            "first_surviving_prev_hash": deleted_hash,
+            "last_retained_hash": "b" * 64,
+            "last_retained_seq": 99,
+        }
+        await _seed_entry(
+            db_session,
+            3,
+            now - timedelta(days=1),
+            survivor.row_hash,
+            action=AuditActionType.AUDIT_PURGE.value,
+            context=fake_context,
+        )
+
+        result = await AuditService.verify_chain(db_session)
+
+        assert result.verified is False
+        assert result.first_break_at == 2
+
+    async def test_tampered_matching_marker_reports_gap_as_first_break(self, db_session):
+        """A marker with a bad row hash must not defer the break to the marker."""
+        from sqlalchemy import text
+
+        now = datetime.now(UTC)
+        deleted_hash = "a" * 64
+        survivor = await _seed_entry(
+            db_session,
+            2,
+            now - timedelta(days=2),
+            deleted_hash,
+        )
+        context = {
+            "purged_from_seq": 1,
+            "purged_to_seq": 1,
+            "purged_count": 1,
+            "retention_months": 6,
+            "first_surviving_seq": 2,
+            "first_surviving_prev_hash": deleted_hash,
+            "last_retained_hash": deleted_hash,
+            "last_retained_seq": 1,
+        }
+        marker = await _seed_entry(
+            db_session,
+            3,
+            now - timedelta(days=1),
+            survivor.row_hash,
+            action=AuditActionType.AUDIT_PURGE.value,
+            context=context,
+        )
+        await db_session.execute(
+            text("UPDATE audit_log_entries SET row_hash = :hash WHERE sequence_number = :sequence"),
+            {"hash": "0" * 64, "sequence": marker.sequence_number},
+        )
+        db_session.expire_all()
+
+        result = await AuditService.verify_chain(db_session)
+
+        assert result.verified is False
+        assert result.first_break_at == 2
+
+    async def test_marker_with_broken_predecessor_link_does_not_cover_gap(self, db_session):
+        """A later marker must itself link to its retained predecessor."""
+        now = datetime.now(UTC)
+        deleted_hash = "a" * 64
+        survivor = await _seed_entry(
+            db_session,
+            2,
+            now - timedelta(days=3),
+            deleted_hash,
+        )
+        predecessor = await _seed_entry(
+            db_session,
+            3,
+            now - timedelta(days=2),
+            survivor.row_hash,
+        )
+        context = {
+            "purged_from_seq": 1,
+            "purged_to_seq": 1,
+            "purged_count": 1,
+            "retention_months": 6,
+            "first_surviving_seq": 2,
+            "first_surviving_prev_hash": deleted_hash,
+            "last_retained_hash": deleted_hash,
+            "last_retained_seq": 1,
+        }
+        await _seed_entry(
+            db_session,
+            4,
+            now - timedelta(days=1),
+            "f" * 64,
+            action=AuditActionType.AUDIT_PURGE.value,
+            context=context,
+        )
+        assert predecessor.row_hash != "f" * 64
+
+        result = await AuditService.verify_chain(db_session)
+
+        assert result.verified is False
+        assert result.first_break_at == 2
