@@ -4,8 +4,10 @@ Add B-tree indexes on audit_log_entries(action_type, actor_identity, outcome,
 timestamp) and a GIN index on audit_log_entries(context) to support efficient
 audit search queries introduced in Wave 18.3.
 
-All indexes use IF NOT EXISTS for idempotency. downgrade() drops them in
-reverse order.
+All indexes use IF NOT EXISTS for idempotency. ``action_type`` and
+``timestamp`` already exist at revision 008 because migration 007 created
+them, so downgrade() preserves those inherited indexes and removes only the
+indexes introduced by this revision.
 
 Revision ID: 009
 Revises: 008
@@ -51,7 +53,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_audit_log_entries_context_gin")
-    op.execute("DROP INDEX IF EXISTS ix_audit_log_entries_timestamp")
     op.execute("DROP INDEX IF EXISTS ix_audit_log_entries_outcome")
     op.execute("DROP INDEX IF EXISTS ix_audit_log_entries_actor_identity")
-    op.execute("DROP INDEX IF EXISTS ix_audit_log_entries_action_type")
