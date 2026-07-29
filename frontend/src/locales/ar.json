@@ -496,6 +496,7 @@
   "detection.save": "حفظ التكوين",
   "detection.validation_error": "يجب أن يكون حد الحظر أكبر من حد الإبلاغ",
   "audit.retention.title": "حفظ سجلات التدقيق",
+  "audit.retention.loading": "جارٍ تحميل حفظ سجلات التدقيق",
   "audit.retention.period": "فترة الحفظ",
   "audit.retention.months": "{{count}} شهر",
   "audit.retention.last_purge": "آخر تطهير",

@@ -50,6 +50,7 @@ vi.mock('react-i18next', () => ({
           'audit.export.limit_exceeded': 'Export limit exceeded. Please apply more specific filters.',
           'audit.export.quota_exceeded': 'Daily export quota exceeded. Please try again tomorrow.',
           'audit.retention.title': 'Audit Retention',
+          'audit.retention.loading': 'Loading audit retention',
           'audit.retention.period': 'Retention Period',
           'audit.retention.months': '{{count}} months',
           'audit.retention.last_purge': 'Last Purge',
@@ -95,6 +96,7 @@ vi.mock('react-i18next', () => ({
           'audit.export.limit_exceeded': 'تم تجاوز حد التصدير. يرجى تطبيق عوامل تصفية أكثر تحديداً.',
           'audit.export.quota_exceeded': 'تم تجاوز حصة التصدير اليومية. يرجى المحاولة مرة أخرى غداً.',
           'audit.retention.title': 'حفظ سجلات التدقيق',
+          'audit.retention.loading': 'جارٍ تحميل حفظ سجلات التدقيق',
           'audit.retention.period': 'فترة الحفظ',
           'audit.retention.months': '{{count}} شهر',
           'audit.retention.last_purge': 'آخر تطهير',
@@ -695,6 +697,77 @@ describe('AdminAuditPage', () => {
   });
 
   describe('Audit Retention Status Panel', () => {
+    it('renders a loading state until retention data is available', async () => {
+      let releaseRetentionResponse: (() => void) | undefined;
+      const retentionResponsePending = new Promise<void>((resolve) => {
+        releaseRetentionResponse = resolve;
+      });
+      server.use(
+        http.get('/api/v1/admin/audit/status', () => {
+          return HttpResponse.json({
+            total_entries: 100,
+            last_verification: null,
+          });
+        }),
+        http.get('/api/v1/admin/audit/retention', async () => {
+          await retentionResponsePending;
+          return HttpResponse.json({
+            retention_months: 24,
+            last_purge_at: null,
+            purged_count: null,
+          });
+        })
+      );
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      expect(
+        await screen.findByRole('status', { name: 'Loading audit retention' })
+      ).toBeInTheDocument();
+      expect(screen.queryByText('24 months')).not.toBeInTheDocument();
+
+      releaseRetentionResponse?.();
+      expect(await screen.findByText('24 months')).toBeInTheDocument();
+    });
+
+    it.each([
+      ['an empty body', () => new HttpResponse(null, { status: 200 })],
+      [
+        'a malformed body',
+        () =>
+          HttpResponse.json({
+            retention_months: 'twenty-four',
+            last_purge_at: 'not-a-date',
+            purged_count: 'unknown',
+          }),
+      ],
+      [
+        'an unavailable response',
+        () => HttpResponse.json({ detail: { message_key: 'error.service_unavailable' } }, { status: 503 }),
+      ],
+      [
+        'a forbidden response',
+        () => HttpResponse.json({ detail: { message_key: 'error.forbidden' } }, { status: 403 }),
+      ],
+    ])('renders the localized unavailable state for %s', async (_caseName, responseFactory) => {
+      server.use(
+        http.get('/api/v1/admin/audit/status', () => {
+          return HttpResponse.json({
+            total_entries: 100,
+            last_verification: null,
+          });
+        }),
+        http.get('/api/v1/admin/audit/retention', responseFactory)
+      );
+
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      expect(await screen.findByText('Failed to load audit status.')).toBeInTheDocument();
+      expect(screen.queryByText('retention_months')).not.toBeInTheDocument();
+      expect(screen.queryByText('last_purge_at')).not.toBeInTheDocument();
+      expect(screen.queryByText('purged_count')).not.toBeInTheDocument();
+    });
+
     it('renders the retention status panel with correct values when purge has occurred', async () => {
       server.use(
         http.get('/api/v1/admin/audit/status', () => {

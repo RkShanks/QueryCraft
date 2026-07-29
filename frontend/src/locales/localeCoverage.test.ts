@@ -166,6 +166,7 @@ describe('Wave 14 i18n key coverage', () => {
     'audit.export.limit_exceeded',
     'audit.export.quota_exceeded',
     'audit.retention.title',
+    'audit.retention.loading',
     'audit.retention.period',
     'audit.retention.last_purge',
     'audit.retention.never',
