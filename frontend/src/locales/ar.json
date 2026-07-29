@@ -496,6 +496,7 @@
   "detection.block_threshold": "حد الحظر (0.0 - 1.0)",
   "detection.flag_threshold": "حد الإبلاغ (0.0 - 1.0)",
   "detection.save": "حفظ التكوين",
+  "detection.updated_at": "آخر تحديث",
   "detection.validation_error": "يجب أن يكون حد الحظر أكبر من حد الإبلاغ",
   "audit.retention.title": "حفظ سجلات التدقيق",
   "audit.retention.loading": "جارٍ تحميل حفظ سجلات التدقيق",

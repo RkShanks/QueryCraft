@@ -69,9 +69,10 @@ describe('AdminDetectionPage', () => {
       renderWithClient(<AdminDetectionPage />);
 
       const timestamp = await screen.findByTestId('detection-updated-at');
-      expect(timestamp).toHaveAttribute('dir', 'ltr');
       expect(timestamp).toHaveTextContent('آخر تحديث');
-      expect(timestamp).not.toHaveTextContent(/\b(?:AM|PM)\b/);
+      const timestampValue = screen.getByTestId('detection-updated-at-value');
+      expect(timestampValue).toHaveAttribute('dir', 'ltr');
+      expect(timestampValue).not.toHaveTextContent(/\b(?:AM|PM)\b/);
     } finally {
       await i18n.changeLanguage('en');
     }

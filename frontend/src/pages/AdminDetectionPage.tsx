@@ -42,7 +42,7 @@ function extractErrorKey(err: unknown): string | null {
 }
 
 export const AdminDetectionPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
   
   const [blockVal, setBlockVal] = useState<string>('0.8');
@@ -161,8 +161,13 @@ export const AdminDetectionPage: React.FC = () => {
           {t('detection.page_title')}
         </h1>
         {configQuery.data?.updated_at && (
-          <span className="text-xs text-gray-500">
-            {t('quota.reset_at').split(':')[0]}: {new Date(configQuery.data.updated_at).toLocaleString()}
+          <span data-testid="detection-updated-at" className="text-xs text-gray-500">
+            {t('detection.updated_at')}:{' '}
+            <bdi data-testid="detection-updated-at-value" dir="ltr">
+              {new Date(configQuery.data.updated_at).toLocaleString(
+                i18n.resolvedLanguage || i18n.language
+              )}
+            </bdi>
           </span>
         )}
       </div>
