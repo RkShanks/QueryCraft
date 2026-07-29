@@ -367,6 +367,42 @@ class TestCommonTableExpressions:
 
         assert result == (True, None)
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("dialect", ["postgres", "mysql", "tsql"])
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            (
+                "WITH recent(actor_identifier, given_name) AS ("
+                "SELECT actor_id, first_name FROM actor"
+                ") "
+                "SELECT actor_identifier, given_name "
+                "FROM recent ORDER BY actor_identifier"
+            ),
+            (
+                "SELECT nested.actor_id FROM ("
+                "WITH recent AS (SELECT actor_id FROM actor) "
+                "SELECT actor_id FROM recent"
+                ") AS nested"
+            ),
+        ],
+    )
+    async def test_valid_cte_projection_variants_are_authorized(
+        self,
+        dialect: str,
+        sql: str,
+    ) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "actor", "columns": ["actor_id", "first_name"]},
+            ],
+            dialect=dialect,
+        )
+
+        result = await rule.evaluate(sql, _actor_schema())
+
+        assert result == (True, None)
+
 
 # ────────────────────── Case-insensitive matching ──────────────────────
 
