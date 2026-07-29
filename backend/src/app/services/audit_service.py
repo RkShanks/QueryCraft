@@ -291,6 +291,26 @@ async def _marker_predecessor_link_is_valid(
     return predecessor_hash is not None and predecessor_hash == marker.prev_hash
 
 
+async def _purge_marker_covers_gap(
+    session: AsyncSession,
+    entry: AuditLogEntry,
+    upper_sequence: int,
+) -> bool:
+    marker = await _purge_marker_for_gap(
+        session,
+        entry.sequence_number,
+        upper_sequence,
+    )
+    return (
+        marker is not None
+        and _marker_matches_gap(
+            entry,
+            marker,
+        )
+        and await _marker_predecessor_link_is_valid(session, marker)
+    )
+
+
 # ---------------------------------------------------------------------------
 # AuditService
 # ---------------------------------------------------------------------------
@@ -530,12 +550,12 @@ class AuditService:
         To distinguish an intentional purge gap from tampering, a bounded
         marker lookup runs only when a linkage break is detected:
 
-        * If ``marker.context["first_surviving_seq"] == entry.sequence_number``
-          AND ``marker.context["first_surviving_prev_hash"] == entry.prev_hash``,
-          the gap is intentional — continue verification.
+        * A later marker may cover the gap only when its row hash, predecessor
+          link, complete purge range, retained boundary, and first-survivor
+          metadata are internally consistent.
         * If every previous row was purged and the marker is the first retained
-          row, its own ``last_retained_hash`` boundary must match its
-          ``prev_hash``.
+          row, its range and ``last_retained_hash`` boundary must match its
+          sequence and ``prev_hash``.
         * Otherwise, report the gap as tampering.
 
         Row-hash integrity is always checked regardless of purge status.
@@ -573,14 +593,11 @@ class AuditService:
                     break
 
                 if entry.prev_hash != prev_hash:
-                    marker = await _purge_marker_for_gap(
+                    marker_covers_gap = await _purge_marker_covers_gap(
                         session,
-                        entry.sequence_number,
+                        entry,
                         upper_sequence,
                     )
-                    marker_covers_gap = _marker_matches_gap(entry, marker)
-                    if marker_covers_gap and marker is not None:
-                        marker_covers_gap = await _marker_predecessor_link_is_valid(session, marker)
                     if not (marker_covers_gap or _purge_marker_is_all_purged_boundary(entry, prev_hash)):
                         first_break_at = entry.sequence_number
                         break
