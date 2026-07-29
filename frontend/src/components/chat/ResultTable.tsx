@@ -21,7 +21,7 @@ export const ResultTable: React.FC<ResultTableProps> = ({ result }) => {
               return (
                 <th key={col.name} className="result-table-header" scope="col">
                   <div className="flex items-center gap-2">
-                    <span>{col.name}</span>
+                    <span dir="ltr">{col.name}</span>
                     {isMasked && (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/50 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30 whitespace-nowrap normal-case">
                         {t('query.result.columnMasked')}
@@ -38,7 +38,7 @@ export const ResultTable: React.FC<ResultTableProps> = ({ result }) => {
             <tr key={rowIndex} className="result-table-row">
               {row.map((cell, cellIndex) => (
                 <td key={cellIndex} className="result-table-cell">
-                  {String(cell ?? '')}
+                  <span dir="auto">{String(cell ?? '')}</span>
                 </td>
               ))}
             </tr>
