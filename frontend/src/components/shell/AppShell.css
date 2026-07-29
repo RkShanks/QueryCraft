@@ -28,7 +28,6 @@
   .app-shell-sidebar {
     position: sticky;
     inset-block-start: 0;
-    width: 64px;
     height: 100vh;
     z-index: 10;
   }
@@ -42,15 +41,9 @@
     padding-inline: 0.5rem;
   }
 
-  .app-shell-sidebar .sidebar-header,
-  .app-shell-sidebar .sidebar-sessions {
-    display: none;
-  }
-
   .app-shell-sidebar .sidebar-new-chat-btn,
   .app-shell-sidebar .sidebar-nav-btn,
   .app-shell-sidebar .sidebar-sign-out-btn {
     padding-inline: 0.5rem;
-    font-size: 0;
   }
 }

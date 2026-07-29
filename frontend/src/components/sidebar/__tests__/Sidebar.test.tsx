@@ -104,6 +104,12 @@ describe('Sidebar', () => {
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
   });
 
+  it('hides the empty-state label when the sidebar is collapsed', () => {
+    useUIStore.getState().toggleSidebar();
+    setup([]);
+    expect(screen.queryByText(/no sessions yet/i)).not.toBeInTheDocument();
+  });
+
   it('renders loading state', () => {
     setup([], true);
     expect(screen.getByText(/loading/i)).toBeInTheDocument();

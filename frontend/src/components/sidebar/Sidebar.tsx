@@ -228,13 +228,24 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <div className="sidebar-sessions">
-        {isLoading ? (
+        {sidebarCollapsed ? (
+          sessions.map((session) => (
+            <SessionItem
+              key={session.id}
+              session={session}
+              isActive={session.id === activeSessionId}
+              onClick={() => handleSessionClick(session.id)}
+              onDelete={() => handleDeleteSession(session.id)}
+              collapsed
+            />
+          ))
+        ) : isLoading ? (
           <div className="sidebar-loading">{t('history.loading')}</div>
         ) : sessions.length === 0 ? (
           <div className="sidebar-empty">{t('sidebar.empty')}</div>
         ) : (
           <>
-            {!sidebarCollapsed && todayGroup.length > 0 && (
+            {todayGroup.length > 0 && (
               <div className="sidebar-group">
                 <h3 className="sidebar-group-title">{t('sidebar.today')}</h3>
                 {todayGroup.map((session) => (
@@ -248,7 +259,7 @@ export const Sidebar: React.FC = () => {
                 ))}
               </div>
             )}
-            {!sidebarCollapsed && previous7Group.length > 0 && (
+            {previous7Group.length > 0 && (
               <div className="sidebar-group">
                 <h3 className="sidebar-group-title">{t('sidebar.previous7Days')}</h3>
                 {previous7Group.map((session) => (
@@ -262,7 +273,7 @@ export const Sidebar: React.FC = () => {
                 ))}
               </div>
             )}
-            {!sidebarCollapsed && olderGroup.length > 0 && (
+            {olderGroup.length > 0 && (
               <div className="sidebar-group">
                 <h3 className="sidebar-group-title">{t('sidebar.older')}</h3>
                 {olderGroup.map((session) => (
@@ -276,17 +287,6 @@ export const Sidebar: React.FC = () => {
                 ))}
               </div>
             )}
-            {sidebarCollapsed &&
-              sessions.map((session) => (
-                <SessionItem
-                  key={session.id}
-                  session={session}
-                  isActive={session.id === activeSessionId}
-                  onClick={() => handleSessionClick(session.id)}
-                  onDelete={() => handleDeleteSession(session.id)}
-                  collapsed
-                />
-              ))}
           </>
         )}
       </div>
