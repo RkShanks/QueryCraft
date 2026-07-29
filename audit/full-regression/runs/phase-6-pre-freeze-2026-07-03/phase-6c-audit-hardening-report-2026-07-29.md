@@ -10,7 +10,7 @@ Tested product HEAD: `991f7e38bdc9dcbf0b0fa5c9c00532652ec69a9c`
 
 Runtime: disposable platform Postgres, source Postgres, Redis, backend, frontend, and session helper; real APIs; Chrome DevTools MCP; headless Chromium; and the documented one-shot external purge invocation.
 
-Evidence PR: pending creation
+Evidence PR: [#257](https://github.com/RkShanks/QueryCraft/pull/257)
 
 ## Result
 

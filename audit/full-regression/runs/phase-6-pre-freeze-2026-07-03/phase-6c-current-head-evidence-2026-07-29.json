@@ -3,7 +3,7 @@
   "scope": "Phase 6C audit hardening only",
   "starting_synchronized_head": "f34f1c8d3e17a2e877fb4d74a425fef0e20f0867",
   "tested_product_head": "991f7e38bdc9dcbf0b0fa5c9c00532652ec69a9c",
-  "evidence_pr": null,
+  "evidence_pr": "https://github.com/RkShanks/QueryCraft/pull/257",
   "excluded_scope": [
     "Phase 6D",
     "T-905",
