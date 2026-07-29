@@ -49,15 +49,13 @@ class ConnectionUpdate(BaseModel):
 
 
 class ConnectionResponse(BaseModel):
-    """Response body for connection details (password never included)."""
+    """Response body for connection details with write-only metadata omitted."""
 
     id: UUID
     display_name: str
     database_type: DatabaseType
-    host: str
     port: int
     database_name: str
-    username: str
     ssl_mode: str
     lifecycle_state: LifecycleState
     health_status: HealthStatus
