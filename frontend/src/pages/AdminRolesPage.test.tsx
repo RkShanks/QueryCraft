@@ -171,6 +171,27 @@ describe('AdminRolesPage', () => {
     });
   });
 
+  it.each([
+    ['English', 'ltr'],
+    ['Arabic', 'rtl'],
+  ])('isolates role editor technical inputs in the %s layout', (_locale, direction) => {
+    vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
+    const { container } = render(
+      <div dir={direction}>
+        <AdminRolesPage />
+      </div>
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0]);
+
+    expect(screen.getByLabelText('admin.roles.form.priority')).toHaveAttribute('dir', 'ltr');
+    expect(
+      screen.getByPlaceholderText('admin.roles.form.groupMappingPlaceholder')
+    ).toHaveAttribute('dir', 'ltr');
+    expect(screen.getByText('analysts')).toHaveAttribute('dir', 'ltr');
+    expect(container.firstChild).toHaveAttribute('dir', direction);
+  });
+
   it('shows creation form when clicking Add Role', () => {
     vi.mocked(useAdminRoles).mockReturnValue(mockEmptyRoles as any);
     render(<AdminRolesPage />);
