@@ -1,0 +1,491 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-07-29",
+  "scope": "Phase 6D regression and Phase 6 evidence consolidation only",
+  "expected_starting_main": "46109ec88b872e02b88c1e7fa8804581eca57397",
+  "tested_product_head": "957fa7dccb105883e3671a2fa658b9644be3a31c",
+  "excluded_scope": [
+    "cross-phase matrix",
+    "implementation-surface gap audit",
+    "independent final audit",
+    "T-905",
+    "freeze work"
+  ],
+  "accepted_evidence": [
+    {
+      "source": "phase-6a-quotas-report-2026-07-28.md",
+      "rows": 9,
+      "status": "accepted_without_repeating_live_evidence"
+    },
+    {
+      "source": "phase-6b-detection-report-2026-07-28.md",
+      "rows": 10,
+      "status": "accepted_without_repeating_live_evidence"
+    },
+    {
+      "source": "phase-6c-audit-hardening-report-2026-07-29.md",
+      "rows": 11,
+      "status": "accepted_without_repeating_live_evidence"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "P6-FR-147",
+      "status": "Pass",
+      "source": "accepted_phase_6a",
+      "summary": "Quota CRUD, status, validation, exact permission, audit sanitization, and uncapped reset passed."
+    },
+    {
+      "id": "P6-FR-148",
+      "status": "Pass",
+      "source": "accepted_phase_6a",
+      "summary": "Atomic real-Redis counters, dimension and day isolation, malformed-state recovery, and non-disclosure passed."
+    },
+    {
+      "id": "P6-FR-149",
+      "status": "Pass",
+      "source": "accepted_phase_6a",
+      "summary": "Localized quota configuration and status UI, request isolation, and narrow layouts passed."
+    },
+    {
+      "id": "P6-FR-150",
+      "status": "Pass",
+      "source": "accepted_phase_6a",
+      "summary": "The 60-second cache, expiry, immediate invalidation, minimal serialization, concurrency, and fail-closed behavior passed."
+    },
+    {
+      "id": "P6-FR-151",
+      "status": "Pass",
+      "source": "accepted_phase_6a",
+      "summary": "Query, execution, and export quota ordering stopped downstream work on denial and proceeded exactly once under limit."
+    },
+    {
+      "id": "P6-FR-152",
+      "status": "Pass",
+      "source": "accepted_phase_6a",
+      "summary": "Quota errors used localized constant contracts and omitted prohibited implementation details."
+    },
+    {
+      "id": "P6-FR-153",
+      "status": "Pass",
+      "source": "accepted_phase_6a",
+      "summary": "Unavailable, timeout, malformed, script-error, and recovery paths failed closed without downstream work."
+    },
+    {
+      "id": "P6-FR-154",
+      "status": "Pass",
+      "source": "accepted_phase_6a",
+      "summary": "Fractional-midnight TTL, positive bounds, missing-expiry repair, valid-expiry preservation, and concurrent rollover passed."
+    },
+    {
+      "id": "P6-FR-155",
+      "status": "Pass",
+      "source": "accepted_phase_6a",
+      "summary": "Durable quota configuration and denial audit events contained only allowlisted sanitized context."
+    },
+    {
+      "id": "P6-FR-156",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "Detector registry, aggregation, singleton configuration, corrupt-state handling, and fail-closed ordering passed."
+    },
+    {
+      "id": "P6-FR-157",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "All five hostile categories passed English and Arabic clear and weaker-signal coverage."
+    },
+    {
+      "id": "P6-FR-158",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "Sanitized blocked API and browser states cleared the rejected turn and exposed no detector or input detail."
+    },
+    {
+      "id": "P6-FR-159",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "Detection ran before quota and LLM; blocked stopped while allowed and flagged requests continued through policy evaluation."
+    },
+    {
+      "id": "P6-FR-160",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "Normalization, multilingual bypass, benign-language, and bounded-runtime coverage passed."
+    },
+    {
+      "id": "P6-FR-161",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "Extensible registry behavior, duplicate rejection, repeat imports, and production-registry integrity passed."
+    },
+    {
+      "id": "P6-FR-162",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "Exact security permission, threshold validation, safe audit context, localized UI, and mobile controls passed."
+    },
+    {
+      "id": "P6-FR-163",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "Blocked and flagged audit durability, search and export visibility, and rejected-value absence passed."
+    },
+    {
+      "id": "P6-FR-164",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "Recursive hostile redaction and audit-write fail-closed composition prevented raw retention and downstream work."
+    },
+    {
+      "id": "P6-FR-165",
+      "status": "Pass",
+      "source": "accepted_phase_6b",
+      "summary": "Repeated blocks caused no hidden suspension, mutation, lockout, or quota consumption."
+    },
+    {
+      "id": "P6-FR-166",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "Search filters, retention intersection, deterministic ordering, validation, parameterization, redaction, and real boundaries passed."
+    },
+    {
+      "id": "P6-FR-167",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "Pagination bounds, snapshots, concurrent appends, equal-timestamp traversal, and maximum-boundary metadata passed."
+    },
+    {
+      "id": "P6-FR-168",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "CSV and JSON boundaries, safe downloads, limit, quota, unavailable, permission, and no-partial-download behavior passed."
+    },
+    {
+      "id": "P6-FR-169",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "Sanitized compliance metadata and independently recomputed checksums matched emitted records."
+    },
+    {
+      "id": "P6-FR-170",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "Shared recursive value-based redaction protected search, both exports, and metadata at maximum size."
+    },
+    {
+      "id": "P6-FR-171",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "Conservative CSV formula-prefix hardening and Arabic and Unicode preservation passed."
+    },
+    {
+      "id": "P6-FR-172",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "Bounded self-audit, recursion suppression, allowlisted context, and sanitized search and export failures passed."
+    },
+    {
+      "id": "P6-FR-173",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "UTC calendar-month retention semantics matched search, export, and purge at cutoff boundaries."
+    },
+    {
+      "id": "P6-FR-174",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "The packaged one-shot purge runner succeeded, repeated as a no-op, rolled back on failure, and made no scheduling claim."
+    },
+    {
+      "id": "P6-FR-175",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "Bounded keyset verification, valid purge gaps, marker integrity, exact break reporting, concurrency, and large-chain behavior passed."
+    },
+    {
+      "id": "P6-FR-176",
+      "status": "Pass",
+      "source": "accepted_phase_6c",
+      "summary": "Retention API and panel contracts plus accessible localized responsive and error states passed."
+    },
+    {
+      "id": "P6-FR-177",
+      "status": "Pass",
+      "source": "current_head_phase_6d",
+      "summary": "Built-in Admin upgrade and idempotency, exact API permissions, least-privilege navigation, legacy role behavior, spoof resistance, and next-request revocation passed."
+    },
+    {
+      "id": "P6-FR-178",
+      "status": "Pass",
+      "source": "current_head_phase_6d",
+      "summary": "Complete English and Arabic key and state parity, technical-value direction, accessible names, and live announcements passed."
+    },
+    {
+      "id": "P6-FR-179",
+      "status": "Pass",
+      "source": "current_head_phase_6d",
+      "summary": "All 18 surface, locale, and viewport combinations plus Chrome keyboard and focus checks passed without overflow or clipping."
+    },
+    {
+      "id": "P6-FR-180",
+      "status": "Pass",
+      "source": "current_head_phase_6d",
+      "summary": "Browser and API sanitization paths passed for quota, hostile, detection, audit, export, retention, authorization, malformed input, and dependency failures."
+    }
+  ],
+  "totals": {
+    "Pass": 34,
+    "Fail": 0,
+    "Partial": 0,
+    "Setup-dependent": 0,
+    "Not run": 0,
+    "Deferred": 0
+  },
+  "permission_matrix": {
+    "built_in_admin_permissions_present": true,
+    "existing_admin_migration_upgrade": true,
+    "second_upgrade_idempotent": true,
+    "surfaces": [
+      "quota list, CRUD, and status",
+      "detection configuration read and update",
+      "audit search",
+      "CSV and JSON export",
+      "retention",
+      "verify",
+      "verify status"
+    ],
+    "unauthenticated_status": 401,
+    "insufficient_status": 403,
+    "exact_permission_success": true,
+    "quota_only_unrelated_requests": 0,
+    "security_only_unrelated_requests": 0,
+    "audit_only_unrelated_requests": 0,
+    "legacy_lowercase_role_exact_permission_only": true,
+    "spoofed_claim_bypass": false,
+    "next_request_revocation_status": 403,
+    "stale_profile_permission_after_revocation": false
+  },
+  "browser_matrix": {
+    "engine": "Chromium with no-artifact Playwright plus Chrome DevTools MCP",
+    "surfaces": [
+      "quotas",
+      "detection",
+      "audit"
+    ],
+    "locales": [
+      "en",
+      "ar"
+    ],
+    "viewport_widths": [
+      1440,
+      768,
+      375
+    ],
+    "combinations": 18,
+    "all_passed": true,
+    "page_overflow": false,
+    "clipped_interactives": false,
+    "raw_translation_keys": false,
+    "english_fallback_in_arabic": false,
+    "physical_direction_classes": false,
+    "keyboard_focus_visible": true,
+    "technical_values_ltr": true,
+    "fresh_screenshots_created": 0
+  },
+  "integrated_flow": {
+    "exact_permission_pages_opened": true,
+    "least_privilege_unrelated_admin_requests": 0,
+    "hostile_status": 400,
+    "hostile_message_key": "error.hostile_input_blocked",
+    "hostile_before_quota_and_llm": true,
+    "hostile_absent_from_dom": true,
+    "hostile_absent_from_browser_history": true,
+    "hostile_absent_from_browser_storage": true,
+    "hostile_absent_from_serialized_audit_context": true,
+    "benign_over_quota_status": 429,
+    "benign_over_quota_message_key": "error.quota_exceeded",
+    "benign_over_quota_before_llm": true,
+    "benign_under_quota_status": 200,
+    "benign_under_quota_submit_requests": 1,
+    "real_llm_path_reached_once": true,
+    "source_execution_completed": true,
+    "repeat_external_llm_disclosure_performed": false,
+    "audit_found_quota_event": true,
+    "audit_found_detection_event": true,
+    "csv_download_succeeded": true,
+    "json_download_succeeded": true,
+    "arabic_desktop_and_mobile_usable": true
+  },
+  "sanitized_error_matrix": [
+    {
+      "path": "quota_exceeded",
+      "status": 429,
+      "message_key": "error.quota_exceeded",
+      "fail_closed": true
+    },
+    {
+      "path": "quota_unavailable",
+      "status": 503,
+      "message_key": "error.service_unavailable",
+      "fail_closed": true
+    },
+    {
+      "path": "hostile_blocked",
+      "status": 400,
+      "message_key": "error.hostile_input_blocked",
+      "fail_closed": true
+    },
+    {
+      "path": "detection_unavailable",
+      "status": 503,
+      "message_key": "error.service_unavailable",
+      "fail_closed": true
+    },
+    {
+      "path": "invalid_detection_thresholds",
+      "status": 422,
+      "message_contract": "localized_validation",
+      "fail_closed": true
+    },
+    {
+      "path": "malformed_json_or_identifier",
+      "statuses": [
+        400,
+        422
+      ],
+      "message_contract": "localized_validation",
+      "fail_closed": true
+    },
+    {
+      "path": "audit_filters_or_pagination",
+      "status": 422,
+      "message_contract": "localized_validation",
+      "fail_closed": true
+    },
+    {
+      "path": "export_limit",
+      "status": 422,
+      "message_key": "error.export_limit_exceeded",
+      "download_created": false
+    },
+    {
+      "path": "export_quota",
+      "status": 429,
+      "message_key": "error.quota_exceeded",
+      "download_created": false
+    },
+    {
+      "path": "export_quota_unavailable",
+      "status": 503,
+      "message_key": "error.service_unavailable",
+      "download_created": false
+    },
+    {
+      "path": "retention_malformed_or_unavailable",
+      "statuses": [
+        422,
+        503
+      ],
+      "message_contract": "localized_malformed_or_unavailable",
+      "fail_closed": true
+    },
+    {
+      "path": "unauthenticated",
+      "status": 401,
+      "message_key": "error.unauthorized",
+      "fail_closed": true
+    },
+    {
+      "path": "forbidden",
+      "status": 403,
+      "message_key": "error.forbidden",
+      "fail_closed": true
+    },
+    {
+      "path": "relevant_database_redis_and_llm_failures",
+      "message_contract": "sanitized_4xx_or_503",
+      "fail_closed": true
+    }
+  ],
+  "prohibited_response_or_retention_scan": {
+    "counters_or_configured_limits": false,
+    "policy_or_role_data": false,
+    "rule_names_confidence_or_patterns": false,
+    "raw_hostile_value": false,
+    "generated_sql_or_source_result": false,
+    "redis_or_database_connection_material": false,
+    "provider_details": false,
+    "stack_or_raw_exception": false,
+    "federation_material": false
+  },
+  "fix_prs": [
+    {
+      "number": 258,
+      "classification": "High authorization",
+      "ci_backend": "passed",
+      "ci_frontend": "passed",
+      "merged": true,
+      "branch_deleted": true
+    },
+    {
+      "number": 259,
+      "classification": "High accessibility and RTL",
+      "ci_backend": "passed",
+      "ci_frontend": "passed",
+      "merged": true,
+      "branch_deleted": true
+    },
+    {
+      "number": 260,
+      "classification": "High i18n and RTL",
+      "ci_backend": "passed",
+      "ci_frontend": "passed",
+      "merged": true,
+      "branch_deleted": true
+    },
+    {
+      "number": 261,
+      "classification": "High responsive usability",
+      "ci_backend": "passed",
+      "ci_frontend": "passed",
+      "merged": true,
+      "branch_deleted": true
+    }
+  ],
+  "gates": {
+    "backend_full": "2686 passed, 17 skipped, 35 subtests passed, 4 non-failing warnings",
+    "backend_current_head_focused": "51 passed",
+    "backend_sanitization_sequential": "33 passed",
+    "ruff_check": "Pass",
+    "ruff_format_check": "Pass",
+    "frontend_vitest_full": "65 files, 804 tests passed",
+    "eslint": "Pass",
+    "typecheck": "Pass",
+    "production_build": "Pass with existing non-failing chunk-size warning",
+    "css_lint": "Pass",
+    "locale_parity_and_i18n": "Pass",
+    "logical_css_and_rtl": "Pass",
+    "permanent_playwright": "2 passed",
+    "responsive_browser_matrix": "18 combinations passed",
+    "chrome_devtools_real_use": "Pass",
+    "diff_check": "Pass"
+  },
+  "cleanup": {
+    "quota_restored": true,
+    "temporary_sessions_removed": true,
+    "temporary_role_and_policy_state_removed": true,
+    "temporary_connection_removed": true,
+    "temporary_counter_state_removed": true,
+    "isolated_containers_removed": true,
+    "isolated_network_removed": true,
+    "isolated_volumes_removed": true,
+    "temporary_scripts_removed": true,
+    "normal_backend_status": 200,
+    "normal_frontend_status": 200,
+    "preexisting_dirty_artifacts_touched": false
+  },
+  "phase_6_exhaustive_complete": true,
+  "cross_phase_matrix_unblocked": true,
+  "cross_phase_matrix_started": false
+}
