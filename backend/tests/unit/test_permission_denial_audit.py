@@ -1,7 +1,8 @@
 """Permission-gate denials must be durably audited without leaking request data."""
 
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import Depends, FastAPI, Request
@@ -42,6 +43,7 @@ def _protected_app(session: dict | None, permission_dependency=None) -> FastAPI:
     [
         (
             {
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
                 "username": "restricted-user",
                 "role_id": "restricted-role",
                 "permissions": [Permission.QUERY_SUBMIT.value],
@@ -75,6 +77,17 @@ async def test_permission_denial_is_durably_audited(
     permission_dependency,
 ):
     db = AsyncMock()
+    role_query = MagicMock()
+    role_query.one_or_none.return_value = (
+        SimpleNamespace(
+            id="current-role",
+            name="Restricted",
+            permissions=[Permission.QUERY_SUBMIT.value],
+        )
+        if session is not None
+        else None
+    )
+    db.execute.return_value = role_query
     app = _protected_app(session, permission_dependency)
 
     def session_factory():
@@ -114,20 +127,34 @@ async def test_authorized_request_does_not_emit_access_denied():
     db = AsyncMock()
     app = _protected_app(
         {
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
             "username": "authorized-user",
             "role_id": "authorized-role",
             "permissions": [Permission.ADMIN_AUDIT_VERIFY.value],
         }
     )
+    role_query = MagicMock()
+    role_query.one_or_none.return_value = SimpleNamespace(
+        id="current-role",
+        name="Authorized",
+        permissions=[Permission.ADMIN_AUDIT_VERIFY.value],
+    )
+    db.execute.return_value = role_query
+
+    def session_factory():
+        return _db_context(db)
 
     with (
-        patch("app.api.dependencies.permissions.get_async_session_factory") as get_session_factory,
+        patch(
+            "app.api.dependencies.permissions.get_async_session_factory",
+            return_value=session_factory,
+        ) as get_session_factory,
         patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as audit_log,
     ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get("/protected")
 
     assert response.status_code == 200
-    get_session_factory.assert_not_called()
+    get_session_factory.assert_called_once_with()
     audit_log.assert_not_awaited()
     db.commit.assert_not_awaited()

@@ -35,7 +35,9 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -169,6 +171,36 @@ def _assert_safe_error_body(body: dict, context: str) -> None:
 class TestRouteSanitizationRegression:
     """End-to-end route tests calling the actual FastAPI app to check sanitization."""
 
+    @pytest.fixture(autouse=True)
+    def current_role_database(self):
+        permission_db = AsyncMock()
+
+        @asynccontextmanager
+        async def session_context():
+            yield permission_db
+
+        def set_current_role(role_id: str, permissions: list[str]) -> None:
+            role_query = MagicMock()
+            role_query.one_or_none.return_value = SimpleNamespace(
+                id=role_id,
+                name="Current role",
+                permissions=permissions,
+            )
+            permission_db.execute.return_value = role_query
+
+        self._set_current_role = set_current_role
+        with (
+            patch(
+                "app.api.dependencies.permissions.get_async_session_factory",
+                return_value=session_context,
+            ),
+            patch(
+                "app.api.dependencies.permissions.AuditService.log",
+                new_callable=AsyncMock,
+            ),
+        ):
+            yield
+
     @pytest.fixture
     def app_instance(self):
         """Create a fresh FastAPI instance for tests."""
@@ -185,6 +217,7 @@ class TestRouteSanitizationRegression:
 
     async def _setup_session(self, redis_client, user_id: str, role_id: str, perms: list[str]) -> str:
         """Create an active session in the real Redis database."""
+        self._set_current_role(role_id, perms)
         session_id = str(uuid.uuid4())
         session_data = {
             "user_id": user_id,

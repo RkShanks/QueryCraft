@@ -1,16 +1,47 @@
-"""TDD tests for require_permission() FastAPI dependency (T-624).
+"""TDD tests for the database-backed ``require_permission`` dependency."""
 
-Tests permission checking against session data, 403 on missing permission,
-and sanitized error response with error.forbidden.
-"""
-
-from unittest.mock import MagicMock
+import uuid
+from collections import namedtuple
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, Request
 
 from app.api.dependencies.permissions import require_permission
 from app.db.models.enums import Permission
+
+RoleState = namedtuple("RoleState", "id name permissions")
+
+
+@pytest.fixture
+def current_role_permissions():
+    db = AsyncMock()
+
+    @asynccontextmanager
+    async def session_context():
+        yield db
+
+    def set_permissions(permissions: list[str]) -> None:
+        query_result = MagicMock()
+        query_result.one_or_none.return_value = RoleState(
+            uuid.uuid4(),
+            "Current role",
+            permissions,
+        )
+        db.execute.return_value = query_result
+
+    with (
+        patch(
+            "app.api.dependencies.permissions.get_async_session_factory",
+            return_value=session_context,
+        ),
+        patch(
+            "app.api.dependencies.permissions.AuditService.log",
+            new_callable=AsyncMock,
+        ),
+    ):
+        yield set_permissions
 
 
 class TestRequirePermission:
@@ -24,35 +55,37 @@ class TestRequirePermission:
         return request
 
     @pytest.mark.asyncio
-    async def test_has_single_permission(self, mock_request_with_permissions):
+    async def test_has_single_permission(self, mock_request_with_permissions, current_role_permissions):
         """User with exact required permission passes."""
+        current_role_permissions(["query.submit"])
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-            "permissions": ["query.submit"],
+            "role_id": "spoofed-role",
+            "permissions": [],
         }
         dep = require_permission(Permission.QUERY_SUBMIT)
         result = await dep(mock_request_with_permissions)
-        assert result == mock_request_with_permissions.state.session
+        assert result["permissions"] == ["query.submit"]
 
     @pytest.mark.asyncio
-    async def test_has_one_of_multiple_permissions(self, mock_request_with_permissions):
+    async def test_has_one_of_multiple_permissions(self, mock_request_with_permissions, current_role_permissions):
         """User with one of multiple required permissions passes."""
+        current_role_permissions(["query.history.view"])
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-            "permissions": ["query.submit", "query.history.view"],
+            "permissions": [],
         }
-        dep = require_permission(Permission.QUERY_SUBMIT, Permission.ADMIN_ROLES_MANAGE)
+        dep = require_permission(Permission.QUERY_HISTORY_VIEW, Permission.ADMIN_ROLES_MANAGE)
         result = await dep(mock_request_with_permissions)
-        assert result == mock_request_with_permissions.state.session
+        assert result["permissions"] == ["query.history.view"]
 
     @pytest.mark.asyncio
-    async def test_missing_permission_raises_403(self, mock_request_with_permissions):
+    async def test_missing_permission_raises_403(self, mock_request_with_permissions, current_role_permissions):
         """User without required permission gets 403 with error.forbidden."""
+        current_role_permissions(["query.submit"])
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "permissions": ["query.submit"],
+            "permissions": ["admin.roles.manage"],
         }
         dep = require_permission(Permission.ADMIN_ROLES_MANAGE)
         with pytest.raises(HTTPException) as exc_info:
@@ -63,7 +96,7 @@ class TestRequirePermission:
         assert detail["message_key"] == "error.forbidden"
 
     @pytest.mark.asyncio
-    async def test_no_session_raises_401(self, mock_request_with_permissions):
+    async def test_no_session_raises_401(self, mock_request_with_permissions, current_role_permissions):
         """No session data raises 401 (handled before permission check)."""
         mock_request_with_permissions.state.session = None
         dep = require_permission(Permission.QUERY_SUBMIT)
@@ -75,11 +108,12 @@ class TestRequirePermission:
         assert detail["message_key"] == "error.unauthorized"
 
     @pytest.mark.asyncio
-    async def test_empty_permissions_raises_403(self, mock_request_with_permissions):
+    async def test_empty_permissions_raises_403(self, mock_request_with_permissions, current_role_permissions):
         """User with empty permissions list gets 403."""
+        current_role_permissions([])
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "permissions": [],
+            "permissions": ["query.submit"],
         }
         dep = require_permission(Permission.QUERY_SUBMIT)
         with pytest.raises(HTTPException) as exc_info:
@@ -87,19 +121,21 @@ class TestRequirePermission:
         assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_admin_with_all_permissions_passes(self, mock_request_with_permissions):
+    async def test_admin_with_all_permissions_passes(self, mock_request_with_permissions, current_role_permissions):
         """Admin user with all permissions passes any check."""
-        mock_request_with_permissions.state.session = {
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-            "permissions": [
+        current_role_permissions(
+            [
                 "query.submit",
                 "query.history.view",
                 "admin.connections.manage",
                 "admin.roles.manage",
                 "admin.sso.manage",
                 "admin.audit.verify",
-            ],
+            ]
+        )
+        mock_request_with_permissions.state.session = {
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "permissions": [],
         }
         dep = require_permission(
             Permission.QUERY_SUBMIT,
@@ -107,23 +143,28 @@ class TestRequirePermission:
             Permission.ADMIN_AUDIT_VERIFY,
         )
         result = await dep(mock_request_with_permissions)
-        assert result == mock_request_with_permissions.state.session
+        assert "admin.audit.verify" in result["permissions"]
 
     @pytest.mark.asyncio
-    async def test_permission_values_are_strings(self, mock_request_with_permissions):
+    async def test_permission_values_are_strings(self, mock_request_with_permissions, current_role_permissions):
         """Permission enum values resolve to string for comparison."""
+        current_role_permissions(["admin.sso.manage"])
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "role_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-            "permissions": ["admin.sso.manage"],
+            "permissions": [],
         }
         dep = require_permission(Permission.ADMIN_SSO_MANAGE)
         result = await dep(mock_request_with_permissions)
-        assert result == mock_request_with_permissions.state.session
+        assert result["permissions"] == ["admin.sso.manage"]
 
     @pytest.mark.asyncio
-    async def test_response_does_not_expose_internal_details(self, mock_request_with_permissions):
+    async def test_response_does_not_expose_internal_details(
+        self,
+        mock_request_with_permissions,
+        current_role_permissions,
+    ):
         """403 response must not leak session internals, UUIDs, or schema details."""
+        current_role_permissions(["query.submit"])
         mock_request_with_permissions.state.session = {
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
             "permissions": ["query.submit"],

@@ -1,20 +1,42 @@
 """Permission dependency — FastAPI dependency for role-based access control.
 
-Provides ``require_permission(*perms)`` which checks the current session's
-permission list against the required set. Denials are durably recorded as
+Provides ``require_permission(*perms)`` which checks the user's current
+database role against the required set. Denials are durably recorded as
 ``access.denied`` before returning a sanitized 401 or 403 response.
 """
 
+import uuid
 from typing import Never
 
 from fastapi import HTTPException, Request, status
+from sqlalchemy import select
 
 from app.db.base import get_async_session_factory
 from app.db.models.enums import AuditActionType, Permission
+from app.db.models.role import Role
+from app.db.models.user import User
 from app.services.audit_service import AuditService
 
 
+async def _current_role(db, session: dict) -> tuple[uuid.UUID, str, list[str]] | None:
+    user_id = session.get("user_id")
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except (TypeError, ValueError):
+        return None
+
+    row = (
+        await db.execute(
+            select(Role.id, Role.name, Role.permissions).join(User, User.role_id == Role.id).where(User.id == user_uuid)
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    return row.id, row.name, list(row.permissions or [])
+
+
 async def _audit_access_denied(
+    db,
     session: dict | None,
     *,
     reason: str,
@@ -27,21 +49,19 @@ async def _audit_access_denied(
         if isinstance(username, str) and username.strip():
             actor_identity = username
 
-    session_factory = get_async_session_factory()
-    async with session_factory() as db:
-        await AuditService.log(
-            db,
-            action=AuditActionType.ACCESS_DENIED,
-            actor_identity=actor_identity,
-            resource_type="authorization",
-            outcome="denied",
-            context={
-                "reason": reason,
-                "request_method": request_method,
-                "required_permissions": sorted(required_permissions),
-            },
-        )
-        await db.commit()
+    await AuditService.log(
+        db,
+        action=AuditActionType.ACCESS_DENIED,
+        actor_identity=actor_identity,
+        resource_type="authorization",
+        outcome="denied",
+        context={
+            "reason": reason,
+            "request_method": request_method,
+            "required_permissions": sorted(required_permissions),
+        },
+    )
+    await db.commit()
 
 
 def require_permission(*perms: Permission):
@@ -68,9 +88,11 @@ def require_permission(*perms: Permission):
 
     async def _checker(request: Request) -> dict:
         session = getattr(request.state, "session", None)
+        session_factory = get_async_session_factory()
 
-        async def deny(status_code: int, error: str, reason: str) -> Never:
+        async def deny(db, status_code: int, error: str, reason: str) -> Never:
             await _audit_access_denied(
+                db,
                 session,
                 reason=reason,
                 request_method=request.method,
@@ -81,15 +103,21 @@ def require_permission(*perms: Permission):
                 detail={"error": error, "message_key": f"error.{error}"},
             )
 
-        if session is None:
-            await deny(status.HTTP_401_UNAUTHORIZED, "unauthorized", "unauthenticated")
-        # Unmapped user denial: role_id must be a non-empty string (FR-126, SC-048)
-        role_id = session.get("role_id")
-        if not isinstance(role_id, str) or not role_id.strip():
-            await deny(status.HTTP_403_FORBIDDEN, "forbidden", "unmapped_role")
-        user_perms = set(session.get("permissions", []))
-        if not (user_perms & required):
-            await deny(status.HTTP_403_FORBIDDEN, "forbidden", "missing_permission")
+        async with session_factory() as db:
+            if session is None:
+                await deny(db, status.HTTP_401_UNAUTHORIZED, "unauthorized", "unauthenticated")
+            current_role = await _current_role(db, session)
+            if current_role is None:
+                await deny(db, status.HTTP_403_FORBIDDEN, "forbidden", "unmapped_role")
+            role_id, role_name, permissions = current_role
+            session.update(
+                role_id=str(role_id),
+                role_name=role_name,
+                permissions=permissions,
+            )
+            user_perms = set(permissions)
+            if not (user_perms & required):
+                await deny(db, status.HTTP_403_FORBIDDEN, "forbidden", "missing_permission")
         return session
 
     return _checker
