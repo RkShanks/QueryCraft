@@ -104,14 +104,17 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
       const updatePayload: ConnectionUpdate = {
         display_name: displayName,
         database_type: databaseType,
-        host: host,
         port: port,
         database_name: databaseName,
-        username: username,
         ssl_mode: sslMode || null,
       };
 
-      // Only include password if the user typed a new one
+      if (host.trim()) {
+        updatePayload.host = host;
+      }
+      if (username.trim()) {
+        updatePayload.username = username;
+      }
       if (password) {
         updatePayload.password = password;
       }
