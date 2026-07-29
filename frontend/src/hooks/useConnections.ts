@@ -63,7 +63,9 @@ export const useConnections = () => {
 
   const createMutation = useMutation({
     mutationFn: (data: ConnectionCreate) =>
-      createAdminConnection({ body: data, throwOnError: true }).then((res) => res.data),
+      createAdminConnection({ body: data, throwOnError: true, cache: 'no-store' }).then(
+        (response) => normalizeConnection(response.data)
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminConnections'] });
     },
@@ -71,8 +73,13 @@ export const useConnections = () => {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: ConnectionUpdate }) =>
-      updateAdminConnection({ path: { connectionId: id }, body: data, throwOnError: true }).then(
-        (res) => res.data
+      updateAdminConnection({
+        path: { connectionId: id },
+        body: data,
+        throwOnError: true,
+        cache: 'no-store',
+      }).then(
+        (response) => normalizeConnection(response.data)
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminConnections'] });
@@ -99,8 +106,12 @@ export const useConnections = () => {
 
   const disableMutation = useMutation({
     mutationFn: (id: string) =>
-      disableAdminConnection({ path: { connectionId: id }, throwOnError: true }).then(
-        (res) => res.data
+      disableAdminConnection({
+        path: { connectionId: id },
+        throwOnError: true,
+        cache: 'no-store',
+      }).then(
+        (response) => normalizeConnection(response.data)
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminConnections'] });
@@ -109,8 +120,12 @@ export const useConnections = () => {
 
   const enableMutation = useMutation({
     mutationFn: (id: string) =>
-      enableAdminConnection({ path: { connectionId: id }, throwOnError: true }).then(
-        (res) => res.data
+      enableAdminConnection({
+        path: { connectionId: id },
+        throwOnError: true,
+        cache: 'no-store',
+      }).then(
+        (response) => normalizeConnection(response.data)
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminConnections'] });
