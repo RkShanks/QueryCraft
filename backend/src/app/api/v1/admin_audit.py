@@ -58,6 +58,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status  # noqa: F401
+from pydantic import ValidationError
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -70,7 +71,7 @@ from app.core.exceptions import QuotaExceededError, QuotaUnavailableError
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType, Permission
 from app.repositories.quota_repository import QuotaRepository
-from app.schemas.audit_search import AuditExportRequest, AuditSearchParams
+from app.schemas.audit_search import MAX_AUDIT_SEARCH_PAGE, AuditExportRequest, AuditSearchParams
 from app.services.audit_export_service import AuditExportService, ExportLimitExceededError, redact_audit_export_value
 from app.services.audit_search_service import AuditSearchService
 from app.services.audit_service import AuditService, VerificationResult
@@ -333,7 +334,7 @@ async def search_audit_entries(
     resource_type: str | None = Query(default=None),
     start_date: str | None = Query(default=None),
     end_date: str | None = Query(default=None),
-    page: int = Query(default=1, ge=1),
+    page: int = Query(default=1, ge=1, le=MAX_AUDIT_SEARCH_PAGE),
     page_size: int = Query(default=50, ge=1, le=100),
 ):
     """GET /admin/audit/entries — filtered, paginated audit log search.
@@ -344,7 +345,11 @@ async def search_audit_entries(
       1. Parse filter params from query string.
       2. Enforce retention window server-side (entries older than
          ``AUDIT_RETENTION_MONTHS`` are excluded before pagination).
-      3. Return ``AuditSearchResponse`` with paginated entries.
+      3. Return ``AuditSearchResponse`` with paginated entries. Results use
+         ``timestamp DESC, sequence_number DESC`` ordering and are bounded by
+         the maximum sequence present when that request starts. Because this is
+         stateless offset pagination, separate page requests made while new
+         entries arrive can still observe normal offset drift.
       4. Emit ``AUDIT_SEARCH`` audit event whose context contains ONLY:
          - sanitized filter summary (param names + values, no result content)
          - pagination metadata (page, page_size)
@@ -433,6 +438,11 @@ async def search_audit_entries(
 
     except HTTPException:
         raise
+    except ValidationError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "invalid_filter", "message_key": "error.validation.generic"},
+        ) from None
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

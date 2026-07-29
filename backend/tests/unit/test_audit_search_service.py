@@ -56,7 +56,9 @@ def _build_mock_session(entries: list[_FakeEntry], total: int | None = None):
 
     # Simulate two execute calls: first returns a count scalar, second returns scalars
     count_result = MagicMock()
-    count_result.scalar_one.return_value = total if total is not None else len(entries)
+    count = total if total is not None else len(entries)
+    count_result.scalar_one.return_value = count
+    count_result.one.return_value = (count, max((entry.sequence_number for entry in entries), default=None))
 
     rows_result = MagicMock()
     rows_result.scalars.return_value.all.return_value = entries
@@ -173,6 +175,7 @@ class TestAuditSearchServiceRetentionEnforcement:
             result = MagicMock()
             if len(captured_queries) == 1:
                 result.scalar_one.return_value = 0
+                result.one.return_value = (0, None)
             else:
                 result.scalars.return_value.all.return_value = []
             return result
@@ -240,3 +243,72 @@ class TestAuditSearchServiceDefaultSort:
         # The service should preserve the DB-returned order
         assert result.entries[0].sequence_number == 10
         assert result.entries[1].sequence_number == 5
+
+    @pytest.mark.asyncio
+    async def test_equal_timestamps_use_descending_sequence_tie_break(self):
+        """Equal timestamps must have a deterministic newest-sequence-first order."""
+        from app.services.audit_search_service import AuditSearchService
+
+        session = _build_mock_session([], total=0)
+        await AuditSearchService.search(session, AuditSearchParams(), retention_months=24)
+
+        data_query = session.execute.call_args_list[1].args[0]
+        compiled = " ".join(str(data_query).split()).lower()
+        assert ("order by audit_log_entries.timestamp desc, audit_log_entries.sequence_number desc") in compiled
+
+    @pytest.mark.asyncio
+    async def test_data_query_is_bounded_by_request_snapshot(self):
+        """Concurrent appends after the count snapshot must not enter the page."""
+        from app.services.audit_search_service import AuditSearchService
+
+        entry = _make_entry(seq=42)
+        session = _build_mock_session([entry], total=1)
+        await AuditSearchService.search(session, AuditSearchParams(), retention_months=24)
+
+        data_query = session.execute.call_args_list[1].args[0]
+        compiled = " ".join(str(data_query).split()).lower()
+        assert "audit_log_entries.sequence_number <=" in compiled
+
+
+class TestAuditSearchResponseRedaction:
+    def test_stored_sensitive_values_are_redacted_from_search_rows(self):
+        """Search applies defense-in-depth even if unsafe data reached storage."""
+        from app.services.audit_search_service import _row_to_read
+
+        probe = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature"
+        entry = _make_entry(seq=7, actor_identity=probe)
+        entry.resource_id = probe
+        entry.context = {"nested": [{"safe_label": probe}]}
+
+        result = _row_to_read(entry)
+        serialized = result.model_dump_json()
+
+        assert probe not in serialized
+        assert "[REDACTED]" in serialized
+
+
+class TestAuditRetentionCalendarBoundaries:
+    @pytest.mark.parametrize(
+        ("now", "months", "expected"),
+        [
+            (
+                datetime(2024, 3, 31, 12, 0, tzinfo=UTC),
+                1,
+                datetime(2024, 2, 29, 12, 0, tzinfo=UTC),
+            ),
+            (
+                datetime(2025, 3, 31, 12, 0, tzinfo=UTC),
+                1,
+                datetime(2025, 2, 28, 12, 0, tzinfo=UTC),
+            ),
+            (
+                datetime(2026, 1, 31, 12, 0, tzinfo=UTC),
+                2,
+                datetime(2025, 11, 30, 12, 0, tzinfo=UTC),
+            ),
+        ],
+    )
+    def test_cutoff_uses_calendar_month_semantics(self, now, months, expected):
+        from app.services.audit_search_service import AuditSearchService
+
+        assert AuditSearchService._retention_cutoff(months, now=now) == expected
