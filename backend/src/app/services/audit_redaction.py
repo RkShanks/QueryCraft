@@ -46,6 +46,7 @@ _MAX_DECODE_LENGTH = 8_192
 _BASE64_VALUE = re.compile(r"^[A-Za-z0-9+/_=-]+$")
 
 _SENSITIVE_VALUE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^[\s\ufeff\x00-\x1f\x7f]*[=+\-@|]"),
     re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]+", re.IGNORECASE),
     re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b"),
     re.compile(r"-----BEGIN (?:RSA )?PRIVATE KEY-----|-----BEGIN CERT(?:IFICATE)?-----", re.IGNORECASE),

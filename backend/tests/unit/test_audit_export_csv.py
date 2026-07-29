@@ -2,7 +2,7 @@
 
 Contract tested:
 - CSV output contains correct column headers
-- Formula injection prevention: cells starting with =, +, -, @, | are tab-prefixed
+- Formula injection prevention: cells starting with =, +, -, @, | are redacted
 - Compliance metadata header row present with required fields:
   export_actor, export_timestamp, filter_summary, record_count, checksum
 - Checksum is SHA-256 of data payload (not mutable wrapper/header text)
@@ -15,6 +15,8 @@ import csv
 import hashlib
 from datetime import UTC, datetime
 from typing import Any
+
+import pytest
 
 
 def _make_entry(
@@ -90,9 +92,7 @@ class TestCsvHeaders:
 
 
 class TestFormulaInjectionPrevention:
-    """Cells starting with =, +, -, @, | must be tab-prefixed."""
-
-    FORMULA_PREFIXES = ("=", "+", "-", "@", "|")
+    """Cells starting with =, +, -, @, | must be redacted."""
 
     def _csv_cell_value(self, raw: bytes, col_name: str) -> str:
         """Extract the first data row value for a given column from CSV bytes."""
@@ -104,51 +104,23 @@ class TestFormulaInjectionPrevention:
         idx = header.index(col_name)
         return row[idx]
 
-    def test_equals_prefix_tabbed(self):
+    @pytest.mark.parametrize(
+        ("field", "formula"),
+        [
+            ("action_type", "=MALICIOUS"),
+            ("actor_identity", "+1234567890"),
+            ("outcome", "-1+2"),
+            ("actor_identity", "@badactor"),
+            ("action_type", "|cmd"),
+        ],
+    )
+    def test_formula_prefix_redacted(self, field, formula):
         from app.services.audit_export_service import AuditExportService
 
-        entries = [_make_entry(action_type="=MALICIOUS")]
+        entries = [_make_entry(**{field: formula})]
         metadata = _make_metadata()
         raw = AuditExportService.export_csv(entries, metadata)
-        cell = self._csv_cell_value(raw, "action_type")
-        assert cell.startswith("\t"), f"Expected tab-prefix, got: {repr(cell)}"
-        assert "MALICIOUS" in cell
-
-    def test_plus_prefix_tabbed(self):
-        from app.services.audit_export_service import AuditExportService
-
-        entries = [_make_entry(actor_identity="+1234567890")]
-        metadata = _make_metadata()
-        raw = AuditExportService.export_csv(entries, metadata)
-        cell = self._csv_cell_value(raw, "actor_identity")
-        assert cell.startswith("\t"), f"Expected tab-prefix, got: {repr(cell)}"
-
-    def test_minus_prefix_tabbed(self):
-        from app.services.audit_export_service import AuditExportService
-
-        entries = [_make_entry(outcome="-1+2")]
-        metadata = _make_metadata()
-        raw = AuditExportService.export_csv(entries, metadata)
-        cell = self._csv_cell_value(raw, "outcome")
-        assert cell.startswith("\t"), f"Expected tab-prefix, got: {repr(cell)}"
-
-    def test_at_prefix_tabbed(self):
-        from app.services.audit_export_service import AuditExportService
-
-        entries = [_make_entry(actor_identity="@badactor")]
-        metadata = _make_metadata()
-        raw = AuditExportService.export_csv(entries, metadata)
-        cell = self._csv_cell_value(raw, "actor_identity")
-        assert cell.startswith("\t"), f"Expected tab-prefix, got: {repr(cell)}"
-
-    def test_pipe_prefix_tabbed(self):
-        from app.services.audit_export_service import AuditExportService
-
-        entries = [_make_entry(action_type="|cmd")]
-        metadata = _make_metadata()
-        raw = AuditExportService.export_csv(entries, metadata)
-        cell = self._csv_cell_value(raw, "action_type")
-        assert cell.startswith("\t"), f"Expected tab-prefix, got: {repr(cell)}"
+        assert self._csv_cell_value(raw, field) == "[REDACTED]"
 
     def test_safe_cell_not_modified(self):
         from app.services.audit_export_service import AuditExportService

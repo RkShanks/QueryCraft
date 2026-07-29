@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType
+from app.services.audit_redaction import redact_audit_value
 
 _logger = logging.getLogger(__name__)
 
@@ -37,70 +38,6 @@ class VerificationResult:
     entries_checked: int
     first_break_at: int | None
     verified_at: datetime
-
-
-# ---------------------------------------------------------------------------
-# Secret redaction helpers
-# ---------------------------------------------------------------------------
-
-
-_SENSITIVE_TOKENS: set[str] = {
-    "password",
-    "secret",
-    "token",
-    "apikey",
-    "credential",
-    "certificate",
-    "privatekey",
-    "assertion",
-    "samlresponse",
-    "authorization",
-    "encryptionkey",
-    "bearer",
-    "jwt",
-    # OIDC / SSO tokens (W17.5c F-002). Mirrors the set in
-    # ``SsoService._safe_audit_context`` verbatim so the two layers
-    # cannot drift; any future direct caller of ``AuditService.log``
-    # passing these keys under any nesting depth is fail-safe.
-    "nonce",
-    "state",
-    "code",
-    "accesstoken",
-    "idtoken",
-    "refreshtoken",
-}
-
-# Explicit safelist of *normalized* composite key names that must never be
-# redacted even though they contain a short sensitive substring.
-# Example: ``error_code`` → ``errorcode`` contains ``"code"`` but is safe.
-# Add here conservatively; each entry must be a genuinely non-secret audit field.
-_NON_SECRET_NORMALIZED: frozenset[str] = frozenset(
-    {
-        "errorcode",  # e.g. error_code = "sso_validation_failed"
-        "statuscode",  # HTTP status codes stored in audit context
-        "postcode",  # postal code (geographic, not secret)
-        "zipcode",  # zip code (geographic, not secret)
-        "hashcode",  # hash codes (non-credential)
-    }
-)
-
-
-def _is_sensitive_key(key: str) -> bool:
-    normalized = key.lower().replace("_", "").replace("-", "")
-    # Safelist check: known composite keys that are safe despite containing
-    # a sensitive substring (e.g. ``error_code`` → ``errorcode`` ~ ``code``).
-    if normalized in _NON_SECRET_NORMALIZED:
-        return False
-    # Substring check for sensitive token names.
-    return any(token in normalized for token in _SENSITIVE_TOKENS)
-
-
-def _redact_value(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {k: "[REDACTED]" if _is_sensitive_key(k) else _redact_value(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_redact_value(i) for i in value]
-    return value
 
 
 # ---------------------------------------------------------------------------
@@ -466,7 +403,7 @@ class AuditService:
         """Create a new audit log entry with chained SHA-256 hashing."""
         if context is None:
             context = {}
-        redacted_context = _redact_value(context)
+        redacted_context = redact_audit_value(context)
 
         # Detect mock sessions (unit tests with AsyncMock/MagicMock) and skip DB writes
         import unittest.mock

@@ -62,20 +62,20 @@ def _first_csv_row(raw: bytes) -> dict[str, str]:
 
 class TestCsvFormulaInjectionHardening:
     @pytest.mark.parametrize("prefix", ["=", "+", "-", "@", "|"])
-    def test_each_formula_prefix_is_tab_prefixed(self, prefix):
+    def test_each_formula_prefix_is_redacted(self, prefix):
         value = f"{prefix}SYNTHETIC_FORMULA"
         raw = AuditExportService.export_csv(
             [_entry(actor_identity=value)],
             _metadata(),
         )
 
-        assert _first_csv_row(raw)["actor_identity"] == f"\t{value}"
+        assert _first_csv_row(raw)["actor_identity"] == "[REDACTED]"
 
     @pytest.mark.parametrize(
         "leading",
         [" ", "  ", "\t", "\r", "\n", "\r\n", "\ufeff", "\x00", "\x1f"],
     )
-    def test_formula_after_ignorable_prefix_is_tab_prefixed(self, leading):
+    def test_formula_after_ignorable_prefix_is_redacted(self, leading):
         value = f"{leading}=SYNTHETIC_FORMULA"
 
         raw = AuditExportService.export_csv(
@@ -83,16 +83,16 @@ class TestCsvFormulaInjectionHardening:
             _metadata(),
         )
 
-        assert _first_csv_row(raw)["actor_identity"] == f"\t{value}"
+        assert _first_csv_row(raw)["actor_identity"] == "[REDACTED]"
 
-    def test_formula_shaped_metadata_is_tab_prefixed_without_breaking_header(self):
+    def test_formula_shaped_metadata_is_redacted_without_breaking_header(self):
         raw = AuditExportService.export_csv(
             [_entry()],
             _metadata(export_actor=" \t=FORMULA()"),
         )
 
         metadata, _ = _csv_metadata_and_payload(raw)
-        assert metadata["export_actor"] == "\t \t=FORMULA()"
+        assert metadata["export_actor"] == "[REDACTED]"
 
     def test_special_characters_remain_parseable_and_unicode_survives(self):
         value = 'مدير، "اقتباس", سطر\r\nثانٍ'
