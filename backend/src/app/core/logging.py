@@ -66,6 +66,9 @@ def setup_logging(log_level: str = "INFO") -> None:
         stream=sys.stdout,
         level=getattr(logging, log_level.upper(), logging.INFO),
     )
+    for logger_name in ("httpx", "httpcore"):
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").disabled = True
 
 
 def _normalized_log_key(key: str) -> str:
