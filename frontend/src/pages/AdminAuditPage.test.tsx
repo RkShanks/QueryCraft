@@ -32,6 +32,8 @@ vi.mock('react-i18next', () => ({
           
           'audit.search.title': 'Search Audit Logs',
           'audit.search.results': 'Audit search results',
+          'audit.search.actions': 'Audit search actions',
+          'audit.search.timestamp': 'Timestamp',
           'audit.search.date_from': 'Date From',
           'audit.search.date_to': 'Date To',
           'audit.search.action_type': 'Action Type',
@@ -79,6 +81,8 @@ vi.mock('react-i18next', () => ({
           
           'audit.search.title': 'البحث في سجلات التدقيق',
           'audit.search.results': 'نتائج البحث في سجلات التدقيق',
+          'audit.search.actions': 'إجراءات البحث في سجلات التدقيق',
+          'audit.search.timestamp': 'الطابع الزمني',
           'audit.search.date_from': 'التاريخ من',
           'audit.search.date_to': 'التاريخ إلى',
           'audit.search.action_type': 'نوع الإجراء',

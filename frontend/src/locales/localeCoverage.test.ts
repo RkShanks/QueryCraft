@@ -153,6 +153,8 @@ describe('Wave 14 i18n key coverage', () => {
     'admin.audit.securityWarning',
     // Wave 18.3 Audit Search/Export/Retention keys
     'audit.search.title',
+    'audit.search.results',
+    'audit.search.actions',
     'audit.search.date_from',
     'audit.search.date_to',
     'audit.search.action_type',

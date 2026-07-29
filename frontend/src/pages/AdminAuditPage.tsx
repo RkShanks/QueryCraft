@@ -339,9 +339,9 @@ export const AdminAuditPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       {/* Global Toast Container */}
-      <div className="fixed top-6 end-6 z-50 flex flex-col gap-3 max-w-sm w-full select-none pointer-events-none">
+      <div className="fixed top-4 start-4 end-4 z-50 flex flex-col gap-3 select-none pointer-events-none sm:top-6 sm:start-auto sm:end-6 sm:max-w-sm">
         {toasts.map((t) => (
           <div
             key={t.id}
@@ -369,18 +369,18 @@ export const AdminAuditPage: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex justify-between items-center">
-        <div>
+      <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-text-primary flex items-center gap-2">
-            <Shield className="w-6 h-6 text-neon-cyan" />
+            <Shield className="w-6 h-6 shrink-0 text-neon-cyan" />
             {t('admin.audit.title')}
           </h1>
         </div>
-        <div>
+        <div className="shrink-0">
           <button
             onClick={handleVerify}
             disabled={verifyMutation.isPending || statusQuery.isLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex w-full items-center justify-center gap-2 px-4 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
           >
             {verifyMutation.isPending && <RefreshCw className="w-4 h-4 animate-spin" />}
             {verifyMutation.isPending ? t('admin.audit.verifying') : t('admin.audit.verifyButton')}
@@ -391,14 +391,14 @@ export const AdminAuditPage: React.FC = () => {
       {renderStatusDetails()}
 
       {/* Persistent Search Logs Panel */}
-      <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-6">
+      <div className="p-4 sm:p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-6">
         <h2 className="text-xl font-semibold text-white flex items-center gap-2 border-b border-gray-800 pb-3">
           <Shield className="w-5 h-5 text-neon-cyan" />
           {t('audit.search.title')}
         </h2>
 
         {/* Search Form */}
-        <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
           {/* Date From */}
           <div className="flex flex-col gap-2">
             <label htmlFor="start_date" className="text-gray-400 text-sm font-medium">
@@ -493,11 +493,15 @@ export const AdminAuditPage: React.FC = () => {
           </div>
 
           {/* Buttons */}
-          <div className="md:col-span-3 flex justify-end gap-3 mt-2">
+          <div
+            className="mt-2 grid grid-cols-2 gap-3 md:col-span-3 sm:flex sm:flex-wrap sm:justify-end"
+            role="group"
+            aria-label={t('audit.search.actions')}
+          >
             <button
               type="button"
               onClick={handleReset}
-              className="px-4 py-2 border border-gray-800 text-gray-300 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer"
+              className="min-w-0 px-3 py-2 border border-gray-800 text-gray-300 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer sm:px-4"
             >
               {t('audit.search.reset')}
             </button>
@@ -505,7 +509,7 @@ export const AdminAuditPage: React.FC = () => {
               type="button"
               onClick={() => handleExport('csv')}
               disabled={isExporting !== null}
-              className="px-4 py-2 border border-gray-800 text-gray-300 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="min-w-0 px-3 py-2 border border-gray-800 text-gray-300 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:px-4"
             >
               {isExporting === 'csv' ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -518,7 +522,7 @@ export const AdminAuditPage: React.FC = () => {
               type="button"
               onClick={() => handleExport('json')}
               disabled={isExporting !== null}
-              className="px-4 py-2 border border-gray-800 text-gray-300 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="min-w-0 px-3 py-2 border border-gray-800 text-gray-300 rounded-md hover:bg-gray-800 transition-colors text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:px-4"
             >
               {isExporting === 'json' ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -529,7 +533,7 @@ export const AdminAuditPage: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors text-sm font-medium cursor-pointer"
+              className="min-w-0 px-3 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors text-sm font-medium cursor-pointer sm:px-4"
             >
               {t('audit.search.submit')}
             </button>
@@ -547,9 +551,12 @@ export const AdminAuditPage: React.FC = () => {
           ) : !searchData || searchData.entries.length === 0 ? (
             <div className="p-6 text-center text-gray-500">{t('admin.audit.emptyState')}</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-start">
-                <thead>
+            <div>
+              <table
+                className="block w-full text-sm text-start lg:table"
+                aria-label={t('audit.search.results')}
+              >
+                <thead className="sr-only lg:not-sr-only lg:table-header-group">
                   <tr className="border-b border-gray-800 bg-gray-900/50">
                     <th className="px-4 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider">#</th>
                     <th className="px-4 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('audit.search.timestamp')}</th>
@@ -559,16 +566,54 @@ export const AdminAuditPage: React.FC = () => {
                     <th className="px-4 py-3 text-start text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('audit.search.resource_type')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/50">
+                <tbody className="grid gap-3 p-3 lg:table-row-group lg:p-0">
                   {searchData.entries.map((entry) => (
-                    <tr key={entry.sequence_number} className="hover:bg-gray-900/30 transition-colors">
-                      <td dir="ltr" className="px-4 py-3 text-start text-white font-mono">{entry.sequence_number}</td>
-                      <td dir="ltr" className="px-4 py-3 text-start text-gray-300 font-mono text-xs whitespace-nowrap">
-                        {new Date(entry.timestamp).toLocaleString()}
+                    <tr
+                      key={entry.sequence_number}
+                      className="grid grid-cols-1 gap-3 rounded-lg border border-gray-800 bg-gray-900/40 p-4 transition-colors hover:bg-gray-900/60 sm:grid-cols-2 lg:table-row lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:hover:bg-gray-900/30"
+                    >
+                      <td
+                        data-label="#"
+                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                      >
+                        <span dir="ltr" className="min-w-0 text-end text-white font-mono lg:text-start">
+                          {entry.sequence_number}
+                        </span>
                       </td>
-                      <td dir="auto" className="px-4 py-3 text-start text-gray-300 whitespace-nowrap">{entry.actor_identity || '-'}</td>
-                      <td dir="ltr" className="px-4 py-3 text-start text-gray-300 whitespace-nowrap font-mono text-xs">{entry.action_type}</td>
-                      <td className="px-4 py-3 text-start">
+                      <td
+                        data-label={t('audit.search.timestamp')}
+                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                      >
+                        <span
+                          dir="ltr"
+                          className="min-w-0 break-words text-end text-gray-300 font-mono text-xs lg:text-start lg:whitespace-nowrap"
+                        >
+                          {new Date(entry.timestamp).toLocaleString()}
+                        </span>
+                      </td>
+                      <td
+                        data-label={t('audit.search.actor')}
+                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                      >
+                        <span dir="auto" className="min-w-0 break-words text-end text-gray-300 lg:text-start">
+                          {entry.actor_identity || '-'}
+                        </span>
+                      </td>
+                      <td
+                        data-label={t('audit.search.action_type')}
+                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                      >
+                        <span
+                          dir="ltr"
+                          className="min-w-0 break-all text-end text-gray-300 font-mono text-xs lg:text-start lg:whitespace-nowrap"
+                        >
+                          {entry.action_type}
+                        </span>
+                      </td>
+                      <td
+                        data-label={t('audit.search.outcome')}
+                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                      >
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
                             entry.outcome === 'success'
@@ -579,7 +624,17 @@ export const AdminAuditPage: React.FC = () => {
                           {entry.outcome}
                         </span>
                       </td>
-                      <td dir="ltr" className="px-4 py-3 text-start text-gray-300 font-mono text-xs">{entry.resource_type || '-'}</td>
+                      <td
+                        data-label={t('audit.search.resource_type')}
+                        className="flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden"
+                      >
+                        <span
+                          dir="ltr"
+                          className="min-w-0 break-all text-end text-gray-300 font-mono text-xs lg:text-start"
+                        >
+                          {entry.resource_type || '-'}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -587,7 +642,7 @@ export const AdminAuditPage: React.FC = () => {
 
               {/* Pagination Controls */}
               {searchData.pagination.total_pages > 1 && (
-                <div className="flex justify-between items-center px-4 py-3 border-t border-gray-800 bg-gray-900/20">
+                <div className="flex flex-col gap-3 px-4 py-3 border-t border-gray-800 bg-gray-900/20 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-gray-400 text-xs">
                     {t('audit.search.page_info', {
                       page: searchData.pagination.page,
