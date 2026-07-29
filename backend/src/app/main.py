@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
 
     # Verify Redis connectivity
     await init_redis()
-    logger.info("redis_connected", url=settings.REDIS_URL)
+    logger.info("redis_connected")
 
     # Refuse to start if the DB schema is behind the source tree's alembic head
     await _check_alembic_drift(settings.DATABASE_URL)
@@ -132,7 +132,7 @@ async def _sync_admin_user(settings):
                 },
             )
             await session.commit()
-            logger.info("admin_user_synced", username=settings.ADMIN_USERNAME)
+            logger.info("admin_user_synced")
     except ProgrammingError:
         logger.warning("users_table_missing", msg="Skipping admin sync. Run alembic upgrade head.")
 

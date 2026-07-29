@@ -69,6 +69,11 @@ def _error_redirect(error_code: str) -> RedirectResponse:
     return RedirectResponse(url=url, status_code=302)
 
 
+def _log_sso_failure(event: str, error_code: str) -> None:
+    """Log only a pre-mapped code because provider exceptions may contain secrets."""
+    logger.warning(event, error_code=error_code)
+
+
 async def _get_sso_service(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
@@ -137,8 +142,9 @@ async def oidc_login(
         auth_url = await sso_service.initiate_oidc_login(provider)
         return RedirectResponse(url=auth_url, status_code=302)
     except SsoValidationError as exc:
-        logger.warning("oidc_login_failed", error=exc.message)
-        return _error_redirect(_map_sso_error(exc))
+        error_code = _map_sso_error(exc)
+        _log_sso_failure("oidc_login_failed", error_code)
+        return _error_redirect(error_code)
 
 
 @router.get("/oidc/callback")
@@ -160,8 +166,9 @@ async def oidc_callback(
         SessionMiddleware.set_cookie(response, session_id, secure=True)
         return response
     except SsoValidationError as exc:
-        logger.warning("oidc_callback_failed", error=exc.message)
-        return _error_redirect(_map_sso_error(exc))
+        error_code = _map_sso_error(exc)
+        _log_sso_failure("oidc_callback_failed", error_code)
+        return _error_redirect(error_code)
 
 
 @router.get("/saml/login")
@@ -179,8 +186,9 @@ async def saml_login(
         redirect_url = await sso_service.initiate_saml_login(provider)
         return RedirectResponse(url=redirect_url, status_code=302)
     except SsoValidationError as exc:
-        logger.warning("saml_login_failed", error=exc.message)
-        return _error_redirect(_map_sso_error(exc))
+        error_code = _map_sso_error(exc)
+        _log_sso_failure("saml_login_failed", error_code)
+        return _error_redirect(error_code)
 
 
 @router.post("/saml/callback")
@@ -202,5 +210,6 @@ async def saml_callback(
         SessionMiddleware.set_cookie(response, session_id, secure=True)
         return response
     except SsoValidationError as exc:
-        logger.warning("saml_callback_failed", error=exc.message)
-        return _error_redirect(_map_sso_error(exc))
+        error_code = _map_sso_error(exc)
+        _log_sso_failure("saml_callback_failed", error_code)
+        return _error_redirect(error_code)
