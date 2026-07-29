@@ -82,8 +82,7 @@ export const AdminConnectionsPage: React.FC = () => {
                   addToast('success', t('admin.connections.updateSuccess') || 'Connection updated successfully');
                 },
                 onError: (err: unknown) => {
-                  const apiErr = err as { message?: string };
-                  addToast('error', apiErr?.message || t('admin.connections.updateError') || 'Failed to update connection');
+                  addToast('error', t(getSafeConnectionErrorKey(err)));
                 }
               }
             );
