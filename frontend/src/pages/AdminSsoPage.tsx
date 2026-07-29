@@ -291,6 +291,7 @@ export const AdminSsoPage: React.FC = () => {
                 {t('admin.sso.form.groupClaimName')}
               </label>
               <input
+                dir="ltr"
                 id="groupClaimName"
                 type="text"
                 value={groupClaimName}
@@ -308,6 +309,7 @@ export const AdminSsoPage: React.FC = () => {
                     {t('admin.sso.form.issuerUrl')}
                   </label>
                   <input
+                    dir="ltr"
                     id="issuerUrl"
                     type="url"
                     value={issuerUrl}
@@ -320,6 +322,7 @@ export const AdminSsoPage: React.FC = () => {
                     {t('admin.sso.form.clientId')}
                   </label>
                   <input
+                    dir="ltr"
                     id="clientId"
                     type="text"
                     value={clientId}
@@ -335,6 +338,7 @@ export const AdminSsoPage: React.FC = () => {
                     {t('admin.sso.form.clientSecret')}
                   </label>
                   <input
+                    dir="ltr"
                     id="clientSecret"
                     type="password"
                     value={clientSecret}
@@ -348,6 +352,7 @@ export const AdminSsoPage: React.FC = () => {
                     {t('admin.sso.form.scopes')}
                   </label>
                   <input
+                    dir="ltr"
                     id="scopes"
                     type="text"
                     value={scopes}
@@ -362,6 +367,7 @@ export const AdminSsoPage: React.FC = () => {
                   {t('admin.sso.form.redirectUri')}
                 </label>
                 <input
+                  dir="ltr"
                   id="redirectUri"
                   type="url"
                   value={redirectUri}
@@ -379,6 +385,7 @@ export const AdminSsoPage: React.FC = () => {
                     {t('admin.sso.form.samlEntityId')}
                   </label>
                   <input
+                    dir="ltr"
                     id="samlEntityId"
                     type="text"
                     value={samlEntityId}
@@ -391,6 +398,7 @@ export const AdminSsoPage: React.FC = () => {
                     {t('admin.sso.form.samlMetadataUrl')}
                   </label>
                   <input
+                    dir="ltr"
                     id="samlMetadataUrl"
                     type="url"
                     value={samlMetadataUrl}
@@ -405,6 +413,7 @@ export const AdminSsoPage: React.FC = () => {
                   {t('admin.sso.form.samlMetadataXml')}
                 </label>
                 <textarea
+                  dir="ltr"
                   id="samlMetadataXml"
                   value={samlMetadataXml}
                   onChange={(e) => setSamlMetadataXml(e.target.value)}
@@ -418,6 +427,7 @@ export const AdminSsoPage: React.FC = () => {
                   {t('admin.sso.form.samlCertificate')}
                 </label>
                 <textarea
+                  dir="ltr"
                   id="samlCertificate"
                   value={samlCertificate}
                   onChange={(e) => setSamlCertificate(e.target.value)}
@@ -522,7 +532,7 @@ export const AdminSsoPage: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-semibold text-white text-lg">{provider.display_name}</h3>
-                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-mono uppercase bg-gray-800 text-neon-cyan rounded">
+                    <span dir="ltr" className="inline-block mt-1 px-2 py-0.5 text-xs font-mono uppercase bg-gray-800 text-neon-cyan rounded">
                       {provider.protocol}
                     </span>
                   </div>
@@ -551,42 +561,42 @@ export const AdminSsoPage: React.FC = () => {
                     <>
                       <div className="flex justify-between">
                         <span>{t('admin.sso.form.issuerUrl') || 'Issuer URL'}:</span>
-                        <span className="font-mono text-xs truncate max-w-xs">{provider.issuer_url}</span>
+                        <span dir="ltr" className="font-mono text-xs truncate max-w-xs">{provider.issuer_url}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>{t('admin.sso.form.clientId') || 'Client ID'}:</span>
-                        <span className="font-mono text-xs truncate max-w-xs">{provider.client_id}</span>
+                        <span dir="ltr" className="font-mono text-xs truncate max-w-xs">{provider.client_id}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>{t('admin.sso.form.clientSecret') || 'Client Secret'}:</span>
-                        <span className="font-mono text-xs">{provider.client_secret_masked || '●●●●●●●●'}</span>
+                        <span dir="ltr" className="font-mono text-xs">{provider.client_secret_masked || '●●●●●●●●'}</span>
                       </div>
                     </>
                   ) : (
                     <>
                       <div className="flex justify-between">
                         <span>{t('admin.sso.form.samlEntityId') || 'Entity ID'}:</span>
-                        <span className="font-mono text-xs truncate max-w-xs">{provider.saml_entity_id}</span>
+                        <span dir="ltr" className="font-mono text-xs truncate max-w-xs">{provider.saml_entity_id}</span>
                       </div>
                       {provider.saml_metadata_url && (
                         <div className="flex justify-between">
                           <span>{t('admin.sso.form.samlMetadataUrl') || 'Metadata URL'}:</span>
-                          <span className="font-mono text-xs truncate max-w-xs">{provider.saml_metadata_url}</span>
+                          <span dir="ltr" className="font-mono text-xs truncate max-w-xs">{provider.saml_metadata_url}</span>
                         </div>
                       )}
                       <div className="flex justify-between">
                         <span>{t('admin.sso.form.samlMetadataXml') || 'Metadata XML'}:</span>
-                        <span className="font-mono text-xs">{provider.saml_metadata_xml_masked || '●●●●●●●●'}</span>
+                        <span dir="ltr" className="font-mono text-xs">{provider.saml_metadata_xml_masked || '●●●●●●●●'}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>{t('admin.sso.form.samlCertificate') || 'Certificate'}:</span>
-                        <span className="font-mono text-xs">{provider.saml_certificate_masked || '●●●●●●●●'}</span>
+                        <span dir="ltr" className="font-mono text-xs">{provider.saml_certificate_masked || '●●●●●●●●'}</span>
                       </div>
                     </>
                   )}
                   <div className="flex justify-between border-t border-gray-800/50 pt-2">
                     <span>{t('admin.sso.form.groupClaimName') || 'Group Claim Name'}:</span>
-                    <span className="font-mono text-xs">{provider.group_claim_name || 'N/A'}</span>
+                    <span dir="ltr" className="font-mono text-xs">{provider.group_claim_name || 'N/A'}</span>
                   </div>
                 </div>
               </div>
