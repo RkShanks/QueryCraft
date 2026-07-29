@@ -8,17 +8,27 @@ database role against the required set. Denials are durably recorded as
 import uuid
 from typing import Never
 
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.base import get_async_session_factory
+from app.db.base import get_db
 from app.db.models.enums import AuditActionType, Permission
 from app.db.models.role import Role
 from app.db.models.user import User
 from app.services.audit_service import AuditService
 
+CurrentRole = tuple[uuid.UUID, str, list[str]]
 
-async def _current_role(db, session: dict) -> tuple[uuid.UUID, str, list[str]] | None:
+
+async def get_current_role(
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> CurrentRole | None:
+    """Resolve the caller's current database role from the session user ID."""
+    session = getattr(request.state, "session", None)
+    if not isinstance(session, dict):
+        return None
     user_id = session.get("user_id")
     try:
         user_uuid = uuid.UUID(user_id)
@@ -65,15 +75,15 @@ async def _audit_access_denied(
 
 
 def require_permission(*perms: Permission):
-    """Return a FastAPI dependency that checks session permissions.
+    """Return a FastAPI dependency that checks current database permissions.
 
     Args:
         perms: One or more Permission enum values required for access.
 
     Returns:
         An async callable suitable for ``Depends()`` that validates the
-        request's session data contains at least one of the required
-        permissions.
+        caller's current database role contains at least one required
+        permission. Session role claims are refreshed only after lookup.
 
     Raises:
         HTTPException 401: No session data present (unauthenticated).
@@ -86,11 +96,14 @@ def require_permission(*perms: Permission):
     """
     required = {str(p) for p in perms}
 
-    async def _checker(request: Request) -> dict:
+    async def _checker(
+        request: Request,
+        current_role: CurrentRole | None = Depends(get_current_role),  # noqa: B008
+        db: AsyncSession = Depends(get_db),  # noqa: B008
+    ) -> dict:
         session = getattr(request.state, "session", None)
-        session_factory = get_async_session_factory()
 
-        async def deny(db, status_code: int, error: str, reason: str) -> Never:
+        async def deny(status_code: int, error: str, reason: str) -> Never:
             await _audit_access_denied(
                 db,
                 session,
@@ -103,21 +116,19 @@ def require_permission(*perms: Permission):
                 detail={"error": error, "message_key": f"error.{error}"},
             )
 
-        async with session_factory() as db:
-            if session is None:
-                await deny(db, status.HTTP_401_UNAUTHORIZED, "unauthorized", "unauthenticated")
-            current_role = await _current_role(db, session)
-            if current_role is None:
-                await deny(db, status.HTTP_403_FORBIDDEN, "forbidden", "unmapped_role")
-            role_id, role_name, permissions = current_role
-            session.update(
-                role_id=str(role_id),
-                role_name=role_name,
-                permissions=permissions,
-            )
-            user_perms = set(permissions)
-            if not (user_perms & required):
-                await deny(db, status.HTTP_403_FORBIDDEN, "forbidden", "missing_permission")
+        if session is None:
+            await deny(status.HTTP_401_UNAUTHORIZED, "unauthorized", "unauthenticated")
+        if current_role is None:
+            await deny(status.HTTP_403_FORBIDDEN, "forbidden", "unmapped_role")
+        role_id, role_name, permissions = current_role
+        session.update(
+            role_id=str(role_id),
+            role_name=role_name,
+            permissions=permissions,
+        )
+        user_perms = set(permissions)
+        if not (user_perms & required):
+            await deny(status.HTTP_403_FORBIDDEN, "forbidden", "missing_permission")
         return session
 
     return _checker

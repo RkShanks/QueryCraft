@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
+from tests.unit.permission_test_helpers import use_test_session_current_role
 
 
 def _create_test_app():
@@ -260,6 +261,7 @@ class TestAdminConnectionSchemaRealDependencyPath:
                 return await call_next(request)
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.add_middleware(SessionInjectionMiddleware)
 
         @app.exception_handler(HTTPException)
@@ -304,6 +306,7 @@ class TestAdminConnectionSchemaRealDependencyPath:
                 return await call_next(request)
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.add_middleware(SessionInjectionMiddleware)
 
         @app.exception_handler(HTTPException)
@@ -350,6 +353,7 @@ class TestSchemaEndpointPermissionContract:
                 return await call_next(request)
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.add_middleware(SessionInjectionMiddleware)
 
         @app.exception_handler(HTTPException)

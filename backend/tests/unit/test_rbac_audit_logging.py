@@ -22,6 +22,7 @@ from app.db.models.enums import AuditActionType
 from app.db.models.role import Role
 from app.repositories.role_repository import RoleRepository
 from app.services.role_service import RoleService
+from tests.unit.permission_test_helpers import use_test_session_current_role
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -481,6 +482,7 @@ class TestGroupMappingAuditLogging:
         from app.core.dependencies import get_db
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.include_router(router, prefix="/api/v1")
 
         async def override_db():

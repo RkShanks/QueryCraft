@@ -62,6 +62,7 @@ from sqlalchemy import text as sql_text
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType
 from app.services.audit_service import AuditService, VerificationResult
+from tests.unit.permission_test_helpers import use_test_session_current_role
 
 # ---------------------------------------------------------------------------
 # Test fixtures and helpers
@@ -139,6 +140,7 @@ def _make_app(session_data: dict | None) -> FastAPI:
         yield mock_session
 
     app = FastAPI()
+    use_test_session_current_role(app)
     app.add_middleware(SessionInjectionMiddleware)
     app.add_exception_handler(HTTPException, _http_exc_handler)
     app.dependency_overrides[get_db] = _mock_get_db

@@ -9,6 +9,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.schemas.history import AcceptedQueryDetail, HistoryListResponse
 from app.schemas.query import AcceptedQuerySummary
+from tests.unit.permission_test_helpers import use_test_session_current_role
 
 
 class TestHistoryMetadata:
@@ -55,6 +56,7 @@ class TestHistoryMetadata:
                 return await call_next(request)
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.add_middleware(SessionInjectionMiddleware)
 
         @app.exception_handler(HTTPException)
@@ -115,6 +117,7 @@ class TestHistoryMetadata:
                 return await call_next(request)
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.add_middleware(SessionInjectionMiddleware)
 
         @app.exception_handler(HTTPException)

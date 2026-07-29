@@ -35,15 +35,14 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 
+from app.api.dependencies.permissions import CurrentRole, get_current_role
 from app.core.dependencies import get_db, require_active_user
 from app.core.exceptions import QuotaExceededError, QuotaUnavailableError
 from app.db.models.enums import (
@@ -173,38 +172,27 @@ class TestRouteSanitizationRegression:
 
     @pytest.fixture(autouse=True)
     def current_role_database(self):
-        permission_db = AsyncMock()
-
-        @asynccontextmanager
-        async def session_context():
-            yield permission_db
-
         def set_current_role(role_id: str, permissions: list[str]) -> None:
-            role_query = MagicMock()
-            role_query.one_or_none.return_value = SimpleNamespace(
-                id=role_id,
-                name="Current role",
-                permissions=permissions,
-            )
-            permission_db.execute.return_value = role_query
+            self._current_role = (uuid.UUID(role_id), "Current role", permissions)
 
+        self._current_role: CurrentRole | None = None
         self._set_current_role = set_current_role
-        with (
-            patch(
-                "app.api.dependencies.permissions.get_async_session_factory",
-                return_value=session_context,
-            ),
-            patch(
-                "app.api.dependencies.permissions.AuditService.log",
-                new_callable=AsyncMock,
-            ),
+        with patch(
+            "app.api.dependencies.permissions.AuditService.log",
+            new_callable=AsyncMock,
         ):
             yield
 
     @pytest.fixture
     def app_instance(self):
         """Create a fresh FastAPI instance for tests."""
-        return create_app()
+        app = create_app()
+
+        async def resolve_current_role() -> CurrentRole | None:
+            return self._current_role
+
+        app.dependency_overrides[get_current_role] = resolve_current_role
+        return app
 
     @pytest.fixture
     async def client(self, app_instance):

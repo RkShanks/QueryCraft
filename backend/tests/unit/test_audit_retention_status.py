@@ -33,6 +33,8 @@ import pytest
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
+from tests.unit.permission_test_helpers import use_test_session_current_role
+
 # ---------------------------------------------------------------------------
 # Helpers — identical session / app factory pattern from test_audit_endpoints.py
 # ---------------------------------------------------------------------------
@@ -91,6 +93,7 @@ def _make_app(session_data: dict | None) -> FastAPI:
         yield mock_session
 
     app = FastAPI()
+    use_test_session_current_role(app)
     app.add_middleware(SessionInjectionMiddleware)
     app.add_exception_handler(HTTPException, _http_exc_handler)
     app.dependency_overrides[get_db] = _mock_get_db

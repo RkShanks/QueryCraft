@@ -22,6 +22,7 @@ from httpx import ASGITransport, AsyncClient
 from app.db.models.enums import SsoProtocol
 from app.db.models.sso_provider import SsoProvider
 from app.schemas.sso import SsoProviderCreate, SsoProviderUpdate
+from tests.unit.permission_test_helpers import use_test_session_current_role
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -110,6 +111,7 @@ class TestPermissionEnforcement:
             return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.add_middleware(SessionInjectionMiddleware)
         app.add_exception_handler(HTTPException, _http_exc_handler)
         app.include_router(router, prefix="/api/v1")
@@ -600,6 +602,7 @@ class TestRouteLevelStatusCodes:
         from app.core.dependencies import get_db
 
         app = FastAPI()
+        use_test_session_current_role(app)
         app.include_router(router, prefix="/api/v1")
 
         async def override_db():
@@ -684,18 +687,22 @@ class TestRouteLevelStatusCodes:
         app = self._build_app()
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post(
-                "/api/v1/admin/sso/providers",
-                json={
-                    "protocol": "oidc",
-                    "display_name": "Test",
-                    "issuer_url": "https://idp.example.com",
-                    "client_id": "client-123",
-                    "client_secret": "secret",
-                },
-                headers={"origin": "http://test"},
-            )
+        with patch(
+            "app.api.dependencies.permissions.AuditService.log",
+            new_callable=AsyncMock,
+        ):
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    "/api/v1/admin/sso/providers",
+                    json={
+                        "protocol": "oidc",
+                        "display_name": "Test",
+                        "issuer_url": "https://idp.example.com",
+                        "client_id": "client-123",
+                        "client_secret": "secret",
+                    },
+                    headers={"origin": "http://test"},
+                )
         assert response.status_code == 401
         data = response.json()
         assert data["error"] == "unauthorized"
@@ -706,18 +713,22 @@ class TestRouteLevelStatusCodes:
         app = self._build_app(session={"permissions": ["query.submit"]})
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post(
-                "/api/v1/admin/sso/providers",
-                json={
-                    "protocol": "oidc",
-                    "display_name": "Test",
-                    "issuer_url": "https://idp.example.com",
-                    "client_id": "client-123",
-                    "client_secret": "secret",
-                },
-                headers={"origin": "http://test"},
-            )
+        with patch(
+            "app.api.dependencies.permissions.AuditService.log",
+            new_callable=AsyncMock,
+        ):
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    "/api/v1/admin/sso/providers",
+                    json={
+                        "protocol": "oidc",
+                        "display_name": "Test",
+                        "issuer_url": "https://idp.example.com",
+                        "client_id": "client-123",
+                        "client_secret": "secret",
+                    },
+                    headers={"origin": "http://test"},
+                )
         assert response.status_code == 403
         data = response.json()
         assert data["error"] == "forbidden"

@@ -43,6 +43,7 @@ from app.db.models.enums import DatabaseType
 from app.db.models.role import Role
 from app.db.models.role_connection_policy import RoleConnectionPolicy
 from app.evaluator.schema_context import Column, SchemaContext, Table
+from tests.unit.permission_test_helpers import use_test_session_current_role
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -201,6 +202,7 @@ def _make_app(
         return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
 
     app = FastAPI()
+    use_test_session_current_role(app)
     app.add_middleware(SessionInjectionMiddleware)
     app.add_exception_handler(HTTPException, _http_exc_handler)
     app.include_router(router, prefix="/api/v1")
