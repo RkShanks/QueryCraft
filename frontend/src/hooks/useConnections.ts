@@ -11,15 +11,54 @@ import {
 } from '../api/generated/sdk.gen';
 import type {
   ConnectionCreate,
+  ConnectionResponse,
   ConnectionUpdate,
 } from '../api/generated/types.gen';
+
+export type ConnectionView = Pick<
+  ConnectionResponse,
+  | 'id'
+  | 'display_name'
+  | 'database_type'
+  | 'port'
+  | 'database_name'
+  | 'ssl_mode'
+  | 'lifecycle_state'
+  | 'health_status'
+  | 'last_health_check_at'
+  | 'health_error_category'
+  | 'schema_introspection_status'
+  | 'schema_last_refreshed_at'
+  | 'created_at'
+  | 'updated_at'
+>;
+
+const normalizeConnection = (connection: ConnectionResponse): ConnectionView => ({
+  id: connection.id,
+  display_name: connection.display_name,
+  database_type: connection.database_type,
+  port: connection.port,
+  database_name: connection.database_name,
+  ssl_mode: connection.ssl_mode,
+  lifecycle_state: connection.lifecycle_state,
+  health_status: connection.health_status,
+  last_health_check_at: connection.last_health_check_at,
+  health_error_category: connection.health_error_category,
+  schema_introspection_status: connection.schema_introspection_status,
+  schema_last_refreshed_at: connection.schema_last_refreshed_at,
+  created_at: connection.created_at,
+  updated_at: connection.updated_at,
+});
 
 export const useConnections = () => {
   const queryClient = useQueryClient();
 
   const listQuery = useQuery({
     queryKey: ['adminConnections'],
-    queryFn: () => listAdminConnections({ throwOnError: true }).then((res) => res.data),
+    queryFn: () =>
+      listAdminConnections({ throwOnError: true, cache: 'no-store' }).then((response) => ({
+        connections: response.data.connections.map(normalizeConnection),
+      })),
   });
 
   const createMutation = useMutation({
