@@ -3,6 +3,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/server';
 import { renderWithClient } from '../test/utils';
+import i18n from '../i18n';
 import { AdminDetectionPage } from './AdminDetectionPage';
 
 describe('AdminDetectionPage', () => {
@@ -50,6 +51,29 @@ describe('AdminDetectionPage', () => {
       ...screen.getAllByRole('spinbutton'),
     ]) {
       expect(control).toHaveClass('focus-visible:ring-2');
+    }
+  });
+
+  it('localizes and isolates the Arabic update timestamp', async () => {
+    server.use(
+      http.get('/api/v1/admin/detection/config', () => {
+        return HttpResponse.json(
+          { block_confidence: 0.8, flag_confidence: 0.5, updated_at: '2026-06-22T00:00:00Z' },
+          { status: 200 }
+        );
+      })
+    );
+
+    await i18n.changeLanguage('ar');
+    try {
+      renderWithClient(<AdminDetectionPage />);
+
+      const timestamp = await screen.findByTestId('detection-updated-at');
+      expect(timestamp).toHaveAttribute('dir', 'ltr');
+      expect(timestamp).toHaveTextContent('آخر تحديث');
+      expect(timestamp).not.toHaveTextContent(/\b(?:AM|PM)\b/);
+    } finally {
+      await i18n.changeLanguage('en');
     }
   });
 
