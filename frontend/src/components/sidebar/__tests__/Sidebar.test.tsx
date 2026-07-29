@@ -6,7 +6,12 @@ import { useUIStore } from '../../../stores/uiStore';
 import { createWrapper } from '../../../test/utils';
 import i18n from '../../../i18n';
 
-const mockSessions = [
+const mockSessions: Array<{
+  id: string;
+  preview_text: string | null;
+  created_at: string;
+  last_activity_at: string;
+}> = [
   {
     id: 'sess-today-1',
     preview_text: 'Today session',
