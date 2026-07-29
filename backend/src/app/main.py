@@ -132,7 +132,7 @@ async def _sync_admin_user(settings):
                 },
             )
             await session.commit()
-            logger.info("admin_user_synced", username=settings.ADMIN_USERNAME)
+            logger.info("admin_user_synced")
     except ProgrammingError:
         logger.warning("users_table_missing", msg="Skipping admin sync. Run alembic upgrade head.")
 
