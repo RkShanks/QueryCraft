@@ -203,10 +203,15 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
     // Confirm Arabic texts and no English fallback
     const title = page.locator('h1');
     await expect(title).toContainText('حصص الأدوار');
-    await expect(page.getByText('الحد اليومي للاستعلامات').first()).toBeVisible();
-    await expect(page.getByText('الحد اليومي لتنفيذ SQL').first()).toBeVisible();
-    await expect(page.getByText('الحد اليومي لتصدير سجل التدقيق').first()).toBeVisible();
-    await expect(page.getByText('حالة استهلاك الحصص').first()).toBeVisible();
+    const quotaConfigTable = page.getByTestId('quota-config-table-scroll');
+    await expect(quotaConfigTable.getByText('الحد اليومي للاستعلامات')).toBeVisible();
+    await expect(quotaConfigTable.getByText('الحد اليومي لتنفيذ SQL')).toBeVisible();
+    await expect(
+      quotaConfigTable.getByText('الحد اليومي لتصدير سجل التدقيق')
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'حالة استهلاك الحصص', level: 2 })
+    ).toBeVisible();
 
     // Verify list element layout alignment
     await page.screenshot({ path: path.join(EVIDENCE_DIR, 'desktop-admin-quotas-ar.png'), fullPage: true });
