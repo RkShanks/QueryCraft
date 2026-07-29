@@ -16,39 +16,24 @@ Create Date: 2026-06-23
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 
 revision: str = "009"
-down_revision: Union[str, None] = "008"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "008"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
     # B-tree indexes for equality / range filters used by AuditSearchService
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_audit_log_entries_action_type "
-        "ON audit_log_entries (action_type)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_audit_log_entries_actor_identity "
-        "ON audit_log_entries (actor_identity)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_audit_log_entries_outcome "
-        "ON audit_log_entries (outcome)"
-    )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_audit_log_entries_timestamp "
-        "ON audit_log_entries (timestamp)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_audit_log_entries_action_type ON audit_log_entries (action_type)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_audit_log_entries_actor_identity ON audit_log_entries (actor_identity)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_audit_log_entries_outcome ON audit_log_entries (outcome)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_audit_log_entries_timestamp ON audit_log_entries (timestamp)")
     # GIN index for JSONB context column (containment / key-exists queries)
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_audit_log_entries_context_gin "
-        "ON audit_log_entries USING gin (context)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_audit_log_entries_context_gin ON audit_log_entries USING gin (context)")
 
 
 def downgrade() -> None:

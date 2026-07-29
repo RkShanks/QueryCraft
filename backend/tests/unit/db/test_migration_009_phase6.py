@@ -8,12 +8,7 @@ from types import ModuleType
 
 
 def _load_migration() -> ModuleType:
-    migration_path = (
-        Path(__file__).resolve().parents[3]
-        / "alembic"
-        / "versions"
-        / "009_phase6_audit_search_indexes.py"
-    )
+    migration_path = Path(__file__).resolve().parents[3] / "alembic" / "versions" / "009_phase6_audit_search_indexes.py"
     spec = importlib.util.spec_from_file_location("migration_009", migration_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
