@@ -15,6 +15,35 @@ from app.schemas.connection import (
 )
 
 
+@pytest.mark.parametrize(
+    ("schema_model", "schema_name"),
+    [
+        (ConnectionCreate, "ConnectionCreate"),
+        (ConnectionUpdate, "ConnectionUpdate"),
+    ],
+)
+def test_connection_credentials_are_write_only_in_runtime_schemas(schema_model, schema_name):
+    sensitive_fields = {"host", "username", "password"}
+    pydantic_properties = schema_model.model_json_schema()["properties"]
+
+    from app.main import create_app
+
+    openapi_properties = create_app().openapi()["components"]["schemas"][schema_name]["properties"]
+    for properties in (pydantic_properties, openapi_properties):
+        fields_without_write_only = {
+            field_name for field_name in sensitive_fields if properties[field_name].get("writeOnly") is not True
+        }
+        assert fields_without_write_only == set()
+
+
+def test_connection_response_runtime_openapi_omits_sensitive_fields():
+    from app.main import create_app
+
+    response_properties = create_app().openapi()["components"]["schemas"]["ConnectionResponse"]["properties"]
+    forbidden_fields = {"host", "username", "password", "encrypted_password", "database_url"}
+    assert set(response_properties) & forbidden_fields == set()
+
+
 class TestConnectionCreate:
     """Verify ConnectionCreate schema validation."""
 
@@ -103,15 +132,16 @@ class TestConnectionResponse:
     def test_from_orm_model(self):
         from app.db.models.database_connection import SourceDatabaseConnection
 
+        runtime_sensitive_values = [uuid4().hex for _ in range(3)]
         conn = SourceDatabaseConnection(
             id=uuid4(),
             display_name="Test DB",
             database_type=DatabaseType.POSTGRESQL,
-            host="localhost",
+            host=runtime_sensitive_values[0],
             port=5432,
             database_name="test",
-            username="user",
-            encrypted_password="encrypted",
+            username=runtime_sensitive_values[1],
+            encrypted_password=runtime_sensitive_values[2],
             ssl_mode="require",
             lifecycle_state=LifecycleState.ACTIVE,
             health_status=HealthStatus.HEALTHY,
@@ -125,8 +155,9 @@ class TestConnectionResponse:
         resp = ConnectionResponse.model_validate(conn)
         assert resp.display_name == "Test DB"
         assert resp.database_type == DatabaseType.POSTGRESQL
-        # Password is NOT in response
-        assert not hasattr(resp, "encrypted_password")
+        forbidden_keys = {"host", "username", "password", "encrypted_password", "database_url"}
+        leaked_keys = set(resp.model_dump()) & forbidden_keys
+        assert leaked_keys == set()
 
 
 class TestConnectionTestResult:

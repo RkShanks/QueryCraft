@@ -10,7 +10,7 @@ from cryptography.fernet import Fernet
 from app.core.exceptions import QueryCraftError
 from app.db.models.database_connection import SourceDatabaseConnection
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
-from app.schemas.connection import ConnectionCreate
+from app.schemas.connection import ConnectionCreate, ConnectionUpdate
 
 
 def _make_create_request(**kwargs) -> ConnectionCreate:
@@ -230,6 +230,39 @@ class TestConnectionServiceCreate:
 
 class TestConnectionServiceLifecycle:
     """Verify lifecycle transitions."""
+
+    @pytest.mark.asyncio
+    async def test_update_preserves_omitted_connection_credentials(self):
+        from app.repositories.connection_repository import ConnectionRepository
+        from app.services.connection_service import ConnectionService
+
+        runtime_sensitive_values = [uuid4().hex for _ in range(3)]
+        conn = _make_conn(
+            host=runtime_sensitive_values[0],
+            username=runtime_sensitive_values[1],
+            encrypted_password=runtime_sensitive_values[2],
+        )
+        repo = MagicMock(spec=ConnectionRepository)
+        repo.get_by_id = AsyncMock(return_value=conn)
+        repo.update = AsyncMock(return_value=conn)
+        service = ConnectionService(repo, Fernet.generate_key().decode())
+
+        response = await service.update(conn.id, ConnectionUpdate(display_name="Renamed"))
+
+        credentials_preserved = (
+            conn.host == runtime_sensitive_values[0]
+            and conn.username == runtime_sensitive_values[1]
+            and conn.encrypted_password == runtime_sensitive_values[2]
+        )
+        leaked_keys = set(response.model_dump()) & {
+            "host",
+            "username",
+            "password",
+            "encrypted_password",
+            "database_url",
+        }
+        assert credentials_preserved is True
+        assert leaked_keys == set()
 
     @pytest.mark.asyncio
     async def test_disable_connection(self):

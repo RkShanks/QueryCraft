@@ -6,7 +6,7 @@ CRUD, lifecycle (disable/enable), health test, hard-delete guard.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
@@ -27,6 +27,10 @@ from app.services.connection_service import (
 )
 
 router = APIRouter(prefix="/admin/connections", tags=["Admin Connections"])
+
+
+def _prevent_response_storage(response: Response) -> None:
+    response.headers["Cache-Control"] = "no-store"
 
 
 # T-742 (Wave 17.3n): module-level singleton so Depends() does not run
@@ -50,6 +54,7 @@ def _get_connection_service(
 
 @router.get("", response_model=list[ConnectionResponse])
 async def list_connections(
+    response: Response,
     _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
@@ -57,6 +62,7 @@ async def list_connections(
 
     Requires ``admin.connections.manage`` permission.
     """
+    _prevent_response_storage(response)
     try:
         connections = await service.list_all()
         return connections
@@ -71,6 +77,7 @@ async def list_connections(
 async def create_connection(
     req: ConnectionCreate,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
@@ -80,6 +87,7 @@ async def create_connection(
     Requires ``admin.connections.manage`` permission. Emits a
     ``connection.create`` audit entry before returning.
     """
+    _prevent_response_storage(response)
     actor_identity = _session.get("username") if isinstance(_session, dict) else None
     try:
         return await service.create(req, actor_identity=actor_identity, db_session=db)
@@ -93,6 +101,7 @@ async def create_connection(
 @router.get("/{connection_id}", response_model=ConnectionResponse)
 async def get_connection(
     connection_id: uuid.UUID,
+    response: Response,
     _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
@@ -100,6 +109,7 @@ async def get_connection(
 
     Requires ``admin.connections.manage`` permission.
     """
+    _prevent_response_storage(response)
     try:
         return await service.get_by_id(connection_id)
     except ConnectionNotFoundError:
@@ -118,6 +128,7 @@ async def get_connection(
 async def update_connection(
     connection_id: uuid.UUID,
     req: ConnectionUpdate,
+    response: Response,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
@@ -127,6 +138,7 @@ async def update_connection(
     Requires ``admin.connections.manage`` permission. Emits a
     ``connection.update`` audit entry before returning.
     """
+    _prevent_response_storage(response)
     actor_identity = _session.get("username") if isinstance(_session, dict) else None
     try:
         return await service.update(connection_id, req, actor_identity=actor_identity, db_session=db)
@@ -177,6 +189,7 @@ async def delete_connection(
 @router.post("/{connection_id}/disable", response_model=ConnectionResponse)
 async def disable_connection(
     connection_id: uuid.UUID,
+    response: Response,
     _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
@@ -184,6 +197,7 @@ async def disable_connection(
 
     Requires ``admin.connections.manage`` permission.
     """
+    _prevent_response_storage(response)
     try:
         return await service.disable(connection_id)
     except ConnectionNotFoundError:
@@ -206,6 +220,7 @@ async def disable_connection(
 @router.post("/{connection_id}/enable", response_model=ConnectionResponse)
 async def enable_connection(
     connection_id: uuid.UUID,
+    response: Response,
     _session: dict = Depends(require_permission(Permission.ADMIN_CONNECTIONS_MANAGE)),  # noqa: B008
     service: ConnectionService = Depends(_get_connection_service),  # noqa: B008
 ):
@@ -213,6 +228,7 @@ async def enable_connection(
 
     Requires ``admin.connections.manage`` permission.
     """
+    _prevent_response_storage(response)
     try:
         return await service.enable(connection_id)
     except ConnectionNotFoundError:
