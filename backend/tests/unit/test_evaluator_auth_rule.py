@@ -403,6 +403,29 @@ class TestCommonTableExpressions:
 
         assert result == (True, None)
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("dialect", ["postgres", "mysql", "tsql"])
+    async def test_explicit_cte_output_arity_mismatch_is_blocked(
+        self,
+        dialect: str,
+    ) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "actor", "columns": ["actor_id", "first_name"]},
+            ],
+            dialect=dialect,
+        )
+
+        result = await rule.evaluate(
+            "WITH recent(actor_id, first_name, hidden) AS ("
+            "SELECT actor_id, first_name FROM actor"
+            ") "
+            "SELECT hidden FROM recent",
+            _actor_schema(),
+        )
+
+        assert result == (False, "query_blocked_policy")
+
 
 # ────────────────────── Case-insensitive matching ──────────────────────
 
