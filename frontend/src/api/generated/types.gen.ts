@@ -795,10 +795,8 @@ export type ConnectionResponse = {
     id: string;
     display_name: string;
     database_type: DatabaseType;
-    host: string;
     port: number;
     database_name: string;
-    username: string;
     ssl_mode: string;
     lifecycle_state: LifecycleState;
     health_status: HealthStatus;

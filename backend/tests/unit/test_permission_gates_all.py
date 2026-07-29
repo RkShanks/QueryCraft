@@ -16,7 +16,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from httpx import ASGITransport, AsyncClient
 
 from app.api.dependencies.permissions import require_permission
@@ -169,6 +169,7 @@ class TestAdminConnectionsPermissionGates:
         mock_service = AsyncMock()
         mock_service.list_all = AsyncMock(return_value=[])
         result = await list_connections(
+            response=Response(),
             _session={"permissions": [Permission.ADMIN_CONNECTIONS_MANAGE.value]},
             service=mock_service,
         )
@@ -207,6 +208,7 @@ class TestAdminConnectionsPermissionGates:
                 password="p",
             ),
             request=MagicMock(),
+            response=Response(),
             db=AsyncMock(),
             _session={"permissions": [Permission.ADMIN_CONNECTIONS_MANAGE.value]},
             service=mock_service,
@@ -220,6 +222,7 @@ class TestAdminConnectionsPermissionGates:
         mock_service = AsyncMock()
         result = await get_connection(
             connection_id=uuid.uuid4(),
+            response=Response(),
             _session={"permissions": [Permission.ADMIN_CONNECTIONS_MANAGE.value]},
             service=mock_service,
         )
@@ -234,6 +237,7 @@ class TestAdminConnectionsPermissionGates:
         result = await update_connection(
             connection_id=uuid.uuid4(),
             req=ConnectionUpdate(),
+            response=Response(),
             _session={"permissions": [Permission.ADMIN_CONNECTIONS_MANAGE.value]},
             service=mock_service,
         )
@@ -258,6 +262,7 @@ class TestAdminConnectionsPermissionGates:
         mock_service = AsyncMock()
         result = await disable_connection(
             connection_id=uuid.uuid4(),
+            response=Response(),
             _session={"permissions": [Permission.ADMIN_CONNECTIONS_MANAGE.value]},
             service=mock_service,
         )
@@ -270,6 +275,7 @@ class TestAdminConnectionsPermissionGates:
         mock_service = AsyncMock()
         result = await enable_connection(
             connection_id=uuid.uuid4(),
+            response=Response(),
             _session={"permissions": [Permission.ADMIN_CONNECTIONS_MANAGE.value]},
             service=mock_service,
         )
