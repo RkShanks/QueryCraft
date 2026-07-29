@@ -101,6 +101,33 @@ describe('HistoryList', () => {
     expect(screen.getByText('SELECT COUNT(*) FROM customer')).toHaveAttribute('dir', 'ltr');
   });
 
+  it.each([
+    ['English', 'ltr'],
+    ['Arabic', 'rtl'],
+  ])('isolates history list metadata in the %s layout', (_locale, direction) => {
+    const { container } = render(
+      <div dir={direction}>
+        <HistoryList
+          items={sampleWithConnection}
+          total={sampleWithConnection.length}
+          isLoading={false}
+        />
+      </div>
+    );
+
+    for (const item of sampleWithConnection) {
+      expect(screen.getByText(item.generated_sql)).toHaveAttribute('dir', 'ltr');
+      expect(
+        screen.getByText(new Date(item.accepted_at).toLocaleString())
+      ).toHaveAttribute('dir', 'ltr');
+      expect(screen.getByText(item.database_connection_name)).toHaveAttribute('dir', 'auto');
+    }
+    for (const databaseType of ['PostgreSQL', 'MySQL']) {
+      expect(screen.getByText(databaseType)).toHaveAttribute('dir', 'ltr');
+    }
+    expect(container.firstChild).toHaveAttribute('dir', direction);
+  });
+
   it('row is keyboard accessible (tabIndex + Enter/Space)', () => {
     const onSelect = vi.fn();
     setup(sample, { onSelect });

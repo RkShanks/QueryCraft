@@ -217,7 +217,7 @@ export const AdminAuditPage: React.FC = () => {
           {/* Total Log Entries Card */}
           <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-2">
             <div className="text-gray-400 text-sm font-medium">{t('admin.audit.totalEntries')}</div>
-            <div className="text-3xl font-bold text-white font-mono">{data.total_entries}</div>
+            <div dir="ltr" className="text-3xl font-bold text-white font-mono">{data.total_entries}</div>
           </div>
 
           {/* Verification Status Card */}
@@ -237,11 +237,11 @@ export const AdminAuditPage: React.FC = () => {
                   <div className="text-xs text-gray-400 space-y-0.5">
                     <div>
                       {t('admin.audit.entriesChecked')}:{' '}
-                      <span className="text-white font-mono">{lastVerification.entries_checked}</span>
+                      <span dir="ltr" className="text-white font-mono">{lastVerification.entries_checked}</span>
                     </div>
                     <div>
                       {t('admin.audit.verifiedAt')}:{' '}
-                      <span className="text-white">
+                      <span dir="ltr" className="text-white">
                         {new Date(lastVerification.verified_at).toLocaleString()}
                       </span>
                     </div>
@@ -256,17 +256,17 @@ export const AdminAuditPage: React.FC = () => {
                   <div className="text-xs text-gray-400 space-y-0.5">
                     <div>
                       {t('admin.audit.firstBreakAt')}:{' '}
-                      <span className="text-red-400 font-bold font-mono">
+                      <span dir="ltr" className="text-red-400 font-bold font-mono">
                         {lastVerification.first_break_at}
                       </span>
                     </div>
                     <div>
                       {t('admin.audit.entriesChecked')}:{' '}
-                      <span className="text-white font-mono">{lastVerification.entries_checked}</span>
+                      <span dir="ltr" className="text-white font-mono">{lastVerification.entries_checked}</span>
                     </div>
                     <div>
                       {t('admin.audit.verifiedAt')}:{' '}
-                      <span className="text-white">
+                      <span dir="ltr" className="text-white">
                         {new Date(lastVerification.verified_at).toLocaleString()}
                       </span>
                     </div>
@@ -293,21 +293,23 @@ export const AdminAuditPage: React.FC = () => {
               <div className="text-xs text-gray-400 space-y-1">
                 <div>
                   {t('audit.retention.period')}:{' '}
-                  <span className="text-white font-semibold font-mono">
+                  <span dir="ltr" className="text-white font-semibold font-mono">
                     {t('audit.retention.months', { count: retentionData.retention_months })}
                   </span>
                 </div>
                 <div>
                   {t('audit.retention.last_purge')}:{' '}
-                  <span className="text-white">
-                    {retentionData.last_purge_at
-                      ? new Date(retentionData.last_purge_at).toLocaleString()
-                      : t('audit.retention.never')}
-                  </span>
+                  {retentionData.last_purge_at ? (
+                    <span dir="ltr" className="text-white">
+                      {new Date(retentionData.last_purge_at).toLocaleString()}
+                    </span>
+                  ) : (
+                    <span className="text-white">{t('audit.retention.never')}</span>
+                  )}
                 </div>
                 <div>
                   {t('audit.retention.purged_count')}:{' '}
-                  <span className="text-white font-mono">{retentionData.purged_count ?? 0}</span>
+                  <span dir="ltr" className="text-white font-mono">{retentionData.purged_count ?? 0}</span>
                 </div>
               </div>
             ) : null}
@@ -408,6 +410,7 @@ export const AdminAuditPage: React.FC = () => {
               {t('audit.search.date_from')}
             </label>
             <input
+              dir="ltr"
               type="date"
               id="start_date"
               value={startDate}
@@ -422,6 +425,7 @@ export const AdminAuditPage: React.FC = () => {
               {t('audit.search.date_to')}
             </label>
             <input
+              dir="ltr"
               type="date"
               id="end_date"
               value={endDate}
@@ -618,6 +622,7 @@ export const AdminAuditPage: React.FC = () => {
                         className={RESPONSIVE_AUDIT_CELL_CLASS}
                       >
                         <span
+                          dir="ltr"
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
                             entry.outcome === 'success'
                               ? 'bg-green-500/10 border-green-500/20 text-green-400'

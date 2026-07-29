@@ -219,6 +219,71 @@ describe('AdminAuditPage', () => {
     expect(screen.queryByRole('button', { name: /purge/i })).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['en', 'ltr'],
+    ['ar', 'rtl'],
+  ])('isolates audit technical values in the %s layout', async (language, direction) => {
+    mockLanguageState.language = language;
+    server.use(
+      http.get('/api/v1/admin/audit/status', () => {
+        return HttpResponse.json({
+          total_entries: 137,
+          last_verification: {
+            verified: false,
+            entries_checked: 83,
+            first_break_at: 84,
+            verified_at: '2026-06-07T12:00:00Z',
+          },
+        });
+      }),
+      http.get('/api/v1/admin/audit/retention', () => {
+        return HttpResponse.json({
+          retention_months: 24,
+          last_purge_at: '2026-06-01T11:00:00Z',
+          purged_count: 500,
+        });
+      }),
+      http.get('/api/v1/admin/audit/entries', () => {
+        return HttpResponse.json({
+          entries: [
+            {
+              sequence_number: 901,
+              timestamp: '2026-07-01T10:00:00Z',
+              actor_identity: 'user@example.com',
+              action_type: 'query.submit',
+              resource_type: 'database',
+              outcome: 'success',
+              context: {},
+            },
+          ],
+          pagination: {
+            page: 1,
+            page_size: 10,
+            total_entries: 1,
+            total_pages: 1,
+          },
+        });
+      })
+    );
+
+    renderWithClient(
+      <div dir={direction}>
+        <AdminAuditPage />
+      </div>
+    );
+
+    for (const technicalValue of ['137', '83', '84', '500', '901', 'query.submit', 'success', 'database']) {
+      expect(await screen.findByText(technicalValue)).toHaveAttribute('dir', 'ltr');
+    }
+    for (const timestamp of [
+      new Date('2026-06-07T12:00:00Z').toLocaleString(),
+      new Date('2026-06-01T11:00:00Z').toLocaleString(),
+      new Date('2026-07-01T10:00:00Z').toLocaleString(),
+    ]) {
+      expect(screen.getByText(timestamp)).toHaveAttribute('dir', 'ltr');
+    }
+  });
+
   it('should handle verification flow and disable button during mutation', async () => {
     server.use(
       http.get('/api/v1/admin/audit/status', () => {

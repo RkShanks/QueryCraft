@@ -96,15 +96,16 @@ function renderQuotaDimension(
   if (dimension.limit === null) {
     return (
       <span>
-        {dimension.used} / <span className="text-gray-500 italic">{uncappedLabel}</span>
+        <bdi dir="ltr">{dimension.used}</bdi> /{' '}
+        <span className="text-gray-500 italic">{uncappedLabel}</span>
       </span>
     );
   }
   return (
     <span>
-      {dimension.used} / {dimension.limit} (
+      <bdi dir="ltr">{dimension.used}</bdi> / <bdi dir="ltr">{dimension.limit}</bdi> (
       <span className="text-xs text-gray-400">
-        {remainingLabel}: {dimension.remaining}
+        {remainingLabel}: <bdi dir="ltr">{dimension.remaining}</bdi>
       </span>
       )
     </span>
@@ -127,7 +128,7 @@ const QuotaLimitValue: React.FC<QuotaLimitValueProps> = ({ limit }) => {
   return limit === null ? (
     <span className="text-gray-500 italic">{t('quota.uncapped')}</span>
   ) : (
-    <>{limit}</>
+    <bdi dir="ltr">{limit}</bdi>
   );
 };
 
@@ -242,7 +243,7 @@ const QuotaStatusCard: React.FC<QuotaStatusCardProps> = ({ quotaStatus }) => {
           <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             {t('quota.reset_column')}
           </dt>
-          <dd className="mt-1 text-xs font-mono text-gray-300">
+          <dd dir="ltr" className="mt-1 text-xs font-mono text-gray-300">
             {formatResetTime(quotaStatus.reset_at, i18n.language)}
           </dd>
         </div>
@@ -480,6 +481,7 @@ export const AdminQuotasPage: React.FC = () => {
                   {t('quota.query_limit')}
                 </label>
                 <input
+                  dir="ltr"
                   id="query_limit"
                   type="number"
                   min="0"
@@ -501,6 +503,7 @@ export const AdminQuotasPage: React.FC = () => {
                   {t('quota.execution_limit')}
                 </label>
                 <input
+                  dir="ltr"
                   id="execution_limit"
                   type="number"
                   min="0"
@@ -522,6 +525,7 @@ export const AdminQuotasPage: React.FC = () => {
                   {t('quota.export_limit')}
                 </label>
                 <input
+                  dir="ltr"
                   id="export_limit"
                   type="number"
                   min="0"
@@ -738,7 +742,7 @@ export const AdminQuotasPage: React.FC = () => {
                               t('quota.remaining')
                             )}
                           </td>
-                          <td className="py-3 px-4 text-end font-mono text-xs">
+                          <td dir="ltr" className="py-3 px-4 text-end font-mono text-xs">
                             {formattedReset}
                           </td>
                         </tr>

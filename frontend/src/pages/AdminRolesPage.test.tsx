@@ -153,17 +153,43 @@ describe('AdminRolesPage', () => {
     expect(screen.getByText('admins')).toBeInTheDocument();
   });
 
-  it('isolates raw permission identifiers from the surrounding RTL direction', () => {
+  it.each([
+    ['English', 'ltr'],
+    ['Arabic', 'rtl'],
+  ])('isolates role technical values in the %s layout', (_locale, direction) => {
     vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
     render(
-      <div dir="rtl">
+      <div dir={direction}>
         <AdminRolesPage />
       </div>
     );
 
+    expect(screen.getByText('10')).toHaveAttribute('dir', 'ltr');
+    expect(screen.getByText('analysts')).toHaveAttribute('dir', 'ltr');
     screen.getAllByText('query.submit').forEach((permission) => {
       expect(permission).toHaveAttribute('dir', 'ltr');
     });
+  });
+
+  it.each([
+    ['English', 'ltr'],
+    ['Arabic', 'rtl'],
+  ])('isolates role editor technical inputs in the %s layout', (_locale, direction) => {
+    vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
+    const { container } = render(
+      <div dir={direction}>
+        <AdminRolesPage />
+      </div>
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0]);
+
+    expect(screen.getByLabelText('admin.roles.form.priority')).toHaveAttribute('dir', 'ltr');
+    expect(
+      screen.getByPlaceholderText('admin.roles.form.groupMappingPlaceholder')
+    ).toHaveAttribute('dir', 'ltr');
+    expect(screen.getByText('analysts')).toHaveAttribute('dir', 'ltr');
+    expect(container.firstChild).toHaveAttribute('dir', direction);
   });
 
   it('shows creation form when clicking Add Role', () => {

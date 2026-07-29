@@ -33,6 +33,7 @@ export const GroupMappingEditor: React.FC<GroupMappingEditorProps> = ({ groups, 
 
       <div className="flex gap-2">
         <input
+          dir="ltr"
           type="text"
           value={newGroup}
           onChange={(e) => setNewGroup(e.target.value)}
@@ -58,6 +59,7 @@ export const GroupMappingEditor: React.FC<GroupMappingEditorProps> = ({ groups, 
           groups.map((group) => (
             <span
               key={group}
+              dir="ltr"
               className="inline-flex items-center gap-1 px-3 py-1 bg-gray-800 border border-gray-700 text-neon-cyan text-sm font-medium rounded-full"
             >
               {group}

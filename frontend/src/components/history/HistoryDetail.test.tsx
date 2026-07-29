@@ -93,6 +93,28 @@ describe("HistoryDetail (FR-023, SC-009, T-465)", () => {
     expect(code).toHaveAttribute("dir", "ltr");
   });
 
+  it.each([
+    ["English", "ltr"],
+    ["Arabic", "rtl"],
+  ])("isolates history metadata in the %s layout", (_locale, direction) => {
+    const { container } = render(
+      <div dir={direction}>
+        <MemoryRouter>
+          <HistoryDetail item={sample as typeof sample} />
+        </MemoryRouter>
+      </div>
+    );
+
+    expect(screen.getByText("openai")).toHaveAttribute("dir", "ltr");
+    expect(screen.getByText("PostgreSQL")).toHaveAttribute("dir", "ltr");
+    expect(screen.getByText("Production PG")).toHaveAttribute("dir", "auto");
+    expect(
+      screen.getByText(new Date(sample.accepted_at).toLocaleString())
+    ).toHaveAttribute("dir", "ltr");
+    expect(screen.getByText(sample.generated_sql)).toHaveAttribute("dir", "ltr");
+    expect(container.firstChild).toHaveAttribute("dir", direction);
+  });
+
   it("renders connection metadata badge when user-facing metadata is present (T-465)", () => {
     setup(sample);
     expect(screen.getByTestId("history-detail-meta")).toBeInTheDocument();

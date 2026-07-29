@@ -67,6 +67,27 @@ describe('ResultTable', () => {
     expect(screen.getByText('SELECT * FROM users;')).toBeInTheDocument();
   });
 
+  it.each([
+    ['English', 'ltr'],
+    ['Arabic', 'rtl'],
+  ])('isolates query result values in the %s layout', (_locale, direction) => {
+    const { container } = render(
+      <div dir={direction}>
+        <ResultTable result={mockResult} onAccept={vi.fn()} />
+      </div>,
+      { wrapper: createWrapper() }
+    );
+
+    for (const columnName of ['id', 'name']) {
+      expect(screen.getByText(columnName)).toHaveAttribute('dir', 'ltr');
+    }
+    for (const cellValue of ['1', 'Alice', '2', 'Bob']) {
+      expect(screen.getByText(cellValue)).toHaveAttribute('dir', 'auto');
+    }
+    expect(screen.getByText(mockResult.generated_sql)).toHaveAttribute('dir', 'ltr');
+    expect(container.firstChild).toHaveAttribute('dir', direction);
+  });
+
   it('should render accept action and trigger callback', () => {
     const onAccept = vi.fn();
     

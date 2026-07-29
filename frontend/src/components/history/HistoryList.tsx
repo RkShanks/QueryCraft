@@ -121,7 +121,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                 <span className="font-semibold text-text-primary text-sm line-clamp-1 group-hover:text-neon-cyan transition-colors">
                   {item.question_text}
                 </span>
-                <span className="shrink-0 text-[10px]">
+                <span dir="ltr" className="shrink-0 text-[10px]">
                   {item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '-'}
                 </span>
               </div>
@@ -143,11 +143,11 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     className="history-list-connection-badge flex items-center gap-2"
                     data-testid="history-list-connection"
                   >
-                    <span className="text-[11px] text-text-muted flex items-center gap-1 font-medium">
+                    <span dir="auto" className="text-[11px] text-text-muted flex items-center gap-1 font-medium">
                       <Database className="w-3 h-3 text-neon-cyan/60" />
                       {item.database_connection_name}
                     </span>
-                    <span className="rounded-full bg-neon-cyan/5 border border-neon-cyan/15 px-2 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-neon-cyan">
+                    <span dir="ltr" className="rounded-full bg-neon-cyan/5 border border-neon-cyan/15 px-2 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-neon-cyan">
                       {getDatabaseTypeLabel(item.database_type)}
                     </span>
                   </div>

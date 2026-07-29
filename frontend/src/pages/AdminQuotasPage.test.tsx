@@ -217,6 +217,49 @@ describe('AdminQuotasPage', () => {
     });
   });
 
+  it.each([
+    ['English', 'ltr'],
+    ['Arabic', 'rtl'],
+  ])('isolates quota technical values in the %s layout', (_locale, direction) => {
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: { data: { role: 'admin', permissions: ['admin.quotas.manage', 'admin.roles.manage'] } },
+      isLoading: false,
+    } as any);
+    vi.mocked(useAdminRoles).mockReturnValue({
+      listQuery: { data: mockRolesList, isLoading: false, isError: false },
+    } as any);
+    vi.mocked(useAdminQuotas).mockReturnValue({
+      listQuery: { data: { quotas: mockQuotasList }, isLoading: false, isError: false },
+      statusQuery: { data: { status: mockQuotasStatus }, isLoading: false },
+      ...mockMutations,
+    } as any);
+
+    const { container } = renderWithClient(
+      <div dir={direction}>
+        <AdminQuotasPage />
+      </div>
+    );
+
+    for (const count of ['100', '42', '58', '50', '10', '40', '5', '1', '4']) {
+      screen.getAllByText(count).forEach((technicalValue) => {
+        expect(technicalValue).toHaveAttribute('dir', 'ltr');
+      });
+    }
+    const formattedReset = new Intl.DateTimeFormat('en', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date('2026-06-22T00:00:00Z'));
+    screen.getAllByText(formattedReset).forEach((timestamp) => {
+      expect(timestamp).toHaveAttribute('dir', 'ltr');
+    });
+
+    fireEvent.click(screen.getByTestId('edit-quota-analyst-role-id'));
+    screen.getAllByRole('spinbutton').forEach((input) => {
+      expect(input).toHaveAttribute('dir', 'ltr');
+    });
+    expect(container.firstChild).toHaveAttribute('dir', direction);
+  });
+
   it('renders with RTL direction and verified logical classes without physical inline styles', () => {
     vi.mocked(useCurrentUser).mockReturnValue({
       data: { data: { role: 'admin', permissions: ['admin.quotas.manage', 'admin.roles.manage'] } },
