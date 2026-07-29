@@ -3,6 +3,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { ConnectionForm } from './ConnectionForm';
 import type { ConnectionResponse } from '../../api/generated/types.gen';
 
+type LegacyConnectionResponse = ConnectionResponse & {
+  host: string;
+  username: string;
+};
+
 describe('ConnectionForm', () => {
   const defaultProps = {
     onSubmit: vi.fn(),
@@ -46,7 +51,7 @@ describe('ConnectionForm', () => {
   it('edit mode renders non-sensitive values but never redisplays legacy write-only fields', () => {
     const legacyHost = crypto.randomUUID();
     const legacyUsername = crypto.randomUUID();
-    const initialValues: ConnectionResponse = {
+    const initialValues: LegacyConnectionResponse = {
       id: '123-uuid',
       display_name: 'My Custom PG',
       database_type: 'postgresql',
@@ -90,7 +95,7 @@ describe('ConnectionForm', () => {
   });
 
   it('unchanged edit submission omits every blank write-only field', () => {
-    const initialValues: ConnectionResponse = {
+    const initialValues: LegacyConnectionResponse = {
       id: '123-uuid',
       display_name: 'My Custom PG',
       database_type: 'postgresql',
@@ -124,7 +129,7 @@ describe('ConnectionForm', () => {
   });
 
   it('edit submission includes only replacements typed into write-only fields', () => {
-    const initialValues: ConnectionResponse = {
+    const initialValues: LegacyConnectionResponse = {
       id: '123-uuid',
       display_name: 'My Custom PG',
       database_type: 'postgresql',
@@ -180,7 +185,7 @@ describe('ConnectionForm', () => {
       id: string,
       legacyHost: string,
       legacyUsername: string
-    ): ConnectionResponse => ({
+    ): LegacyConnectionResponse => ({
       id,
       display_name: 'Existing Db',
       database_type: 'postgresql',
