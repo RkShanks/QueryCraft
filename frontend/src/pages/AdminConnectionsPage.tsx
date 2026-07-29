@@ -7,6 +7,7 @@ import { ConnectionTestButton } from '../components/admin/ConnectionTestButton';
 import { RefreshSchemaButton } from '../components/admin/RefreshSchemaButton';
 import { ConnectionActions } from '../components/admin/ConnectionActions';
 import type { ConnectionResponse, ConnectionCreate, ConnectionUpdate } from '../api/generated/types.gen';
+import { getSafeConnectionErrorKey } from '../components/admin/connectionErrorMessages';
 
 interface Toast {
   id: string;
@@ -56,8 +57,7 @@ export const AdminConnectionsPage: React.FC = () => {
                 addToast('success', t('admin.connections.addSuccess') || 'Connection added successfully');
               },
               onError: (err: unknown) => {
-                const apiErr = err as { message?: string };
-                addToast('error', apiErr?.message || t('admin.connections.addError') || 'Failed to add connection');
+                addToast('error', t(getSafeConnectionErrorKey(err)));
               }
             });
           }}
