@@ -150,9 +150,11 @@ const QuotaConfigCard: React.FC<QuotaConfigCardProps> = ({
       className="p-4 space-y-4"
       aria-label={t('quota.config_summary', { role: quota.role_name })}
     >
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="font-semibold text-white">{quota.role_name}</h3>
-        <div className="flex items-center justify-end gap-2">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <h3 className="min-w-0 break-words font-semibold text-white">
+          {quota.role_name}
+        </h3>
+        <div className="flex shrink-0 items-center justify-end gap-2">
           <button
             onClick={() => startEdit(quota)}
             className="p-2 hover:bg-gray-850 rounded text-gray-400 hover:text-white transition-colors"
