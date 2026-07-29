@@ -94,11 +94,11 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-obsidian-800/80">
         {item.database_connection_name && item.database_type ? (
           <div className="history-detail-meta flex items-center gap-2" data-testid="history-detail-meta">
-            <span className="font-semibold text-text-primary text-sm flex items-center gap-1.5">
+            <span dir="auto" className="font-semibold text-text-primary text-sm flex items-center gap-1.5">
               <Database className="w-4 h-4 text-neon-cyan" />
               {item.database_connection_name}
             </span>
-            <span className="rounded-full bg-neon-cyan/5 border border-neon-cyan/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-neon-cyan">
+            <span dir="ltr" className="rounded-full bg-neon-cyan/5 border border-neon-cyan/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-neon-cyan">
               {getDatabaseTypeLabel(item.database_type)}
             </span>
           </div>
@@ -173,14 +173,14 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
       <section className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-text-muted border-t border-obsidian-800/60 pt-4 select-none">
         <div className="flex items-center gap-1.5">
           <span className="font-semibold">{t('history.detail.llmProvider')}:</span>
-          <span className="px-2 py-0.5 rounded bg-obsidian-950 border border-obsidian-800 text-[10px] uppercase font-mono tracking-wider text-text-secondary">
+          <span dir="ltr" className="px-2 py-0.5 rounded bg-obsidian-950 border border-obsidian-800 text-[10px] uppercase font-mono tracking-wider text-text-secondary">
             {item.llm_provider ?? '—'}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5 text-text-muted" />
           <span className="font-semibold">{t('history.detail.acceptedAt')}:</span>
-          <span>{item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '—'}</span>
+          <span dir="ltr">{item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '—'}</span>
         </div>
       </section>
     </article>
