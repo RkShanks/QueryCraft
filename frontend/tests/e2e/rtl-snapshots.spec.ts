@@ -109,33 +109,61 @@ test.describe('RTL visual snapshots', () => {
     await expect(page.getByTestId('assistant-response-card')).toBeVisible({ timeout: 10_000 });
   });
 
-  for (const viewportWidth of [375, 768]) {
-    test(`mobile RTL sidebar toggle remains reachable at ${viewportWidth}px`, async ({ page }) => {
-      await page.setViewportSize({ width: viewportWidth, height: 860 });
-      await page.goto('/?lng=ar');
+  for (const { language, direction } of [
+    { language: 'en', direction: 'ltr' },
+    { language: 'ar', direction: 'rtl' },
+  ] as const) {
+    for (const viewportWidth of [375, 768]) {
+      test(`mobile ${direction.toUpperCase()} sidebar toggle remains keyboard-reachable at ${viewportWidth}px`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width: viewportWidth, height: 860 });
+        await page.goto(`/?lng=${language}`);
 
-      const shell = page.getByTestId('app-shell');
-      const toggle = page.getByTestId('sidebar-toggle');
-      const sidebar = page.getByTestId('app-shell-sidebar');
-      await expect(toggle).toBeVisible({ timeout: 10_000 });
-      await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
-      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-      await expect(shell).toHaveAttribute('dir', 'rtl');
+        const shell = page.getByTestId('app-shell');
+        const toggle = page.getByTestId('sidebar-toggle');
+        const sidebar = page.getByTestId('app-shell-sidebar');
+        await expect(toggle).toBeVisible({ timeout: 10_000 });
+        await expect(shell).toHaveClass(/sidebar-collapsed/);
+        await expect(sidebar).toHaveCSS('width', '64px');
+        await expect(page.locator('html')).toHaveAttribute('lang', language);
+        await expect(page.locator('html')).toHaveAttribute('dir', direction);
+        await expect(shell).toHaveAttribute('dir', direction);
 
-      await toggle.click();
-      await expect(shell).toHaveClass(/sidebar-collapsed/);
-      await expect(sidebar).toHaveCSS('width', '64px');
-      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+        await page.keyboard.press('Tab');
+        await expect(toggle).toBeFocused();
+        await expect
+          .poll(() => toggle.evaluate((element) => getComputedStyle(element).outlineWidth))
+          .not.toBe('0px');
 
-      const bounds = await toggle.boundingBox();
-      expect(bounds).not.toBeNull();
-      expect(bounds!.x).toBeLessThan(viewportWidth);
-      expect(bounds!.x + bounds!.width).toBeGreaterThan(0);
+        await page.keyboard.press('Enter');
+        await expect(shell).not.toHaveClass(/sidebar-collapsed/);
+        await expect(sidebar).toHaveCSS('width', '280px');
+        await expect
+          .poll(() =>
+            page.evaluate(
+              () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+            )
+          )
+          .toBe(true);
 
-      await toggle.click();
-      await expect(shell).not.toHaveClass(/sidebar-collapsed/);
-      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-    });
+        const bounds = await toggle.boundingBox();
+        expect(bounds).not.toBeNull();
+        expect(bounds!.x).toBeLessThan(viewportWidth);
+        expect(bounds!.x + bounds!.width).toBeGreaterThan(0);
+
+        await page.keyboard.press('Space');
+        await expect(shell).toHaveClass(/sidebar-collapsed/);
+        await expect(sidebar).toHaveCSS('width', '64px');
+        await expect
+          .poll(() =>
+            page.evaluate(
+              () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+            )
+          )
+          .toBe(true);
+      });
+    }
   }
 
   test('RTL source selector keeps every connection option inside the viewport', async ({ page }) => {
