@@ -63,6 +63,48 @@ describe('useConnections', () => {
     expect(result.current.listQuery.data).toEqual(mockConnections);
   });
 
+  it.each([
+    ['a raw array', (connection: Record<string, unknown>) => [connection]],
+    ['a wrapped object', (connection: Record<string, unknown>) => ({ connections: [connection] })],
+  ])('normalizes %s response into a cache-safe connection list', async (_name, responseShape) => {
+    const runtimeProbes = Array.from({ length: 3 }, () => crypto.randomUUID());
+    const legacyConnection = {
+      id: '1',
+      display_name: 'Test DB',
+      database_type: 'postgresql',
+      host: runtimeProbes[0],
+      port: 5432,
+      database_name: 'app',
+      username: runtimeProbes[1],
+      ssl_mode: 'require',
+      lifecycle_state: 'active',
+      health_status: 'healthy',
+      last_health_check_at: null,
+      health_error_category: null,
+      schema_introspection_status: 'success',
+      schema_last_refreshed_at: null,
+      created_at: '2026-07-29T00:00:00Z',
+      updated_at: '2026-07-29T00:00:00Z',
+      metadata: { label: runtimeProbes[2] },
+    };
+    vi.mocked(listAdminConnections).mockResolvedValueOnce({
+      data: responseShape(legacyConnection),
+      response: new Response(),
+      request: new Request('http://localhost'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    const { result } = renderHook(() => useConnections(), { wrapper });
+
+    await waitFor(() => expect(result.current.listQuery.isFetching).toBe(false));
+
+    expect(result.current.listQuery.isSuccess).toBe(true);
+    const normalizedConnection = result.current.listQuery.data?.connections[0];
+    const serializedConnection = JSON.stringify(normalizedConnection);
+    expect(normalizedConnection).toBeDefined();
+    expect(runtimeProbes.every((probe) => !serializedConnection.includes(probe))).toBe(true);
+  });
+
   it('keeps legacy write-only and unexpected response fields out of the query cache', async () => {
     const runtimeProbes = Array.from({ length: 8 }, () => crypto.randomUUID());
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
