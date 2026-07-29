@@ -5,6 +5,13 @@ import { signInLocalUser } from './helpers/auth';
 async function signIn(page: import('@playwright/test').Page) {
   await mockLocalAuth(page);
   await mockConnections(page);
+  await page.route(/\/api\/v1\/sessions(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ items: [], total: 0 }),
+    });
+  });
   await signInLocalUser(page);
   await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 }
