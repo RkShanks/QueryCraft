@@ -114,6 +114,61 @@ describe('AdminSsoPage', () => {
     expect(screen.getByText('https://idp.example.com/metadata')).toBeInTheDocument();
   });
 
+  it.each([
+    ['English', 'ltr'],
+    ['Arabic', 'rtl'],
+  ])('isolates SSO technical values in the %s layout', (_locale, direction) => {
+    vi.mocked(useAdminSso).mockReturnValue(
+      mockPopulatedProviders as unknown as ReturnType<typeof useAdminSso>
+    );
+    const { container } = render(
+      <div dir={direction}>
+        <AdminSsoPage />
+      </div>
+    );
+
+    for (const technicalValue of [
+      'oidc',
+      'https://idp.example.com',
+      'app-client-id',
+      'saml',
+      'saml-entity',
+      'https://idp.example.com/metadata',
+      'groups',
+      'roles',
+    ]) {
+      expect(screen.getByText(technicalValue)).toHaveAttribute('dir', 'ltr');
+    }
+    screen.getAllByText('●●●●●●●●').forEach((maskedValue) => {
+      expect(maskedValue).toHaveAttribute('dir', 'ltr');
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0]);
+    for (const label of [
+      'admin.sso.form.groupClaimName',
+      'admin.sso.form.issuerUrl',
+      'admin.sso.form.clientId',
+      'admin.sso.form.clientSecret',
+      'admin.sso.form.scopes',
+      'admin.sso.form.redirectUri',
+    ]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute('dir', 'ltr');
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[1]);
+    for (const label of [
+      'admin.sso.form.groupClaimName',
+      'admin.sso.form.samlEntityId',
+      'admin.sso.form.samlMetadataUrl',
+      'admin.sso.form.samlMetadataXml',
+      'admin.sso.form.samlCertificate',
+    ]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute('dir', 'ltr');
+    }
+    expect(container.firstChild).toHaveAttribute('dir', direction);
+  });
+
   it('shows OIDC creation form when adding an OIDC provider', () => {
     vi.mocked(useAdminSso).mockReturnValue(mockEmptyProviders as unknown as ReturnType<typeof useAdminSso>);
     render(<AdminSsoPage />);
