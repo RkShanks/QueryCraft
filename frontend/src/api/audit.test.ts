@@ -57,4 +57,19 @@ describe('audit API client', () => {
     const res = await getAuditRetention();
     expect(res.retention_months).toBe(24);
   });
+
+  it.each([
+    ['empty', {}],
+    ['non-integer retention', { retention_months: 24.5, last_purge_at: null, purged_count: null }],
+    ['invalid timestamp', { retention_months: 24, last_purge_at: 'not-a-date', purged_count: 5 }],
+    ['negative purge count', { retention_months: 24, last_purge_at: null, purged_count: -1 }],
+  ])('rejects a %s retention response', async (_caseName, responseBody) => {
+    server.use(
+      http.get('/api/v1/admin/audit/retention', () => {
+        return HttpResponse.json(responseBody);
+      })
+    );
+
+    await expect(getAuditRetention()).rejects.toThrow('Invalid audit retention response');
+  });
 });

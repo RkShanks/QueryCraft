@@ -277,7 +277,11 @@ export const AdminAuditPage: React.FC = () => {
           <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-2">
             <div className="text-gray-400 text-sm font-medium">{t('audit.retention.title')}</div>
             {isRetentionLoading ? (
-              <div className="flex justify-center py-2">
+              <div
+                className="flex justify-center py-2"
+                role="status"
+                aria-label={t('audit.retention.loading')}
+              >
                 <RefreshCw className="w-5 h-5 text-neon-cyan animate-spin" />
               </div>
             ) : isRetentionError ? (
