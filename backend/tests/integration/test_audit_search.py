@@ -124,6 +124,41 @@ class TestAuditSearchFilters:
         # No entries from 2020 in test DB seeded post-2026
         assert data["pagination"]["total_entries"] == 0
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {"action_type": "not.a.real.audit.action"},
+            {"outcome": "not-a-real-outcome"},
+            {
+                "start_date": "2026-07-30T00:00:00Z",
+                "end_date": "2026-07-29T00:00:00Z",
+            },
+            {"actor_identity": "actor\x00identity"},
+            {"resource_type": "database\nforged"},
+        ],
+    )
+    async def test_invalid_filter_values_return_422(self, authenticated_client, params):
+        response = await authenticated_client.get(
+            "/api/v1/admin/audit/entries",
+            params=params,
+        )
+
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_sql_like_unicode_free_text_is_safely_parameterized(self, authenticated_client):
+        response = await authenticated_client.get(
+            "/api/v1/admin/audit/entries",
+            params={
+                "actor_identity": "مدير'; DROP TABLE audit_log_entries; --",
+                "resource_type": "قاعدة بيانات",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["entries"] == []
+
 
 class TestAuditSearchPagination:
     @pytest.mark.asyncio
