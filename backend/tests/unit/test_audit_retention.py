@@ -98,6 +98,22 @@ class TestRetentionCutoff:
         cutoff = AuditService.compute_retention_cutoff(24, now=fixed)
         assert cutoff == datetime(2024, 6, 7, 12, 0, 0, tzinfo=UTC)
 
+    @pytest.mark.parametrize(
+        ("now", "expected"),
+        [
+            (
+                datetime(2024, 3, 31, 12, 0, tzinfo=UTC),
+                datetime(2024, 2, 29, 12, 0, tzinfo=UTC),
+            ),
+            (
+                datetime(2025, 3, 31, 12, 0, tzinfo=UTC),
+                datetime(2025, 2, 28, 12, 0, tzinfo=UTC),
+            ),
+        ],
+    )
+    def test_cutoff_uses_calendar_month_end_semantics(self, now, expected):
+        assert AuditService.compute_retention_cutoff(1, now=now) == expected
+
     def test_cutoff_default_now(self):
         before = datetime.now(UTC)
         cutoff = AuditService.compute_retention_cutoff(1)
