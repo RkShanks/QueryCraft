@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.audit_log_entry import AuditLogEntry
@@ -27,6 +27,10 @@ _logger = logging.getLogger(__name__)
 # audit sequence number. The value is an application namespace identifier,
 # not data-derived, and stays within PostgreSQL's signed BIGINT range.
 _AUDIT_SEQUENCE_LOCK_ID = 0x5143524146540001
+
+# Verification loads at most this many retained rows at once. Keyset iteration
+# keeps memory bounded while avoiding offset drift on large retained chains.
+_AUDIT_VERIFY_BATCH_SIZE = 500
 
 
 @dataclass(frozen=True)
@@ -157,6 +161,66 @@ def _purge_marker_is_all_purged_boundary(entry: AuditLogEntry, expected_prev_has
         and last_retained_seq < entry.sequence_number
         and ctx.get("last_retained_hash") == entry.prev_hash
     )
+
+
+def _audit_entry_payload(entry: AuditLogEntry) -> dict[str, Any]:
+    return {
+        "sequence_number": entry.sequence_number,
+        "timestamp": entry.timestamp.isoformat(),
+        "actor_id": str(entry.actor_id) if entry.actor_id is not None else None,
+        "actor_identity": entry.actor_identity,
+        "action_type": entry.action_type,
+        "resource_type": entry.resource_type,
+        "resource_id": entry.resource_id,
+        "outcome": entry.outcome,
+        "context": entry.context,
+    }
+
+
+async def _verification_snapshot(session: AsyncSession) -> tuple[int | None, int]:
+    snapshot_result = await session.execute(
+        select(
+            func.max(AuditLogEntry.sequence_number),
+            func.count(),
+        ).select_from(AuditLogEntry)
+    )
+    upper_sequence, entry_count = snapshot_result.one()
+    return upper_sequence, int(entry_count)
+
+
+async def _verification_batch(
+    session: AsyncSession,
+    after_sequence: int,
+    upper_sequence: int,
+) -> list[AuditLogEntry]:
+    batch_result = await session.execute(
+        select(AuditLogEntry)
+        .where(
+            AuditLogEntry.sequence_number > after_sequence,
+            AuditLogEntry.sequence_number <= upper_sequence,
+        )
+        .order_by(AuditLogEntry.sequence_number.asc())
+        .limit(_AUDIT_VERIFY_BATCH_SIZE)
+    )
+    return list(batch_result.scalars())
+
+
+async def _purge_marker_context_for_gap(
+    session: AsyncSession,
+    first_surviving_sequence: int,
+    upper_sequence: int,
+) -> dict | None:
+    marker_result = await session.execute(
+        select(AuditLogEntry.context)
+        .where(
+            AuditLogEntry.sequence_number <= upper_sequence,
+            AuditLogEntry.action_type == AuditActionType.AUDIT_PURGE.value,
+            AuditLogEntry.context["first_surviving_seq"].as_integer() == first_surviving_sequence,
+        )
+        .order_by(AuditLogEntry.sequence_number.desc())
+        .limit(1)
+    )
+    return marker_result.scalar_one_or_none()
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +449,7 @@ class AuditService:
 
     @staticmethod
     async def verify_chain(session: AsyncSession) -> VerificationResult:
-        """Walk the audit chain and verify integrity.
+        """Verify a bounded snapshot of the retained audit chain.
 
         Purge-gap handling (T-872)
         --------------------------
@@ -393,10 +457,8 @@ class AuditService:
         will have a ``prev_hash`` that points to a now-deleted predecessor.
         This looks like a linkage break but is intentional.
 
-        To distinguish an intentional purge gap from tampering, we
-        pre-load all retained ``audit.purge`` markers and index them by
-        ``first_surviving_seq``.  When a linkage break is detected, we
-        check whether a purge marker covers it:
+        To distinguish an intentional purge gap from tampering, a bounded
+        marker lookup runs only when a linkage break is detected:
 
         * If ``marker.context["first_surviving_seq"] == entry.sequence_number``
           AND ``marker.context["first_surviving_prev_hash"] == entry.prev_hash``,
@@ -407,55 +469,57 @@ class AuditService:
         * Otherwise, report the gap as tampering.
 
         Row-hash integrity is always checked regardless of purge status.
-        No entries are rewritten or mutated.
+        No entries are rewritten or mutated. Verification snapshots the
+        retained upper sequence boundary, then walks it in keyset batches of
+        at most 500 rows. Concurrent appends cannot extend the run.
         """
-        result = await session.execute(select(AuditLogEntry).order_by(AuditLogEntry.sequence_number.asc()))
-        entries = result.scalars().all()
-        entries_checked = len(entries)
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(:lock_id)"),
+            {"lock_id": _AUDIT_SEQUENCE_LOCK_ID},
+        )
+        upper_sequence, entries_checked = await _verification_snapshot(session)
         verified_at = datetime.now(UTC)
+        if upper_sequence is None:
+            return VerificationResult(
+                verified=True,
+                entries_checked=0,
+                first_break_at=None,
+                verified_at=verified_at,
+            )
+
         first_break_at: int | None = None
         prev_hash = "GENESIS"
+        last_sequence = 0
 
-        # Pre-index retained purge markers by first_surviving_seq so we can
-        # bridge intentional gaps without a second query per entry.
-        purge_markers: dict[int, dict] = {}
-        for e in entries:
-            if e.action_type == AuditActionType.AUDIT_PURGE.value and isinstance(e.context, dict):
-                fss = e.context.get("first_surviving_seq")
-                if isinstance(fss, int):
-                    purge_markers[fss] = e.context
-
-        for entry in entries:
-            payload = {
-                "sequence_number": entry.sequence_number,
-                "timestamp": entry.timestamp.isoformat(),
-                "actor_id": str(entry.actor_id) if entry.actor_id is not None else None,
-                "actor_identity": entry.actor_identity,
-                "action_type": entry.action_type,
-                "resource_type": entry.resource_type,
-                "resource_id": entry.resource_id,
-                "outcome": entry.outcome,
-                "context": entry.context,
-            }
-            # Row-hash integrity: always verified using the entry's own prev_hash.
-            expected_hash = _compute_row_hash(payload, entry.prev_hash)
-            if expected_hash != entry.row_hash:
-                first_break_at = entry.sequence_number
+        while last_sequence < upper_sequence and first_break_at is None:
+            entries = await _verification_batch(session, last_sequence, upper_sequence)
+            if not entries:
                 break
 
-            # Chain linkage check.
-            if entry.prev_hash != prev_hash:
-                # Linkage break detected. Check for a matching purge marker.
-                if _marker_context_matches_gap(
-                    entry, purge_markers.get(entry.sequence_number)
-                ) or _purge_marker_is_all_purged_boundary(entry, prev_hash):
-                    # Intentional purge gap — marker covers it. Continue.
-                    pass
-                else:
+            for entry in entries:
+                expected_hash = _compute_row_hash(_audit_entry_payload(entry), entry.prev_hash)
+                if expected_hash != entry.row_hash:
                     first_break_at = entry.sequence_number
                     break
 
-            prev_hash = entry.row_hash
+                if entry.prev_hash != prev_hash:
+                    marker_context = await _purge_marker_context_for_gap(
+                        session,
+                        entry.sequence_number,
+                        upper_sequence,
+                    )
+                    if not (
+                        _marker_context_matches_gap(entry, marker_context)
+                        or _purge_marker_is_all_purged_boundary(entry, prev_hash)
+                    ):
+                        first_break_at = entry.sequence_number
+                        break
+
+                prev_hash = entry.row_hash
+
+            last_sequence = entries[-1].sequence_number
+            if len(entries) < _AUDIT_VERIFY_BATCH_SIZE:
+                break
 
         return VerificationResult(
             verified=first_break_at is None,
