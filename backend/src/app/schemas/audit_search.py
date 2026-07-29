@@ -1,21 +1,59 @@
 """Phase 6 audit search and export schemas."""
 
-from datetime import datetime
-from typing import Literal
+from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from datetime import UTC, datetime
+from typing import Annotated, Literal, Self
+
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
+
+from app.db.models.enums import AuditActionType
+
+MAX_AUDIT_SEARCH_PAGE = 2_147_483_647
+
+AuditOutcome = Literal["success", "failure", "denied", "blocked", "flagged", "broken"]
+AuditFilterText = Annotated[
+    str,
+    StringConstraints(
+        min_length=1,
+        max_length=512,
+        pattern=r"^[^\x00-\x1f\x7f]+$",
+    ),
+]
 
 
-class AuditSearchParams(BaseModel):
-    """Audit search query parameters."""
+class AuditFilterParams(BaseModel):
+    """Validated filters shared by audit search and export."""
 
     start_date: datetime | None = None
     end_date: datetime | None = None
-    action_type: str | None = None
-    actor_identity: str | None = None
-    outcome: str | None = None
-    resource_type: str | None = None
-    page: int = Field(default=1, ge=1)
+    action_type: AuditActionType | None = None
+    actor_identity: AuditFilterText | None = None
+    outcome: AuditOutcome | None = None
+    resource_type: AuditFilterText | None = None
+
+    @field_validator("start_date", "end_date")
+    @classmethod
+    def normalize_datetime(cls, value: datetime | None) -> datetime | None:
+        """Normalize date filters to timezone-aware UTC values."""
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def validate_date_range(self) -> Self:
+        """Reject inverted ranges before any database query is built."""
+        if self.start_date is not None and self.end_date is not None and self.start_date > self.end_date:
+            raise ValueError("start_date must be less than or equal to end_date")
+        return self
+
+
+class AuditSearchParams(AuditFilterParams):
+    """Audit search query parameters."""
+
+    page: int = Field(default=1, ge=1, le=MAX_AUDIT_SEARCH_PAGE)
     page_size: int = Field(default=50, ge=1, le=100)
 
 
@@ -48,13 +86,7 @@ class AuditSearchResponse(BaseModel):
     pagination: AuditSearchPagination
 
 
-class AuditExportRequest(BaseModel):
+class AuditExportRequest(AuditFilterParams):
     """Audit export request filters."""
 
     format: Literal["csv", "json"]
-    start_date: datetime | None = None
-    end_date: datetime | None = None
-    action_type: str | None = None
-    actor_identity: str | None = None
-    outcome: str | None = None
-    resource_type: str | None = None

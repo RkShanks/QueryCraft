@@ -175,6 +175,7 @@ class TestAuditSearchServiceRetentionEnforcement:
             result = MagicMock()
             if len(captured_queries) == 1:
                 result.scalar_one.return_value = 0
+                result.one.return_value = (0, None)
             else:
                 result.scalars.return_value.all.return_value = []
             return result
@@ -253,10 +254,7 @@ class TestAuditSearchServiceDefaultSort:
 
         data_query = session.execute.call_args_list[1].args[0]
         compiled = " ".join(str(data_query).split()).lower()
-        assert (
-            "order by audit_log_entries.timestamp desc, "
-            "audit_log_entries.sequence_number desc"
-        ) in compiled
+        assert ("order by audit_log_entries.timestamp desc, audit_log_entries.sequence_number desc") in compiled
 
     @pytest.mark.asyncio
     async def test_data_query_is_bounded_by_request_snapshot(self):

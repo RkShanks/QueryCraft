@@ -13,7 +13,8 @@ Constraints (from tasks.md and orchestration-log.md):
 from __future__ import annotations
 
 import math
-from datetime import UTC, datetime, timedelta
+from calendar import monthrange
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -21,23 +22,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.schemas.audit_search import AuditEntryRead, AuditSearchPagination, AuditSearchParams, AuditSearchResponse
-
-try:
-    from dateutil.relativedelta import relativedelta
-except ImportError:  # pragma: no cover
-    relativedelta = None  # type: ignore[assignment]
+from app.services.audit_redaction import redact_audit_value
 
 
 class AuditSearchService:
     """Filtered + paginated audit log search with server-side retention enforcement."""
 
     @staticmethod
-    def _retention_cutoff(retention_months: int) -> datetime:
-        """Compute the earliest timestamp to include (entries must be >= cutoff)."""
-        now = datetime.now(UTC)
-        if relativedelta is not None:
-            return now - relativedelta(months=retention_months)
-        return now - timedelta(days=retention_months * 30)
+    def _retention_cutoff(retention_months: int, *, now: datetime | None = None) -> datetime:
+        """Compute an inclusive calendar-month cutoff in UTC."""
+        current = now or datetime.now(UTC)
+        current = current.replace(tzinfo=UTC) if current.tzinfo is None else current.astimezone(UTC)
+
+        target_month_index = current.year * 12 + current.month - 1 - retention_months
+        target_year, zero_based_month = divmod(target_month_index, 12)
+        target_month = zero_based_month + 1
+        target_day = min(current.day, monthrange(target_year, target_month)[1])
+        return current.replace(year=target_year, month=target_month, day=target_day)
 
     @staticmethod
     def _build_filters(params: AuditSearchParams, cutoff: datetime) -> list[Any]:
@@ -84,17 +85,31 @@ class AuditSearchService:
         cutoff = cls._retention_cutoff(retention_months)
         base_filters = cls._build_filters(params, cutoff)
 
-        # Count total matching rows (for pagination metadata)
-        count_query = select(func.count()).select_from(AuditLogEntry).where(*base_filters)
-        count_result = await session.execute(count_query)
-        total_entries = int(count_result.scalar_one())
+        # Count and snapshot the upper sequence boundary atomically. Appends
+        # committed after this statement are excluded from both the page and
+        # its metadata, so one request cannot chase a moving result set.
+        snapshot_query = (
+            select(func.count(), func.max(AuditLogEntry.sequence_number))
+            .select_from(AuditLogEntry)
+            .where(*base_filters)
+        )
+        snapshot_result = await session.execute(snapshot_query)
+        total_entries_raw, upper_sequence = snapshot_result.one()
+        total_entries = int(total_entries_raw)
 
-        # Paginated data query — default sort: timestamp DESC
+        # Offset pagination is deterministic for this request snapshot. Each
+        # page request takes a fresh snapshot; callers traversing pages while
+        # inserts occur can therefore observe ordinary offset-pagination
+        # drift across requests and should restart traversal when exact
+        # point-in-time pagination is required.
         offset = (params.page - 1) * params.page_size
+        data_filters = list(base_filters)
+        if upper_sequence is not None:
+            data_filters.append(AuditLogEntry.sequence_number <= int(upper_sequence))
         data_query = (
             select(AuditLogEntry)
-            .where(*base_filters)
-            .order_by(AuditLogEntry.timestamp.desc())
+            .where(*data_filters)
+            .order_by(AuditLogEntry.timestamp.desc(), AuditLogEntry.sequence_number.desc())
             .offset(offset)
             .limit(params.page_size)
         )
@@ -176,14 +191,27 @@ class AuditSearchService:
         )
         base_filters = cls._build_filters(_params, cutoff)
 
-        # COUNT — used by caller for the 50k guard.
-        count_query = select(func.count()).select_from(AuditLogEntry).where(*base_filters)
-        count_result = await session.execute(count_query)
-        total_count = int(count_result.scalar_one())
+        # Count and snapshot in one statement. This keeps the 50k guard and
+        # exported rows internally consistent when appends occur concurrently.
+        snapshot_query = (
+            select(func.count(), func.max(AuditLogEntry.sequence_number))
+            .select_from(AuditLogEntry)
+            .where(*base_filters)
+        )
+        snapshot_result = await session.execute(snapshot_query)
+        total_count_raw, upper_sequence = snapshot_result.one()
+        total_count = int(total_count_raw)
 
-        # Uncapped fetch — LIMIT is the hard export ceiling, not a Pydantic page_size.
+        data_filters = list(base_filters)
+        if upper_sequence is not None:
+            data_filters.append(AuditLogEntry.sequence_number <= int(upper_sequence))
+
+        # LIMIT is the hard export ceiling, not a Pydantic page_size.
         data_query = (
-            select(AuditLogEntry).where(*base_filters).order_by(AuditLogEntry.timestamp.desc()).limit(export_limit)
+            select(AuditLogEntry)
+            .where(*data_filters)
+            .order_by(AuditLogEntry.timestamp.desc(), AuditLogEntry.sequence_number.desc())
+            .limit(export_limit)
         )
         rows_result = await session.execute(data_query)
         entries = [_row_to_read(row) for row in rows_result.scalars().all()]
@@ -191,14 +219,24 @@ class AuditSearchService:
 
 
 def _row_to_read(row: Any) -> AuditEntryRead:
-    """Convert an AuditLogEntry ORM row to AuditEntryRead schema."""
+    """Convert an ORM row to a defense-in-depth redacted response."""
+    redacted = redact_audit_value(
+        {
+            "actor_identity": row.actor_identity,
+            "action_type": row.action_type,
+            "resource_type": row.resource_type,
+            "resource_id": row.resource_id,
+            "outcome": row.outcome,
+            "context": row.context if row.context is not None else {},
+        }
+    )
     return AuditEntryRead(
         sequence_number=row.sequence_number,
         timestamp=row.timestamp,
-        actor_identity=row.actor_identity,
-        action_type=row.action_type,
-        resource_type=row.resource_type,
-        resource_id=row.resource_id,
-        outcome=row.outcome,
-        context=row.context if row.context is not None else {},
+        actor_identity=redacted["actor_identity"],
+        action_type=redacted["action_type"],
+        resource_type=redacted["resource_type"],
+        resource_id=redacted["resource_id"],
+        outcome=redacted["outcome"],
+        context=redacted["context"],
     )

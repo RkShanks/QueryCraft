@@ -52,6 +52,10 @@ def _build_mock_session_with_entries(entries):
 
     count_result = MagicMock()
     count_result.scalar_one.return_value = len(entries)
+    count_result.one.return_value = (
+        len(entries),
+        max((entry.sequence_number for entry in entries), default=None),
+    )
 
     rows_result = MagicMock()
     rows_result.scalars.return_value.all.return_value = entries
@@ -145,6 +149,7 @@ class TestRetentionWindowExcludesOldEntries:
 def _count_mock(n: int):
     m = MagicMock()
     m.scalar_one.return_value = n
+    m.one.return_value = (n, n if n else None)
     return m
 
 
