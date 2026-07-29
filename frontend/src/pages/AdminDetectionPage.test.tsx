@@ -26,6 +26,26 @@ describe('AdminDetectionPage', () => {
     expect(flagInput).toHaveValue('0.5');
   });
 
+  it('gives both synchronized numeric inputs localized accessible names', async () => {
+    server.use(
+      http.get('/api/v1/admin/detection/config', () => {
+        return HttpResponse.json(
+          { block_confidence: 0.8, flag_confidence: 0.5, updated_at: '2026-06-22T00:00:00Z' },
+          { status: 200 }
+        );
+      })
+    );
+
+    renderWithClient(<AdminDetectionPage />);
+
+    expect(
+      await screen.findByRole('spinbutton', { name: /block threshold/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('spinbutton', { name: /flag threshold/i })
+    ).toBeInTheDocument();
+  });
+
   it('submits updated config when inputs are valid', async () => {
     let putPayload: unknown = null;
     server.use(
