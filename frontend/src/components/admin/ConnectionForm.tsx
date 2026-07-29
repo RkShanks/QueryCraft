@@ -22,6 +22,9 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
 }) => {
   const { t } = useTranslation();
   const isEdit = !!initialValues;
+  const writeOnlyPreserve = isEdit
+    ? t('admin.connections.form.writeOnlyPreserve')
+    : undefined;
 
   const [displayName, setDisplayName] = useState(initialValues?.display_name || '');
   const [databaseType, setDatabaseType] = useState<DatabaseType>(initialValues?.database_type || 'postgresql');
@@ -187,13 +190,13 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               type="text"
               value={host}
               onChange={(e) => setHost(e.target.value)}
-              placeholder={isEdit ? t('admin.connections.form.writeOnlyPreserve') : undefined}
+              placeholder={writeOnlyPreserve}
               aria-describedby={isEdit ? 'host-write-only-help' : undefined}
               className="w-full px-3 py-2.5 bg-bg-elevated border border-border rounded-md text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all"
             />
             {isEdit && (
               <span id="host-write-only-help" className="block text-[11px] text-text-muted mt-1 select-none">
-                {t('admin.connections.form.writeOnlyPreserve')}
+                {writeOnlyPreserve}
               </span>
             )}
             {errors.host && <p className="text-xs text-red-500 mt-1">{errors.host}</p>}
@@ -238,13 +241,13 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder={isEdit ? t('admin.connections.form.writeOnlyPreserve') : undefined}
+              placeholder={writeOnlyPreserve}
               aria-describedby={isEdit ? 'username-write-only-help' : undefined}
               className="w-full px-3 py-2.5 bg-bg-elevated border border-border rounded-md text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all"
             />
             {isEdit && (
               <span id="username-write-only-help" className="block text-[11px] text-text-muted mt-1 select-none">
-                {t('admin.connections.form.writeOnlyPreserve')}
+                {writeOnlyPreserve}
               </span>
             )}
             {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
@@ -261,13 +264,13 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={isEdit ? t('admin.connections.form.writeOnlyPreserve') : undefined}
+              placeholder={writeOnlyPreserve}
               aria-describedby={isEdit ? 'password-write-only-help' : undefined}
               className="w-full px-3 py-2.5 bg-bg-elevated border border-border rounded-md text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all"
             />
             {isEdit && (
               <span id="password-write-only-help" className="block text-[11px] text-text-muted mt-1 select-none">
-                {t('admin.connections.form.writeOnlyPreserve')}
+                {writeOnlyPreserve}
               </span>
             )}
             {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
