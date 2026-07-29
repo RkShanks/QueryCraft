@@ -23,6 +23,7 @@
 
   "auth.signOut.label": "تسجيل الخروج",
 
+  "query.input.label": "اطرح سؤالاً",
   "query.input.placeholder": "اطرح سؤالاً حول بياناتك...",
   "query.input.placeholderNoConnections": "يرجى إضافة اتصال قاعدة بيانات أولاً.",
   "query.input.placeholderNoSelection": "اختر قاعدة بيانات أعلاه لبدء الاستعلام.",

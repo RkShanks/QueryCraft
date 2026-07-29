@@ -19,6 +19,7 @@
   "auth.signIn.error.invalidCredentials": "Invalid username or password",
   "auth.signIn.error.network": "Network error. Please try again.",
   "auth.signOut.label": "Sign Out",
+  "query.input.label": "Ask a question",
   "query.input.placeholder": "Ask a question about your data...",
   "query.input.placeholderNoConnections": "Please add a database connection first.",
   "query.input.placeholderNoSelection": "Select a database above to start querying.",
