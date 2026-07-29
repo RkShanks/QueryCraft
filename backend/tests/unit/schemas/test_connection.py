@@ -15,6 +15,35 @@ from app.schemas.connection import (
 )
 
 
+@pytest.mark.parametrize(
+    ("schema_model", "schema_name"),
+    [
+        (ConnectionCreate, "ConnectionCreate"),
+        (ConnectionUpdate, "ConnectionUpdate"),
+    ],
+)
+def test_connection_credentials_are_write_only_in_runtime_schemas(schema_model, schema_name):
+    sensitive_fields = {"host", "username", "password"}
+    pydantic_properties = schema_model.model_json_schema()["properties"]
+
+    from app.main import create_app
+
+    openapi_properties = create_app().openapi()["components"]["schemas"][schema_name]["properties"]
+    for properties in (pydantic_properties, openapi_properties):
+        fields_without_write_only = {
+            field_name for field_name in sensitive_fields if properties[field_name].get("writeOnly") is not True
+        }
+        assert fields_without_write_only == set()
+
+
+def test_connection_response_runtime_openapi_omits_sensitive_fields():
+    from app.main import create_app
+
+    response_properties = create_app().openapi()["components"]["schemas"]["ConnectionResponse"]["properties"]
+    forbidden_fields = {"host", "username", "password", "encrypted_password", "database_url"}
+    assert set(response_properties) & forbidden_fields == set()
+
+
 class TestConnectionCreate:
     """Verify ConnectionCreate schema validation."""
 
