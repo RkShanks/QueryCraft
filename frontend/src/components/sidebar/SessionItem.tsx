@@ -40,6 +40,7 @@ export const SessionItem: React.FC<SessionItemProps> = ({
       onMouseLeave={() => setIsHovered(false)}
       role="button"
       tabIndex={0}
+      aria-label={collapsed ? preview : undefined}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();

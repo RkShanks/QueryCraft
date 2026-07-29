@@ -143,6 +143,7 @@ export const Sidebar: React.FC = () => {
         <button
           className="sidebar-new-chat-btn"
           onClick={handleNewChat}
+          aria-label={t('sidebar.newChat')}
           data-testid="sidebar-new-chat"
         >
           <Plus className="w-4 h-4" />
