@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.schemas.audit_search import AuditEntryRead, AuditSearchPagination, AuditSearchParams, AuditSearchResponse
-from app.services.audit_redaction import redact_audit_value
+from app.services.audit_redaction import redact_audit_entry
 
 
 class AuditSearchService:
@@ -220,16 +220,7 @@ class AuditSearchService:
 
 def _row_to_read(row: Any) -> AuditEntryRead:
     """Convert an ORM row to a defense-in-depth redacted response."""
-    redacted = redact_audit_value(
-        {
-            "actor_identity": row.actor_identity,
-            "action_type": row.action_type,
-            "resource_type": row.resource_type,
-            "resource_id": row.resource_id,
-            "outcome": row.outcome,
-            "context": row.context if row.context is not None else {},
-        }
-    )
+    redacted = redact_audit_entry(row)
     return AuditEntryRead(
         sequence_number=row.sequence_number,
         timestamp=row.timestamp,

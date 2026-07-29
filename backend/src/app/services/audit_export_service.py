@@ -22,7 +22,7 @@ import io
 import json
 from typing import Any
 
-from app.services.audit_redaction import redact_audit_value
+from app.services.audit_redaction import redact_audit_entry, redact_audit_value
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -70,37 +70,43 @@ def redact_audit_export_value(value: Any) -> Any:
     return redact_audit_value(value)
 
 
-def _redact_entry_context(entry: Any) -> dict:
-    """Apply redaction to an entry's context dict."""
-    ctx = entry.context if entry.context is not None else {}
-    return redact_audit_export_value(ctx)
-
-
 # ---------------------------------------------------------------------------
 # Formula injection prevention
 # ---------------------------------------------------------------------------
 
 
 def _safe_csv_cell(value: str) -> str:
-    """Tab-prefix string cells that start with formula injection characters."""
-    if value and value[0] in _FORMULA_PREFIXES:
+    """Conservatively tab-prefix formula-shaped spreadsheet cells."""
+    index = 0
+    while index < len(value):
+        character = value[index]
+        if not (character.isspace() or character == "\ufeff" or ord(character) <= 31 or ord(character) == 127):
+            break
+        index += 1
+    if index < len(value) and value[index] in _FORMULA_PREFIXES:
         return "\t" + value
     return value
 
 
-def _entry_to_csv_row(entry: Any, redacted_context: dict) -> list[str]:
+def _entry_to_csv_row(redacted_entry: dict[str, Any]) -> list[str]:
     """Convert a single entry to a CSV row, applying formula injection prevention."""
     raw_values: dict[str, str] = {
-        "sequence_number": str(entry.sequence_number),
-        "timestamp": str(entry.timestamp),
-        "actor_identity": str(entry.actor_identity) if entry.actor_identity is not None else "",
-        "action_type": str(entry.action_type),
-        "resource_type": str(entry.resource_type) if entry.resource_type is not None else "",
-        "resource_id": str(entry.resource_id) if entry.resource_id is not None else "",
-        "outcome": str(entry.outcome),
-        "context": json.dumps(redacted_context, sort_keys=True),
+        "sequence_number": str(redacted_entry["sequence_number"]),
+        "timestamp": str(redacted_entry["timestamp"]),
+        "actor_identity": str(redacted_entry["actor_identity"]) if redacted_entry["actor_identity"] is not None else "",
+        "action_type": str(redacted_entry["action_type"]),
+        "resource_type": str(redacted_entry["resource_type"]) if redacted_entry["resource_type"] is not None else "",
+        "resource_id": str(redacted_entry["resource_id"]) if redacted_entry["resource_id"] is not None else "",
+        "outcome": str(redacted_entry["outcome"]),
+        "context": json.dumps(redacted_entry["context"], sort_keys=True),
     }
     return [_safe_csv_cell(raw_values[col]) for col in _CSV_COLUMNS]
+
+
+def _safe_csv_metadata_value(value: Any) -> str:
+    """Redact, formula-prefix, and keep one metadata value on one line."""
+    safe = _safe_csv_cell(str(redact_audit_value(value)))
+    return safe.replace("\r", "\\r").replace("\n", "\\n")
 
 
 # ---------------------------------------------------------------------------
@@ -145,25 +151,22 @@ class AuditExportService:
         writer.writerow(list(_CSV_COLUMNS))
 
         for entry in entries:
-            redacted_ctx = _redact_entry_context(entry)
-            writer.writerow(_entry_to_csv_row(entry, redacted_ctx))
+            writer.writerow(_entry_to_csv_row(redact_audit_entry(entry)))
 
         data_payload_str = data_buf.getvalue()
 
         # ── 2. Compute checksum of data payload only ────────────────────────
-        # Derive the checksum using the same splitlines→rejoin method that a
-        # verifier would use when reading the final output (strip trailing newline
-        # so the checksum is stable regardless of trailing-newline variations).
-        data_lines = data_payload_str.splitlines()
-        checksum_input = "\n".join(data_lines).encode("utf-8")
+        # Strip only the writer's final row terminator. Embedded CR/LF inside
+        # quoted cells remain checksum-protected exactly as emitted.
+        checksum_input = data_payload_str.removesuffix("\n").encode("utf-8")
         checksum = hashlib.sha256(checksum_input).hexdigest()
 
         # ── 3. Build metadata comment header ───────────────────────────────
         meta_lines = [
-            f"# export_actor = {metadata['export_actor']}",
-            f"# export_timestamp = {metadata['export_timestamp']}",
-            f"# filter_summary = {metadata['filter_summary']}",
-            f"# record_count = {metadata['record_count']}",
+            f"# export_actor = {_safe_csv_metadata_value(metadata['export_actor'])}",
+            f"# export_timestamp = {_safe_csv_metadata_value(metadata['export_timestamp'])}",
+            f"# filter_summary = {_safe_csv_metadata_value(metadata['filter_summary'])}",
+            f"# record_count = {_safe_csv_metadata_value(metadata['record_count'])}",
             f"# checksum = {checksum}",
         ]
         meta_section = "\n".join(meta_lines) + "\n"
@@ -199,17 +202,17 @@ class AuditExportService:
         # ── 1. Build entries list with redaction applied ────────────────────
         serialized_entries: list[dict] = []
         for entry in entries:
-            redacted_ctx = _redact_entry_context(entry)
+            redacted_entry = redact_audit_entry(entry)
             serialized_entries.append(
                 {
-                    "sequence_number": entry.sequence_number,
-                    "timestamp": str(entry.timestamp),
-                    "actor_identity": entry.actor_identity,
-                    "action_type": entry.action_type,
-                    "resource_type": entry.resource_type,
-                    "resource_id": entry.resource_id,
-                    "outcome": entry.outcome,
-                    "context": redacted_ctx,
+                    "sequence_number": redacted_entry["sequence_number"],
+                    "timestamp": str(redacted_entry["timestamp"]),
+                    "actor_identity": redacted_entry["actor_identity"],
+                    "action_type": redacted_entry["action_type"],
+                    "resource_type": redacted_entry["resource_type"],
+                    "resource_id": redacted_entry["resource_id"],
+                    "outcome": redacted_entry["outcome"],
+                    "context": redacted_entry["context"],
                 }
             )
 
@@ -218,12 +221,13 @@ class AuditExportService:
         checksum = hashlib.sha256(entries_payload.encode("utf-8")).hexdigest()
 
         # ── 3. Wrap in output envelope ──────────────────────────────────────
+        safe_metadata = redact_audit_value(metadata)
         output = {
             "metadata": {
-                "export_actor": metadata["export_actor"],
-                "export_timestamp": metadata["export_timestamp"],
-                "filter_summary": metadata["filter_summary"],
-                "record_count": metadata["record_count"],
+                "export_actor": safe_metadata["export_actor"],
+                "export_timestamp": safe_metadata["export_timestamp"],
+                "filter_summary": safe_metadata["filter_summary"],
+                "record_count": safe_metadata["record_count"],
                 "checksum": checksum,
             },
             "entries": serialized_entries,
