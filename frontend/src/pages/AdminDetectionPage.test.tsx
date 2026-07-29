@@ -44,6 +44,13 @@ describe('AdminDetectionPage', () => {
     expect(
       screen.getByRole('spinbutton', { name: /flag threshold/i })
     ).toBeInTheDocument();
+
+    for (const control of [
+      ...screen.getAllByRole('slider'),
+      ...screen.getAllByRole('spinbutton'),
+    ]) {
+      expect(control).toHaveClass('focus-visible:ring-2');
+    }
   });
 
   it('submits updated config when inputs are valid', async () => {
