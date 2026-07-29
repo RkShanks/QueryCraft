@@ -19,11 +19,38 @@ describe('AdminDetectionPage', () => {
     renderWithClient(<AdminDetectionPage />);
 
     // Wait for sliders/inputs to render
-    const blockInput = await screen.findByLabelText(/block/i);
-    const flagInput = await screen.findByLabelText(/flag/i);
+    const blockInput = await screen.findByRole('slider', { name: /block/i });
+    const flagInput = await screen.findByRole('slider', { name: /flag/i });
 
     expect(blockInput).toHaveValue('0.8');
     expect(flagInput).toHaveValue('0.5');
+  });
+
+  it('gives both synchronized numeric inputs localized accessible names', async () => {
+    server.use(
+      http.get('/api/v1/admin/detection/config', () => {
+        return HttpResponse.json(
+          { block_confidence: 0.8, flag_confidence: 0.5, updated_at: '2026-06-22T00:00:00Z' },
+          { status: 200 }
+        );
+      })
+    );
+
+    renderWithClient(<AdminDetectionPage />);
+
+    expect(
+      await screen.findByRole('spinbutton', { name: /block threshold/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('spinbutton', { name: /flag threshold/i })
+    ).toBeInTheDocument();
+
+    for (const control of [
+      ...screen.getAllByRole('slider'),
+      ...screen.getAllByRole('spinbutton'),
+    ]) {
+      expect(control).toHaveClass('focus-visible:ring-2');
+    }
   });
 
   it('submits updated config when inputs are valid', async () => {
@@ -46,8 +73,8 @@ describe('AdminDetectionPage', () => {
 
     renderWithClient(<AdminDetectionPage />);
 
-    const blockInput = await screen.findByLabelText(/block/i);
-    const flagInput = await screen.findByLabelText(/flag/i);
+    const blockInput = await screen.findByRole('slider', { name: /block/i });
+    const flagInput = await screen.findByRole('slider', { name: /flag/i });
     const saveButton = screen.getByRole('button', { name: /save/i });
 
     // Change values
@@ -76,8 +103,8 @@ describe('AdminDetectionPage', () => {
 
     renderWithClient(<AdminDetectionPage />);
 
-    const blockInput = await screen.findByLabelText(/block/i);
-    const flagInput = await screen.findByLabelText(/flag/i);
+    const blockInput = await screen.findByRole('slider', { name: /block/i });
+    const flagInput = await screen.findByRole('slider', { name: /flag/i });
     const saveButton = screen.getByRole('button', { name: /save/i });
 
     // Set block <= flag (e.g. block = 0.5, flag = 0.6)
@@ -131,7 +158,7 @@ describe('AdminDetectionPage', () => {
     );
 
     // Wait for content
-    await screen.findByLabelText(/block/i);
+    await screen.findByRole('slider', { name: /block/i });
 
     expect(container.firstChild).toHaveAttribute('dir', 'rtl');
 
