@@ -476,7 +476,7 @@ export const AdminRolesPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="py-3 px-4 text-gray-400 max-w-xs truncate">{role.description || '-'}</td>
-                  <td className="py-3 px-4 font-mono text-xs">{role.priority}</td>
+                  <td dir="ltr" className="py-3 px-4 font-mono text-xs">{role.priority}</td>
                   <td className="py-3 px-4">
                     <div className="flex flex-wrap gap-1 max-w-sm">
                       {role.permissions.map((p) => (
@@ -498,6 +498,7 @@ export const AdminRolesPage: React.FC = () => {
                         role.group_mappings.map((gm) => (
                           <span
                             key={gm.id}
+                            dir="ltr"
                             className="px-1.5 py-0.5 rounded text-xs bg-gray-900 border border-gray-850 text-neon-cyan font-medium"
                           >
                             {gm.sso_group_value}
