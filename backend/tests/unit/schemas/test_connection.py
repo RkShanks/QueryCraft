@@ -103,15 +103,16 @@ class TestConnectionResponse:
     def test_from_orm_model(self):
         from app.db.models.database_connection import SourceDatabaseConnection
 
+        runtime_sensitive_values = [uuid4().hex for _ in range(3)]
         conn = SourceDatabaseConnection(
             id=uuid4(),
             display_name="Test DB",
             database_type=DatabaseType.POSTGRESQL,
-            host="localhost",
+            host=runtime_sensitive_values[0],
             port=5432,
             database_name="test",
-            username="user",
-            encrypted_password="encrypted",
+            username=runtime_sensitive_values[1],
+            encrypted_password=runtime_sensitive_values[2],
             ssl_mode="require",
             lifecycle_state=LifecycleState.ACTIVE,
             health_status=HealthStatus.HEALTHY,
@@ -125,8 +126,9 @@ class TestConnectionResponse:
         resp = ConnectionResponse.model_validate(conn)
         assert resp.display_name == "Test DB"
         assert resp.database_type == DatabaseType.POSTGRESQL
-        # Password is NOT in response
-        assert not hasattr(resp, "encrypted_password")
+        forbidden_keys = {"host", "username", "password", "encrypted_password", "database_url"}
+        leaked_keys = set(resp.model_dump()) & forbidden_keys
+        assert leaked_keys == set()
 
 
 class TestConnectionTestResult:
