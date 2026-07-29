@@ -283,6 +283,7 @@
   "admin.connections.form.submit.edit": "حفظ التغييرات",
   "admin.connections.form.passwordPlaceholder": "••••••••",
   "admin.connections.form.passwordHelpEdit": "اتركه فارغاً للاحتفاظ بكلمة المرور الحالية",
+  "admin.connections.form.writeOnlyPreserve": "اتركه فارغًا للاحتفاظ بالقيمة الحالية",
   "admin.connections.disable": "تعطيل",
   "admin.connections.disabling": "جارٍ التعطيل...",
   "admin.connections.enable": "تفعيل",

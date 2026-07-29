@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
-  ConnectionResponse,
   ConnectionCreate,
   ConnectionUpdate,
   DatabaseType,
 } from '../../api/generated/types.gen';
+import type { ConnectionView } from '../../hooks/useConnections';
 
 export interface ConnectionFormProps {
-  initialValues?: ConnectionResponse;
+  initialValues?: ConnectionView;
   onSubmit: (data: ConnectionCreate | ConnectionUpdate) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
@@ -22,28 +22,31 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
 }) => {
   const { t } = useTranslation();
   const isEdit = !!initialValues;
+  const writeOnlyPreserve = isEdit
+    ? t('admin.connections.form.writeOnlyPreserve')
+    : undefined;
 
   const [displayName, setDisplayName] = useState(initialValues?.display_name || '');
   const [databaseType, setDatabaseType] = useState<DatabaseType>(initialValues?.database_type || 'postgresql');
-  const [host, setHost] = useState(initialValues?.host || '');
+  const [host, setHost] = useState('');
   const [port, setPort] = useState<number>(initialValues?.port ?? 5432);
   const [databaseName, setDatabaseName] = useState(initialValues?.database_name || '');
-  const [username, setUsername] = useState(initialValues?.username || '');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [sslMode, setSslMode] = useState(initialValues?.ssl_mode || '');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [prevInitialValues, setPrevInitialValues] = useState<ConnectionResponse | undefined>(initialValues);
+  const [prevInitialValues, setPrevInitialValues] = useState<ConnectionView | undefined>(initialValues);
 
   if (initialValues?.id !== prevInitialValues?.id) {
     setPrevInitialValues(initialValues);
     setDisplayName(initialValues?.display_name || '');
     setDatabaseType(initialValues?.database_type || 'postgresql');
-    setHost(initialValues?.host || '');
+    setHost('');
     setPort(initialValues?.port ?? 5432);
     setDatabaseName(initialValues?.database_name || '');
-    setUsername(initialValues?.username || '');
+    setUsername('');
     setPassword('');
     setSslMode(initialValues?.ssl_mode || '');
     setErrors({});
@@ -70,10 +73,10 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
     if (!displayName.trim()) {
       nextErrors.displayName = t('admin.connections.form.required');
     }
-    if (!host.trim()) {
+    if (!isEdit && !host.trim()) {
       nextErrors.host = t('admin.connections.form.required');
     }
-    if (!username.trim()) {
+    if (!isEdit && !username.trim()) {
       nextErrors.username = t('admin.connections.form.required');
     }
     if (!databaseName.trim()) {
@@ -104,14 +107,17 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
       const updatePayload: ConnectionUpdate = {
         display_name: displayName,
         database_type: databaseType,
-        host: host,
         port: port,
         database_name: databaseName,
-        username: username,
         ssl_mode: sslMode || null,
       };
 
-      // Only include password if the user typed a new one
+      if (host.trim()) {
+        updatePayload.host = host;
+      }
+      if (username.trim()) {
+        updatePayload.username = username;
+      }
       if (password) {
         updatePayload.password = password;
       }
@@ -184,8 +190,15 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               type="text"
               value={host}
               onChange={(e) => setHost(e.target.value)}
+              placeholder={writeOnlyPreserve}
+              aria-describedby={isEdit ? 'host-write-only-help' : undefined}
               className="w-full px-3 py-2.5 bg-bg-elevated border border-border rounded-md text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all"
             />
+            {isEdit && (
+              <span id="host-write-only-help" className="block text-[11px] text-text-muted mt-1 select-none">
+                {writeOnlyPreserve}
+              </span>
+            )}
             {errors.host && <p className="text-xs text-red-500 mt-1">{errors.host}</p>}
           </div>
 
@@ -228,8 +241,15 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              placeholder={writeOnlyPreserve}
+              aria-describedby={isEdit ? 'username-write-only-help' : undefined}
               className="w-full px-3 py-2.5 bg-bg-elevated border border-border rounded-md text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all"
             />
+            {isEdit && (
+              <span id="username-write-only-help" className="block text-[11px] text-text-muted mt-1 select-none">
+                {writeOnlyPreserve}
+              </span>
+            )}
             {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
           </div>
         </div>
@@ -244,12 +264,13 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={isEdit ? t('admin.connections.form.passwordPlaceholder') : undefined}
+              placeholder={writeOnlyPreserve}
+              aria-describedby={isEdit ? 'password-write-only-help' : undefined}
               className="w-full px-3 py-2.5 bg-bg-elevated border border-border rounded-md text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all"
             />
             {isEdit && (
-              <span className="block text-[11px] text-text-muted mt-1 select-none">
-                {t('admin.connections.form.passwordHelpEdit')}
+              <span id="password-write-only-help" className="block text-[11px] text-text-muted mt-1 select-none">
+                {writeOnlyPreserve}
               </span>
             )}
             {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}

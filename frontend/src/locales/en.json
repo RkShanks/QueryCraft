@@ -269,6 +269,7 @@
   "admin.connections.form.submit.edit": "Save Changes",
   "admin.connections.form.passwordPlaceholder": "••••••••",
   "admin.connections.form.passwordHelpEdit": "Leave blank to keep existing password",
+  "admin.connections.form.writeOnlyPreserve": "Leave blank to preserve existing value",
   "admin.connections.disable": "Disable",
   "admin.connections.disabling": "Disabling...",
   "admin.connections.enable": "Enable",

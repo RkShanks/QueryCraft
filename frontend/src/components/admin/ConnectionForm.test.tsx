@@ -43,15 +43,17 @@ describe('ConnectionForm', () => {
     expect(portInput.value).toBe('1433');
   });
 
-  it('edit mode renders existing non-sensitive values', () => {
+  it('edit mode renders non-sensitive values but never redisplays legacy write-only fields', () => {
+    const legacyHost = crypto.randomUUID();
+    const legacyUsername = crypto.randomUUID();
     const initialValues: ConnectionResponse = {
       id: '123-uuid',
       display_name: 'My Custom PG',
       database_type: 'postgresql',
-      host: 'pg.custom.com',
+      host: legacyHost,
       port: 9999,
       database_name: 'custom_db',
-      username: 'custom_user',
+      username: legacyUsername,
       ssl_mode: 'require',
       lifecycle_state: 'active',
       health_status: 'healthy',
@@ -67,51 +69,35 @@ describe('ConnectionForm', () => {
 
     expect((screen.getByLabelText(/Display Name/i) as HTMLInputElement).value).toBe('My Custom PG');
     expect((screen.getByLabelText(/Database Type/i) as HTMLSelectElement).value).toBe('postgresql');
-    expect((screen.getByLabelText(/Host/i) as HTMLInputElement).value).toBe('pg.custom.com');
     expect((screen.getByLabelText(/Port/i) as HTMLInputElement).value).toBe('9999');
     expect((screen.getByLabelText(/Database Name/i) as HTMLInputElement).value).toBe('custom_db');
-    expect((screen.getByLabelText(/Username/i) as HTMLInputElement).value).toBe('custom_user');
     expect((screen.getByLabelText(/SSL Mode/i) as HTMLInputElement).value).toBe('require');
 
+    const hostInput = screen.getByLabelText(/Host/i) as HTMLInputElement;
+    const usernameInput = screen.getByLabelText(/Username/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(/Password/i) as HTMLInputElement;
+
+    expect(hostInput.value.length).toBe(0);
+    expect(usernameInput.value.length).toBe(0);
+    expect(passwordInput.value).toBe('');
+    expect(hostInput.value === legacyHost).toBe(false);
+    expect(usernameInput.value === legacyUsername).toBe(false);
+    expect(hostInput.placeholder).toBe('Leave blank to preserve existing value');
+    expect(usernameInput.placeholder).toBe('Leave blank to preserve existing value');
+    expect(passwordInput.placeholder).toBe('Leave blank to preserve existing value');
+    expect(screen.getAllByText('Leave blank to preserve existing value')).toHaveLength(3);
     expect(screen.getByRole('button', { name: /Save Changes/i })).toBeInTheDocument();
   });
 
-  it('edit mode never displays a real password', () => {
+  it('unchanged edit submission omits every blank write-only field', () => {
     const initialValues: ConnectionResponse = {
       id: '123-uuid',
       display_name: 'My Custom PG',
       database_type: 'postgresql',
-      host: 'pg.custom.com',
+      host: crypto.randomUUID(),
       port: 9999,
       database_name: 'custom_db',
-      username: 'custom_user',
-      ssl_mode: 'require',
-      lifecycle_state: 'active',
-      health_status: 'healthy',
-      last_health_check_at: null,
-      health_error_category: null,
-      schema_introspection_status: 'success',
-      schema_last_refreshed_at: null,
-      created_at: '',
-      updated_at: '',
-    };
-
-    render(<ConnectionForm {...defaultProps} initialValues={initialValues} />);
-
-    const passwordInput = screen.getByLabelText(/Password/i) as HTMLInputElement;
-    expect(passwordInput.value).toBe('');
-    expect(passwordInput.placeholder).toBe('••••••••');
-  });
-
-  it('submit payload for unchanged edit password omits password', () => {
-    const initialValues: ConnectionResponse = {
-      id: '123-uuid',
-      display_name: 'My Custom PG',
-      database_type: 'postgresql',
-      host: 'pg.custom.com',
-      port: 9999,
-      database_name: 'custom_db',
-      username: 'custom_user',
+      username: crypto.randomUUID(),
       ssl_mode: 'require',
       lifecycle_state: 'active',
       health_status: 'healthy',
@@ -131,19 +117,21 @@ describe('ConnectionForm', () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     const submittedPayload = onSubmit.mock.calls[0][0];
-    expect(submittedPayload.password).toBeUndefined();
+    expect(Object.hasOwn(submittedPayload, 'host')).toBe(false);
+    expect(Object.hasOwn(submittedPayload, 'username')).toBe(false);
+    expect(Object.hasOwn(submittedPayload, 'password')).toBe(false);
     expect(submittedPayload.display_name).toBe('My Custom PG');
   });
 
-  it('submit payload for changed password includes the new password', () => {
+  it('edit submission includes only replacements typed into write-only fields', () => {
     const initialValues: ConnectionResponse = {
       id: '123-uuid',
       display_name: 'My Custom PG',
       database_type: 'postgresql',
-      host: 'pg.custom.com',
+      host: crypto.randomUUID(),
       port: 9999,
       database_name: 'custom_db',
-      username: 'custom_user',
+      username: crypto.randomUUID(),
       ssl_mode: 'require',
       lifecycle_state: 'active',
       health_status: 'healthy',
@@ -158,15 +146,19 @@ describe('ConnectionForm', () => {
     const onSubmit = vi.fn();
     render(<ConnectionForm {...defaultProps} initialValues={initialValues} onSubmit={onSubmit} />);
 
-    const passwordInput = screen.getByLabelText(/Password/i);
-    fireEvent.change(passwordInput, { target: { value: 'new-secret-123' } });
+    const replacements = Array.from({ length: 3 }, () => crypto.randomUUID());
+    fireEvent.change(screen.getByLabelText(/Host/i), { target: { value: replacements[0] } });
+    fireEvent.change(screen.getByLabelText(/Username/i), { target: { value: replacements[1] } });
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: replacements[2] } });
 
     const submitButton = screen.getByRole('button', { name: /Save Changes/i });
     fireEvent.click(submitButton);
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     const submittedPayload = onSubmit.mock.calls[0][0];
-    expect(submittedPayload.password).toBe('new-secret-123');
+    expect(submittedPayload.host === replacements[0]).toBe(true);
+    expect(submittedPayload.username === replacements[1]).toBe(true);
+    expect(submittedPayload.password === replacements[2]).toBe(true);
   });
 
   it('basic validation prevents submit when required fields are empty', () => {
@@ -182,24 +174,20 @@ describe('ConnectionForm', () => {
     expect(screen.queryAllByText(/This field is required/i).length).toBeGreaterThan(0);
   });
 
-  it('clears typed password and omits/includes password appropriately when switching from create to edit mode', () => {
-    const onSubmit = vi.fn();
-    const { rerender } = render(<ConnectionForm {...defaultProps} onSubmit={onSubmit} />);
-
-    // Type a password in create mode
-    const passwordInput = screen.getByLabelText(/Password/i) as HTMLInputElement;
-    fireEvent.change(passwordInput, { target: { value: 'my-create-secret' } });
-    expect(passwordInput.value).toBe('my-create-secret');
-
-    // Transition same component instance to edit mode by providing initialValues
-    const initialValues: ConnectionResponse = {
-      id: '456-uuid',
+  it('clears typed write-only replacements when the mode or edit target changes', () => {
+    const runtimeProbes = Array.from({ length: 10 }, () => crypto.randomUUID());
+    const connectionValues = (
+      id: string,
+      legacyHost: string,
+      legacyUsername: string
+    ): ConnectionResponse => ({
+      id,
       display_name: 'Existing Db',
       database_type: 'postgresql',
-      host: 'localhost',
+      host: legacyHost,
       port: 5432,
       database_name: 'test_db',
-      username: 'db_user',
+      username: legacyUsername,
       ssl_mode: 'prefer',
       lifecycle_state: 'active',
       health_status: 'healthy',
@@ -209,24 +197,34 @@ describe('ConnectionForm', () => {
       schema_last_refreshed_at: null,
       created_at: '',
       updated_at: '',
-    };
+    });
+    const { rerender } = render(<ConnectionForm {...defaultProps} />);
+    const writeOnlyInputs = [
+      screen.getByLabelText(/Host/i),
+      screen.getByLabelText(/Username/i),
+      screen.getByLabelText(/Password/i),
+    ] as HTMLInputElement[];
 
-    rerender(<ConnectionForm {...defaultProps} initialValues={initialValues} onSubmit={onSubmit} />);
+    writeOnlyInputs.forEach((input, index) => {
+      fireEvent.change(input, { target: { value: runtimeProbes[index] } });
+    });
+    rerender(
+      <ConnectionForm
+        {...defaultProps}
+        initialValues={connectionValues('first', runtimeProbes[3], runtimeProbes[4])}
+      />
+    );
+    expect(writeOnlyInputs.every((input) => input.value.length === 0)).toBe(true);
 
-    // 1. Assert password field is cleared on transition to edit mode
-    expect(passwordInput.value).toBe('');
-
-    // 2. Assert submission after transition omits password (if unchanged)
-    const submitButton = screen.getByRole('button', { name: /Save Changes/i });
-    fireEvent.click(submitButton);
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(onSubmit.mock.calls[0][0].password).toBeUndefined();
-
-    // 3. Type a new password in edit mode and assert submission includes it
-    onSubmit.mockClear();
-    fireEvent.change(passwordInput, { target: { value: 'new-edit-secret' } });
-    fireEvent.click(submitButton);
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(onSubmit.mock.calls[0][0].password).toBe('new-edit-secret');
+    writeOnlyInputs.forEach((input, index) => {
+      fireEvent.change(input, { target: { value: runtimeProbes[index + 5] } });
+    });
+    rerender(
+      <ConnectionForm
+        {...defaultProps}
+        initialValues={connectionValues('second', runtimeProbes[8], runtimeProbes[9])}
+      />
+    );
+    expect(writeOnlyInputs.every((input) => input.value.length === 0)).toBe(true);
   });
 });
