@@ -19,8 +19,8 @@ describe('AdminDetectionPage', () => {
     renderWithClient(<AdminDetectionPage />);
 
     // Wait for sliders/inputs to render
-    const blockInput = await screen.findByLabelText(/block/i);
-    const flagInput = await screen.findByLabelText(/flag/i);
+    const blockInput = await screen.findByRole('slider', { name: /block/i });
+    const flagInput = await screen.findByRole('slider', { name: /flag/i });
 
     expect(blockInput).toHaveValue('0.8');
     expect(flagInput).toHaveValue('0.5');
@@ -73,8 +73,8 @@ describe('AdminDetectionPage', () => {
 
     renderWithClient(<AdminDetectionPage />);
 
-    const blockInput = await screen.findByLabelText(/block/i);
-    const flagInput = await screen.findByLabelText(/flag/i);
+    const blockInput = await screen.findByRole('slider', { name: /block/i });
+    const flagInput = await screen.findByRole('slider', { name: /flag/i });
     const saveButton = screen.getByRole('button', { name: /save/i });
 
     // Change values
@@ -103,8 +103,8 @@ describe('AdminDetectionPage', () => {
 
     renderWithClient(<AdminDetectionPage />);
 
-    const blockInput = await screen.findByLabelText(/block/i);
-    const flagInput = await screen.findByLabelText(/flag/i);
+    const blockInput = await screen.findByRole('slider', { name: /block/i });
+    const flagInput = await screen.findByRole('slider', { name: /flag/i });
     const saveButton = screen.getByRole('button', { name: /save/i });
 
     // Set block <= flag (e.g. block = 0.5, flag = 0.6)
@@ -158,7 +158,7 @@ describe('AdminDetectionPage', () => {
     );
 
     // Wait for content
-    await screen.findByLabelText(/block/i);
+    await screen.findByRole('slider', { name: /block/i });
 
     expect(container.firstChild).toHaveAttribute('dir', 'rtl');
 

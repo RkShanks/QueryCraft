@@ -191,16 +191,17 @@ export const AdminDetectionPage: React.FC = () => {
                 step="0.05"
                 value={blockVal}
                 onChange={(e) => setBlockVal(e.target.value)}
-                className="w-full h-2 bg-gray-950 rounded-lg appearance-none cursor-pointer accent-neon-cyan focus:outline-none"
+                className="w-full h-2 bg-gray-950 rounded-lg appearance-none cursor-pointer accent-neon-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               />
               <input
                 type="number"
+                aria-label={t('detection.block_threshold')}
                 min="0.0"
                 max="1.0"
                 step="0.01"
                 value={blockVal}
                 onChange={(e) => setBlockVal(e.target.value)}
-                className="w-20 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-white text-center focus:outline-none focus:border-neon-cyan"
+                className="w-20 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-white text-center focus-visible:outline-none focus-visible:border-neon-cyan focus-visible:ring-2 focus-visible:ring-neon-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               />
             </div>
           </div>
@@ -218,16 +219,17 @@ export const AdminDetectionPage: React.FC = () => {
                 step="0.05"
                 value={flagVal}
                 onChange={(e) => setFlagVal(e.target.value)}
-                className="w-full h-2 bg-gray-950 rounded-lg appearance-none cursor-pointer accent-neon-purple focus:outline-none"
+                className="w-full h-2 bg-gray-950 rounded-lg appearance-none cursor-pointer accent-neon-purple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-purple focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               />
               <input
                 type="number"
+                aria-label={t('detection.flag_threshold')}
                 min="0.0"
                 max="1.0"
                 step="0.01"
                 value={flagVal}
                 onChange={(e) => setFlagVal(e.target.value)}
-                className="w-20 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-white text-center focus:outline-none focus:border-neon-purple"
+                className="w-20 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-white text-center focus-visible:outline-none focus-visible:border-neon-purple focus-visible:ring-2 focus-visible:ring-neon-purple focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               />
             </div>
           </div>
