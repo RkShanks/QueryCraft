@@ -31,27 +31,30 @@ beforeAll(() => {
   client.setConfig({ baseUrl: 'http://localhost:3000/api/v1' });
 });
 
+import appI18n from '../i18n';
+import ar from '../locales/ar.json';
 import en from '../locales/en.json';
 
-const translations: Record<string, string> = en as unknown as Record<string, string>;
+const translationsByLanguage: Record<string, Record<string, string>> = {
+  ar: ar as unknown as Record<string, string>,
+  en: en as unknown as Record<string, string>,
+};
 
 const mockT = (key: string, options?: unknown) => {
   if (typeof options === 'string') return options;
   const opts = options as Record<string, unknown> | undefined;
   const defaultValue = opts?.defaultValue as string | undefined;
+  const translations =
+    translationsByLanguage[appI18n.resolvedLanguage ?? appI18n.language] ??
+    translationsByLanguage.en;
   const value = translations[key] ?? defaultValue ?? key;
   return value.replace(/\{\{(\w+)\}\}/g, (_, match) => String(opts?.[match] ?? `{{${match}}}`));
-};
-
-const mockI18n = {
-  changeLanguage: () => Promise.resolve(),
-  language: 'en',
 };
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: mockT,
-    i18n: mockI18n,
+    i18n: appI18n,
   }),
   initReactI18next: {
     type: '3rdParty',
