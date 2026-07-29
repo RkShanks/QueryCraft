@@ -188,3 +188,63 @@ async def test_admin_sync_log_omits_admin_identity():
 
     assert probe_leaked is False
     assert sync_event_logged is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("endpoint_name", "provider_lookup_name", "service_method_name", "request_fields"),
+    [
+        ("oidc_login", "_get_oidc_provider", "initiate_oidc_login", {}),
+        ("oidc_callback", "_get_oidc_provider", "process_oidc_callback", {"code": "", "state": ""}),
+        ("saml_login", "_get_saml_provider", "initiate_saml_login", {}),
+        ("saml_callback", "_get_saml_provider", "process_saml_callback", {"SAMLResponse": "", "RelayState": ""}),
+    ],
+)
+async def test_sso_failures_log_safe_codes_without_exception_values(
+    endpoint_name,
+    provider_lookup_name,
+    service_method_name,
+    request_fields,
+):
+    from app.api.v1 import sso_auth
+    from app.db.models.sso_provider import SsoProvider
+    from app.services.sso_service import SsoService, SsoValidationError
+
+    runtime_probe = secrets.token_urlsafe(24)
+    sso_service = SsoService(AsyncMock(), AsyncMock())
+    setattr(
+        sso_service,
+        service_method_name,
+        AsyncMock(side_effect=SsoValidationError(f"Unexpected provider failure {runtime_probe}")),
+    )
+    request_arguments = {
+        **{field: runtime_probe for field in request_fields},
+        "db": AsyncMock(),
+        "redis": AsyncMock(),
+    }
+    application_logger = MagicMock()
+    provider = SsoProvider(
+        protocol="oidc",
+        display_name="Runtime Provider",
+        group_claim_name="groups",
+        is_active=True,
+    )
+
+    with (
+        patch(f"app.api.v1.sso_auth.{provider_lookup_name}", new_callable=AsyncMock, return_value=provider),
+        patch("app.api.v1.sso_auth.SsoService", return_value=sso_service),
+        patch("app.api.v1.sso_auth.logger", application_logger),
+    ):
+        response = await getattr(sso_auth, endpoint_name)(**request_arguments)
+
+    probe_leaked = runtime_probe in str(application_logger.mock_calls)
+    safe_code_logged = any(
+        call.kwargs.get("error_code") == "sso_validation_failed" for call in application_logger.warning.call_args_list
+    )
+    warning_event_logged = len(application_logger.warning.call_args_list) == 1
+    application_logger.reset_mock()
+
+    assert probe_leaked is False
+    assert safe_code_logged is True
+    assert warning_event_logged is True
+    assert response.status_code == 302
