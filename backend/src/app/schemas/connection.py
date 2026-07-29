@@ -13,11 +13,11 @@ class ConnectionCreate(BaseModel):
 
     display_name: str = Field(..., min_length=1, max_length=255)
     database_type: DatabaseType
-    host: str = Field(..., min_length=1)
+    host: str = Field(..., min_length=1, json_schema_extra={"writeOnly": True})
     port: int = Field(..., ge=1, le=65535)
     database_name: str = Field(..., min_length=1)
-    username: str = Field(..., min_length=1)
-    password: str = Field(..., min_length=1)
+    username: str = Field(..., min_length=1, json_schema_extra={"writeOnly": True})
+    password: str = Field(..., min_length=1, json_schema_extra={"writeOnly": True})
     ssl_mode: str = Field(default="require", min_length=1)
 
     @field_validator("display_name", "host", "database_name", "username", "password", "ssl_mode")
@@ -33,11 +33,11 @@ class ConnectionUpdate(BaseModel):
 
     display_name: str | None = Field(default=None, min_length=1, max_length=255)
     database_type: DatabaseType | None = None
-    host: str | None = Field(default=None, min_length=1)
+    host: str | None = Field(default=None, min_length=1, json_schema_extra={"writeOnly": True})
     port: int | None = Field(default=None, ge=1, le=65535)
     database_name: str | None = Field(default=None, min_length=1)
-    username: str | None = Field(default=None, min_length=1)
-    password: str | None = None  # null/omitted = keep existing
+    username: str | None = Field(default=None, min_length=1, json_schema_extra={"writeOnly": True})
+    password: str | None = Field(default=None, json_schema_extra={"writeOnly": True})
     ssl_mode: str | None = Field(default=None, min_length=1)
 
     @field_validator("display_name", "host", "database_name", "username", "password", "ssl_mode")
