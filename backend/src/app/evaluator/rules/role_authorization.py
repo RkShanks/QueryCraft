@@ -49,6 +49,8 @@ from __future__ import annotations
 
 import sqlglot
 from sqlglot import exp
+from sqlglot.errors import OptimizeError
+from sqlglot.optimizer.scope import Scope, traverse_scope
 
 from app.evaluator.schema_context import SchemaContext
 
@@ -138,7 +140,10 @@ class RoleAuthorizationRule:
             # passed). For safety, fail-closed: require a schema.
             return False, _REASON
 
-        return self._validate_statement(statement, schema, policy_by_table, allowed_table_order)
+        try:
+            return self._validate_statement(statement, schema, policy_by_table, allowed_table_order)
+        except OptimizeError:
+            return False, _REASON
 
     def _validate_statement(
         self,
@@ -153,11 +158,15 @@ class RoleAuthorizationRule:
             for cte in statement.ctes:
                 cte_aliases[cte.alias] = self._extract_cte_columns(cte)
 
+        logical_table_ids = self._logical_table_ids(statement)
+
         # Build alias map: alias -> actual table name (and table name ->
         # itself). Only include tables that are in the policy; a table
         # outside the policy is itself a block trigger.
         alias_map: dict[str, str] = {}
         for table in statement.find_all(exp.Table):
+            if id(table) in logical_table_ids:
+                continue
             actual = self._resolve_table_name(table, policy_by_table)
             if actual is None:
                 return False, _REASON
@@ -338,6 +347,15 @@ class RoleAuthorizationRule:
             if not physical.issubset(policy_by_table.get(actual_lower, set())):
                 return False, _REASON
         return None
+
+    @staticmethod
+    def _logical_table_ids(statement: exp.Expression) -> set[int]:
+        logical_table_ids: set[int] = set()
+        for scope in traverse_scope(statement):
+            for node, source in scope.selected_sources.values():
+                if isinstance(node, exp.Table) and isinstance(source, Scope):
+                    logical_table_ids.add(id(node))
+        return logical_table_ids
 
     @staticmethod
     def _star_qualifier(star: exp.Star) -> str | None:
