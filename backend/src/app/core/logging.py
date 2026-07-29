@@ -1,6 +1,7 @@
 """Structured logging with structlog and OpenTelemetry bootstrap."""
 
 import logging
+import re
 import sys
 from typing import Any
 
@@ -29,6 +30,10 @@ _LOG_SENSITIVE_KEY_TOKENS = frozenset(
 )
 _LOG_TRACE_FIELDS = frozenset({"exception", "excinfo", "stack", "stackinfo"})
 _LOG_SAFE_FIELDS = frozenset({"count", "durationms", "errorcode", "event", "level", "logger", "method", "statuscode"})
+_LOG_SENSITIVE_VALUE_PATTERNS = (
+    re.compile(r"\bhttps?://\S+", re.IGNORECASE),
+    re.compile(r"\b(?:cookie|set-cookie|session(?:_id)?)\s*[:=]\s*\S+", re.IGNORECASE),
+)
 
 
 def setup_logging(log_level: str = "INFO") -> None:
@@ -90,6 +95,8 @@ def _redact_log_fields(log_field: Any) -> Any:
         }
     if isinstance(log_field, list):
         return [_redact_log_fields(nested_field) for nested_field in log_field]
+    if isinstance(log_field, str) and any(pattern.search(log_field) for pattern in _LOG_SENSITIVE_VALUE_PATTERNS):
+        return _REDACTED
     return log_field
 
 
