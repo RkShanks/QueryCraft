@@ -97,6 +97,25 @@ describe('ResultTable', () => {
     expect(screen.getByText('Bob')).toBeInTheDocument();
   });
 
+  it.each([
+    ['English', 'ltr'],
+    ['Arabic', 'rtl'],
+  ])('isolates chat result values in the %s layout', (_locale, direction) => {
+    const { container } = render(
+      <div dir={direction}>
+        <ResultTable result={mockResult} />
+      </div>
+    );
+
+    for (const columnName of ['id', 'name']) {
+      expect(screen.getByText(columnName)).toHaveAttribute('dir', 'ltr');
+    }
+    for (const cellValue of ['1', 'Alice', '2', 'Bob']) {
+      expect(screen.getByText(cellValue)).toHaveAttribute('dir', 'auto');
+    }
+    expect(container.firstChild).toHaveAttribute('dir', direction);
+  });
+
   it('renders empty cell for null values', () => {
     const resultWithNull: QueryResult = {
       ...mockResult,
