@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AdminAuditPage } from './AdminAuditPage';
 import { createWrapper, renderWithClient } from '../test/utils';
@@ -31,6 +31,9 @@ vi.mock('react-i18next', () => ({
           'admin.audit.securityWarning': 'No auto-repair utility is provided to preserve evidence. Contact your system administrator to recover the database chain.',
           
           'audit.search.title': 'Search Audit Logs',
+          'audit.search.results': 'Audit search results',
+          'audit.search.actions': 'Audit search actions',
+          'audit.search.timestamp': 'Timestamp',
           'audit.search.date_from': 'Date From',
           'audit.search.date_to': 'Date To',
           'audit.search.action_type': 'Action Type',
@@ -77,6 +80,9 @@ vi.mock('react-i18next', () => ({
           'admin.audit.securityWarning': 'لا تتوفر أداة إصلاح تلقائي للحفاظ على الأدلة. يرجى الاتصال بمسؤول النظام لاستعادة سلسلة قاعدة البيانات.',
           
           'audit.search.title': 'البحث في سجلات التدقيق',
+          'audit.search.results': 'نتائج البحث في سجلات التدقيق',
+          'audit.search.actions': 'إجراءات البحث في سجلات التدقيق',
+          'audit.search.timestamp': 'الطابع الزمني',
           'audit.search.date_from': 'التاريخ من',
           'audit.search.date_to': 'التاريخ إلى',
           'audit.search.action_type': 'نوع الإجراء',
@@ -406,6 +412,20 @@ describe('AdminAuditPage', () => {
       expect(screen.getByText('query.submit')).toHaveAttribute('dir', 'ltr');
       expect(screen.getByText('success')).toBeInTheDocument();
       expect(screen.getByText('database')).toHaveAttribute('dir', 'ltr');
+    });
+
+    it('labels every result field in the responsive audit table', async () => {
+      render(<AdminAuditPage />, { wrapper: createWrapper() });
+
+      const results = await screen.findByRole('table', { name: 'Audit search results' });
+      expect(within(results).getByText('Timestamp')).toBeInTheDocument();
+      expect(within(results).getByText('Actor')).toBeInTheDocument();
+      expect(within(results).getByText('Action Type')).toBeInTheDocument();
+      expect(within(results).getByText('Outcome')).toBeInTheDocument();
+      expect(within(results).getByText('Resource Type')).toBeInTheDocument();
+      expect(within(results).getByText('user@example.com')).toBeInTheDocument();
+      expect(within(results).getByText('query.submit')).toBeInTheDocument();
+      expect(within(results).getByText('database')).toBeInTheDocument();
     });
 
     it('handles pagination next/prev buttons and info text', async () => {
