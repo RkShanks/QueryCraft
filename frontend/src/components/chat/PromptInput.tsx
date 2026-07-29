@@ -87,6 +87,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         <textarea
           ref={textareaRef}
           className="prompt-input-textarea"
+          aria-label={t('query.input.label')}
           placeholder={getPlaceholder()}
           value={text}
           onChange={handleChange}
