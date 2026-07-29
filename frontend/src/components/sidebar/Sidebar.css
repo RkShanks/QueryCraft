@@ -33,6 +33,11 @@
   background-color: var(--color-obsidian-800);
 }
 
+.sidebar-toggle:focus-visible {
+  outline: 2px solid var(--color-neon-cyan);
+  outline-offset: 2px;
+}
+
 .sidebar-logo {
   display: flex;
   align-items: center;

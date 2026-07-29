@@ -11,7 +11,14 @@ interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const { i18n } = useTranslation();
   const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed);
+  const collapseSidebar = useUIStore((state) => state.collapseSidebar);
   const dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+
+  React.useLayoutEffect(() => {
+    if (window.innerWidth <= 768) {
+      collapseSidebar();
+    }
+  }, [collapseSidebar]);
 
   return (
     <div

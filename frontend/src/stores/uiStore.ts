@@ -7,6 +7,7 @@ interface UIState {
   hoveredSessionId: string | null;
   promptDraft: string;
   toggleSidebar: () => void;
+  collapseSidebar: () => void;
   setActiveSessionId: (id: string | null) => void;
   setHoveredSessionId: (id: string | null) => void;
   setPromptDraft: (draft: string) => void;
@@ -20,6 +21,7 @@ export const useUIStore = create<UIState>()(
       hoveredSessionId: null,
       promptDraft: '',
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      collapseSidebar: () => set({ sidebarCollapsed: true }),
       setActiveSessionId: (id) => set({ activeSessionId: id }),
       setHoveredSessionId: (id) => set({ hoveredSessionId: id }),
       setPromptDraft: (draft) => set({ promptDraft: draft }),
