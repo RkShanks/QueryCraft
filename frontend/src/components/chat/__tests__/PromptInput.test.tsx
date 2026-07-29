@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PromptInput } from '../PromptInput';
+import i18n from '../../../i18n';
 
 const defaultProps = {
   connections: [
@@ -11,6 +12,20 @@ const defaultProps = {
 };
 
 describe('PromptInput', () => {
+  it.each([
+    ['en', 'Ask a question'],
+    ['ar', 'اطرح سؤالاً'],
+  ])('provides a localized accessible name in %s', async (language, accessibleName) => {
+    await i18n.changeLanguage(language);
+    try {
+      render(<PromptInput onSubmit={vi.fn()} {...defaultProps} />);
+
+      expect(screen.getByRole('textbox', { name: accessibleName })).toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage('en');
+    }
+  });
+
   it('renders textarea with placeholder', () => {
     render(<PromptInput onSubmit={vi.fn()} {...defaultProps} />);
     expect(screen.getByPlaceholderText('Ask a question about your data...')).toBeInTheDocument();
