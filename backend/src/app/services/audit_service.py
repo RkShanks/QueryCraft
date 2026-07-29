@@ -5,8 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from calendar import monthrange
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -15,11 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType
-
-try:  # dateutil is in backend deps (transitively via many libs)
-    from dateutil.relativedelta import relativedelta
-except ImportError:  # pragma: no cover - dateutil is a runtime dep
-    relativedelta = None  # type: ignore[assignment]
 
 _logger = logging.getLogger(__name__)
 
@@ -251,9 +247,11 @@ class AuditService:
         if retention_months < 0:
             raise ValueError("retention_months must be >= 0")
         anchor = now if now is not None else datetime.now(UTC)
-        if relativedelta is not None:
-            return anchor - relativedelta(months=retention_months)
-        return anchor - timedelta(days=retention_months * 30)
+        target_month_index = anchor.year * 12 + anchor.month - 1 - retention_months
+        target_year, zero_based_month = divmod(target_month_index, 12)
+        target_month = zero_based_month + 1
+        target_day = min(anchor.day, monthrange(target_year, target_month)[1])
+        return anchor.replace(year=target_year, month=target_month, day=target_day)
 
     @classmethod
     async def purge_expired_entries(

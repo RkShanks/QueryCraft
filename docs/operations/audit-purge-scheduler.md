@@ -1,6 +1,6 @@
 # Audit Log Purge Scheduler Operational Guide
 
-To satisfy data privacy regulations, system resource constraints, and compliance mandates (e.g., FR-142), QueryCraft implements an automated retention policy for audit logs. Audit log entries that fall outside the configured retention window can be purged from the database.
+To satisfy data privacy regulations, system resource constraints, and compliance mandates (e.g., FR-142), QueryCraft provides a retention purge primitive for audit logs. Audit log entries that fall outside the configured retention window can be purged from the database.
 
 This document details how to trigger this process, configure external schedulers, and understand the internal cryptographic verification guarantees of the platform.
 
@@ -16,53 +16,28 @@ This document details how to trigger this process, configure external schedulers
 
 ## Execution Interface
 
-The core logic is implemented in the backend application's `AuditService.purge_expired_entries()` service primitive. To execute the purge safely, operators run a lightweight Python script that initializes the database session, calls the service, commits the transaction, and cleans up connections.
+The core logic is implemented in `AuditService.purge_expired_entries()`. The
+repository ships `backend/scripts/purge_audit_logs.py` as the supported
+one-shot runner. It opens a platform database session, inserts any purge marker
+and deletes expired rows in one transaction, commits on success, rolls back on
+failure, and disposes the database engine.
 
-### Standalone Python Script Example
+From the `backend/` directory, verify the runner manually before configuring a
+scheduler:
 
-Below is a standard Python runner script (`scripts/purge_audit_logs.py`) that can be executed in the backend environment.
-
-```python
-"""Script to invoke the AuditService purge logic from an external scheduler."""
-import asyncio
-import logging
-import sys
-from app.db.base import get_async_session_factory, dispose_engine
-from app.services.audit_service import AuditService
-
-# Configure basic logging for operational visibility
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    stream=sys.stdout
-)
-logger = logging.getLogger("audit_purge_cron")
-
-async def main() -> None:
-    logger.info("Initializing database session factory...")
-    session_factory = get_async_session_factory()
-    
-    async with session_factory() as session:
-        try:
-            logger.info("Starting audit log purge...")
-            # retention_months defaults to Settings.AUDIT_RETENTION_MONTHS if None
-            deleted_count = await AuditService.purge_expired_entries(session, retention_months=None)
-            
-            # Commit the deletions and purge marker insertion in the same transaction
-            await session.commit()
-            
-            logger.info("Audit log purge completed successfully. Deleted %d row(s).", deleted_count)
-        except Exception as e:
-            logger.error("Error occurred during audit log purge, rolling back transaction: %s", e, exc_info=True)
-            await session.rollback()
-            sys.exit(1)
-        finally:
-            logger.info("Disposing database engine connections...")
-            await dispose_engine()
-
-if __name__ == "__main__":
-    asyncio.run(main())
+```bash
+uv run python scripts/purge_audit_logs.py
 ```
+
+Run it with the same application environment as the backend, including
+`DATABASE_URL` and `PLATFORM_ENCRYPTION_KEY`. The examples below provide that
+environment through the backend `.env`, Kubernetes ConfigMap/Secret, or systemd
+`EnvironmentFile`.
+
+The runner exits `0` after a successful purge or no-op and exits `1` after a
+sanitized failure. Its log output includes only the purged row count on
+success; it does not print database URLs, credentials, SQL, driver errors, or
+stack traces.
 
 ---
 
@@ -118,6 +93,7 @@ spec:
           containers:
             - name: purge-worker
               image: querycraft-backend:latest
+              workingDir: /app
               command: ["python", "scripts/purge_audit_logs.py"]
               envFrom:
                 - configMapRef:
@@ -136,7 +112,8 @@ In modern Linux distributions, systemd timers provide advanced logging, resource
 ```ini
 [Unit]
 Description=QueryCraft Audit Log Purge Service
-After=network.target postgresql.service redis.service
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=oneshot
@@ -214,7 +191,12 @@ This marker context includes cryptographically bound metadata that catalogs the 
 - `first_surviving_prev_hash`: The `prev_hash` value of the oldest remaining entry (which points back to the deleted one), or `null` if every pre-existing entry was purged.
 
 ### 2. Expired Entries Deletion
-After successfully inserting the marker, all `AuditLogEntry` rows older than the calculated cutoff date are permanently deleted from the database. The entire operation is executed atomically inside a transaction; if either the marker insertion or the deletion fails, the database rolls back to its original state.
+After successfully inserting the marker, all `AuditLogEntry` rows older than
+the calculated cutoff date are permanently deleted from the database. The
+cutoff uses UTC calendar-month semantics; a row exactly at the cutoff is
+retained, while a row immediately before it is eligible for purge. The entire
+operation is executed atomically inside a transaction; if either the marker
+insertion or the deletion fails, the database rolls back to its original state.
 
 ### 3. Cryptographic Chain Integrity (`verify_chain()`)
 Because deleting log entries creates a gap in the sequence numbers and breaks the SHA-256 hash linkage of `prev_hash` on the first surviving entry, the chain validation logic (`verify_chain()`) handles these gaps:

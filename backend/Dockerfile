@@ -41,6 +41,7 @@ COPY pyproject.toml .
 # Copy Alembic files (required for migrations)
 COPY --chown=app:app alembic/ ./alembic/
 COPY --chown=app:app alembic.ini .
+COPY --chown=app:app scripts/ ./scripts/
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
