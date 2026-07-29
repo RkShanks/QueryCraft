@@ -158,7 +158,10 @@ class RoleAuthorizationRule:
             for cte in statement.ctes:
                 cte_aliases[cte.alias] = self._extract_cte_columns(cte)
 
-        logical_table_ids = self._logical_table_ids(statement)
+        logical_reference_ids = self._logical_reference_ids(statement, policy_by_table)
+        if logical_reference_ids is None:
+            return False, _REASON
+        logical_table_ids, logical_column_ids = logical_reference_ids
 
         # Build alias map: alias -> actual table name (and table name ->
         # itself). Only include tables that are in the policy; a table
@@ -208,6 +211,8 @@ class RoleAuthorizationRule:
             # by sqlglot. The Column walk must skip these — they are
             # validated by the dedicated star walk below.
             if isinstance(col.this, exp.Star):
+                continue
+            if id(col) in logical_column_ids:
                 continue
             col_name = col.name
             col_name_lower = col_name.lower()
@@ -348,14 +353,73 @@ class RoleAuthorizationRule:
                 return False, _REASON
         return None
 
-    @staticmethod
-    def _logical_table_ids(statement: exp.Expression) -> set[int]:
+    def _logical_reference_ids(
+        self,
+        statement: exp.Expression,
+        policy_by_table: dict[str, set[str]],
+    ) -> tuple[set[int], set[int]] | None:
         logical_table_ids: set[int] = set()
+        logical_column_ids: set[int] = set()
         for scope in traverse_scope(statement):
+            sources = {
+                name.lower(): source
+                for name, (node, source) in scope.selected_sources.items()
+            }
             for node, source in scope.selected_sources.values():
                 if isinstance(node, exp.Table) and isinstance(source, Scope):
                     logical_table_ids.add(id(node))
-        return logical_table_ids
+            scope_column_ids = self._logical_column_ids(scope, sources, policy_by_table)
+            if scope_column_ids is None:
+                return None
+            logical_column_ids.update(scope_column_ids)
+        return logical_table_ids, logical_column_ids
+
+    def _logical_column_ids(
+        self,
+        scope: Scope,
+        sources: dict[str, exp.Table | Scope],
+        policy_by_table: dict[str, set[str]],
+    ) -> set[int] | None:
+        logical_column_ids: set[int] = set()
+        for column in scope.find_all(exp.Column):
+            if isinstance(column.this, exp.Star):
+                continue
+            if column.table:
+                source = sources.get(column.table.lower())
+                if isinstance(source, Scope):
+                    if column.name.lower() not in self._scope_output_columns(source):
+                        return None
+                    logical_column_ids.add(id(column))
+                continue
+            matching_sources = [
+                source
+                for source in sources.values()
+                if self._source_has_column(source, column.name, policy_by_table)
+            ]
+            if any(isinstance(source, Scope) for source in matching_sources):
+                if len(matching_sources) != 1:
+                    return None
+                logical_column_ids.add(id(column))
+        return logical_column_ids
+
+    def _source_has_column(
+        self,
+        source: exp.Table | Scope,
+        column_name: str,
+        policy_by_table: dict[str, set[str]],
+    ) -> bool:
+        if isinstance(source, Scope):
+            return column_name.lower() in self._scope_output_columns(source)
+        physical_table = self._resolve_table_name(source, policy_by_table)
+        return bool(
+            physical_table
+            and column_name.lower() in policy_by_table[physical_table.lower()]
+        )
+
+    @staticmethod
+    def _scope_output_columns(scope: Scope) -> set[str]:
+        output_columns = scope.outer_columns or scope.expression.named_selects
+        return {column.lower() for column in output_columns if column != "*"}
 
     @staticmethod
     def _star_qualifier(star: exp.Star) -> str | None:
