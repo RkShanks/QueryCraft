@@ -152,11 +152,10 @@ class RoleAuthorizationRule:
         policy_by_table: dict[str, set[str]],
         allowed_table_order: list[str],
     ) -> tuple[bool, str | None]:
-        # Discover CTE aliases -> known column lists (best-effort).
-        cte_aliases: dict[str, list[str]] = {}
+        cte_aliases: set[str] = set()
         if hasattr(statement, "ctes") and statement.ctes:
             for cte in statement.ctes:
-                cte_aliases[cte.alias] = self._extract_cte_columns(cte)
+                cte_aliases.add(cte.alias)
 
         logical_reference_ids = self._logical_reference_ids(statement, policy_by_table)
         if logical_reference_ids is None:
@@ -217,13 +216,6 @@ class RoleAuthorizationRule:
             col_name = col.name
             col_name_lower = col_name.lower()
             table_ref = col.table
-
-            # CTE-qualified column: column must be in the CTE's columns.
-            if table_ref and table_ref in cte_aliases:
-                cte_cols = cte_aliases[table_ref] or []
-                if cte_cols and col_name_lower not in {c.lower() for c in cte_cols}:
-                    return False, _REASON
-                continue
 
             if table_ref:
                 # Qualified column. Resolve alias -> actual table.
@@ -302,7 +294,7 @@ class RoleAuthorizationRule:
         *,
         alias_map: dict[str, str],
         policy_by_table: dict[str, set[str]],
-        cte_aliases: dict[str, list[str]],
+        cte_aliases: set[str],
         physical_columns_by_table: dict[str, set[str]],
         referenced_allowed_tables: set[str],
     ) -> tuple[bool, str | None] | None:
@@ -361,10 +353,7 @@ class RoleAuthorizationRule:
         logical_table_ids: set[int] = set()
         logical_column_ids: set[int] = set()
         for scope in traverse_scope(statement):
-            sources = {
-                name.lower(): source
-                for name, (node, source) in scope.selected_sources.items()
-            }
+            sources = {name.lower(): source for name, (_, source) in scope.selected_sources.items()}
             for node, source in scope.selected_sources.values():
                 if isinstance(source, Scope):
                     if self._scope_output_columns(source) is None:
@@ -396,9 +385,7 @@ class RoleAuthorizationRule:
                     logical_column_ids.add(id(column))
                 continue
             matching_sources = [
-                source
-                for source in sources.values()
-                if self._source_has_column(source, column.name, policy_by_table)
+                source for source in sources.values() if self._source_has_column(source, column.name, policy_by_table)
             ]
             if any(isinstance(source, Scope) for source in matching_sources):
                 if len(matching_sources) != 1:
@@ -416,10 +403,7 @@ class RoleAuthorizationRule:
             output_columns = self._scope_output_columns(source)
             return bool(output_columns and column_name.lower() in output_columns)
         physical_table = self._resolve_table_name(source, policy_by_table)
-        return bool(
-            physical_table
-            and column_name.lower() in policy_by_table[physical_table.lower()]
-        )
+        return bool(physical_table and column_name.lower() in policy_by_table[physical_table.lower()])
 
     @staticmethod
     def _scope_output_columns(scope: Scope) -> set[str] | None:
@@ -520,32 +504,3 @@ class RoleAuthorizationRule:
             index[table_name.lower()] = normalized
             order.append(table_name.lower())
         return index, order
-
-    @staticmethod
-    def _extract_cte_columns(cte: exp.CTE) -> list[str]:
-        """Best-effort column extraction for a CTE (for unqualified
-        column resolution). Returns ``[]`` when the columns cannot be
-        statically resolved (the rule then falls back to blocking
-        references into the CTE without a qualifying table)."""
-        alias = cte.args.get("alias")
-        if alias and hasattr(alias, "columns") and alias.columns:
-            return [str(c.name) for c in alias.columns]
-        body = cte.this
-        if isinstance(body, exp.Union):
-            body = body.this
-        if not isinstance(body, exp.Select):
-            return []
-        columns: list[str] = []
-        for expr in body.expressions:
-            if isinstance(expr, exp.Alias):
-                columns.append(expr.alias)
-            elif isinstance(expr, exp.Column):
-                columns.append(expr.name)
-            elif isinstance(expr, exp.Star):
-                return []  # Cannot statically resolve
-            elif isinstance(expr, exp.Literal):
-                continue
-            else:
-                if hasattr(expr, "alias") and expr.alias:
-                    columns.append(expr.alias)
-        return columns

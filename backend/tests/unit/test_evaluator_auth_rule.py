@@ -426,6 +426,78 @@ class TestCommonTableExpressions:
 
         assert result == (False, "query_blocked_policy")
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("dialect", "sql"),
+        [
+            (
+                "postgres",
+                "WITH recent AS (SELECT id FROM payments) SELECT id FROM recent",
+            ),
+            (
+                "mysql",
+                "WITH recent AS (SELECT ssn AS id FROM orders) SELECT id FROM recent",
+            ),
+            (
+                "tsql",
+                "SELECT nested.id FROM (WITH recent AS (SELECT ssn AS id FROM orders) SELECT id FROM recent) AS nested",
+            ),
+        ],
+    )
+    async def test_cte_cannot_hide_unauthorized_physical_references(
+        self,
+        dialect: str,
+        sql: str,
+    ) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "orders", "columns": ["id", "customer_id"]},
+            ],
+            dialect=dialect,
+        )
+
+        result = await rule.evaluate(sql, _schema())
+
+        assert result == (False, "query_blocked_policy")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("dialect", "sql"),
+        [
+            (
+                "postgres",
+                "WITH changed AS (DELETE FROM orders RETURNING id) SELECT id FROM changed",
+            ),
+            (
+                "mysql",
+                "WITH recent AS (SELECT id FROM orders) UPDATE orders SET customer_id = 1",
+            ),
+            (
+                "tsql",
+                "WITH recent AS (SELECT id FROM orders) UPDATE orders SET customer_id = 1",
+            ),
+            (
+                "postgres",
+                "WITH recent(id) AS (VALUES (1)) SELECT id FROM recent",
+            ),
+        ],
+    )
+    async def test_writable_or_non_select_cte_is_blocked(
+        self,
+        dialect: str,
+        sql: str,
+    ) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "orders", "columns": ["id", "customer_id"]},
+            ],
+            dialect=dialect,
+        )
+
+        result = await rule.evaluate(sql, _schema())
+
+        assert result == (False, "query_blocked_policy")
+
 
 # ────────────────────── Case-insensitive matching ──────────────────────
 
