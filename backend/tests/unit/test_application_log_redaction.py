@@ -35,11 +35,15 @@ def test_log_processor_redacts_nested_sensitive_values_and_preserves_operations(
             {"value": f" \ufeff={runtime_probe}"},
         ],
         "HeAdErS": {"Authorization": bearer, "Cookie": f"session={runtime_probe}"},
+        "Session_Cookie": f"session={runtime_probe}",
+        "Provider_Token": runtime_probe,
         "Provider_URL": f"https://idp.example.com/{runtime_probe}",
+        "Database_Host": f"db.internal/{runtime_probe}",
         "Identity_Claims": {"email": runtime_probe},
         "Audit_Filters": {"search": runtime_probe},
         "exc_info": RuntimeError(runtime_probe),
         "stack_info": runtime_probe,
+        "metrics": {"row_count": 7, "retry_total": 2},
     }
 
     redacted = redact_log_event(None, "info", event)
@@ -48,7 +52,17 @@ def test_log_processor_redacts_nested_sensitive_values_and_preserves_operations(
     details_redacted = all(detail["value"] == "[REDACTED]" for detail in redacted["details"])
     sensitive_fields_redacted = all(
         redacted[field] == "[REDACTED]"
-        for field in ("HeAdErS", "Provider_URL", "Identity_Claims", "Audit_Filters", "exc_info", "stack_info")
+        for field in (
+            "HeAdErS",
+            "Session_Cookie",
+            "Provider_Token",
+            "Provider_URL",
+            "Database_Host",
+            "Identity_Claims",
+            "Audit_Filters",
+            "exc_info",
+            "stack_info",
+        )
     )
     safe_operations_preserved = {
         key: redacted[key] for key in ("event", "method", "status_code", "duration_ms", "count")
@@ -59,11 +73,13 @@ def test_log_processor_redacts_nested_sensitive_values_and_preserves_operations(
         "duration_ms": 12,
         "count": 3,
     }
+    safe_counters_preserved = redacted["metrics"] == {"row_count": 7, "retry_total": 2}
 
     assert probe_leaked is False
     assert details_redacted is True
     assert sensitive_fields_redacted is True
     assert safe_operations_preserved is True
+    assert safe_counters_preserved is True
 
 
 def test_logging_setup_redacts_rendered_failures_and_suppresses_sensitive_transports():
