@@ -156,3 +156,35 @@ async def test_lifespan_startup_log_omits_redis_configuration():
 
     assert probe_leaked is False
     assert redis_event_logged is True
+
+
+@pytest.mark.asyncio
+async def test_admin_sync_log_omits_admin_identity():
+    from app.main import _sync_admin_user
+
+    runtime_probe = secrets.token_urlsafe(24)
+    settings = MagicMock()
+    settings.ADMIN_USERNAME = runtime_probe
+    settings.ADMIN_DISPLAY_NAME = "Platform Administrator"
+    settings.ADMIN_PASSWORD = secrets.token_urlsafe(24)
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock()
+    session_factory = MagicMock()
+    session_factory.return_value.__aenter__ = AsyncMock(return_value=session)
+    session_factory.return_value.__aexit__ = AsyncMock(return_value=False)
+    application_logger = MagicMock()
+
+    with (
+        patch("app.main.get_async_session_factory", return_value=session_factory),
+        patch("app.main.logger", application_logger),
+    ):
+        await _sync_admin_user(settings)
+
+    probe_leaked = runtime_probe in str(application_logger.mock_calls)
+    sync_event_logged = any(call.args == ("admin_user_synced",) for call in application_logger.info.call_args_list)
+    application_logger.reset_mock()
+
+    assert probe_leaked is False
+    assert sync_event_logged is True
