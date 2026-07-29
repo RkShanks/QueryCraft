@@ -75,6 +75,21 @@ def _schema() -> SchemaContext:
     )
 
 
+def _actor_schema() -> SchemaContext:
+    return SchemaContext(
+        tables=[
+            Table(
+                name="actor",
+                columns=[
+                    Column(name="actor_id", type="integer"),
+                    Column(name="first_name", type="text"),
+                    Column(name="last_name", type="text"),
+                ],
+            ),
+        ]
+    )
+
+
 # Two common policies reused across tests.
 _POLICY_ORDERS = [{"table": "orders", "columns": ["id", "customer_id", "ssn"]}]
 _POLICY_ORDERS_CUSTOMERS = [
@@ -328,6 +343,160 @@ class TestAliasesAndQualifiers:
             _schema(),
         )
         assert result == (True, None)
+
+
+# ────────────────────── Common table expressions ──────────────────────
+
+
+class TestCommonTableExpressions:
+    @pytest.mark.asyncio
+    async def test_xp007_valid_postgres_cte_projection_is_authorized(self) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "actor", "columns": ["actor_id", "first_name"]},
+            ],
+        )
+
+        result = await rule.evaluate(
+            "WITH recent AS ("
+            "SELECT actor_id, first_name FROM actor"
+            ") "
+            "SELECT actor_id, first_name FROM recent ORDER BY actor_id",
+            _actor_schema(),
+        )
+
+        assert result == (True, None)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("dialect", ["postgres", "mysql", "tsql"])
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            (
+                "WITH recent(actor_identifier, given_name) AS ("
+                "SELECT actor_id, first_name FROM actor"
+                ") "
+                "SELECT actor_identifier, given_name "
+                "FROM recent ORDER BY actor_identifier"
+            ),
+            (
+                "SELECT nested.actor_id FROM ("
+                "WITH recent AS (SELECT actor_id FROM actor) "
+                "SELECT actor_id FROM recent"
+                ") AS nested"
+            ),
+        ],
+    )
+    async def test_valid_cte_projection_variants_are_authorized(
+        self,
+        dialect: str,
+        sql: str,
+    ) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "actor", "columns": ["actor_id", "first_name"]},
+            ],
+            dialect=dialect,
+        )
+
+        result = await rule.evaluate(sql, _actor_schema())
+
+        assert result == (True, None)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("dialect", ["postgres", "mysql", "tsql"])
+    async def test_explicit_cte_output_arity_mismatch_is_blocked(
+        self,
+        dialect: str,
+    ) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "actor", "columns": ["actor_id", "first_name"]},
+            ],
+            dialect=dialect,
+        )
+
+        result = await rule.evaluate(
+            "WITH recent(actor_id, first_name, hidden) AS ("
+            "SELECT actor_id, first_name FROM actor"
+            ") "
+            "SELECT hidden FROM recent",
+            _actor_schema(),
+        )
+
+        assert result == (False, "query_blocked_policy")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("dialect", "sql"),
+        [
+            (
+                "postgres",
+                "WITH recent AS (SELECT id FROM payments) SELECT id FROM recent",
+            ),
+            (
+                "mysql",
+                "WITH recent AS (SELECT ssn AS id FROM orders) SELECT id FROM recent",
+            ),
+            (
+                "tsql",
+                "SELECT nested.id FROM (WITH recent AS (SELECT ssn AS id FROM orders) SELECT id FROM recent) AS nested",
+            ),
+        ],
+    )
+    async def test_cte_cannot_hide_unauthorized_physical_references(
+        self,
+        dialect: str,
+        sql: str,
+    ) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "orders", "columns": ["id", "customer_id"]},
+            ],
+            dialect=dialect,
+        )
+
+        result = await rule.evaluate(sql, _schema())
+
+        assert result == (False, "query_blocked_policy")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("dialect", "sql"),
+        [
+            (
+                "postgres",
+                "WITH changed AS (DELETE FROM orders RETURNING id) SELECT id FROM changed",
+            ),
+            (
+                "mysql",
+                "WITH recent AS (SELECT id FROM orders) UPDATE orders SET customer_id = 1",
+            ),
+            (
+                "tsql",
+                "WITH recent AS (SELECT id FROM orders) UPDATE orders SET customer_id = 1",
+            ),
+            (
+                "postgres",
+                "WITH recent(id) AS (VALUES (1)) SELECT id FROM recent",
+            ),
+        ],
+    )
+    async def test_writable_or_non_select_cte_is_blocked(
+        self,
+        dialect: str,
+        sql: str,
+    ) -> None:
+        rule = RoleAuthorizationRule(
+            allowed_tables=[
+                {"table": "orders", "columns": ["id", "customer_id"]},
+            ],
+            dialect=dialect,
+        )
+
+        result = await rule.evaluate(sql, _schema())
+
+        assert result == (False, "query_blocked_policy")
 
 
 # ────────────────────── Case-insensitive matching ──────────────────────

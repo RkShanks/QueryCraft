@@ -49,6 +49,8 @@ from __future__ import annotations
 
 import sqlglot
 from sqlglot import exp
+from sqlglot.errors import OptimizeError
+from sqlglot.optimizer.scope import Scope, traverse_scope
 
 from app.evaluator.schema_context import SchemaContext
 
@@ -138,7 +140,10 @@ class RoleAuthorizationRule:
             # passed). For safety, fail-closed: require a schema.
             return False, _REASON
 
-        return self._validate_statement(statement, schema, policy_by_table, allowed_table_order)
+        try:
+            return self._validate_statement(statement, schema, policy_by_table, allowed_table_order)
+        except OptimizeError:
+            return False, _REASON
 
     def _validate_statement(
         self,
@@ -147,17 +152,23 @@ class RoleAuthorizationRule:
         policy_by_table: dict[str, set[str]],
         allowed_table_order: list[str],
     ) -> tuple[bool, str | None]:
-        # Discover CTE aliases -> known column lists (best-effort).
-        cte_aliases: dict[str, list[str]] = {}
+        cte_aliases: set[str] = set()
         if hasattr(statement, "ctes") and statement.ctes:
             for cte in statement.ctes:
-                cte_aliases[cte.alias] = self._extract_cte_columns(cte)
+                cte_aliases.add(cte.alias)
+
+        logical_reference_ids = self._logical_reference_ids(statement, policy_by_table)
+        if logical_reference_ids is None:
+            return False, _REASON
+        logical_table_ids, logical_column_ids = logical_reference_ids
 
         # Build alias map: alias -> actual table name (and table name ->
         # itself). Only include tables that are in the policy; a table
         # outside the policy is itself a block trigger.
         alias_map: dict[str, str] = {}
         for table in statement.find_all(exp.Table):
+            if id(table) in logical_table_ids:
+                continue
             actual = self._resolve_table_name(table, policy_by_table)
             if actual is None:
                 return False, _REASON
@@ -200,16 +211,11 @@ class RoleAuthorizationRule:
             # validated by the dedicated star walk below.
             if isinstance(col.this, exp.Star):
                 continue
+            if id(col) in logical_column_ids:
+                continue
             col_name = col.name
             col_name_lower = col_name.lower()
             table_ref = col.table
-
-            # CTE-qualified column: column must be in the CTE's columns.
-            if table_ref and table_ref in cte_aliases:
-                cte_cols = cte_aliases[table_ref] or []
-                if cte_cols and col_name_lower not in {c.lower() for c in cte_cols}:
-                    return False, _REASON
-                continue
 
             if table_ref:
                 # Qualified column. Resolve alias -> actual table.
@@ -288,7 +294,7 @@ class RoleAuthorizationRule:
         *,
         alias_map: dict[str, str],
         policy_by_table: dict[str, set[str]],
-        cte_aliases: dict[str, list[str]],
+        cte_aliases: set[str],
         physical_columns_by_table: dict[str, set[str]],
         referenced_allowed_tables: set[str],
     ) -> tuple[bool, str | None] | None:
@@ -338,6 +344,76 @@ class RoleAuthorizationRule:
             if not physical.issubset(policy_by_table.get(actual_lower, set())):
                 return False, _REASON
         return None
+
+    def _logical_reference_ids(
+        self,
+        statement: exp.Expression,
+        policy_by_table: dict[str, set[str]],
+    ) -> tuple[set[int], set[int]] | None:
+        logical_table_ids: set[int] = set()
+        logical_column_ids: set[int] = set()
+        for scope in traverse_scope(statement):
+            sources = {name.lower(): source for name, (_, source) in scope.selected_sources.items()}
+            for node, source in scope.selected_sources.values():
+                if isinstance(source, Scope):
+                    if self._scope_output_columns(source) is None:
+                        return None
+                    if isinstance(node, exp.Table):
+                        logical_table_ids.add(id(node))
+            scope_column_ids = self._logical_column_ids(scope, sources, policy_by_table)
+            if scope_column_ids is None:
+                return None
+            logical_column_ids.update(scope_column_ids)
+        return logical_table_ids, logical_column_ids
+
+    def _logical_column_ids(
+        self,
+        scope: Scope,
+        sources: dict[str, exp.Table | Scope],
+        policy_by_table: dict[str, set[str]],
+    ) -> set[int] | None:
+        logical_column_ids: set[int] = set()
+        for column in scope.find_all(exp.Column):
+            if isinstance(column.this, exp.Star):
+                continue
+            if column.table:
+                source = sources.get(column.table.lower())
+                if isinstance(source, Scope):
+                    output_columns = self._scope_output_columns(source)
+                    if output_columns is None or column.name.lower() not in output_columns:
+                        return None
+                    logical_column_ids.add(id(column))
+                continue
+            matching_sources = [
+                source for source in sources.values() if self._source_has_column(source, column.name, policy_by_table)
+            ]
+            if any(isinstance(source, Scope) for source in matching_sources):
+                if len(matching_sources) != 1:
+                    return None
+                logical_column_ids.add(id(column))
+        return logical_column_ids
+
+    def _source_has_column(
+        self,
+        source: exp.Table | Scope,
+        column_name: str,
+        policy_by_table: dict[str, set[str]],
+    ) -> bool:
+        if isinstance(source, Scope):
+            output_columns = self._scope_output_columns(source)
+            return bool(output_columns and column_name.lower() in output_columns)
+        physical_table = self._resolve_table_name(source, policy_by_table)
+        return bool(physical_table and column_name.lower() in policy_by_table[physical_table.lower()])
+
+    @staticmethod
+    def _scope_output_columns(scope: Scope) -> set[str] | None:
+        projected_columns = scope.expression.named_selects
+        if scope.outer_columns:
+            if "*" in projected_columns or len(scope.outer_columns) != len(projected_columns):
+                return None
+            return {column.lower() for column in scope.outer_columns}
+        output_columns = projected_columns
+        return {column.lower() for column in output_columns if column != "*"}
 
     @staticmethod
     def _star_qualifier(star: exp.Star) -> str | None:
@@ -428,32 +504,3 @@ class RoleAuthorizationRule:
             index[table_name.lower()] = normalized
             order.append(table_name.lower())
         return index, order
-
-    @staticmethod
-    def _extract_cte_columns(cte: exp.CTE) -> list[str]:
-        """Best-effort column extraction for a CTE (for unqualified
-        column resolution). Returns ``[]`` when the columns cannot be
-        statically resolved (the rule then falls back to blocking
-        references into the CTE without a qualifying table)."""
-        alias = cte.args.get("alias")
-        if alias and hasattr(alias, "columns") and alias.columns:
-            return [str(c.name) for c in alias.columns]
-        body = cte.this
-        if isinstance(body, exp.Union):
-            body = body.this
-        if not isinstance(body, exp.Select):
-            return []
-        columns: list[str] = []
-        for expr in body.expressions:
-            if isinstance(expr, exp.Alias):
-                columns.append(expr.alias)
-            elif isinstance(expr, exp.Column):
-                columns.append(expr.name)
-            elif isinstance(expr, exp.Star):
-                return []  # Cannot statically resolve
-            elif isinstance(expr, exp.Literal):
-                continue
-            else:
-                if hasattr(expr, "alias") and expr.alias:
-                    columns.append(expr.alias)
-        return columns
