@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import { AdminConnectionsPage } from './AdminConnectionsPage';
 import { useConnections } from '../hooks/useConnections';
 
@@ -178,6 +178,32 @@ describe('AdminConnectionsPage', () => {
 
     expect(screen.getByText('admin.connections.form.editTitle')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Prod DB')).toBeInTheDocument();
+  });
+
+  it('maps an arbitrary update error to a safe localized toast', () => {
+    const runtimeProbe = crypto.randomUUID();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useConnections).mockReturnValue(mockPopulatedUseConnections as any);
+    render(<AdminConnectionsPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0]);
+    fireEvent.change(screen.getByLabelText('admin.connections.form.databaseName'), {
+      target: { value: 'app' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.connections.form.submit.edit' })
+    );
+    expect(mockMutations.updateMutation.mutate).toHaveBeenCalledTimes(1);
+    const callbacks = mockMutations.updateMutation.mutate.mock.calls[0][1] as {
+      onError?: (error: unknown) => void;
+    };
+    act(() => {
+      callbacks.onError?.({ message: runtimeProbe, detail: { message: runtimeProbe } });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }));
+
+    expect(document.body.textContent?.includes(runtimeProbe)).toBe(false);
+    expect(screen.getByText('error.unknown.message')).toBeInTheDocument();
   });
 
   it('action container cell uses a stable layout without flex-wrap', () => {
