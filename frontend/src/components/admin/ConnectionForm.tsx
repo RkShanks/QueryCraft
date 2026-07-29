@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
-  ConnectionResponse,
   ConnectionCreate,
   ConnectionUpdate,
   DatabaseType,
 } from '../../api/generated/types.gen';
+import type { ConnectionView } from '../../hooks/useConnections';
 
 export interface ConnectionFormProps {
-  initialValues?: ConnectionResponse;
+  initialValues?: ConnectionView;
   onSubmit: (data: ConnectionCreate | ConnectionUpdate) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
@@ -34,16 +34,16 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [prevInitialValues, setPrevInitialValues] = useState<ConnectionResponse | undefined>(initialValues);
+  const [prevInitialValues, setPrevInitialValues] = useState<ConnectionView | undefined>(initialValues);
 
   if (initialValues?.id !== prevInitialValues?.id) {
     setPrevInitialValues(initialValues);
     setDisplayName(initialValues?.display_name || '');
     setDatabaseType(initialValues?.database_type || 'postgresql');
-    setHost(initialValues?.host || '');
+    setHost('');
     setPort(initialValues?.port ?? 5432);
     setDatabaseName(initialValues?.database_name || '');
-    setUsername(initialValues?.username || '');
+    setUsername('');
     setPassword('');
     setSslMode(initialValues?.ssl_mode || '');
     setErrors({});
