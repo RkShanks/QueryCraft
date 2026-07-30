@@ -174,9 +174,7 @@ class TestSubmitAttemptIntegration:
         await _clear_attempt_state(redis_client)
         driver_probe = secrets.token_urlsafe(18)
         history_before = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
-        audit_before = await db_session.execute(
-            text("SELECT COALESCE(MAX(sequence_number), 0) FROM audit_log_entries")
-        )
+        audit_before = await db_session.execute(text("SELECT COALESCE(MAX(sequence_number), 0) FROM audit_log_entries"))
 
         with (
             patch(
@@ -203,9 +201,7 @@ class TestSubmitAttemptIntegration:
             pytest.fail("runtime source probe leaked through HTTP response")
 
         attempts = [
-            json.loads(raw)
-            for raw in await redis_client.mget(await redis_client.keys("attempt:*"))
-            if raw is not None
+            json.loads(raw) for raw in await redis_client.mget(await redis_client.keys("attempt:*")) if raw is not None
         ]
         assert [attempt["state"] for attempt in attempts] == ["FAILED"]
 
@@ -219,9 +215,7 @@ class TestSubmitAttemptIntegration:
             {"sequence_number": audit_before.scalar()},
         )
         execution_rows = execution_audit.fetchall()
-        assert [(row.outcome, row.context) for row in execution_rows] == [
-            ("failure", {"reason": "execution_failed"})
-        ]
+        assert [(row.outcome, row.context) for row in execution_rows] == [("failure", {"reason": "execution_failed"})]
         assert all(driver_probe not in record.getMessage() for record in caplog.records)
 
     async def test_reject_validates_attempt_ownership(self, authenticated_client, redis_client):

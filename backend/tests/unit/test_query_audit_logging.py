@@ -1048,11 +1048,7 @@ async def _captured_http_error(execution_call) -> HTTPException:
 
 def _assert_failure_audit(mock_audit, operation: str, reason: str) -> None:
     failure_action = _failure_audit_action(operation)
-    failure_calls = [
-        call
-        for call in mock_audit.call_args_list
-        if call.kwargs.get("action") == failure_action
-    ]
+    failure_calls = [call for call in mock_audit.call_args_list if call.kwargs.get("action") == failure_action]
     assert [call.kwargs.get("outcome") for call in failure_calls] == ["failure"]
     assert failure_calls[0].kwargs.get("context") == {"reason": reason}
 
@@ -1061,9 +1057,7 @@ def _assert_execution_state_clean(service, operation: str, expected_submit_state
     assert not any(key.startswith("processing_lock:") for key in service._redis._data)
     if operation == "submit":
         attempt_states = [
-            json.loads(raw)["state"]
-            for key, raw in service._redis._data.items()
-            if key.startswith("attempt:")
+            json.loads(raw)["state"] for key, raw in service._redis._data.items() if key.startswith("attempt:")
         ]
         assert attempt_states == [expected_submit_state]
     if operation == "regenerate":
@@ -1086,9 +1080,7 @@ class TestSourceDbExecutionFailureAuditLogging:
             "app.services.audit_service.AuditService.log",
             new_callable=AsyncMock,
         ) as mock_audit:
-            http_error = await _captured_http_error(
-                _invoke_execution_operation(service, deps, operation)
-            )
+            http_error = await _captured_http_error(_invoke_execution_operation(service, deps, operation))
 
         assert http_error.status_code == 502
         assert http_error.detail == {
@@ -1129,9 +1121,7 @@ class TestSourceDbExecutionFailureAuditLogging:
             "app.services.audit_service.AuditService.log",
             new_callable=AsyncMock,
         ) as mock_audit:
-            http_error = await _captured_http_error(
-                _invoke_execution_operation(service, deps, operation)
-            )
+            http_error = await _captured_http_error(_invoke_execution_operation(service, deps, operation))
 
         assert http_error.status_code == expected_status
         assert http_error.detail == expected_detail
@@ -1150,16 +1140,12 @@ class TestSourceDbExecutionFailureAuditLogging:
             "app.services.audit_service.AuditService.log",
             new_callable=AsyncMock,
         ) as mock_audit:
-            http_error = await _captured_http_error(
-                _invoke_execution_operation(service, deps, operation)
-            )
+            http_error = await _captured_http_error(_invoke_execution_operation(service, deps, operation))
 
         assert http_error.status_code == 504
         assert http_error.detail == {"error": "timeout", "message_key": "error.timeout"}
         success_actions = {
-            call.kwargs.get("action")
-            for call in mock_audit.call_args_list
-            if call.kwargs.get("outcome") == "success"
+            call.kwargs.get("action") for call in mock_audit.call_args_list if call.kwargs.get("outcome") == "success"
         }
         assert _failure_audit_action(operation) not in success_actions
         _assert_execution_state_clean(service, operation, "TIMEOUT")
@@ -1184,9 +1170,7 @@ class TestSourceDbExecutionFailureAuditLogging:
                 await _invoke_execution_operation(service, deps, operation)
 
         success_actions = {
-            call.kwargs.get("action")
-            for call in mock_audit.call_args_list
-            if call.kwargs.get("outcome") == "success"
+            call.kwargs.get("action") for call in mock_audit.call_args_list if call.kwargs.get("outcome") == "success"
         }
         assert AuditActionType.QUERY_EXECUTE not in success_actions
         assert AuditActionType.QUERY_RERUN not in success_actions
