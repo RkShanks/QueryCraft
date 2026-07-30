@@ -488,8 +488,10 @@ class PolicyEnforcementService:
         placeholders.
 
         The generated ``sql`` is parsed with sqlglot in the target
-        dialect. For each filter:
-        1. Schema drift is checked — every column in the bound filter
+        dialect:
+        1. Every configured filter is bound and schema-drift checked,
+           including filters whose table is not referenced by the query.
+           Every column in the bound filter
            must exist in the current ``schema`` for the filter's
            table. A missing column or table raises
            ``PolicySchemaConflictError`` (T-705). The optional
@@ -500,9 +502,14 @@ class PolicyEnforcementService:
            max+1 of the existing SQL; mysql: ``%s``; mssql: ``?``).
         3. The bound filter is normalized to use ``?`` placeholders
            internally and re-parsed as ``SELECT 1 WHERE <bound>``.
-        4. Its WHERE expression is AND-conjunctions into the main
-           statement's WHERE (or added as a new WHERE if none exists).
-        5. Bound values are appended to the returned ``params`` tuple.
+        4. Physical SELECT scopes are visited in serialized order.
+           A filter is AND-conjoined only into scopes that directly
+           read its physical table; logical CTE and subquery aliases
+           are never mistaken for policy tables. Filter columns are
+           qualified for aliases and joins.
+        5. Repeated physical sources receive separate filters, and
+           bound values are appended to ``params`` in rendered
+           placeholder order.
 
         After AST manipulation, the final SQL is renumbered to the
         target driver's style:
@@ -570,8 +577,13 @@ class PolicyEnforcementService:
         render_start_index = _next_postgres_index(stmt, sqlglot_dialect)
 
         prepared_filters: list[_PreparedRowFilter] = []
-        for rf in row_filters:
-            prepared_filter = _prepare_row_filter(rf, user_context, dialect, sqlglot_dialect)
+        for row_filter in row_filters:
+            prepared_filter = _prepare_row_filter(
+                row_filter,
+                user_context,
+                dialect,
+                sqlglot_dialect,
+            )
             _check_schema_drift(
                 prepared_filter.internal_sql,
                 prepared_filter.table_name,
