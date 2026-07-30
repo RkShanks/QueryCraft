@@ -168,6 +168,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               {t('admin.connections.form.databaseType')}
             </label>
             <select
+              dir="ltr"
               id="databaseType"
               value={databaseType}
               onChange={handleDatabaseTypeChange}
@@ -186,6 +187,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               {t('admin.connections.form.host')}
             </label>
             <input
+              dir="ltr"
               id="host"
               type="text"
               value={host}
@@ -207,6 +209,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               {t('admin.connections.form.port')}
             </label>
             <input
+              dir="ltr"
               id="port"
               type="number"
               value={port || ''}
@@ -223,6 +226,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               {t('admin.connections.form.databaseName')}
             </label>
             <input
+              dir="ltr"
               id="databaseName"
               type="text"
               value={databaseName}
@@ -237,6 +241,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               {t('admin.connections.form.username')}
             </label>
             <input
+              dir="ltr"
               id="username"
               type="text"
               value={username}
@@ -260,6 +265,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               {t('admin.connections.form.password')}
             </label>
             <input
+              dir="ltr"
               id="password"
               type="password"
               value={password}
@@ -281,6 +287,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
               {t('admin.connections.form.sslMode')}
             </label>
             <input
+              dir="ltr"
               id="sslMode"
               type="text"
               value={sslMode}
