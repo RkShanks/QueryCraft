@@ -153,6 +153,18 @@ describe('AdminRolesPage', () => {
     expect(screen.getByText('admins')).toBeInTheDocument();
   });
 
+  it('exposes configured role actions through a named keyboard-scrollable region', () => {
+    vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
+    render(<AdminRolesPage />);
+
+    const rolesRegion = screen.getByRole('region', { name: 'admin.roles.title' });
+
+    expect(rolesRegion).toHaveAttribute('tabindex', '0');
+    expect(screen.getByTestId('edit-role-123')).toHaveAccessibleName('common.edit');
+    expect(screen.getByTestId('delete-role-123')).toHaveAccessibleName('common.delete');
+    expect(screen.queryByTestId('delete-role-admin')).not.toBeInTheDocument();
+  });
+
   it.each([
     ['English', 'ltr'],
     ['Arabic', 'rtl'],
