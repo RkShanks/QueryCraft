@@ -3,8 +3,10 @@
 Tests use mock connections to verify adapter contract compliance.
 """
 
+import asyncio
 import secrets
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -662,3 +664,79 @@ async def test_mssql_adapter_close() -> None:
     await adapter.close()
     assert fake_pool.is_closed
     assert fake_pool._wait_closed_called
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("adapter_cls_name", "connection_cls", "pool_cls", "port"),
+    [
+        ("PostgresAdapter", FakePGConnection, FakePGPool, 5432),
+        ("MySQLAdapter", FakeMySQLConnection, FakeMySQLPool, 3306),
+        ("MSSQLAdapter", FakeMSSQLConnection, FakeMSSQLPool, 1433),
+    ],
+)
+@pytest.mark.parametrize(
+    "source_error",
+    [
+        TimeoutError(),
+        pytest.param(
+            "source_timeout",
+            id="SourceDBTimeout",
+        ),
+        pytest.param(
+            "permission_denied",
+            id="SourceDBPermissionDenied",
+        ),
+        pytest.param(
+            "connection_failed",
+            id="SourceDBConnectionFailed",
+        ),
+        asyncio.CancelledError(),
+    ],
+    ids=lambda source_error: type(source_error).__name__,
+)
+async def test_adapter_execution_preserves_typed_control_flow_errors(
+    adapter_cls_name: str,
+    connection_cls: type,
+    pool_cls: type,
+    port: int,
+    source_error: BaseException | str,
+) -> None:
+    """XP-007: timeout, cancellation, and typed source errors keep their contract."""
+    from app.core.credential_provider import FernetCredentialProvider
+    from app.core.exceptions import (
+        SourceDBConnectionFailed,
+        SourceDBPermissionDenied,
+        SourceDBTimeout,
+    )
+    from app.source_db import adapters
+
+    typed_errors = {
+        "source_timeout": SourceDBTimeout(timeout_seconds=30),
+        "permission_denied": SourceDBPermissionDenied(),
+        "connection_failed": SourceDBConnectionFailed(),
+    }
+    raised_error = typed_errors.get(source_error, source_error) if isinstance(source_error, str) else source_error
+    fake_conn = connection_cls()
+    if isinstance(fake_conn, FakePGConnection):
+        fake_conn.fetch = AsyncMock(side_effect=raised_error)
+    else:
+        fake_conn._cursor.execute = AsyncMock(side_effect=raised_error)
+
+    credential_provider = FernetCredentialProvider(_VALID_FERNET_KEY)
+    adapter_cls = getattr(adapters, adapter_cls_name)
+    adapter = adapter_cls(
+        host="localhost",
+        port=port,
+        database="testdb",
+        username="testuser",
+        encrypted_password=credential_provider.encrypt("test_password"),
+        ssl_mode="disable",
+        credential_provider=credential_provider,
+    )
+    adapter._pool = pool_cls(fake_conn)
+
+    with pytest.raises(type(raised_error)) as exc_info:
+        await adapter.execute("SELECT id FROM users")
+
+    assert exc_info.value is raised_error
