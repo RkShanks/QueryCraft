@@ -36,8 +36,9 @@ from typing import Any
 
 import sqlglot
 from sqlglot import exp
-from sqlglot.errors import SqlglotError
+from sqlglot.errors import OptimizeError, SqlglotError
 from sqlglot.lineage import lineage
+from sqlglot.optimizer.scope import traverse_scope
 
 from app.core.exceptions import PolicySchemaConflictError
 from app.db.models.enums import AuditActionType
@@ -303,7 +304,7 @@ class PolicyEnforcementService:
             raise ValueError("filter_validation_failed")
 
         # 3. Target table must exist in the schema (fail-closed).
-        target_table = schema.find_table(table_name)
+        target_table = _find_policy_table(schema, table_name)
         if target_table is None:
             raise ValueError("filter_validation_failed")
         valid_columns: set[str] = {c.name.lower() for c in target_table.columns}
@@ -374,7 +375,7 @@ class PolicyEnforcementService:
         #     case-insensitively. Without this check, ``customers.id`` would
         #     leak across to a target table that also has an ``id`` column
         #     (PR #125 blocker).
-        target_table_lower = target_table.name.lower()
+        target_table_lower = target_table.name.rsplit(".", 1)[-1].lower()
         for col in statement.find_all(exp.Column):
             col_name = col.name
             if col_name.startswith(_PH_SENTINEL_PREFIX):
@@ -487,8 +488,10 @@ class PolicyEnforcementService:
         placeholders.
 
         The generated ``sql`` is parsed with sqlglot in the target
-        dialect. For each filter:
-        1. Schema drift is checked — every column in the bound filter
+        dialect:
+        1. Every configured filter is bound and schema-drift checked,
+           including filters whose table is not referenced by the query.
+           Every column in the bound filter
            must exist in the current ``schema`` for the filter's
            table. A missing column or table raises
            ``PolicySchemaConflictError`` (T-705). The optional
@@ -499,9 +502,14 @@ class PolicyEnforcementService:
            max+1 of the existing SQL; mysql: ``%s``; mssql: ``?``).
         3. The bound filter is normalized to use ``?`` placeholders
            internally and re-parsed as ``SELECT 1 WHERE <bound>``.
-        4. Its WHERE expression is AND-conjunctions into the main
-           statement's WHERE (or added as a new WHERE if none exists).
-        5. Bound values are appended to the returned ``params`` tuple.
+        4. Physical SELECT scopes are visited in serialized order.
+           A filter is AND-conjoined only into scopes that directly
+           read its physical table; logical CTE and subquery aliases
+           are never mistaken for policy tables. Filter columns are
+           qualified for aliases and joins.
+        5. Repeated physical sources receive separate filters, and
+           bound values are appended to ``params`` in rendered
+           placeholder order.
 
         After AST manipulation, the final SQL is renumbered to the
         target driver's style:
@@ -566,69 +574,49 @@ class PolicyEnforcementService:
         if not isinstance(stmt, exp.Select):
             raise ValueError(_FILTER_INJECTION_FAILED)
 
-        # Compute the postgres start_index from existing $N placeholders.
-        # For mysql/mssql, ignored by the renumbering pass.
-        start_index = _next_postgres_index(stmt, sqlglot_dialect)
-        render_start_index = start_index  # captured before any advancement
+        render_start_index = _next_postgres_index(stmt, sqlglot_dialect)
 
-        params: list[Any] = []
-        for rf in row_filters:
-            if not isinstance(rf, dict):
-                raise ValueError(_FILTER_INJECTION_FAILED)
-            table_name = rf.get("table")
-            filter_sql = rf.get("filter")
-            if not isinstance(table_name, str) or not isinstance(filter_sql, str):
-                raise ValueError(_FILTER_INJECTION_FAILED)
-
-            # Bind placeholders to the driver's native style. The
-            # internal AST re-uses ``?`` (Placeholder) regardless of
-            # driver, so the driver-specific token from bind_placeholders
-            # is converted back to ``?`` for parsing here. The
-            # post-processing step at the end re-emits driver style.
-            bound = PolicyEnforcementService.bind_placeholders(filter_sql, user_context, dialect, start_index)
-            params.extend(bound.params)
-            internal_filter_sql = _to_internal_placeholder(bound.sql, dialect)
-
-            # T-705: schema drift guard. Parse the bound filter and
-            # check every column reference still exists in the
-            # current schema. Drift raises PolicySchemaConflictError
-            # (sanitized) and emits the audit hook with a payload
-            # containing only the table name.
+        prepared_filters: list[_PreparedRowFilter] = []
+        for row_filter in row_filters:
+            prepared_filter = _prepare_row_filter(
+                row_filter,
+                user_context,
+                dialect,
+                sqlglot_dialect,
+            )
             _check_schema_drift(
-                internal_filter_sql,
-                table_name,
+                prepared_filter.internal_sql,
+                prepared_filter.table_name,
                 schema,
                 sqlglot_dialect,
                 audit_hook,
             )
+            prepared_filters.append(prepared_filter)
 
-            # Parse the bound filter wrapped as a SELECT so we can lift
-            # its WHERE expression for AND-conjunction. Parse in the
-            # target sqlglot dialect (so MySQL backticks, T-SQL square
-            # brackets, etc. are recognized as identifier quoting) — the
-            # internal placeholder token is ``?`` (Placeholder) which all
-            # three dialects accept.
-            wrapped = f"SELECT 1 WHERE {internal_filter_sql}"
-            try:
-                filter_stmt = sqlglot.parse_one(wrapped, read=sqlglot_dialect)
-            except Exception:
-                raise ValueError(_FILTER_INJECTION_FAILED) from None
-            if not isinstance(filter_stmt, exp.Select):
-                raise ValueError(_FILTER_INJECTION_FAILED)
-            filter_where = filter_stmt.args.get("where")
-            if filter_where is None:
-                raise ValueError(_FILTER_INJECTION_FAILED)
-            new_expr = filter_where.this
-
-            # AND-conjunction (or add new WHERE).
-            existing = stmt.args.get("where")
-            if existing is None:
-                stmt = stmt.where(new_expr)
-            else:
-                stmt.set("where", exp.Where(this=exp.and_(existing.this, new_expr)))
-
-            # Advance the start_index for the next filter.
-            start_index += len(bound.params)
+        params: list[Any] = []
+        try:
+            for scope in traverse_scope(stmt):
+                if not isinstance(scope.expression, exp.Select):
+                    continue
+                physical_sources = [
+                    (source_name, source)
+                    for source_name, (_, source) in scope.selected_sources.items()
+                    if isinstance(source, exp.Table)
+                ]
+                for prepared_filter in prepared_filters:
+                    matching_sources = [
+                        (source_name, source)
+                        for source_name, source in physical_sources
+                        if _table_matches_policy(source, prepared_filter.table_name)
+                    ]
+                    for source_name, source in matching_sources:
+                        scoped_expr = prepared_filter.expression.copy()
+                        if source.alias or len(physical_sources) > 1:
+                            _qualify_filter_columns(scoped_expr, source_name)
+                        _add_filter_where(scope.expression, scoped_expr)
+                        params.extend(prepared_filter.params)
+        except OptimizeError:
+            raise ValueError(_FILTER_INJECTION_FAILED) from None
 
         # Serialize back to the target sqlglot dialect, then convert
         # the ``?`` placeholders (added by us) to driver style.
@@ -864,6 +852,82 @@ def _render_placeholders_for_driver(sql_str: str, dialect: str, start_index: int
     return sql_str
 
 
+def _prepare_row_filter(
+    row_filter: dict[str, Any],
+    user_context: dict[str, Any],
+    dialect: str,
+    sqlglot_dialect: str,
+) -> _PreparedRowFilter:
+    """Bind and parse one policy filter without interpolating user values."""
+    if not isinstance(row_filter, dict):
+        raise ValueError(_FILTER_INJECTION_FAILED)
+    table_name = row_filter.get("table")
+    filter_sql = row_filter.get("filter")
+    if not isinstance(table_name, str) or not isinstance(filter_sql, str):
+        raise ValueError(_FILTER_INJECTION_FAILED)
+    bound = PolicyEnforcementService.bind_placeholders(filter_sql, user_context, dialect)
+    internal_sql = _to_internal_placeholder(bound.sql, dialect)
+    try:
+        filter_stmt = sqlglot.parse_one(f"SELECT 1 WHERE {internal_sql}", read=sqlglot_dialect)
+    except Exception:
+        raise ValueError(_FILTER_INJECTION_FAILED) from None
+    if not isinstance(filter_stmt, exp.Select) or filter_stmt.args.get("where") is None:
+        raise ValueError(_FILTER_INJECTION_FAILED)
+    return _PreparedRowFilter(
+        table_name=table_name,
+        internal_sql=internal_sql,
+        expression=filter_stmt.args["where"].this,
+        params=bound.params,
+    )
+
+
+def _table_matches_policy(table: exp.Table, policy_table_name: str) -> bool:
+    """Match a physical source against an optionally qualified policy table."""
+    policy_parts = policy_table_name.lower().split(".")
+    if table.name.lower() != policy_parts[-1]:
+        return False
+    if len(policy_parts) >= 2 and table.db.lower() != policy_parts[-2]:
+        return False
+    return len(policy_parts) < 3 or table.catalog.lower() == policy_parts[-3]
+
+
+def _find_policy_table(schema: SchemaContext, policy_table_name: str) -> Table | None:
+    """Resolve an optionally schema-qualified policy table."""
+    flattened_match = next(
+        (table for table in schema.tables if table.name.lower() == policy_table_name.lower()),
+        None,
+    )
+    if flattened_match is not None:
+        return flattened_match
+    policy_parts = policy_table_name.lower().split(".")
+    if len(policy_parts) == 1:
+        return schema.find_table(policy_table_name)
+    target_schema, target_name = policy_parts[-2:]
+    return next(
+        (
+            table
+            for table in schema.tables
+            if table.name.lower() == target_name and table.schema_name.lower() == target_schema
+        ),
+        None,
+    )
+
+
+def _qualify_filter_columns(filter_expression: exp.Expression, qualifier: str) -> None:
+    """Bind filter columns to the matching physical-table alias."""
+    for column in filter_expression.find_all(exp.Column):
+        column.set("table", exp.to_identifier(qualifier))
+
+
+def _add_filter_where(target_select: exp.Select, filter_expression: exp.Expression) -> None:
+    """AND a row filter into its physical-table SELECT scope."""
+    existing = target_select.args.get("where")
+    if existing is None:
+        target_select.where(filter_expression, copy=False)
+        return
+    target_select.set("where", exp.Where(this=exp.and_(existing.this, filter_expression)))
+
+
 def _replace_outside_strings(s: str, needle: str, replacement: str) -> str:
     """Replace a literal substring, but only outside SQL string literals.
 
@@ -976,7 +1040,7 @@ def _check_schema_drift(
     The check is case-insensitive on column/table names to match
     Postgres identifier folding.
     """
-    table = schema.find_table(table_name)
+    table = _find_policy_table(schema, table_name)
     if table is None:
         _emit_drift(audit_hook, table_name)
         raise PolicySchemaConflictError()
@@ -1031,6 +1095,16 @@ class BoundSql:
     """
 
     sql: str
+    params: tuple[Any, ...]
+
+
+@dataclass(frozen=True)
+class _PreparedRowFilter:
+    """Validated row-filter AST and its parameter values."""
+
+    table_name: str
+    internal_sql: str
+    expression: exp.Expression
     params: tuple[Any, ...]
 
 

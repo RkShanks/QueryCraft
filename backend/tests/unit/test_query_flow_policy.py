@@ -527,6 +527,51 @@ class TestRowFilterInjection:
         assert "customer_id" in call["sql"].lower()
 
     @pytest.mark.asyncio
+    async def test_xp007_unrelated_table_filter_does_not_rewrite_valid_select(self):
+        """2026-07-30: a customer filter broke a valid actor query."""
+        from app.evaluator.schema_context import Column, SchemaContext, Table
+
+        conn_id = uuid.UUID("770e8400-e29b-41d4-a716-446655440000")
+        policy = _RolePolicy(
+            user_id=uuid.UUID("550e8400-e29b-41d4-a716-446655440000"),
+            role_id=uuid.UUID("660e8400-e29b-41d4-a716-446655440000"),
+            connection_id=conn_id,
+            allowed_tables=[
+                {"table": "actor", "columns": ["actor_id", "first_name"]},
+                {"table": "customer", "columns": ["customer_id"]},
+            ],
+            row_filters=[{"table": "customer", "filter": "customer_id > 0"}],
+        )
+        schema = SchemaContext(
+            tables=[
+                Table(
+                    name="actor",
+                    columns=[Column(name="actor_id"), Column(name="first_name")],
+                ),
+                Table(name="customer", columns=[Column(name="customer_id")]),
+            ]
+        )
+        executor = _RecordingExecutor(columns=["actor_id", "first_name"], rows=[[1, "PENELOPE"]])
+        service, _ = _make_service(
+            llm=_RecordingLLM(sql="SELECT actor_id, first_name FROM actor"),
+            executor=executor,
+            schema_context=schema,
+            policies_by_connection={conn_id: policy},
+        )
+
+        response = await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
+            question="List actors",
+            connection_id=str(conn_id),
+        )
+
+        assert response.kind == "result"
+        assert len(executor.calls) == 1
+        assert "customer_id" not in executor.calls[0]["sql"].lower()
+        assert executor.calls[0]["params"] == ()
+
+    @pytest.mark.asyncio
     async def test_no_row_filter_means_no_where_injection(self):
         conn_id = uuid.UUID("770e8400-e29b-41d4-a716-446655440000")
         policy = _RolePolicy(
