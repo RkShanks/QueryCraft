@@ -117,6 +117,7 @@
   "error.notFound": "The requested resource was not found.",
   "error.sourceDbNotConfigured": "Source database connection is not configured. Please check your environment settings.",
   "error.sourceDbConnectionFailed": "Unable to connect to the database. Please check your connection settings and try again.",
+  "error.sourceDbExecutionFailed": "The database could not execute this query. Please revise your question and try again.",
   "error.invalidCursor": "Invalid pagination cursor.",
   "error.invalid_date": "Invalid date format. Use ISO 8601.",
   "error.schemaTokenLimit": "The database schema is too large ({{tokens}} tokens, limit {{limit}}). Please contact your administrator.",
