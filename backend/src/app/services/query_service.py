@@ -1270,6 +1270,24 @@ class QueryService:
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
                 ) from exc
+            except Exception:
+                await self._redis.delete(f"active_attempt:{http_session_id}")
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.QUERY_EXECUTE,
+                    actor_id=user_uuid,
+                    resource_type="query_attempt",
+                    resource_id=prior.attempt_id,
+                    outcome="failure",
+                    context={"reason": "execution_failed"},
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail={
+                        "error": "source_db_execution_failed",
+                        "message_key": "error.sourceDbExecutionFailed",
+                    },
+                ) from None
 
             # Build result and store ephemeral attempt
             new_attempt_id = str(uuid.uuid4())
