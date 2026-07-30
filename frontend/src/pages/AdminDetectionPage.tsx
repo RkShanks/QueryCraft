@@ -199,6 +199,7 @@ export const AdminDetectionPage: React.FC = () => {
                 className="w-full h-2 bg-gray-950 rounded-lg appearance-none cursor-pointer accent-neon-cyan focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               />
               <input
+                dir="ltr"
                 type="number"
                 aria-label={t('detection.block_threshold')}
                 min="0.0"
@@ -227,6 +228,7 @@ export const AdminDetectionPage: React.FC = () => {
                 className="w-full h-2 bg-gray-950 rounded-lg appearance-none cursor-pointer accent-neon-purple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-purple focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               />
               <input
+                dir="ltr"
                 type="number"
                 aria-label={t('detection.flag_threshold')}
                 min="0.0"
