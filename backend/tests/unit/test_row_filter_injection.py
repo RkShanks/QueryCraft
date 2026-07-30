@@ -173,10 +173,7 @@ class TestPhysicalTableScope:
         )
 
         result = PolicyEnforcementService.apply_row_filters(
-            sql=(
-                "SELECT o.id, p.order_id FROM orders AS o "
-                "JOIN payments AS p ON p.order_id = o.id"
-            ),
+            sql=("SELECT o.id, p.order_id FROM orders AS o JOIN payments AS p ON p.order_id = o.id"),
             row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
             schema=schema,
             user_context=USER,
@@ -188,10 +185,7 @@ class TestPhysicalTableScope:
 
     def test_cte_filter_is_injected_into_physical_source_scope(self) -> None:
         result = PolicyEnforcementService.apply_row_filters(
-            sql=(
-                "WITH scoped_orders AS (SELECT id, region FROM orders) "
-                "SELECT id FROM scoped_orders"
-            ),
+            sql=("WITH scoped_orders AS (SELECT id, region FROM orders) SELECT id FROM scoped_orders"),
             row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
             schema=_schema(),
             user_context=USER,

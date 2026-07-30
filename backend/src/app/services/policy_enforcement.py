@@ -38,6 +38,7 @@ import sqlglot
 from sqlglot import exp
 from sqlglot.errors import SqlglotError
 from sqlglot.lineage import lineage
+from sqlglot.optimizer.scope import Scope, traverse_scope
 
 from app.core.exceptions import PolicySchemaConflictError
 from app.db.models.enums import AuditActionType
@@ -601,10 +602,9 @@ class PolicyEnforcementService:
                 audit_hook,
             )
 
-            if not _statement_references_table(stmt, table_name):
+            scope_sources = _matching_scope_sources(stmt, table_name)
+            if not scope_sources:
                 continue
-
-            params.extend(bound.params)
 
             # Parse the bound filter wrapped as a SELECT so we can lift
             # its WHERE expression for AND-conjunction. Parse in the
@@ -623,19 +623,15 @@ class PolicyEnforcementService:
             if filter_where is None:
                 raise ValueError(_FILTER_INJECTION_FAILED)
             new_expr = filter_where.this
-            matching_tables = _matching_table_references(stmt, table_name)
-            if len(matching_tables) == 1 and matching_tables[0].alias:
-                _qualify_filter_columns(new_expr, matching_tables[0].alias)
-
-            # AND-conjunction (or add new WHERE).
-            existing = stmt.args.get("where")
-            if existing is None:
-                stmt = stmt.where(new_expr)
-            else:
-                stmt.set("where", exp.Where(this=exp.and_(existing.this, new_expr)))
+            for target_select, qualifier in scope_sources:
+                scoped_expr = new_expr.copy()
+                if qualifier:
+                    _qualify_filter_columns(scoped_expr, qualifier)
+                _add_filter_where(target_select, scoped_expr)
+                params.extend(bound.params)
 
             # Advance the start_index for the next filter.
-            start_index += len(bound.params)
+            start_index += len(bound.params) * len(scope_sources)
 
         # Serialize back to the target sqlglot dialect, then convert
         # the ``?`` placeholders (added by us) to driver style.
@@ -871,21 +867,38 @@ def _render_placeholders_for_driver(sql_str: str, dialect: str, start_index: int
     return sql_str
 
 
-def _statement_references_table(statement: exp.Expression, table_name: str) -> bool:
-    """Return whether the statement reads the filter's physical table."""
-    return bool(_matching_table_references(statement, table_name))
-
-
-def _matching_table_references(statement: exp.Expression, table_name: str) -> list[exp.Table]:
-    """Return physical table references matching a policy table name."""
+def _matching_scope_sources(statement: exp.Expression, table_name: str) -> list[tuple[exp.Select, str | None]]:
+    """Return SELECT scopes that directly read the policy's physical table."""
     target_name = table_name.rsplit(".", 1)[-1].lower()
-    return [table for table in statement.find_all(exp.Table) if table.name.lower() == target_name]
+    matches: list[tuple[exp.Select, str | None]] = []
+    for scope in traverse_scope(statement):
+        if not isinstance(scope.expression, exp.Select):
+            continue
+        physical_sources = [
+            (source_name, source)
+            for source_name, (_, source) in scope.selected_sources.items()
+            if not isinstance(source, Scope)
+        ]
+        for source_name, source in physical_sources:
+            if isinstance(source, exp.Table) and source.name.lower() == target_name:
+                qualifier = source_name if source.alias or len(physical_sources) > 1 else None
+                matches.append((scope.expression, qualifier))
+    return matches
 
 
 def _qualify_filter_columns(filter_expression: exp.Expression, qualifier: str) -> None:
     """Bind filter columns to the matching physical-table alias."""
     for column in filter_expression.find_all(exp.Column):
         column.set("table", exp.to_identifier(qualifier))
+
+
+def _add_filter_where(target_select: exp.Select, filter_expression: exp.Expression) -> None:
+    """AND a row filter into its physical-table SELECT scope."""
+    existing = target_select.args.get("where")
+    if existing is None:
+        target_select.where(filter_expression, copy=False)
+        return
+    target_select.set("where", exp.Where(this=exp.and_(existing.this, filter_expression)))
 
 
 def _replace_outside_strings(s: str, needle: str, replacement: str) -> str:
