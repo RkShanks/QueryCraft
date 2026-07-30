@@ -748,6 +748,10 @@ class QueryService:
                         self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
                         timeout=30,
                     )
+            except asyncio.CancelledError:
+                attempt.state = "FAILED"
+                await store_attempt(attempt, http_session_id, self._redis)
+                raise
             except (TimeoutError, SourceDBTimeout) as exc:
                 attempt.state = "TIMEOUT"
                 await store_attempt(attempt, http_session_id, self._redis)
@@ -1291,6 +1295,9 @@ class QueryService:
                         self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
                         timeout=30,
                     )
+            except asyncio.CancelledError:
+                await self._redis.delete(f"active_attempt:{http_session_id}")
+                raise
             except (TimeoutError, SourceDBTimeout) as exc:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise HTTPException(
