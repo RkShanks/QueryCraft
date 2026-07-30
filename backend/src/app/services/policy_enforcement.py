@@ -36,7 +36,7 @@ from typing import Any
 
 import sqlglot
 from sqlglot import exp
-from sqlglot.errors import SqlglotError
+from sqlglot.errors import OptimizeError, SqlglotError
 from sqlglot.lineage import lineage
 from sqlglot.optimizer.scope import traverse_scope
 
@@ -594,26 +594,29 @@ class PolicyEnforcementService:
             prepared_filters.append(prepared_filter)
 
         params: list[Any] = []
-        for scope in traverse_scope(stmt):
-            if not isinstance(scope.expression, exp.Select):
-                continue
-            physical_sources = [
-                (source_name, source)
-                for source_name, (_, source) in scope.selected_sources.items()
-                if isinstance(source, exp.Table)
-            ]
-            for prepared_filter in prepared_filters:
-                matching_sources = [
+        try:
+            for scope in traverse_scope(stmt):
+                if not isinstance(scope.expression, exp.Select):
+                    continue
+                physical_sources = [
                     (source_name, source)
-                    for source_name, source in physical_sources
-                    if _table_matches_policy(source, prepared_filter.table_name)
+                    for source_name, (_, source) in scope.selected_sources.items()
+                    if isinstance(source, exp.Table)
                 ]
-                for source_name, source in matching_sources:
-                    scoped_expr = prepared_filter.expression.copy()
-                    if source.alias or len(physical_sources) > 1:
-                        _qualify_filter_columns(scoped_expr, source_name)
-                    _add_filter_where(scope.expression, scoped_expr)
-                    params.extend(prepared_filter.params)
+                for prepared_filter in prepared_filters:
+                    matching_sources = [
+                        (source_name, source)
+                        for source_name, source in physical_sources
+                        if _table_matches_policy(source, prepared_filter.table_name)
+                    ]
+                    for source_name, source in matching_sources:
+                        scoped_expr = prepared_filter.expression.copy()
+                        if source.alias or len(physical_sources) > 1:
+                            _qualify_filter_columns(scoped_expr, source_name)
+                        _add_filter_where(scope.expression, scoped_expr)
+                        params.extend(prepared_filter.params)
+        except OptimizeError:
+            raise ValueError(_FILTER_INJECTION_FAILED) from None
 
         # Serialize back to the target sqlglot dialect, then convert
         # the ``?`` placeholders (added by us) to driver style.
