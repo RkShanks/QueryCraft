@@ -3,6 +3,7 @@
 Tests use mock connections to verify adapter contract compliance.
 """
 
+import secrets
 from typing import Any
 
 import pytest
@@ -143,6 +144,39 @@ async def test_postgres_adapter_execute_parameterized() -> None:
     assert result.columns is not None
     assert result.rows is not None
     assert fake_conn._fetch_calls[0][0] == "SELECT * FROM users WHERE id = $1"
+
+
+@pytest.mark.asyncio
+async def test_postgres_adapter_execution_failure_is_sanitized() -> None:
+    """XP-007: query execution never exposes raw asyncpg details."""
+    from app.core.credential_provider import FernetCredentialProvider
+    from app.core.exceptions import SourceDBExecutionFailed
+    from app.source_db.adapters import PostgresAdapter
+
+    driver_probe = secrets.token_urlsafe(18)
+    fake_conn = FakePGConnection()
+
+    async def fail_fetch(query: str, *args: Any) -> list[dict]:
+        raise RuntimeError(driver_probe)
+
+    fake_conn.fetch = fail_fetch  # type: ignore[method-assign]
+    credential_provider = FernetCredentialProvider(_VALID_FERNET_KEY)
+    adapter = PostgresAdapter(
+        host="localhost",
+        port=5432,
+        database="testdb",
+        username="testuser",
+        encrypted_password=credential_provider.encrypt("test_password"),
+        ssl_mode="disable",
+        credential_provider=credential_provider,
+    )
+    adapter._pool = FakePGPool(fake_conn)
+
+    with pytest.raises(SourceDBExecutionFailed) as exc_info:
+        await adapter.execute("SELECT missing_column FROM users")
+
+    assert driver_probe not in str(exc_info.value)
+    assert exc_info.value.__cause__ is None
 
 
 @pytest.mark.asyncio
