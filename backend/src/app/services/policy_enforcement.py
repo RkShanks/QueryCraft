@@ -586,7 +586,6 @@ class PolicyEnforcementService:
             # is converted back to ``?`` for parsing here. The
             # post-processing step at the end re-emits driver style.
             bound = PolicyEnforcementService.bind_placeholders(filter_sql, user_context, dialect, start_index)
-            params.extend(bound.params)
             internal_filter_sql = _to_internal_placeholder(bound.sql, dialect)
 
             # T-705: schema drift guard. Parse the bound filter and
@@ -601,6 +600,11 @@ class PolicyEnforcementService:
                 sqlglot_dialect,
                 audit_hook,
             )
+
+            if not _statement_references_table(stmt, table_name):
+                continue
+
+            params.extend(bound.params)
 
             # Parse the bound filter wrapped as a SELECT so we can lift
             # its WHERE expression for AND-conjunction. Parse in the
@@ -862,6 +866,12 @@ def _render_placeholders_for_driver(sql_str: str, dialect: str, start_index: int
 
         return _replace_outside_strings_regex(sql_str, r"\?", _replace_one)
     return sql_str
+
+
+def _statement_references_table(statement: exp.Expression, table_name: str) -> bool:
+    """Return whether the statement reads the filter's physical table."""
+    target_name = table_name.rsplit(".", 1)[-1].lower()
+    return any(table.name.lower() == target_name for table in statement.find_all(exp.Table))
 
 
 def _replace_outside_strings(s: str, needle: str, replacement: str) -> str:

@@ -526,7 +526,7 @@ class TestStringLiteralPreservation:
         also be skipped by the renumbering pass.
         """
         result = PolicyEnforcementService.apply_row_filters(
-            sql='SELECT id FROM "my?"',
+            sql='SELECT id FROM orders AS "my?"',
             row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
             schema=_schema(),
             user_context=USER,
