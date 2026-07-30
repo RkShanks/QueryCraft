@@ -599,6 +599,44 @@ async def test_mssql_adapter_execute_parameterized() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mssql_adapter_execution_failure_is_sanitized() -> None:
+    """XP-007: query execution never exposes raw ODBC details."""
+    from app.core.credential_provider import FernetCredentialProvider
+    from app.core.exceptions import SourceDBExecutionFailed
+    from app.source_db.adapters import MSSQLAdapter
+
+    driver_probe = secrets.token_urlsafe(18)
+    fake_conn = FakeMSSQLConnection()
+
+    async def fail_execute(query: str, *params: Any) -> None:
+        raise RuntimeError(driver_probe)
+
+    fake_conn._cursor.execute = fail_execute  # type: ignore[method-assign]
+    credential_provider = FernetCredentialProvider(_VALID_FERNET_KEY)
+    adapter = MSSQLAdapter(
+        host="localhost",
+        port=1433,
+        database="testdb",
+        username="testuser",
+        encrypted_password=credential_provider.encrypt("test_password"),
+        ssl_mode="disable",
+        credential_provider=credential_provider,
+    )
+    adapter._pool = FakeMSSQLPool(fake_conn)
+
+    caught_error: Exception | None = None
+    try:
+        await adapter.execute("SELECT missing_column FROM users")
+    except Exception as exc:
+        caught_error = exc
+
+    if not isinstance(caught_error, SourceDBExecutionFailed):
+        pytest.fail(f"unexpected execution error type: {type(caught_error).__name__}")
+    assert driver_probe not in str(caught_error)
+    assert caught_error.__cause__ is None
+
+
+@pytest.mark.asyncio
 async def test_mssql_adapter_close() -> None:
     """MSSQLAdapter closes the pool."""
     from app.core.credential_provider import FernetCredentialProvider
