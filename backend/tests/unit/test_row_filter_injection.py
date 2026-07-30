@@ -19,6 +19,8 @@ match the filter columns.
 from __future__ import annotations
 
 import pytest
+import sqlglot
+from sqlglot.optimizer.scope import traverse_scope
 
 from app.evaluator.schema_context import Column, SchemaContext, Table
 from app.services.policy_enforcement import (
@@ -182,6 +184,23 @@ class TestPhysicalTableScope:
         )
 
         assert "o.region = $1" in result.sql
+        assert result.params == ("analyst",)
+
+    def test_cte_filter_is_injected_into_physical_source_scope(self) -> None:
+        result = PolicyEnforcementService.apply_row_filters(
+            sql=(
+                "WITH scoped_orders AS (SELECT id, region FROM orders) "
+                "SELECT id FROM scoped_orders"
+            ),
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="postgres",
+        )
+
+        scopes = traverse_scope(sqlglot.parse_one(result.sql, read="postgres"))
+        assert scopes[0].expression.args.get("where") is not None
+        assert scopes[1].expression.args.get("where") is None
         assert result.params == ("analyst",)
 
 
