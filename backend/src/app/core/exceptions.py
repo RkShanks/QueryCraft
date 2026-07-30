@@ -124,6 +124,13 @@ class SourceDBConnectionFailed(SourceDBError):
         super().__init__("Source DB connection failed", message_key="error.sourceDbConnectionFailed")
 
 
+class SourceDBExecutionFailed(SourceDBError):
+    """Raised when a source-DB query fails after validation."""
+
+    def __init__(self) -> None:
+        super().__init__("Source DB query execution failed", message_key="error.sourceDbExecutionFailed")
+
+
 # ─── Attempt ───
 
 

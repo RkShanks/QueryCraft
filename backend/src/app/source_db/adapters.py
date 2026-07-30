@@ -6,6 +6,7 @@ All adapters use parameterized queries only. No string interpolation.
 from typing import Any, Protocol
 
 from app.core.credential_provider import CredentialProvider
+from app.core.exceptions import SourceDBExecutionFailed
 
 
 class ExecuteResult:
@@ -101,15 +102,18 @@ class PostgresAdapter:
 
     async def execute(self, sql: str, params: tuple = ()) -> ExecuteResult:
         """Execute a parameterized query using asyncpg."""
-        if self._pool is None:
-            await self.connect()
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch(sql, *params)
-            if not rows:
-                return ExecuteResult(columns=[], rows=[])
-            columns = [c.lower() for c in rows[0].keys()]  # noqa: SIM118
-            row_tuples = [tuple(r.values()) for r in rows]
-            return ExecuteResult(columns=columns, rows=row_tuples)
+        try:
+            if self._pool is None:
+                await self.connect()
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(sql, *params)
+                if not rows:
+                    return ExecuteResult(columns=[], rows=[])
+                columns = [c.lower() for c in rows[0].keys()]  # noqa: SIM118
+                row_tuples = [tuple(r.values()) for r in rows]
+                return ExecuteResult(columns=columns, rows=row_tuples)
+        except Exception:
+            raise SourceDBExecutionFailed() from None
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""
