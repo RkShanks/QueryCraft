@@ -46,38 +46,30 @@ def test_connection_response_runtime_openapi_omits_sensitive_fields():
     assert set(response_properties) & forbidden_fields == set()
 
 
-def test_published_connection_response_contract_omits_sensitive_fields():
+@pytest.fixture
+def published_connection_schemas():
     contract_path = (
-        Path(__file__).resolve().parents[4]
-        / "specs"
-        / "001-core-text-to-sql"
-        / "contracts"
-        / "openapi.yaml"
+        Path(__file__).resolve().parents[4] / "specs" / "001-core-text-to-sql" / "contracts" / "openapi.yaml"
     )
     contract = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
-    response_schema = contract["components"]["schemas"]["ConnectionResponse"]
+    return contract["components"]["schemas"]
+
+
+def test_published_connection_response_contract_omits_sensitive_fields(published_connection_schemas):
+    response_schema = published_connection_schemas["ConnectionResponse"]
     forbidden_fields = {"host", "username", "password", "encrypted_password", "database_url"}
 
     assert set(response_schema["properties"]) & forbidden_fields == set()
     assert set(response_schema["required"]) & forbidden_fields == set()
 
 
-def test_published_connection_request_contract_preserves_credential_inputs():
-    contract_path = (
-        Path(__file__).resolve().parents[4]
-        / "specs"
-        / "001-core-text-to-sql"
-        / "contracts"
-        / "openapi.yaml"
-    )
-    contract = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
-    schemas = contract["components"]["schemas"]
+def test_published_connection_request_contract_preserves_credential_inputs(published_connection_schemas):
     credential_fields = {"host", "username", "password"}
 
-    assert credential_fields <= set(schemas["ConnectionCreate"]["properties"])
-    assert credential_fields <= set(schemas["ConnectionCreate"]["required"])
-    assert credential_fields <= set(schemas["ConnectionUpdate"]["properties"])
-    assert credential_fields.isdisjoint(schemas["ConnectionUpdate"].get("required", []))
+    assert credential_fields <= set(published_connection_schemas["ConnectionCreate"]["properties"])
+    assert credential_fields <= set(published_connection_schemas["ConnectionCreate"]["required"])
+    assert credential_fields <= set(published_connection_schemas["ConnectionUpdate"]["properties"])
+    assert credential_fields.isdisjoint(published_connection_schemas["ConnectionUpdate"].get("required", []))
 
 
 class TestConnectionCreate:
