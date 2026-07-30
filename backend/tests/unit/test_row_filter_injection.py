@@ -152,6 +152,39 @@ class TestExistingWhereGetsAnd:
         assert result.params == ("analyst",)
 
 
+# ──────────────────────── Physical-table scope ────────────────────────
+
+
+class TestPhysicalTableScope:
+    def test_join_filter_is_qualified_to_target_alias(self) -> None:
+        schema = SchemaContext(
+            tables=[
+                *_schema().tables,
+                Table(
+                    name="payments",
+                    columns=[
+                        Column(name="order_id", type="integer"),
+                        Column(name="region", type="text"),
+                    ],
+                ),
+            ]
+        )
+
+        result = PolicyEnforcementService.apply_row_filters(
+            sql=(
+                "SELECT o.id, p.order_id FROM orders AS o "
+                "JOIN payments AS p ON p.order_id = o.id"
+            ),
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=schema,
+            user_context=USER,
+            dialect="postgres",
+        )
+
+        assert "o.region = $1" in result.sql
+        assert result.params == ("analyst",)
+
+
 # ──────────────────────── Postgres start_index after existing params ────────────────────────
 
 
