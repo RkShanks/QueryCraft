@@ -43,14 +43,14 @@ class SsoProviderCreate(BaseModel):
     display_name: str = Field(..., min_length=1, max_length=200)
     issuer_url: str | None = None
     client_id: str | None = None
-    client_secret: str | None = None
+    client_secret: str | None = Field(default=None, json_schema_extra={"writeOnly": True})
     scopes: str = "openid email profile groups"
     redirect_uri: str | None = None
     group_claim_name: str = "groups"
     saml_entity_id: str | None = None
     saml_metadata_url: str | None = None
-    saml_metadata_xml: str | None = None
-    saml_certificate: str | None = None
+    saml_metadata_xml: str | None = Field(default=None, json_schema_extra={"writeOnly": True})
+    saml_certificate: str | None = Field(default=None, json_schema_extra={"writeOnly": True})
 
 
 class SsoProviderUpdate(BaseModel):
@@ -59,12 +59,12 @@ class SsoProviderUpdate(BaseModel):
     display_name: str | None = Field(None, min_length=1, max_length=200)
     issuer_url: str | None = None
     client_id: str | None = None
-    client_secret: str | None = None
+    client_secret: str | None = Field(default=None, json_schema_extra={"writeOnly": True})
     scopes: str | None = None
     redirect_uri: str | None = None
     group_claim_name: str | None = None
     saml_entity_id: str | None = None
     saml_metadata_url: str | None = None
-    saml_metadata_xml: str | None = None
-    saml_certificate: str | None = None
+    saml_metadata_xml: str | None = Field(default=None, json_schema_extra={"writeOnly": True})
+    saml_certificate: str | None = Field(default=None, json_schema_extra={"writeOnly": True})
     is_active: bool | None = None
