@@ -44,15 +44,23 @@ async function focusWithTab(page: Page, target: Locator) {
   throw new Error(`Tab navigation did not reach ${await target.getAttribute('id')}`);
 }
 
-async function expectVisibleKeyboardFocus(control: Locator) {
+async function expectVisibleKeyboardFocus(control: Locator, unfocusedBorderColor: string) {
   await expect
     .poll(() =>
       control.evaluate((element) => {
         const style = getComputedStyle(element);
-        return style.boxShadow !== 'none' || style.outlineStyle !== 'none';
+        return {
+          borderColor: style.borderColor,
+          boxShadow: style.boxShadow,
+          outlineStyle: style.outlineStyle,
+        };
       })
     )
-    .toBe(true);
+    .not.toEqual({
+      borderColor: unfocusedBorderColor,
+      boxShadow: 'none',
+      outlineStyle: 'none',
+    });
 }
 
 async function expectNoPageOverflow(page: Page) {
@@ -65,6 +73,7 @@ async function expectNoPageOverflow(page: Page) {
     .toBeLessThanOrEqual(0);
 }
 
+// XP-008 regression (2026-07-31): settings numbers inherited RTL from the Arabic shell.
 for (const viewport of [
   { width: 375, height: 812 },
   { width: 768, height: 1024 },
@@ -84,8 +93,11 @@ for (const viewport of [
         const control = page.getByLabel(message(locale, key));
         await expect(control).toHaveAttribute('dir', 'ltr');
         await expect(control).toHaveCSS('direction', 'ltr');
+        const unfocusedBorderColor = await control.evaluate(
+          (element) => getComputedStyle(element).borderColor
+        );
         await focusWithTab(page, control);
-        await expectVisibleKeyboardFocus(control);
+        await expectVisibleKeyboardFocus(control, unfocusedBorderColor);
         await page.keyboard.press('ArrowUp');
         await expect(control).toHaveValue('4');
       }

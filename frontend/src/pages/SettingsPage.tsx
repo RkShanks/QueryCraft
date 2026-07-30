@@ -82,6 +82,7 @@ const SettingsForm: React.FC<{
         </label>
         <p className="settings-help">{t('admin.settings.contextCapHelp')}</p>
         <input
+          dir="ltr"
           id="llm-context-cap"
           className="settings-input"
           type="number"
@@ -104,6 +105,7 @@ const SettingsForm: React.FC<{
         </label>
         <p className="settings-help">{t('admin.settings.maxRegenerateAttemptsHelp')}</p>
         <input
+          dir="ltr"
           id="max-regenerate-attempts"
           className="settings-input"
           type="number"
