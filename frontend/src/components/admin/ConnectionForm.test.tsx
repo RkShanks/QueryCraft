@@ -14,6 +14,48 @@ describe('ConnectionForm', () => {
     onCancel: vi.fn(),
   };
 
+  it.each([
+    ['create', undefined],
+    [
+      'edit',
+      {
+        id: 'direction-check',
+        display_name: 'قاعدة التحليلات',
+        database_type: 'postgresql',
+        port: 5432,
+        database_name: 'analytics_db',
+        ssl_mode: 'require',
+        lifecycle_state: 'active',
+        health_status: 'healthy',
+        last_health_check_at: null,
+        health_error_category: null,
+        schema_introspection_status: 'success',
+        schema_last_refreshed_at: null,
+        created_at: '',
+        updated_at: '',
+      } satisfies ConnectionResponse,
+    ],
+  ])('keeps %s technical values LTR without overriding the RTL display name', (_mode, initialValues) => {
+    render(
+      <div dir="rtl">
+        <ConnectionForm {...defaultProps} initialValues={initialValues} />
+      </div>
+    );
+
+    [
+      /Database Type/i,
+      /Host/i,
+      /Port/i,
+      /Database Name/i,
+      /Username/i,
+      /Password/i,
+      /SSL Mode/i,
+    ].forEach((label) => {
+      expect(screen.getByLabelText(label)).toHaveAttribute('dir', 'ltr');
+    });
+    expect(screen.getByLabelText(/Display Name/i)).not.toHaveAttribute('dir');
+  });
+
   it('renders create-mode fields', () => {
     render(<ConnectionForm {...defaultProps} />);
 
