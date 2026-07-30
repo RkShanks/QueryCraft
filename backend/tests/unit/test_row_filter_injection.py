@@ -601,6 +601,19 @@ class TestMalformedInput:
                 dialect="postgres",
             )
 
+    def test_duplicate_alias_is_rejected_with_sanitized_error(self) -> None:
+        with pytest.raises(ValueError, match="^filter_injection_failed$"):
+            PolicyEnforcementService.apply_row_filters(
+                sql=(
+                    "SELECT duplicate.id FROM orders AS duplicate "
+                    "JOIN orders AS duplicate ON duplicate.id = duplicate.id"
+                ),
+                row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+                schema=_schema(),
+                user_context=USER,
+                dialect="postgres",
+            )
+
 
 # ──────────────────────── BoundSql shape ────────────────────────
 
