@@ -83,6 +83,27 @@ async function expectDirection(control: Locator, direction: 'ltr' | 'rtl') {
     .toBe(direction);
 }
 
+async function expectVisibleKeyboardFocus(control: Locator) {
+  await expect
+    .poll(() =>
+      control.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return style.boxShadow !== 'none' || style.outlineStyle !== 'none';
+      })
+    )
+    .toBe(true);
+}
+
+async function expectNoPageOverflow(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+      )
+    )
+    .toBeLessThanOrEqual(0);
+}
+
 for (const viewport of [
   { width: 375, height: 812 },
   { width: 768, height: 1024 },
@@ -102,6 +123,9 @@ for (const viewport of [
 
       const form = page.locator('form');
       await expectDirection(form, rootDirection);
+      for (const label of await form.locator('label').all()) {
+        await expectDirection(label, rootDirection);
+      }
       await expectDirection(
         form.getByLabel(message(locale, 'admin.connections.form.displayName')),
         rootDirection
@@ -109,19 +133,24 @@ for (const viewport of [
       for (const key of technicalKeys) {
         await expectDirection(form.getByLabel(message(locale, key)), 'ltr');
       }
+      await expect(page.locator('body')).not.toContainText('admin.connections.');
+      await expectNoPageOverflow(page);
 
       const databaseType = form.getByLabel(
         message(locale, 'admin.connections.form.databaseType')
       );
       await focusWithTab(page, databaseType);
-      await expect
-        .poll(() => databaseType.evaluate((element) => getComputedStyle(element).boxShadow))
-        .not.toBe('none');
-      await page.getByRole('button', { name: message(locale, 'common.cancel') }).click();
+      await expectVisibleKeyboardFocus(databaseType);
+      const cancel = page.getByRole('button', { name: message(locale, 'common.cancel') });
+      await focusWithTab(page, cancel);
+      await expectVisibleKeyboardFocus(cancel);
+      await page.keyboard.press('Enter');
 
       const edit = page.getByRole('button', { name: message(locale, 'common.edit') });
-      await edit.scrollIntoViewIfNeeded();
-      await edit.press('Enter');
+      await focusWithTab(page, edit);
+      await expectVisibleKeyboardFocus(edit);
+      await page.keyboard.press('Enter');
+      await expectDirection(form, rootDirection);
       for (const key of technicalKeys) {
         await expectDirection(form.getByLabel(message(locale, key)), 'ltr');
       }
@@ -130,26 +159,26 @@ for (const viewport of [
         'admin.connections.form.username',
         'admin.connections.form.password',
       ]) {
-        await expect(form.getByLabel(message(locale, key))).toHaveValue('');
+        const writeOnlyControl = form.getByLabel(message(locale, key));
+        await expect(writeOnlyControl).toHaveValue('');
+        await expect(writeOnlyControl).toHaveAttribute('aria-describedby', /write-only-help/);
       }
+      await expectNoPageOverflow(page);
 
       const updateRequest = page.waitForRequest(
         (request) =>
           request.method() === 'PUT' &&
           new URL(request.url()).pathname.endsWith(`/${connection.id}`)
       );
-      await page
-        .getByRole('button', { name: message(locale, 'admin.connections.form.submit.edit') })
-        .press('Enter');
+      const save = page.getByRole('button', {
+        name: message(locale, 'admin.connections.form.submit.edit'),
+      });
+      await focusWithTab(page, save);
+      await expectVisibleKeyboardFocus(save);
+      await page.keyboard.press('Enter');
       await updateRequest;
       expect(updateShape.writeOnlyKeysAbsent).toBe(true);
-      await expect
-        .poll(() =>
-          page.evaluate(
-            () => document.documentElement.scrollWidth - document.documentElement.clientWidth
-          )
-        )
-        .toBeLessThanOrEqual(0);
+      await expectNoPageOverflow(page);
     });
   }
 }
