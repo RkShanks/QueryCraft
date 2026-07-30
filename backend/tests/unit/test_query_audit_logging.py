@@ -1064,6 +1064,11 @@ def _assert_execution_state_clean(service, operation: str, expected_submit_state
         assert "active_attempt:http-sess-1" not in service._redis._data
 
 
+def _assert_failure_audit_is_durable(deps) -> None:
+    deps["db"].rollback.assert_awaited_once_with()
+    deps["db"].commit.assert_awaited_once_with()
+
+
 @pytest.mark.asyncio
 class TestSourceDbExecutionFailureAuditLogging:
     """XP-007: non-timeout source failures are finalized and sanitized."""
@@ -1088,6 +1093,7 @@ class TestSourceDbExecutionFailureAuditLogging:
             "message_key": "error.sourceDbExecutionFailed",
         }
         _assert_failure_audit(mock_audit, operation, "execution_failed")
+        _assert_failure_audit_is_durable(deps)
         _assert_execution_state_clean(service, operation, "FAILED")
         deps["repo"].create.assert_not_awaited()
 
@@ -1126,6 +1132,7 @@ class TestSourceDbExecutionFailureAuditLogging:
         assert http_error.status_code == expected_status
         assert http_error.detail == expected_detail
         _assert_failure_audit(mock_audit, operation, expected_reason)
+        _assert_failure_audit_is_durable(deps)
         _assert_execution_state_clean(service, operation, "FAILED")
         deps["repo"].create.assert_not_awaited()
 
@@ -1144,12 +1151,31 @@ class TestSourceDbExecutionFailureAuditLogging:
 
         assert http_error.status_code == 504
         assert http_error.detail == {"error": "timeout", "message_key": "error.timeout"}
-        success_actions = {
-            call.kwargs.get("action") for call in mock_audit.call_args_list if call.kwargs.get("outcome") == "success"
-        }
-        assert _failure_audit_action(operation) not in success_actions
+        _assert_failure_audit(mock_audit, operation, "timeout")
+        _assert_failure_audit_is_durable(deps)
         _assert_execution_state_clean(service, operation, "TIMEOUT")
         deps["repo"].create.assert_not_awaited()
+
+    @pytest.mark.parametrize("operation", _EXECUTION_OPERATIONS)
+    async def test_source_execution_audit_failure_propagates_without_commit(self, operation):
+        service, deps = _make_service(
+            adapter=_RaisingAdapter(RuntimeError()),
+            llm=_RecordingLLM("SELECT orders.id + 0 AS id FROM orders"),
+        )
+
+        async def fail_on_failure_audit(*args, **kwargs):
+            if kwargs.get("outcome") == "failure":
+                raise RuntimeError("audit unavailable")
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new=AsyncMock(side_effect=fail_on_failure_audit),
+        ):
+            with pytest.raises(RuntimeError, match="audit unavailable"):
+                await _invoke_execution_operation(service, deps, operation)
+
+        deps["db"].rollback.assert_awaited_once_with()
+        deps["db"].commit.assert_not_awaited()
 
     @pytest.mark.parametrize("operation", _EXECUTION_OPERATIONS)
     async def test_source_execution_cancellation_propagates_after_state_cleanup(self, operation):

@@ -6,7 +6,6 @@ transitions PENDING→GENERATED→EVALUATED→EXECUTED|REJECTED|TIMEOUT and
 attempt_id linkage on accepted_queries.
 """
 
-import asyncio
 import json
 import secrets
 from unittest.mock import AsyncMock, patch
@@ -122,10 +121,9 @@ class TestSubmitAttemptIntegration:
         await _clear_attempt_state(redis_client)
         before = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         before_count = before.scalar()
-
-        async def slow_execute(*args, **kwargs):
-            await asyncio.sleep(60)
-            return [], []
+        audit_before = await db_session.execute(
+            text("SELECT COALESCE(MAX(sequence_number), 0) FROM audit_log_entries")
+        )
 
         with (
             patch(
@@ -134,11 +132,11 @@ class TestSubmitAttemptIntegration:
             ),
             patch(
                 "app.api.v1.query._source_db_executor.execute",
-                side_effect=slow_execute,
+                side_effect=TimeoutError(),
             ),
             patch(
                 "app.source_db.adapters.PostgresAdapter.execute",
-                side_effect=slow_execute,
+                side_effect=TimeoutError(),
             ),
         ):
             response = await authenticated_client.post(
@@ -161,6 +159,16 @@ class TestSubmitAttemptIntegration:
         # No accepted_queries row
         after = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         assert after.scalar() == before_count
+        execution_audit = await db_session.execute(
+            text(
+                "SELECT outcome, context FROM audit_log_entries "
+                "WHERE sequence_number > :sequence_number AND action_type = 'query.execute'"
+            ),
+            {"sequence_number": audit_before.scalar()},
+        )
+        assert [(row.outcome, row.context) for row in execution_audit.fetchall()] == [
+            ("failure", {"reason": "timeout"})
+        ]
 
     async def test_source_execution_failure_returns_sanitized_json(
         self,
