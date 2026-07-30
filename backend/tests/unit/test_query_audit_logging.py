@@ -256,6 +256,16 @@ class _FailingAdapter:
         raise RuntimeError(self._driver_probe)
 
 
+class _RaisingAdapter:
+    """Raises a pre-classified source error."""
+
+    def __init__(self, source_error: Exception) -> None:
+        self._source_error = source_error
+
+    async def execute(self, sql, params=(), **_kwargs):
+        raise self._source_error
+
+
 class _FakeRedis:
     def __init__(self):
         self._data: dict[str, str] = {}
@@ -1010,6 +1020,71 @@ class TestSourceDbExecutionFailureAuditLogging:
             str([record.getMessage() for record in caplog.records]),
         )
         assert all(driver_probe not in observable for observable in observable_values)
+
+    @pytest.mark.parametrize(
+        ("source_error_name", "expected_status", "expected_error", "expected_key", "expected_reason"),
+        [
+            (
+                "permission_denied",
+                403,
+                "forbidden",
+                "error.forbidden",
+                "permission_denied",
+            ),
+            (
+                "connection_failed",
+                502,
+                "source_db_connection_failed",
+                "error.sourceDbConnectionFailed",
+                "connection_failed",
+            ),
+        ],
+    )
+    async def test_submit_preserves_sanitized_typed_source_error_contract(
+        self,
+        source_error_name,
+        expected_status,
+        expected_error,
+        expected_key,
+        expected_reason,
+    ):
+        from app.core.exceptions import SourceDBConnectionFailed, SourceDBPermissionDenied
+        from app.db.models.enums import AuditActionType
+
+        source_errors = {
+            "permission_denied": SourceDBPermissionDenied(),
+            "connection_failed": SourceDBConnectionFailed(),
+        }
+        service, deps = _make_service(adapter=_RaisingAdapter(source_errors[source_error_name]))
+
+        caught_error: Exception | None = None
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            try:
+                await service.submit_question(
+                    http_session_id="http-sess-1",
+                    user_id=deps["user_id"],
+                    question="How many orders?",
+                )
+            except Exception as exc:
+                caught_error = exc
+
+        if not isinstance(caught_error, HTTPException):
+            pytest.fail(f"unexpected execution error type: {type(caught_error).__name__}")
+        assert caught_error.status_code == expected_status
+        assert caught_error.detail == {
+            "error": expected_error,
+            "message_key": expected_key,
+        }
+        execute_calls = [
+            call
+            for call in mock_audit.call_args_list
+            if call.kwargs.get("action") == AuditActionType.QUERY_EXECUTE
+        ]
+        assert [call.kwargs.get("outcome") for call in execute_calls] == ["failure"]
+        assert execute_calls[0].kwargs.get("context") == {"reason": expected_reason}
 
     async def test_regenerate_execution_failure_is_sanitized_and_clears_active_attempt(self, caplog):
         from app.db.models.enums import AuditActionType
