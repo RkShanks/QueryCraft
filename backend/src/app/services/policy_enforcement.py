@@ -304,7 +304,7 @@ class PolicyEnforcementService:
             raise ValueError("filter_validation_failed")
 
         # 3. Target table must exist in the schema (fail-closed).
-        target_table = schema.find_table(table_name)
+        target_table = _find_policy_table(schema, table_name)
         if target_table is None:
             raise ValueError("filter_validation_failed")
         valid_columns: set[str] = {c.name.lower() for c in target_table.columns}
@@ -876,6 +876,22 @@ def _table_matches_policy(table: exp.Table, policy_table_name: str) -> bool:
     return len(policy_parts) < 3 or table.catalog.lower() == policy_parts[-3]
 
 
+def _find_policy_table(schema: SchemaContext, policy_table_name: str) -> Table | None:
+    """Resolve an optionally schema-qualified policy table."""
+    policy_parts = policy_table_name.lower().split(".")
+    if len(policy_parts) == 1:
+        return schema.find_table(policy_table_name)
+    target_schema, target_name = policy_parts[-2:]
+    return next(
+        (
+            table
+            for table in schema.tables
+            if table.name.lower() == target_name and table.schema_name.lower() == target_schema
+        ),
+        None,
+    )
+
+
 def _qualify_filter_columns(filter_expression: exp.Expression, qualifier: str) -> None:
     """Bind filter columns to the matching physical-table alias."""
     for column in filter_expression.find_all(exp.Column):
@@ -1003,7 +1019,7 @@ def _check_schema_drift(
     The check is case-insensitive on column/table names to match
     Postgres identifier folding.
     """
-    table = schema.find_table(table_name)
+    table = _find_policy_table(schema, table_name)
     if table is None:
         _emit_drift(audit_hook, table_name)
         raise PolicySchemaConflictError()
