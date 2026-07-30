@@ -259,7 +259,7 @@ class _FailingAdapter:
 class _RaisingAdapter:
     """Raises a pre-classified source error."""
 
-    def __init__(self, source_error: Exception) -> None:
+    def __init__(self, source_error: BaseException) -> None:
         self._source_error = source_error
 
     async def execute(self, sql, params=(), **_kwargs):
@@ -1347,6 +1347,78 @@ class TestSourceDbExecutionFailureAuditLogging:
         ]
         assert [call.kwargs.get("outcome") for call in rerun_calls] == ["failure"]
         assert rerun_calls[0].kwargs.get("context") == {"reason": expected_reason}
+
+    @pytest.mark.parametrize("operation", ["submit", "regenerate", "rerun"])
+    async def test_source_execution_cancellation_propagates_after_state_cleanup(self, operation):
+        import asyncio
+
+        from app.db.models.enums import AuditActionType
+
+        accepted_query_id = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
+        connection_id = uuid.UUID("770e8400-e29b-41d4-a716-446655440000")
+        service, deps = _make_service(
+            adapter=_RaisingAdapter(asyncio.CancelledError()),
+            llm=_RecordingLLM("SELECT orders.id + 0 AS id FROM orders"),
+        )
+
+        if operation == "submit":
+            execution_call = service.submit_question(
+                http_session_id="http-sess-1",
+                user_id=deps["user_id"],
+                question="How many orders?",
+            )
+        elif operation == "regenerate":
+            prior_attempt = EphemeralAttempt(
+                attempt_id="prior-attempt",
+                session_id="http-sess-1",
+                user_id=deps["user_id"],
+                sql="SELECT orders.id FROM orders",
+                question="How many orders?",
+                state="EXECUTED",
+            )
+            await store_attempt(prior_attempt, "http-sess-1", service._redis)
+            await service._redis.set("active_attempt:http-sess-1", prior_attempt.attempt_id)
+            execution_call = service.regenerate_query(prior_attempt.attempt_id, "http-sess-1")
+        else:
+            deps["repo"].get_by_id = AsyncMock(
+                return_value=MagicMock(
+                    id=accepted_query_id,
+                    generated_sql="SELECT orders.id FROM orders",
+                    database_connection_id=connection_id,
+                    session_id=None,
+                    question_text="How many orders?",
+                )
+            )
+            execution_call = service.rerun_accepted_query(
+                accepted_query_id=str(accepted_query_id),
+                user_id=deps["user_id"],
+                connection_id=str(connection_id),
+            )
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            with pytest.raises(asyncio.CancelledError):
+                await execution_call
+
+        success_actions = {
+            call.kwargs.get("action")
+            for call in mock_audit.call_args_list
+            if call.kwargs.get("outcome") == "success"
+        }
+        assert AuditActionType.QUERY_EXECUTE not in success_actions
+        assert AuditActionType.QUERY_RERUN not in success_actions
+        assert not any(key.startswith("processing_lock:") for key in service._redis._data)
+        if operation == "submit":
+            attempt_values = [
+                json.loads(raw)
+                for key, raw in service._redis._data.items()
+                if key.startswith("attempt:")
+            ]
+            assert [attempt["state"] for attempt in attempt_values] == ["FAILED"]
+        if operation == "regenerate":
+            assert "active_attempt:http-sess-1" not in service._redis._data
 
 
 # ── 8. Audit context redaction (cross-cutting) ─────────────────────────
