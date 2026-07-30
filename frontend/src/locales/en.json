@@ -93,6 +93,7 @@
   "history.detail.empty": "Select an item to view details.",
   "history.detail.llmProvider": "LLM Provider",
   "history.detail.databaseConnection": "Database Connection",
+  "history.detail.loadInWorkspace": "Load in Workspace",
   "history.column.question": "Question",
   "history.column.sql": "SQL",
   "history.column.connection": "Connection",
