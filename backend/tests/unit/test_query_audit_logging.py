@@ -1011,6 +1011,62 @@ class TestSourceDbExecutionFailureAuditLogging:
         )
         assert all(driver_probe not in observable for observable in observable_values)
 
+    async def test_regenerate_execution_failure_is_sanitized_and_clears_active_attempt(self, caplog):
+        from app.db.models.enums import AuditActionType
+
+        driver_probe = secrets.token_urlsafe(18)
+        service, deps = _make_service(
+            adapter=_FailingAdapter(driver_probe),
+            llm=_RecordingLLM("SELECT orders.id + 0 AS id FROM orders"),
+        )
+        prior_attempt = EphemeralAttempt(
+            attempt_id="prior-attempt",
+            session_id="http-sess-1",
+            user_id=deps["user_id"],
+            sql="SELECT orders.id FROM orders",
+            question="How many orders?",
+            state="EXECUTED",
+        )
+        await store_attempt(prior_attempt, "http-sess-1", service._redis)
+        await service._redis.set("active_attempt:http-sess-1", prior_attempt.attempt_id)
+
+        caught_error: Exception | None = None
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            try:
+                await service.regenerate_query(prior_attempt.attempt_id, "http-sess-1")
+            except Exception as exc:
+                caught_error = exc
+
+        if not isinstance(caught_error, HTTPException):
+            pytest.fail(f"unexpected execution error type: {type(caught_error).__name__}")
+        assert caught_error.status_code == 502
+        assert caught_error.detail == {
+            "error": "source_db_execution_failed",
+            "message_key": "error.sourceDbExecutionFailed",
+        }
+
+        execute_calls = [
+            call
+            for call in mock_audit.call_args_list
+            if call.kwargs.get("action") == AuditActionType.QUERY_EXECUTE
+        ]
+        assert [call.kwargs.get("outcome") for call in execute_calls] == ["failure"]
+        assert execute_calls[0].kwargs.get("context") == {"reason": "execution_failed"}
+        deps["repo"].create.assert_not_awaited()
+        assert "active_attempt:http-sess-1" not in service._redis._data
+        assert not any(key.startswith("processing_lock:") for key in service._redis._data)
+
+        observable_values = (
+            str(caught_error.detail),
+            str([call.kwargs for call in mock_audit.call_args_list]),
+            str(service._redis._data),
+            str([record.getMessage() for record in caplog.records]),
+        )
+        assert all(driver_probe not in observable for observable in observable_values)
+
 
 # ── 8. Audit context redaction (cross-cutting) ─────────────────────────
 
