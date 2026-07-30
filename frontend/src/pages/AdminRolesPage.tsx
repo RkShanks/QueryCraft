@@ -428,7 +428,10 @@ export const AdminRolesPage: React.FC = () => {
 
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-text-primary flex items-center gap-2">
+          <h1
+            id="admin-roles-heading"
+            className="text-2xl font-semibold text-text-primary flex items-center gap-2"
+          >
             <Shield className="w-6 h-6 text-neon-cyan" />
             {t('admin.roles.title')}
           </h1>
@@ -451,8 +454,14 @@ export const AdminRolesPage: React.FC = () => {
           <p className="text-sm">{t('admin.roles.emptyStateDesc') || 'Create a custom role to configure connection policies and SSO mappings.'}</p>
         </div>
       ) : (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-          <table className="w-full text-start border-collapse">
+        <div
+          role="region"
+          aria-labelledby="admin-roles-heading"
+          tabIndex={0}
+          data-testid="roles-table-scroll"
+          className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-neon-cyan"
+        >
+          <table className="w-full min-w-[900px] text-start border-collapse">
             <thead>
               <tr className="border-b border-gray-800 text-gray-400 text-xs font-semibold uppercase tracking-wider bg-gray-950">
                 <th className="py-3 px-4 text-start">{t('admin.roles.table.name') || 'Name'}</th>
@@ -512,7 +521,7 @@ export const AdminRolesPage: React.FC = () => {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleEdit(role)}
-                        className="p-1.5 hover:bg-gray-850 rounded text-gray-400 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-gray-850 rounded text-gray-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-cyan"
                         title={t('common.edit')}
                         data-testid={`edit-role-${role.id}`}
                       >
@@ -521,7 +530,7 @@ export const AdminRolesPage: React.FC = () => {
                       {!role.is_builtin && (
                         <button
                           onClick={() => handleDelete(role)}
-                          className="p-1.5 hover:bg-gray-850 rounded text-gray-400 hover:text-red-500 transition-colors"
+                          className="p-1.5 hover:bg-gray-850 rounded text-gray-400 hover:text-red-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                           title={t('common.delete')}
                           data-testid={`delete-role-${role.id}`}
                         >
