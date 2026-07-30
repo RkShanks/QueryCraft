@@ -234,6 +234,36 @@ class TestPhysicalTableScope:
         assert "owner_email = $2" in result.sql
         assert result.params == ("analyst", "a@b.c")
 
+    def test_tsql_schema_qualified_filter_matches_exact_physical_table(self) -> None:
+        schema = SchemaContext(
+            tables=[
+                Table(
+                    name="Customer",
+                    schema_name="SalesLT",
+                    columns=[
+                        Column(name="CustomerID", type="integer"),
+                        Column(name="OwnerEmail", type="text"),
+                    ],
+                )
+            ]
+        )
+
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT c.CustomerID FROM SalesLT.Customer AS c",
+            row_filters=[
+                {
+                    "table": "SalesLT.Customer",
+                    "filter": "OwnerEmail = {user.email}",
+                }
+            ],
+            schema=schema,
+            user_context=USER,
+            dialect="tsql",
+        )
+
+        assert "c.OwnerEmail = ?" in result.sql
+        assert result.params == ("a@b.c",)
+
 
 # ──────────────────────── Postgres start_index after existing params ────────────────────────
 
