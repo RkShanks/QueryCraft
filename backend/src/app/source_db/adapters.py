@@ -6,7 +6,7 @@ All adapters use parameterized queries only. No string interpolation.
 from typing import Any, Protocol
 
 from app.core.credential_provider import CredentialProvider
-from app.core.exceptions import SourceDBExecutionFailed
+from app.core.exceptions import SourceDBError, SourceDBExecutionFailed
 
 
 class ExecuteResult:
@@ -112,6 +112,8 @@ class PostgresAdapter:
                 columns = [c.lower() for c in rows[0].keys()]  # noqa: SIM118
                 row_tuples = [tuple(r.values()) for r in rows]
                 return ExecuteResult(columns=columns, rows=row_tuples)
+        except (TimeoutError, SourceDBError):
+            raise
         except Exception:
             raise SourceDBExecutionFailed() from None
 
@@ -186,6 +188,8 @@ class MySQLAdapter:
                 columns = [d[0].lower() for d in cursor.description] if cursor.description else []
                 row_tuples = [tuple(r) for r in rows]
                 return ExecuteResult(columns=columns, rows=row_tuples)
+        except (TimeoutError, SourceDBError):
+            raise
         except Exception:
             raise SourceDBExecutionFailed() from None
 
@@ -262,6 +266,8 @@ class MSSQLAdapter:
                 columns = [d[0].lower() for d in cur.description] if cur.description else []
                 row_tuples = [tuple(r) for r in rows]
                 return ExecuteResult(columns=columns, rows=row_tuples)
+        except (TimeoutError, SourceDBError):
+            raise
         except Exception:
             raise SourceDBExecutionFailed() from None
 
