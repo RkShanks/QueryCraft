@@ -49,6 +49,22 @@ def _schema() -> SchemaContext:
     )
 
 
+def _schema_with_customer() -> SchemaContext:
+    return SchemaContext(
+        tables=[
+            *_schema().tables,
+            Table(
+                name="customer",
+                schema_name="public",
+                columns=[
+                    Column(name="customer_id", type="integer"),
+                    Column(name="owner_email", type="text"),
+                ],
+            ),
+        ]
+    )
+
+
 # ──────────────────────── Adding WHERE when missing ────────────────────────
 
 
@@ -196,6 +212,27 @@ class TestPhysicalTableScope:
         assert scopes[0].expression.args.get("where") is not None
         assert scopes[1].expression.args.get("where") is None
         assert result.params == ("analyst",)
+
+    def test_cte_filter_params_follow_rendered_scope_order(self) -> None:
+        result = PolicyEnforcementService.apply_row_filters(
+            sql=(
+                "WITH scoped_orders AS (SELECT id, region FROM orders), "
+                "scoped_customers AS (SELECT customer_id, owner_email FROM customer) "
+                "SELECT scoped_orders.id FROM scoped_orders "
+                "JOIN scoped_customers ON scoped_customers.customer_id = scoped_orders.id"
+            ),
+            row_filters=[
+                {"table": "customer", "filter": "owner_email = {user.email}"},
+                {"table": "orders", "filter": "region = {user.role}"},
+            ],
+            schema=_schema_with_customer(),
+            user_context=USER,
+            dialect="postgres",
+        )
+
+        assert "region = $1" in result.sql
+        assert "owner_email = $2" in result.sql
+        assert result.params == ("analyst", "a@b.c")
 
 
 # ──────────────────────── Postgres start_index after existing params ────────────────────────
