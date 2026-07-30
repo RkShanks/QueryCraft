@@ -623,6 +623,9 @@ class PolicyEnforcementService:
             if filter_where is None:
                 raise ValueError(_FILTER_INJECTION_FAILED)
             new_expr = filter_where.this
+            matching_tables = _matching_table_references(stmt, table_name)
+            if len(matching_tables) == 1 and matching_tables[0].alias:
+                _qualify_filter_columns(new_expr, matching_tables[0].alias)
 
             # AND-conjunction (or add new WHERE).
             existing = stmt.args.get("where")
@@ -870,8 +873,19 @@ def _render_placeholders_for_driver(sql_str: str, dialect: str, start_index: int
 
 def _statement_references_table(statement: exp.Expression, table_name: str) -> bool:
     """Return whether the statement reads the filter's physical table."""
+    return bool(_matching_table_references(statement, table_name))
+
+
+def _matching_table_references(statement: exp.Expression, table_name: str) -> list[exp.Table]:
+    """Return physical table references matching a policy table name."""
     target_name = table_name.rsplit(".", 1)[-1].lower()
-    return any(table.name.lower() == target_name for table in statement.find_all(exp.Table))
+    return [table for table in statement.find_all(exp.Table) if table.name.lower() == target_name]
+
+
+def _qualify_filter_columns(filter_expression: exp.Expression, qualifier: str) -> None:
+    """Bind filter columns to the matching physical-table alias."""
+    for column in filter_expression.find_all(exp.Column):
+        column.set("table", exp.to_identifier(qualifier))
 
 
 def _replace_outside_strings(s: str, needle: str, replacement: str) -> str:
