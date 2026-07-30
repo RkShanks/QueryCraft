@@ -175,16 +175,19 @@ class MySQLAdapter:
 
     async def execute(self, sql: str, params: tuple = ()) -> ExecuteResult:
         """Execute a parameterized query using asyncmy."""
-        if self._pool is None:
-            await self.connect()
-        async with self._pool.acquire() as conn, conn.cursor() as cursor:
-            await cursor.execute(sql, params)
-            rows = await cursor.fetchall()
-            if not rows:
-                return ExecuteResult(columns=[], rows=[])
-            columns = [d[0].lower() for d in cursor.description] if cursor.description else []
-            row_tuples = [tuple(r) for r in rows]
-            return ExecuteResult(columns=columns, rows=row_tuples)
+        try:
+            if self._pool is None:
+                await self.connect()
+            async with self._pool.acquire() as conn, conn.cursor() as cursor:
+                await cursor.execute(sql, params)
+                rows = await cursor.fetchall()
+                if not rows:
+                    return ExecuteResult(columns=[], rows=[])
+                columns = [d[0].lower() for d in cursor.description] if cursor.description else []
+                row_tuples = [tuple(r) for r in rows]
+                return ExecuteResult(columns=columns, rows=row_tuples)
+        except Exception:
+            raise SourceDBExecutionFailed() from None
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""
