@@ -48,6 +48,8 @@ verify action / outcome / context / actor_identity.
 
 from __future__ import annotations
 
+import json
+import secrets
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
@@ -244,6 +246,16 @@ class _TimingOutAdapter:
         raise TimeoutError("connection to 10.0.0.42:5432 timed out after 30s")
 
 
+class _RaisingAdapter:
+    """Raises the source-boundary error supplied by a test."""
+
+    def __init__(self, source_error: BaseException) -> None:
+        self._source_error = source_error
+
+    async def execute(self, sql, params=(), **_kwargs):
+        raise self._source_error
+
+
 class _FakeRedis:
     def __init__(self):
         self._data: dict[str, str] = {}
@@ -262,6 +274,10 @@ class _FakeRedis:
         return True
 
     async def eval(self, script, num_keys, *args):
+        key, expected_owner = args
+        if self._data.get(key) != expected_owner:
+            return 0
+        self._data.pop(key)
         return 1
 
 
@@ -936,6 +952,229 @@ class TestSourceDbTimeoutAuditLogging:
         ctx_str = str(ctx)
         for token in _AUDIT_FORBIDDEN_IN_CONTEXT:
             assert token not in ctx_str, f"Forbidden token {token!r} found in execution-failure audit context: {ctx}"
+
+
+_EXECUTION_OPERATIONS = [
+    pytest.param("submit", id="submit"),
+    pytest.param("regenerate", id="regenerate"),
+    pytest.param("rerun", id="rerun"),
+]
+_TYPED_SOURCE_FAILURES = [
+    pytest.param(
+        "permission_denied",
+        403,
+        {"error": "forbidden", "message_key": "error.forbidden"},
+        "permission_denied",
+        id="permission-denied",
+    ),
+    pytest.param(
+        "connection_failed",
+        502,
+        {
+            "error": "source_db_connection_failed",
+            "message_key": "error.sourceDbConnectionFailed",
+        },
+        "connection_failed",
+        id="connection-failed",
+    ),
+]
+
+
+def _typed_source_error(source_error_name: str) -> Exception:
+    from app.core.exceptions import SourceDBConnectionFailed, SourceDBPermissionDenied
+
+    source_errors = {
+        "permission_denied": SourceDBPermissionDenied(),
+        "connection_failed": SourceDBConnectionFailed(),
+    }
+    return source_errors[source_error_name]
+
+
+def _failure_audit_action(operation: str):
+    from app.db.models.enums import AuditActionType
+
+    return AuditActionType.QUERY_RERUN if operation == "rerun" else AuditActionType.QUERY_EXECUTE
+
+
+async def _invoke_execution_operation(service, deps, operation: str):
+    accepted_query_id = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
+    connection_id = uuid.UUID("770e8400-e29b-41d4-a716-446655440000")
+    if operation == "submit":
+        return await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id=deps["user_id"],
+            question="How many orders?",
+        )
+    if operation == "regenerate":
+        prior_attempt = EphemeralAttempt(
+            attempt_id="prior-attempt",
+            session_id="http-sess-1",
+            user_id=deps["user_id"],
+            sql="SELECT orders.id FROM orders",
+            question="How many orders?",
+            state="EXECUTED",
+        )
+        await store_attempt(prior_attempt, "http-sess-1", service._redis)
+        await service._redis.set("active_attempt:http-sess-1", prior_attempt.attempt_id)
+        return await service.regenerate_query(prior_attempt.attempt_id, "http-sess-1")
+
+    if operation == "rerun":
+        deps["repo"].get_by_id = AsyncMock(
+            return_value=MagicMock(
+                id=accepted_query_id,
+                generated_sql="SELECT orders.id FROM orders",
+                database_connection_id=connection_id,
+                session_id=None,
+                question_text="How many orders?",
+            )
+        )
+        return await service.rerun_accepted_query(
+            accepted_query_id=str(accepted_query_id),
+            user_id=deps["user_id"],
+            connection_id=str(connection_id),
+        )
+    pytest.fail(f"unsupported execution operation: {operation}")
+
+
+async def _captured_http_error(execution_call) -> HTTPException:
+    try:
+        await execution_call
+    except HTTPException as exc:
+        return exc
+    except Exception as exc:
+        pytest.fail(f"unexpected execution error type: {type(exc).__name__}")
+    pytest.fail("source execution unexpectedly succeeded")
+
+
+def _assert_failure_audit(mock_audit, operation: str, reason: str) -> None:
+    failure_action = _failure_audit_action(operation)
+    failure_calls = [call for call in mock_audit.call_args_list if call.kwargs.get("action") == failure_action]
+    assert [call.kwargs.get("outcome") for call in failure_calls] == ["failure"]
+    assert failure_calls[0].kwargs.get("context") == {"reason": reason}
+
+
+def _assert_execution_state_clean(service, operation: str, expected_submit_state: str) -> None:
+    assert not any(key.startswith("processing_lock:") for key in service._redis._data)
+    if operation == "submit":
+        attempt_states = [
+            json.loads(raw)["state"] for key, raw in service._redis._data.items() if key.startswith("attempt:")
+        ]
+        assert attempt_states == [expected_submit_state]
+    if operation == "regenerate":
+        assert "active_attempt:http-sess-1" not in service._redis._data
+
+
+@pytest.mark.asyncio
+class TestSourceDbExecutionFailureAuditLogging:
+    """XP-007: non-timeout source failures are finalized and sanitized."""
+
+    @pytest.mark.parametrize("operation", _EXECUTION_OPERATIONS)
+    async def test_execution_failure_has_only_sanitized_failure_records(self, operation, caplog):
+        driver_probe = secrets.token_urlsafe(18)
+        service, deps = _make_service(
+            adapter=_RaisingAdapter(RuntimeError(driver_probe)),
+            llm=_RecordingLLM("SELECT orders.id + 0 AS id FROM orders"),
+        )
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            http_error = await _captured_http_error(_invoke_execution_operation(service, deps, operation))
+
+        assert http_error.status_code == 502
+        assert http_error.detail == {
+            "error": "source_db_execution_failed",
+            "message_key": "error.sourceDbExecutionFailed",
+        }
+        _assert_failure_audit(mock_audit, operation, "execution_failed")
+        _assert_execution_state_clean(service, operation, "FAILED")
+        deps["repo"].create.assert_not_awaited()
+
+        observable_values = (
+            str(http_error.detail),
+            str([call.kwargs for call in mock_audit.call_args_list]),
+            str(service._redis._data),
+            str([record.getMessage() for record in caplog.records]),
+        )
+        assert all(driver_probe not in observable for observable in observable_values)
+
+    @pytest.mark.parametrize(
+        ("source_error_name", "expected_status", "expected_detail", "expected_reason"),
+        _TYPED_SOURCE_FAILURES,
+    )
+    @pytest.mark.parametrize("operation", _EXECUTION_OPERATIONS)
+    async def test_execution_preserves_sanitized_typed_source_error_contract(
+        self,
+        operation,
+        source_error_name,
+        expected_status,
+        expected_detail,
+        expected_reason,
+    ):
+        service, deps = _make_service(
+            adapter=_RaisingAdapter(_typed_source_error(source_error_name)),
+            llm=_RecordingLLM("SELECT orders.id + 0 AS id FROM orders"),
+        )
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            http_error = await _captured_http_error(_invoke_execution_operation(service, deps, operation))
+
+        assert http_error.status_code == expected_status
+        assert http_error.detail == expected_detail
+        _assert_failure_audit(mock_audit, operation, expected_reason)
+        _assert_execution_state_clean(service, operation, "FAILED")
+        deps["repo"].create.assert_not_awaited()
+
+    @pytest.mark.parametrize("operation", _EXECUTION_OPERATIONS)
+    async def test_source_execution_timeout_preserves_504_contract(self, operation):
+        service, deps = _make_service(
+            adapter=_RaisingAdapter(TimeoutError()),
+            llm=_RecordingLLM("SELECT orders.id + 0 AS id FROM orders"),
+        )
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            http_error = await _captured_http_error(_invoke_execution_operation(service, deps, operation))
+
+        assert http_error.status_code == 504
+        assert http_error.detail == {"error": "timeout", "message_key": "error.timeout"}
+        success_actions = {
+            call.kwargs.get("action") for call in mock_audit.call_args_list if call.kwargs.get("outcome") == "success"
+        }
+        assert _failure_audit_action(operation) not in success_actions
+        _assert_execution_state_clean(service, operation, "TIMEOUT")
+        deps["repo"].create.assert_not_awaited()
+
+    @pytest.mark.parametrize("operation", _EXECUTION_OPERATIONS)
+    async def test_source_execution_cancellation_propagates_after_state_cleanup(self, operation):
+        import asyncio
+
+        from app.db.models.enums import AuditActionType
+
+        service, deps = _make_service(
+            adapter=_RaisingAdapter(asyncio.CancelledError()),
+            llm=_RecordingLLM("SELECT orders.id + 0 AS id FROM orders"),
+        )
+
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            with pytest.raises(asyncio.CancelledError):
+                await _invoke_execution_operation(service, deps, operation)
+
+        success_actions = {
+            call.kwargs.get("action") for call in mock_audit.call_args_list if call.kwargs.get("outcome") == "success"
+        }
+        assert AuditActionType.QUERY_EXECUTE not in success_actions
+        assert AuditActionType.QUERY_RERUN not in success_actions
+        _assert_execution_state_clean(service, operation, "FAILED")
 
 
 # ── 8. Audit context redaction (cross-cutting) ─────────────────────────

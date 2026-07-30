@@ -3,7 +3,10 @@
 Tests use mock connections to verify adapter contract compliance.
 """
 
+import asyncio
+import secrets
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -547,3 +550,134 @@ async def test_mssql_adapter_close() -> None:
     await adapter.close()
     assert fake_pool.is_closed
     assert fake_pool._wait_closed_called
+
+
+_ADAPTER_CASES = [
+    pytest.param("PostgresAdapter", FakePGConnection, FakePGPool, 5432, id="postgres"),
+    pytest.param("MySQLAdapter", FakeMySQLConnection, FakeMySQLPool, 3306, id="mysql"),
+    pytest.param("MSSQLAdapter", FakeMSSQLConnection, FakeMSSQLPool, 1433, id="mssql"),
+]
+
+
+def _adapter_with_execution_error(
+    adapter_cls_name: str,
+    connection_cls: type,
+    pool_cls: type,
+    port: int,
+    raised_error: BaseException,
+):
+    from app.core.credential_provider import FernetCredentialProvider
+    from app.source_db import adapters
+
+    fake_conn = connection_cls()
+    if isinstance(fake_conn, FakePGConnection):
+        fake_conn.fetch = AsyncMock(side_effect=raised_error)
+    else:
+        fake_conn._cursor.execute = AsyncMock(side_effect=raised_error)
+
+    credential_provider = FernetCredentialProvider(_VALID_FERNET_KEY)
+    adapter_cls = getattr(adapters, adapter_cls_name)
+    adapter = adapter_cls(
+        host="localhost",
+        port=port,
+        database="testdb",
+        username="testuser",
+        encrypted_password=credential_provider.encrypt("test_password"),
+        ssl_mode="disable",
+        credential_provider=credential_provider,
+    )
+    adapter._pool = pool_cls(fake_conn)
+    return adapter
+
+
+async def _captured_adapter_error(adapter) -> BaseException:
+    try:
+        await adapter.execute("SELECT id FROM users")
+    except BaseException as exc:
+        return exc
+    pytest.fail("source adapter execution unexpectedly succeeded")
+
+
+def _source_control_flow_error(source_error_name: str) -> BaseException:
+    from app.core.exceptions import (
+        SourceDBConnectionFailed,
+        SourceDBPermissionDenied,
+        SourceDBTimeout,
+    )
+
+    source_errors = {
+        "timeout": TimeoutError(),
+        "source_timeout": SourceDBTimeout(timeout_seconds=30),
+        "permission_denied": SourceDBPermissionDenied(),
+        "connection_failed": SourceDBConnectionFailed(),
+        "cancelled": asyncio.CancelledError(),
+    }
+    return source_errors[source_error_name]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("adapter_cls_name", "connection_cls", "pool_cls", "port"),
+    _ADAPTER_CASES,
+)
+async def test_adapter_execution_failure_is_sanitized(
+    adapter_cls_name: str,
+    connection_cls: type,
+    pool_cls: type,
+    port: int,
+) -> None:
+    """XP-007: source adapters never expose raw driver details."""
+    from app.core.exceptions import SourceDBExecutionFailed
+
+    driver_probe = secrets.token_urlsafe(18)
+    adapter = _adapter_with_execution_error(
+        adapter_cls_name,
+        connection_cls,
+        pool_cls,
+        port,
+        RuntimeError(driver_probe),
+    )
+
+    caught_error = await _captured_adapter_error(adapter)
+
+    if not isinstance(caught_error, SourceDBExecutionFailed):
+        pytest.fail(f"unexpected execution error type: {type(caught_error).__name__}")
+    assert driver_probe not in str(caught_error)
+    assert caught_error.__cause__ is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("adapter_cls_name", "connection_cls", "pool_cls", "port"),
+    _ADAPTER_CASES,
+)
+@pytest.mark.parametrize(
+    "source_error_name",
+    [
+        pytest.param("timeout", id="TimeoutError"),
+        pytest.param("source_timeout", id="SourceDBTimeout"),
+        pytest.param("permission_denied", id="SourceDBPermissionDenied"),
+        pytest.param("connection_failed", id="SourceDBConnectionFailed"),
+        pytest.param("cancelled", id="CancelledError"),
+    ],
+)
+async def test_adapter_execution_preserves_typed_control_flow_errors(
+    adapter_cls_name: str,
+    connection_cls: type,
+    pool_cls: type,
+    port: int,
+    source_error_name: str,
+) -> None:
+    """XP-007: timeout, cancellation, and typed source errors keep their contract."""
+    raised_error = _source_control_flow_error(source_error_name)
+    adapter = _adapter_with_execution_error(
+        adapter_cls_name,
+        connection_cls,
+        pool_cls,
+        port,
+        raised_error,
+    )
+
+    caught_error = await _captured_adapter_error(adapter)
+
+    assert caught_error is raised_error

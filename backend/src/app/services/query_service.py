@@ -49,6 +49,8 @@ from app.core.exceptions import (
     PolicySchemaConflictError,
     QuotaExceededError,
     QuotaUnavailableError,
+    SourceDBConnectionFailed,
+    SourceDBPermissionDenied,
     SourceDBTimeout,
 )
 from app.core.processing_lock import acquire_lock, release_lock_if_owned
@@ -113,6 +115,33 @@ def _sanitize_for_json(obj: Any) -> Any:
     if isinstance(obj, (list, tuple)):
         return [_sanitize_for_json(item) for item in obj]
     return obj
+
+
+def _source_failure_response(source_error: Exception) -> tuple[int, dict[str, str], str]:
+    """Return the sanitized HTTP and audit contract for a source failure."""
+    if isinstance(source_error, SourceDBPermissionDenied):
+        return (
+            status.HTTP_403_FORBIDDEN,
+            {"error": "forbidden", "message_key": "error.forbidden"},
+            "permission_denied",
+        )
+    if isinstance(source_error, SourceDBConnectionFailed):
+        return (
+            status.HTTP_502_BAD_GATEWAY,
+            {
+                "error": "source_db_connection_failed",
+                "message_key": "error.sourceDbConnectionFailed",
+            },
+            "connection_failed",
+        )
+    return (
+        status.HTTP_502_BAD_GATEWAY,
+        {
+            "error": "source_db_execution_failed",
+            "message_key": "error.sourceDbExecutionFailed",
+        },
+        "execution_failed",
+    )
 
 
 class QueryService:
@@ -719,6 +748,10 @@ class QueryService:
                         self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
                         timeout=30,
                     )
+            except asyncio.CancelledError:
+                attempt.state = "FAILED"
+                await store_attempt(attempt, http_session_id, self._redis)
+                raise
             except (TimeoutError, SourceDBTimeout) as exc:
                 attempt.state = "TIMEOUT"
                 await store_attempt(attempt, http_session_id, self._redis)
@@ -745,6 +778,26 @@ class QueryService:
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
                 ) from exc
+            except Exception as exc:
+                # The source adapter is an external boundary. Collapse every
+                # non-timeout driver failure before it can reach HTTP or logs.
+                failure_status, failure_detail, failure_reason = _source_failure_response(exc)
+                attempt.state = "FAILED"
+                await store_attempt(attempt, http_session_id, self._redis)
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.QUERY_EXECUTE,
+                    actor_id=user_uuid,
+                    actor_identity=getattr(user_row, "username", None),
+                    resource_type="query_attempt",
+                    resource_id=attempt_id,
+                    outcome="failure",
+                    context={"reason": failure_reason},
+                )
+                raise HTTPException(
+                    status_code=failure_status,
+                    detail=failure_detail,
+                ) from None
 
             attempt.state = "EXECUTED"
             attempt.executor_result = {
@@ -1242,12 +1295,31 @@ class QueryService:
                         self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
                         timeout=30,
                     )
+            except asyncio.CancelledError:
+                await self._redis.delete(f"active_attempt:{http_session_id}")
+                raise
             except (TimeoutError, SourceDBTimeout) as exc:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
                 ) from exc
+            except Exception as exc:
+                failure_status, failure_detail, failure_reason = _source_failure_response(exc)
+                await self._redis.delete(f"active_attempt:{http_session_id}")
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.QUERY_EXECUTE,
+                    actor_id=user_uuid,
+                    resource_type="query_attempt",
+                    resource_id=prior.attempt_id,
+                    outcome="failure",
+                    context={"reason": failure_reason},
+                )
+                raise HTTPException(
+                    status_code=failure_status,
+                    detail=failure_detail,
+                ) from None
 
             # Build result and store ephemeral attempt
             new_attempt_id = str(uuid.uuid4())
@@ -1490,6 +1562,21 @@ class QueryService:
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                 detail={"error": "timeout", "message_key": "error.timeout"},
             ) from exc
+        except Exception as exc:
+            failure_status, failure_detail, failure_reason = _source_failure_response(exc)
+            await AuditService.log(
+                self._db_session,
+                action=AuditActionType.QUERY_RERUN,
+                actor_id=user_uuid,
+                resource_type="accepted_query",
+                resource_id=str(aq_uuid),
+                outcome="failure",
+                context={"reason": failure_reason},
+            )
+            raise HTTPException(
+                status_code=failure_status,
+                detail=failure_detail,
+            ) from None
 
         column_metas = []
         for c in columns:

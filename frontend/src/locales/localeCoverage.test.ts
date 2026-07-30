@@ -28,6 +28,7 @@ describe('Wave 14 i18n key coverage', () => {
     'error.queryExecutionFailed.title',
     'error.queryExecutionFailed.body',
     'error.queryExecutionFailed.action',
+    'error.sourceDbExecutionFailed',
     // AssistantResponseCard database type labels
     'query.result.databaseType.postgresql',
     'query.result.databaseType.mysql',

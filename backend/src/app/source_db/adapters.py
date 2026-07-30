@@ -6,6 +6,7 @@ All adapters use parameterized queries only. No string interpolation.
 from typing import Any, Protocol
 
 from app.core.credential_provider import CredentialProvider
+from app.core.exceptions import SourceDBError, SourceDBExecutionFailed
 
 
 class ExecuteResult:
@@ -101,15 +102,20 @@ class PostgresAdapter:
 
     async def execute(self, sql: str, params: tuple = ()) -> ExecuteResult:
         """Execute a parameterized query using asyncpg."""
-        if self._pool is None:
-            await self.connect()
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch(sql, *params)
-            if not rows:
-                return ExecuteResult(columns=[], rows=[])
-            columns = [c.lower() for c in rows[0].keys()]  # noqa: SIM118
-            row_tuples = [tuple(r.values()) for r in rows]
-            return ExecuteResult(columns=columns, rows=row_tuples)
+        try:
+            if self._pool is None:
+                await self.connect()
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(sql, *params)
+                if not rows:
+                    return ExecuteResult(columns=[], rows=[])
+                columns = [c.lower() for c in rows[0].keys()]  # noqa: SIM118
+                row_tuples = [tuple(r.values()) for r in rows]
+                return ExecuteResult(columns=columns, rows=row_tuples)
+        except (TimeoutError, SourceDBError):
+            raise
+        except Exception:
+            raise SourceDBExecutionFailed() from None
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""
@@ -171,16 +177,21 @@ class MySQLAdapter:
 
     async def execute(self, sql: str, params: tuple = ()) -> ExecuteResult:
         """Execute a parameterized query using asyncmy."""
-        if self._pool is None:
-            await self.connect()
-        async with self._pool.acquire() as conn, conn.cursor() as cursor:
-            await cursor.execute(sql, params)
-            rows = await cursor.fetchall()
-            if not rows:
-                return ExecuteResult(columns=[], rows=[])
-            columns = [d[0].lower() for d in cursor.description] if cursor.description else []
-            row_tuples = [tuple(r) for r in rows]
-            return ExecuteResult(columns=columns, rows=row_tuples)
+        try:
+            if self._pool is None:
+                await self.connect()
+            async with self._pool.acquire() as conn, conn.cursor() as cursor:
+                await cursor.execute(sql, params)
+                rows = await cursor.fetchall()
+                if not rows:
+                    return ExecuteResult(columns=[], rows=[])
+                columns = [d[0].lower() for d in cursor.description] if cursor.description else []
+                row_tuples = [tuple(r) for r in rows]
+                return ExecuteResult(columns=columns, rows=row_tuples)
+        except (TimeoutError, SourceDBError):
+            raise
+        except Exception:
+            raise SourceDBExecutionFailed() from None
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""
@@ -244,16 +255,21 @@ class MSSQLAdapter:
 
     async def execute(self, sql: str, params: tuple = ()) -> ExecuteResult:
         """Execute a parameterized query using aioodbc."""
-        if self._pool is None:
-            await self.connect()
-        async with self._pool.acquire() as conn, conn.cursor() as cur:
-            await cur.execute(sql, params)
-            rows = await cur.fetchall()
-            if not rows:
-                return ExecuteResult(columns=[], rows=[])
-            columns = [d[0].lower() for d in cur.description] if cur.description else []
-            row_tuples = [tuple(r) for r in rows]
-            return ExecuteResult(columns=columns, rows=row_tuples)
+        try:
+            if self._pool is None:
+                await self.connect()
+            async with self._pool.acquire() as conn, conn.cursor() as cur:
+                await cur.execute(sql, params)
+                rows = await cur.fetchall()
+                if not rows:
+                    return ExecuteResult(columns=[], rows=[])
+                columns = [d[0].lower() for d in cur.description] if cur.description else []
+                row_tuples = [tuple(r) for r in rows]
+                return ExecuteResult(columns=columns, rows=row_tuples)
+        except (TimeoutError, SourceDBError):
+            raise
+        except Exception:
+            raise SourceDBExecutionFailed() from None
 
     async def health_check(self) -> bool:
         """Run SELECT 1 health check."""

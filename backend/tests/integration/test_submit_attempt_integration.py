@@ -8,6 +8,7 @@ attempt_id linkage on accepted_queries.
 
 import asyncio
 import json
+import secrets
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -160,6 +161,62 @@ class TestSubmitAttemptIntegration:
         # No accepted_queries row
         after = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         assert after.scalar() == before_count
+
+    async def test_source_execution_failure_returns_sanitized_json(
+        self,
+        authenticated_client,
+        db_session,
+        redis_client,
+        query_submit_payload,
+        caplog,
+    ):
+        """XP-007: a raw source failure becomes localized JSON without a success record."""
+        await _clear_attempt_state(redis_client)
+        driver_probe = secrets.token_urlsafe(18)
+        history_before = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
+        audit_before = await db_session.execute(text("SELECT COALESCE(MAX(sequence_number), 0) FROM audit_log_entries"))
+
+        with (
+            patch(
+                "app.api.v1.query.LLMProviderFactory.from_config",
+                return_value=AsyncMock(generate_sql=AsyncMock(return_value="SELECT 1 AS id")),
+            ),
+            patch(
+                "app.source_db.adapters.PostgresAdapter.execute",
+                side_effect=RuntimeError(driver_probe),
+            ),
+        ):
+            response = await authenticated_client.post(
+                "/api/v1/query/submit",
+                json=query_submit_payload("List customer names by city"),
+            )
+
+        assert response.status_code == 502
+        assert response.headers["content-type"].startswith("application/json")
+        assert response.json() == {
+            "error": "source_db_execution_failed",
+            "message_key": "error.sourceDbExecutionFailed",
+        }
+        if driver_probe in response.text:
+            pytest.fail("runtime source probe leaked through HTTP response")
+
+        attempts = [
+            json.loads(raw) for raw in await redis_client.mget(await redis_client.keys("attempt:*")) if raw is not None
+        ]
+        assert [attempt["state"] for attempt in attempts] == ["FAILED"]
+
+        history_after = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
+        assert history_after.scalar() == history_before.scalar()
+        execution_audit = await db_session.execute(
+            text(
+                "SELECT outcome, context FROM audit_log_entries "
+                "WHERE sequence_number > :sequence_number AND action_type = 'query.execute'"
+            ),
+            {"sequence_number": audit_before.scalar()},
+        )
+        execution_rows = execution_audit.fetchall()
+        assert [(row.outcome, row.context) for row in execution_rows] == [("failure", {"reason": "execution_failed"})]
+        assert all(driver_probe not in record.getMessage() for record in caplog.records)
 
     async def test_reject_validates_attempt_ownership(self, authenticated_client, redis_client):
         """Reject endpoint requires attempt_id to exist and be owned by session."""
