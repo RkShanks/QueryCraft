@@ -1555,7 +1555,8 @@ class QueryService:
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                 detail={"error": "timeout", "message_key": "error.timeout"},
             ) from exc
-        except Exception:
+        except Exception as exc:
+            failure_status, failure_detail, failure_reason = _source_failure_response(exc)
             await AuditService.log(
                 self._db_session,
                 action=AuditActionType.QUERY_RERUN,
@@ -1563,14 +1564,11 @@ class QueryService:
                 resource_type="accepted_query",
                 resource_id=str(aq_uuid),
                 outcome="failure",
-                context={"reason": "execution_failed"},
+                context={"reason": failure_reason},
             )
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail={
-                    "error": "source_db_execution_failed",
-                    "message_key": "error.sourceDbExecutionFailed",
-                },
+                status_code=failure_status,
+                detail=failure_detail,
             ) from None
 
         column_metas = []
