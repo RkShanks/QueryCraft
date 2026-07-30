@@ -108,6 +108,7 @@
   "history.detail.empty": "اختر عنصراً لعرض التفاصيل.",
   "history.detail.llmProvider": "موفر LLM",
   "history.detail.databaseConnection": "اتصال قاعدة البيانات",
+  "history.detail.loadInWorkspace": "تحميل في مساحة العمل",
   "history.column.question": "السؤال",
   "history.column.sql": "SQL",
   "history.column.connection": "الاتصال",

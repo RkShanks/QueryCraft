@@ -111,7 +111,7 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
           className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold bg-neon-cyan text-gray-900 rounded-xl hover:bg-opacity-95 shadow-[0_0_12px_rgba(6,182,212,0.15)] hover:shadow-[0_0_18px_rgba(6,182,212,0.25)] transition-all cursor-pointer font-medium"
         >
           <Sparkles className="w-3.5 h-3.5" />
-          {t('history.detail.loadInWorkspace') || 'Load in Chat'}
+          {t('history.detail.loadInWorkspace')}
         </button>
       </div>
 
