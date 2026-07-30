@@ -1950,10 +1950,8 @@ components:
       - id
       - display_name
       - database_type
-      - host
       - port
       - database_name
-      - username
       - ssl_mode
       - lifecycle_state
       - health_status
@@ -1972,13 +1970,9 @@ components:
           - postgresql
           - mysql
           - mssql
-        host:
-          type: string
         port:
           type: integer
         database_name:
-          type: string
-        username:
           type: string
         ssl_mode:
           type: string
