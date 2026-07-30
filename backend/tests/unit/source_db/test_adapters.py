@@ -172,11 +172,16 @@ async def test_postgres_adapter_execution_failure_is_sanitized() -> None:
     )
     adapter._pool = FakePGPool(fake_conn)
 
-    with pytest.raises(SourceDBExecutionFailed) as exc_info:
+    caught_error: Exception | None = None
+    try:
         await adapter.execute("SELECT missing_column FROM users")
+    except Exception as exc:
+        caught_error = exc
 
-    assert driver_probe not in str(exc_info.value)
-    assert exc_info.value.__cause__ is None
+    if not isinstance(caught_error, SourceDBExecutionFailed):
+        pytest.fail(f"unexpected execution error type: {type(caught_error).__name__}")
+    assert driver_probe not in str(caught_error)
+    assert caught_error.__cause__ is None
 
 
 @pytest.mark.asyncio
@@ -379,6 +384,44 @@ async def test_mysql_adapter_execute_parameterized() -> None:
     assert result.columns is not None
     assert result.rows is not None
     assert fake_conn._execute_calls == ["SELECT * FROM users WHERE id = %s"]
+
+
+@pytest.mark.asyncio
+async def test_mysql_adapter_execution_failure_is_sanitized() -> None:
+    """XP-007: query execution never exposes raw asyncmy details."""
+    from app.core.credential_provider import FernetCredentialProvider
+    from app.core.exceptions import SourceDBExecutionFailed
+    from app.source_db.adapters import MySQLAdapter
+
+    driver_probe = secrets.token_urlsafe(18)
+    fake_conn = FakeMySQLConnection()
+
+    async def fail_execute(query: str, *args: Any) -> int:
+        raise RuntimeError(driver_probe)
+
+    fake_conn._cursor.execute = fail_execute  # type: ignore[method-assign]
+    credential_provider = FernetCredentialProvider(_VALID_FERNET_KEY)
+    adapter = MySQLAdapter(
+        host="localhost",
+        port=3306,
+        database="testdb",
+        username="testuser",
+        encrypted_password=credential_provider.encrypt("test_password"),
+        ssl_mode="disable",
+        credential_provider=credential_provider,
+    )
+    adapter._pool = FakeMySQLPool(fake_conn)
+
+    caught_error: Exception | None = None
+    try:
+        await adapter.execute("SELECT missing_column FROM users")
+    except Exception as exc:
+        caught_error = exc
+
+    if not isinstance(caught_error, SourceDBExecutionFailed):
+        pytest.fail(f"unexpected execution error type: {type(caught_error).__name__}")
+    assert driver_probe not in str(caught_error)
+    assert caught_error.__cause__ is None
 
 
 @pytest.mark.asyncio
