@@ -375,7 +375,7 @@ class PolicyEnforcementService:
         #     case-insensitively. Without this check, ``customers.id`` would
         #     leak across to a target table that also has an ``id`` column
         #     (PR #125 blocker).
-        target_table_lower = target_table.name.lower()
+        target_table_lower = target_table.name.rsplit(".", 1)[-1].lower()
         for col in statement.find_all(exp.Column):
             col_name = col.name
             if col_name.startswith(_PH_SENTINEL_PREFIX):
@@ -878,6 +878,12 @@ def _table_matches_policy(table: exp.Table, policy_table_name: str) -> bool:
 
 def _find_policy_table(schema: SchemaContext, policy_table_name: str) -> Table | None:
     """Resolve an optionally schema-qualified policy table."""
+    flattened_match = next(
+        (table for table in schema.tables if table.name.lower() == policy_table_name.lower()),
+        None,
+    )
+    if flattened_match is not None:
+        return flattened_match
     policy_parts = policy_table_name.lower().split(".")
     if len(policy_parts) == 1:
         return schema.find_table(policy_table_name)
