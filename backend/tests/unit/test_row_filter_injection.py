@@ -264,6 +264,124 @@ class TestPhysicalTableScope:
         assert "c.OwnerEmail = ?" in result.sql
         assert result.params == ("a@b.c",)
 
+    @pytest.mark.parametrize(
+        ("dialect", "placeholder"),
+        [
+            pytest.param("postgres", "$1", id="postgres"),
+            pytest.param("mysql", "%s", id="mysql"),
+            pytest.param("tsql", "?", id="tsql"),
+        ],
+    )
+    def test_self_join_filters_every_physical_alias(
+        self,
+        dialect: str,
+        placeholder: str,
+    ) -> None:
+        result = PolicyEnforcementService.apply_row_filters(
+            sql=(
+                "SELECT first_order.id FROM orders AS first_order "
+                "JOIN orders AS second_order ON second_order.id = first_order.id"
+            ),
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect=dialect,
+        )
+
+        assert f"first_order.region = {placeholder}" in result.sql
+        second_placeholder = "$2" if dialect == "postgres" else placeholder
+        assert f"second_order.region = {second_placeholder}" in result.sql
+        assert result.params == ("analyst", "analyst")
+
+    @pytest.mark.parametrize(
+        ("dialect", "sql"),
+        [
+            pytest.param("postgres", "SELECT COUNT(*) FROM orders", id="aggregate"),
+            pytest.param(
+                "postgres",
+                "SELECT nested.id FROM (SELECT id FROM orders) AS nested",
+                id="nested",
+            ),
+            pytest.param(
+                "mysql",
+                "WITH scoped AS (SELECT id FROM orders) SELECT id FROM scoped",
+                id="cte",
+            ),
+            pytest.param(
+                "mysql",
+                "SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS rn FROM orders",
+                id="window",
+            ),
+            pytest.param(
+                "tsql",
+                "SELECT TOP 5 id FROM orders ORDER BY id",
+                id="pagination",
+            ),
+        ],
+    )
+    def test_unrelated_filter_preserves_valid_read_shapes(
+        self,
+        dialect: str,
+        sql: str,
+    ) -> None:
+        result = PolicyEnforcementService.apply_row_filters(
+            sql=sql,
+            row_filters=[
+                {
+                    "table": "customer",
+                    "filter": "owner_email = {user.email}",
+                }
+            ],
+            schema=_schema_with_customer(),
+            user_context=USER,
+            dialect=dialect,
+        )
+
+        assert "owner_email" not in result.sql.lower()
+        assert result.params == ()
+
+    def test_nested_filter_is_injected_only_into_physical_source(self) -> None:
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT nested.id FROM (SELECT id, region FROM orders) AS nested",
+            row_filters=[{"table": "orders", "filter": "region = {user.role}"}],
+            schema=_schema(),
+            user_context=USER,
+            dialect="postgres",
+        )
+
+        scopes = traverse_scope(sqlglot.parse_one(result.sql, read="postgres"))
+        assert scopes[0].expression.args.get("where") is not None
+        assert scopes[1].expression.args.get("where") is None
+        assert result.params == ("analyst",)
+
+    def test_qualified_policy_does_not_match_same_table_in_other_schema(self) -> None:
+        schema = SchemaContext(
+            tables=[
+                Table(
+                    name="Customer",
+                    schema_name=schema_name,
+                    columns=[Column(name="OwnerEmail", type="text")],
+                )
+                for schema_name in ("SalesLT", "Archive")
+            ]
+        )
+
+        result = PolicyEnforcementService.apply_row_filters(
+            sql="SELECT OwnerEmail FROM Archive.Customer",
+            row_filters=[
+                {
+                    "table": "SalesLT.Customer",
+                    "filter": "OwnerEmail = {user.email}",
+                }
+            ],
+            schema=schema,
+            user_context=USER,
+            dialect="tsql",
+        )
+
+        assert "WHERE" not in result.sql
+        assert result.params == ()
+
 
 # ──────────────────────── Postgres start_index after existing params ────────────────────────
 
