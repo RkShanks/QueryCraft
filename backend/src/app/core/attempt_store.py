@@ -34,7 +34,7 @@ class EphemeralAttempt(BaseModel):
     sql: str = ""
     question: str = ""
     attempt_number: int = 1
-    state: str = "PENDING"  # PENDING | GENERATED | EVALUATED | EXECUTED | REJECTED | TIMEOUT
+    state: str = "PENDING"  # PENDING | GENERATED | EVALUATED | EXECUTED | REJECTED | TIMEOUT | FAILED
     llm_provider: str = ""
     evaluator_result: dict[str, Any] | None = None
     executor_result: dict[str, Any] | None = None

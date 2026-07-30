@@ -745,6 +745,28 @@ class QueryService:
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
                 ) from exc
+            except Exception:
+                # The source adapter is an external boundary. Collapse every
+                # non-timeout driver failure before it can reach HTTP or logs.
+                attempt.state = "FAILED"
+                await store_attempt(attempt, http_session_id, self._redis)
+                await AuditService.log(
+                    self._db_session,
+                    action=AuditActionType.QUERY_EXECUTE,
+                    actor_id=user_uuid,
+                    actor_identity=getattr(user_row, "username", None),
+                    resource_type="query_attempt",
+                    resource_id=attempt_id,
+                    outcome="failure",
+                    context={"reason": "execution_failed"},
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail={
+                        "error": "source_db_execution_failed",
+                        "message_key": "error.sourceDbExecutionFailed",
+                    },
+                ) from None
 
             attempt.state = "EXECUTED"
             attempt.executor_result = {

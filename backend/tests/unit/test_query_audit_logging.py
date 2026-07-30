@@ -274,6 +274,10 @@ class _FakeRedis:
         return True
 
     async def eval(self, script, num_keys, *args):
+        key, expected_owner = args
+        if self._data.get(key) != expected_owner:
+            return 0
+        self._data.pop(key)
         return 1
 
 
