@@ -1067,6 +1067,61 @@ class TestSourceDbExecutionFailureAuditLogging:
         )
         assert all(driver_probe not in observable for observable in observable_values)
 
+    async def test_rerun_execution_failure_has_only_sanitized_failure_records(self, caplog):
+        from app.db.models.enums import AuditActionType
+
+        driver_probe = secrets.token_urlsafe(18)
+        accepted_query_id = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
+        connection_id = uuid.UUID("770e8400-e29b-41d4-a716-446655440000")
+        service, deps = _make_service(adapter=_FailingAdapter(driver_probe))
+        deps["repo"].get_by_id = AsyncMock(
+            return_value=MagicMock(
+                id=accepted_query_id,
+                generated_sql="SELECT orders.id FROM orders",
+                database_connection_id=connection_id,
+                session_id=None,
+                question_text="How many orders?",
+            )
+        )
+
+        caught_error: Exception | None = None
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            try:
+                await service.rerun_accepted_query(
+                    accepted_query_id=str(accepted_query_id),
+                    user_id=deps["user_id"],
+                    connection_id=str(connection_id),
+                )
+            except Exception as exc:
+                caught_error = exc
+
+        if not isinstance(caught_error, HTTPException):
+            pytest.fail(f"unexpected execution error type: {type(caught_error).__name__}")
+        assert caught_error.status_code == 502
+        assert caught_error.detail == {
+            "error": "source_db_execution_failed",
+            "message_key": "error.sourceDbExecutionFailed",
+        }
+
+        rerun_calls = [
+            call
+            for call in mock_audit.call_args_list
+            if call.kwargs.get("action") == AuditActionType.QUERY_RERUN
+        ]
+        assert [call.kwargs.get("outcome") for call in rerun_calls] == ["failure"]
+        assert rerun_calls[0].kwargs.get("context") == {"reason": "execution_failed"}
+        deps["repo"].create.assert_not_awaited()
+
+        observable_values = (
+            str(caught_error.detail),
+            str([call.kwargs for call in mock_audit.call_args_list]),
+            str([record.getMessage() for record in caplog.records]),
+        )
+        assert all(driver_probe not in observable for observable in observable_values)
+
 
 # ── 8. Audit context redaction (cross-cutting) ─────────────────────────
 
