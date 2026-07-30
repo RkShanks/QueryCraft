@@ -48,6 +48,8 @@ verify action / outcome / context / actor_identity.
 
 from __future__ import annotations
 
+import json
+import secrets
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
@@ -242,6 +244,16 @@ class _TimingOutAdapter:
 
         await asyncio.sleep(0)
         raise TimeoutError("connection to 10.0.0.42:5432 timed out after 30s")
+
+
+class _FailingAdapter:
+    """Raises a runtime-generated source driver failure."""
+
+    def __init__(self, driver_probe: str) -> None:
+        self._driver_probe = driver_probe
+
+    async def execute(self, sql, params=(), **_kwargs):
+        raise RuntimeError(self._driver_probe)
 
 
 class _FakeRedis:
@@ -936,6 +948,64 @@ class TestSourceDbTimeoutAuditLogging:
         ctx_str = str(ctx)
         for token in _AUDIT_FORBIDDEN_IN_CONTEXT:
             assert token not in ctx_str, f"Forbidden token {token!r} found in execution-failure audit context: {ctx}"
+
+
+@pytest.mark.asyncio
+class TestSourceDbExecutionFailureAuditLogging:
+    """XP-007: non-timeout source failures are finalized and sanitized."""
+
+    async def test_submit_execution_failure_has_only_sanitized_failure_records(self, caplog):
+        from app.db.models.enums import AuditActionType
+
+        driver_probe = secrets.token_urlsafe(18)
+        service, deps = _make_service(adapter=_FailingAdapter(driver_probe))
+
+        caught_error: Exception | None = None
+        with patch(
+            "app.services.audit_service.AuditService.log",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            try:
+                await service.submit_question(
+                    http_session_id="http-sess-1",
+                    user_id=deps["user_id"],
+                    question="How many orders?",
+                )
+            except Exception as exc:
+                caught_error = exc
+
+        if not isinstance(caught_error, HTTPException):
+            pytest.fail(f"unexpected execution error type: {type(caught_error).__name__}")
+        assert caught_error.status_code == 502
+        assert caught_error.detail == {
+            "error": "source_db_execution_failed",
+            "message_key": "error.sourceDbExecutionFailed",
+        }
+
+        execute_calls = [
+            call
+            for call in mock_audit.call_args_list
+            if call.kwargs.get("action") == AuditActionType.QUERY_EXECUTE
+        ]
+        assert [call.kwargs.get("outcome") for call in execute_calls] == ["failure"]
+        assert execute_calls[0].kwargs.get("context") == {"reason": "execution_failed"}
+        deps["repo"].create.assert_not_awaited()
+
+        attempt_values = [
+            json.loads(raw)
+            for key, raw in service._redis._data.items()
+            if key.startswith("attempt:")
+        ]
+        assert [attempt["state"] for attempt in attempt_values] == ["FAILED"]
+        assert not any(key.startswith("processing_lock:") for key in service._redis._data)
+
+        observable_values = (
+            str(caught_error.detail),
+            str([call.kwargs for call in mock_audit.call_args_list]),
+            str(service._redis._data),
+            str([record.getMessage() for record in caplog.records]),
+        )
+        assert all(driver_probe not in observable for observable in observable_values)
 
 
 # ── 8. Audit context redaction (cross-cutting) ─────────────────────────
