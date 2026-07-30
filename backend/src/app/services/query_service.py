@@ -1297,7 +1297,8 @@ class QueryService:
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
                 ) from exc
-            except Exception:
+            except Exception as exc:
+                failure_status, failure_detail, failure_reason = _source_failure_response(exc)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 await AuditService.log(
                     self._db_session,
@@ -1306,14 +1307,11 @@ class QueryService:
                     resource_type="query_attempt",
                     resource_id=prior.attempt_id,
                     outcome="failure",
-                    context={"reason": "execution_failed"},
+                    context={"reason": failure_reason},
                 )
                 raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail={
-                        "error": "source_db_execution_failed",
-                        "message_key": "error.sourceDbExecutionFailed",
-                    },
+                    status_code=failure_status,
+                    detail=failure_detail,
                 ) from None
 
             # Build result and store ephemeral attempt
