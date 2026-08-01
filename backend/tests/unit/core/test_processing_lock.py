@@ -101,3 +101,25 @@ class TestProcessingLockIntegration:
         # Only correct owner releases
         correct_release = await release_lock_if_owned("sess-2", new_owner, redis_client)
         assert correct_release is True
+
+    async def test_lost_redis_key_does_not_admit_second_owner(self, redis_client):
+        """A lost Redis lease remains exclusive until its in-flight owner exits."""
+        session_id = "sess-lock-loss"
+        owner = await acquire_lock(session_id, redis_client, ttl=10)
+        assert owner is not None
+        await redis_client.delete(f"processing_lock:{session_id}")
+
+        replacement_owner = None
+        try:
+            replacement_owner = await acquire_lock(session_id, redis_client, ttl=10)
+            assert replacement_owner is None
+        finally:
+            await release_lock_if_owned(
+                session_id,
+                replacement_owner or owner,
+                redis_client,
+            )
+
+        recovered_owner = await acquire_lock(session_id, redis_client, ttl=10)
+        assert recovered_owner is not None
+        await release_lock_if_owned(session_id, recovered_owner, redis_client)
