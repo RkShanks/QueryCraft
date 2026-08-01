@@ -3,6 +3,7 @@
 T-104: SourceDBConnector creates and manages an asyncpg connection pool.
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 
 import asyncpg
@@ -16,6 +17,7 @@ class SourceDBConnector:
 
     def __init__(self) -> None:
         self._pool: asyncpg.Pool | None = None
+        self._pool_loop: asyncio.AbstractEventLoop | None = None
 
     async def init_pool(self) -> None:
         """Initialise the asyncpg pool from settings."""
@@ -36,12 +38,21 @@ class SourceDBConnector:
             min_size=1,
             max_size=getattr(settings, "SOURCE_DB_POOL_SIZE", 5),
         )
+        self._pool_loop = asyncio.get_running_loop()
 
     async def aclose(self) -> None:
         """Close the pool."""
-        if self._pool is not None:
-            await self._pool.close()
-            self._pool = None
+        pool = self._pool
+        if pool is None:
+            return
+
+        owner_loop = self._pool_loop
+        self._pool = None
+        self._pool_loop = None
+        if owner_loop is not None and owner_loop is not asyncio.get_running_loop():
+            pool.terminate()
+            return
+        await pool.close()
 
     @asynccontextmanager
     async def get_connection(self) -> "asyncpg.Connection":

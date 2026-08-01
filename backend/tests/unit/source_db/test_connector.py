@@ -5,7 +5,8 @@ that the pool closes cleanly, and that read-only enforcement works
 against the real pagila database.
 """
 
-from unittest.mock import AsyncMock, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg
 import pytest
@@ -77,6 +78,24 @@ class TestSourceDBConnectorUnit:
         await connector.aclose()
 
         mock_pool.close.assert_awaited_once()
+        assert connector._pool is None
+
+    async def test_aclose_terminates_pool_owned_by_another_event_loop(self):
+        """A reused app can release a pool without awaiting its owner loop."""
+        connector = SourceDBConnector()
+        owner_loop = asyncio.new_event_loop()
+        mock_pool = MagicMock()
+        mock_pool.close = AsyncMock()
+        connector._pool = mock_pool
+        connector._pool_loop = owner_loop
+
+        try:
+            await connector.aclose()
+        finally:
+            owner_loop.close()
+
+        mock_pool.terminate.assert_called_once_with()
+        mock_pool.close.assert_not_awaited()
         assert connector._pool is None
 
 
