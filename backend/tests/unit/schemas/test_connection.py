@@ -1,9 +1,11 @@
 """Tests for connection Pydantic schemas (T-411, FR-059, FR-060)."""
 
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
+import yaml
 
 from app.db.models.enums import DatabaseType, HealthStatus, LifecycleState, SchemaIntrospectionStatus
 from app.schemas.connection import (
@@ -42,6 +44,32 @@ def test_connection_response_runtime_openapi_omits_sensitive_fields():
     response_properties = create_app().openapi()["components"]["schemas"]["ConnectionResponse"]["properties"]
     forbidden_fields = {"host", "username", "password", "encrypted_password", "database_url"}
     assert set(response_properties) & forbidden_fields == set()
+
+
+@pytest.fixture
+def published_connection_schemas():
+    contract_path = (
+        Path(__file__).resolve().parents[4] / "specs" / "001-core-text-to-sql" / "contracts" / "openapi.yaml"
+    )
+    contract = yaml.safe_load(contract_path.read_text(encoding="utf-8"))
+    return contract["components"]["schemas"]
+
+
+def test_published_connection_response_contract_omits_sensitive_fields(published_connection_schemas):
+    response_schema = published_connection_schemas["ConnectionResponse"]
+    forbidden_fields = {"host", "username", "password", "encrypted_password", "database_url"}
+
+    assert set(response_schema["properties"]) & forbidden_fields == set()
+    assert set(response_schema["required"]) & forbidden_fields == set()
+
+
+def test_published_connection_request_contract_preserves_credential_inputs(published_connection_schemas):
+    credential_fields = {"host", "username", "password"}
+
+    assert credential_fields <= set(published_connection_schemas["ConnectionCreate"]["properties"])
+    assert credential_fields <= set(published_connection_schemas["ConnectionCreate"]["required"])
+    assert credential_fields <= set(published_connection_schemas["ConnectionUpdate"]["properties"])
+    assert credential_fields.isdisjoint(published_connection_schemas["ConnectionUpdate"].get("required", []))
 
 
 class TestConnectionCreate:
