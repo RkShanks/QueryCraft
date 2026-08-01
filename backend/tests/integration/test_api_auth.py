@@ -5,6 +5,10 @@ POST /auth/sign-out (204, 401 unauthenticated), GET /auth/me (200 profile, 401 e
 """
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+from redis.exceptions import ConnectionError as RedisConnectionError
+
+from app.core.dependencies import get_redis
 
 
 class TestAuthRouter:
@@ -42,6 +46,37 @@ class TestAuthRouter:
             headers={"origin": "http://test"},
         )
         assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_sign_in_session_store_failure_returns_sanitized_503(self, app_client):
+        """Session creation fails closed when Redis is unavailable."""
+
+        class FailingRedis:
+            async def set(self, *_args, **_kwargs):
+                raise RedisConnectionError("private redis location")
+
+        async def failing_redis():
+            yield FailingRedis()
+
+        app = app_client._transport.app
+        app.dependency_overrides[get_redis] = failing_redis
+        try:
+            transport = ASGITransport(app=app, raise_app_exceptions=False)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    "/api/v1/auth/sign-in",
+                    json={"username": "admin", "password": "admin123"},
+                    headers={"origin": "http://test"},
+                )
+        finally:
+            app.dependency_overrides.pop(get_redis, None)
+
+        assert response.status_code == 503
+        assert response.json() == {
+            "error": "service_unavailable",
+            "message_key": "error.service_unavailable",
+        }
+        assert "private redis location" not in response.text
 
     @pytest.mark.asyncio
     async def test_sign_out_authenticated(self, authenticated_client):

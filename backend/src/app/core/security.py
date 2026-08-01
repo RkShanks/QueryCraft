@@ -7,6 +7,7 @@ import time
 import structlog
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+from redis.exceptions import RedisError
 
 _ph = PasswordHasher()
 
@@ -55,6 +56,28 @@ class SessionMiddleware:
             await self._redis.aclose()
             self._redis = None
 
+    async def _load_session(self, session_id: str) -> dict | None:
+        redis = await self._get_redis()
+        session_data = await redis.get(f"session:{session_id}")
+        if session_data is None:
+            return None
+
+        session = json.loads(session_data)
+        if not isinstance(session, dict):
+            raise ValueError("invalid session payload")
+        idle_limit = self.idle_timeout_hours * 3600
+        if time.time() - session.get("last_activity", 0) > idle_limit:
+            await redis.delete(f"session:{session_id}")
+            return None
+
+        session["last_activity"] = time.time()
+        await redis.set(
+            f"session:{session_id}",
+            json.dumps(session),
+            ex=idle_limit,
+        )
+        return session
+
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
@@ -71,27 +94,24 @@ class SessionMiddleware:
         request.state.session_id = None
 
         if session_id:
-            redis = await self._get_redis()
-            session_data = await redis.get(f"session:{session_id}")
-            if session_data:
-                session = json.loads(session_data)
-                # Check idle timeout
-                last_activity = session.get("last_activity", 0)
-                idle_limit = self.idle_timeout_hours * 3600
-                if time.time() - last_activity > idle_limit:
-                    # Session expired
-                    await redis.delete(f"session:{session_id}")
-                else:
-                    # Update last_activity
-                    session["last_activity"] = time.time()
-                    await redis.set(
-                        f"session:{session_id}",
-                        json.dumps(session),
-                        ex=self.idle_timeout_hours * 3600,
-                    )
-                    request.state.session = session
-                    request.state.session_id = session_id
-                    structlog.contextvars.bind_contextvars(user_id=session.get("user_id"))
+            try:
+                session = await self._load_session(session_id)
+            except (RedisError, OSError, TypeError, ValueError):
+                from starlette.responses import JSONResponse
+
+                response = JSONResponse(
+                    status_code=503,
+                    content={
+                        "error": "service_unavailable",
+                        "message_key": "error.service_unavailable",
+                    },
+                )
+                await response(scope, receive, send)
+                return
+            if session is not None:
+                request.state.session = session
+                request.state.session_id = session_id
+                structlog.contextvars.bind_contextvars(user_id=session.get("user_id"))
 
         await self.app(scope, receive, send)
 
