@@ -5,6 +5,15 @@ T-124..T-126: Provides a valid session cookie for contract tests.
 
 import os
 
+import pytest_asyncio
+import schemathesis
+from httpx import ASGITransport, AsyncClient
+
+# The canonical contract is OpenAPI 3.1. Schemathesis 3.x supports that
+# version behind its explicit feature gate, which must be enabled before the
+# contract modules call ``schemathesis.openapi.from_path`` during collection.
+schemathesis.experimental.OPEN_API_3_1.enable()
+
 # Set test env vars BEFORE importing app modules (schemathesis loads the app
 # at import time).
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://querycraft:querycraft_dev@localhost:5433/querycraft")
@@ -24,10 +33,7 @@ os.environ.setdefault("SOURCE_DB_USER", "pagila_user")
 os.environ.setdefault("SOURCE_DB_PASSWORD", "pagila_dev_pwd")
 os.environ.setdefault("SOURCE_DB_SSL_MODE", "disable")
 
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-
-from app.main import create_app
+from app.main import create_app  # noqa: E402
 
 
 @pytest_asyncio.fixture
@@ -53,4 +59,13 @@ async def contract_session_cookie(contract_app):
         assert response.status_code == 200
         session_id = response.cookies.get("session_id")
         assert session_id
+
+        # ASGITransport does not run application shutdown. Release clients
+        # created on pytest's event loop before Schemathesis opens the same
+        # app in its per-example blocking portal event loop.
+        from app.core.dependencies import close_redis
+        from app.db.base import dispose_engine
+
+        await close_redis()
+        await dispose_engine()
         yield session_id

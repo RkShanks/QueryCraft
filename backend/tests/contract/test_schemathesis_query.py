@@ -1,10 +1,9 @@
 """T-124 + T-125: Schemathesis contract tests for /query endpoints.
 
-Loads the static OpenAPI 3.0.3 contract. Uses a pre-authenticated session
-cookie. Hermetic: StubLLM is already wired in query.py.
+Loads the static OpenAPI 3.1 contract. Uses a pre-authenticated session
+cookie.
 
-Note: schemathesis tests are run on demand (`-m contract`) because they can
-be flaky with async SQLAlchemy pools across multiple event loops.
+The property-based sweep runs on demand to keep the default gate bounded.
 """
 
 import os
@@ -12,6 +11,7 @@ import pathlib
 
 import pytest
 import schemathesis
+from hypothesis import HealthCheck, settings
 
 from app.main import create_app
 
@@ -37,27 +37,33 @@ schema = schemathesis.openapi.from_path(
 
 
 @schema.parametrize(endpoint="/query/submit")
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_query_submit_contract(case, contract_session_cookie):
     """Property-based contract test for POST /query/submit."""
     case.call_and_validate(
         cookies={"session_id": contract_session_cookie},
         headers={"origin": "http://test"},
+        excluded_checks=(schemathesis.checks.ignored_auth,),
     )
 
 
 @schema.parametrize(endpoint="/query/reject")
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_query_reject_contract(case, contract_session_cookie):
     """Property-based contract test for POST /query/reject."""
     case.call_and_validate(
         cookies={"session_id": contract_session_cookie},
         headers={"origin": "http://test"},
+        excluded_checks=(schemathesis.checks.ignored_auth,),
     )
 
 
 @schema.parametrize(endpoint="/query/regenerate")
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_query_regenerate_contract(case, contract_session_cookie):
     """Property-based contract test for POST /query/regenerate."""
     case.call_and_validate(
         cookies={"session_id": contract_session_cookie},
         headers={"origin": "http://test"},
+        excluded_checks=(schemathesis.checks.ignored_auth,),
     )

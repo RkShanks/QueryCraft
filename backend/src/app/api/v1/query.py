@@ -48,6 +48,11 @@ _source_db_executor = SourceDBExecutor(_source_db_connector)
 _source_introspector = SchemaIntrospector(_source_db_connector)
 
 
+async def close_source_db_connector() -> None:
+    """Release the module-level fallback source connection pool."""
+    await _source_db_connector.aclose()
+
+
 async def _get_query_service(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
