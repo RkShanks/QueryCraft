@@ -54,6 +54,8 @@ class TestEvaluatorGate:
         db_session = MagicMock()
         db_session.execute = AsyncMock(side_effect=[user_result, detection_config_result, app_config_result])
         db_session.flush = AsyncMock()
+        db_session.rollback = AsyncMock()
+        db_session.commit = AsyncMock()
         session_repo = MagicMock()
         session_repo.create = AsyncMock(return_value=SimpleNamespace(id="11111111-1111-1111-1111-111111111111"))
         service = QueryService(
