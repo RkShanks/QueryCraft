@@ -1,0 +1,314 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-08-01",
+  "scope": "Final Cross-Phase A, B, and C consolidation",
+  "expected_starting_main": "4039c0c85370853b302a43794d416003c9356ae4",
+  "starting_main_synchronized": true,
+  "tested_product_head": "b07a9083b1da796a4e64390463aedb597e8fbd07",
+  "accepted_detail_reports": [
+    "cross-phase-a-auth-query-report-2026-07-29.md",
+    "cross-phase-b-security-ui-report-2026-07-29.md"
+  ],
+  "requirements": [
+    {
+      "id": "XP-001",
+      "status": "Pass",
+      "basis": "Accepted authentication evidence plus current local Admin and mapped OIDC sentinel",
+      "sanitized_fail_closed": true
+    },
+    {
+      "id": "XP-002",
+      "status": "Pass",
+      "basis": "Accepted connection evidence plus current real three-dialect routing and execution",
+      "selected_session_routing": true
+    },
+    {
+      "id": "XP-003",
+      "status": "Pass",
+      "basis": "Accepted history evidence plus current two-user isolation and policy denial",
+      "false_success_absent": true
+    },
+    {
+      "id": "XP-004",
+      "status": "Pass",
+      "basis": "Accepted audit evidence plus current search, export, retention, and verification",
+      "sanitized_export": true
+    },
+    {
+      "id": "XP-005",
+      "status": "Pass",
+      "basis": "Accepted pipeline evidence plus current short-circuit composition",
+      "prohibited_downstream_calls": 0
+    },
+    {
+      "id": "XP-006",
+      "status": "Pass",
+      "basis": "Accepted prompt evidence plus current memory-only role and dialect capture",
+      "complete_prompt_persisted": false
+    },
+    {
+      "id": "XP-007",
+      "status": "Pass",
+      "basis": "Accepted read-only evidence plus current rejection and durable failure audit",
+      "source_mutation": false
+    },
+    {
+      "id": "XP-008",
+      "status": "Pass",
+      "basis": "Accepted locale evidence plus current EN/AR desktop and mobile sentinel",
+      "locale_or_direction_defects": 0
+    },
+    {
+      "id": "XP-009",
+      "status": "Pass",
+      "basis": "Accepted responsive evidence plus current mobile Chromium and Chrome checks",
+      "clipped_security_actions": 0
+    },
+    {
+      "id": "XP-010",
+      "status": "Pass",
+      "basis": "Accepted integrity evidence plus current search, export, retention, and valid chain",
+      "chain_verified": true
+    },
+    {
+      "id": "XP-011",
+      "status": "Pass",
+      "basis": "Accepted permission evidence plus current exact-permission and restricted-route checks",
+      "role_name_bypass": false
+    },
+    {
+      "id": "XP-012",
+      "status": "Pass",
+      "basis": "Accepted redaction evidence plus current value-safe API, UI, audit, export, and log scans",
+      "prohibited_value_found": false
+    },
+    {
+      "id": "XP-013",
+      "status": "Pass",
+      "basis": "Disposable Redis dependency failure and no-restart recovery composition",
+      "focused_tests_passed": 78,
+      "duplicate_provider_or_execution_after_lock_loss": false,
+      "unmetered_quota_path": false
+    },
+    {
+      "id": "XP-014",
+      "status": "Pass",
+      "basis": "One approved live provider pipeline plus deterministic failure boundaries",
+      "live_external_invocations": 1,
+      "deterministic_boundary_tests_passed": 38,
+      "sensitive_provider_evidence_persisted": false
+    },
+    {
+      "id": "XP-015",
+      "status": "Pass",
+      "basis": "Real PostgreSQL, MySQL, and MSSQL API and adapter execution",
+      "real_sources": 3,
+      "expected_rows_per_source": 3,
+      "source_schema_or_data_changed": false
+    },
+    {
+      "id": "XP-016",
+      "status": "Pass",
+      "basis": "Pre-freeze governance boundary preserved",
+      "prohibited_closeout_tasks_started": false,
+      "frozen_governance_mutated": false
+    },
+    {
+      "id": "XP-017",
+      "status": "Pass",
+      "basis": "Focused current-tree authentication, dialect, isolation, audit, privacy, read-only, UI, permission, and redaction sentinel",
+      "backend_sentinel_passed": 328,
+      "playwright_passed": 73
+    },
+    {
+      "id": "XP-018",
+      "status": "Pass",
+      "basis": "Final backend/frontend, static, browser, migration, service, evidence, leakage, and diff gates",
+      "unexpected_skips": 0,
+      "gate_failures": 0
+    }
+  ],
+  "totals": {
+    "Pass": 18,
+    "Fail": 0,
+    "Partial": 0,
+    "Setup-dependent": 0,
+    "Not run": 0,
+    "Deferred": 0
+  },
+  "redis": {
+    "normal_service_stopped": false,
+    "paths": [
+      "session lookup and authentication",
+      "processing lock",
+      "quota counters",
+      "quota configuration cache"
+    ],
+    "boundaries": [
+      "healthy",
+      "unavailable",
+      "timeout",
+      "malformed response",
+      "command error",
+      "lock loss",
+      "restart",
+      "recovery without application restart"
+    ],
+    "failure_side_effects_absent": true,
+    "durable_required_audits_transactional": true,
+    "stale_recovery_state": false
+  },
+  "provider": {
+    "approved_live_provider": "Gemini",
+    "complete_pipeline_success": true,
+    "exact_external_invocations": 1,
+    "role_and_dialect_scoped": true,
+    "deterministic_failures": [
+      "429",
+      "5xx",
+      "timeout",
+      "malformed payload",
+      "missing SQL",
+      "oversized context",
+      "cancellation"
+    ],
+    "failure_source_execution": 0,
+    "false_success_records": 0,
+    "prompt_key_payload_headers_or_raw_response_persisted": false
+  },
+  "sources": {
+    "postgresql": {
+      "tables": 30,
+      "columns": 172,
+      "health": "Pass",
+      "introspection": "Pass",
+      "policy_routing_query": "Pass",
+      "restored": "healthy"
+    },
+    "mysql": {
+      "tables": 23,
+      "columns": 132,
+      "health": "Pass",
+      "introspection": "Pass",
+      "policy_routing_query": "Pass",
+      "restored": "stopped"
+    },
+    "mssql": {
+      "tables": 15,
+      "columns": 142,
+      "health": "Pass",
+      "introspection": "Pass",
+      "policy_routing_query": "Pass",
+      "restored": "stopped"
+    },
+    "negative_cases_sanitized": true,
+    "temporary_state_removed": true,
+    "schema_and_data_unchanged": true
+  },
+  "gates": {
+    "backend_non_source_mutating_partition": {
+      "passed": 2757,
+      "reviewed_skips": 5,
+      "subtests_passed": 35,
+      "warnings": 4
+    },
+    "source_mutating_partition_on_disposable_clones_passed": 15,
+    "schemathesis_on_demand_passed": 9,
+    "redis_docker_outage_passed": 1,
+    "ruff_check": true,
+    "ruff_format_files": 413,
+    "frontend_vitest_files": 65,
+    "frontend_vitest_passed": 838,
+    "eslint": true,
+    "typecheck": true,
+    "production_build": true,
+    "known_chunk_warning_only": true,
+    "css_lint": true,
+    "locale_logical_css_files": 6,
+    "locale_logical_css_passed": 329,
+    "playwright_passed": 73,
+    "playwright_reviewed_skips": 1,
+    "migration_upgrade_downgrade_upgrade": true,
+    "migration_final_head": "009",
+    "docker_and_service_health": true,
+    "json_valid": true,
+    "ids_exactly_once": true,
+    "matrix_consistent": true,
+    "value_safe_leakage_scan": true,
+    "diff_check": true
+  },
+  "skip_review": {
+    "unexpected_skips": 0,
+    "backend": [
+      "Three deliberate on-demand Schemathesis modules passed separately as nine tests",
+      "One opt-in Docker Redis outage row passed when enabled",
+      "One conditional audit pagination row disclosed insufficient fixture pages; seventeen adjacent module rows and current API evidence passed"
+    ],
+    "playwright": "The one historical real-provider placeholder was replaced by the successful approved live provider request"
+  },
+  "defects": [
+    {
+      "pull_request": 287,
+      "classification": "High product lock exclusivity",
+      "merged": true
+    },
+    {
+      "pull_request": 288,
+      "classification": "High product dependency sanitization",
+      "merged": true
+    },
+    {
+      "pull_request": 289,
+      "classification": "High product audit durability",
+      "merged": true
+    },
+    {
+      "pull_request": 290,
+      "classification": "Test-fixture compatibility",
+      "merged": true
+    },
+    {
+      "pull_request": 291,
+      "classification": "Contract harness and product resource lifecycle",
+      "merged": true
+    },
+    {
+      "pull_request": 292,
+      "classification": "Product lifecycle and testability",
+      "merged": true
+    }
+  ],
+  "governance": {
+    "phase_6_pre_freeze": true,
+    "closeout_tasks_unstarted": true,
+    "final_snapshot_created": false,
+    "agents_or_orchestration_files_modified": false,
+    "frozen_phase_1_to_5_governance_modified": false
+  },
+  "cleanup": {
+    "isolated_containers_remaining": 0,
+    "isolated_networks_remaining": 0,
+    "isolated_volumes_remaining": 0,
+    "isolated_images_remaining": 0,
+    "isolated_databases_sessions_helpers_exports_remaining": 0,
+    "temporary_browser_directories_remaining": 0,
+    "mysql_restored_stopped": true,
+    "mssql_restored_stopped": true,
+    "postgresql_source_healthy": true,
+    "normal_backend_http_status": 200,
+    "normal_frontend_http_status": 200
+  },
+  "protected_dirty_baseline": {
+    "tracked_pngs_present_unstaged": 14,
+    "untracked_historical_screenshots_present_unstaged": 7,
+    "preexisting_traces_present_unstaged": true,
+    "protected_files_staged": 0,
+    "protected_files_deleted_restored_or_reverted": 0
+  },
+  "excluded_scope": {
+    "implementation_surface_gap_audit_started": false,
+    "independent_final_audit_started": false,
+    "freeze_work_started": false
+  },
+  "implementation_surface_gap_audit_unblocked": true
+}
