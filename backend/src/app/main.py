@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from redis.exceptions import RedisError
 
 from app.core.config import get_settings
 from app.core.credential_provider import init_credential_provider
@@ -254,6 +255,16 @@ def create_app() -> FastAPI:
         if isinstance(exc.detail, dict):
             return JSONResponse(status_code=exc.status_code, content=exc.detail)
         return JSONResponse(status_code=exc.status_code, content={"error": "error", "message_key": str(exc.detail)})
+
+    @app.exception_handler(RedisError)
+    async def redis_exception_handler(_request, _exc):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "service_unavailable",
+                "message_key": "error.service_unavailable",
+            },
+        )
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request, exc):
