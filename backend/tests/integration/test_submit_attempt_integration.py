@@ -121,9 +121,7 @@ class TestSubmitAttemptIntegration:
         await _clear_attempt_state(redis_client)
         before = await db_session.execute(text("SELECT COUNT(*) FROM accepted_queries"))
         before_count = before.scalar()
-        audit_before = await db_session.execute(
-            text("SELECT COALESCE(MAX(sequence_number), 0) FROM audit_log_entries")
-        )
+        audit_before = await db_session.execute(text("SELECT COALESCE(MAX(sequence_number), 0) FROM audit_log_entries"))
 
         with (
             patch(
