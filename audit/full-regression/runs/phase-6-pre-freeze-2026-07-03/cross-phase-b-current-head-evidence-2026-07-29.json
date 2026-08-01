@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-07-29",
+  "completed_date": "2026-08-01",
+  "scope": "Cross-Phase B only",
+  "expected_starting_main": "7c7c103670375f762fa25f26688f2f466a044d72",
+  "starting_main_synchronized": true,
+  "tested_product_head": "9e8975b70fa949f91959b58757ab5ca385d83485",
+  "authenticated_browser_sweep_head": "db41b45a87a69f506cdea5da00650a2213d9f5de",
+  "frontend_tree_unchanged_between_browser_and_tested_heads": true,
+  "excluded_scope": [
+    "Cross-Phase C",
+    "XP-013 and later rows",
+    "implementation-surface gap audit",
+    "independent final audit",
+    "T-905",
+    "freeze work",
+    "real-provider smoke"
+  ],
+  "requirements": [
+    {
+      "id": "XP-007",
+      "status": "Pass",
+      "automated": {
+        "source_clone_tests_passed": 15,
+        "durable_failure_service_tests_passed": 18,
+        "adjacent_query_rerun_source_tests_passed": 63,
+        "migrated_asgi_failure_tests_passed": 2,
+        "read_only_evaluator_fail_closed": true,
+        "durable_failure_audit_after_rollback": true,
+        "audit_failure_prevents_commit": true
+      },
+      "browser_api": {
+        "three_real_dialects": true,
+        "valid_read_classes": 24,
+        "rejection_classes": 24,
+        "masked_row_filtered_dialects": 3,
+        "source_credentials_read_only": true,
+        "source_schema_and_counts_unchanged": true,
+        "rejected_before_execution": true,
+        "rejections_without_success_claim": true,
+        "final_safe_read_executed": true,
+        "final_failure_audit_delta_exactly_one": true,
+        "localized_sanitized_errors": true
+      }
+    },
+    {
+      "id": "XP-008",
+      "status": "Pass",
+      "automated": {
+        "locale_logical_css_files": 6,
+        "locale_logical_css_tests_passed": 325,
+        "full_vitest_files": 65,
+        "full_vitest_tests_passed": 838,
+        "relevant_playwright_passed": 73,
+        "relevant_playwright_intentionally_skipped": 1
+      },
+      "browser_api": {
+        "authenticated_surfaces": 54,
+        "routes": 9,
+        "locales": [
+          "en",
+          "ar"
+        ],
+        "viewports": [
+          1440,
+          375,
+          768
+        ],
+        "visible_controls_checked": 2262,
+        "root_and_body_direction_correct": true,
+        "arabic_reload_direction_persisted": true,
+        "raw_translation_keys_absent": true,
+        "arabic_english_fallback_absent": true,
+        "technical_values_ltr": true,
+        "accessible_names_and_focus_valid": true
+      }
+    },
+    {
+      "id": "XP-009",
+      "status": "Pass",
+      "automated": {
+        "full_vitest_passed": 838,
+        "relevant_playwright_passed": 73,
+        "physical_direction_css_audits_passed": true,
+        "role_action_regressions_passed": true,
+        "mobile_shell_regressions_passed": true
+      },
+      "browser_api": {
+        "security_admin_surfaces_at_375": true,
+        "security_admin_surfaces_at_768": true,
+        "page_overflow_absent": true,
+        "overlap_and_clipping_absent": true,
+        "required_actions_reachable": true,
+        "sidebar_close_reopen": true,
+        "keyboard_focus_visible": true,
+        "unauthorized_background_requests": 0,
+        "console_errors": 0,
+        "failed_requests": 0
+      }
+    },
+    {
+      "id": "XP-010",
+      "status": "Pass",
+      "automated": {
+        "pre_purge_entries_verified": 625,
+        "post_purge_entries_verified": 626,
+        "missing_row_first_break_exact": true,
+        "context_tamper_first_break_exact": true,
+        "reordered_sequence_rejected": true,
+        "duplicate_sequence_rejected": true,
+        "fake_or_mismatched_marker_rejected": true,
+        "concurrent_snapshot_bounded": true,
+        "large_chain_batched": true,
+        "orm_update_blocked": true,
+        "orm_delete_blocked": true,
+        "purge_rollback_safe": true
+      },
+      "browser_api": {
+        "representative_action_classes": 15,
+        "pre_purge_verified": true,
+        "post_purge_verified": true,
+        "retention_search_respected": true,
+        "retention_export_respected": true,
+        "final_head_chain_verified": true,
+        "api_mutation_absent": true
+      }
+    },
+    {
+      "id": "XP-011",
+      "status": "Pass",
+      "automated": {
+        "backend_routes_inventoried": 38,
+        "permission_gated_routes": 37,
+        "legacy_key_routes": 1,
+        "unauthenticated_401": 37,
+        "authenticated_without_permission_403": 37,
+        "exact_permission_success": 37,
+        "unrelated_permission_403": 37,
+        "spoofed_claims_denied": 37,
+        "legacy_role_name_admin_no_bypass": true,
+        "permission_revocation_next_request_denied": true,
+        "builtin_admin_lockout_protected": true
+      },
+      "browser_api": {
+        "unauthorized_admin_routes": 6,
+        "unauthorized_admin_requests": 0,
+        "unauthorized_navigation_hidden": true,
+        "direct_access_redirected_or_denied": true,
+        "sanitized_denials": true,
+        "final_admin_intended_success": true
+      }
+    },
+    {
+      "id": "XP-012",
+      "status": "Pass",
+      "automated": {
+        "recursive_storage_redaction": true,
+        "application_log_redaction": true,
+        "history_audit_export_redaction": true,
+        "formula_defense": true,
+        "connection_openapi_write_only": true,
+        "sso_openapi_write_only": true,
+        "connection_response_contract_omits_sensitive_fields": true
+      },
+      "browser_api": {
+        "connection_list_read_update_omit_sensitive": true,
+        "connection_masked_edit_preserves_secret": true,
+        "oidc_masked_edit_preserves_secret": true,
+        "public_sso_reads_omit_secrets": true,
+        "user_connection_surface_minimal": true,
+        "session_cookie_httponly": true,
+        "browser_storage_absent": true,
+        "accessibility_text_absent": true,
+        "value_safe_leakage_scan": true,
+        "actual_probe_values_in_evidence": false
+      }
+    }
+  ],
+  "totals": {
+    "Pass": 6,
+    "Fail": 0,
+    "Partial": 0,
+    "Setup-dependent": 0,
+    "Not run": 0,
+    "Deferred": 0
+  },
+  "audit_representative_actions": [
+    "authentication SSO validation",
+    "role update",
+    "group mapping change",
+    "SSO configuration change",
+    "connection update",
+    "query execution",
+    "quota configuration change",
+    "quota exceeded",
+    "detection configuration change",
+    "hostile input blocked",
+    "query history view",
+    "audit export",
+    "access denied",
+    "query rejection",
+    "authentication logout"
+  ],
+  "gates": {
+    "backend_non_mutating_pytest": {
+      "passed": 2736,
+      "skipped": 15,
+      "subtests_passed": 35,
+      "warnings": 4
+    },
+    "source_clone_mutating_files_passed": 15,
+    "ruff_check": true,
+    "ruff_format_files": 412,
+    "frontend_vitest_files": 65,
+    "frontend_vitest_passed": 838,
+    "locale_logical_css_files": 6,
+    "locale_logical_css_passed": 325,
+    "eslint": true,
+    "typecheck": true,
+    "build": true,
+    "build_existing_chunk_warning_only": true,
+    "css_lint": true,
+    "playwright_passed": 73,
+    "playwright_intentionally_skipped": 1,
+    "chrome_devtools_final_head": true,
+    "all_fix_pr_backend_ci": true,
+    "all_fix_pr_frontend_ci": true,
+    "diff_check_after_evidence": true
+  },
+  "defect_pull_requests": [
+    267,
+    268,
+    269,
+    270,
+    271,
+    272,
+    273,
+    274,
+    275,
+    276,
+    277,
+    278,
+    279,
+    280,
+    281,
+    282,
+    283,
+    284,
+    285
+  ],
+  "cleanup": {
+    "isolated_containers_remaining": 0,
+    "isolated_networks_remaining": 0,
+    "isolated_volumes_remaining": 0,
+    "isolated_images_remaining": 0,
+    "isolated_temp_directories_remaining": 0,
+    "mysql_restored_stopped": true,
+    "mssql_restored_stopped": true,
+    "postgresql_restored_healthy": true,
+    "normal_backend_http_200": true,
+    "normal_frontend_http_200": true
+  },
+  "protected_dirty_baseline": {
+    "tracked_pngs_present_unstaged": 14,
+    "untracked_historical_screenshots_present_unstaged": 7,
+    "preexisting_traces_present_unstaged": true,
+    "protected_files_staged": 0,
+    "protected_files_reverted_or_deleted": 0
+  },
+  "cross_phase_c_unblocked": true,
+  "cross_phase_c_started": false
+}
