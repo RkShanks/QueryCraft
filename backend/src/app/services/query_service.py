@@ -104,6 +104,16 @@ class RolePolicy:
 RolePolicyProvider = Callable[[uuid.UUID, uuid.UUID], Awaitable[RolePolicy | None]]
 
 
+@dataclass(frozen=True)
+class _ExecutionFailureAudit:
+    action: AuditActionType
+    actor_id: uuid.UUID
+    resource_type: str
+    resource_id: str
+    reason: str
+    actor_identity: str | None = None
+
+
 def _sanitize_for_json(obj: Any) -> Any:
     """Recursively convert Decimal (and other non-JSON types) to JSON-safe values."""
     if isinstance(obj, Decimal):
@@ -209,6 +219,21 @@ class QueryService:
                 "dimension": dimension,
                 "reset_at": reset_at,
             },
+        )
+        await self._db_session.commit()
+
+    async def _persist_execution_failure_audit(self, event: _ExecutionFailureAudit) -> None:
+        """Persist a sanitized failure without committing pending request work."""
+        await self._db_session.rollback()
+        await AuditService.log(
+            self._db_session,
+            action=event.action,
+            actor_id=event.actor_id,
+            actor_identity=event.actor_identity,
+            resource_type=event.resource_type,
+            resource_id=event.resource_id,
+            outcome="failure",
+            context={"reason": event.reason},
         )
         await self._db_session.commit()
 
@@ -764,15 +789,15 @@ class QueryService:
                 # below uses the constant i18n key
                 # 'error.timeout' which never carries the
                 # underlying exception message.
-                await AuditService.log(
-                    self._db_session,
-                    action=AuditActionType.QUERY_EXECUTE,
-                    actor_id=user_uuid,
-                    actor_identity=getattr(user_row, "username", None),
-                    resource_type="query_attempt",
-                    resource_id=attempt_id,
-                    outcome="failure",
-                    context={"reason": "timeout"},
+                await self._persist_execution_failure_audit(
+                    _ExecutionFailureAudit(
+                        action=AuditActionType.QUERY_EXECUTE,
+                        actor_id=user_uuid,
+                        actor_identity=getattr(user_row, "username", None),
+                        resource_type="query_attempt",
+                        resource_id=attempt_id,
+                        reason="timeout",
+                    )
                 )
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
@@ -784,15 +809,15 @@ class QueryService:
                 failure_status, failure_detail, failure_reason = _source_failure_response(exc)
                 attempt.state = "FAILED"
                 await store_attempt(attempt, http_session_id, self._redis)
-                await AuditService.log(
-                    self._db_session,
-                    action=AuditActionType.QUERY_EXECUTE,
-                    actor_id=user_uuid,
-                    actor_identity=getattr(user_row, "username", None),
-                    resource_type="query_attempt",
-                    resource_id=attempt_id,
-                    outcome="failure",
-                    context={"reason": failure_reason},
+                await self._persist_execution_failure_audit(
+                    _ExecutionFailureAudit(
+                        action=AuditActionType.QUERY_EXECUTE,
+                        actor_id=user_uuid,
+                        actor_identity=getattr(user_row, "username", None),
+                        resource_type="query_attempt",
+                        resource_id=attempt_id,
+                        reason=failure_reason,
+                    )
                 )
                 raise HTTPException(
                     status_code=failure_status,
@@ -1300,6 +1325,15 @@ class QueryService:
                 raise
             except (TimeoutError, SourceDBTimeout) as exc:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
+                await self._persist_execution_failure_audit(
+                    _ExecutionFailureAudit(
+                        action=AuditActionType.QUERY_EXECUTE,
+                        actor_id=user_uuid,
+                        resource_type="query_attempt",
+                        resource_id=prior.attempt_id,
+                        reason="timeout",
+                    )
+                )
                 raise HTTPException(
                     status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                     detail={"error": "timeout", "message_key": "error.timeout"},
@@ -1307,14 +1341,14 @@ class QueryService:
             except Exception as exc:
                 failure_status, failure_detail, failure_reason = _source_failure_response(exc)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
-                await AuditService.log(
-                    self._db_session,
-                    action=AuditActionType.QUERY_EXECUTE,
-                    actor_id=user_uuid,
-                    resource_type="query_attempt",
-                    resource_id=prior.attempt_id,
-                    outcome="failure",
-                    context={"reason": failure_reason},
+                await self._persist_execution_failure_audit(
+                    _ExecutionFailureAudit(
+                        action=AuditActionType.QUERY_EXECUTE,
+                        actor_id=user_uuid,
+                        resource_type="query_attempt",
+                        resource_id=prior.attempt_id,
+                        reason=failure_reason,
+                    )
                 )
                 raise HTTPException(
                     status_code=failure_status,
@@ -1558,20 +1592,29 @@ class QueryService:
                     timeout=30,
                 )
         except (TimeoutError, SourceDBTimeout) as exc:
+            await self._persist_execution_failure_audit(
+                _ExecutionFailureAudit(
+                    action=AuditActionType.QUERY_RERUN,
+                    actor_id=user_uuid,
+                    resource_type="accepted_query",
+                    resource_id=str(aq_uuid),
+                    reason="timeout",
+                )
+            )
             raise HTTPException(
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                 detail={"error": "timeout", "message_key": "error.timeout"},
             ) from exc
         except Exception as exc:
             failure_status, failure_detail, failure_reason = _source_failure_response(exc)
-            await AuditService.log(
-                self._db_session,
-                action=AuditActionType.QUERY_RERUN,
-                actor_id=user_uuid,
-                resource_type="accepted_query",
-                resource_id=str(aq_uuid),
-                outcome="failure",
-                context={"reason": failure_reason},
+            await self._persist_execution_failure_audit(
+                _ExecutionFailureAudit(
+                    action=AuditActionType.QUERY_RERUN,
+                    actor_id=user_uuid,
+                    resource_type="accepted_query",
+                    resource_id=str(aq_uuid),
+                    reason=failure_reason,
+                )
             )
             raise HTTPException(
                 status_code=failure_status,
