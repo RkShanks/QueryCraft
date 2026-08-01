@@ -202,6 +202,31 @@ class QueryService:
         """Release the processing lock only if we own it."""
         return await release_lock_if_owned(session_id, owner, self._redis)
 
+    async def _persist_audit_without_request_side_effects(
+        self,
+        *,
+        action: AuditActionType,
+        actor_id: uuid.UUID,
+        outcome: str,
+        context: dict[str, Any],
+        actor_identity: str | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+    ) -> None:
+        """Rollback pending work, then persist one sanitized audit event."""
+        await self._db_session.rollback()
+        await AuditService.log(
+            self._db_session,
+            action=action,
+            actor_id=actor_id,
+            actor_identity=actor_identity,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            outcome=outcome,
+            context=context,
+        )
+        await self._db_session.commit()
+
     async def _persist_quota_exceeded_audit(
         self,
         user_id: uuid.UUID,
@@ -209,9 +234,7 @@ class QueryService:
         reset_at: str,
     ) -> None:
         """Persist a quota denial without committing pending request side effects."""
-        await self._db_session.rollback()
-        await AuditService.log(
-            self._db_session,
+        await self._persist_audit_without_request_side_effects(
             action=AuditActionType.QUOTA_EXCEEDED,
             actor_id=user_id,
             outcome="blocked",
@@ -220,13 +243,10 @@ class QueryService:
                 "reset_at": reset_at,
             },
         )
-        await self._db_session.commit()
 
     async def _persist_execution_failure_audit(self, event: _ExecutionFailureAudit) -> None:
         """Persist a sanitized failure without committing pending request work."""
-        await self._db_session.rollback()
-        await AuditService.log(
-            self._db_session,
+        await self._persist_audit_without_request_side_effects(
             action=event.action,
             actor_id=event.actor_id,
             actor_identity=event.actor_identity,
@@ -235,7 +255,6 @@ class QueryService:
             outcome="failure",
             context={"reason": event.reason},
         )
-        await self._db_session.commit()
 
     async def _get_llm_context_cap(self) -> int:
         """Read llm_context_cap from app_config (default 3)."""
@@ -570,8 +589,7 @@ class QueryService:
                 # FR-140: audit the policy block. Context carries
                 # the constant reason; no table / column / schema /
                 # SQL / user values leak.
-                await AuditService.log(
-                    self._db_session,
+                await self._persist_audit_without_request_side_effects(
                     action=AuditActionType.ACCESS_DENIED,
                     actor_id=user_uuid,
                     actor_identity=getattr(user_row, "username", None),
@@ -631,8 +649,7 @@ class QueryService:
                 # FR-140: emit query.validate.fail. Context carries
                 # the rule names only (safe strings); no SQL, no
                 # schema, no question text.
-                await AuditService.log(
-                    self._db_session,
+                await self._persist_audit_without_request_side_effects(
                     action=AuditActionType.QUERY_VALIDATE_FAIL,
                     actor_id=user_uuid,
                     actor_identity=getattr(user_row, "username", None),
@@ -678,8 +695,7 @@ class QueryService:
                     ],
                 }
                 await store_attempt(attempt, http_session_id, self._redis)
-                await AuditService.log(
-                    self._db_session,
+                await self._persist_audit_without_request_side_effects(
                     action=AuditActionType.ACCESS_DENIED,
                     actor_id=user_uuid,
                     actor_identity=getattr(user_row, "username", None),
