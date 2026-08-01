@@ -234,7 +234,9 @@ class QueryService:
         reset_at: str,
     ) -> None:
         """Persist a quota denial without committing pending request side effects."""
-        await self._persist_audit_without_request_side_effects(
+        await self._db_session.rollback()
+        await AuditService.log(
+            self._db_session,
             action=AuditActionType.QUOTA_EXCEEDED,
             actor_id=user_id,
             outcome="blocked",
@@ -243,6 +245,7 @@ class QueryService:
                 "reset_at": reset_at,
             },
         )
+        await self._db_session.commit()
 
     async def _persist_execution_failure_audit(self, event: _ExecutionFailureAudit) -> None:
         """Persist a sanitized failure without committing pending request work."""
