@@ -45,6 +45,9 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    from app.api.v1.query import close_source_db_connector
+
+    await close_source_db_connector()
     await LLMProviderFactory.shutdown_all()
     for sm in SessionMiddleware._instances:
         await sm.aclose()

@@ -8,6 +8,40 @@ from app.main import _sync_admin_user, _upsert_source_db_connection
 
 
 @pytest.mark.asyncio
+async def test_lifespan_closes_query_source_connector():
+    """Application shutdown releases the module-level source pool."""
+    from fastapi import FastAPI
+
+    from app.main import lifespan
+
+    settings = MagicMock()
+    settings.LOG_LEVEL = "INFO"
+    settings.DATABASE_URL = "postgresql+asyncpg://platform"
+    settings.DB_CREDENTIAL_KEY = "test-key"
+    source_connector = MagicMock()
+    source_connector.aclose = AsyncMock()
+
+    with (
+        patch("app.main.get_settings", return_value=settings),
+        patch("app.main.setup_logging"),
+        patch("app.main.init_redis", new_callable=AsyncMock),
+        patch("app.main._check_alembic_drift", new_callable=AsyncMock),
+        patch("app.main.init_credential_provider"),
+        patch("app.main._upsert_source_db_connection", new_callable=AsyncMock),
+        patch("app.main._sync_admin_user", new_callable=AsyncMock),
+        patch("app.main.LLMProviderFactory.shutdown_all", new_callable=AsyncMock),
+        patch("app.main.SessionMiddleware._instances", []),
+        patch("app.main.close_redis", new_callable=AsyncMock),
+        patch("app.main.dispose_engine", new_callable=AsyncMock),
+        patch("app.api.v1.query._source_db_connector", source_connector),
+    ):
+        async with lifespan(FastAPI()):
+            pass
+
+    source_connector.aclose.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
 async def test_upsert_source_db_connection_inserts_when_missing():
     """_upsert_source_db_connection inserts row when none exists."""
     settings = MagicMock()
