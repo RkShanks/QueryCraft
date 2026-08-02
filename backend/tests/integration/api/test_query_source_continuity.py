@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import secrets
 from collections.abc import AsyncGenerator, Iterator
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
@@ -34,6 +35,15 @@ SOURCE_TYPES = [
     ("mysql", "mysql"),
     ("mssql", "tsql"),
 ]
+
+
+class RedactedString(str):
+    def __repr__(self) -> str:
+        return "<redacted>"
+
+
+def sensitive_value() -> RedactedString:
+    return RedactedString(secrets.token_hex(24))
 
 
 class SourceCheckingLLM:
@@ -184,7 +194,11 @@ async def continuity_sources(
 
 @contextmanager
 def source_boundaries(
-    source: SourceSpec, generated_sql: list[str]
+    source: SourceSpec,
+    generated_sql: list[str],
+    *,
+    columns: list[str] | None = None,
+    execution_rows: list[list[tuple]] | None = None,
 ) -> Iterator[tuple[SourceCheckingLLM, dict[str, AsyncMock]]]:
     """Control only the LLM/source systems while leaving route wiring real."""
     llm = SourceCheckingLLM(source, generated_sql)
@@ -197,12 +211,18 @@ def source_boundaries(
     with ExitStack() as stack:
         stack.enter_context(patch("app.api.v1.query.LLMProviderFactory.from_config", return_value=llm))
         for database_type, adapter_class in adapter_classes.items():
-            execute = AsyncMock(
-                return_value=ExecuteResult(
-                    columns=["probe_id", "probe_value"],
-                    rows=[(1, "must-mask")],
+            result_columns = columns or ["probe_id", "probe_value"]
+            if execution_rows is None:
+                execute = AsyncMock(
+                    return_value=ExecuteResult(
+                        columns=result_columns,
+                        rows=[(1, "must-mask")],
+                    )
                 )
-            )
+            else:
+                execute = AsyncMock(
+                    side_effect=[ExecuteResult(columns=result_columns, rows=rows) for rows in execution_rows]
+                )
             stack.enter_context(patch.object(adapter_class, "execute", new=execute))
             adapter_calls[database_type] = execute
         yield llm, adapter_calls
@@ -257,6 +277,38 @@ def assert_only_expected_adapter(adapter_calls: dict[str, AsyncMock], database_t
             assert execute.await_count == count
         else:
             execute.assert_not_awaited()
+
+
+def assert_value_absent(value: str, channel_content: str, channel_name: str) -> None:
+    __tracebackhide__ = True
+    if value in channel_content:
+        raise AssertionError(f"sensitive value reached {channel_name}")
+
+
+def assert_attempt_payload_minimized(serialized: str, sensitive_values: tuple[str, ...]) -> dict:
+    __tracebackhide__ = True
+    for sensitive_value in sensitive_values:
+        assert_value_absent(sensitive_value, serialized, "Redis attempt state")
+    attempt = json.loads(serialized)
+    if "executor_result" in attempt:
+        raise AssertionError("Redis attempt state retained a result payload")
+    return attempt
+
+
+def assert_masked_api_payload(payload: dict, channel_name: str) -> None:
+    if payload.get("rows") != [[1, "***"]]:
+        raise AssertionError(f"{channel_name} did not contain only the expected mask")
+    columns = payload.get("columns", [])
+    if len(columns) != 2 or columns[1].get("masked") is not True:
+        raise AssertionError(f"{channel_name} omitted masked-column metadata")
+
+
+def assert_masked_history_payload(payload: dict) -> None:
+    if payload.get("result_rows") != [[1, "***"]]:
+        raise AssertionError("accepted history did not contain only the expected mask")
+    columns = payload.get("result_columns", [])
+    if len(columns) != 2 or columns[1].get("masked") is not True:
+        raise AssertionError("accepted history omitted masked-column metadata")
 
 
 def assert_no_internal_details(response) -> None:
@@ -576,3 +628,178 @@ async def test_concurrent_selector_update_cannot_redirect_retry_and_only_affects
             await persisted_connection(async_engine_fixture, later_submit.json()["attempt_id"]) == later.connection_id
         )
         assert_only_expected_adapter(adapter_calls, later.database_type, 1)
+
+
+MASKED_PROJECTION_CASES = [
+    pytest.param(
+        "SELECT probe_id, probe_value FROM {table}",
+        "SELECT probe_id, probe_value FROM {table} WHERE probe_id >= 0",
+        ["probe_id", "probe_value"],
+        False,
+        id="direct",
+    ),
+    pytest.param(
+        "SELECT probe_id, probe_value AS protected_value FROM {table}",
+        "SELECT probe_id, probe_value AS protected_value FROM {table} WHERE probe_id >= 0",
+        ["probe_id", "protected_value"],
+        False,
+        id="alias",
+    ),
+    pytest.param(
+        "WITH nested AS (SELECT probe_id, probe_value AS protected_value FROM {table}) "
+        "SELECT probe_id, protected_value FROM nested",
+        "WITH nested AS (SELECT probe_id, probe_value AS protected_value FROM {table}) "
+        "SELECT probe_id, protected_value FROM nested ORDER BY probe_id",
+        ["probe_id", "protected_value"],
+        False,
+        id="nested",
+    ),
+    pytest.param(
+        "SELECT probe_id, probe_value FROM {table}",
+        "SELECT probe_id, probe_value FROM {table} ORDER BY probe_id",
+        ["probe_id", "probe_value"],
+        True,
+        id="row-filter-and-mask",
+    ),
+]
+
+
+@pytest.mark.parametrize("source_index", range(3), ids=["postgresql", "mysql", "mssql"])
+@pytest.mark.parametrize(
+    ("initial_sql_template", "retry_sql_template", "result_columns", "with_row_filter"),
+    MASKED_PROJECTION_CASES,
+)
+async def test_masked_submit_and_regenerate_never_serialize_result_payload(
+    authenticated_client,
+    async_engine_fixture,
+    redis_client,
+    continuity_sources,
+    source_index,
+    initial_sql_template,
+    retry_sql_template,
+    result_columns,
+    with_row_filter,
+):
+    """IS-GAP-002: API/history stay masked while Redis retains metadata only."""
+    source = continuity_sources[source_index]
+    if with_row_filter:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(
+                text(
+                    "UPDATE role_connection_policies "
+                    "SET row_filters = CAST(:row_filters AS jsonb) "
+                    "WHERE connection_id = :connection_id"
+                ),
+                {
+                    "connection_id": UUID(source.connection_id),
+                    "row_filters": json.dumps([{"table": source.table_name, "filter": "probe_id >= 0"}]),
+                },
+            )
+
+    initial_sql = initial_sql_template.format(table=source.table_name)
+    retry_sql = retry_sql_template.format(table=source.table_name)
+    initial_sensitive_value = sensitive_value()
+    retry_sensitive_value = sensitive_value()
+    sensitive_values = (initial_sensitive_value, retry_sensitive_value)
+
+    with source_boundaries(
+        source,
+        [initial_sql, retry_sql],
+        columns=result_columns,
+        execution_rows=[
+            [(1, initial_sensitive_value)],
+            [(1, retry_sensitive_value)],
+        ],
+    ) as (_llm, adapter_calls):
+        session_id = await create_session(authenticated_client, source.connection_id)
+        submit_response = await authenticated_client.post(
+            "/api/v1/query/submit",
+            json={
+                "question": "Masked attempt check",
+                "session_id": session_id,
+                "connection_id": source.connection_id,
+            },
+        )
+        if submit_response.status_code != 200:
+            raise AssertionError("masked submit did not succeed")
+        submit_payload = submit_response.json()
+        assert_masked_api_payload(submit_payload, "submit response")
+        submit_attempt_id = submit_payload["attempt_id"]
+        submit_serialized = RedactedString(await redis_client.get(f"attempt:{submit_attempt_id}"))
+        submit_attempt = assert_attempt_payload_minimized(submit_serialized, sensitive_values)
+        assert submit_attempt["database_connection_id"] == source.connection_id
+
+        submit_history = await authenticated_client.get(f"/api/v1/history/{submit_payload['accepted_query_id']}")
+        if submit_history.status_code != 200:
+            raise AssertionError("accepted submit history was unavailable")
+        assert_masked_history_payload(submit_history.json())
+
+        regenerate_response = await authenticated_client.post(
+            "/api/v1/query/regenerate",
+            json={"attempt_id": submit_attempt_id},
+        )
+        if regenerate_response.status_code != 200:
+            raise AssertionError("masked regenerate did not succeed")
+        regenerate_payload = regenerate_response.json()
+        assert_masked_api_payload(regenerate_payload, "regenerate response")
+        regenerate_attempt_id = regenerate_payload["attempt_id"]
+        regenerate_serialized = RedactedString(await redis_client.get(f"attempt:{regenerate_attempt_id}"))
+        regenerate_attempt = assert_attempt_payload_minimized(regenerate_serialized, sensitive_values)
+        assert regenerate_attempt["database_connection_id"] == source.connection_id
+        assert await redis_client.get(f"attempt:{submit_attempt_id}") is None
+
+        regenerate_history = await authenticated_client.get(
+            f"/api/v1/history/{regenerate_payload['accepted_query_id']}"
+        )
+        if regenerate_history.status_code != 200:
+            raise AssertionError("accepted regenerate history was unavailable")
+        assert_masked_history_payload(regenerate_history.json())
+        assert_only_expected_adapter(adapter_calls, source.database_type, 2)
+
+
+async def test_masked_source_value_absent_from_audit_search_export_and_logs(
+    authenticated_client,
+    redis_client,
+    continuity_sources,
+    caplog,
+):
+    """IS-GAP-002: query rows never enter audit, export, or application logs."""
+    source = continuity_sources[0]
+    source_value = sensitive_value()
+    sql = f"SELECT probe_id, probe_value FROM {source.table_name}"
+
+    with source_boundaries(
+        source,
+        [sql],
+        execution_rows=[[(1, source_value)]],
+    ):
+        session_id = await create_session(authenticated_client, source.connection_id)
+        response = await authenticated_client.post(
+            "/api/v1/query/submit",
+            json={
+                "question": "Audit leakage check",
+                "session_id": session_id,
+                "connection_id": source.connection_id,
+            },
+        )
+
+    if response.status_code != 200:
+        raise AssertionError("masked submit did not succeed")
+    response_body = response.json()
+    assert_masked_api_payload(response_body, "submit response")
+    serialized = RedactedString(await redis_client.get(f"attempt:{response_body['attempt_id']}"))
+    assert_attempt_payload_minimized(serialized, (source_value,))
+
+    search_response = await authenticated_client.get("/api/v1/admin/audit/entries?page_size=100")
+    if search_response.status_code != 200:
+        raise AssertionError("audit search did not succeed")
+    export_response = await authenticated_client.post(
+        "/api/v1/admin/audit/export",
+        json={"format": "json"},
+    )
+    if export_response.status_code != 200:
+        raise AssertionError("audit export did not succeed")
+
+    assert_value_absent(source_value, RedactedString(search_response.text), "audit search")
+    assert_value_absent(source_value, RedactedString(export_response.text), "audit export")
+    assert_value_absent(source_value, RedactedString(caplog.text), "application logs")

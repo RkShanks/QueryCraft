@@ -854,14 +854,6 @@ class QueryService:
                     detail=failure_detail,
                 ) from None
 
-            attempt.state = "EXECUTED"
-            attempt.executor_result = {
-                "columns": columns,
-                "rows": rows,
-                "row_count": len(rows),
-            }
-            await store_attempt(attempt, http_session_id, self._redis)
-
             # FR-140: emit query.execute (success) right after the
             # executor returns. Context carries only row_count;
             # no rows, no columns, no SQL, no host/port/credential.
@@ -918,6 +910,9 @@ class QueryService:
                 column_metas = list(masked_result.columns)
                 rows = masked_result.rows
             result = masked_result
+
+            attempt.state = "EXECUTED"
+            await store_attempt(attempt, http_session_id, self._redis)
 
             # 5. Auto-save (idempotent: skip if already persisted for this attempt_id)
             session_uuid = uuid.UUID(chat_session_id) if chat_session_id else None
@@ -1402,11 +1397,6 @@ class QueryService:
                 attempt_number=next_attempt_number,
                 llm_provider=self._llm_provider,
                 state="EXECUTED",
-                executor_result={
-                    "columns": columns,
-                    "rows": rows,
-                    "row_count": len(rows),
-                },
             )
             await store_attempt(new_attempt, http_session_id, self._redis)
             await self._redis.set(f"active_attempt:{http_session_id}", new_attempt_id)

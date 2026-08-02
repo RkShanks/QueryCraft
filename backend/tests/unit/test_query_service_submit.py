@@ -5,14 +5,61 @@ Redis attempt storage; uses mocked LLM, evaluator, and source-DB.
 """
 
 import builtins
+import json
+import secrets
+from datetime import date, datetime, time
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
+from uuid import UUID
 
 import pytest
+from redis.exceptions import RedisError
 
-from app.services.query_service import QueryService
+from app.evaluator.schema_context import Column, SchemaContext, Table
+from app.services.query_service import QueryService, RolePolicy
 from tests.lifecycle.helpers import FakeRedis
 
 CONNECTION_ID = "00000000-0000-0000-0000-000000000001"
+
+
+class _RedactedString(str):
+    def __repr__(self) -> str:
+        return "<redacted>"
+
+
+def _sensitive_value() -> _RedactedString:
+    return _RedactedString(secrets.token_hex(24))
+
+
+def _stored_attempt(redis: FakeRedis, attempt_id: str) -> tuple[str, dict]:
+    serialized = redis._data[f"attempt:{attempt_id}"]
+    return serialized, json.loads(serialized)
+
+
+def _assert_fragment_absent(fragment: str, serialized: str, channel: str) -> None:
+    __tracebackhide__ = True
+    if fragment in serialized:
+        raise AssertionError(f"sensitive value reached {channel}")
+
+
+def _assert_result_payload_absent(attempt: dict) -> None:
+    __tracebackhide__ = True
+    if "executor_result" in attempt:
+        raise AssertionError("Redis attempt state retained a result payload")
+
+
+class _ActiveAttemptWriteFailureRedis(FakeRedis):
+    def __init__(self, sensitive_fragment: str) -> None:
+        super().__init__()
+        self._sensitive_fragment = sensitive_fragment
+        self.sensitive_write_observed = False
+
+    async def set(self, key: str, value: str, nx: bool = False, ex: int | None = None) -> bool | None:
+        if self._sensitive_fragment in str(value):
+            self.sensitive_write_observed = True
+        if key.startswith("active_attempt:"):
+            raise RedisError("attempt_state_write_failed")
+        return await super().set(key, value, nx=nx, ex=ex)
 
 
 class TestQueryServiceSubmit:
@@ -99,19 +146,28 @@ class TestQueryServiceSubmit:
         return db
 
     @pytest.fixture
-    def service(
+    def service_factory(
         self, mock_repo, mock_session_repo, mock_db_session, mock_redis, mock_llm, mock_evaluator, mock_executor
     ):
-        return QueryService(
-            accepted_query_repository=mock_repo,
-            session_repository=mock_session_repo,
-            db_session=mock_db_session,
-            redis=mock_redis,
-            llm=mock_llm,
-            evaluator=mock_evaluator,
-            source_db_executor=mock_executor,
-            connection_id=CONNECTION_ID,
-        )
+        def build_service(*, redis=None, role_policy_provider=None, schema_context=""):
+            return QueryService(
+                accepted_query_repository=mock_repo,
+                session_repository=mock_session_repo,
+                db_session=mock_db_session,
+                redis=redis if redis is not None else mock_redis,
+                llm=mock_llm,
+                evaluator=mock_evaluator,
+                source_db_executor=mock_executor,
+                connection_id=CONNECTION_ID,
+                role_policy_provider=role_policy_provider,
+                schema_context=schema_context,
+            )
+
+        return build_service
+
+    @pytest.fixture
+    def service(self, service_factory):
+        return service_factory()
 
     @pytest.mark.lifecycle("lock")
     @pytest.mark.asyncio
@@ -164,7 +220,7 @@ class TestQueryServiceSubmit:
         assert exc_info.value.status_code == 502
 
     @pytest.mark.asyncio
-    async def test_timeout_raises_504(self, service, mock_executor):
+    async def test_timeout_raises_504(self, service, mock_executor, mock_redis):
 
         mock_executor.execute.side_effect = builtins.TimeoutError()
         with pytest.raises(Exception) as exc_info:
@@ -174,6 +230,9 @@ class TestQueryServiceSubmit:
                 question="Slow query",
             )
         assert exc_info.value.status_code == 504
+        attempt_keys = [key for key in mock_redis._data if key.startswith("attempt:")]
+        assert len(attempt_keys) == 1
+        _assert_result_payload_absent(json.loads(mock_redis._data[attempt_keys[0]]))
 
     @pytest.mark.asyncio
     async def test_concurrent_submission_raises_409(self, service, mock_redis):
@@ -246,3 +305,172 @@ class TestQueryServiceSubmit:
         assert result.session_id == "550e8400-e29b-41d4-a716-446655440002"
         mock_session_repo.get_by_id.assert_awaited_once()
         mock_session_repo.create.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_zero_row_result_does_not_create_result_payload_in_attempt_state(
+        self,
+        service,
+        mock_executor,
+        mock_redis,
+    ):
+        mock_executor.execute.return_value = ([], [])
+
+        response = await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
+            question="No matching rows",
+        )
+
+        serialized, attempt = _stored_attempt(mock_redis, response.attempt_id)
+        assert response.row_count == 0
+        _assert_result_payload_absent(attempt)
+        assert len(serialized) < 2_048
+
+    @pytest.mark.asyncio
+    async def test_non_json_source_values_remain_request_local(
+        self,
+        service,
+        mock_executor,
+        mock_redis,
+    ):
+        sensitive_fragment = _sensitive_value()
+        mock_executor.execute.return_value = (
+            ["decimal", "datetime", "date", "time", "null", "binary", "unicode", "nested", "protected"],
+            [
+                [
+                    Decimal("10.50"),
+                    datetime(2026, 8, 3, 12, 0),
+                    date(2026, 8, 3),
+                    time(12, 30),
+                    None,
+                    b"\x00\xff",
+                    "مرحبا",
+                    {"items": [Decimal("1.25"), None, "قيمة"]},
+                    sensitive_fragment,
+                ]
+            ],
+        )
+
+        response = await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
+            question="Return typed values",
+        )
+
+        serialized, attempt = _stored_attempt(mock_redis, response.attempt_id)
+        assert response.row_count == 1
+        _assert_result_payload_absent(attempt)
+        _assert_fragment_absent(sensitive_fragment, serialized, "Redis attempt state")
+
+    @pytest.mark.asyncio
+    async def test_large_result_shape_does_not_expand_attempt_payload(
+        self,
+        service,
+        mock_executor,
+        mock_redis,
+    ):
+        mock_executor.execute.return_value = (
+            ["id", "label"],
+            [[index, f"row-{index}"] for index in range(2_000)],
+        )
+
+        response = await service.submit_question(
+            http_session_id="http-sess-1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
+            question="Return a large result",
+        )
+
+        serialized, attempt = _stored_attempt(mock_redis, response.attempt_id)
+        assert response.row_count == 2_000
+        _assert_result_payload_absent(attempt)
+        assert len(serialized) < 2_048
+
+    @pytest.mark.asyncio
+    async def test_malformed_mask_leaves_only_pre_execution_attempt_metadata(
+        self,
+        service_factory,
+        mock_llm,
+        mock_executor,
+        mock_redis,
+    ):
+        sensitive_fragment = _sensitive_value()
+        connection_uuid = UUID(CONNECTION_ID)
+
+        async def policy_provider(_user_id, _connection_id):
+            return RolePolicy(
+                user_id=UUID("550e8400-e29b-41d4-a716-446655440000"),
+                role_id=UUID("660e8400-e29b-41d4-a716-446655440000"),
+                connection_id=connection_uuid,
+                allowed_tables=[{"table": "orders", "columns": ["id"]}],
+                column_masks=[{"table": "orders"}],
+            )
+
+        service = service_factory(
+            role_policy_provider=policy_provider,
+            schema_context=SchemaContext(tables=[Table(name="orders", columns=[Column(name="id")])]),
+        )
+        mock_llm.generate_sql.return_value = "SELECT id FROM orders"
+        mock_executor.execute.return_value = (["id"], [[sensitive_fragment]])
+
+        with pytest.raises(ValueError, match="column_mask_config_invalid"):
+            await service.submit_question(
+                http_session_id="http-sess-1",
+                user_id="550e8400-e29b-41d4-a716-446655440000",
+                question="Malformed mask",
+            )
+
+        attempt_keys = [key for key in mock_redis._data if key.startswith("attempt:")]
+        assert len(attempt_keys) == 1
+        serialized = mock_redis._data[attempt_keys[0]]
+        attempt = json.loads(serialized)
+        assert attempt["state"] == "EVALUATED"
+        _assert_result_payload_absent(attempt)
+        _assert_fragment_absent(sensitive_fragment, serialized, "failed attempt state")
+
+    @pytest.mark.asyncio
+    async def test_source_failure_keeps_attempt_state_value_free(
+        self,
+        service,
+        mock_executor,
+        mock_redis,
+    ):
+        sensitive_fragment = _sensitive_value()
+        mock_executor.execute.side_effect = RuntimeError(sensitive_fragment)
+
+        with pytest.raises(Exception) as exc_info:
+            await service.submit_question(
+                http_session_id="http-sess-1",
+                user_id="550e8400-e29b-41d4-a716-446655440000",
+                question="Source failure",
+            )
+
+        attempt_keys = [key for key in mock_redis._data if key.startswith("attempt:")]
+        assert len(attempt_keys) == 1
+        serialized = mock_redis._data[attempt_keys[0]]
+        assert exc_info.value.status_code == 502
+        _assert_result_payload_absent(json.loads(serialized))
+        _assert_fragment_absent(sensitive_fragment, serialized, "failed attempt state")
+        _assert_fragment_absent(sensitive_fragment, str(exc_info.value.detail), "API error detail")
+
+    @pytest.mark.asyncio
+    async def test_redis_failure_never_receives_source_value(
+        self,
+        service_factory,
+        mock_executor,
+        caplog,
+    ):
+        sensitive_fragment = _sensitive_value()
+        redis = _ActiveAttemptWriteFailureRedis(sensitive_fragment)
+        service = service_factory(redis=redis)
+        mock_executor.execute.return_value = (["protected"], [[sensitive_fragment]])
+
+        with pytest.raises(RedisError) as exc_info:
+            await service.submit_question(
+                http_session_id="http-sess-1",
+                user_id="550e8400-e29b-41d4-a716-446655440000",
+                question="Redis failure",
+            )
+
+        assert redis.sensitive_write_observed is False
+        _assert_fragment_absent(sensitive_fragment, str(exc_info.value), "Redis error")
+        _assert_fragment_absent(sensitive_fragment, caplog.text, "logs")
