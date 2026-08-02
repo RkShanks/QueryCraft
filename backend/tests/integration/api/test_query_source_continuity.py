@@ -646,10 +646,10 @@ MASKED_PROJECTION_CASES = [
         id="alias",
     ),
     pytest.param(
-        "SELECT nested.probe_id, nested.probe_value AS protected_value "
-        "FROM (SELECT probe_id, probe_value FROM {table}) AS nested",
-        "SELECT nested.probe_id, nested.probe_value AS protected_value "
-        "FROM (SELECT probe_id, probe_value FROM {table}) AS nested WHERE nested.probe_id >= 0",
+        "WITH nested AS (SELECT probe_id, probe_value AS protected_value FROM {table}) "
+        "SELECT probe_id, protected_value FROM nested",
+        "WITH nested AS (SELECT probe_id, probe_value AS protected_value FROM {table}) "
+        "SELECT probe_id, protected_value FROM nested ORDER BY probe_id",
         ["probe_id", "protected_value"],
         False,
         id="nested",
