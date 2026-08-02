@@ -27,7 +27,16 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 44, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 43, "Resolved": 1, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+  },
+  "remediation_progress": {
+    "CHUNK-01": {
+      "gap_id": "IS-GAP-001",
+      "status": "Resolved",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/297",
+      "tested_main": "3522440f0bbf3c837aafe62edaf2e9d89d4717fb",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-01-source-continuity.json"
+    }
   },
   "raw_candidate_dispositions": {
     "Confirmed Product Gap": 36,
@@ -55,7 +64,8 @@
       "required_evidence": "Real three-source HTTP/browser trace proving the same connection ID, schema, dialect, policy and adapter across the full lifecycle without retaining SQL or result values.",
       "isolation": "Dedicated platform PostgreSQL and Redis plus disposable read-only source fixtures; delete attempts, sessions, audit rows and source fixtures afterward.",
       "regression_rows": ["P3-FR-069", "P3-FR-073", "P5-FR-128", "P5-FR-131", "P5-FR-132", "XP-002", "XP-005", "XP-007"],
-      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-01", "status": "Pending",
+      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-01", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/297", "tested_main": "3522440f0bbf3c837aafe62edaf2e9d89d4717fb", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-01-source-continuity.json"},
       "source_refs": ["backend/src/app/api/v1/query.py::_get_query_service", "backend/src/app/api/v1/query.py::_build_query_service_for_connection", "backend/src/app/api/v1/query.py::accept_query", "backend/src/app/api/v1/query.py::reject_query", "backend/src/app/api/v1/query.py::regenerate_query", "backend/src/app/core/attempt_store.py::EphemeralAttempt", "backend/src/app/services/query_service.py::QueryService._get_database_connection_id", "backend/src/app/services/query_service.py::QueryService.regenerate_query", "frontend/src/hooks/useQuerySubmit.ts::rejectQueryFn", "frontend/src/hooks/useQuerySubmit.ts::regenerateQueryFn", "frontend/src/hooks/useQuerySubmit.ts::acceptQueryFn", "backend/tests/integration/api/test_regenerate_router.py", "backend/tests/integration/api/test_reject_router.py", "backend/tests/integration/test_accept_only_persistence.py"]
     },
     {

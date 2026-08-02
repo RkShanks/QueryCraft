@@ -1,0 +1,116 @@
+{
+  "schema_version": "1.0",
+  "gap_id": "IS-GAP-001",
+  "chunk_id": "CHUNK-01",
+  "status": "Resolved",
+  "starting_main": "7cd6c8edb0b82e1c2913cefc03df2a8c27546db9",
+  "tested_product_main": "3522440f0bbf3c837aafe62edaf2e9d89d4717fb",
+  "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/297",
+  "tdd": {
+    "red_commit": "028e0d878663ceb0730018d89024dfd792368fed",
+    "red_confirmed_required_failures": true,
+    "green_commit": "a4690c4de27db767bc0fdeda4fc9517981f3cad2",
+    "refactor_commit": null
+  },
+  "automated_gates": {
+    "backend": {
+      "passed": 2791,
+      "skipped": 17,
+      "subtests_passed": 35,
+      "ruff_check": true,
+      "ruff_format": true
+    },
+    "frontend": {
+      "test_files_passed": 65,
+      "tests_passed": 839,
+      "eslint": true,
+      "typecheck": true,
+      "build": true,
+      "css_lint": true
+    },
+    "diff_check": true,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "fix_ci": {
+      "backend_test": "passed",
+      "frontend_test": "passed"
+    }
+  },
+  "isolated_proof": {
+    "dedicated_platform_postgres": true,
+    "dedicated_redis": true,
+    "sources": [
+      {
+        "name": "PostgreSQL fixture",
+        "type": "postgresql",
+        "read_only": true
+      },
+      {
+        "name": "MySQL fixture",
+        "type": "mysql",
+        "read_only": true
+      },
+      {
+        "name": "MSSQL fixture",
+        "type": "mssql",
+        "read_only": true
+      }
+    ],
+    "flow_count": 9,
+    "flows": [
+      {"source": "PostgreSQL fixture", "decision": "accept", "status": 201, "source_continuity": true, "selector_isolation": true, "label_continuity": true},
+      {"source": "PostgreSQL fixture", "decision": "reject", "status": 200, "source_continuity": true, "selector_isolation": true, "label_continuity": true},
+      {"source": "PostgreSQL fixture", "decision": "regenerate", "status": 200, "source_continuity": true, "selector_isolation": true, "label_continuity": true},
+      {"source": "MySQL fixture", "decision": "accept", "status": 201, "source_continuity": true, "selector_isolation": true, "label_continuity": true},
+      {"source": "MySQL fixture", "decision": "reject", "status": 200, "source_continuity": true, "selector_isolation": true, "label_continuity": true},
+      {"source": "MySQL fixture", "decision": "regenerate", "status": 200, "source_continuity": true, "selector_isolation": true, "label_continuity": true},
+      {"source": "MSSQL fixture", "decision": "accept", "status": 201, "source_continuity": true, "selector_isolation": true, "label_continuity": true},
+      {"source": "MSSQL fixture", "decision": "reject", "status": 200, "source_continuity": true, "selector_isolation": true, "label_continuity": true},
+      {"source": "MSSQL fixture", "decision": "regenerate", "status": 200, "source_continuity": true, "selector_isolation": true, "label_continuity": true}
+    ],
+    "policy_revocation": {
+      "count": 3,
+      "all_failed_closed": true,
+      "status": 422,
+      "no_new_provider_or_source_work": true
+    },
+    "legacy_context_failed_closed": true,
+    "sensitive_values_retained": false
+  },
+  "automated_fail_closed_cases": {
+    "deleted_original_connection": true,
+    "disabled_original_connection": true,
+    "unauthorized_original_connection": true,
+    "wrong_user": true,
+    "wrong_session": true,
+    "missing_context": true,
+    "malformed_context": true,
+    "forged_source_context": true,
+    "concurrent_selector_update": true,
+    "byte_equal_terminal_paths": true,
+    "sanitized_errors": true
+  },
+  "browser_proof": {
+    "decision": "regenerate",
+    "status": 200,
+    "ui_control_exercised": true,
+    "decision_attempt_only": true,
+    "original_label_continuity": true,
+    "selector_isolation": true,
+    "artifacts_retained": false
+  },
+  "cleanup": {
+    "isolated_resources_removed": true,
+    "source_services_restored": true,
+    "normal_backend_http_200": true,
+    "normal_frontend_http_200": true,
+    "temporary_files_removed": true,
+    "protected_baseline_preserved": true
+  },
+  "scope": {
+    "frontend_product_changed": false,
+    "dependent_gaps_changed": false,
+    "chunk_02_started": false,
+    "chunk_02_unblocked": true
+  }
+}

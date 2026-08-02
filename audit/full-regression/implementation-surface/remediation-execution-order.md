@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: planning only. No chunk in this file has been dispatched or started.
+Status: `CHUNK-01` / `IS-GAP-001` is resolved on tested main `3522440f0bbf3c837aafe62edaf2e9d89d4717fb` via [#297](https://github.com/RkShanks/QueryCraft/pull/297) and [merged-main evidence](evidence/chunk-01-source-continuity.md). No later chunk has started.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -13,6 +13,8 @@ The order puts the Critical source-continuity defect first, then security/data i
 - Stop on a new requirement ambiguity, any sensitive-data disclosure, mutation of a non-disposable source, inability to isolate Redis/PostgreSQL/browser state, a dependency regression, a context estimate approaching 180k, or a failing foundation gate outside the chunk's changes. Do not absorb unrelated fixes.
 
 ## CHUNK-01 — selected-source continuity (standalone Critical)
+
+- **Progress:** Resolved. Three-dialect merged-main HTTP and focused browser proof passed; all isolated resources were removed and the protected baseline was preserved. `CHUNK-02` is unblocked.
 
 - **IDs / role / branch / context:** `IS-GAP-001`; Backend Implementer (Kimi/GLM) then Frontend Implementer (Gemini); `phase-6/wave-19.01-source-continuity`; target 120–160k.
 - **Likely source:** `backend/src/app/core/attempt_store.py`, `backend/src/app/api/v1/query.py`, `backend/src/app/services/query_service.py`, `frontend/src/hooks/useQuerySubmit.ts`; affected router/service/component tests only.
