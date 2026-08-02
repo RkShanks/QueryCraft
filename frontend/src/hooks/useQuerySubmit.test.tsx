@@ -48,6 +48,48 @@ describe('Query Hooks', () => {
   });
 
   describe('useQuerySubmit (US-2)', () => {
+    it('keeps connection authority out of all decision request bodies', async () => {
+      const requestBodies: Record<string, unknown>[] = [];
+      const refineResponse = {
+        kind: 'refine',
+        message_key: 'query.refine.message',
+        should_refine: true,
+      };
+      server.use(
+        http.post('/api/v1/query/accept', async ({ request }) => {
+          requestBodies.push(await request.json() as Record<string, unknown>);
+          return HttpResponse.json({
+            id: 'f9e8d7c6-b5a4-4c3b-2a1d-0e9f8d7c6b5a',
+            question_text: 'Question',
+            generated_sql: 'SELECT 1',
+            accepted_at: '2026-08-02T00:00:00Z',
+          });
+        }),
+        http.post('/api/v1/query/reject', async ({ request }) => {
+          requestBodies.push(await request.json() as Record<string, unknown>);
+          return HttpResponse.json(refineResponse);
+        }),
+        http.post('/api/v1/query/regenerate', async ({ request }) => {
+          requestBodies.push(await request.json() as Record<string, unknown>);
+          return HttpResponse.json(refineResponse);
+        }),
+      );
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      await result.current.acceptQuery('attempt-1', 'session-1');
+      await result.current.rejectQuery('attempt-2');
+      await result.current.regenerateQuery('attempt-3');
+
+      expect(requestBodies).toEqual([
+        { attempt_id: 'attempt-1', session_id: 'session-1' },
+        { attempt_id: 'attempt-2' },
+        { attempt_id: 'attempt-3' },
+      ]);
+      for (const requestBody of requestBodies) {
+        expect(requestBody).not.toHaveProperty('connection_id');
+      }
+    });
+
     it('1. submit returns QueryResult (kind=result) on 200', async () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 

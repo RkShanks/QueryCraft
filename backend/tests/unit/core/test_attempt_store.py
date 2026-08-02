@@ -8,13 +8,16 @@ import json
 from datetime import date, datetime, time
 from decimal import Decimal
 from unittest.mock import AsyncMock
+from uuid import UUID
 
 import pytest
 from pydantic import BaseModel
 from redis.asyncio import Redis
 
-from app.core.attempt_store import delete_attempt, get_attempt, store_attempt
-from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation
+from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
+from app.core.exceptions import AttemptContextInvalid, AttemptNotFound, AttemptOwnershipViolation
+
+CONNECTION_ID = UUID("550e8400-e29b-41d4-a716-446655440001")
 
 
 class FakeAttempt(BaseModel):
@@ -22,6 +25,7 @@ class FakeAttempt(BaseModel):
 
     attempt_id: str
     session_id: str
+    database_connection_id: str = str(CONNECTION_ID)
     sql: str
     question: str
     evaluator_result: dict | None = None
@@ -56,6 +60,7 @@ class TestAttemptStoreUnit:
         redis = AsyncMock(spec=Redis)
         raw = (
             '{"attempt_id":"a1","session_id":"s1","sql":"SELECT 1","question":"q1",'
+            f'"database_connection_id":"{CONNECTION_ID}",'
             '"evaluator_result":null,"executor_result":null,"created_at":"","expires_at":""}'
         )
         redis.get = AsyncMock(return_value=raw)
@@ -69,6 +74,7 @@ class TestAttemptStoreUnit:
         redis = AsyncMock(spec=Redis)
         raw = (
             '{"attempt_id":"a1","session_id":"s1","sql":"SELECT 1","question":"q1",'
+            f'"database_connection_id":"{CONNECTION_ID}",'
             '"evaluator_result":null,"executor_result":null,"created_at":"","expires_at":""}'
         )
         redis.get = AsyncMock(return_value=raw)
@@ -131,6 +137,72 @@ class TestAttemptStoreUnit:
         assert stored["executor_result"]["rows"][0][0] == "2026-05-23T12:00:00"
         assert stored["executor_result"]["rows"][0][1] == "2026-05-23"
         assert stored["executor_result"]["rows"][0][2] == "12:30:00"
+
+    async def test_connection_context_round_trips_as_canonical_uuid(self):
+        """The submit-time source is canonical, immutable attempt context."""
+        redis = AsyncMock(spec=Redis)
+        attempt = EphemeralAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            user_id="u1",
+            database_connection_id=str(CONNECTION_ID).upper(),
+        )
+
+        await store_attempt(attempt, "s1", redis)
+        stored_json = redis.set.await_args.args[1]
+        redis.get = AsyncMock(return_value=stored_json)
+
+        restored = await get_attempt("a1", "s1", redis)
+
+        assert restored.database_connection_id == CONNECTION_ID
+        assert json.loads(stored_json)["database_connection_id"] == str(CONNECTION_ID)
+
+    @pytest.mark.parametrize(
+        "stored_context",
+        [
+            {},
+            {"database_connection_id": "not-a-uuid"},
+        ],
+    )
+    async def test_missing_or_malformed_connection_context_fails_closed(self, stored_context):
+        """Legacy or corrupt Redis attempts cannot select a fallback source."""
+        redis = AsyncMock(spec=Redis)
+        redis.get = AsyncMock(
+            return_value=json.dumps(
+                {
+                    "attempt_id": "a1",
+                    "session_id": "s1",
+                    "user_id": "u1",
+                    **stored_context,
+                }
+            )
+        )
+
+        with pytest.raises(AttemptContextInvalid):
+            await get_attempt("a1", "s1", redis)
+
+    async def test_connection_continuity_adds_no_sensitive_context_fields(self):
+        """Continuity stores only the connection UUID, never connection internals."""
+        redis = AsyncMock(spec=Redis)
+        attempt = EphemeralAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            user_id="u1",
+            database_connection_id=CONNECTION_ID,
+        )
+
+        await store_attempt(attempt, "s1", redis)
+        stored = json.loads(redis.set.await_args.args[1])
+
+        assert {
+            "credentials",
+            "connection_string",
+            "schema_context",
+            "role_policy",
+            "row_filters",
+            "column_masks",
+            "source_rows",
+        }.isdisjoint(stored)
 
 
 @pytest.mark.integration
