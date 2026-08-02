@@ -14,6 +14,10 @@ Combined accounting is 456 surfaces: Exact 238, Partial 189, Missing 15, Intenti
 
 The unique disposition is 36 product gaps, four coverage gaps, one contract/documentation drift gap, one test-harness gap, four operational gaps, and one product-scope decision. Three consolidated rows have `Needs Decision` status because two operational policies also require owner input. No confirmed security or data-integrity defect is deferred or closed by broad existing evidence.
 
+## Remediation progress
+
+- `CHUNK-01` / `IS-GAP-001`: **Resolved** on tested main `3522440f0bbf3c837aafe62edaf2e9d89d4717fb` via [#297](https://github.com/RkShanks/QueryCraft/pull/297). See the [Markdown](evidence/chunk-01-source-continuity.md) and [JSON](evidence/chunk-01-source-continuity.json) merged-main evidence. `CHUNK-02` is unblocked; no later chunk has started.
+
 ## Artifacts
 
 - `backend-inventory.md` — human-readable inventory, counts, drift ledger, and all required row fields.
