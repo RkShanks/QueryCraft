@@ -58,6 +58,7 @@ def service_with_real_evaluator(mock_deps):
             ]
         ),
         source_db_executor=mock_deps["executor"],
+        connection_id="00000000-0000-0000-0000-000000000001",
     )
 
 

@@ -75,6 +75,7 @@ from app.services.query_service import QueryService
 # regression that puts it back into context fails.
 _AUDIT_KNOWN_ACCEPTED_QUERY_ID = "aaaaaaaa-0000-0000-0000-000000000001"
 _AUDIT_KNOWN_USER_ID = "550e8400-e29b-41d4-a716-446655440000"
+_AUDIT_CONNECTION_ID = "770e8400-e29b-41d4-a716-446655440000"
 
 _AUDIT_FORBIDDEN_IN_CONTEXT = (
     # raw SQL fragment
@@ -675,6 +676,7 @@ class TestAcceptAuditLogging:
             attempt_id=attempt_id,
             session_id=http_session_id,
             user_id=deps["user_id"],
+            database_connection_id=_AUDIT_CONNECTION_ID,
             state="EXECUTED",
             sql="SELECT 1",
             question="How many?",
@@ -728,6 +730,7 @@ class TestRejectAuditLogging:
             attempt_id=attempt_id,
             session_id=http_session_id,
             user_id=deps["user_id"],
+            database_connection_id=_AUDIT_CONNECTION_ID,
             state="EXECUTED",
             sql="SELECT 1",
             question="How many?",
@@ -775,13 +778,8 @@ class TestRejectAuditLogging:
             f"actor_identity missing or wrong on QUERY_REJECT: {reject_call.kwargs.get('actor_identity')!r}"
         )
 
-    async def test_reject_query_without_user_id_keeps_none_actors(self):
-        """PR #133: when user_id is not passed (legacy callers),
-        QUERY_REJECT records actor_id=None and actor_identity=None
-        rather than fabricating a value. Backward-compatible with
-        existing reject test callers."""
-        from app.db.models.enums import AuditActionType
-
+    async def test_reject_query_requires_authenticated_user_id(self):
+        """A reject decision cannot proceed without authenticated ownership context."""
         service, deps = _make_service()
         http_session_id = "http-sess-1"
         attempt_id = str(uuid.uuid4())
@@ -791,35 +789,23 @@ class TestRejectAuditLogging:
             attempt_id=attempt_id,
             session_id=http_session_id,
             user_id=deps["user_id"],
+            database_connection_id=_AUDIT_CONNECTION_ID,
             state="EXECUTED",
             sql="SELECT 1",
             question="How many?",
         )
         await store_attempt(ephemeral, http_session_id, service._redis)
 
-        with patch(
-            "app.services.audit_service.AuditService.log",
-            new_callable=AsyncMock,
-        ) as mock_audit:
-            with patch.object(
-                service._llm,
-                "generate_sql",
-                new=AsyncMock(return_value="SELECT 1"),
-            ):
-                await service.reject_query(
-                    attempt_id=attempt_id,
-                    http_session_id=http_session_id,
-                )
+        with (
+            patch("app.services.audit_service.AuditService.log", new_callable=AsyncMock) as mock_audit,
+            pytest.raises(TypeError),
+        ):
+            await service.reject_query(
+                attempt_id=attempt_id,
+                http_session_id=http_session_id,
+            )
 
-        reject_calls = [
-            c
-            for c in mock_audit.call_args_list
-            if (c.kwargs.get("action") if c.kwargs else None) == AuditActionType.QUERY_REJECT
-        ]
-        assert len(reject_calls) == 1
-        reject_call = reject_calls[0]
-        assert reject_call.kwargs.get("actor_id") is None
-        assert reject_call.kwargs.get("actor_identity") is None
+        mock_audit.assert_not_awaited()
 
     async def test_reject_query_context_has_no_resource_uuids(self):
         """PR #133: QUERY_REJECT context must NOT carry
@@ -837,6 +823,7 @@ class TestRejectAuditLogging:
             attempt_id=attempt_id,
             session_id=http_session_id,
             user_id=deps["user_id"],
+            database_connection_id=_AUDIT_CONNECTION_ID,
             state="EXECUTED",
             sql="SELECT 1",
             question="How many?",
@@ -850,7 +837,7 @@ class TestRejectAuditLogging:
         # regenerate is not exercised — the test
         # focuses on the QUERY_REJECT audit shape
         # only).
-        async def _noop_regen(attempt_id, http_session_id):
+        async def _noop_regen(attempt_id, http_session_id, user_id):
             from app.schemas.query import RefinePrompt
 
             return RefinePrompt(message_key="query.refine.message", should_refine=True)
@@ -895,6 +882,7 @@ class TestRejectAuditLogging:
                 await service.reject_query(
                     attempt_id=attempt_id,
                     http_session_id=http_session_id,
+                    user_id=deps["user_id"],
                 )
 
         actions = _audit_actions(mock_audit)
@@ -1010,13 +998,14 @@ async def _invoke_execution_operation(service, deps, operation: str):
             attempt_id="prior-attempt",
             session_id="http-sess-1",
             user_id=deps["user_id"],
+            database_connection_id=_AUDIT_CONNECTION_ID,
             sql="SELECT orders.id FROM orders",
             question="How many orders?",
             state="EXECUTED",
         )
         await store_attempt(prior_attempt, "http-sess-1", service._redis)
         await service._redis.set("active_attempt:http-sess-1", prior_attempt.attempt_id)
-        return await service.regenerate_query(prior_attempt.attempt_id, "http-sess-1")
+        return await service.regenerate_query(prior_attempt.attempt_id, "http-sess-1", deps["user_id"])
 
     if operation == "rerun":
         deps["repo"].get_by_id = AsyncMock(

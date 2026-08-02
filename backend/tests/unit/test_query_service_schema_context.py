@@ -129,6 +129,7 @@ async def test_submit_question_passes_schema_context():
         evaluator=StubEvaluator(),
         source_db_executor=StubExecutor(),
         schema_context="TABLE customers (id INT, name TEXT)",
+        connection_id="550e8400-e29b-41d4-a716-446655440001",
     )
 
     # Bypass the lock by monkeypatching
@@ -188,6 +189,7 @@ async def test_tsql_top_query_reaches_adapter_after_evaluator_passes():
         source_db_adapter=MssqlResultAdapter(),
         schema_context=schema_context,
         target_dialect="tsql",
+        connection_id="550e8400-e29b-41d4-a716-446655440001",
     )
 
     result = await service.submit_question(
@@ -215,6 +217,7 @@ async def test_regenerate_query_passes_schema_context():
         evaluator=StubEvaluator(),
         source_db_executor=StubExecutor(),
         schema_context="TABLE orders (id INT, total DECIMAL)",
+        connection_id="00000000-0000-0000-0000-000000000001",
     )
 
     class FakeRedis:
@@ -239,6 +242,7 @@ async def test_regenerate_query_passes_schema_context():
         llm_provider = "ollama"
         state = "EXECUTED"
         user_id = "550e8400-e29b-41d4-a716-446655440000"
+        database_connection_id = "00000000-0000-0000-0000-000000000001"
 
     service._redis = FakeRedis()
 
@@ -260,7 +264,11 @@ async def test_regenerate_query_passes_schema_context():
     import contextlib
 
     with contextlib.suppress(Exception):
-        await service.regenerate_query("attempt-1", "session-1")
+        await service.regenerate_query(
+            "attempt-1",
+            "session-1",
+            "550e8400-e29b-41d4-a716-446655440000",
+        )
 
     qs.get_attempt = orig_get
     qs.delete_attempt = orig_delete

@@ -225,12 +225,16 @@ class TestRetryExhaustion:
 
         req = RegenerateQueryRequest(attempt_id=str(uuid4()))
 
-        with patch("app.api.v1.query.require_permission", return_value=AsyncMock()):
+        with patch(
+            "app.api.v1.query._build_query_service_for_attempt",
+            new=AsyncMock(return_value=mock_service),
+        ):
             result = await regenerate_query(
                 request=request,
                 req=req,
                 user_id=str(uuid4()),
-                service=mock_service,
+                db=AsyncMock(),
+                redis=AsyncMock(),
             )
 
         assert result.kind == "refine"

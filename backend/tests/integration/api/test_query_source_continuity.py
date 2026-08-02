@@ -305,19 +305,13 @@ async def test_session_switch_cannot_redirect_public_decision(
         attempt_id = submit_response.json()["attempt_id"]
         await switch_session(authenticated_client, session_id, switched_source.connection_id)
 
-        fallback_introspect = AsyncMock(side_effect=AssertionError("legacy source fallback invoked"))
-        with patch.object(
-            query_routes._source_introspector,
-            "introspect",
-            new=fallback_introspect,
-        ):
-            request_body = {"attempt_id": attempt_id}
-            if decision == "accept":
-                request_body["session_id"] = session_id
-            decision_response = await authenticated_client.post(
-                f"/api/v1/query/{decision}",
-                json=request_body,
-            )
+        request_body = {"attempt_id": attempt_id}
+        if decision == "accept":
+            request_body["session_id"] = session_id
+        decision_response = await authenticated_client.post(
+            f"/api/v1/query/{decision}",
+            json=request_body,
+        )
 
         assert decision_response.status_code in {200, 201}
         expected_attempt_id = attempt_id
@@ -342,7 +336,7 @@ async def test_session_switch_cannot_redirect_public_decision(
         assert matching_attempt["database_connection_id"] == source.connection_id
         assert matching_attempt["database_type"] == source.database_type
         assert matching_attempt["database_connection_name"] == source.display_name
-        assert fallback_introspect.await_count == 0
+        assert not hasattr(query_routes, "_get_query_service")
         assert llm.calls == (1 if decision == "accept" else 2)
         assert_only_expected_adapter(adapter_calls, source.database_type, 1 if decision == "accept" else 2)
 

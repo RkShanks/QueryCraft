@@ -14,6 +14,9 @@ import pytest
 from app.core.attempt_store import EphemeralAttempt
 from app.services.query_service import QueryService
 
+USER_ID = "00000000-0000-0000-0000-000000000001"
+CONNECTION_ID = "00000000-0000-0000-0000-000000000002"
+
 
 def _active_attempt_get(active_attempt="a1"):
     async def _get(key):
@@ -87,6 +90,7 @@ class TestRegenerateDecimalSerialization:
             source_db_executor=mock_deps["executor"],
             llm_provider="stub",
             schema_context="",
+            connection_id=CONNECTION_ID,
         )
 
     @pytest.mark.asyncio
@@ -116,7 +120,8 @@ class TestRegenerateDecimalSerialization:
         prior = EphemeralAttempt(
             attempt_id="a1",
             session_id="s1",
-            user_id="00000000-0000-0000-0000-000000000001",
+            user_id=USER_ID,
+            database_connection_id=CONNECTION_ID,
             sql="SELECT 1;",
             question="What is the average?",
             attempt_number=1,
@@ -126,7 +131,7 @@ class TestRegenerateDecimalSerialization:
         service = self._make_service(mock_deps)
 
         with patch("app.services.query_service.get_attempt", new_callable=AsyncMock, return_value=prior):
-            await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1", USER_ID)
 
         # Verify the prior_saved row was updated with sanitized rows
         saved_row = mock_deps["repo"].get_by_attempt_id.return_value

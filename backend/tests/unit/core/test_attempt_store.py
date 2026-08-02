@@ -141,6 +141,7 @@ class TestAttemptStoreUnit:
     async def test_connection_context_round_trips_as_canonical_uuid(self):
         """The submit-time source is canonical, immutable attempt context."""
         redis = AsyncMock(spec=Redis)
+        redis.set = AsyncMock(return_value=True)
         attempt = EphemeralAttempt(
             attempt_id="a1",
             session_id="s1",
@@ -184,6 +185,7 @@ class TestAttemptStoreUnit:
     async def test_connection_continuity_adds_no_sensitive_context_fields(self):
         """Continuity stores only the connection UUID, never connection internals."""
         redis = AsyncMock(spec=Redis)
+        redis.set = AsyncMock(return_value=True)
         attempt = EphemeralAttempt(
             attempt_id="a1",
             session_id="s1",

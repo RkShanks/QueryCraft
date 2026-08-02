@@ -5,13 +5,14 @@ validation (Inv 6) and 15-minute TTL.
 """
 
 import json
+import uuid
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, ValidationError
 from redis.asyncio import Redis
 
-from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation
+from app.core.exceptions import AttemptContextInvalid, AttemptNotFound, AttemptOwnershipViolation
 
 
 class _DecimalEncoder(json.JSONEncoder):
@@ -20,6 +21,8 @@ class _DecimalEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         if isinstance(obj, Decimal):
             return float(obj)
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
         if hasattr(obj, "isoformat"):
             return obj.isoformat()
         return super().default(obj)
@@ -28,9 +31,12 @@ class _DecimalEncoder(json.JSONEncoder):
 class EphemeralAttempt(BaseModel):
     """An attempt stored temporarily in Redis."""
 
+    model_config = ConfigDict(extra="forbid")
+
     attempt_id: str
     session_id: str
     user_id: str = ""
+    database_connection_id: uuid.UUID
     sql: str = ""
     question: str = ""
     attempt_number: int = 1
@@ -47,13 +53,13 @@ _ATTEMPT_TTL_SECONDS = 15 * 60
 
 
 async def store_attempt(
-    attempt: BaseModel,
+    attempt: EphemeralAttempt,
     session_id: str,
     redis: Redis,
     ttl: int = _ATTEMPT_TTL_SECONDS,
 ) -> None:
     """Serialize *attempt* to JSON and store in Redis with TTL."""
-    data = attempt.model_dump() if hasattr(attempt, "model_dump") else attempt.dict()
+    data = attempt.model_dump()
     # Ensure session_id is present for ownership validation
     data["session_id"] = session_id
     key = f"attempt:{data.get('attempt_id')}"
@@ -78,12 +84,20 @@ async def get_attempt(
     if raw is None:
         raise AttemptNotFound()
 
-    data = json.loads(raw)
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise AttemptContextInvalid() from exc
+    if not isinstance(data, dict):
+        raise AttemptContextInvalid()
     stored_session = data.get("session_id")
     if stored_session != session_id:
         raise AttemptOwnershipViolation()
 
-    return EphemeralAttempt(**data)
+    try:
+        return EphemeralAttempt.model_validate(data)
+    except ValidationError as exc:
+        raise AttemptContextInvalid() from exc
 
 
 async def delete_attempt(attempt_id: str, redis: Redis) -> None:

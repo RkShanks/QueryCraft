@@ -11,6 +11,8 @@ import pytest
 
 from app.services.query_service import QueryService
 
+CONNECTION_ID = "00000000-0000-0000-0000-000000000001"
+
 
 def _attempt_json():
     return json.dumps(
@@ -18,11 +20,11 @@ def _attempt_json():
             "attempt_id": "a-1",
             "session_id": "sess-1",
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
-            "question_text": "Q",
-            "generated_sql": "SELECT 1",
+            "database_connection_id": CONNECTION_ID,
+            "question": "Q",
+            "sql": "SELECT 1",
             "llm_provider": "ollama",
             "attempt_number": 1,
-            "rejected_sqls": [],
             "state": "EXECUTED",
         }
     )
@@ -38,6 +40,7 @@ class TestQueryServiceAccept:
         mock_query.id = "q-1"
         mock_query.question_text = "Q"
         mock_query.generated_sql = "SELECT 1"
+        mock_query.database_connection_id = CONNECTION_ID
         mock_query.accepted_at = MagicMock()
         mock_query.accepted_at.isoformat.return_value = "2026-05-04T12:00:00Z"
         repo.create = AsyncMock(return_value=mock_query)
@@ -62,7 +65,7 @@ class TestQueryServiceAccept:
         session_repo.update_preview_text = AsyncMock(return_value=True)
         db_session = AsyncMock()
         db_session.flush = AsyncMock()
-        _db_conn_id = "00000000-0000-0000-0000-000000000001"
+        _db_conn_id = CONNECTION_ID
 
         def _execute_side_effect(stmt, *args, **kwargs):
             async def _coro():
@@ -84,6 +87,7 @@ class TestQueryServiceAccept:
             llm=None,
             evaluator=None,
             source_db_executor=None,
+            connection_id=CONNECTION_ID,
         )
 
     def _make_get(self, active_attempt="a-1", attempt_data=None):
@@ -130,8 +134,9 @@ class TestQueryServiceAccept:
                     "attempt_id": "a-1",
                     "session_id": "sess-2",
                     "user_id": "550e8400-e29b-41d4-a716-446655440000",
-                    "question_text": "Q",
-                    "generated_sql": "SELECT 1",
+                    "database_connection_id": CONNECTION_ID,
+                    "question": "Q",
+                    "sql": "SELECT 1",
                     "llm_provider": "ollama",
                 }
             ),
@@ -171,8 +176,9 @@ class TestQueryServiceAccept:
                     "attempt_id": "a-1",
                     "session_id": "sess-1",
                     "user_id": "550e8400-e29b-41d4-a716-446655440000",
-                    "question_text": "Q",
-                    "generated_sql": "SELECT 1",
+                    "database_connection_id": CONNECTION_ID,
+                    "question": "Q",
+                    "sql": "SELECT 1",
                     "llm_provider": "ollama",
                     "attempt_number": 1,
                     "state": bad_state,

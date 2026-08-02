@@ -1,7 +1,6 @@
-"""Unit tests for QueryService missing DB connection handling.
+"""Unit tests for explicit QueryService source scoping.
 
-Validates that _get_database_connection_id raises a controlled HTTPException
-instead of returning nil UUID.
+Validates that the service never discovers an arbitrary default connection.
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -14,7 +13,7 @@ from app.services.query_service import QueryService
 
 @pytest.mark.asyncio
 async def test_get_database_connection_id_missing_raises_500():
-    """Missing database_connections row raises 500 with clear message_key."""
+    """A service without explicit source context fails closed."""
     db_session = AsyncMock()
     db_session.execute = AsyncMock(return_value=MagicMock(fetchone=MagicMock(return_value=None)))
     service = QueryService(
@@ -32,11 +31,12 @@ async def test_get_database_connection_id_missing_raises_500():
     detail = exc_info.value.detail
     assert detail["error"] == "config_error"
     assert detail["message_key"] == "error.sourceDbNotConfigured"
+    db_session.execute.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_get_database_connection_id_returns_id_when_present():
-    """Row present returns the id string."""
+async def test_get_database_connection_id_returns_explicit_scope_only():
+    """The constructor-scoped source is returned without querying a default row."""
     db_session = AsyncMock()
     db_session.execute = AsyncMock(
         return_value=MagicMock(fetchone=MagicMock(return_value=("aaaaaaaa-0000-0000-0000-000000000001",)))
@@ -49,6 +49,8 @@ async def test_get_database_connection_id_returns_id_when_present():
         llm=MagicMock(),
         evaluator=MagicMock(),
         source_db_executor=MagicMock(),
+        connection_id="aaaaaaaa-0000-0000-0000-000000000001",
     )
     result = await service._get_database_connection_id()
     assert result == "aaaaaaaa-0000-0000-0000-000000000001"
+    db_session.execute.assert_not_awaited()

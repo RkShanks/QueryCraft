@@ -159,6 +159,13 @@ class AttemptOwnershipViolation(AttemptError):
         super().__init__("No active query result to act on", message_key="error.attemptInvalid")
 
 
+class AttemptContextInvalid(AttemptError):
+    """Raised when immutable server-owned attempt context is invalid."""
+
+    def __init__(self) -> None:
+        super().__init__("No active query result to act on", message_key="error.attemptInvalid")
+
+
 # ─── Session ───
 
 
