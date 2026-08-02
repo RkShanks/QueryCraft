@@ -97,17 +97,18 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 | Status | Count |
 | --- | ---: |
-| Pending | 43 |
-| Resolved | 1 |
+| Pending | 42 |
+| Resolved | 2 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
 | **Total** | **47** |
 
 `IS-GAP-001` is resolved on tested main `3522440f0bbf3c837aafe62edaf2e9d89d4717fb` via [#297](https://github.com/RkShanks/QueryCraft/pull/297). Its [CHUNK-01 evidence](evidence/chunk-01-source-continuity.md) records the three-dialect HTTP matrix, focused browser decision flow, fail-closed cases, gates, cleanup, and protected-baseline confirmation.
 
+`IS-GAP-002` is resolved on tested main `76f317b6894ffb4300133d51ad4e201ecb022d96` via [#299](https://github.com/RkShanks/QueryCraft/pull/299). Its [CHUNK-02 evidence](evidence/chunk-02-masked-attempt-state.md) records the metadata-only storage design, direct/alias/nested/row-filter matrix across three dialects, Redis/API/history/audit/browser absence checks, failure behavior, gates, and cleanup.
+
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
-- Masking evidence covers response/history, not raw pre-mask Redis attempt state.
 - Phase 2 session evidence proves CRUD/cascade and frontend timer Undo, not in-flight cancellation.
 - Timeout evidence proves default failure shape, not configured non-default behavior.
 - Phase 6 quota and audit evidence covers initial submit/export and sanitized retry failure, not retry accounting and successful regenerate lifecycle.
@@ -119,7 +120,7 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-02` is unblocked by the merged and proved `CHUNK-01`; no later chunk has started.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-03` is unblocked by the merged and proved `CHUNK-01` and `CHUNK-02`; no CHUNK-03 work has started.
 
 ## Validation scope
 

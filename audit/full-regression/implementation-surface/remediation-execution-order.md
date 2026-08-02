@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` / `IS-GAP-001` is resolved on tested main `3522440f0bbf3c837aafe62edaf2e9d89d4717fb` via [#297](https://github.com/RkShanks/QueryCraft/pull/297) and [merged-main evidence](evidence/chunk-01-source-continuity.md). No later chunk has started.
+Status: `CHUNK-01` / `IS-GAP-001` and `CHUNK-02` / `IS-GAP-002` are resolved. CHUNK-02 passed merged-main three-dialect Redis/API/browser proof on `76f317b6894ffb4300133d51ad4e201ecb022d96` via [#299](https://github.com/RkShanks/QueryCraft/pull/299) and [merged-main evidence](evidence/chunk-02-masked-attempt-state.md). `CHUNK-03` is unblocked; no CHUNK-03 work has started.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -26,6 +26,8 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Stop conditions:** Any fallback semantics requiring a product choice, policy/source mismatch outside the reproduced path, or inability to prove all three dialects without touching shared fixtures.
 
 ## CHUNK-02 — protected rows in attempt state
+
+- **Progress:** Resolved. Submit and regenerate persist metadata-only attempts; three-dialect merged-main Redis/API/browser proof passed, all isolated resources were removed, and the protected baseline was preserved. `CHUNK-03` is unblocked.
 
 - **IDs / role / branch / context:** `IS-GAP-002`; Backend Implementer (Kimi/GLM); `phase-6/wave-19.02-masked-attempt-state`; 70–100k.
 - **Likely source:** `backend/src/app/services/query_service.py`, `backend/src/app/core/attempt_store.py`, policy enforcement and their unit/security tests.
@@ -357,4 +359,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01 / IS-GAP-001` is the only safe first dispatch. It is the standalone Critical correctness/security root, and CHUNK-02 through CHUNK-05 depend on trustworthy attempt/source continuity. No later cleanup, contract-generation, browser-polish or evidence chunk should precede it.
+`CHUNK-01 / IS-GAP-001` and `CHUNK-02 / IS-GAP-002` are resolved. `CHUNK-03 / IS-GAP-003` is the next unblocked dispatch; no CHUNK-03 work has started.
