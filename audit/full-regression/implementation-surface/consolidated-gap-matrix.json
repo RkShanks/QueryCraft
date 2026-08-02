@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 43, "Resolved": 1, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 42, "Resolved": 2, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -36,6 +36,13 @@
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/297",
       "tested_main": "3522440f0bbf3c837aafe62edaf2e9d89d4717fb",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-01-source-continuity.json"
+    },
+    "CHUNK-02": {
+      "gap_id": "IS-GAP-002",
+      "status": "Resolved",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/299",
+      "tested_main": "76f317b6894ffb4300133d51ad4e201ecb022d96",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-02-masked-attempt-state.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -81,7 +88,8 @@
       "required_evidence": "Value-safe Redis/API comparison showing canary absence in cache, response, history and audit.",
       "isolation": "Disposable Redis and restricted source data; do not retain canary values in test reports.",
       "regression_rows": ["P5-FR-132", "P5-FR-143", "XP-006", "XP-012"],
-      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-02", "status": "Pending",
+      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-02", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/299", "tested_main": "76f317b6894ffb4300133d51ad4e201ecb022d96", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-02-masked-attempt-state.json"},
       "source_refs": ["backend/src/app/services/query_service.py::QueryService.submit_question", "backend/src/app/services/policy_enforcement.py::PolicyEnforcementService.apply_column_masks", "backend/src/app/core/attempt_store.py::store_attempt", "backend/src/app/core/attempt_store.py::EphemeralAttempt", "backend/tests/unit/core/test_attempt_store.py", "backend/tests/unit/test_query_service_submit.py"]
     },
     {

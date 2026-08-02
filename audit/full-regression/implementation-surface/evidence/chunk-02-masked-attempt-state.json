@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "gap_id": "IS-GAP-002",
+  "chunk_id": "CHUNK-02",
+  "status": "Resolved",
+  "starting_main": "6682520e92174ac696c31d6989c36a6fb677b605",
+  "tested_product_main": "76f317b6894ffb4300133d51ad4e201ecb022d96",
+  "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/299",
+  "storage_design": {
+    "production_executor_result_readers": 0,
+    "result_payload_persisted_to_redis": false,
+    "masked_duplicate_persisted_to_redis": false,
+    "row_count_persisted_to_redis": false,
+    "column_metadata_persisted_to_redis": false,
+    "submit_masks_before_executed_state_write": true,
+    "regenerate_masks_before_attempt_write": true,
+    "response_masked": true,
+    "accepted_history_masked": true
+  },
+  "tdd": {
+    "red_commit": "c92c786dd4bcb98956eba3cc62356d2a59173e2d",
+    "red_unit_failed": 10,
+    "red_unit_passed": 17,
+    "red_dialect_projection_failures": 12,
+    "green_commit": "50e1decf21b1791ada7d1835fbfed272082c313e",
+    "refactor_commit": null
+  },
+  "automated_gates": {
+    "focused_attempt_submit_regenerate_policy_passed": 67,
+    "public_source_continuity_api_passed": 42,
+    "broader_mask_history_audit_security_passed": 160,
+    "broader_mask_history_audit_security_skipped": 2,
+    "backend": {
+      "passed": 2810,
+      "skipped": 17,
+      "subtests_passed": 35,
+      "ruff_check": true,
+      "ruff_format": true,
+      "formatted_files_checked": 414
+    },
+    "frontend": {
+      "focused_test_files_passed": 2,
+      "focused_tests_passed": 27
+    },
+    "diff_check": true,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "fix_ci": {
+      "backend_test": "passed",
+      "frontend_test": "passed"
+    }
+  },
+  "isolated_proof": {
+    "dedicated_platform_postgres": true,
+    "dedicated_redis": true,
+    "dedicated_backend": true,
+    "real_adapters": ["postgresql", "mysql", "mssql"],
+    "dialects": 3,
+    "projection_policy_cases": 12,
+    "masked_api_results": 15,
+    "masked_history_results": 15,
+    "accept_paths": 3,
+    "regenerate_paths": 3,
+    "source_continuity_paths": 3,
+    "attempt_payloads_checked": 16,
+    "redis_channels_checked": 15,
+    "metadata_only_attempt_schema": true,
+    "redis_result_payload_absent": true,
+    "redis_raw_values_absent": true,
+    "api_raw_values_absent": true,
+    "history_raw_values_absent": true,
+    "audit_search_export_raw_values_absent": true,
+    "audit_database_raw_values_absent": true
+  },
+  "failure_proof": {
+    "malformed_mask_failed_closed": true,
+    "source_failure_sanitized": true,
+    "ownership_guard_preserved": true,
+    "byte_equal_refine_safe": true,
+    "masking_exception_metadata_only": true,
+    "redis_serialization_failure_sanitized": true,
+    "source_timeout_metadata_only": true
+  },
+  "browser_proof": {
+    "mask_present": true,
+    "dom_raw_absent": true,
+    "storage_raw_absent": true,
+    "accessibility_raw_absent": true,
+    "network_raw_absent": true,
+    "console_raw_absent": true,
+    "artifacts_retained": false
+  },
+  "cleanup": {
+    "isolated_resources_removed": true,
+    "source_services_restored": true,
+    "normal_backend_http_200": true,
+    "normal_frontend_http_200": true,
+    "temporary_files_removed": true,
+    "protected_baseline_preserved": true
+  },
+  "scope": {
+    "frontend_product_changed": false,
+    "other_gaps_changed": false,
+    "chunk_03_started": false,
+    "chunk_03_unblocked": true
+  }
+}
