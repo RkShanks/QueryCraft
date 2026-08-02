@@ -1,0 +1,164 @@
+# Consolidated implementation-surface gap matrix
+
+Snapshot: synchronized local and remote main at `0713c14a3e4dc44d4c330347d17aa86f52280d17` on 2026-08-02.
+
+This is a source-verification and execution-planning artifact. It authorizes no product-code, test, migration, service, browser, or remediation change. The machine-readable peer is [consolidated-gap-matrix.json](consolidated-gap-matrix.json); it carries every gap's full current/required behavior, impact, dependency, test, evidence, isolation, regression-row, owner, chunk, and exact source-reference fields.
+
+## Reconciliation
+
+| Measure | Backend | Frontend | Combined |
+| --- | ---: | ---: | ---: |
+| Surfaces | 264 | 192 | 456 |
+| Exact | 206 | 32 | 238 |
+| Partial | 47 | 142 | 189 |
+| Missing | 5 | 10 | 15 |
+| Intentional N/A | 6 | 8 | 14 |
+| Raw candidates | 21 | 33 | 54 |
+
+Seven cross-stack candidates describe an already-counted root cause and are merged: `FE-GAP-005→BE-GAP-001`, `FE-GAP-004→BE-GAP-003`, `FE-GAP-009→BE-GAP-008`, `BE-GAP-020→FE-GAP-003`, `FE-GAP-029→BE-GAP-010`, `FE-GAP-032→BE-GAP-014`, and `FE-GAP-031→BE-GAP-019`. Therefore 54 raw candidates reconcile to 47 unique consolidated gaps.
+
+## Matrix
+
+| Consolidated ID | Severity | Disposition | Backend Candidates | Frontend Candidates | Surface IDs | Root Cause | Required Outcome | Tests/Evidence | Dependencies | Execution Chunk | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| IS-GAP-001 | Critical | Confirmed Product Gap | BE-GAP-001 | FE-GAP-005 | BE-API-052/053/054; BE-SVC-048/049/050; BE-PIPE-005; BE-SEC-001; FE route/page/action/API/hook decision surfaces | Selected connection is constructor-only and absent from Redis attempt state; decision routes rebuild a legacy default service. | Persist immutable connection context and reconstruct accept/reject/regenerate without fallback. | Three-dialect API TDD plus real HTTP/browser lifecycle evidence. | — | CHUNK-01 | Pending |
+| IS-GAP-002 | High | Confirmed Product Gap | BE-GAP-002 | — | BE-API-055; BE-SVC-047; BE-SEC-001 | Submit stores raw executor rows before masking. | Mask/minimize before any Redis serialization. | Redis security integration and value-safe canary evidence. | IS-GAP-001 | CHUNK-02 | Pending |
+| IS-GAP-003 | High | Confirmed Product Gap | BE-GAP-003 | FE-GAP-004 | BE-API-058; FE-ACTION-006; FE-API-014; FE-HOOK-012; FE-STATE-006 | DELETE, running task, lock/attempt state and late UI completion share no cancellation lifecycle. | Cancel source work, suppress late success, clean state and preserve coherent Undo. | Backend concurrency plus browser delete/undo/delete trace. | IS-GAP-001 | CHUNK-03 | Pending |
+| IS-GAP-004 | High | Confirmed Product Gap | BE-GAP-004 | — | BE-API-053/055; BE-SVC-047/050; BE-PIPE-006; BE-CORE-001; BE-SEC-002 | Timeout and lock TTL literals bypass configuration. | Use configured deadline end-to-end and a documented derived lock lifetime. | Non-default config TDD plus controlled slow-source timing. | IS-GAP-001 | CHUNK-04 | Pending |
+| IS-GAP-005 | High | Confirmed Product Gap | BE-GAP-005 | — | BE-API-053/054; BE-SVC-049/050 | Reject/regenerate bypass query and execution quota boundaries. | Apply ordered quota accounting before retry LLM/source work. | Quota denial/downstream-call/counter matrix. | IS-GAP-001, 004 | CHUNK-05 | Pending |
+| IS-GAP-006 | High | Confirmed Product Gap | BE-GAP-006 | — | BE-API-053/054; BE-SVC-049/050 | Successful regenerate lacks a complete validate/execute audit lifecycle. | Emit one ordered, sanitized and truthful retry lifecycle. | Audit action order/count/chain assertions and API evidence. | IS-GAP-001, 005 | CHUNK-05 | Pending |
+| IS-GAP-007 | High | Confirmed Operational Gap | BE-GAP-007 | — | BE-API-065; BE-OPS-002/003 | Running process is treated as health; no liveness/readiness contract exists. | Add non-sensitive liveness/readiness and Compose readiness gating. | ASGI/Compose dependency-state tests and transition evidence. | IS-GAP-004 | CHUNK-13 | Pending |
+| IS-GAP-008 | High | Confirmed Contract/Documentation Drift | BE-GAP-008 | FE-GAP-009 | BE-OPS-009; FE-API-004/005/006/007; FE-HOOK-006; FE-OPS-001/002 | Static and generated clients are historical rather than derived from current runtime behavior. | Stabilize one 60-operation canonical contract and regenerate/gate all client types. | Runtime/canonical/client parity and focused browser checks. | IS-GAP-001, 003, 005, 006, 007, 009, 020 | CHUNK-14 | Pending |
+| IS-GAP-009 | High | Confirmed Product Gap | BE-GAP-009 | — | BE-DATA-016..023 | Migrations 001–008 lack populated cycles; revision 007 restores password_hash NOT NULL without handling valid SSO NULL rows. | Define downgrade data expectations and make every step safe/explicit. | Disposable populated PostgreSQL stepwise migration matrix. | — | CHUNK-06 | Pending |
+| IS-GAP-010 | Mid | Confirmed Operational Gap | BE-GAP-010 | FE-GAP-029 | BE-LIFE-011; FE-OPS-008/009 | Header ownership and deployed document metadata policy are not assigned. | Decide owner, then lock direct/proxied headers and branded/localized title behavior. | Static config plus production-like HTTP/browser matrix. | IS-GAP-007 | CHUNK-30 | Needs Decision |
+| IS-GAP-011 | Mid | Confirmed Operational Gap | BE-GAP-011 | — | BE-API-061..064 | FastAPI documentation routes inherit anonymous framework defaults without an exposure decision. | Choose public/authenticated/network-only/disabled behavior and retain CI generation. | Deployment access-policy tests/probes. | IS-GAP-008, 010 | CHUNK-30 | Needs Decision |
+| IS-GAP-012 | Mid | Confirmed Product Gap | BE-GAP-012 | — | BE-REPO-042 | Session-limit zset operations are non-atomic and mock-only under races. | Atomically add/evict with deterministic order and cleanup. | Real Redis concurrent local/SSO login tests. | — | CHUNK-11 | Pending |
+| IS-GAP-013 | Mid | Confirmed Product Gap | BE-GAP-013 | — | BE-REPO-021; BE-DATA-006 | Detection singleton is convention-only and initialized by a select-then-insert race. | Enforce singleton state and deterministic fail-closed repair. | Repository/migration concurrency and corruption tests. | IS-GAP-017 | CHUNK-10 | Pending |
+| IS-GAP-014 | Mid | Confirmed Product Gap | BE-GAP-014 | FE-GAP-032 | BE-API-020/022; FE quota route/page/action/API/hook surfaces | DB quota mutation commits before cache refresh while API/UI model only binary failure. | Define idempotent partial-success recovery and authoritative refetch. | DB/Redis fault TDD plus browser save/reset/reload. | — | CHUNK-09 | Pending |
+| IS-GAP-015 | Mid | Confirmed Coverage Gap | BE-GAP-015 | — | BE-PIPE-020/021/022 | Anthropic/OpenAI/Ollama are mock-tested; current live proof is Gemini-only. | Add approved bounded smoke per configured provider. | Deterministic adapter suite plus no-retention live evidence. | IS-GAP-004, 008 | CHUNK-24 | Pending |
+| IS-GAP-016 | Mid | Confirmed Coverage Gap | BE-GAP-016 | — | BE-EXT-006 | Enterprise IdP TLS/network/rotation behavior is represented by mock/in-memory dependencies. | Run isolated standards-complete OIDC/SAML rotation/outage/recovery. | Disposable IdP integration and value-safe evidence. | IS-GAP-044 | CHUNK-23 | Pending |
+| IS-GAP-017 | Mid | Confirmed Product Gap | BE-GAP-017 | — | BE-DATA-005/006/008/015 | Persisted quota/threshold/enum invariants rely on service validation, not DB constraints. | Add constraints or an explicit migration/repair/fail-closed policy. | Direct-row/migration/consumer fault matrix. | IS-GAP-009 | CHUNK-10 | Pending |
+| IS-GAP-018 | Mid | Confirmed Operational Gap | BE-GAP-018 | — | BE-OPS-003/004/005/007/008 | Bootstrap scripts trust unverified downloads, interpolated values and uninterrupted execution. | Checksum/authenticate inputs and make setup safe/idempotent/recoverable. | Disposable failed-download/quoting/partial-rerun tests. | IS-GAP-007 | CHUNK-25 | Pending |
+| IS-GAP-019 | Mid | Confirmed Product Gap | BE-GAP-019 | FE-GAP-031 | BE-API-019/056/059; FE-API-012/013; FE-HOOK-009/010 | Session/detail collections are unbounded and quota status fans out serially; client renders all. | Bound/paginate/batch with stable order and cancellable UI. | High-cardinality API/component/browser evidence. | IS-GAP-012 | CHUNK-12 | Pending |
+| IS-GAP-020 | High | Confirmed Product Gap | BE-GAP-020 | FE-GAP-003 | BE-API-055; BE-SVC-047; BE-CORE-001; FE workspace prompt surfaces | Primary PromptInput lacks a limit and API ignores configured MAX_QUESTION_LENGTH. | Enforce/communicate one configured limit at API and primary UI. | Boundary/config/component/browser tests using length only. | — | CHUNK-08 | Pending |
+| IS-GAP-021 | Low | Confirmed Product Gap | BE-GAP-021 | — | BE-LIFE-003/012; BE-SEC-001 | One shutdown failure can skip later closers; corrupt semantic cache data lacks typed recovery. | Attempt all cleanup and map corrupted records to constant outcomes. | Focused lifespan/cache fault tests. | IS-GAP-003, 007, 012 | CHUNK-29 | Pending |
+| IS-GAP-022 | High | Confirmed Product Gap | — | FE-GAP-001 | Ordinary routes/pages/actions/APIs/hooks listed by FE-GAP-001 | Ordinary navigation uses AuthGuard while APIs require exact permissions. | Guard routes/nav/request enablement and define no-permitted-home behavior. | Exact-permission component/browser matrix. | IS-GAP-023, 025 | CHUNK-07 | Pending |
+| IS-GAP-023 | High | Confirmed Product Gap | — | FE-GAP-002 | Auth, cache, hook and UI-state surfaces listed by FE-GAP-002 | Feature-only singleton caches survive identity/role changes and failed sign-out. | Identity-scope or atomically clear every query/UI state boundary. | Two-user/role integration and same-browser cache inspection. | — | CHUNK-07 | Pending |
+| IS-GAP-024 | High | Confirmed Product Gap | — | FE-GAP-006 | FE-ROUTE-008; FE-PAGE-008; FE-ACTION-037 | FR-136 exists only as a backend endpoint. | Add safe accessible EN/AR role-policy preview before save. | Client/component/API/browser allowed/blocked/error matrix. | IS-GAP-008, 026, 035 | CHUNK-15 | Pending |
+| IS-GAP-025 | High | Confirmed Product Gap | — | FE-GAP-007 | FE role page/action/API/hook surfaces | Role editor hard-codes the older six-permission catalog. | Enumerate and preserve current Phase 6 permissions from one catalog. | Permission parity and role round-trip browser/API tests. | IS-GAP-023 | CHUNK-07 | Pending |
+| IS-GAP-026 | High | Confirmed Product Gap | — | FE-GAP-008 | FE role detail/page/action/API/hook/a11y surfaces | Save is enabled while a policy-free list summary awaits full role detail. | Require authoritative detail or safe merge; detail failure cannot mean policy deletion. | Delayed/failed/stale detail immediate-save tests/evidence. | IS-GAP-023, 025 | CHUNK-15 | Pending |
+| IS-GAP-027 | Mid | Confirmed Product Gap | — | FE-GAP-010 | FE-PAGE-002; FE-ACTION-012/013; FE-API-018; FE-STATE-007 | Optimistic delete/regenerate errors are swallowed without rollback. | Roll back/refetch and expose safe retry state. | MSW/component rejection and focused browser recovery. | IS-GAP-003, 006 | CHUNK-18 | Pending |
+| IS-GAP-028 | Mid | Confirmed Product Gap | — | FE-GAP-011 | FE-PAGE-002; FE-ACTION-016 | Workspace renders ConnectionErrorCard CTA without onAction. | Wire valid recovery or render non-interactive guidance. | Every-error-kind action/focus tests. | IS-GAP-022 | CHUNK-18 | Pending |
+| IS-GAP-029 | Mid | Confirmed Product Gap | — | FE-GAP-012 | FE-PAGE-002; FE-ACTION-010; FE-A11Y-004/007 | DatabaseSelector has listbox roles but click-only state/focus behavior. | Implement a valid keyboard/typeahead/focus model. | Component accessibility plus real-browser keyboard matrix. | IS-GAP-001 | CHUNK-19 | Pending |
+| IS-GAP-030 | Mid | Confirmed Product Gap | — | FE-GAP-013 | Dialog/toast/destructive/session accessibility surfaces | Custom dialogs, nested controls and timed statuses lack shared semantics. | Add dialog/focus/Escape/live-region/timer contracts. | Component and browser accessibility matrix. | IS-GAP-003 | CHUNK-19 | Pending |
+| IS-GAP-031 | Mid | Confirmed Product Gap | — | FE-GAP-014 | Clipboard/lazy/runtime error surfaces | Clipboard/import failures are swallowed/logged without recovery boundary. | Sanitize, announce and recover; prevent unhandled late failures. | Failure injection and browser console audit. | IS-GAP-037, 043 | CHUNK-21 | Pending |
+| IS-GAP-032 | Mid | Confirmed Product Gap | — | FE-GAP-015 | History route/page/action/API/hook/a11y surfaces | Search covers loaded pages only and custom list semantics/error placement are invalid. | Search declared dataset and implement valid selection/list/table semantics. | Pagination/search integration plus accessibility browser check. | IS-GAP-008, 019 | CHUNK-20 | Pending |
+| IS-GAP-033 | Mid | Confirmed Product Gap | — | FE-GAP-016 | Custom client/page/hook/state surfaces | Raw response casts and inconsistent async-state models trust malformed/partial data. | Validate shapes and render explicit initial/background/empty/partial/error/retry states. | Schema-derived fault matrix and focused browser recovery. | IS-GAP-008, 042 | CHUNK-17 | Pending |
+| IS-GAP-034 | Mid | Confirmed Product Gap | — | FE-GAP-017 | FE audit route/page/export/API/state surfaces | Export uses unsent form values and discards server filename metadata. | Export applied filters and validate/honor filename/cancel/no-partial-file contracts. | Component/API plus real file browser inspection. | IS-GAP-008, 043 | CHUNK-22 | Pending |
+| IS-GAP-035 | Mid | Confirmed Product Gap | — | FE-GAP-018 | FE role policy editor/API/hook surfaces | Raw-string frontend filter validator diverges from backend sqlglot grammar. | Share a contract corpus and keep backend authoritative. | Cross-stack valid/invalid corpus plus browser save/preview. | — | CHUNK-15 | Pending |
+| IS-GAP-036 | Mid | Confirmed Product Gap | — | FE-GAP-019 | FE role/mapping action/API/hook/state surfaces | Role commit and parallel mapping calls are presented as one atomic mutation. | Make operation atomic or resumable/idempotent with accurate partial success. | Mutation fault integration and browser retry/recovery. | IS-GAP-026 | CHUNK-16 | Pending |
+| IS-GAP-037 | Mid | Confirmed Product Gap | — | FE-GAP-020 | Route/workspace/async/lifecycle surfaces | Eager routes have no error boundary and async/timer lifetime is not navigation-scoped. | Define route errors and cancel/ignore all stale settlement. | Router fault matrix and browser history/console checks. | IS-GAP-003, 023, 043 | CHUNK-21 | Pending |
+| IS-GAP-038 | Mid | Confirmed Product Gap | — | FE-GAP-021 | History/locale/i18n/direction surfaces | Locale persistence/precedence, variants and dynamic formatter locale diverge. | Normalize/persist one active locale and use it for direction/formatting. | i18n unit plus EN/ar/ar-EG reload browser matrix. | IS-GAP-032 | CHUNK-20 | Pending |
+| IS-GAP-039 | Mid | Confirmed Product Gap | — | FE-GAP-022 | Settings/admin form/action/API/a11y surfaces | Forms independently implement boundary, dirty/reset, concurrency and accessible error behavior. | Adopt one form contract without weakening secret-preserving edits. | Parameterized form matrix plus focused keyboard/browser checks. | IS-GAP-008, 030, 033 | CHUNK-19 | Pending |
+| IS-GAP-040 | Mid | Confirmed Product Gap | — | FE-GAP-023 | FE detection route/page/action/API/hook surfaces | Handler omits explicit finite [0,1] validation and trusts raw response. | Enforce finite range/order through handler/schema/server with recovery. | Numeric boundary component/API/browser matrix. | IS-GAP-013, 017, 033 | CHUNK-26 | Pending |
+| IS-GAP-041 | Mid | Confirmed Product Gap | — | FE-GAP-024 | FE-PAGE-002; FE-A11Y-005 | Primary ResultTable is unbounded and lacks a zero-row state. | Add bounded pagination and explicit localized empty state with valid semantics. | Component and responsive large/zero-row browser checks. | IS-GAP-019 | CHUNK-18 | Pending |
+| IS-GAP-042 | Mid | Confirmed Test-Harness Gap | — | FE-GAP-025 | FE i18n/Vitest/MSW/Playwright/artifact surfaces | Fixtures/assertions/artifacts are manual, mock-heavy and not always output-isolated. | Derive contracts, require named-state assertions, isolate artifacts and classify mocks/skips. | Static harness lint and corrected focused tests. | IS-GAP-008 | CHUNK-17 | Pending |
+| IS-GAP-043 | Mid | Confirmed Product Gap | — | FE-GAP-026 | FE query/audit/client/concurrency/cancellation surfaces | Clients do not accept AbortSignal/deadlines and mounted refs only prevent overlap. | Propagate abort/deadline and suppress late side effects. | Client/component concurrency plus browser abort checks. | IS-GAP-003, 004, 008 | CHUNK-21 | Pending |
+| IS-GAP-044 | Low | Confirmed Product Gap | — | FE-GAP-027 | FE auth route/page/action/API/hook surfaces | Provider/auth loading, empty, failure and rejected-signout states are conflated. | Render distinct accessible sanitized states and cache-safe recovery. | MSW auth-state matrix plus focused browser flow. | IS-GAP-023, 033 | CHUNK-23 | Pending |
+| IS-GAP-045 | Low | Needs Decision | — | FE-GAP-028 | FE-ROUTE-003; FE-PAGE-003; FE-ACTION-043 | Reachable unlinked /ask duplicates Workspace with divergent contracts. | Redirect/remove or explicitly require compatibility parity. | Chosen routing contract plus bookmark/history browser checks. | IS-GAP-001, 020, 022 | CHUNK-31 | Needs Decision |
+| IS-GAP-046 | Mid | Confirmed Coverage Gap | — | FE-GAP-030 | FE quota responsive/a11y/i18n surfaces | Screenshot-heavy responsive evidence samples rather than asserts all critical states. | Add assertion-bearing 1440/768/375 EN/AR critical-state coverage. | Focused temporary-output Playwright matrix. | IS-GAP-030, 034, 039, 041, 042 | CHUNK-27 | Pending |
+| IS-GAP-047 | High | Confirmed Coverage Gap | — | FE-GAP-033 | FE prompt/export/API/state/browser-runtime surfaces | Privacy proof is split across channels; same-browser cache and a joint hostile/error/download flow remain open. | After product fixes, instrument all browser-observable channels with value-safe canaries. | Joint real API/browser security integration; boolean/count evidence only. | IS-GAP-002, 008, 023, 034, 042 | CHUNK-28 | Pending |
+
+## Critical and High source verification
+
+All 19 raw Critical/High candidates were traced through implementation, public caller, relevant assertions and current-head evidence. Merged pairs appear on one row.
+
+| Candidates | Result | Exact implementation/caller/assertion trace |
+| --- | --- | --- |
+| BE-GAP-001 + FE-GAP-005 | Confirmed Critical product defect | `backend/src/app/api/v1/query.py::_build_query_service_for_connection` is used only by submit; `backend/src/app/api/v1/query.py::accept_query`, `backend/src/app/api/v1/query.py::reject_query`, and `backend/src/app/api/v1/query.py::regenerate_query` inject `backend/src/app/api/v1/query.py::_get_query_service`. `backend/src/app/core/attempt_store.py::EphemeralAttempt` has no connection ID. `backend/src/app/services/query_service.py::QueryService._get_database_connection_id` can select an arbitrary row. `frontend/src/hooks/useQuerySubmit.ts::acceptQueryFn`, `frontend/src/hooks/useQuerySubmit.ts::rejectQueryFn`, and `frontend/src/hooks/useQuerySubmit.ts::regenerateQueryFn` send only attempt/session IDs. `backend/tests/integration/api/test_regenerate_router.py`, `backend/tests/integration/api/test_reject_router.py`, and `backend/tests/integration/test_accept_only_persistence.py` use the default/single connection and cannot reveal dialect/source loss. Accept's normal auto-saved path is usually correct; fresh accept still has fallback exposure. |
+| BE-GAP-002 | Confirmed High product defect | `backend/src/app/services/query_service.py::QueryService.submit_question` assigns raw `executor_result`, calls `backend/src/app/core/attempt_store.py::store_attempt`, then applies `backend/src/app/services/policy_enforcement.py::PolicyEnforcementService.apply_column_masks`. `backend/tests/unit/core/test_attempt_store.py` asserts JSON/TTL, not protected-value absence. |
+| BE-GAP-003 + FE-GAP-004 | Confirmed High product defect | `backend/src/app/api/v1/sessions.py::delete_session` calls only `backend/src/app/repositories/session_repository.py::SessionRepository.delete`; that repository deletes and flushes DB state. `frontend/src/hooks/useSessions.ts::useDeleteSession` invalidates queries and `frontend/src/components/sidebar/UndoToast.tsx::UndoToast` controls only a five-second timer. The docstring in `backend/tests/integration/test_sessions.py` mentions cancellation, but assertions cover CRUD/ownership/cascade; `frontend/src/components/sidebar/__tests__/UndoToast.test.tsx` uses fake timers only. |
+| BE-GAP-004 | Confirmed High product defect | `backend/src/app/core/config.py::Settings.QUERY_TIMEOUT_SECONDS` is declared, but `backend/src/app/services/query_service.py::QueryService.submit_question`, `backend/src/app/services/query_service.py::QueryService.regenerate_query`, and `backend/src/app/services/query_service.py::QueryService.rerun_accepted_query` use literal 30 while `backend/src/app/core/processing_lock.py::acquire_lock` uses literal 300. `backend/tests/unit/test_query_service_submit.py`, `backend/tests/unit/services/test_query_service_regenerate.py`, and `backend/tests/integration/test_f011_lock_leak.py` prove only default/failure behavior. |
+| BE-GAP-005 | Confirmed High product defect | `backend/src/app/services/query_service.py::QueryService.submit_question` calls `backend/src/app/services/quota_service.py::QuotaService.check_and_increment`; `backend/src/app/services/query_service.py::QueryService.reject_query` and `backend/src/app/services/query_service.py::QueryService.regenerate_query` perform provider/source work without either quota call. Constitution X and Phase 6 requirements apply quota at the API boundary. |
+| BE-GAP-006 | Confirmed High product defect | `backend/src/app/services/query_service.py::QueryService.reject_query` logs `QUERY_REJECT`; comments leave regenerate lifecycle outside T-720. `backend/src/app/services/query_service.py::QueryService.regenerate_query` has no ordered validation/execution events on success. `backend/tests/unit/test_query_audit_logging.py` covers reject and sanitized retry source failure, not successful lifecycle completeness. |
+| BE-GAP-007 | Confirmed High operational gap | `backend/src/app/main.py::create_app` registers no health/readiness route; `backend/src/app/main.py::lifespan` has real Redis, migration, credential, source and admin dependencies. `docker-compose.dev.yml::backend` has no healthcheck, and `scripts/dev-up.sh::wait_healthy` accepts container running state. |
+| BE-GAP-008 + FE-GAP-009 | Confirmed High contract drift | Read-only `backend/src/app/main.py::create_app` generation found 60 runtime operations and 44 runtime paths. `specs/001-core-text-to-sql/contracts/openapi.yaml` has 35 operations/26 paths and `frontend/src/api/generated/sdk.gen.ts` has 35 exports. `backend/tests/contract/test_openapi_contract.py` loads the static contract; `frontend/scripts/generate-api-client.sh` consumes it; `backend/scripts/update_openapi_phase5.py` is an uncalled historical mutator. |
+| BE-GAP-009 | Confirmed High product/data-integrity defect | `backend/alembic/versions/001_initial_schema.py` through `008_phase6_quotas_detection_audit_hardening.py` lack a populated stepwise real cycle. `backend/alembic/versions/007_phase5_sso_rbac_security.py::upgrade` permits NULL `users.password_hash`; its `downgrade` restores NOT NULL without deleting/backfilling SSO rows. `backend/tests/unit/test_t156_migration_parameterized.py` and `backend/tests/unit/db/test_migration_006_phase3.py` cover only the revision-009 edge and structural revision-006 behavior. |
+| FE-GAP-001 | Confirmed High product defect | `frontend/src/App.tsx::App` protects ordinary routes only with `AuthGuard`; `frontend/src/components/sidebar/Sidebar.tsx::Sidebar` always renders New Chat, History and Settings and starts ordinary hooks. `backend/src/app/api/v1/query.py::submit_question`, `backend/src/app/api/v1/history.py`, and `backend/src/app/api/v1/admin.py::get_settings_admin` require different exact permissions. `frontend/src/__tests__/App.test.tsx` and `frontend/src/components/sidebar/__tests__/Sidebar.test.tsx` focus admin guards or authentication. |
+| FE-GAP-002 | Confirmed High product/security defect | `frontend/src/providers/QueryProvider.tsx::queryClient` is a module singleton; feature keys in `frontend/src/hooks/useSessions.ts`, `frontend/src/hooks/useHistory.ts`, and `frontend/src/hooks/useAdminRoles.ts` omit identity/role. `frontend/src/hooks/useAuth.ts::useSignIn` invalidates only `currentUser`; only successful `frontend/src/hooks/useAuth.ts::useSignOut` clears; `frontend/src/stores/uiStore.ts::useUIStore` identity state is not reset. `frontend/src/hooks/useAuth.test.tsx` uses one identity and final user-switch evidence follows successful sign-out, so failure/implicit replacement/revocation remains open. |
+| FE-GAP-003 + BE-GAP-020 | Confirmed High product/config defect | Reachable `frontend/src/components/chat/PromptInput.tsx::PromptInput.handleSubmit` has no max/counter and submits trimmed text. Legacy `frontend/src/components/query/QueryInput.tsx::QueryInput` implements/tests 2000. `backend/src/app/api/v1/query.py::submit_question` compares to literal 2000 while `backend/src/app/core/config.py::Settings.MAX_QUESTION_LENGTH` is unused. |
+| FE-GAP-006 | Confirmed High product defect | `backend/src/app/api/v1/admin_roles.py::test_role_policy` and `backend/tests/unit/test_policy_test_endpoint.py` exist; caller search found no frontend request, hook, control or result state in `frontend/src/pages/AdminRolesPage.tsx::AdminRolesPage` or `frontend/src/hooks/useAdminRoles.ts`. FR-136 explicitly requires an admin test before save. |
+| FE-GAP-007 | Confirmed High product defect | `frontend/src/pages/AdminRolesPage.tsx::AVAILABLE_PERMISSIONS` lists only the Phase 5 six. `backend/src/app/db/models/enums.py::Permission` plus `frontend/src/App.tsx::App` and `frontend/src/components/sidebar/Sidebar.tsx::Sidebar` include `admin.quotas.manage` and `admin.security.manage`; `frontend/src/pages/AdminRolesPage.tsx::handleSave` serializes only selected listed values. |
+| FE-GAP-008 | Confirmed High product/security defect | `frontend/src/pages/AdminRolesPage.tsx::AdminRolesPage` first seeds `connectionPolicies` from a summary that omits them; `handleSave` remains enabled while `frontend/src/hooks/useAdminRoles.ts::useAdminRole` loads or fails. `frontend/src/pages/AdminRolesPage.test.tsx` waits for detail before Save and therefore misses immediate-save deletion. |
+| FE-GAP-033 | Confirmed High coverage gap, not a newly proven browser leak | `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-b-security-ui-report-2026-07-29.md::XP-012` and `audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/phase-6-current-head-browser-evidence-2026-07-29.json::prohibited_response_or_retention_scan` genuinely cover value-safe API/UI/audit/export/log/storage/accessibility slices and hostile DOM/storage absence. They do not jointly inspect console/network/download plus failed or implicit identity switching, and `frontend/src/providers/QueryProvider.tsx::queryClient` plus source-confirmed IS-GAP-002/023 keep cache-sensitive risk open. |
+
+## [NEEDS DECISION]
+
+1. **IS-GAP-010 — deployed header ownership.** Choose proxy-owned deployment headers with backend API cache policy, or backend-owned headers passed through by the proxy. Dual ownership risks conflict; no owner preserves direct/proxied drift. Branded/localized title work is required under either alternative.
+2. **IS-GAP-011 — production documentation exposure.** Choose disabled UI with CI-only generation, admin authentication, trusted-network restriction, or explicitly public access. The choice changes operations and information exposure; source cannot decide it.
+3. **IS-GAP-045 — `/ask` compatibility.** Choose redirect/removal in favor of Workspace, or treat `/ask` as supported and require full query-flow parity. Redirect reduces duplicate surface; parity retains bookmarks at ongoing cost.
+
+No security/data-integrity defect is marked deferred. The decisions block only their own chunks.
+
+## Candidate-accounting appendix
+
+Each raw ID occurs once in this appendix. `Source` means it is the canonical candidate for the consolidated row; `Duplicate/Merged` means its root cause is represented by the named canonical candidate.
+
+| Candidate | Accounting result | Consolidated ID | Canonical source / note |
+| --- | --- | --- | --- |
+| BE-GAP-001 | Source | IS-GAP-001 | — |
+| BE-GAP-002 | Source | IS-GAP-002 | — |
+| BE-GAP-003 | Source | IS-GAP-003 | — |
+| BE-GAP-004 | Source | IS-GAP-004 | — |
+| BE-GAP-005 | Source | IS-GAP-005 | — |
+| BE-GAP-006 | Source | IS-GAP-006 | — |
+| BE-GAP-007 | Source | IS-GAP-007 | — |
+| BE-GAP-008 | Source | IS-GAP-008 | — |
+| BE-GAP-009 | Source | IS-GAP-009 | — |
+| BE-GAP-010 | Source | IS-GAP-010 | — |
+| BE-GAP-011 | Source | IS-GAP-011 | — |
+| BE-GAP-012 | Source | IS-GAP-012 | — |
+| BE-GAP-013 | Source | IS-GAP-013 | — |
+| BE-GAP-014 | Source | IS-GAP-014 | — |
+| BE-GAP-015 | Source | IS-GAP-015 | — |
+| BE-GAP-016 | Source | IS-GAP-016 | — |
+| BE-GAP-017 | Source | IS-GAP-017 | — |
+| BE-GAP-018 | Source | IS-GAP-018 | — |
+| BE-GAP-019 | Source | IS-GAP-019 | — |
+| BE-GAP-020 | Duplicate/Merged | IS-GAP-020 | FE-GAP-003 |
+| BE-GAP-021 | Source | IS-GAP-021 | — |
+| FE-GAP-001 | Source | IS-GAP-022 | — |
+| FE-GAP-002 | Source | IS-GAP-023 | — |
+| FE-GAP-003 | Source | IS-GAP-020 | — |
+| FE-GAP-004 | Duplicate/Merged | IS-GAP-003 | BE-GAP-003 |
+| FE-GAP-005 | Duplicate/Merged | IS-GAP-001 | BE-GAP-001 |
+| FE-GAP-006 | Source | IS-GAP-024 | — |
+| FE-GAP-007 | Source | IS-GAP-025 | — |
+| FE-GAP-008 | Source | IS-GAP-026 | — |
+| FE-GAP-009 | Duplicate/Merged | IS-GAP-008 | BE-GAP-008 |
+| FE-GAP-010 | Source | IS-GAP-027 | — |
+| FE-GAP-011 | Source | IS-GAP-028 | — |
+| FE-GAP-012 | Source | IS-GAP-029 | — |
+| FE-GAP-013 | Source | IS-GAP-030 | — |
+| FE-GAP-014 | Source | IS-GAP-031 | — |
+| FE-GAP-015 | Source | IS-GAP-032 | — |
+| FE-GAP-016 | Source | IS-GAP-033 | — |
+| FE-GAP-017 | Source | IS-GAP-034 | — |
+| FE-GAP-018 | Source | IS-GAP-035 | — |
+| FE-GAP-019 | Source | IS-GAP-036 | — |
+| FE-GAP-020 | Source | IS-GAP-037 | — |
+| FE-GAP-021 | Source | IS-GAP-038 | — |
+| FE-GAP-022 | Source | IS-GAP-039 | — |
+| FE-GAP-023 | Source | IS-GAP-040 | — |
+| FE-GAP-024 | Source | IS-GAP-041 | — |
+| FE-GAP-025 | Source | IS-GAP-042 | — |
+| FE-GAP-026 | Source | IS-GAP-043 | — |
+| FE-GAP-027 | Source | IS-GAP-044 | — |
+| FE-GAP-028 | Source | IS-GAP-045 | [NEEDS DECISION] |
+| FE-GAP-029 | Duplicate/Merged | IS-GAP-010 | BE-GAP-010 |
+| FE-GAP-030 | Source | IS-GAP-046 | — |
+| FE-GAP-031 | Duplicate/Merged | IS-GAP-019 | BE-GAP-019 |
+| FE-GAP-032 | Duplicate/Merged | IS-GAP-014 | BE-GAP-014 |
+| FE-GAP-033 | Source | IS-GAP-047 | — |
+
+Accounting totals: 47 Source + 7 Duplicate/Merged = 54/54. No candidate is silently closed, deferred, or omitted. Existing evidence narrows several outcomes but closes none of the 47 unique gaps.

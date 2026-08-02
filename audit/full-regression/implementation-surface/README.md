@@ -1,14 +1,18 @@
 # Implementation-surface audit
 
-This directory contains separate backend and frontend static inventories. The backend snapshot is `93bd5191e0b851df8b872ecd4e4f1dc04d2397e7` (2026-08-01). The frontend snapshot is synchronized `main` at `5c05c5b1b91c581becc9601510bb5a8f4f46eeaf` (2026-08-02). Neither inventory changes product code or tests, runs a long regression/browser/build suite, starts remediation or consolidation, or performs Phase 6 T-905/freeze work.
+This directory contains separate backend/frontend static inventories and their source-verified consolidation. The backend inventory snapshot is `93bd5191e0b851df8b872ecd4e4f1dc04d2397e7` (2026-08-01), the frontend inventory snapshot is `5c05c5b1b91c581becc9601510bb5a8f4f46eeaf` (2026-08-02), and consolidation was performed on synchronized `main` at `0713c14a3e4dc44d4c330347d17aa86f52280d17` (2026-08-02). These artifacts change no product code or tests, run no long regression/browser/build suite, start no remediation, and perform no Phase 6 T-905/freeze work.
 
 ## Outcome
 
-The backend inventory enumerates 264 surfaces. Runtime reconciliation found 60 application operations plus eight GET/HEAD method registrations on four FastAPI documentation routes (64 registered route objects total). No application route differed between router source and generated runtime OpenAPI. A separate missing surface records the absence of liveness/readiness endpoints.
+The backend inventory enumerates 264 surfaces. Runtime reconciliation found 60 application route objects plus four FastAPI documentation route objects, for 64 route objects total. The documentation routes each register GET and HEAD, so the runtime has 68 method/path pairs. No application route differed between router source and generated runtime OpenAPI. A separate missing surface records the absence of liveness/readiness endpoints.
 
 Backend coverage is behavior-specific: Exact 206, Partial 47, Missing 5, Intentional N/A 6. Every Partial/Missing row maps to at least one of 21 gap candidates: Critical 1, High 8, Mid 10, Low 2.
 
 The frontend inventory enumerates 192 independently observable surfaces across 12 routes, 11 pages, 45 grouped actions, 55 application API functions/inline operations, 28 hooks, 13 state boundaries, 10 accessibility boundaries, seven localization boundaries, and 11 browser/test/operational boundaries. Coverage is Exact 32, Partial 142, Missing 10, Intentional N/A 8. Every Partial/Missing row maps to at least one of 33 frontend gap candidates: Critical 0, High 10, Mid 20, Low 3.
+
+Combined accounting is 456 surfaces: Exact 238, Partial 189, Missing 15, Intentional N/A 14. The 21 backend plus 33 frontend candidates produce 54 raw candidates. Source verification identified seven shared root causes, yielding 47 unique consolidated gaps: Critical 1, High 15, Mid 28, Low 3.
+
+The unique disposition is 36 product gaps, four coverage gaps, one contract/documentation drift gap, one test-harness gap, four operational gaps, and one product-scope decision. Three consolidated rows have `Needs Decision` status because two operational policies also require owner input. No confirmed security or data-integrity defect is deferred or closed by broad existing evidence.
 
 ## Artifacts
 
@@ -18,6 +22,10 @@ The frontend inventory enumerates 192 independently observable surfaces across 1
 - `frontend-inventory.md` — human-readable route/page/action/API/hook/state/accessibility/i18n/browser inventory with all required row fields.
 - `frontend-inventory.json` — machine-readable source of truth, counts, API parity, dead/reachable-legacy ledgers, rows, and embedded gap references.
 - `frontend-gap-candidates.md` — one grouped candidate for every Partial/Missing frontend surface.
+- `consolidated-gap-matrix.md` — 47-row human-readable root-cause matrix, Critical/High source-verification ledger, decision ledger, and 54/54 candidate-accounting appendix.
+- `consolidated-gap-matrix.json` — machine-readable peer with full source references, current/required behavior, impacts, dependencies, tests/evidence, isolation, regression rows, owners, chunks, decisions and counts.
+- `remediation-execution-order.md` — dependency-ordered future dispatch plan. It starts with standalone Critical `CHUNK-01`, permits no more than three related gaps in any chunk, and keeps each target below 200k context.
+- `coverage-summary.md` — exact 456-surface, 54-candidate and 47-consolidated reconciliation by severity, disposition, category and status.
 
 ## Method
 
@@ -26,6 +34,9 @@ The frontend inventory enumerates 192 independently observable surfaces across 1
 3. The backend pass generated runtime OpenAPI from `create_app()` with placeholder non-secret environment values; reconciled router/runtime/static operations; and structurally enumerated services, repositories, ORM/enums, nine Alembic revisions, lifecycle/middleware, adapters, scripts, tests, and operational entrypoints.
 4. The frontend pass structurally enumerated App routes, pages, exported components, visible controls, API clients/inline operations, hooks, query keys/invalidation, browser/session/local state, locale keys, logical-direction CSS, responsive/accessibility boundaries, MSW/Playwright harnesses, and development/production configuration.
 5. Both passes used `rg` caller/test searches and read assertions before assigning evidence. The frontend pass cross-checked every application client operation against the backend runtime inventory and recorded dead/unreachable surfaces separately.
+6. Consolidation re-read every exhaustive Phase 1–6/cross-phase matrix and final current-head evidence, then traced every Critical/High candidate through implementation, public caller and relevant assertions. Security-sensitive paths were followed across API, service, Redis/DB, frontend state and evidence boundaries.
+7. Read-only app-factory verification independently confirmed 60 runtime operations and 44 runtime paths. The static contract has 35 operations/26 paths and the generated frontend SDK has 35 exports.
+8. Candidate accounting designates one canonical source per unique root cause and exactly seven Duplicate/Merged inputs. Dependency order was planned without starting remediation.
 
 ## Interpretation
 
@@ -40,4 +51,4 @@ For frontend surfaces, a mocked browser test is Partial whenever the real backen
 
 ## Lightweight validation contract
 
-The artifacts are intended to pass JSON parsing/schema checks, unique surface/gap IDs, coverage/gap consistency, route/API/OpenAPI count reconciliation, referenced-path checks, locale-key structural comparison, and `rtk git diff --check`. No runtime service, frontend build, Vitest, Playwright, browser, or regression suite is required.
+The artifacts are intended to pass JSON parsing/schema checks, 54/54 candidate accounting, 456-surface accounting, stable-ID uniqueness, Markdown/JSON parity, dependency-cycle and chunk-size checks, referenced-path/symbol review, secret-pattern scanning, route/API/OpenAPI count reconciliation, and `rtk git diff --check`. No runtime service, frontend build, Vitest, Playwright, browser, migration, or regression suite is required.

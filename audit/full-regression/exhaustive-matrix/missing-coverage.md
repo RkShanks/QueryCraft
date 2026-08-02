@@ -1,63 +1,71 @@
 # Missing Coverage and Setup-Dependent Index
 
-This file consolidates rows whose status is not ordinary automated or existing browser/API evidence. It is the handoff list for the next regression-execution prompt.
+Current through synchronized `main` at `0713c14a3e4dc44d4c330347d17aa86f52280d17` and the implementation-surface consolidation.
 
-## By Phase
+The final current-head Phase 1–6 and cross-phase runs closed the old execution ledger at the broad requirement-row level. The implementation-surface audit then inspected 456 concrete backend/frontend entrypoints and found narrower product, contract, harness, operational and evidence boundaries that broad Pass rows did not exercise. This file now points to that current handoff; it does not reopen frozen phase specifications or authorize remediation.
 
-| Phase | Missing Coverage | Setup-Dependent | Needs Manual/Live Test | Deferred by Prior Decision |
-|---|---:|---:|---:|---:|
-| Phase 1 | 0 | 2 | 1 | 0 |
-| Phase 2 | 0 | 1 | 0 | 0 |
-| Phase 3 | 0 | 6 | 1 | 0 |
-| Phase 4 | 0 | 3 | 1 | 0 |
-| Phase 5 | 0 | 3 | 0 | 0 |
-| Phase 6 | 0 | 0 | 0 | 0 |
-| Cross-phase | 0 | 5 | 3 | 2 |
+## Current reconciliation
 
-## Missing Coverage
+| Scope | Exact | Partial | Missing | Intentional N/A | Surfaces |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Backend implementation | 206 | 47 | 5 | 6 | 264 |
+| Frontend implementation | 32 | 142 | 10 | 8 | 192 |
+| **Combined** | **238** | **189** | **15** | **14** | **456** |
 
-| Row | What is missing | What is needed |
-|---|---|---|
-| None | Phase 6 has no missing exhaustive row after the 2026-07-29 closeout. | — |
+The 21 backend and 33 frontend raw candidates reconcile 54/54 into 47 unique consolidated gaps after seven explicit cross-stack merges. See:
 
-## Setup-Dependent Rows
+- [consolidated-gap-matrix.md](../implementation-surface/consolidated-gap-matrix.md)
+- [consolidated-gap-matrix.json](../implementation-surface/consolidated-gap-matrix.json)
+- [coverage-summary.md](../implementation-surface/coverage-summary.md)
+- [remediation-execution-order.md](../implementation-surface/remediation-execution-order.md)
 
-| Row | Dependency | What is needed |
-|---|---|---|
-| P1-FR-009 | Live or fully mocked configured LLM providers. | Run provider-switch smoke with configured provider credentials or approved provider mocks; verify no provider secrets leak. |
-| P1-FR-026 | Provider config and history fixture. | Switch provider by configuration, restart if required, submit a query, and verify old accepted history remains readable. |
-| P2-FR-047 | Optional live Gemini or equivalent provider contract check. | Run simulated contract tests always; run live provider smoke only when credentials and owner approval exist. |
-| P3-FR-059 | Real PG/MySQL/MSSQL services for end-to-end add/test flows. | Bring up local source DB services, add each connection, verify credentials are not returned. |
-| P3-FR-063 | Real DB health checks. | Exercise success and categorized failures for each supported DB. |
-| P3-FR-065 | Real schemas for PG/MySQL/MSSQL. | Introspect Pagila/Sakila/AdventureWorksLT or equivalent approved fixtures. |
-| P3-FR-068 | Controlled DB/introspection failure cases. | Force auth/network/timeout/permission failures and verify localized sanitized status. |
-| P3-FR-069 | Real LLM or approved SQL-generation mock plus all three DBs. | Generate dialect-specific SQL with at least one dialect marker per DB and execute safely. |
-| P3-FR-093 | Real connection create path with health and schema services. | Save good and bad connections; verify auto health/schema behavior and retry action. |
-| P4-FR-101 | Real DBs plus Arabic prompt SQL generation. | Re-run Arabic prompt execution and dialect marker inspection for PG, MySQL, MSSQL. |
-| P4-FR-102 | Arabic prompt evaluator path. | Verify Arabic prompts do not cause false evaluator rejection and valid SQL executes. |
-| P4-FR-112 | All three Phase 4 source DB fixtures. | Treat missing PG/MySQL/MSSQL as a setup blocker for closure-style Phase 4 check. |
-| P5-FR-117 | OIDC IdP, mocked or live. | Run OIDC authorization code flow with callback validation and role assignment. |
-| P5-FR-118 | SAML IdP, mocked or live. | Run SAML login/ACS flow with assertion validation and replay/expiry negatives. |
-| P5-FR-131 | Real DBs for row-filter execution differences across dialects. | Execute restricted-role queries on PG/MySQL/MSSQL and prove filtered results differ. |
-| XP-001 | End-to-end auth with local admin and SSO. | Run local admin login plus mapped/unmapped SSO scenarios. |
-| XP-002 | Multi-DB services. | Add/select/query PG/MySQL/MSSQL; verify current single-connection degenerate behavior. |
-| XP-013 | Redis degraded-service simulation. | Stop or mock Redis for session/lock/quota paths and verify fail-closed behavior per path. |
-| XP-014 | Live LLM credentials if owner requests live smoke. | Run one approved real-provider query with redacted transcript. |
-| XP-015 | PG/MySQL/MSSQL source services. | Health, schema, dialect SQL marker, execution result for each DB. |
+## Confirmed coverage-only gaps
 
-## Needs Manual or Live Test Rows
+| Consolidated ID | Evidence boundary still missing | Future evidence |
+| --- | --- | --- |
+| IS-GAP-015 | Current-head live provider proof covers Gemini, while Anthropic/OpenAI/Ollama remain deterministic/mock-tested. | One approved bounded request per available provider, with no prompt/response/credential retention. |
+| IS-GAP-016 | OIDC/SAML protocol logic is covered, but enterprise TLS/network/metadata or JWKS rotation/outage/recovery is not proven against a standards-complete dependency. | Disposable real/standards-complete IdP integration; no tokens/assertions/URLs retained. |
+| IS-GAP-046 | Responsive browser evidence samples representative states and includes screenshot-heavy specs without assertions for every critical dynamic state. | Assertion-bearing 1440/768/375 EN/AR matrix using temporary output only. |
+| IS-GAP-047 | Privacy evidence covers strong separate API/UI/audit/export/log/storage/accessibility slices, but not one joint same-browser cache/console/network/download flow across hostile/error/download and failed or implicit identity switching. | Boolean/count-only real API/browser channel instrumentation after prerequisite product/contract fixes. |
 
-| Row | Why automated coverage is not enough | What is needed |
-|---|---|---|
-| P1-FR-008 | Need to inspect actual provider prompt context for schema inclusion and Phase 5 role filtering. | Capture redacted provider/mock prompt transcript. |
-| P3-FR-086 | Source requires Chrome DevTools MCP/browser smoke for user-facing flows. | Re-run browser smoke for admin connection CRUD, health, schema, selector, dialect query, and login. |
-| P4-FR-109 | Keyboard tab order is best validated by browser role/tab traversal. | Run Playwright or manual keyboard traversal in Arabic RTL. |
-| XP-017 | Existing screenshots may be stale for the target full-regression HEAD. | Refresh evidence in a new approved run folder; do not stage old screenshots/traces. |
-| XP-018 | Matrix-only task did not run foundation gates. | Run backend/frontend gates only during the approved execution prompt. |
+## Contract and harness prerequisites
 
-## Deferred Rows
+| Consolidated ID | Classification | Why it blocks reliable evidence |
+| --- | --- | --- |
+| IS-GAP-008 | Confirmed Contract/Documentation Drift | Runtime exposes 60 operations; static OpenAPI and generated SDK contain 35. Contract tests exercise only the static set. |
+| IS-GAP-042 | Confirmed Test-Harness Gap | Manual fixtures, assertion-light named states, mocked browser APIs and non-isolated screenshot outputs can overstate coverage or mutate protected artifacts. |
 
-| Row | Prior decision | Follow-up |
-|---|---|---|
-| XP-009 | Phase 5 final snapshot deferred two Low mobile clipping issues: admin roles table actions at 375px and SSO group mapping add button at 375px. | Re-check in mobile sweep; fix if owner promotes mobile polish. |
-| XP-016 | User explicitly prohibited T-905/freeze in this task. | Do not start freeze from this PR. |
+## Setup-dependent execution rows
+
+The old setup-dependent list was executed by the accepted final current-head Phase/cross-phase runs for the tested boundaries: three real source databases, isolated Redis/PostgreSQL, deterministic providers, mapped OIDC, one approved live provider call, browser/mobile/RTL and foundation gates all have final evidence. Remaining setup dependence is represented only by the current consolidated rows below.
+
+| Consolidated IDs | Dependency | Isolation requirement |
+| --- | --- | --- |
+| IS-GAP-001, IS-GAP-002 | PG/MySQL/MSSQL plus platform DB/Redis | Dedicated disposable three-source fixtures and no retained SQL/result values. |
+| IS-GAP-003, IS-GAP-004 | Controllable slow/cancellable source and Redis | Cancel all tasks and remove attempts/locks/sessions. |
+| IS-GAP-009, IS-GAP-013, IS-GAP-017 | Populated disposable PostgreSQL | Never run downgrade/corruption cases on shared state. |
+| IS-GAP-012, IS-GAP-014, IS-GAP-019 | Real disposable Redis plus synthetic high-cardinality platform data | Remove keys/rows and verify bounded cleanup. |
+| IS-GAP-015 | Approved provider credentials/service | In-memory credentials, strict call/cost cap, no prompt/response retention. |
+| IS-GAP-016 | Disposable standards-complete HTTPS IdP | Remove users, sessions, tokens/assertions and dependency state. |
+| IS-GAP-018 | Disposable filesystem/source containers | Verify downloads/checksums/reruns without shared fixtures. |
+| IS-GAP-047 | Disposable users/sessions/audit/downloads/browser profile | Destroy every canary-bearing state and retain booleans/counts only. |
+
+## [NEEDS DECISION]
+
+| Consolidated ID | Exact decision | Alternatives |
+| --- | --- | --- |
+| IS-GAP-010 | Which layer owns each deployed security/cache header? | Proxy-owned deployment headers plus backend API cache policy, or backend-owned headers passed through by proxy. |
+| IS-GAP-011 | What is the production docs/OpenAPI exposure policy? | Disabled UI with CI generation, admin-authenticated, trusted-network-only, or explicitly public. |
+| IS-GAP-045 | Is `/ask` supported? | Redirect/retire in favor of Workspace, or retain with full parity obligations. |
+
+These decisions block only CHUNK-30 and CHUNK-31. They do not block standalone Critical CHUNK-01 or the confirmed security/data-integrity sequence.
+
+## Deferred scope
+
+| Item | Status |
+| --- | --- |
+| Phase 6 T-905/freeze | Still prohibited in this consolidation and not started. |
+| Product/test remediation | Not started; requires a future explicit implementation dispatch. |
+| Protected historical screenshots/traces | Remain user-owned, dirty and unstaged; future evidence must use new temporary paths. |
+
+No consolidated security or data-integrity gap is deferred merely because it is difficult. Broad exhaustive-matrix Pass statuses remain historical requirement evidence, not proof that these concrete implementation boundaries are closed.
