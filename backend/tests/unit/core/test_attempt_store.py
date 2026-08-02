@@ -5,33 +5,17 @@ TTL expiry, and missing-key handling.
 """
 
 import json
-from datetime import date, datetime, time
-from decimal import Decimal
 from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
-from pydantic import BaseModel
+from pydantic import ValidationError
 from redis.asyncio import Redis
 
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
 from app.core.exceptions import AttemptContextInvalid, AttemptNotFound, AttemptOwnershipViolation
 
 CONNECTION_ID = UUID("550e8400-e29b-41d4-a716-446655440001")
-
-
-class FakeAttempt(BaseModel):
-    """Minimal attempt model for testing."""
-
-    attempt_id: str
-    session_id: str
-    database_connection_id: str = str(CONNECTION_ID)
-    sql: str
-    question: str
-    evaluator_result: dict | None = None
-    executor_result: dict | None = None
-    created_at: str = ""
-    expires_at: str = ""
 
 
 class TestAttemptStoreUnit:
@@ -42,9 +26,10 @@ class TestAttemptStoreUnit:
         redis = AsyncMock(spec=Redis)
         redis.set = AsyncMock(return_value=True)
 
-        attempt = FakeAttempt(
+        attempt = EphemeralAttempt(
             attempt_id="a1",
             session_id="s1",
+            database_connection_id=CONNECTION_ID,
             sql="SELECT 1",
             question="q1",
         )
@@ -61,7 +46,7 @@ class TestAttemptStoreUnit:
         raw = (
             '{"attempt_id":"a1","session_id":"s1","sql":"SELECT 1","question":"q1",'
             f'"database_connection_id":"{CONNECTION_ID}",'
-            '"evaluator_result":null,"executor_result":null,"created_at":"","expires_at":""}'
+            '"evaluator_result":null,"created_at":"","expires_at":""}'
         )
         redis.get = AsyncMock(return_value=raw)
 
@@ -75,7 +60,7 @@ class TestAttemptStoreUnit:
         raw = (
             '{"attempt_id":"a1","session_id":"s1","sql":"SELECT 1","question":"q1",'
             f'"database_connection_id":"{CONNECTION_ID}",'
-            '"evaluator_result":null,"executor_result":null,"created_at":"","expires_at":""}'
+            '"evaluator_result":null,"created_at":"","expires_at":""}'
         )
         redis.get = AsyncMock(return_value=raw)
 
@@ -98,45 +83,32 @@ class TestAttemptStoreUnit:
         await delete_attempt("a1", redis)
         redis.delete.assert_awaited_once_with("attempt:a1")
 
-    async def test_store_attempt_serializes_decimal(self):
-        """Decimal values in executor_result are serialized as floats."""
+    async def test_attempt_state_omits_result_payload(self):
+        """Attempt metadata never reserves a Redis field for source rows."""
         redis = AsyncMock(spec=Redis)
         redis.set = AsyncMock(return_value=True)
 
-        attempt = FakeAttempt(
+        attempt = EphemeralAttempt(
             attempt_id="a1",
             session_id="s1",
+            database_connection_id=CONNECTION_ID,
             sql="SELECT 1",
             question="q1",
-            executor_result={"rows": [[Decimal("10.50")]]},
         )
         await store_attempt(attempt, "s1", redis)
 
-        call_args = redis.set.call_args
-        stored = json.loads(call_args.args[1])
-        assert stored["executor_result"]["rows"][0][0] == 10.50
+        stored = json.loads(redis.set.await_args.args[1])
+        assert "executor_result" not in stored
 
-    async def test_store_attempt_serializes_datetime(self):
-        """datetime/date/time values in executor_result are serialized as ISO strings."""
-        redis = AsyncMock(spec=Redis)
-        redis.set = AsyncMock(return_value=True)
-
-        attempt = FakeAttempt(
-            attempt_id="a1",
-            session_id="s1",
-            sql="SELECT 1",
-            question="q1",
-            executor_result={
-                "rows": [[datetime(2026, 5, 23, 12, 0, 0), date(2026, 5, 23), time(12, 30, 0)]],
-            },
-        )
-        await store_attempt(attempt, "s1", redis)
-
-        call_args = redis.set.call_args
-        stored = json.loads(call_args.args[1])
-        assert stored["executor_result"]["rows"][0][0] == "2026-05-23T12:00:00"
-        assert stored["executor_result"]["rows"][0][1] == "2026-05-23"
-        assert stored["executor_result"]["rows"][0][2] == "12:30:00"
+    def test_attempt_schema_rejects_result_payload(self):
+        """Result rows cannot enter attempt state through model construction."""
+        with pytest.raises(ValidationError):
+            EphemeralAttempt(
+                attempt_id="a1",
+                session_id="s1",
+                database_connection_id=CONNECTION_ID,
+                executor_result={"rows": []},
+            )
 
     async def test_connection_context_round_trips_as_canonical_uuid(self):
         """The submit-time source is canonical, immutable attempt context."""
@@ -204,6 +176,7 @@ class TestAttemptStoreUnit:
             "row_filters",
             "column_masks",
             "source_rows",
+            "executor_result",
         }.isdisjoint(stored)
 
 
@@ -213,9 +186,10 @@ class TestAttemptStoreIntegration:
 
     async def test_store_and_get_with_real_redis(self, redis_client):
         """Store and retrieve with testcontainers redis."""
-        attempt = FakeAttempt(
+        attempt = EphemeralAttempt(
             attempt_id="a2",
             session_id="s2",
+            database_connection_id=CONNECTION_ID,
             sql="SELECT 2",
             question="q2",
         )
@@ -225,9 +199,10 @@ class TestAttemptStoreIntegration:
 
     async def test_ownership_violation_with_real_redis(self, redis_client):
         """Cross-session get raises ownership violation."""
-        attempt = FakeAttempt(
+        attempt = EphemeralAttempt(
             attempt_id="a3",
             session_id="s3",
+            database_connection_id=CONNECTION_ID,
             sql="SELECT 3",
             question="q3",
         )
