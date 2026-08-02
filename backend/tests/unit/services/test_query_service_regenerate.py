@@ -15,6 +15,20 @@ from app.core.exceptions import (
 )
 from app.services.query_service import QueryService
 
+USER_ID = "550e8400-e29b-41d4-a716-446655440000"
+CONNECTION_ID = "00000000-0000-0000-0000-000000000001"
+
+
+def _attempt(**overrides):
+    values = {
+        "attempt_id": "a1",
+        "session_id": "s1",
+        "user_id": USER_ID,
+        "database_connection_id": CONNECTION_ID,
+    }
+    values.update(overrides)
+    return EphemeralAttempt(**values)
+
 
 def _active_attempt_get(active_attempt="a1"):
     async def _get(key):
@@ -46,18 +60,15 @@ class TestQueryServiceRegenerate:
         session_repo.update_last_activity = AsyncMock(return_value=True)
         session_repo.update_preview_text = AsyncMock(return_value=True)
         db_session = AsyncMock()
-        import uuid as _uuid
-
-        _db_conn_id = str(_uuid.UUID(int=0x1))
 
         def _execute_side_effect(stmt, *args, **kwargs):
             async def _coro():
                 stmt_str = str(stmt)
                 if "database_connections" in stmt_str:
-                    return MagicMock(fetchone=MagicMock(return_value=(_db_conn_id,)))
+                    return MagicMock(fetchone=MagicMock(return_value=(CONNECTION_ID,)))
                 if "FROM users" in stmt_str:
                     # User existence check passes by default
-                    return MagicMock(scalar_one_or_none=MagicMock(return_value=MagicMock(id=_db_conn_id)))
+                    return MagicMock(scalar_one_or_none=MagicMock(return_value=MagicMock(id=CONNECTION_ID)))
                 return MagicMock(fetchone=MagicMock(return_value=(3,)))
 
             return _coro()
@@ -91,13 +102,12 @@ class TestQueryServiceRegenerate:
             llm=mock_deps["llm"],
             evaluator=mock_deps["evaluator"],
             source_db_executor=mock_deps["executor"],
+            connection_id=CONNECTION_ID,
         )
 
     async def test_regenerate_calls_llm_with_negative_context(self, service, mock_deps):
         """regenerate_query calls LLM with negative context (prior SQL)."""
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
         )
@@ -109,7 +119,7 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
         ):
-            await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1", USER_ID)
 
         mock_deps["llm"].generate_sql.assert_awaited_once()
         call_args = mock_deps["llm"].generate_sql.call_args
@@ -117,9 +127,7 @@ class TestQueryServiceRegenerate:
 
     async def test_regenerate_byte_equal_returns_refine_prompt(self, service, mock_deps):
         """Inv 4: if LLM returns same SQL byte-for-byte -> RefinePrompt, no evaluator/executor."""
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
         )
@@ -128,7 +136,7 @@ class TestQueryServiceRegenerate:
         with (
             patch("app.services.query_service.get_attempt", return_value=prior),
         ):
-            result = await service.regenerate_query("a1", "s1")
+            result = await service.regenerate_query("a1", "s1", USER_ID)
 
         assert result.kind == "refine"
         mock_deps["evaluator"].evaluate.assert_not_called()
@@ -136,9 +144,7 @@ class TestQueryServiceRegenerate:
 
     async def test_regenerate_max_retries_returns_refine_prompt(self, service, mock_deps):
         """On max retries (attempt #4 already, max=3 regens), regenerate returns RefinePrompt."""
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
             attempt_number=4,
@@ -151,15 +157,13 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
         ):
-            result = await service.regenerate_query("a1", "s1")
+            result = await service.regenerate_query("a1", "s1", USER_ID)
 
         assert result.kind == "refine"
 
     async def test_regenerate_evaluator_fail_returns_response_with_result(self, service, mock_deps):
         """On evaluator failure on regenerated SQL, response has evaluator_result."""
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
             attempt_number=1,
@@ -177,20 +181,17 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
         ):
-            result = await service.regenerate_query("a1", "s1")
+            result = await service.regenerate_query("a1", "s1", USER_ID)
 
         assert result.kind == "refine"
         mock_deps["executor"].execute.assert_not_called()
 
     async def test_regenerate_executor_only_on_evaluator_pass(self, service, mock_deps):
         """Inv 1: executor only called if evaluator passes."""
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
             attempt_number=1,
-            user_id="550e8400-e29b-41d4-a716-446655440000",
         )
         mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 2")
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
@@ -200,7 +201,7 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
         ):
-            result = await service.regenerate_query("a1", "s1")
+            result = await service.regenerate_query("a1", "s1", USER_ID)
 
         mock_deps["evaluator"].evaluate.assert_awaited_once()
         mock_deps["executor"].execute.assert_awaited_once()
@@ -224,7 +225,7 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.get_attempt", side_effect=_get_attempt),
             pytest.raises(AttemptOwnershipViolation),
         ):
-            await service.regenerate_query("a1", "s2")
+            await service.regenerate_query("a1", "s2", USER_ID)
 
     async def test_regenerate_raises_on_missing_attempt(self, service, mock_deps):
         """regenerate_query with nonexistent attempt raises AttemptNotFound."""
@@ -237,13 +238,11 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.get_attempt", side_effect=_get_attempt),
             pytest.raises(AttemptNotFound),
         ):
-            await service.regenerate_query("missing", "s1")
+            await service.regenerate_query("missing", "s1", USER_ID)
 
     async def test_regenerate_acquires_and_releases_lock(self, service, mock_deps):
         """Processing lock is acquired and released around regenerate."""
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
         )
@@ -255,7 +254,7 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.get_attempt", return_value=prior),
             patch("app.services.query_service.store_attempt"),
         ):
-            await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1", USER_ID)
 
         # Lock was acquired (set with nx=True) and then released via eval
         lock_set_calls = [c for c in mock_deps["redis"].set.call_args_list if "processing_lock:" in str(c)]
@@ -265,9 +264,7 @@ class TestQueryServiceRegenerate:
     async def test_regenerate_busy_returns_409(self, service, mock_deps):
         """regenerate_query returns 409 when processing lock is held."""
         mock_deps["redis"].set = AsyncMock(return_value=None)  # lock busy
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
         )
@@ -275,17 +272,14 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.get_attempt", return_value=prior),
             pytest.raises(Exception) as exc_info,
         ):
-            await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1", USER_ID)
         assert exc_info.value.status_code == 409
 
     async def test_regenerate_stale_user_raises_401(self, service, mock_deps):
         """Stale user (deleted from DB) raises 401, not FK 500."""
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
-            user_id="550e8400-e29b-41d4-a716-446655440000",
         )
         mock_deps["llm"].generate_sql = AsyncMock(return_value="SELECT 2")
         mock_deps["evaluator"].evaluate = AsyncMock(return_value=MagicMock(passed=True))
@@ -300,15 +294,13 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.get_attempt", return_value=prior),
             pytest.raises(Exception) as exc_info,
         ):
-            await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1", USER_ID)
         assert exc_info.value.status_code == 401
         mock_deps["repo"].create.assert_not_awaited()
 
     async def test_regenerate_timeout_error_raises_504_and_releases_lock(self, service, mock_deps):
         """O-003: asyncio.TimeoutError from executor returns 504, releases lock."""
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
             attempt_number=1,
@@ -322,16 +314,14 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.store_attempt"),
             pytest.raises(Exception) as exc_info,
         ):
-            await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1", USER_ID)
 
         assert exc_info.value.status_code == 504
         mock_deps["redis"].eval.assert_awaited()  # lock released
 
     async def test_regenerated_attempt_has_executed_state(self, service, mock_deps):
         """F-2 O-001: new EphemeralAttempt has state=EXECUTED."""
-        prior = EphemeralAttempt(
-            attempt_id="a1",
-            session_id="s1",
+        prior = _attempt(
             sql="SELECT 1",
             question="q1",
             attempt_number=1,
@@ -352,7 +342,7 @@ class TestQueryServiceRegenerate:
             patch("app.services.query_service.store_attempt"),
             patch.object(EphemeralAttempt, "__init__", _capture_init),
         ):
-            await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1", USER_ID)
 
         assert len(created_kwargs) == 1
         assert created_kwargs[0].get("state") == "EXECUTED"
@@ -363,5 +353,5 @@ class TestQueryServiceRegenerate:
         with (
             pytest.raises(Exception) as exc_info,
         ):
-            await service.regenerate_query("a1", "s1")
+            await service.regenerate_query("a1", "s1", USER_ID)
         assert exc_info.value.status_code == 422

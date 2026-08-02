@@ -43,6 +43,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.services.detection  # noqa: F401 — registers built-in rules into REGISTRY
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
 from app.core.exceptions import (
+    AttemptContextInvalid,
     AttemptNotFound,
     AttemptOwnershipViolation,
     DetectionUnavailableError,
@@ -278,27 +279,29 @@ class QueryService:
         return 3
 
     async def _get_database_connection_id(self) -> str:
-        """Return the source_database_connection id.
-
-        Uses the connection-scoped ID when available (Phase 3 multi-connection).
-        Falls back to first source_database_connection id (Phase 1: single DB).
-
-        Raises:
-            HTTPException 500 if no source_database_connections row exists.
-        """
-        if self._connection_id is not None:
-            return self._connection_id
-        result = await self._db_session.execute(text("SELECT id FROM source_database_connections LIMIT 1"))
-        row = result.fetchone()
-        if row is None:
+        """Return the explicitly scoped source connection ID."""
+        if self._connection_id is None:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "error": "config_error",
-                    "message_key": "error.sourceDbNotConfigured",
-                },
+                detail={"error": "config_error", "message_key": "error.sourceDbNotConfigured"},
             )
-        return str(row[0])
+        return self._connection_id
+
+    def _require_attempt_binding(self, attempt: EphemeralAttempt, user_id: str) -> str:
+        """Validate that the loaded attempt still matches this service and user."""
+        connection_id = str(attempt.database_connection_id)
+        if attempt.user_id != user_id or self._connection_id != connection_id:
+            raise AttemptContextInvalid()
+        return connection_id
+
+    async def ensure_connection_authorized(self, user_id: str) -> None:
+        """Fail closed when the user's current policy revoked this connection."""
+        policy = await self._resolve_role_policy(user_id, await self._get_database_connection_id())
+        if policy is not None and not policy.allowed_tables:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=self._role_auth_rejection().model_dump(),
+            )
 
     async def _resolve_role_policy(
         self,
@@ -537,11 +540,19 @@ class QueryService:
                 if not sess.preview_text:
                     await self._session_repo.update_preview_text(uuid.UUID(chat_session_id), user_uuid, question)
 
+            source_connection_id = await self._get_database_connection_id()
+            if connection_id is not None and uuid.UUID(connection_id) != uuid.UUID(source_connection_id):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
+                )
+
             attempt_id = str(uuid.uuid4())
             attempt = EphemeralAttempt(
                 attempt_id=attempt_id,
                 session_id=http_session_id,
                 user_id=user_id,
+                database_connection_id=uuid.UUID(source_connection_id),
                 question=question,
                 state="PENDING",
                 llm_provider=self._llm_provider,
@@ -578,7 +589,7 @@ class QueryService:
             # every policy step is a no-op.
             role_policy = await self._resolve_role_policy(
                 user_id,
-                connection_id,
+                source_connection_id,
             )
             if role_policy is not None and not role_policy.allowed_tables:
                 # Deny-all policy: fail closed before the LLM so the
@@ -975,6 +986,7 @@ class QueryService:
 
             try:
                 attempt_obj = await get_attempt(attempt_id, http_session_id, self._redis)
+                self._require_attempt_binding(attempt_obj, user_id)
             except AttemptNotFound:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -997,6 +1009,8 @@ class QueryService:
             # Idempotency: skip if already persisted for this attempt_id (auto-saved)
             existing = await self._repo.get_by_attempt_id(attempt_id, user_uuid)
             if existing is not None:
+                if existing.database_connection_id != attempt_obj.database_connection_id:
+                    raise AttemptContextInvalid()
                 await delete_attempt(attempt_id, self._redis)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 # FR-140: emit query.accept even on the idempotent
@@ -1024,12 +1038,10 @@ class QueryService:
                     ),
                 )
 
-            # Resolve database_connection_id internally (High 2 fix)
-            db_conn_id = await self._get_database_connection_id()
             session_uuid = uuid.UUID(chat_session_id) if chat_session_id else None
             query = await self._repo.create(
                 user_id=user_uuid,
-                database_connection_id=uuid.UUID(db_conn_id),
+                database_connection_id=attempt_obj.database_connection_id,
                 question_text=attempt.get("question", ""),
                 generated_sql=attempt.get("sql", ""),
                 llm_provider=attempt.get("llm_provider", ""),
@@ -1072,7 +1084,7 @@ class QueryService:
         self,
         attempt_id: str,
         http_session_id: str,
-        user_id: str | None = None,
+        user_id: str,
     ) -> QueryResult | RefinePrompt:
         """Reject a query result and trigger one auto-retry.
 
@@ -1085,11 +1097,8 @@ class QueryService:
         Args:
             attempt_id: The ephemeral attempt id to reject.
             http_session_id: The HTTP session id (Redis lock key).
-            user_id: The authenticated user id (FR-140 audit
-                attribution). Optional for backward compatibility
-                with existing test callers; when provided it is
-                recorded as ``actor_id`` and ``actor_identity`` on
-                the ``query.reject`` audit entry.
+            user_id: The authenticated user id used for ownership and
+                FR-140 audit attribution.
 
         Raises:
             SessionBusy: if a concurrent operation is in progress.
@@ -1103,45 +1112,24 @@ class QueryService:
         # submit/validate/execute path (currently out of
         # T-720 scope — regenerate logs no further events
         # to keep the diff minimal).
-        #
-        # Actor attribution (PR #133 review fix): when the
-        # API layer passes the authenticated ``user_id``,
-        # the audit entry records both ``actor_id`` (UUID
-        # form) and ``actor_identity`` (string form). When
-        # ``user_id`` is ``None`` (legacy test callers
-        # without the new param), both are ``None`` rather
-        # than fabricated. The actor_id remains the
-        # authoritative user link; actor_identity is a
-        # human-readable mirror of the same value.
-        reject_actor_id: uuid.UUID | None = None
-        reject_actor_identity: str | None = None
-        if user_id is not None:
-            try:
-                reject_actor_id = uuid.UUID(user_id)
-                reject_actor_identity = user_id
-            except ValueError:
-                # Defensive: a malformed user_id is treated
-                # as no attribution rather than raising —
-                # the audit must not break the user-facing
-                # reject path.
-                reject_actor_id = None
-                reject_actor_identity = None
+        reject_actor_id = uuid.UUID(user_id)
         await AuditService.log(
             self._db_session,
             action=AuditActionType.QUERY_REJECT,
             actor_id=reject_actor_id,
-            actor_identity=reject_actor_identity,
+            actor_identity=user_id,
             resource_type="query_attempt",
             resource_id=attempt_id,
             outcome="success",
             context={},
         )
-        return await self.regenerate_query(attempt_id, http_session_id)
+        return await self.regenerate_query(attempt_id, http_session_id, user_id)
 
     async def regenerate_query(
         self,
         attempt_id: str,
         http_session_id: str,
+        user_id: str,
     ) -> QueryResult | RefinePrompt:
         """Regenerate SQL for a rejected query result.
 
@@ -1178,18 +1166,18 @@ class QueryService:
                 )
 
             prior = await get_attempt(attempt_id, http_session_id, self._redis)
+            connection_id = self._require_attempt_binding(prior, user_id)
             await delete_attempt(attempt_id, self._redis)
 
             # Critical 2: verify user exists in DB before any writes
-            user_uuid = uuid.UUID(prior.user_id) if prior.user_id else None
-            if user_uuid is not None:
-                user_result = await self._db_session.execute(select(User).where(User.id == user_uuid))
-                if user_result.scalar_one_or_none() is None:
-                    await self._redis.delete(f"active_attempt:{http_session_id}")
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-                    )
+            user_uuid = uuid.UUID(user_id)
+            user_result = await self._db_session.execute(select(User).where(User.id == user_uuid))
+            if user_result.scalar_one_or_none() is None:
+                await self._redis.delete(f"active_attempt:{http_session_id}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+                )
 
             # Max retries: max_regenerate_attempts = regen clicks after original (default 3)
             next_attempt_number = (prior.attempt_number or 1) + 1
@@ -1201,15 +1189,11 @@ class QueryService:
                     should_refine=True,
                 )
 
-            # T-712: Resolve role policy for the connection this
-            # regenerate is operating on. Falls back to
-            # ``self._connection_id`` (constructor-set) since
-            # ``regenerate_query`` does not take a request-supplied
-            # ``connection_id`` — it operates on a prior attempt
-            # whose connection is whatever was active at submit time.
+            # Resolve current policy for the immutable connection
+            # captured by the prior attempt at submit time.
             role_policy = await self._resolve_role_policy(
-                prior.user_id or "",
-                self._connection_id,
+                user_id,
+                connection_id,
             )
             if role_policy is not None and not role_policy.allowed_tables:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
@@ -1231,6 +1215,7 @@ class QueryService:
                     prior.question,
                     schema_for_prompt,
                     negative_examples=negative_examples,
+                    target_dialect=self._target_dialect,
                 )
             except Exception as exc:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
@@ -1254,6 +1239,8 @@ class QueryService:
                 failed_attempt = EphemeralAttempt(
                     attempt_id=new_attempt_id,
                     session_id=http_session_id,
+                    user_id=user_id,
+                    database_connection_id=prior.database_connection_id,
                     sql=new_sql,
                     question=prior.question,
                     attempt_number=next_attempt_number,
@@ -1282,6 +1269,8 @@ class QueryService:
                 failed_attempt = EphemeralAttempt(
                     attempt_id=new_attempt_id,
                     session_id=http_session_id,
+                    user_id=user_id,
+                    database_connection_id=prior.database_connection_id,
                     sql=new_sql,
                     question=prior.question,
                     attempt_number=next_attempt_number,
@@ -1406,7 +1395,8 @@ class QueryService:
             new_attempt = EphemeralAttempt(
                 attempt_id=new_attempt_id,
                 session_id=http_session_id,
-                user_id=prior.user_id,
+                user_id=user_id,
+                database_connection_id=prior.database_connection_id,
                 sql=new_sql,
                 question=prior.question,
                 attempt_number=next_attempt_number,

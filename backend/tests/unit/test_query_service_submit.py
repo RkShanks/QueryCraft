@@ -12,6 +12,8 @@ import pytest
 from app.services.query_service import QueryService
 from tests.lifecycle.helpers import FakeRedis
 
+CONNECTION_ID = "00000000-0000-0000-0000-000000000001"
+
 
 class TestQueryServiceSubmit:
     """QueryService.submit_question unit tests."""
@@ -108,6 +110,7 @@ class TestQueryServiceSubmit:
             llm=mock_llm,
             evaluator=mock_evaluator,
             source_db_executor=mock_executor,
+            connection_id=CONNECTION_ID,
         )
 
     @pytest.mark.lifecycle("lock")

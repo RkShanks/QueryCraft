@@ -66,6 +66,7 @@ class TestEvaluatorGate:
             llm=llm,
             evaluator=evaluator,
             source_db_executor=executor,
+            connection_id="00000000-0000-0000-0000-000000000001",
         )
 
         result = await service.submit_question(

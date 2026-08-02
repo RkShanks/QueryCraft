@@ -23,6 +23,7 @@ def service_with_mocked_deps():
         llm=AsyncMock(),
         evaluator=AsyncMock(),
         source_db_executor=AsyncMock(),
+        connection_id="00000000-0000-0000-0000-000000000001",
     )
 
 
@@ -33,6 +34,7 @@ async def test_reject_nonexistent_attempt_returns_422(service_with_mocked_deps):
         await service_with_mocked_deps.reject_query(
             attempt_id="ffffffff-ffff-ffff-ffff-ffffffffffff",
             http_session_id="sess-1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
         )
     assert exc_info.value.status_code == 422
 
@@ -44,5 +46,6 @@ async def test_regenerate_nonexistent_attempt_returns_422(service_with_mocked_de
         await service_with_mocked_deps.regenerate_query(
             attempt_id="ffffffff-ffff-ffff-ffff-ffffffffffff",
             http_session_id="sess-1",
+            user_id="550e8400-e29b-41d4-a716-446655440000",
         )
     assert exc_info.value.status_code == 422

@@ -982,6 +982,7 @@ class TestRegeneratePath:
         prior_attempt.sql = "SELECT id FROM orders"
         prior_attempt.attempt_number = 1
         prior_attempt.llm_provider = "stub"
+        prior_attempt.database_connection_id = conn_id
 
         # Monkeypatch the EphemeralAttempt accessors
         from app.services import query_service as qs
@@ -1001,7 +1002,11 @@ class TestRegeneratePath:
         await service._redis.set("active_attempt:http-sess-1", "attempt-prev-1")
 
         try:
-            result = await service.regenerate_query("attempt-prev-1", "http-sess-1")
+            result = await service.regenerate_query(
+                "attempt-prev-1",
+                "http-sess-1",
+                "550e8400-e29b-41d4-a716-446655440000",
+            )
         finally:
             qs.get_attempt = orig_get
             qs.delete_attempt = orig_delete

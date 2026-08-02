@@ -9,7 +9,7 @@ Tests:
 - Correct permissions -> access granted
 - All errors sanitized: no raw UUIDs, permission internals, DB errors, stack traces.
 - Route-level: wrong-permission POST with invalid body returns 403, not 422.
-- Route-level: wrong-permission POST /query/accept does not run _get_query_service; returns 403.
+- Route-level: wrong-permission POST /query/accept does not build a source-scoped service; returns 403.
 """
 
 import uuid
@@ -362,13 +362,18 @@ class TestQueryPermissionGates:
         req.attempt_id = "a1"
         req.session_id = None
 
-        result = await accept_query(
-            request=request,
-            _session={"permissions": [Permission.QUERY_SUBMIT.value]},
-            req=req,
-            user_id="user1",
-            service=mock_service,
-        )
+        with patch(
+            "app.api.v1.query._build_query_service_for_attempt",
+            new=AsyncMock(return_value=mock_service),
+        ):
+            result = await accept_query(
+                request=request,
+                _session={"permissions": [Permission.QUERY_SUBMIT.value]},
+                req=req,
+                user_id="user1",
+                db=AsyncMock(),
+                redis=AsyncMock(),
+            )
         assert result is not None
 
     @pytest.mark.asyncio
@@ -383,13 +388,18 @@ class TestQueryPermissionGates:
         req.feedback = None
         req.session_id = None
 
-        result = await reject_query(
-            request=request,
-            _session={"permissions": [Permission.QUERY_SUBMIT.value]},
-            req=req,
-            user_id="user1",
-            service=mock_service,
-        )
+        with patch(
+            "app.api.v1.query._build_query_service_for_attempt",
+            new=AsyncMock(return_value=mock_service),
+        ):
+            result = await reject_query(
+                request=request,
+                _session={"permissions": [Permission.QUERY_SUBMIT.value]},
+                req=req,
+                user_id="user1",
+                db=AsyncMock(),
+                redis=AsyncMock(),
+            )
         assert result is not None
 
     @pytest.mark.asyncio
@@ -403,13 +413,18 @@ class TestQueryPermissionGates:
         req.attempt_id = "a1"
         req.session_id = None
 
-        result = await regenerate_query(
-            request=request,
-            _session={"permissions": [Permission.QUERY_SUBMIT.value]},
-            req=req,
-            user_id="user1",
-            service=mock_service,
-        )
+        with patch(
+            "app.api.v1.query._build_query_service_for_attempt",
+            new=AsyncMock(return_value=mock_service),
+        ):
+            result = await regenerate_query(
+                request=request,
+                _session={"permissions": [Permission.QUERY_SUBMIT.value]},
+                req=req,
+                user_id="user1",
+                db=AsyncMock(),
+                redis=AsyncMock(),
+            )
         assert result is not None
 
 

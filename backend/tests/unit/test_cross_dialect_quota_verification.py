@@ -92,6 +92,7 @@ def _make_query_service(
         target_dialect=dialect,
         source_db_adapter=mock_adapter,
         quota_service=mock_quota_service,
+        connection_id="00000000-0000-0000-0000-000000000001",
     )
     return service, user_id, role_id, mock_quota_service
 

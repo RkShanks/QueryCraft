@@ -1,6 +1,7 @@
 """Query router — submit, accept, reject, regenerate."""
 
 import uuid
+from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
@@ -8,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
 from app.api.dependencies.validation import validate_body
+from app.core.attempt_store import get_attempt
 from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis, require_active_user
-from app.core.exceptions import AttemptNotFound, AttemptOwnershipViolation, SessionBusy
+from app.core.exceptions import AttemptContextInvalid, AttemptNotFound, AttemptOwnershipViolation, SessionBusy
 from app.db.models.enums import Permission
 from app.evaluator.pipeline import Evaluator
 from app.evaluator.rules.dialect_validation import DialectValidationRule
@@ -38,50 +40,26 @@ from app.services.quota_service import QuotaService
 from app.services.role_policy_provider import make_role_policy_provider
 from app.source_db.connector import SourceDBConnector
 from app.source_db.executor import SourceDBExecutor
-from app.source_db.introspector import SchemaIntrospector
 
 router = APIRouter(prefix="/query", tags=["Query"])
 
-# Module-level connector + executor + introspector (lives for app lifetime)
+# Module-level connector + executor (lives for app lifetime)
 _source_db_connector = SourceDBConnector()
 _source_db_executor = SourceDBExecutor(_source_db_connector)
-_source_introspector = SchemaIntrospector(_source_db_connector)
+
+
+@dataclass(frozen=True)
+class AttemptServiceContext:
+    """Authenticated identity and ownership keys for a query decision."""
+
+    attempt_id: str
+    http_session_id: str
+    user_id: str
 
 
 async def close_source_db_connector() -> None:
-    """Release the module-level fallback source connection pool."""
+    """Release the module-level source connection pool."""
     await _source_db_connector.aclose()
-
-
-async def _get_query_service(
-    db: AsyncSession = Depends(get_db),  # noqa: B008
-    redis: Redis = Depends(get_redis),  # noqa: B008
-) -> QueryService:
-    schema_context = await _source_introspector.introspect()
-    settings = get_settings()
-    quota_repo = QuotaRepository(db)
-    quota_service = QuotaService(redis=redis, quota_repo=quota_repo)
-    return QueryService(
-        accepted_query_repository=AcceptedQueryRepository(db),
-        session_repository=SessionRepository(db),
-        db_session=db,
-        redis=redis,
-        llm=LLMProviderFactory.from_config(settings),
-        evaluator=Evaluator(
-            rules=[
-                EmptySqlRule(),
-                ReadOnlyRule(dialect="postgres"),
-                SingleStatementRule(dialect="postgres"),
-                SchemaValidationRule(schema_context, dialect="postgres"),
-                UnsafePatternRule(dialect="postgres"),
-            ]
-        ),
-        source_db_executor=_source_db_executor,
-        llm_provider=settings.LLM_PROVIDER,
-        schema_context=schema_context,
-        role_policy_provider=make_role_policy_provider(db),
-        quota_service=quota_service,
-    )
 
 
 async def _build_query_service_for_connection(
@@ -208,6 +186,33 @@ async def _build_query_service_for_connection(
     )
 
 
+async def _build_query_service_for_attempt(
+    context: AttemptServiceContext,
+    db: AsyncSession,
+    redis: Redis,
+) -> QueryService:
+    """Build a service from immutable, server-owned attempt context."""
+    active_attempt_id = await redis.get(f"active_attempt:{context.http_session_id}")
+    if active_attempt_id != context.attempt_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "attempt_not_active", "message_key": "error.attemptInvalid"},
+        )
+
+    attempt = await get_attempt(context.attempt_id, context.http_session_id, redis)
+    if attempt.user_id != context.user_id:
+        raise AttemptOwnershipViolation()
+
+    user_uuid = uuid.UUID(context.user_id)
+    existing = await AcceptedQueryRepository(db).get_by_attempt_id(context.attempt_id, user_uuid)
+    if existing is not None and existing.database_connection_id != attempt.database_connection_id:
+        raise AttemptContextInvalid()
+
+    service = await _build_query_service_for_connection(str(attempt.database_connection_id), db, redis)
+    await service.ensure_connection_authorized(context.user_id)
+    return service
+
+
 @router.post("/submit")
 async def submit_question(
     request: Request,
@@ -260,21 +265,38 @@ async def accept_query(
     _session: dict = Depends(require_permission(Permission.QUERY_SUBMIT)),  # noqa: B008
     req: AcceptQueryRequest = Depends(validate_body(AcceptQueryRequest)),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
-    service: QueryService = Depends(_get_query_service),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
 ):
     """POST /query/accept — persist the current result.
 
     Requires ``query.submit`` permission.
 
-    High 2: database_connection_id is now resolved inside QueryService.accept_query
-    via _get_database_connection_id() on the same request-scoped DB session.
+    The service is rebuilt from immutable connection context in the Redis attempt.
     """
-    return await service.accept_query(
-        http_session_id=request.state.session_id,
-        user_id=user_id,
-        attempt_id=req.attempt_id,
-        chat_session_id=req.session_id,
-    )
+    try:
+        context = AttemptServiceContext(req.attempt_id, request.state.session_id, user_id)
+        service = await _build_query_service_for_attempt(
+            context,
+            db,
+            redis,
+        )
+        return await service.accept_query(
+            http_session_id=request.state.session_id,
+            user_id=user_id,
+            attempt_id=req.attempt_id,
+            chat_session_id=req.session_id,
+        )
+    except AttemptNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "attempt_expired", "message_key": "error.attemptExpired"},
+        ) from None
+    except (AttemptContextInvalid, AttemptOwnershipViolation):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
+        ) from None
 
 
 @router.post("/reject", response_model=QueryResult | RefinePrompt)
@@ -283,23 +305,35 @@ async def reject_query(
     _session: dict = Depends(require_permission(Permission.QUERY_SUBMIT)),  # noqa: B008
     req: RejectQueryRequest = Depends(validate_body(RejectQueryRequest)),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
-    service: QueryService = Depends(_get_query_service),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
 ):
     """POST /query/reject — reject current result and trigger auto-retry.
 
     Requires ``query.submit`` permission.
     """
     try:
+        context = AttemptServiceContext(req.attempt_id, request.state.session_id, user_id)
+        service = await _build_query_service_for_attempt(
+            context,
+            db,
+            redis,
+        )
         return await service.reject_query(
             attempt_id=req.attempt_id,
             http_session_id=request.state.session_id,
             user_id=user_id,
         )
-    except (AttemptNotFound, AttemptOwnershipViolation) as exc:
+    except AttemptNotFound as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": "attempt_invalid", "message_key": exc.message_key},
         ) from exc
+    except (AttemptContextInvalid, AttemptOwnershipViolation):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
+        ) from None
     except SessionBusy as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -313,22 +347,35 @@ async def regenerate_query(
     _session: dict = Depends(require_permission(Permission.QUERY_SUBMIT)),  # noqa: B008
     req: RegenerateQueryRequest = Depends(validate_body(RegenerateQueryRequest)),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
-    service: QueryService = Depends(_get_query_service),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
 ):
     """POST /query/regenerate — regenerate SQL with negative context.
 
     Requires ``query.submit`` permission.
     """
     try:
+        context = AttemptServiceContext(req.attempt_id, request.state.session_id, user_id)
+        service = await _build_query_service_for_attempt(
+            context,
+            db,
+            redis,
+        )
         return await service.regenerate_query(
             attempt_id=req.attempt_id,
             http_session_id=request.state.session_id,
+            user_id=user_id,
         )
-    except (AttemptNotFound, AttemptOwnershipViolation) as exc:
+    except AttemptNotFound as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": "attempt_invalid", "message_key": exc.message_key},
         ) from exc
+    except (AttemptContextInvalid, AttemptOwnershipViolation):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
+        ) from None
     except SessionBusy as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
