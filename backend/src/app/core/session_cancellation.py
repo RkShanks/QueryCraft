@@ -37,6 +37,12 @@ end
 return 1
 """
 
+_TRACK_ATTEMPT_SCRIPT = """
+redis.call("SADD", KEYS[1], ARGV[1])
+redis.call("EXPIRE", KEYS[1], ARGV[2])
+return 1
+"""
+
 _CLEAN_CANCELLED_STATE_SCRIPT = """
 if redis.call("GET", KEYS[1]) ~= ARGV[1] then
     return 0
@@ -179,11 +185,13 @@ async def clear_query_operation_if_owned(operation: QueryOperation, redis: Redis
 
 
 async def track_session_attempt(attempt: TrackedAttempt, redis: Redis) -> None:
-    key = _attempt_state_key(attempt.session_id)
-    async with redis.pipeline(transaction=True) as pipe:
-        pipe.sadd(key, attempt.redis_value)
-        pipe.expire(key, _STATE_TTL_SECONDS)
-        await pipe.execute()
+    await redis.eval(
+        _TRACK_ATTEMPT_SCRIPT,
+        1,
+        _attempt_state_key(attempt.session_id),
+        attempt.redis_value,
+        _STATE_TTL_SECONDS,
+    )
 
 
 async def discard_session_attempt_if_owned(

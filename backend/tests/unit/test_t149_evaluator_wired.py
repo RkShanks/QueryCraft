@@ -30,7 +30,9 @@ def mock_deps():
 
 @pytest.fixture
 def service_with_real_evaluator(mock_deps):
-    mock_deps["redis"].set = AsyncMock()
+    mock_deps["redis"].get = AsyncMock(return_value=None)
+    mock_deps["redis"].set = AsyncMock(return_value=True)
+    mock_deps["redis"].eval = AsyncMock(return_value=1)
     mock_deps["llm"].generate_sql.return_value = "SELECT pg_sleep(60)"
     mock_deps["executor"].execute.return_value = (
         [{"name": "id", "type": "integer"}],

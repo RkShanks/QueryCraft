@@ -32,6 +32,9 @@ class TestQuotaExceededAuditEvent:
         mock_evaluator = AsyncMock()
         mock_executor = AsyncMock()
         mock_redis = AsyncMock()
+        mock_redis.get = AsyncMock(return_value=None)
+        mock_redis.set = AsyncMock(return_value=True)
+        mock_redis.eval = AsyncMock(return_value=1)
         mock_db = AsyncMock()
         mock_quota_service = AsyncMock()
 
@@ -94,6 +97,9 @@ class TestQuotaExceededAuditEvent:
         mock_evaluator = AsyncMock()
         mock_executor = AsyncMock()
         mock_redis = AsyncMock()
+        mock_redis.get = AsyncMock(return_value=None)
+        mock_redis.set = AsyncMock(return_value=True)
+        mock_redis.eval = AsyncMock(return_value=1)
         mock_db = AsyncMock()
         mock_quota_service = AsyncMock()
 

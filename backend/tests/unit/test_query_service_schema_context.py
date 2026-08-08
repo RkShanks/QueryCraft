@@ -225,7 +225,9 @@ async def test_regenerate_query_passes_schema_context():
             return True
 
         async def get(self, key):
-            return "attempt-1"
+            if key == "active_attempt:session-1":
+                return "attempt-1"
+            return None
 
         async def delete(self, key):
             pass
@@ -236,6 +238,7 @@ async def test_regenerate_query_passes_schema_context():
     class FakeAttempt:
         attempt_id = "attempt-1"
         session_id = "session-1"
+        chat_session_id = "880e8400-e29b-41d4-a716-446655440000"
         sql = "SELECT 1"
         question = "How many orders?"
         attempt_number = 1
