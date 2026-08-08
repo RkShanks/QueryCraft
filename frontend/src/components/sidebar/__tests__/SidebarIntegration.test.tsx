@@ -72,6 +72,7 @@ describe('Sidebar Integration', () => {
 
     // Toast should appear
     expect(screen.getByText(/delete session/i)).toBeInTheDocument();
+    expect(useUIStore.getState().activeSessionId).toBe('sess-1');
 
     // Click undo
     const undoBtn = screen.getByText('Undo');
@@ -84,6 +85,7 @@ describe('Sidebar Integration', () => {
 
     // DELETE should never have been called
     expect(mockMutate).not.toHaveBeenCalled();
+    expect(useUIStore.getState().activeSessionId).toBe('sess-1');
 
     // Toast should be gone
     expect(screen.queryByText(/delete session/i)).not.toBeInTheDocument();
@@ -98,6 +100,7 @@ describe('Sidebar Integration', () => {
 
     // Toast should appear
     expect(screen.getByText(/delete session/i)).toBeInTheDocument();
+    expect(useUIStore.getState().activeSessionId).toBe('sess-1');
 
     // Let timer expire
     act(() => {
@@ -106,13 +109,38 @@ describe('Sidebar Integration', () => {
 
     // DELETE should have been called
     expect(mockMutate).toHaveBeenCalledTimes(1);
-    expect(mockMutate).toHaveBeenCalledWith('sess-1');
+    expect(mockMutate).toHaveBeenCalledWith(
+      'sess-1',
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      })
+    );
+    expect(useUIStore.getState().activeSessionId).toBeNull();
 
-    // Toast should be gone after expiry callback
+    // Keep the toast mounted while DELETE is pending, then remove it on success.
+    expect(screen.getByText(/delete session/i)).toBeInTheDocument();
     act(() => {
-      vi.advanceTimersByTime(100);
+      mockMutate.mock.calls[0][1].onSuccess();
     });
 
+    expect(screen.queryByText(/delete session/i)).not.toBeInTheDocument();
+  });
+
+  it('DELETE failure restores the active session after expiry', () => {
+    setup();
+    fireEvent.click(screen.getByTestId('session-delete-sess-1'));
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(useUIStore.getState().activeSessionId).toBeNull();
+
+    act(() => {
+      mockMutate.mock.calls[0][1].onError();
+    });
+
+    expect(useUIStore.getState().activeSessionId).toBe('sess-1');
     expect(screen.queryByText(/delete session/i)).not.toBeInTheDocument();
   });
 
