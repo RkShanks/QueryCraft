@@ -13,6 +13,7 @@ from app.core.attempt_store import get_attempt
 from app.core.config import get_settings
 from app.core.dependencies import get_db, get_redis, require_active_user
 from app.core.exceptions import AttemptContextInvalid, AttemptNotFound, AttemptOwnershipViolation, SessionBusy
+from app.core.session_cancellation import ensure_session_active
 from app.db.models.enums import Permission
 from app.evaluator.pipeline import Evaluator
 from app.evaluator.rules.dialect_validation import DialectValidationRule
@@ -202,6 +203,9 @@ async def _build_query_service_for_attempt(
     attempt = await get_attempt(context.attempt_id, context.http_session_id, redis)
     if attempt.user_id != context.user_id:
         raise AttemptOwnershipViolation()
+    if attempt.chat_session_id is None:
+        raise AttemptContextInvalid()
+    await ensure_session_active(attempt.chat_session_id, redis)
 
     user_uuid = uuid.UUID(context.user_id)
     existing = await AcceptedQueryRepository(db).get_by_attempt_id(context.attempt_id, user_uuid)

@@ -4,6 +4,12 @@ import { submitQuestion, acceptQuery, rejectQuery, regenerateQuery } from '../ap
 import type { SubmitQuestionData, AcceptQueryData } from '../api/generated/types.gen';
 import type { QueryResult, RefinePrompt, EvaluatorRejection } from '../api/generated/types.gen';
 import { useUIStore } from '../stores/uiStore';
+import {
+  didSessionDeletionStart,
+  getSessionDeletionVersion,
+  isSessionUnavailable,
+  SessionDeletionError,
+} from '../sessionDeletionLifecycle';
 
 export const useSubmitQuestion = () => {
   return useMutation({
@@ -125,6 +131,10 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
       setError({ kind: 'connectionRequired' });
       throw new Error('connection_required');
     }
+    if (sessionId && isSessionUnavailable(sessionId)) {
+      throw new SessionDeletionError();
+    }
+    const deletionVersion = sessionId ? getSessionDeletionVersion(sessionId) : 0;
     submittingRef.current = true;
     setIsSubmitting(true);
     clearStates();
@@ -134,6 +144,12 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
         body: { question: q, session_id: sessionId ?? undefined, connection_id: connectionId },
         throwOnError: true,
       });
+      if (
+        sessionId &&
+        (isSessionUnavailable(sessionId) || didSessionDeletionStart(sessionId, deletionVersion))
+      ) {
+        throw new SessionDeletionError();
+      }
       const data = res.data;
       if (data && typeof data === 'object' && 'kind' in data && data.kind === 'result') {
         const queryResult = data as QueryResult;
@@ -145,6 +161,14 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
       }
       return data;
     } catch (err: unknown) {
+      if (
+        err instanceof SessionDeletionError ||
+        (sessionId &&
+          (isSessionUnavailable(sessionId) || didSessionDeletionStart(sessionId, deletionVersion)))
+      ) {
+        clearStates();
+        throw err instanceof SessionDeletionError ? err : new SessionDeletionError();
+      }
       handleError(err);
       throw err;
     } finally {

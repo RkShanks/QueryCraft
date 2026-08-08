@@ -1,6 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDeleteSession } from '../../hooks/useSessions';
+import {
+  beginSessionDeletion,
+  rollbackSessionDeletion,
+} from '../../sessionDeletionLifecycle';
 import './UndoToast.css';
 
 export interface UndoToastItem {
@@ -12,26 +16,39 @@ export interface UndoToastItem {
 interface UndoToastProps {
   item: UndoToastItem;
   onUndo: () => void;
+  onDeleteStarted: () => boolean;
+  onDeleteFailed: (restoreActiveSession: boolean) => void;
   onExpired: () => void;
 }
 
 const UNDO_DURATION_MS = 5000;
 
-export const UndoToast: React.FC<UndoToastProps> = ({ item, onUndo, onExpired }) => {
+export const UndoToast: React.FC<UndoToastProps> = ({
+  item,
+  onUndo,
+  onDeleteStarted,
+  onDeleteFailed,
+  onExpired,
+}) => {
   const { t } = useTranslation();
   const deleteMutation = useDeleteSession();
   const [remainingMs, setRemainingMs] = React.useState(UNDO_DURATION_MS);
+  const [deleteStarted, setDeleteStarted] = React.useState(false);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
   const expiredRef = React.useRef(false);
 
   const deleteMutationRef = React.useRef(deleteMutation);
   const onExpiredRef = React.useRef(onExpired);
+  const onDeleteStartedRef = React.useRef(onDeleteStarted);
+  const onDeleteFailedRef = React.useRef(onDeleteFailed);
 
   React.useEffect(() => {
     deleteMutationRef.current = deleteMutation;
     onExpiredRef.current = onExpired;
-  }, [deleteMutation, onExpired]);
+    onDeleteStartedRef.current = onDeleteStarted;
+    onDeleteFailedRef.current = onDeleteFailed;
+  }, [deleteMutation, onDeleteFailed, onDeleteStarted, onExpired]);
 
   React.useEffect(() => {
     const startTime = Date.now();
@@ -49,8 +66,17 @@ export const UndoToast: React.FC<UndoToastProps> = ({ item, onUndo, onExpired })
     timerRef.current = setTimeout(() => {
       if (!expiredRef.current) {
         expiredRef.current = true;
-        deleteMutationRef.current.mutate(item.sessionId);
-        onExpiredRef.current();
+        beginSessionDeletion(item.sessionId);
+        const restoreActiveSession = onDeleteStartedRef.current();
+        setDeleteStarted(true);
+        deleteMutationRef.current.mutate(item.sessionId, {
+          onSuccess: () => onExpiredRef.current(),
+          onError: () => {
+            rollbackSessionDeletion(item.sessionId);
+            onDeleteFailedRef.current(restoreActiveSession);
+            onExpiredRef.current();
+          },
+        });
       }
     }, UNDO_DURATION_MS);
 
@@ -61,6 +87,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({ item, onUndo, onExpired })
   }, [item.sessionId]);
 
   const handleUndo = () => {
+    if (expiredRef.current) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
     onUndo();
@@ -75,6 +102,7 @@ export const UndoToast: React.FC<UndoToastProps> = ({ item, onUndo, onExpired })
         <button
           className="undo-toast-button"
           onClick={handleUndo}
+          disabled={deleteStarted}
           data-testid={`undo-button-${item.id}`}
         >
           {t('sidebar.undo')}

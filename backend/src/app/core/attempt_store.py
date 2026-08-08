@@ -21,6 +21,7 @@ class EphemeralAttempt(BaseModel):
 
     attempt_id: str
     session_id: str
+    chat_session_id: str | None = None
     user_id: str = ""
     database_connection_id: uuid.UUID
     sql: str = ""

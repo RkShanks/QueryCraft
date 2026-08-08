@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useSubmitQuestion, useAcceptQuery, useQuerySubmit } from './useQuerySubmit';
 import { createWrapper } from '../test/utils';
 import { server } from '../test/server';
@@ -9,8 +9,15 @@ import {
   setRejectScenario,
   setRegenerateScenario,
 } from '../test/handlers';
+import {
+  beginSessionDeletion,
+  resetSessionDeletionLifecycle,
+} from '../sessionDeletionLifecycle';
 
 describe('Query Hooks', () => {
+  beforeEach(() => {
+    resetSessionDeletionLifecycle();
+  });
   describe('useSubmitQuestion', () => {
     it('should submit a question successfully', async () => {
       const { result } = renderHook(() => useSubmitQuestion(), { wrapper: createWrapper() });
@@ -113,6 +120,46 @@ describe('Query Hooks', () => {
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
       await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
       expect(requestBody).toMatchObject({ connection_id: '550e8400-e29b-41d4-a716-446655440001' });
+    });
+
+    it('suppresses a late success after deletion starts for the submitted session', async () => {
+      const sessionId = '550e8400-e29b-41d4-a716-446655440010';
+      let releaseResponse: (() => void) | undefined;
+      const responseGate = new Promise<void>((resolve) => {
+        releaseResponse = resolve;
+      });
+      server.use(
+        http.post('/api/v1/query/submit', async () => {
+          await responseGate;
+          return HttpResponse.json({
+            kind: 'result',
+            attempt_id: 'late-attempt',
+            session_id: sessionId,
+            question: 'Late result',
+            generated_sql: 'SELECT 1',
+            columns: [],
+            rows: [],
+            row_count: 0,
+            attempt_number: 1,
+            is_last_auto_retry: false,
+          });
+        })
+      );
+      const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
+
+      const submission = result.current.submitQuestion(
+        'Late result',
+        sessionId,
+        '550e8400-e29b-41d4-a716-446655440001'
+      );
+      await waitFor(() => expect(result.current.isSubmitting).toBe(true));
+      beginSessionDeletion(sessionId);
+      releaseResponse?.();
+
+      await expect(submission).rejects.toThrow('session_deleted');
+      await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+      expect(result.current.result).toBeNull();
+      expect(result.current.error).toBeNull();
     });
 
     it('fails locally with connection_required if connectionId is missing and does not call API', async () => {

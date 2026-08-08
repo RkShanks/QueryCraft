@@ -16,8 +16,9 @@ The unique disposition is 36 product gaps, four coverage gaps, one contract/docu
 
 ## Remediation progress
 
-- `CHUNK-01` / `IS-GAP-001`: **Resolved** on tested main `3522440f0bbf3c837aafe62edaf2e9d89d4717fb` via [#297](https://github.com/RkShanks/QueryCraft/pull/297). See the [Markdown](evidence/chunk-01-source-continuity.md) and [JSON](evidence/chunk-01-source-continuity.json) merged-main evidence. `CHUNK-02` is unblocked; no later chunk has started.
-- `CHUNK-02` / `IS-GAP-002`: **Resolved** on tested main `76f317b6894ffb4300133d51ad4e201ecb022d96` via [#299](https://github.com/RkShanks/QueryCraft/pull/299). See the [Markdown](evidence/chunk-02-masked-attempt-state.md) and [JSON](evidence/chunk-02-masked-attempt-state.json) merged-main evidence. `CHUNK-03` is unblocked; no CHUNK-03 work has started.
+- `CHUNK-01` / `IS-GAP-001`: **Resolved** on tested main `3522440f0bbf3c837aafe62edaf2e9d89d4717fb` via [#297](https://github.com/RkShanks/QueryCraft/pull/297). See the [Markdown](evidence/chunk-01-source-continuity.md) and [JSON](evidence/chunk-01-source-continuity.json) merged-main evidence.
+- `CHUNK-02` / `IS-GAP-002`: **Resolved** on tested main `76f317b6894ffb4300133d51ad4e201ecb022d96` via [#299](https://github.com/RkShanks/QueryCraft/pull/299). See the [Markdown](evidence/chunk-02-masked-attempt-state.md) and [JSON](evidence/chunk-02-masked-attempt-state.json) merged-main evidence.
+- `CHUNK-03` / `IS-GAP-003`: **Resolved** on tested product commit `4580925594c872ae0283485155bbdf4bd7e225f4` via [#301](https://github.com/RkShanks/QueryCraft/pull/301). See the [Markdown](evidence/chunk-03-session-cancel.md) and [JSON](evidence/chunk-03-session-cancel.json) cancellation, race, browser/API, and cleanup evidence. `CHUNK-04` is unblocked after #301 merges; no CHUNK-04 work has started.
 
 ## Artifacts
 

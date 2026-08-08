@@ -1,11 +1,19 @@
 """Sessions router — CRUD for chat sessions."""
 
+import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_db, require_active_user
+from app.core.dependencies import get_db, get_redis, require_active_user
+from app.core.session_cancellation import (
+    cancel_local_session_work,
+    cleanup_cancelled_session_state,
+    clear_cancellation_if_owned,
+    mark_session_cancelling,
+)
 from app.repositories.accepted_query_repository import AcceptedQueryRepository
 from app.repositories.connection_repository import ConnectionRepository
 from app.repositories.session_repository import SessionRepository
@@ -130,14 +138,46 @@ async def delete_session(
     session_id: uuid.UUID,
     repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    redis: Redis = Depends(get_redis),  # noqa: B008
 ):
     """DELETE /sessions/:id — delete a session (cascade deletes accepted_queries)."""
-    deleted = await repo.delete(session_id, uuid.UUID(user_id))
-    if not deleted:
+    user_uuid = uuid.UUID(user_id)
+    if await repo.get_by_id(session_id, user_uuid) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "not_found", "message_key": "error.notFound"},
         )
+
+    marker = await mark_session_cancelling(str(session_id), user_id, redis)
+    if marker is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "not_found", "message_key": "error.notFound"},
+        )
+
+    try:
+        cancel_local_session_work(str(session_id), user_id)
+        if not await cleanup_cancelled_session_state(marker, redis):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "service_unavailable",
+                    "message_key": "error.service_unavailable",
+                },
+            )
+        if not await repo.delete(session_id, user_uuid):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": "not_found", "message_key": "error.notFound"},
+            )
+        await db.commit()
+    except (Exception, asyncio.CancelledError):
+        try:
+            await db.rollback()
+        finally:
+            await clear_cancellation_if_owned(marker, redis)
+        raise
 
 
 @router.patch("/{session_id}/connection", response_model=SessionConnectionResponse)

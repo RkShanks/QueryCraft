@@ -983,6 +983,7 @@ class TestRegeneratePath:
         prior_attempt.attempt_number = 1
         prior_attempt.llm_provider = "stub"
         prior_attempt.database_connection_id = conn_id
+        prior_attempt.chat_session_id = "880e8400-e29b-41d4-a716-446655440000"
 
         # Monkeypatch the EphemeralAttempt accessors
         from app.services import query_service as qs

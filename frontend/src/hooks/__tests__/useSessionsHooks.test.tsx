@@ -1,11 +1,30 @@
-import { describe, it, expect } from 'vitest';
+import React from 'react';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { useSessionsList, useSessionDetail, useCreateSession, useDeleteSession } from '../useSessions';
 import { useUpdateFeedback } from '../useFeedback';
 import { useAdminSettings, useUpdateAdminSettings } from '../useAdminSettings';
 import { createWrapper } from '../../test/utils';
+import { server } from '../../test/server';
+import {
+  isSessionUnavailable,
+  resetSessionDeletionLifecycle,
+} from '../../sessionDeletionLifecycle';
+
+const SESSION_ID = '550e8400-e29b-41d4-a716-446655440001';
+
+function deleteHookWrapper(queryClient: QueryClient) {
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
 
 describe('useSessions hooks', () => {
+  beforeEach(() => {
+    resetSessionDeletionLifecycle();
+  });
   it('useSessionsList returns data shape', async () => {
     const { result } = renderHook(() => useSessionsList(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -31,6 +50,49 @@ describe('useSessions hooks', () => {
   it('useDeleteSession returns mutation function', () => {
     const { result } = renderHook(() => useDeleteSession(), { wrapper: createWrapper() });
     expect(typeof result.current.mutate).toBe('function');
+  });
+
+  it('removes deleted session detail/list cache and keeps the lifecycle invalidated', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    queryClient.setQueryData(['sessions'], { items: [{ id: SESSION_ID }], total: 1 });
+    queryClient.setQueryData(['sessions', SESSION_ID], { id: SESSION_ID, attempts: [] });
+    const { result } = renderHook(() => useDeleteSession(), {
+      wrapper: deleteHookWrapper(queryClient),
+    });
+
+    await result.current.mutateAsync(SESSION_ID);
+
+    expect(queryClient.getQueryData(['sessions', SESSION_ID])).toBeUndefined();
+    expect(queryClient.getQueryData<{ items: unknown[]; total: number }>(['sessions'])).toEqual({
+      items: [],
+      total: 0,
+    });
+    expect(isSessionUnavailable(SESSION_ID)).toBe(true);
+  });
+
+  it('restores session detail and lifecycle state when DELETE fails', async () => {
+    server.use(
+      http.delete('/api/v1/sessions/:sessionId', () =>
+        HttpResponse.json(
+          { error: 'service_unavailable', message_key: 'error.service_unavailable' },
+          { status: 503 }
+        )
+      )
+    );
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const detail = { id: SESSION_ID, attempts: [] };
+    queryClient.setQueryData(['sessions'], { items: [{ id: SESSION_ID }], total: 1 });
+    queryClient.setQueryData(['sessions', SESSION_ID], detail);
+    const { result } = renderHook(() => useDeleteSession(), {
+      wrapper: deleteHookWrapper(queryClient),
+    });
+
+    await expect(result.current.mutateAsync(SESSION_ID)).rejects.toBeDefined();
+
+    expect(queryClient.getQueryData(['sessions', SESSION_ID])).toEqual(detail);
+    expect(isSessionUnavailable(SESSION_ID)).toBe(false);
+    expect(queryClient.getQueryState(['sessions'])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(['sessions', SESSION_ID])?.isInvalidated).toBe(true);
   });
 });
 

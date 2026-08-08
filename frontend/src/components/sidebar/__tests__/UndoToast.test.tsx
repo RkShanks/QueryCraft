@@ -7,6 +7,7 @@ vi.mock('../../../hooks/useSessions', () => ({
 }));
 
 import { useDeleteSession } from '../../../hooks/useSessions';
+import { resetSessionDeletionLifecycle } from '../../../sessionDeletionLifecycle';
 
 const mockMutate = vi.fn();
 
@@ -21,6 +22,8 @@ function setup(props: Partial<React.ComponentProps<typeof UndoToast>> = {}) {
     <UndoToast
       item={defaultItem}
       onUndo={vi.fn()}
+      onDeleteStarted={vi.fn(() => true)}
+      onDeleteFailed={vi.fn()}
       onExpired={vi.fn()}
       {...props}
     />
@@ -30,6 +33,7 @@ function setup(props: Partial<React.ComponentProps<typeof UndoToast>> = {}) {
 describe('UndoToast', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    resetSessionDeletionLifecycle();
     (useDeleteSession as ReturnType<typeof vi.fn>).mockReturnValue({
       mutate: mockMutate,
     });
@@ -46,7 +50,7 @@ describe('UndoToast', () => {
     expect(screen.getByText('Undo')).toBeInTheDocument();
   });
 
-  it('fires DELETE after 5 seconds', () => {
+  it('fires DELETE after 5 seconds and stays mounted until DELETE succeeds', () => {
     const onExpired = vi.fn();
     setup({ onExpired });
 
@@ -56,8 +60,16 @@ describe('UndoToast', () => {
       vi.advanceTimersByTime(5000);
     });
 
-    expect(mockMutate).toHaveBeenCalledWith('sess-123');
-    expect(onExpired).toHaveBeenCalled();
+    expect(mockMutate).toHaveBeenCalledWith(
+      'sess-123',
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) })
+    );
+    expect(onExpired).not.toHaveBeenCalled();
+
+    act(() => {
+      mockMutate.mock.calls[0][1].onSuccess();
+    });
+    expect(onExpired).toHaveBeenCalledTimes(1);
   });
 
   it('cancels timer on Undo (API never fires)', () => {

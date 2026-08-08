@@ -76,6 +76,7 @@ from app.services.query_service import QueryService
 _AUDIT_KNOWN_ACCEPTED_QUERY_ID = "aaaaaaaa-0000-0000-0000-000000000001"
 _AUDIT_KNOWN_USER_ID = "550e8400-e29b-41d4-a716-446655440000"
 _AUDIT_CONNECTION_ID = "770e8400-e29b-41d4-a716-446655440000"
+_AUDIT_CHAT_SESSION_ID = "880e8400-e29b-41d4-a716-446655440000"
 
 _AUDIT_FORBIDDEN_IN_CONTEXT = (
     # raw SQL fragment
@@ -275,6 +276,8 @@ class _FakeRedis:
         return True
 
     async def eval(self, script, num_keys, *args):
+        if len(args) == 3:
+            return 1
         key, expected_owner = args
         if self._data.get(key) != expected_owner:
             return 0
@@ -675,6 +678,7 @@ class TestAcceptAuditLogging:
         ephemeral = EphemeralAttempt(
             attempt_id=attempt_id,
             session_id=http_session_id,
+            chat_session_id=_AUDIT_CHAT_SESSION_ID,
             user_id=deps["user_id"],
             database_connection_id=_AUDIT_CONNECTION_ID,
             state="EXECUTED",
@@ -729,6 +733,7 @@ class TestRejectAuditLogging:
         ephemeral = EphemeralAttempt(
             attempt_id=attempt_id,
             session_id=http_session_id,
+            chat_session_id=_AUDIT_CHAT_SESSION_ID,
             user_id=deps["user_id"],
             database_connection_id=_AUDIT_CONNECTION_ID,
             state="EXECUTED",
@@ -788,6 +793,7 @@ class TestRejectAuditLogging:
         ephemeral = EphemeralAttempt(
             attempt_id=attempt_id,
             session_id=http_session_id,
+            chat_session_id=_AUDIT_CHAT_SESSION_ID,
             user_id=deps["user_id"],
             database_connection_id=_AUDIT_CONNECTION_ID,
             state="EXECUTED",
@@ -822,6 +828,7 @@ class TestRejectAuditLogging:
         ephemeral = EphemeralAttempt(
             attempt_id=attempt_id,
             session_id=http_session_id,
+            chat_session_id=_AUDIT_CHAT_SESSION_ID,
             user_id=deps["user_id"],
             database_connection_id=_AUDIT_CONNECTION_ID,
             state="EXECUTED",
@@ -997,6 +1004,7 @@ async def _invoke_execution_operation(service, deps, operation: str):
         prior_attempt = EphemeralAttempt(
             attempt_id="prior-attempt",
             session_id="http-sess-1",
+            chat_session_id=_AUDIT_CHAT_SESSION_ID,
             user_id=deps["user_id"],
             database_connection_id=_AUDIT_CONNECTION_ID,
             sql="SELECT orders.id FROM orders",

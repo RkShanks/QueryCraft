@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` / `IS-GAP-001` and `CHUNK-02` / `IS-GAP-002` are resolved. CHUNK-02 passed merged-main three-dialect Redis/API/browser proof on `76f317b6894ffb4300133d51ad4e201ecb022d96` via [#299](https://github.com/RkShanks/QueryCraft/pull/299) and [merged-main evidence](evidence/chunk-02-masked-attempt-state.md). `CHUNK-03` is unblocked; no CHUNK-03 work has started.
+Status: `CHUNK-01` through `CHUNK-03` are resolved. CHUNK-03 passed deterministic provider, evaluator, persistence-boundary, cross-worker, and real PostgreSQL source cancellation proof on `4580925594c872ae0283485155bbdf4bd7e225f4` via [#301](https://github.com/RkShanks/QueryCraft/pull/301) and [evidence](evidence/chunk-03-session-cancel.md). `CHUNK-04` is unblocked after #301 merges; no CHUNK-04 work has started.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -27,7 +27,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-02 — protected rows in attempt state
 
-- **Progress:** Resolved. Submit and regenerate persist metadata-only attempts; three-dialect merged-main Redis/API/browser proof passed, all isolated resources were removed, and the protected baseline was preserved. `CHUNK-03` is unblocked.
+- **Progress:** Resolved. Submit and regenerate persist metadata-only attempts; three-dialect merged-main Redis/API/browser proof passed, all isolated resources were removed, and the protected baseline was preserved. `CHUNK-03` subsequently resolved the next dependency.
 
 - **IDs / role / branch / context:** `IS-GAP-002`; Backend Implementer (Kimi/GLM); `phase-6/wave-19.02-masked-attempt-state`; 70–100k.
 - **Likely source:** `backend/src/app/services/query_service.py`, `backend/src/app/core/attempt_store.py`, policy enforcement and their unit/security tests.
@@ -39,6 +39,8 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Stop conditions:** Retry correctness would require retaining protected values, a canary appears in any retained artifact, or CHUNK-01 is not merged.
 
 ## CHUNK-03 — session delete/cancel lifecycle
+
+- **Progress:** Resolved. DELETE establishes durable cancellation before database deletion; same-process work is interrupted where safe, late cross-worker completion is suppressed, owned attempt/lock state is cleaned without racing replacement owners, and frontend Undo/cache/workspace behavior remains coherent. Deterministic browser/API and real PostgreSQL source proof passed. `CHUNK-04` is unblocked after #301 merges.
 
 - **IDs / role / branch / context:** `IS-GAP-003`; Backend Implementer then Frontend Implementer; `phase-6/wave-19.03-session-delete-cancel`; 130–170k.
 - **Likely source:** `backend/src/app/api/v1/sessions.py`, `backend/src/app/repositories/session_repository.py`, processing/attempt state, `frontend/src/hooks/useSessions.ts`, `frontend/src/components/sidebar/UndoToast.tsx`, `WorkspacePage.tsx`.
@@ -359,4 +361,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01 / IS-GAP-001` and `CHUNK-02 / IS-GAP-002` are resolved. `CHUNK-03 / IS-GAP-003` is the next unblocked dispatch; no CHUNK-03 work has started.
+`CHUNK-01` through `CHUNK-03` are resolved. `CHUNK-04 / IS-GAP-004` is the next unblocked dispatch after #301 merges; no CHUNK-04 work has started.
