@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 42, "Resolved": 2, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 41, "Resolved": 3, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -43,6 +43,13 @@
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/299",
       "tested_main": "76f317b6894ffb4300133d51ad4e201ecb022d96",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-02-masked-attempt-state.json"
+    },
+    "CHUNK-03": {
+      "gap_id": "IS-GAP-003",
+      "status": "Resolved",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/301",
+      "tested_commit": "0f886134a355150880e0819dbb138ff71f9794fc",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-03-session-cancel.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -105,8 +112,9 @@
       "required_evidence": "Browser/API delete-undo-delete trace proving cancellation, no late DOM/history success, and clean Redis/DB state.",
       "isolation": "Disposable session, Redis namespace and controllable source; cancel and clean all tasks.",
       "regression_rows": ["P2-FR-044", "P2-FR-058", "XP-013"],
-      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-03", "status": "Pending",
-      "source_refs": ["backend/src/app/api/v1/sessions.py::delete_session", "backend/src/app/repositories/session_repository.py::SessionRepository.delete", "frontend/src/hooks/useSessions.ts::useDeleteSession", "frontend/src/components/sidebar/UndoToast.tsx::UndoToast", "backend/tests/integration/test_sessions.py", "frontend/src/components/sidebar/__tests__/SidebarIntegration.test.tsx", "frontend/src/components/sidebar/__tests__/UndoToast.test.tsx"]
+      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-03", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/301", "tested_commit": "0f886134a355150880e0819dbb138ff71f9794fc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-03-session-cancel.json"},
+      "source_refs": ["backend/src/app/api/v1/sessions.py::delete_session", "backend/src/app/core/session_cancellation.py::mark_session_cancelling", "backend/src/app/core/session_cancellation.py::cleanup_cancelled_session_state", "backend/src/app/core/session_cancellation.py::run_cancellable_session_stage", "backend/src/app/services/query_service.py::QueryService.submit_question", "backend/src/app/repositories/session_repository.py::SessionRepository.delete", "frontend/src/sessionDeletionLifecycle.ts", "frontend/src/hooks/useSessions.ts::useDeleteSession", "frontend/src/hooks/useQuerySubmit.ts::useQuerySubmit", "frontend/src/components/sidebar/UndoToast.tsx::UndoToast", "backend/tests/integration/test_session_delete_cancellation.py", "frontend/src/components/sidebar/__tests__/SidebarIntegration.test.tsx", "frontend/src/components/sidebar/__tests__/UndoToast.test.tsx"]
     },
     {
       "id": "IS-GAP-004", "severity": "High", "disposition": "Confirmed Product Gap",
