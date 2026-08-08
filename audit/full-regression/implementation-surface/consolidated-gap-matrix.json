@@ -48,7 +48,7 @@
       "gap_id": "IS-GAP-003",
       "status": "Resolved",
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/301",
-      "tested_commit": "0f886134a355150880e0819dbb138ff71f9794fc",
+      "tested_commit": "4580925594c872ae0283485155bbdf4bd7e225f4",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-03-session-cancel.json"
     }
   },
@@ -113,7 +113,7 @@
       "isolation": "Disposable session, Redis namespace and controllable source; cancel and clean all tasks.",
       "regression_rows": ["P2-FR-044", "P2-FR-058", "XP-013"],
       "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-03", "status": "Resolved",
-      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/301", "tested_commit": "0f886134a355150880e0819dbb138ff71f9794fc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-03-session-cancel.json"},
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/301", "tested_commit": "4580925594c872ae0283485155bbdf4bd7e225f4", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-03-session-cancel.json"},
       "source_refs": ["backend/src/app/api/v1/sessions.py::delete_session", "backend/src/app/core/session_cancellation.py::mark_session_cancelling", "backend/src/app/core/session_cancellation.py::cleanup_cancelled_session_state", "backend/src/app/core/session_cancellation.py::run_cancellable_session_stage", "backend/src/app/services/query_service.py::QueryService.submit_question", "backend/src/app/repositories/session_repository.py::SessionRepository.delete", "frontend/src/sessionDeletionLifecycle.ts", "frontend/src/hooks/useSessions.ts::useDeleteSession", "frontend/src/hooks/useQuerySubmit.ts::useQuerySubmit", "frontend/src/components/sidebar/UndoToast.tsx::UndoToast", "backend/tests/integration/test_session_delete_cancellation.py", "frontend/src/components/sidebar/__tests__/SidebarIntegration.test.tsx", "frontend/src/components/sidebar/__tests__/UndoToast.test.tsx"]
     },
     {

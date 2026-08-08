@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-03` are resolved. CHUNK-03 passed deterministic provider, evaluator, persistence-boundary, cross-worker, and real PostgreSQL source cancellation proof on `0f886134a355150880e0819dbb138ff71f9794fc` via [#301](https://github.com/RkShanks/QueryCraft/pull/301) and [evidence](evidence/chunk-03-session-cancel.md). `CHUNK-04` is unblocked after #301 merges; no CHUNK-04 work has started.
+Status: `CHUNK-01` through `CHUNK-03` are resolved. CHUNK-03 passed deterministic provider, evaluator, persistence-boundary, cross-worker, and real PostgreSQL source cancellation proof on `4580925594c872ae0283485155bbdf4bd7e225f4` via [#301](https://github.com/RkShanks/QueryCraft/pull/301) and [evidence](evidence/chunk-03-session-cancel.md). `CHUNK-04` is unblocked after #301 merges; no CHUNK-04 work has started.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 

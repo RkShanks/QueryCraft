@@ -4,7 +4,7 @@
   "chunk_id": "CHUNK-03",
   "status": "Resolved",
   "starting_main": "9eda3c71128d2840aad469f8b182b5f6c9185ec7",
-  "tested_product_commit": "0f886134a355150880e0819dbb138ff71f9794fc",
+  "tested_product_commit": "4580925594c872ae0283485155bbdf4bd7e225f4",
   "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/301",
   "lifecycle_design": {
     "durable_redis_tombstone_before_database_delete": true,
@@ -38,12 +38,14 @@
     "backend_red_commit": "393bc030341f61c0f0cb45647e7375d71d8a5a64",
     "frontend_red_commit": "36c9bf06f671c1c31f5c0db8ced8aef3f4d9fec1",
     "green_commit": "0f886134a355150880e0819dbb138ff71f9794fc",
-    "refactor_commit": null
+    "refactor_commit": "4580925594c872ae0283485155bbdf4bd7e225f4"
   },
   "automated_gates": {
     "focused_backend_passed": 102,
     "focused_frontend_passed": 107,
     "mysql_mssql_policy_regression_passed": 2,
+    "local_full_backend_unit_passed": 2397,
+    "local_full_backend_unit_deselected": 14,
     "ruff_check": true,
     "ruff_format": true,
     "frontend_vitest": true,

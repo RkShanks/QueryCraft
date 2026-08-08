@@ -3,7 +3,7 @@
 Status: **Resolved**  
 Gap: `IS-GAP-003`  
 Starting main: `9eda3c71128d2840aad469f8b182b5f6c9185ec7`  
-Tested product commit: `0f886134a355150880e0819dbb138ff71f9794fc`  
+Tested product commit: `4580925594c872ae0283485155bbdf4bd7e225f4`  
 Fix PR: [#301](https://github.com/RkShanks/QueryCraft/pull/301)
 
 ## Outcome
@@ -25,10 +25,11 @@ CHUNK-03 does not change general timeout configuration, retry quotas, regenerate
 | Backend RED commit | `393bc030341f61c0f0cb45647e7375d71d8a5a64` |
 | Frontend RED commit | `36c9bf06f671c1c31f5c0db8ced8aef3f4d9fec1` |
 | GREEN commit | `0f886134a355150880e0819dbb138ff71f9794fc` |
-| REFACTOR commit | Not needed; GREEN kept one shared cancellation boundary and one frontend lifecycle primitive |
+| REFACTOR commit | `4580925594c872ae0283485155bbdf4bd7e225f4`; made attempt-set membership and TTL one atomic Redis operation and aligned legacy unit fixtures with required session binding |
 | Focused backend session/query/concurrency/attempt/lock/audit | 102 passed |
 | Focused frontend Workspace/Sidebar/Undo/session/query lifecycle | 107 passed |
 | MySQL/MSSQL source-policy regression | 2 passed |
+| Exact local backend CI unit command | 2,397 passed; 14 deselected |
 | Ruff check and format check for touched backend scope | Passed |
 | Frontend Vitest, ESLint, typecheck, build, and CSS lint | Passed |
 | Diff validation | Passed |

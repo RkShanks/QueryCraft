@@ -107,7 +107,7 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-002` is resolved on tested main `76f317b6894ffb4300133d51ad4e201ecb022d96` via [#299](https://github.com/RkShanks/QueryCraft/pull/299). Its [CHUNK-02 evidence](evidence/chunk-02-masked-attempt-state.md) records the metadata-only storage design, direct/alias/nested/row-filter matrix across three dialects, Redis/API/history/audit/browser absence checks, failure behavior, gates, and cleanup.
 
-`IS-GAP-003` is resolved on tested product commit `0f886134a355150880e0819dbb138ff71f9794fc` via [#301](https://github.com/RkShanks/QueryCraft/pull/301). Its [CHUNK-03 evidence](evidence/chunk-03-session-cancel.md) records durable cancellation, ownership-safe cleanup, failure/rollback races, frontend Undo/cache behavior, deterministic provider/second-worker proof, and real PostgreSQL source cancellation with DB/Redis/audit/browser inspection.
+`IS-GAP-003` is resolved on tested product commit `4580925594c872ae0283485155bbdf4bd7e225f4` via [#301](https://github.com/RkShanks/QueryCraft/pull/301). Its [CHUNK-03 evidence](evidence/chunk-03-session-cancel.md) records durable cancellation, ownership-safe cleanup, failure/rollback races, frontend Undo/cache behavior, deterministic provider/second-worker proof, and real PostgreSQL source cancellation with DB/Redis/audit/browser inspection.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
