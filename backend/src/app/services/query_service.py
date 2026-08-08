@@ -50,11 +50,22 @@ from app.core.exceptions import (
     PolicySchemaConflictError,
     QuotaExceededError,
     QuotaUnavailableError,
+    SessionInvalidated,
     SourceDBConnectionFailed,
     SourceDBPermissionDenied,
     SourceDBTimeout,
 )
 from app.core.processing_lock import acquire_lock, release_lock_if_owned
+from app.core.session_cancellation import (
+    QueryOperation,
+    TrackedAttempt,
+    clear_query_operation_if_owned,
+    discard_session_attempt_if_owned,
+    ensure_session_active,
+    register_query_operation,
+    run_cancellable_session_stage,
+    track_session_attempt,
+)
 from app.db.models.enums import AuditActionType
 from app.db.models.user import User
 from app.evaluator.rules.role_authorization import RoleAuthorizationRule
@@ -202,6 +213,25 @@ class QueryService:
     async def _release_lock_if_owned(self, session_id: str, owner: str | None) -> bool:
         """Release the processing lock only if we own it."""
         return await release_lock_if_owned(session_id, owner, self._redis)
+
+    async def _ensure_chat_session_active(self, chat_session_id: str | None) -> None:
+        if chat_session_id is not None:
+            await ensure_session_active(chat_session_id, self._redis)
+
+    async def _run_chat_session_stage(
+        self,
+        chat_session_id: str | None,
+        user_id: str,
+        stage: Awaitable[Any],
+    ) -> Any:
+        if chat_session_id is None:
+            return await stage
+        return await run_cancellable_session_stage(chat_session_id, user_id, stage)
+
+    async def _discard_invalidated_attempt(self, tracked_attempt: TrackedAttempt | None) -> None:
+        await self._db_session.rollback()
+        if tracked_attempt is not None:
+            await discard_session_attempt_if_owned(tracked_attempt, self._redis)
 
     async def _persist_audit_without_request_side_effects(
         self,
@@ -413,6 +443,8 @@ class QueryService:
                 detail={"error": "concurrent", "message_key": "error.concurrent"},
             )
 
+        query_operation: QueryOperation | None = None
+        tracked_attempt: TrackedAttempt | None = None
         try:
             user_uuid = uuid.UUID(user_id)
 
@@ -551,6 +583,7 @@ class QueryService:
             attempt = EphemeralAttempt(
                 attempt_id=attempt_id,
                 session_id=http_session_id,
+                chat_session_id=chat_session_id,
                 user_id=user_id,
                 database_connection_id=uuid.UUID(source_connection_id),
                 question=question,
@@ -558,7 +591,31 @@ class QueryService:
                 llm_provider=self._llm_provider,
             )
 
+            await self._ensure_chat_session_active(chat_session_id)
+            if chat_session_id is not None:
+                query_operation = QueryOperation(
+                    session_id=chat_session_id,
+                    user_id=user_id,
+                    http_session_id=http_session_id,
+                    attempt_id=attempt_id,
+                    lock_owner=lock_owner,
+                    token=str(uuid.uuid4()),
+                )
+                if not await register_query_operation(query_operation, self._redis):
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={"error": "concurrent", "message_key": "error.concurrent"},
+                    )
+                tracked_attempt = TrackedAttempt(
+                    session_id=chat_session_id,
+                    user_id=user_id,
+                    http_session_id=http_session_id,
+                    attempt_id=attempt_id,
+                )
+                await track_session_attempt(tracked_attempt, self._redis)
+                await self._ensure_chat_session_active(chat_session_id)
             await store_attempt(attempt, http_session_id, self._redis)
+            await self._ensure_chat_session_active(chat_session_id)
 
             # FR-140: emit a tamper-evident query.submit audit
             # entry on every submission attempt. Context carries
@@ -591,6 +648,7 @@ class QueryService:
                 user_id,
                 source_connection_id,
             )
+            await self._ensure_chat_session_active(chat_session_id)
             if role_policy is not None and not role_policy.allowed_tables:
                 # Deny-all policy: fail closed before the LLM so the
                 # user never gets a prompt that mentions any table.
@@ -612,6 +670,7 @@ class QueryService:
                     outcome="denied",
                     context={"reason": "deny_all"},
                 )
+                await self._ensure_chat_session_active(chat_session_id)
                 return self._role_auth_rejection()
 
             # Load conversation history for context
@@ -634,25 +693,43 @@ class QueryService:
                 role_policy,
                 self._schema_context,
             )
+            await self._ensure_chat_session_active(chat_session_id)
             try:
-                sql = await self._llm.generate_sql(
-                    question=question,
-                    schema_context=schema_for_prompt,
-                    conversation_history=conversation_history or None,
-                    target_dialect=self._target_dialect,
+                sql = await self._run_chat_session_stage(
+                    chat_session_id,
+                    user_id,
+                    self._llm.generate_sql(
+                        question=question,
+                        schema_context=schema_for_prompt,
+                        conversation_history=conversation_history or None,
+                        target_dialect=self._target_dialect,
+                    ),
                 )
+            except asyncio.CancelledError:
+                await self._ensure_chat_session_active(chat_session_id)
+                raise
             except Exception as exc:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
                 ) from exc
+            await self._ensure_chat_session_active(chat_session_id)
 
             attempt.sql = sql
             attempt.state = "GENERATED"
             await store_attempt(attempt, http_session_id, self._redis)
 
             # 2. Evaluator gate (existing rules)
-            eval_result = await self._evaluator.evaluate(sql, None)
+            try:
+                eval_result = await self._run_chat_session_stage(
+                    chat_session_id,
+                    user_id,
+                    self._evaluator.evaluate(sql, None),
+                )
+            except asyncio.CancelledError:
+                await self._ensure_chat_session_active(chat_session_id)
+                raise
+            await self._ensure_chat_session_active(chat_session_id)
             if not eval_result.passed:
                 attempt.state = "REJECTED"
                 attempt.evaluator_result = {
@@ -700,6 +777,7 @@ class QueryService:
                 context={},
             )
             role_auth_rejection = await self._enforce_role_authorization(sql, role_policy)
+            await self._ensure_chat_session_active(chat_session_id)
             if role_auth_rejection is not None:
                 attempt.state = "REJECTED"
                 attempt.evaluator_result = {
@@ -718,6 +796,7 @@ class QueryService:
                     outcome="denied",
                     context={"reason": "role_authorization"},
                 )
+                await self._ensure_chat_session_active(chat_session_id)
                 return role_auth_rejection
 
             attempt.state = "EVALUATED"
@@ -791,19 +870,29 @@ class QueryService:
             # params. asyncpg positional binding is used; the
             # adapter's ``execute(sql, params)`` signature accepts
             # the tuple unchanged.
+            await self._ensure_chat_session_active(chat_session_id)
             try:
                 if self._adapter is not None:
-                    exec_result = await asyncio.wait_for(
-                        self._adapter.execute(effective_sql, row_filter_params),
-                        timeout=30,
+                    exec_result = await self._run_chat_session_stage(
+                        chat_session_id,
+                        user_id,
+                        asyncio.wait_for(
+                            self._adapter.execute(effective_sql, row_filter_params),
+                            timeout=30,
+                        ),
                     )
                     columns, rows = exec_result.columns, exec_result.rows
                 else:
-                    columns, rows = await asyncio.wait_for(
-                        self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
-                        timeout=30,
+                    columns, rows = await self._run_chat_session_stage(
+                        chat_session_id,
+                        user_id,
+                        asyncio.wait_for(
+                            self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
+                            timeout=30,
+                        ),
                     )
             except asyncio.CancelledError:
+                await self._ensure_chat_session_active(chat_session_id)
                 attempt.state = "FAILED"
                 await store_attempt(attempt, http_session_id, self._redis)
                 raise
@@ -853,6 +942,7 @@ class QueryService:
                     status_code=failure_status,
                     detail=failure_detail,
                 ) from None
+            await self._ensure_chat_session_active(chat_session_id)
 
             # FR-140: emit query.execute (success) right after the
             # executor returns. Context carries only row_count;
@@ -871,6 +961,7 @@ class QueryService:
                 outcome="success",
                 context={"row_count": len(rows)},
             )
+            await self._ensure_chat_session_active(chat_session_id)
 
             # 4a. T-712: Apply per-role column masks to the
             # ``QueryResult`` after execution. Returns a new
@@ -881,6 +972,7 @@ class QueryService:
             # are what get persisted to the accepted-query history
             # — unmasked sensitive values never touch the response
             # or the DB.
+            await self._ensure_chat_session_active(chat_session_id)
             column_metas = []
             for c in columns:
                 if isinstance(c, dict):
@@ -911,10 +1003,12 @@ class QueryService:
                 rows = masked_result.rows
             result = masked_result
 
+            await self._ensure_chat_session_active(chat_session_id)
             attempt.state = "EXECUTED"
             await store_attempt(attempt, http_session_id, self._redis)
 
             # 5. Auto-save (idempotent: skip if already persisted for this attempt_id)
+            await self._ensure_chat_session_active(chat_session_id)
             session_uuid = uuid.UUID(chat_session_id) if chat_session_id else None
             db_conn_id = await self._get_database_connection_id()
             existing = await self._repo.get_by_attempt_id(attempt_id, user_uuid)
@@ -940,8 +1034,14 @@ class QueryService:
             # Track active attempt for session (G-001+G-004)
             await self._redis.set(f"active_attempt:{http_session_id}", attempt_id)
 
+            await self._ensure_chat_session_active(chat_session_id)
             return result
+        except SessionInvalidated:
+            await self._discard_invalidated_attempt(tracked_attempt)
+            raise
         finally:
+            if query_operation is not None:
+                await clear_query_operation_if_owned(query_operation, self._redis)
             await self._release_lock_if_owned(http_session_id, lock_owner)
 
     async def accept_query(
@@ -1151,6 +1251,9 @@ class QueryService:
                 detail={"error": "concurrent", "message_key": "error.concurrent"},
             )
 
+        query_operation: QueryOperation | None = None
+        tracked_attempt: TrackedAttempt | None = None
+        chat_session_id: str | None = None
         try:
             # G-001+G-004: verify active attempt
             active_attempt_id = await self._redis.get(f"active_attempt:{http_session_id}")
@@ -1162,6 +1265,31 @@ class QueryService:
 
             prior = await get_attempt(attempt_id, http_session_id, self._redis)
             connection_id = self._require_attempt_binding(prior, user_id)
+            chat_session_id = prior.chat_session_id
+            if chat_session_id is None:
+                raise AttemptContextInvalid()
+            await self._ensure_chat_session_active(chat_session_id)
+            query_operation = QueryOperation(
+                session_id=chat_session_id,
+                user_id=user_id,
+                http_session_id=http_session_id,
+                attempt_id=attempt_id,
+                lock_owner=lock_owner,
+                token=str(uuid.uuid4()),
+            )
+            if not await register_query_operation(query_operation, self._redis):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={"error": "concurrent", "message_key": "error.concurrent"},
+                )
+            tracked_attempt = TrackedAttempt(
+                session_id=chat_session_id,
+                user_id=user_id,
+                http_session_id=http_session_id,
+                attempt_id=attempt_id,
+            )
+            await track_session_attempt(tracked_attempt, self._redis)
+            await self._ensure_chat_session_active(chat_session_id)
             await delete_attempt(attempt_id, self._redis)
 
             # Critical 2: verify user exists in DB before any writes
@@ -1190,6 +1318,7 @@ class QueryService:
                 user_id,
                 connection_id,
             )
+            await self._ensure_chat_session_active(chat_session_id)
             if role_policy is not None and not role_policy.allowed_tables:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return self._role_auth_rejection()
@@ -1205,19 +1334,28 @@ class QueryService:
             )
 
             # Call LLM
+            await self._ensure_chat_session_active(chat_session_id)
             try:
-                new_sql = await self._llm.generate_sql(
-                    prior.question,
-                    schema_for_prompt,
-                    negative_examples=negative_examples,
-                    target_dialect=self._target_dialect,
+                new_sql = await self._run_chat_session_stage(
+                    chat_session_id,
+                    user_id,
+                    self._llm.generate_sql(
+                        prior.question,
+                        schema_for_prompt,
+                        negative_examples=negative_examples,
+                        target_dialect=self._target_dialect,
+                    ),
                 )
+            except asyncio.CancelledError:
+                await self._ensure_chat_session_active(chat_session_id)
+                raise
             except Exception as exc:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
                 ) from exc
+            await self._ensure_chat_session_active(chat_session_id)
 
             # Inv 4: byte-equal duplicate detection
             if new_sql == prior.sql:
@@ -1228,12 +1366,22 @@ class QueryService:
                 )
 
             # Inv 1: evaluator gate
-            eval_result = await self._evaluator.evaluate(new_sql, None)
+            try:
+                eval_result = await self._run_chat_session_stage(
+                    chat_session_id,
+                    user_id,
+                    self._evaluator.evaluate(new_sql, None),
+                )
+            except asyncio.CancelledError:
+                await self._ensure_chat_session_active(chat_session_id)
+                raise
+            await self._ensure_chat_session_active(chat_session_id)
             if not eval_result.passed:
                 new_attempt_id = str(uuid.uuid4())
                 failed_attempt = EphemeralAttempt(
                     attempt_id=new_attempt_id,
                     session_id=http_session_id,
+                    chat_session_id=chat_session_id,
                     user_id=user_id,
                     database_connection_id=prior.database_connection_id,
                     sql=new_sql,
@@ -1247,7 +1395,16 @@ class QueryService:
                         ],
                     },
                 )
+                tracked_attempt = TrackedAttempt(
+                    session_id=chat_session_id,
+                    user_id=user_id,
+                    http_session_id=http_session_id,
+                    attempt_id=new_attempt_id,
+                )
+                await track_session_attempt(tracked_attempt, self._redis)
+                await self._ensure_chat_session_active(chat_session_id)
                 await store_attempt(failed_attempt, http_session_id, self._redis)
+                await self._ensure_chat_session_active(chat_session_id)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
@@ -1259,11 +1416,13 @@ class QueryService:
             # as a rejected regenerate) — the next click would be a
             # refine prompt anyway.
             role_auth_rejection = await self._enforce_role_authorization(new_sql, role_policy)
+            await self._ensure_chat_session_active(chat_session_id)
             if role_auth_rejection is not None:
                 new_attempt_id = str(uuid.uuid4())
                 failed_attempt = EphemeralAttempt(
                     attempt_id=new_attempt_id,
                     session_id=http_session_id,
+                    chat_session_id=chat_session_id,
                     user_id=user_id,
                     database_connection_id=prior.database_connection_id,
                     sql=new_sql,
@@ -1277,7 +1436,16 @@ class QueryService:
                         ],
                     },
                 )
+                tracked_attempt = TrackedAttempt(
+                    session_id=chat_session_id,
+                    user_id=user_id,
+                    http_session_id=http_session_id,
+                    attempt_id=new_attempt_id,
+                )
+                await track_session_attempt(tracked_attempt, self._redis)
+                await self._ensure_chat_session_active(chat_session_id)
                 await store_attempt(failed_attempt, http_session_id, self._redis)
+                await self._ensure_chat_session_active(chat_session_id)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
@@ -1311,19 +1479,29 @@ class QueryService:
                 row_filter_params = bound.params
 
             # Execute against source DB
+            await self._ensure_chat_session_active(chat_session_id)
             try:
                 if self._adapter is not None:
-                    exec_result = await asyncio.wait_for(
-                        self._adapter.execute(effective_sql, row_filter_params),
-                        timeout=30,
+                    exec_result = await self._run_chat_session_stage(
+                        chat_session_id,
+                        user_id,
+                        asyncio.wait_for(
+                            self._adapter.execute(effective_sql, row_filter_params),
+                            timeout=30,
+                        ),
                     )
                     columns, rows = exec_result.columns, exec_result.rows
                 else:
-                    columns, rows = await asyncio.wait_for(
-                        self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
-                        timeout=30,
+                    columns, rows = await self._run_chat_session_stage(
+                        chat_session_id,
+                        user_id,
+                        asyncio.wait_for(
+                            self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
+                            timeout=30,
+                        ),
                     )
             except asyncio.CancelledError:
+                await self._ensure_chat_session_active(chat_session_id)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise
             except (TimeoutError, SourceDBTimeout) as exc:
@@ -1357,6 +1535,7 @@ class QueryService:
                     status_code=failure_status,
                     detail=failure_detail,
                 ) from None
+            await self._ensure_chat_session_active(chat_session_id)
 
             # Build result and store ephemeral attempt
             new_attempt_id = str(uuid.uuid4())
@@ -1390,6 +1569,7 @@ class QueryService:
             new_attempt = EphemeralAttempt(
                 attempt_id=new_attempt_id,
                 session_id=http_session_id,
+                chat_session_id=chat_session_id,
                 user_id=user_id,
                 database_connection_id=prior.database_connection_id,
                 sql=new_sql,
@@ -1398,8 +1578,18 @@ class QueryService:
                 llm_provider=self._llm_provider,
                 state="EXECUTED",
             )
+            await self._ensure_chat_session_active(chat_session_id)
+            tracked_attempt = TrackedAttempt(
+                session_id=chat_session_id,
+                user_id=user_id,
+                http_session_id=http_session_id,
+                attempt_id=new_attempt_id,
+            )
+            await track_session_attempt(tracked_attempt, self._redis)
+            await self._ensure_chat_session_active(chat_session_id)
             await store_attempt(new_attempt, http_session_id, self._redis)
             await self._redis.set(f"active_attempt:{http_session_id}", new_attempt_id)
+            await self._ensure_chat_session_active(chat_session_id)
 
             # Auto-save regenerated result (Option B: update prior saved row in-place)
             # High 3: instead of creating a duplicate row, update the prior saved row
@@ -1428,7 +1618,7 @@ class QueryService:
                         generated_sql=new_sql,
                         llm_provider=self._llm_provider,
                         attempt_id=new_attempt_id,
-                        session_id=None,
+                        session_id=uuid.UUID(chat_session_id),
                         saved=True,
                         feedback=1,
                         result_columns=[c.model_dump() for c in column_metas],
@@ -1439,8 +1629,14 @@ class QueryService:
                 if session_uuid is not None:
                     result.session_id = str(session_uuid)
 
+            await self._ensure_chat_session_active(chat_session_id)
             return result
+        except SessionInvalidated:
+            await self._discard_invalidated_attempt(tracked_attempt)
+            raise
         finally:
+            if query_operation is not None:
+                await clear_query_operation_if_owned(query_operation, self._redis)
             await self._release_lock_if_owned(http_session_id, lock_owner)
 
     async def rerun_accepted_query(

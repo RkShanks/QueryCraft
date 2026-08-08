@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Sidebar } from '../Sidebar';
 import { useUIStore } from '../../../stores/uiStore';
 import { createWrapper } from '../../../test/utils';
+import { resetSessionDeletionLifecycle } from '../../../sessionDeletionLifecycle';
 
 const mockSessions = [
   {
@@ -42,6 +43,7 @@ function setup(sessions = mockSessions) {
 describe('Sidebar Integration', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    resetSessionDeletionLifecycle();
     useUIStore.getState().setActiveSessionId('sess-1');
     if (useUIStore.getState().sidebarCollapsed) {
       useUIStore.getState().toggleSidebar();

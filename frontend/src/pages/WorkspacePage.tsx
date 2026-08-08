@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores/uiStore';
 import { useSessionDetail } from '../hooks/useSessions';
 import { useQuerySubmit } from '../hooks/useQuerySubmit';
+import { isSessionDeletionError } from '../sessionDeletionLifecycle';
 import { UserBubble } from '../components/chat/UserBubble';
 import { AssistantResponseCard } from '../components/chat/AssistantResponseCard';
 import { PromptInput } from '../components/chat/PromptInput';
@@ -390,6 +391,10 @@ export const WorkspacePage: React.FC = () => {
           setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, isLoading: false } : t)));
         }
       } catch (err: unknown) {
+        if (isSessionDeletionError(err)) {
+          setLocalTurns((prev) => prev.filter((turn) => turn.id !== turnId));
+          return;
+        }
         const apiErr = (err && typeof err === 'object') ? (err as Record<string, unknown>) : {};
         const messageKey = (apiErr.message_key as string) || (apiErr.detail as Record<string, unknown>)?.message_key as string;
         const errCode = (apiErr.error as string) || (apiErr.detail as Record<string, unknown>)?.error as string;

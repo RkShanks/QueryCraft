@@ -7,8 +7,13 @@ import { renderWithClient } from '../../test/utils';
 import { server } from '../../test/server';
 import { useUIStore } from '../../stores/uiStore';
 import { setSubmitScenario } from '../../test/handlers';
+import {
+  beginSessionDeletion,
+  resetSessionDeletionLifecycle,
+} from '../../sessionDeletionLifecycle';
 
 beforeEach(() => {
+  resetSessionDeletionLifecycle();
   useUIStore.setState({
     activeSessionId: null,
     sidebarCollapsed: false,
@@ -57,6 +62,55 @@ describe('WorkspacePage first-submit UX', () => {
     const state = useUIStore.getState();
     expect(state.activeSessionId).toBe('550e8400-e29b-41d4-a716-446655440003');
   }, 10000);
+
+  it('shows no late response card or alert after the active session is deleted', async () => {
+    const sessionId = '550e8400-e29b-41d4-a716-446655440010';
+    let releaseResponse: (() => void) | undefined;
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
+    useUIStore.setState({ activeSessionId: sessionId });
+    server.use(
+      http.get('/api/v1/sessions/:sessionId', ({ params }) =>
+        HttpResponse.json({
+          id: params.sessionId,
+          preview_text: '',
+          created_at: new Date().toISOString(),
+          last_activity_at: new Date().toISOString(),
+          attempts: [],
+        })
+      ),
+      http.post('/api/v1/query/submit', async () => {
+        await responseGate;
+        return HttpResponse.json({
+          kind: 'result',
+          attempt_id: 'late-attempt',
+          session_id: sessionId,
+          question: 'Late result',
+          generated_sql: 'SELECT 1',
+          columns: [],
+          rows: [],
+          row_count: 0,
+          attempt_number: 1,
+          is_last_auto_retry: false,
+        });
+      })
+    );
+    renderWithClient(<WorkspacePage />);
+    await typeAndSubmit('Late result');
+    await waitFor(() => expect(screen.getByTestId('assistant-loading')).toBeInTheDocument());
+
+    beginSessionDeletion(sessionId);
+    await act(async () => {
+      useUIStore.getState().setActiveSessionId(null);
+      releaseResponse?.();
+    });
+
+    await waitFor(() => expect(screen.getByText('Start a new conversation')).toBeInTheDocument());
+    expect(screen.queryByTestId('assistant-response-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-loading')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 
   it('renders copy, regenerate, and delete actions on successful live submit', async () => {
     server.use(

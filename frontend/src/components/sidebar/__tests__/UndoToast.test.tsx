@@ -7,6 +7,7 @@ vi.mock('../../../hooks/useSessions', () => ({
 }));
 
 import { useDeleteSession } from '../../../hooks/useSessions';
+import { resetSessionDeletionLifecycle } from '../../../sessionDeletionLifecycle';
 
 const mockMutate = vi.fn();
 
@@ -21,6 +22,8 @@ function setup(props: Partial<React.ComponentProps<typeof UndoToast>> = {}) {
     <UndoToast
       item={defaultItem}
       onUndo={vi.fn()}
+      onDeleteStarted={vi.fn(() => true)}
+      onDeleteFailed={vi.fn()}
       onExpired={vi.fn()}
       {...props}
     />
@@ -30,6 +33,7 @@ function setup(props: Partial<React.ComponentProps<typeof UndoToast>> = {}) {
 describe('UndoToast', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    resetSessionDeletionLifecycle();
     (useDeleteSession as ReturnType<typeof vi.fn>).mockReturnValue({
       mutate: mockMutate,
     });

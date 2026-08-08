@@ -180,6 +180,13 @@ class SessionBusy(SessionError):
         super().__init__("A question is already being processed", message_key="error.concurrent")
 
 
+class SessionInvalidated(SessionError):
+    """Raised when deletion invalidates work for a chat session."""
+
+    def __init__(self) -> None:
+        super().__init__("Session not found", message_key="error.notFound")
+
+
 class InvalidCursorError(QueryCraftError):
     """Raised when a pagination cursor cannot be parsed."""
 

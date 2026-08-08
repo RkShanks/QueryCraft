@@ -11,6 +11,7 @@ from redis.exceptions import RedisError
 from app.core.config import get_settings
 from app.core.credential_provider import init_credential_provider
 from app.core.dependencies import close_redis, init_redis
+from app.core.exceptions import SessionInvalidated
 from app.core.logging import get_logger, setup_logging
 from app.core.security import OriginValidatorMiddleware, SessionMiddleware
 from app.db.base import dispose_engine, get_async_session_factory
@@ -267,6 +268,13 @@ def create_app() -> FastAPI:
                 "error": "service_unavailable",
                 "message_key": "error.service_unavailable",
             },
+        )
+
+    @app.exception_handler(SessionInvalidated)
+    async def session_invalidated_handler(_request, _exc):
+        return JSONResponse(
+            status_code=404,
+            content={"error": "not_found", "message_key": "error.notFound"},
         )
 
     @app.exception_handler(RequestValidationError)

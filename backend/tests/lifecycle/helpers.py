@@ -19,6 +19,32 @@ class FakeRedis:
 
     def __init__(self) -> None:
         self._data: dict[str, str] = {}
+        self._sets: dict[str, set[str]] = {}
+
+    class _Pipeline:
+        def __init__(self, redis: "FakeRedis") -> None:
+            self._redis = redis
+            self._commands: list[tuple[str, tuple]] = []
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args) -> None:
+            return None
+
+        def sadd(self, *args):
+            self._commands.append(("sadd", args))
+            return self
+
+        def expire(self, *args):
+            self._commands.append(("expire", args))
+            return self
+
+        async def execute(self) -> list[int | bool]:
+            return [await getattr(self._redis, command)(*args) for command, args in self._commands]
+
+    def pipeline(self, *, transaction: bool = True):  # noqa: ARG002
+        return self._Pipeline(self)
 
     async def set(self, key: str, value: str, nx: bool = False, ex: int | None = None) -> bool | None:
         if nx and key in self._data:
@@ -30,7 +56,18 @@ class FakeRedis:
         return self._data.get(key)
 
     async def delete(self, key: str) -> int:
-        return 1 if self._data.pop(key, None) is not None else 0
+        deleted = self._data.pop(key, None) is not None
+        deleted = self._sets.pop(key, None) is not None or deleted
+        return int(deleted)
+
+    async def sadd(self, key: str, *values: str) -> int:
+        members = self._sets.setdefault(key, set())
+        before = len(members)
+        members.update(values)
+        return len(members) - before
+
+    async def expire(self, _key: str, _seconds: int) -> bool:
+        return True
 
     async def keys(self, pattern: str) -> list[str]:
         if pattern.endswith("*"):
@@ -40,6 +77,7 @@ class FakeRedis:
 
     async def flushdb(self) -> None:
         self._data.clear()
+        self._sets.clear()
 
     async def eval(self, script: str, num_keys: int, *args: str) -> int:
         """Simple Lua script emulation for compare-and-delete (release_lock_if_owned)."""

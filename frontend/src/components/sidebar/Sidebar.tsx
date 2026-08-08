@@ -5,6 +5,7 @@ import { useUIStore } from '../../stores/uiStore';
 import { useSessionsList } from '../../hooks/useSessions';
 import { useSignOut, useCurrentUser } from '../../hooks/useAuth';
 import { hasPermission } from '../../auth/permissions';
+import { resetSessionDeletionLifecycle } from '../../sessionDeletionLifecycle';
 import { SessionItem } from './SessionItem';
 import { UndoToast, type UndoToastItem } from './UndoToast';
 import { Shield } from 'lucide-react';
@@ -91,17 +92,17 @@ export const Sidebar: React.FC = () => {
   };
 
   const handleDeleteSession = (sessionId: string) => {
-    if (activeSessionId === sessionId) {
-      setActiveSessionId(null);
-    }
-    setToasts((prev) => [
-      ...prev,
-      {
-        id: `${sessionId}-${Date.now()}`,
-        sessionId,
-        message: t('sidebar.deleteConfirm'),
-      },
-    ]);
+    setToasts((prev) => {
+      if (prev.some((toast) => toast.sessionId === sessionId)) return prev;
+      return [
+        ...prev,
+        {
+          id: `${sessionId}-${Date.now()}`,
+          sessionId,
+          message: t('sidebar.deleteConfirm'),
+        },
+      ];
+    });
   };
 
   const handleUndo = (toastId: string) => {
@@ -112,9 +113,26 @@ export const Sidebar: React.FC = () => {
     setToasts((prev) => prev.filter((t) => t.id !== toastId));
   };
 
+  const handleDeleteStarted = (sessionId: string) => {
+    const wasActive = useUIStore.getState().activeSessionId === sessionId;
+    if (wasActive) {
+      setActiveSessionId(null);
+      navigate('/');
+    }
+    return wasActive;
+  };
+
+  const handleDeleteFailed = (sessionId: string, restoreActiveSession: boolean) => {
+    if (restoreActiveSession && useUIStore.getState().activeSessionId === null) {
+      setActiveSessionId(sessionId);
+      navigate('/');
+    }
+  };
+
   const handleSignOut = () => {
     signOutMutation.mutate(undefined as never, {
       onSuccess: () => {
+        resetSessionDeletionLifecycle();
         navigate('/sign-in');
       },
     });
@@ -311,6 +329,10 @@ export const Sidebar: React.FC = () => {
             key={toast.id}
             item={toast}
             onUndo={() => handleUndo(toast.id)}
+            onDeleteStarted={() => handleDeleteStarted(toast.sessionId)}
+            onDeleteFailed={(restoreActiveSession) =>
+              handleDeleteFailed(toast.sessionId, restoreActiveSession)
+            }
             onExpired={() => handleToastExpired(toast.id)}
           />
         ))}
