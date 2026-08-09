@@ -1,6 +1,7 @@
 """Tests for query Pydantic schema validation (T-038).
 
-Validates SubmitQuestionRequest rejects empty/whitespace/over-2000-char questions;
+Validates SubmitQuestionRequest canonicalizes non-empty questions while leaving the
+configured length boundary to the API;
 QueryResult enforces kind="result" discriminator and required fields;
 EvaluatorRejection and RefinePrompt round-trip correctly.
 """
@@ -24,24 +25,40 @@ from app.schemas.query import (
 class TestSubmitQuestionRequest:
     """Validation rules for question submission."""
 
+    connection_id = "550e8400-e29b-41d4-a716-446655440001"
+
     def test_rejects_empty_question(self):
         with pytest.raises(ValidationError) as exc_info:
-            SubmitQuestionRequest(question="")
+            SubmitQuestionRequest(question="", connection_id=self.connection_id)
         assert "question" in str(exc_info.value)
 
     def test_rejects_whitespace_question(self):
         with pytest.raises(ValidationError) as exc_info:
-            SubmitQuestionRequest(question="   ")
+            SubmitQuestionRequest(question="   ", connection_id=self.connection_id)
         assert "question" in str(exc_info.value)
 
-    def test_rejects_over_2000_chars(self):
-        with pytest.raises(ValidationError) as exc_info:
-            SubmitQuestionRequest(question="x" * 2001)
-        assert "question" in str(exc_info.value)
+    def test_defers_question_length_to_configured_api_boundary(self):
+        req = SubmitQuestionRequest(
+            question="x" * 2001,
+            connection_id=self.connection_id,
+        )
+
+        assert len(req.question) == 2001
+
+    def test_trims_question_before_api_measurement(self):
+        req = SubmitQuestionRequest(
+            question=" \t" + "x" * 4 + "\n",
+            connection_id=self.connection_id,
+        )
+
+        assert len(req.question) == 4
+        assert req.question == req.question.strip()
 
     def test_accepts_valid_question(self):
-        conn_id = "550e8400-e29b-41d4-a716-446655440001"
-        req = SubmitQuestionRequest(question="Show me sales by region", connection_id=conn_id)
+        req = SubmitQuestionRequest(
+            question="Show me sales by region",
+            connection_id=self.connection_id,
+        )
         assert req.question == "Show me sales by region"
 
 

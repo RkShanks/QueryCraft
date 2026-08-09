@@ -78,3 +78,62 @@
   color: var(--color-neon-cyan);
   margin-block-start: 0.25rem;
 }
+
+.prompt-input-meta,
+.prompt-input-limit-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-block-start: 0.375rem;
+  min-height: 1.5rem;
+  font-size: 0.75rem;
+}
+
+.prompt-input-count {
+  color: var(--color-obsidian-400);
+  font-variant-numeric: tabular-nums;
+}
+
+.prompt-input-count.is-over-limit,
+.prompt-input-error {
+  color: var(--color-error-400, #f87171);
+}
+
+.prompt-input-error {
+  margin-block-start: 0.25rem;
+  font-size: 0.75rem;
+  text-align: start;
+}
+
+.prompt-input-limit-status {
+  justify-content: space-between;
+  color: var(--color-obsidian-300);
+  text-align: start;
+}
+
+.prompt-input-retry {
+  min-height: 2rem;
+  padding-block: 0.25rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--color-obsidian-600);
+  border-radius: 0.5rem;
+  color: var(--color-neon-cyan);
+  cursor: pointer;
+}
+
+.prompt-input-retry:hover,
+.prompt-input-retry:focus-visible {
+  border-color: var(--color-neon-cyan);
+}
+
+@media (width <= 480px) {
+  .prompt-input-container {
+    padding: 0.75rem;
+  }
+
+  .prompt-input-limit-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

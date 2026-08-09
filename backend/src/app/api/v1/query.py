@@ -30,6 +30,7 @@ from app.repositories.session_repository import SessionRepository
 from app.schemas.query import (
     AcceptQueryRequest,
     EvaluatorRejection,
+    QueryLimitsResponse,
     QueryResult,
     RefinePrompt,
     RegenerateQueryRequest,
@@ -218,6 +219,16 @@ async def _build_query_service_for_attempt(
     return service
 
 
+@router.get("/limits", response_model=QueryLimitsResponse)
+async def get_query_limits(
+    _session: dict = Depends(require_permission(Permission.QUERY_SUBMIT)),  # noqa: B008
+) -> QueryLimitsResponse:
+    """Return the configured question limit for authorized submitters."""
+    return QueryLimitsResponse(
+        max_question_length=get_settings().MAX_QUESTION_LENGTH,
+    )
+
+
 @router.post("/submit")
 async def submit_question(
     request: Request,
@@ -237,13 +248,7 @@ async def submit_question(
     response_model is intentionally omitted because the endpoint returns
     discriminated union shapes; openapi.yaml remains the source of truth.
     """
-    stripped = req.question.strip()
-    if not stripped:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "validation", "message_key": "error.validation.questionEmpty"},
-        )
-    if len(stripped) > 2000:
+    if len(req.question) > get_settings().MAX_QUESTION_LENGTH:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": "validation", "message_key": "error.validation.questionTooLong"},
@@ -252,7 +257,7 @@ async def submit_question(
     result = await service.submit_question(
         http_session_id=request.state.session_id,
         user_id=user_id,
-        question=stripped,
+        question=req.question,
         chat_session_id=req.session_id,
         connection_id=req.connection_id,
     )

@@ -5,10 +5,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores/uiStore';
 import { useSessionDetail } from '../hooks/useSessions';
 import { useQuerySubmit } from '../hooks/useQuerySubmit';
+import { useQueryLimits } from '../hooks/useQueryLimits';
 import { isSessionDeletionError } from '../sessionDeletionLifecycle';
 import { UserBubble } from '../components/chat/UserBubble';
 import { AssistantResponseCard } from '../components/chat/AssistantResponseCard';
-import { PromptInput } from '../components/chat/PromptInput';
+import { PromptInput, type QuestionLimitState } from '../components/chat/PromptInput';
 import { MessageSquare } from '../components/icons';
 import { deleteHistoryEntry } from '../api/generated/sdk.gen';
 import type { QueryResult, RefinePrompt, EvaluatorRejection, AttemptSummary, UserConnectionResponse } from '../api/generated/types.gen';
@@ -140,7 +141,25 @@ export const WorkspacePage: React.FC = () => {
   const activeSessionId = useUIStore((state) => state.activeSessionId);
   const { data: sessionDetail, isLoading } = useSessionDetail(activeSessionId ?? '');
   const querySubmit = useQuerySubmit();
+  const {
+    data: queryLimits,
+    isError: queryLimitsFailed,
+    isFetching: queryLimitsFetching,
+    refetch: refetchQueryLimits,
+  } = useQueryLimits();
   const canViewHistory = usePermission(PERMISSIONS.QUERY_HISTORY_VIEW);
+
+  const retryQueryLimits = useCallback(() => {
+    void refetchQueryLimits();
+  }, [refetchQueryLimits]);
+  const questionLimit: QuestionLimitState = queryLimits
+    ? {
+        status: 'ready',
+        maxQuestionLength: queryLimits.max_question_length,
+      }
+    : queryLimitsFailed && !queryLimitsFetching
+      ? { status: 'error', onRetry: retryQueryLimits }
+      : { status: 'loading' };
 
   const [alert, setAlert] = useState<{
     id: string;
@@ -529,14 +548,15 @@ export const WorkspacePage: React.FC = () => {
       </div>
       <PromptInput
         onSubmit={(text) => {
-          handleSubmit(text);
           setLoadedQuestion('');
+          return handleSubmit(text);
         }}
         disabled={querySubmit.isSubmitting}
         connections={availableConnections}
         selectedConnectionId={selectedConnectionId}
         onSelectConnection={setSelectedConnectionId}
         initialText={loadedQuestion}
+        questionLimit={questionLimit}
       />
       {alert && (
         <div

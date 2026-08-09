@@ -32,6 +32,114 @@ async function typeAndSubmit(text: string): Promise<void> {
 }
 
 describe('WorkspacePage first-submit UX', () => {
+  it('fails closed while limits load, then enables the prompt', async () => {
+    let releaseLimits: (() => void) | undefined;
+    const limitsGate = new Promise<void>((resolve) => {
+      releaseLimits = resolve;
+    });
+    server.use(
+      http.get('/api/v1/query/limits', async () => {
+        await limitsGate;
+        return HttpResponse.json({ max_question_length: 4 });
+      })
+    );
+
+    renderWithClient(<WorkspacePage />);
+
+    expect(screen.getByRole('textbox')).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading question limit…');
+    releaseLimits?.();
+    await waitFor(() => expect(screen.getByRole('textbox')).not.toBeDisabled());
+  });
+
+  it('shows a sanitized limits retry state and recovers', async () => {
+    let limitsRequestCount = 0;
+    server.use(
+      http.get('/api/v1/query/limits', () => {
+        limitsRequestCount += 1;
+        if (limitsRequestCount === 1) {
+          return HttpResponse.json(
+            { error: 'service_unavailable', message_key: 'error.service_unavailable' },
+            { status: 503 }
+          );
+        }
+        return HttpResponse.json({ max_question_length: 4 });
+      })
+    );
+
+    renderWithClient(<WorkspacePage />);
+
+    expect(await screen.findByText('Unable to load the question limit.')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(screen.getByRole('textbox')).not.toBeDisabled());
+    expect(limitsRequestCount).toBe(2);
+  });
+
+  it('makes no submit request for over-limit click or Enter', async () => {
+    let submitRequestCount = 0;
+    server.use(
+      http.get('/api/v1/query/limits', () =>
+        HttpResponse.json({ max_question_length: 4 })
+      ),
+      http.post('/api/v1/query/submit', () => {
+        submitRequestCount += 1;
+        return HttpResponse.json({});
+      })
+    );
+    renderWithClient(<WorkspacePage />);
+    const textarea = screen.getByRole('textbox');
+    await waitFor(() => expect(textarea).not.toBeDisabled());
+    fireEvent.change(textarea, { target: { value: 'x'.repeat(5) } });
+
+    fireEvent.click(screen.getByTestId('prompt-send'));
+    fireEvent.keyDown(textarea, { key: 'Enter' });
+
+    expect(submitRequestCount).toBe(0);
+    expect(textarea).toHaveValue('x'.repeat(5));
+    expect(screen.getByText('Start a new conversation')).toBeInTheDocument();
+  });
+
+  it('makes exactly one request for a rapid double submit at the limit', async () => {
+    let submitRequestCount = 0;
+    let releaseSubmission: (() => void) | undefined;
+    const submissionGate = new Promise<void>((resolve) => {
+      releaseSubmission = resolve;
+    });
+    server.use(
+      http.get('/api/v1/query/limits', () =>
+        HttpResponse.json({ max_question_length: 4 })
+      ),
+      http.post('/api/v1/query/submit', async () => {
+        submitRequestCount += 1;
+        await submissionGate;
+        return HttpResponse.json({
+          kind: 'result',
+          attempt_id: 'prompt-limit-attempt',
+          session_id: 'prompt-limit-session',
+          question: 'x'.repeat(4),
+          generated_sql: 'SELECT 1',
+          columns: [],
+          rows: [],
+          row_count: 0,
+          attempt_number: 1,
+          is_last_auto_retry: false,
+        });
+      })
+    );
+    renderWithClient(<WorkspacePage />);
+    const textarea = screen.getByRole('textbox');
+    await waitFor(() => expect(textarea).not.toBeDisabled());
+    fireEvent.change(textarea, { target: { value: 'x'.repeat(4) } });
+
+    fireEvent.click(screen.getByTestId('prompt-send'));
+    fireEvent.click(screen.getByTestId('prompt-send'));
+
+    await waitFor(() => expect(submitRequestCount).toBe(1));
+    releaseSubmission?.();
+    await waitFor(() => expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument());
+  });
+
   it('renders empty state when no active session', () => {
     renderWithClient(<WorkspacePage />);
     expect(screen.getByText('Start a new conversation')).toBeInTheDocument();

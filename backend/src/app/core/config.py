@@ -100,6 +100,14 @@ class Settings(BaseSettings):
             raise ValueError("QUERY_TIMEOUT_SECONDS must be positive")
         return value
 
+    @field_validator("MAX_QUESTION_LENGTH")
+    @classmethod
+    def validate_max_question_length(cls, value: int) -> int:
+        """Reject prompt limits that cannot admit a non-empty question."""
+        if value <= 0:
+            raise ValueError("MAX_QUESTION_LENGTH must be positive")
+        return value
+
     @property
     def allowed_origins_list(self) -> list[str]:
         """Parse ALLOWED_ORIGINS as a list."""

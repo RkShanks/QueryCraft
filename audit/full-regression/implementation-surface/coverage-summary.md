@@ -97,8 +97,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 | Status | Count |
 | --- | ---: |
-| Pending | 34 |
-| Resolved | 10 |
+| Pending | 33 |
+| Resolved | 11 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
 | **Total** | **47** |
@@ -117,9 +117,12 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-023`, `IS-GAP-025` and `IS-GAP-022` are resolved on tested product commit `3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db` in [#305](https://github.com/RkShanks/QueryCraft/pull/305); authoritative backend/frontend CI passed. Their [CHUNK-07 evidence](evidence/chunk-07-ui-identity-permissions.md) records generation-safe outer/feature cache isolation, late-settlement suppression, distinct 401/403 behavior, the typed eight-permission catalog, exact route/navigation/request gating, role round trips, localized access denial, same-browser switching and zero-resource cleanup.
 
+`IS-GAP-020` is resolved on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5` in [#306](https://github.com/RkShanks/QueryCraft/pull/306); authoritative backend/frontend CI passed on `48ad094d8b95480aa87110c4a477b63533217bd0`. Its [CHUNK-08 evidence](evidence/chunk-08-prompt-length.md) records positive configured authority, safe authenticated discovery, exact Python/browser Unicode boundaries, early no-downstream rejection, fail-closed localized prompt behavior, request deduplication, EN/AR desktop/375px Chromium proof and zero-resource cleanup.
+
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
 - CHUNK-07 closes the identity/cache/permission slice with joint same-browser cache, DOM, accessibility, storage, network and console inspection. IS-GAP-047 remains open because its broader hostile/error/download privacy flow still depends on other unresolved gaps.
+- CHUNK-08 closes the primary Workspace prompt-length contract. The reachable legacy `/ask` disposition remains open under IS-GAP-045/CHUNK-31, and canonical OpenAPI/client regeneration remains open under IS-GAP-008/CHUNK-14.
 
 ## Decision ledger
 
@@ -127,8 +130,8 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-08` is next and becomes dispatchable when CI-passed [#305](https://github.com/RkShanks/QueryCraft/pull/305) merges; no CHUNK-08 work has started.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-09` is next but remains blocked until CI-passed [#306](https://github.com/RkShanks/QueryCraft/pull/306) is squash-merged; no CHUNK-09 work has started.
 
 ## Validation scope
 
-The original consolidation used only source/caller/assertion inspection, read-only app-factory OpenAPI generation, JSON/accounting/path/parity/cycle/size/secret checks and diff validation. CHUNK-06 separately ran the migration, persistence and cleanup gates recorded in its linked evidence. CHUNK-07 separately ran the frontend unit/build gates and mocked plus isolated live Chromium evidence recorded in its linked evidence.
+The original consolidation used only source/caller/assertion inspection, read-only app-factory OpenAPI generation, JSON/accounting/path/parity/cycle/size/secret checks and diff validation. CHUNK-06 separately ran the migration, persistence and cleanup gates recorded in its linked evidence. CHUNK-07 separately ran the frontend unit/build gates and mocked plus isolated live Chromium evidence recorded in its linked evidence. CHUNK-08 separately ran configured backend boundaries, the backend unit foundation, full frontend gates, isolated HTTP 200/401/403/400 proof and EN/AR desktop/375px Chromium evidence recorded in its linked evidence.

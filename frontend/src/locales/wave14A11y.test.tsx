@@ -35,6 +35,7 @@ describe('Wave 14 i18n / RTL / a11y sweep', () => {
           connections={[]}
           selectedConnectionId={null}
           onSelectConnection={() => {}}
+          questionLimit={{ status: 'ready', maxQuestionLength: 2000 }}
         />
       );
       const warning = screen.getByTestId('prompt-input-warning');
