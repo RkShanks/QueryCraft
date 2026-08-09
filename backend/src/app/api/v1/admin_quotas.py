@@ -29,6 +29,7 @@ from app.services.audit_service import AuditService
 from app.services.quota_service import QuotaConfigTransition, QuotaService
 
 router = APIRouter(prefix="/admin/quotas", tags=["Admin Quotas"])
+_TRANSITION_RECONCILIATION_RETRIES = 3
 
 
 def _quota_unavailable() -> HTTPException:
@@ -63,14 +64,29 @@ async def _publish_quota_transition(
     *,
     mutation_applied: bool,
 ) -> None:
-    try:
-        published = await QuotaService.publish_config_transition(redis, transition, quota_config)
-    except QuotaUnavailableError as exc:
-        pending_error = _quota_sync_pending() if mutation_applied else _quota_unavailable()
-        raise pending_error from exc
+    published = await _try_publish_quota_transition(
+        redis,
+        transition,
+        quota_config,
+        mutation_applied=mutation_applied,
+    )
     if not published:
         pending_error = _quota_sync_pending() if mutation_applied else _quota_unavailable()
         raise pending_error
+
+
+async def _try_publish_quota_transition(
+    redis: Redis,
+    transition: QuotaConfigTransition,
+    quota_config: RoleQuota | None,
+    *,
+    mutation_applied: bool,
+) -> bool:
+    try:
+        return await QuotaService.publish_config_transition(redis, transition, quota_config)
+    except QuotaUnavailableError as exc:
+        pending_error = _quota_sync_pending() if mutation_applied else _quota_unavailable()
+        raise pending_error from exc
 
 
 async def _locked_role(db: AsyncSession, role_id: uuid.UUID) -> Role | None:
@@ -107,24 +123,29 @@ async def _own_transition_after_reconciliation(
     *,
     mutation_applied: bool,
 ) -> QuotaConfigTransition:
-    if transition.created:
-        try:
-            if await QuotaService.owns_config_transition(redis, transition):
+    for _attempt in range(_TRANSITION_RECONCILIATION_RETRIES):
+        if transition.created:
+            try:
+                if await QuotaService.owns_config_transition(redis, transition):
+                    return transition
+            except QuotaUnavailableError as exc:
+                pending_error = _quota_sync_pending() if mutation_applied else _quota_unavailable()
+                raise pending_error from exc
+        elif await _try_publish_quota_transition(
+            redis,
+            transition,
+            quota,
+            mutation_applied=mutation_applied,
+        ):
+            transition = await _begin_quota_transition(redis, transition.role_id)
+            if transition.created:
                 return transition
-        except QuotaUnavailableError as exc:
-            raise _quota_unavailable() from exc
-        raise _quota_unavailable()
+            continue
 
-    await _publish_quota_transition(
-        redis,
-        transition,
-        quota,
-        mutation_applied=mutation_applied,
-    )
-    owned_transition = await _begin_quota_transition(redis, transition.role_id)
-    if not owned_transition.created:
-        raise _quota_unavailable()
-    return owned_transition
+        transition = await _begin_quota_transition(redis, transition.role_id)
+
+    pending_error = _quota_sync_pending() if mutation_applied else _quota_unavailable()
+    raise pending_error
 
 
 async def _republish_after_rollback(
