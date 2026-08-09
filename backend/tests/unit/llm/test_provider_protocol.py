@@ -16,6 +16,7 @@ class ValidAdapter:
         negative_examples: list[str] | None = None,
         conversation_history: list[dict] | None = None,
         target_dialect: str | None = None,
+        timeout: float | None = None,
     ) -> str:
         return "SELECT 1"
 

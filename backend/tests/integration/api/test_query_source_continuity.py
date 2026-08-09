@@ -61,8 +61,9 @@ class SourceCheckingLLM:
         negative_examples=None,
         conversation_history=None,
         target_dialect=None,
+        timeout=None,
     ) -> str:
-        del question, negative_examples, conversation_history
+        del question, negative_examples, conversation_history, timeout
         self.calls += 1
         table_names = {table.name for table in schema_context.tables}
         if table_names != {self._source.table_name}:
