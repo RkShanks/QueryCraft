@@ -35,6 +35,32 @@ class DatabaseSnapshot:
     row_fingerprints: tuple[tuple[str, str], ...]
 
 
+@dataclass(frozen=True)
+class TableSchema:
+    """Structured table metadata used by schema-contract assertions."""
+
+    name: str
+    columns: tuple[tuple[str, str, bool, str | None], ...]
+    primary_key: tuple[str, tuple[str, ...]]
+    foreign_keys: tuple[tuple[object, ...], ...]
+    unique_constraints: tuple[tuple[str, tuple[str, ...]], ...]
+    indexes: tuple[tuple[object, ...], ...]
+
+
+@dataclass(frozen=True)
+class SchemaInventory:
+    """Structured PostgreSQL schema inventory without row values."""
+
+    tables: tuple[TableSchema, ...]
+
+    @property
+    def table_names(self) -> frozenset[str]:
+        return frozenset(table.name for table in self.tables)
+
+    def table(self, table_name: str) -> TableSchema:
+        return next(table for table in self.tables if table.name == table_name)
+
+
 def assert_disposable_database_url(database_url: str) -> URL:
     """Reject any migration target outside the dedicated database namespace."""
     parsed_url = make_url(database_url)
@@ -97,6 +123,18 @@ def database_snapshot(database_url: str) -> DatabaseSnapshot:
     return asyncio.run(_database_snapshot(database_url))
 
 
+def schema_inventory(database_url: str) -> SchemaInventory:
+    assert_disposable_database_url(database_url)
+    return asyncio.run(_schema_inventory(database_url))
+
+
+def set_database_lock_timeout(database_url: str, timeout_milliseconds: int) -> None:
+    parsed_url = assert_disposable_database_url(database_url)
+    if timeout_milliseconds <= 0:
+        raise RuntimeError("Migration test lock timeout must be positive")
+    asyncio.run(_set_database_lock_timeout(parsed_url, timeout_milliseconds))
+
+
 def _assert_disposable_database_name(database_name: str) -> None:
     if _DISPOSABLE_DATABASE_PATTERN.fullmatch(database_name) is None:
         raise RuntimeError("Migration test database name is not disposable")
@@ -148,34 +186,73 @@ async def _database_snapshot(database_url: str) -> DatabaseSnapshot:
         await engine.dispose()
 
 
+async def _schema_inventory(database_url: str) -> SchemaInventory:
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.connect() as connection:
+            return await connection.run_sync(_schema_inventory_from_connection)
+    finally:
+        await engine.dispose()
+
+
+async def _set_database_lock_timeout(database_url: URL, timeout_milliseconds: int) -> None:
+    engine = create_async_engine(database_url, isolation_level="AUTOCOMMIT")
+    database_name = database_url.database or ""
+    _assert_disposable_database_name(database_name)
+    try:
+        async with engine.connect() as connection:
+            await connection.exec_driver_sql(
+                f"ALTER DATABASE \"{database_name}\" SET lock_timeout = '{timeout_milliseconds}ms'"
+            )
+    finally:
+        await engine.dispose()
+
+
 def _snapshot_from_connection(connection: Connection) -> DatabaseSnapshot:
-    inspector = inspect(connection)
-    table_names = tuple(sorted(inspector.get_table_names()))
-    schema_contract = [_table_schema_contract(inspector, table_name) for table_name in table_names]
-    schema_fingerprint = _fingerprint(schema_contract)
+    inventory = _schema_inventory_from_connection(connection)
+    table_names = tuple(table.name for table in inventory.tables)
+    schema_fingerprint = _fingerprint(inventory)
     row_counts = tuple((table_name, _row_count(connection, table_name)) for table_name in table_names)
     row_fingerprints = tuple((table_name, _row_fingerprint(connection, table_name)) for table_name in table_names)
     revision = _revision_from_connection(connection, table_names)
     return DatabaseSnapshot(revision, schema_fingerprint, row_counts, row_fingerprints)
 
 
-def _table_schema_contract(inspector, table_name: str) -> dict[str, object]:
-    return {
-        "table": table_name,
-        "columns": sorted((column["name"], str(column["type"])) for column in inspector.get_columns(table_name)),
-        "primary_key": _constraint_contract(inspector.get_pk_constraint(table_name)),
-        "foreign_keys": sorted(
-            _foreign_key_contract(foreign_key) for foreign_key in inspector.get_foreign_keys(table_name)
+def _schema_inventory_from_connection(connection: Connection) -> SchemaInventory:
+    inspector = inspect(connection)
+    tables = tuple(_table_schema(inspector, table_name) for table_name in sorted(inspector.get_table_names()))
+    return SchemaInventory(tables)
+
+
+def _table_schema(inspector, table_name: str) -> TableSchema:
+    columns = tuple(
+        sorted(
+            (
+                column["name"],
+                str(column["type"]),
+                bool(column["nullable"]),
+                str(column["default"]) if column["default"] is not None else None,
+            )
+            for column in inspector.get_columns(table_name)
+        )
+    )
+    return TableSchema(
+        name=table_name,
+        columns=columns,
+        primary_key=_constraint_contract(inspector.get_pk_constraint(table_name)),
+        foreign_keys=tuple(
+            sorted(_foreign_key_contract(foreign_key) for foreign_key in inspector.get_foreign_keys(table_name))
         ),
-        "unique_constraints": sorted(
-            _constraint_contract(constraint) for constraint in inspector.get_unique_constraints(table_name)
+        unique_constraints=tuple(
+            sorted(_constraint_contract(constraint) for constraint in inspector.get_unique_constraints(table_name))
         ),
-        "indexes": sorted(_index_contract(index) for index in inspector.get_indexes(table_name)),
-    }
+        indexes=tuple(sorted(_index_contract(index) for index in inspector.get_indexes(table_name))),
+    )
 
 
 def _constraint_contract(constraint: dict[str, object]) -> tuple[str, tuple[str, ...]]:
-    return str(constraint.get("name") or ""), tuple(constraint.get("constrained_columns") or ())
+    columns = constraint.get("constrained_columns") or constraint.get("column_names") or ()
+    return str(constraint.get("name") or ""), tuple(columns)
 
 
 def _foreign_key_contract(foreign_key: dict[str, object]) -> tuple[object, ...]:
@@ -192,8 +269,19 @@ def _index_contract(index: dict[str, object]) -> tuple[object, ...]:
     return str(index.get("name") or ""), tuple(column_names), bool(index.get("unique"))
 
 
-def _fingerprint(schema_contract: list[dict[str, object]]) -> str:
-    canonical_schema = json.dumps(schema_contract, sort_keys=True, separators=(",", ":"))
+def _fingerprint(inventory: SchemaInventory) -> str:
+    fingerprint_contract = [
+        {
+            "table": table.name,
+            "columns": [(name, column_type) for name, column_type, _, _ in table.columns],
+            "primary_key": table.primary_key,
+            "foreign_keys": table.foreign_keys,
+            "unique_constraints": table.unique_constraints,
+            "indexes": table.indexes,
+        }
+        for table in inventory.tables
+    ]
+    canonical_schema = json.dumps(fingerprint_contract, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical_schema.encode()).hexdigest()
 
 
