@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "chunk": "CHUNK-06",
+  "gap_id": "IS-GAP-009",
+  "status": "local_gates_passed_ci_pending",
+  "starting_sha": "ef818a0d8fad126f4f2a54487ab78c711716d5f8",
+  "tested_commit": "2a48ec9b0da9c7abe408cb5248104525f5350604",
+  "revision_chain": ["001", "002", "003", "004", "005", "006", "007", "008", "009"],
+  "transition_matrix": {
+    "empty_stepwise_upgrade": [
+      "base->001", "001->002", "002->003", "003->004", "004->005",
+      "005->006", "006->007", "007->008", "008->009"
+    ],
+    "fresh_base_to_head": "passed",
+    "populated_stepwise_downgrade": [
+      "009->008", "008->007", "007->006", "006->005", "005->004",
+      "004->003", "003->002", "002->001", "001->base"
+    ],
+    "stepwise_reupgrade": [
+      "base->001", "001->002", "002->003", "003->004", "004->005",
+      "005->006", "006->007", "007->008", "008->009"
+    ],
+    "populated_parent_cycles": [
+      "base<->001", "001<->002", "002<->003", "003<->004", "004<->005",
+      "005<->006", "006<->007", "007<->008", "008<->009"
+    ],
+    "historical_direct_to_head": [
+      "001->009", "002->009", "003->009", "004->009",
+      "005->009", "006->009", "007->009", "008->009"
+    ],
+    "head_to_historical": [
+      "009->001", "009->002", "009->003", "009->004",
+      "009->005", "009->006", "009->007", "009->008"
+    ],
+    "version_verified_after_every_transition": true,
+    "schema_fingerprint_restored_after_each_supported_downgrade": true
+  },
+  "schema_ledger": [
+    {"revision": "001", "table_count": 5, "column_count": 30, "constraint_count": 9, "index_count": 3, "schema_fingerprint": "5543d6b6c6f92d5403945d6f730f43cac7ac0ce0c0453250a5fe06e33eba4f0d"},
+    {"revision": "002", "table_count": 5, "column_count": 30, "constraint_count": 9, "index_count": 3, "schema_fingerprint": "5543d6b6c6f92d5403945d6f730f43cac7ac0ce0c0453250a5fe06e33eba4f0d"},
+    {"revision": "003", "table_count": 5, "column_count": 31, "constraint_count": 9, "index_count": 3, "schema_fingerprint": "ced093a7926a4f6cc3d8bd3126f5d86ea1b461cba8b0e37b85a4c4a5bf3ba06f"},
+    {"revision": "004", "table_count": 6, "column_count": 39, "constraint_count": 12, "index_count": 5, "schema_fingerprint": "92ab33d7783bda615758536d8244b6c734dae9e344575fd9a703434cc51201e4"},
+    {"revision": "005", "table_count": 6, "column_count": 42, "constraint_count": 12, "index_count": 5, "schema_fingerprint": "430bd60d98b3d57e58ae4588facfcc728dd77475c080b32c929673996d1e7e4b"},
+    {"revision": "006", "table_count": 7, "column_count": 57, "constraint_count": 15, "index_count": 7, "schema_fingerprint": "dd3c016a75a48f046e0367ab738505fd6f6e6e189619b6ccddb951bc0e137a27"},
+    {"revision": "007", "table_count": 13, "column_count": 116, "constraint_count": 34, "index_count": 17, "schema_fingerprint": "351b1ee7c45a7d342d08e159c4b5a9efabe9c46ed42640fb2c0abe183cf4092e"},
+    {"revision": "008", "table_count": 15, "column_count": 128, "constraint_count": 39, "index_count": 18, "schema_fingerprint": "ef9aa86f9ab0248c54f32ddd9afad821b5cbc62df11472a492d215ea94965515"},
+    {"revision": "009", "table_count": 15, "column_count": 128, "constraint_count": 39, "index_count": 21, "schema_fingerprint": "628fe83bab0b4458d0f9ce3860416ed3fc776d948520fee2332c8ab6845f91c8"}
+  ],
+  "revision_007_refusal": {
+    "failure_classification": "revision_007_incompatible_account_preflight",
+    "direct_007_to_006_atomic": true,
+    "head_009_to_006_atomic": true,
+    "constant_for_one_and_multiple_incompatible_accounts": true,
+    "schema_unchanged": true,
+    "row_state_unchanged": true,
+    "revision_unchanged": true,
+    "local_only_downgrade_succeeds": true,
+    "explicit_fixture_remediation_downgrade_succeeds": true,
+    "reupgrade_to_head_succeeds": true
+  },
+  "revision_checks": {
+    "revision_002_seed_deterministic": true,
+    "revision_006_parent_contract_restored": true,
+    "revision_007_genesis_single_and_valid": true,
+    "revision_008_objects_cycle": true,
+    "revision_009_inherited_indexes_preserved": true,
+    "revision_009_owned_indexes_cycle": true,
+    "runtime_application_imports": 0,
+    "concurrent_execution_safe": true,
+    "head_model_repository_smoke": true
+  },
+  "local_gates": {
+    "isolated_migration_suite": "33 passed",
+    "existing_migration_unit_subset": "38 passed",
+    "existing_migration_drift_integration": "1 passed",
+    "model_repository_subset": "71 passed, 31 skipped",
+    "changed_python_ruff_check": "passed",
+    "changed_python_ruff_format": "passed",
+    "backend_ruff_check": "passed",
+    "backend_ruff_format": "passed",
+    "json_validation": "passed",
+    "git_diff_check": "passed"
+  },
+  "authoritative_ci": {
+    "backend_test": "pending",
+    "frontend_test": "pending"
+  },
+  "cleanup": {
+    "disposable_databases_remaining": 0,
+    "disposable_containers_remaining": 0,
+    "disposable_volumes_remaining": 0,
+    "protected_baseline_unchanged": true
+  }
+}

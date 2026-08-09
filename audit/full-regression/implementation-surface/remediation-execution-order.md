@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-05` are resolved on their tested product commits. CHUNK-05 passed exact retry quota accounting, ordered durable audit lifecycle, rollback, cancellation and PostgreSQL/MySQL/MSSQL adapter-denial proof on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2` via [#303](https://github.com/RkShanks/QueryCraft/pull/303); see [evidence](evidence/chunk-05-retry-quota-audit.md). `CHUNK-06` is the next dispatch after the CHUNK-05 PR merges with green backend/frontend CI; no CHUNK-06 work has started.
+Status: `CHUNK-01` through `CHUNK-06` are resolved on their tested product commits. CHUNK-06 passed the complete isolated 001-009 PostgreSQL matrix, revision-007 atomic refusal/remediation, exact parent-schema restoration, concurrent execution safety, model/repository smoke and cleanup on tested branch commit `2a48ec9b0da9c7abe408cb5248104525f5350604`; see [evidence](evidence/chunk-06-migration-cycle.md). Authoritative CI is pending; `CHUNK-07` becomes the next dispatch only after this PR merges green.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -79,6 +79,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-06 — migration chain and revision-007 rollback
 
+- **Progress:** Resolved on tested branch commit `2a48ec9b0da9c7abe408cb5248104525f5350604`. The 33-test isolated suite passed every fresh, stepwise, populated parent-cycle, historical-to-head, head-to-historical, revision-007 refusal/remediation and concurrent-execution case. All disposable databases, containers and volumes were removed; authoritative CI is pending.
 - **IDs / role / branch / context:** `IS-GAP-009`; Backend Implementer; `phase-6/wave-19.06-migration-chain`; 100–140k.
 - **Likely source:** `backend/alembic/versions/001_*.py` through `backend/alembic/versions/009_*.py`, migration tests/fixtures.
 - **TDD:** RED populated revision-007 downgrade with SSO NULL password plus fresh and stepwise 001↔009 cases; encode approved destructive expectations.
@@ -365,4 +366,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-05` are resolved on their tested commits. `CHUNK-06 / IS-GAP-009` is the next dispatch only after the CHUNK-05 PR merges with green backend/frontend CI; no CHUNK-06 work has started.
+`CHUNK-01` through `CHUNK-06` are resolved on their tested commits. `CHUNK-07 / IS-GAP-023, IS-GAP-025, IS-GAP-022` is next only after the CHUNK-06 PR merges with green backend/frontend CI; no CHUNK-07 work has started.
