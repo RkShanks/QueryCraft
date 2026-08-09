@@ -11,7 +11,7 @@ from app.llm.gemini_adapter import GeminiAdapter
 
 @pytest.fixture
 def adapter() -> GeminiAdapter:
-    return GeminiAdapter(api_key="fake-gemini-key", model="gemini-1.5-pro")
+    return GeminiAdapter(api_key="fake-gemini-key", model="gemini-1.5-pro", timeout_s=30)
 
 
 @respx.mock

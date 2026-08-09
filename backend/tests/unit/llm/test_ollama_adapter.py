@@ -11,7 +11,7 @@ from app.llm.ollama_adapter import OllamaAdapter
 
 @pytest.fixture
 def adapter() -> OllamaAdapter:
-    return OllamaAdapter(host="http://localhost:11434", model="llama3.1")
+    return OllamaAdapter(host="http://localhost:11434", model="llama3.1", timeout_s=30)
 
 
 @respx.mock

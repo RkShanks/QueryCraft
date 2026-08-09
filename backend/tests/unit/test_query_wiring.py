@@ -58,6 +58,7 @@ async def test_build_query_service_for_connection_wires_quota_service():
         mock_settings.return_value = MagicMock(
             LLM_PROVIDER="test",
             DB_CREDENTIAL_KEY="test-key",
+            QUERY_TIMEOUT_SECONDS=30,
         )
         mock_rpp.return_value = MagicMock()
         mock_fcp.return_value = MagicMock(decrypt=MagicMock(return_value="decrypted"))

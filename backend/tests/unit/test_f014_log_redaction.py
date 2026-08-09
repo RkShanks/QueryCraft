@@ -22,7 +22,7 @@ from app.llm.gemini_adapter import GeminiAdapter
 async def test_f014_gemini_url_redacted_in_logs(caplog):
     """F-014: Gemini API key must NOT appear in any log record."""
     secret = "AIzaSyTESTSECRETPATTERN"
-    adapter = GeminiAdapter(api_key=secret, model="gemini-1.5-pro")
+    adapter = GeminiAdapter(api_key=secret, model="gemini-1.5-pro", timeout_s=30)
 
     # Ensure httpx INFO logs are captured
     caplog.set_level(logging.INFO, logger="httpx")

@@ -12,22 +12,23 @@ from app.llm.openai_adapter import OpenAIAdapter
 class FakeSettings:
     """Minimal settings stand-in for factory tests."""
 
-    def __init__(self, provider="ollama", model="", api_key="", host="http://localhost:11434"):
+    def __init__(self, provider="ollama", model="", api_key="", host="http://localhost:11434", timeout=30):
         self.LLM_PROVIDER = provider
         self.LLM_MODEL_NAME = model
         self.LLM_API_KEY_ANTHROPIC = api_key
         self.LLM_API_KEY_OPENAI = api_key
         self.LLM_API_KEY_GEMINI = api_key
         self.LLM_BASE_URL_OLLAMA = host
+        self.QUERY_TIMEOUT_SECONDS = timeout
 
 
 @pytest.mark.parametrize(
     "cls,kwargs",
     [
-        (AnthropicAdapter, {"api_key": "test-key"}),
-        (OpenAIAdapter, {"api_key": "test-key"}),
-        (GeminiAdapter, {"api_key": "test-key"}),
-        (OllamaAdapter, {"host": "http://localhost:11434"}),
+        (AnthropicAdapter, {"api_key": "test-key", "timeout_s": 30}),
+        (OpenAIAdapter, {"api_key": "test-key", "timeout_s": 30}),
+        (GeminiAdapter, {"api_key": "test-key", "timeout_s": 30}),
+        (OllamaAdapter, {"host": "http://localhost:11434", "timeout_s": 30}),
     ],
 )
 def test_adapter_has_aclose_method(cls, kwargs):
@@ -40,10 +41,10 @@ def test_adapter_has_aclose_method(cls, kwargs):
 @pytest.mark.parametrize(
     "cls,kwargs",
     [
-        (AnthropicAdapter, {"api_key": "test-key"}),
-        (OpenAIAdapter, {"api_key": "test-key"}),
-        (GeminiAdapter, {"api_key": "test-key"}),
-        (OllamaAdapter, {"host": "http://localhost:11434"}),
+        (AnthropicAdapter, {"api_key": "test-key", "timeout_s": 30}),
+        (OpenAIAdapter, {"api_key": "test-key", "timeout_s": 30}),
+        (GeminiAdapter, {"api_key": "test-key", "timeout_s": 30}),
+        (OllamaAdapter, {"host": "http://localhost:11434", "timeout_s": 30}),
     ],
 )
 async def test_adapter_aclose_closes_httpx_client(cls, kwargs, monkeypatch):
