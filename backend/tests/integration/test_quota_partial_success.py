@@ -4,6 +4,7 @@ import uuid
 from unittest.mock import AsyncMock
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import text
 
@@ -59,6 +60,41 @@ async def _quota_audit_count(async_engine_fixture, role_id: uuid.UUID) -> int:
         )
 
 
+async def _install_deferred_quota_failure(async_engine_fixture) -> None:
+    async with async_engine_fixture.begin() as connection:
+        await connection.execute(
+            text(
+                """
+                CREATE OR REPLACE FUNCTION chunk09_reject_quota_commit()
+                RETURNS trigger LANGUAGE plpgsql AS $$
+                BEGIN
+                    IF NEW.daily_query_limit = 7 THEN
+                        RAISE EXCEPTION 'private deferred quota failure';
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$
+                """
+            )
+        )
+        await connection.execute(
+            text(
+                """
+                CREATE CONSTRAINT TRIGGER chunk09_quota_commit_failure
+                AFTER INSERT OR UPDATE ON role_quotas
+                DEFERRABLE INITIALLY DEFERRED
+                FOR EACH ROW EXECUTE FUNCTION chunk09_reject_quota_commit()
+                """
+            )
+        )
+
+
+async def _drop_deferred_quota_failure(async_engine_fixture) -> None:
+    async with async_engine_fixture.begin() as connection:
+        await connection.execute(text("DROP TRIGGER IF EXISTS chunk09_quota_commit_failure ON role_quotas"))
+        await connection.execute(text("DROP FUNCTION IF EXISTS chunk09_reject_quota_commit()"))
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_put_publication_failure_applies_once_and_identical_retry_reconciles(
@@ -111,6 +147,15 @@ async def test_put_publication_failure_applies_once_and_identical_retry_reconcil
                 "queries",
             )
         assert await redis_client.keys("quota:*") == counter_keys_before_check
+
+        pending_retry_response = await authenticated_client.put(
+            f"/api/v1/admin/quotas/{role_id}",
+            json={"daily_query_limit": 4},
+        )
+        assert pending_retry_response.status_code == 503
+        assert pending_retry_response.json() == failed_response.json()
+        assert await _quota_row(async_engine_fixture, role_id) == applied_row
+        assert await _quota_audit_count(async_engine_fixture, role_id) == initial_audits + 1
 
         fault_redis.fail_publication = False
         retry_response = await authenticated_client.put(
@@ -180,6 +225,11 @@ async def test_delete_publication_failure_applies_once_and_pending_retry_reconci
             )
         assert await redis_client.keys("quota:*") == counter_keys_before_check
 
+        pending_retry_response = await authenticated_client.delete(f"/api/v1/admin/quotas/{role_id}")
+        assert pending_retry_response.status_code == 503
+        assert pending_retry_response.json() == failed_response.json()
+        assert await _quota_audit_count(async_engine_fixture, role_id) == initial_audits + 1
+
         fault_redis.fail_publication = False
         retry_response = await authenticated_client.delete(f"/api/v1/admin/quotas/{role_id}")
         assert retry_response.status_code == 204
@@ -193,3 +243,49 @@ async def test_delete_publication_failure_applies_once_and_pending_retry_reconci
         assert await _quota_audit_count(async_engine_fixture, role_id) == initial_audits + 1
     finally:
         app.dependency_overrides.pop(get_redis, None)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_database_commit_failure_rolls_back_audit_and_republishes_prior_config(
+    authenticated_client,
+    async_engine_fixture,
+    redis_client,
+):
+    role_id = await _admin_role_id(async_engine_fixture)
+    initial_response = await authenticated_client.put(
+        f"/api/v1/admin/quotas/{role_id}",
+        json={"daily_query_limit": 10},
+    )
+    assert initial_response.status_code == 200
+    initial_row = await _quota_row(async_engine_fixture, role_id)
+    initial_audits = await _quota_audit_count(async_engine_fixture, role_id)
+    await _install_deferred_quota_failure(async_engine_fixture)
+
+    app = authenticated_client._transport.app
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    try:
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://test",
+            cookies=authenticated_client.cookies,
+            headers={"origin": "http://test"},
+        ) as client:
+            response = await client.put(
+                f"/api/v1/admin/quotas/{role_id}",
+                json={"daily_query_limit": 7},
+            )
+
+        assert response.status_code == 500
+        assert response.text == "Internal Server Error"
+        assert await _quota_row(async_engine_fixture, role_id) == initial_row
+        assert await _quota_audit_count(async_engine_fixture, role_id) == initial_audits
+
+        quota_repo = AsyncMock()
+        quota_repo.get.return_value = RoleQuota(role_id=role_id, daily_query_limit=10)
+        assert (await QuotaService(redis_client, quota_repo).check_and_increment(uuid.uuid4(), role_id, "queries"))[
+            1
+        ] == 10
+        assert quota_repo.get.await_count == 0
+    finally:
+        await _drop_deferred_quota_failure(async_engine_fixture)
