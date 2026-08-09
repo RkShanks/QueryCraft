@@ -113,7 +113,7 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-005` and `IS-GAP-006` are resolved on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2` via [#303](https://github.com/RkShanks/QueryCraft/pull/303). Their [CHUNK-05 evidence](evidence/chunk-05-retry-quota-audit.md) records shared reject/regenerate quota boundaries, exact provider/source call and Redis counter deltas, ordered durable audit lifecycles, hash-chain verification, rollback, session-deletion/deadline compatibility, three-dialect denial behavior, sanitization and cleanup.
 
-`IS-GAP-009` is resolved on tested branch commit `2a48ec9b0da9c7abe408cb5248104525f5350604`. Its [CHUNK-06 evidence](evidence/chunk-06-migration-cycle.md) records the complete disposable PostgreSQL 001-009 transition matrix, exact schema fingerprints/counts, revision-007 atomic refusal and explicit fixture remediation, revision-006 parent-contract restoration, model/repository smoke, concurrency behavior and zero-resource cleanup. Authoritative backend/frontend CI is pending.
+`IS-GAP-009` is resolved on tested branch commit `2a48ec9b0da9c7abe408cb5248104525f5350604` via [#304](https://github.com/RkShanks/QueryCraft/pull/304). Its [CHUNK-06 evidence](evidence/chunk-06-migration-cycle.md) records the complete disposable PostgreSQL 001-009 transition matrix, exact schema fingerprints/counts, revision-007 atomic refusal and explicit fixture remediation, revision-006 parent-contract restoration, model/repository smoke, concurrency behavior and zero-resource cleanup. Authoritative backend/frontend CI passed.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
@@ -125,7 +125,7 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-07` is next only after the CHUNK-06 PR merges with green backend/frontend CI; no CHUNK-07 work has started.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-07` is next after [#304](https://github.com/RkShanks/QueryCraft/pull/304) merges; no CHUNK-07 work has started.
 
 ## Validation scope
 

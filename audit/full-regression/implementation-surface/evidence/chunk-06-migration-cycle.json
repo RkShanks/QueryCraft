@@ -2,9 +2,11 @@
   "schema_version": "1.0",
   "chunk": "CHUNK-06",
   "gap_id": "IS-GAP-009",
-  "status": "local_gates_passed_ci_pending",
+  "status": "passed",
   "starting_sha": "ef818a0d8fad126f4f2a54487ab78c711716d5f8",
   "tested_commit": "2a48ec9b0da9c7abe408cb5248104525f5350604",
+  "ci_validated_commit": "ebbda4783efe35b02a50f486cefefc113bea856a",
+  "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/304",
   "revision_chain": ["001", "002", "003", "004", "005", "006", "007", "008", "009"],
   "transition_matrix": {
     "empty_stepwise_upgrade": [
@@ -82,8 +84,8 @@
     "git_diff_check": "passed"
   },
   "authoritative_ci": {
-    "backend_test": "pending",
-    "frontend_test": "pending"
+    "backend_test": "passed",
+    "frontend_test": "passed"
   },
   "cleanup": {
     "disposable_databases_remaining": 0,

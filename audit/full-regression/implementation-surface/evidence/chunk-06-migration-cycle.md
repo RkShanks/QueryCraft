@@ -1,6 +1,6 @@
 # CHUNK-06 migration-cycle evidence
 
-Status: local focused gates passed on `2a48ec9b0da9c7abe408cb5248104525f5350604`; authoritative backend/frontend CI is pending.
+Status: local focused gates passed on `2a48ec9b0da9c7abe408cb5248104525f5350604`; authoritative backend/frontend CI passed on `ebbda4783efe35b02a50f486cefefc113bea856a` in [#304](https://github.com/RkShanks/QueryCraft/pull/304).
 
 Starting main: `ef818a0d8fad126f4f2a54487ab78c711716d5f8`.
 
