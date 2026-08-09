@@ -1,6 +1,6 @@
 # CHUNK-07 UI identity and permission evidence
 
-Status: local focused, full-frontend, mocked-browser and isolated live-browser gates passed on tested product commit `3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db` in [#305](https://github.com/RkShanks/QueryCraft/pull/305); authoritative CI is pending.
+Status: local focused, full-frontend, mocked-browser and isolated live-browser gates passed on tested product commit `3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db`; authoritative backend/frontend CI passed on `51037f0f8c70604cb92df2c6e89d8e09841137e3` in [#305](https://github.com/RkShanks/QueryCraft/pull/305). Squash merge is the remaining CHUNK-08 dispatch gate.
 
 Starting main: `9cf46653d190d0b778fa70c709575d9758a3bd1e`.
 
@@ -101,6 +101,7 @@ Expected browser resource diagnostics were classified separately: three delibera
 - CSS lint: passed.
 - `git diff --check`: passed.
 - Test Guard, Clean Code Guard and Docs Guard: passed.
+- Authoritative `backend-test` and `frontend-test` on PR #305: passed.
 
 ## Cleanup and baseline
 
@@ -110,4 +111,4 @@ Expected browser resource diagnostics were classified separately: three delibera
 - CHUNK-07 local service ports remaining: 0.
 - Protected tracked PNG changes, historical screenshots and traces: unchanged from the starting dirty baseline and never staged.
 
-CHUNK-08 remains dispatch-gated until [#305](https://github.com/RkShanks/QueryCraft/pull/305) passes authoritative backend/frontend CI and is squash-merged. The machine-readable peer is [chunk-07-ui-identity-permissions.json](chunk-07-ui-identity-permissions.json).
+CHUNK-08 becomes dispatchable when [#305](https://github.com/RkShanks/QueryCraft/pull/305), whose authoritative backend/frontend CI passed, is squash-merged. The machine-readable peer is [chunk-07-ui-identity-permissions.json](chunk-07-ui-identity-permissions.json).

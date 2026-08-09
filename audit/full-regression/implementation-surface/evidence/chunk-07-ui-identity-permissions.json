@@ -2,9 +2,10 @@
   "schema_version": "1.0",
   "chunk": "CHUNK-07",
   "gap_ids": ["IS-GAP-023", "IS-GAP-025", "IS-GAP-022"],
-  "status": "local_gates_passed",
+  "status": "ci_passed_merge_pending",
   "starting_sha": "9cf46653d190d0b778fa70c709575d9758a3bd1e",
   "tested_product_commit": "3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db",
+  "ci_validated_commit": "51037f0f8c70604cb92df2c6e89d8e09841137e3",
   "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/305",
   "identity_boundary": {
     "outer_auth_and_feature_clients_separated": true,
@@ -118,8 +119,8 @@
     "docs_guard": "passed"
   },
   "authoritative_ci": {
-    "backend_test": "pending",
-    "frontend_test": "pending"
+    "backend_test": "passed",
+    "frontend_test": "passed"
   },
   "cleanup": {
     "disposable_users_remaining": 0,
@@ -135,5 +136,6 @@
     "local_test_ports_remaining": 0,
     "protected_baseline_unchanged": true
   },
-  "chunk_08_unblocked": false
+  "chunk_08_unblocked": false,
+  "chunk_08_unblocked_on_squash_merge": true
 }

@@ -77,6 +77,8 @@
       "status": "Resolved",
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/305",
       "tested_product_commit": "3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db",
+      "ci_validated_commit": "51037f0f8c70604cb92df2c6e89d8e09841137e3",
+      "authoritative_ci": {"backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-07-ui-identity-permissions.json"
     }
   },

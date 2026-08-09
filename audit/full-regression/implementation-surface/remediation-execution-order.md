@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-07` are resolved on their tested product commits. CHUNK-07 passed exact identity/permission route, navigation, request, cache, role-editor and isolated live-browser evidence on tested product commit `3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db` in [#305](https://github.com/RkShanks/QueryCraft/pull/305); see [evidence](evidence/chunk-07-ui-identity-permissions.md). Authoritative CI is pending, so `CHUNK-08` is not yet dispatchable.
+Status: `CHUNK-01` through `CHUNK-07` are resolved on their tested product commits. CHUNK-07 passed exact identity/permission route, navigation, request, cache, role-editor and isolated live-browser evidence on tested product commit `3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db` in [#305](https://github.com/RkShanks/QueryCraft/pull/305); see [evidence](evidence/chunk-07-ui-identity-permissions.md). Authoritative backend/frontend CI passed; squash merge is the remaining `CHUNK-08` dispatch gate.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -91,7 +91,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-07 — browser identity and authorization boundary
 
-- **Progress:** Resolved on tested product commit `3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db` in [#305](https://github.com/RkShanks/QueryCraft/pull/305); CI pending. Auth and feature caches are identity/permission generation-scoped, late settlement is suppressed, 401 removal remains distinct from 403 reconciliation, all eight permissions share one catalog, and exact route/nav/request plus role round-trip and EN/AR access-denied evidence passed. Disposable browser/backend resources were removed and the protected baseline was preserved.
+- **Progress:** Resolved on tested product commit `3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db` in [#305](https://github.com/RkShanks/QueryCraft/pull/305); authoritative backend/frontend CI passed. Auth and feature caches are identity/permission generation-scoped, late settlement is suppressed, 401 removal remains distinct from 403 reconciliation, all eight permissions share one catalog, and exact route/nav/request plus role round-trip and EN/AR access-denied evidence passed. Disposable browser/backend resources were removed and the protected baseline was preserved.
 
 - **IDs / role / branch / context:** `IS-GAP-023`, `IS-GAP-025`, `IS-GAP-022` in that internal order; Frontend Implementer; `phase-6/wave-19.07-ui-identity-permissions`; 140–175k.
 - **Likely source:** `QueryProvider.tsx`, `useAuth.ts`, `uiStore.ts`, affected feature hooks, `AdminRolesPage.tsx`, `App.tsx`, `Sidebar.tsx`, PermissionGuard and tests.
@@ -368,4 +368,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-07` are resolved on their tested commits. `CHUNK-08 / IS-GAP-020` is next, but remains blocked until [#305](https://github.com/RkShanks/QueryCraft/pull/305) passes authoritative backend/frontend CI and is squash-merged.
+`CHUNK-01` through `CHUNK-07` are resolved on their tested commits. `CHUNK-08 / IS-GAP-020` is next and becomes dispatchable when CI-passed [#305](https://github.com/RkShanks/QueryCraft/pull/305) is squash-merged.
