@@ -104,6 +104,8 @@ async def _own_transition_after_reconciliation(
     redis: Redis,
     transition: QuotaConfigTransition,
     quota: RoleQuota | None,
+    *,
+    mutation_applied: bool,
 ) -> QuotaConfigTransition:
     if transition.created:
         try:
@@ -117,7 +119,7 @@ async def _own_transition_after_reconciliation(
         redis,
         transition,
         quota,
-        mutation_applied=False,
+        mutation_applied=mutation_applied,
     )
     owned_transition = await _begin_quota_transition(redis, transition.role_id)
     if not owned_transition.created:
@@ -300,12 +302,13 @@ async def upsert_quota(
     fields_set = data.model_fields_set
     repo = QuotaRepository(db)
     existing_quota = await repo.get(role_uuid)
+    changed_fields = _changed_quota_fields(existing_quota, data, fields_set)
     transition = await _own_transition_after_reconciliation(
         redis,
         transition,
         existing_quota,
+        mutation_applied=existing_quota is not None and not changed_fields,
     )
-    changed_fields = _changed_quota_fields(existing_quota, data, fields_set)
     if existing_quota is not None and not changed_fields:
         await _publish_quota_transition(
             redis,
@@ -382,6 +385,7 @@ async def delete_quota(
         redis,
         transition,
         existing_quota,
+        mutation_applied=was_pending and existing_quota is None,
     )
     if existing_quota is None:
         await _publish_quota_transition(
