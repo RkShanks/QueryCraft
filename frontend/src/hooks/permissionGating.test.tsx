@@ -15,6 +15,7 @@ import { useAdminSso } from './useAdminSso';
 import { useConnections } from './useConnections';
 import { useConnectionSchema } from './useConnectionSchema';
 import { useHistory, useHistoryDetail } from './useHistory';
+import { useQueryLimits } from './useQueryLimits';
 import { useSessionDetail, useSessionsList } from './useSessions';
 import { useCreateSession, useDeleteSession } from './useSessions';
 import { useAcceptQuery, useSubmitQuestion } from './useQuerySubmit';
@@ -29,7 +30,12 @@ import {
 const exactRequestCases: Array<[Permission, string[]]> = [
   [
     PERMISSIONS.QUERY_SUBMIT,
-    ['/api/v1/connections', '/api/v1/sessions', '/api/v1/sessions/session-id'],
+    [
+      '/api/v1/connections',
+      '/api/v1/query/limits',
+      '/api/v1/sessions',
+      '/api/v1/sessions/session-id',
+    ],
   ],
   [
     PERMISSIONS.QUERY_HISTORY_VIEW,
@@ -76,6 +82,7 @@ function PermissionGatingProbe() {
   const detection = useAdminDetection();
   const schema = useConnectionSchema('connection-id');
   const userConnections = useUserConnections();
+  const queryLimits = useQueryLimits();
 
   const isFetching = [
     sessions,
@@ -92,6 +99,7 @@ function PermissionGatingProbe() {
     detection.configQuery,
     schema,
     userConnections,
+    queryLimits,
   ].some((query) => query.isFetching) || history.isFetching;
 
   return <span>{isFetching ? 'fetching' : 'settled'}</span>;
@@ -226,6 +234,9 @@ describe('permission-gated feature hooks', () => {
           }
           if (path === '/api/v1/admin/sso/group-mappings') {
             return HttpResponse.json({ mappings: [] });
+          }
+          if (path === '/api/v1/query/limits') {
+            return HttpResponse.json({ max_question_length: 2000 });
           }
           return HttpResponse.json({});
         })

@@ -1,6 +1,7 @@
 {
   "common.close": "Close",
   "common.or": "Or",
+  "common.retry": "Retry",
   "app.title": "QueryCraft",
   "app.subtitle": "Text-to-SQL Analytics Platform",
   "nav.signIn": "Sign In",
@@ -33,6 +34,8 @@
   "query.input.submit": "Ask",
   "query.input.submitting": "Submitting...",
   "query.input.charCount": "{{current}} / {{max}}",
+  "query.input.limitLoading": "Loading question limit…",
+  "query.input.limitLoadError": "Unable to load the question limit.",
   "query.input.truncation.warning": "{{current}} / {{max}} — input truncated, {{dropped}} characters dropped",
   "query.ask.title": "What would you like to know?",
   "query.status.processing": "Analyzing your question...",

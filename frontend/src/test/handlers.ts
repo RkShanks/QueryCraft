@@ -134,6 +134,10 @@ export const handlers = [
   }),
 
   // ─────────────────────────── Query ───────────────────────────
+  http.get('/api/v1/query/limits', () => {
+    return HttpResponse.json({ max_question_length: 2000 });
+  }),
+
   http.post('/api/v1/query/submit', async ({ request }) => {
     await delay(10);
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;

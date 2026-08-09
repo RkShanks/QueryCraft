@@ -1,6 +1,7 @@
 {
   "common.close": "إغلاق",
   "common.or": "أو",
+  "common.retry": "إعادة المحاولة",
 
   "app.title": "QueryCraft",
   "app.subtitle": "منصة تحليلات النص إلى SQL",
@@ -37,6 +38,8 @@
   "query.input.submit": "اسأل",
   "query.input.submitting": "جارٍ الإرسال...",
   "query.input.charCount": "{{current}} / {{max}}",
+  "query.input.limitLoading": "جارٍ تحميل حد السؤال…",
+  "query.input.limitLoadError": "تعذر تحميل حد السؤال.",
   "query.input.truncation.warning": "{{current}} / {{max}} — تم اقتطاع الإدخال، {{dropped}} أحرف تم حذفها",
 
   "query.ask.title": "ماذا تريد أن تعرف؟",
