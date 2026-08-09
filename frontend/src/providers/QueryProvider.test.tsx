@@ -199,10 +199,12 @@ function SessionExpiryCacheProbe({
       <span data-testid="expiry-cache-identity">
         {currentUser.data?.data?.id ?? 'anonymous'}
       </span>
+      <button type="button" onClick={() => void currentUser.refetch()}>
+        Start current-user refresh
+      </button>
       <button
         type="button"
         onClick={() => {
-          void currentUser.refetch();
           void Promise.allSettled([
             apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
             apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
@@ -210,6 +212,17 @@ function SessionExpiryCacheProbe({
         }}
       >
         Trigger duplicate expiry
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void currentUser.refetch();
+          void apiClient
+            .get({ url: '/session-expiry-cache-state', throwOnError: true })
+            .catch(() => undefined);
+        }}
+      >
+        Trigger auth-expiry race
       </button>
       <button
         type="button"
@@ -617,23 +630,19 @@ describe('QueryProvider session expiry handling', () => {
         permissions: ['query.history.view'],
         auth_provider: 'local',
       };
-      const lateCurrentUser = deferredValue<typeof expiredIdentity>();
-      let currentUserRequestCount = 0;
+      let serverIdentity = expiredIdentity;
       server.use(
-        http.get('/api/v1/auth/me', async () => {
-          currentUserRequestCount += 1;
-          if (currentUserRequestCount === 1) {
-            return HttpResponse.json(expiredIdentity);
-          }
-          return HttpResponse.json(await lateCurrentUser.promise);
-        }),
+        http.get('/api/v1/auth/me', () => HttpResponse.json(serverIdentity)),
         http.get('/api/v1/session-expiry-cache-state', () =>
           HttpResponse.json(
             { error: 'unauthorized', message_key: 'error.unauthorized' },
             { status: 401 }
           )
         ),
-        http.post('/api/v1/auth/sign-in', () => HttpResponse.json(replacementIdentity))
+        http.post('/api/v1/auth/sign-in', () => {
+          serverIdentity = replacementIdentity;
+          return HttpResponse.json(replacementIdentity);
+        })
       );
 
       const authClient = clientMode === 'default'
@@ -662,15 +671,17 @@ describe('QueryProvider session expiry handling', () => {
         owner: expiredIdentity.id,
       });
       fireEvent.click(screen.getByRole('button', { name: 'Trigger duplicate expiry' }));
-      await waitFor(() => expect(currentUserRequestCount).toBe(2));
 
       await waitFor(() => expect(window.location.pathname).toBe('/sign-in'));
       expect(window.location.search).toBe('?error=session_expired');
       await waitFor(() => {
         expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined();
         expect(
-          authClient.getQueryCache().findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
-        ).toHaveLength(0);
+          authClient
+            .getQueryCache()
+            .findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+            .every((query) => query.state.data === undefined)
+        ).toBe(true);
       });
       expect(screen.getByTestId('expiry-cache-identity')).toHaveTextContent('anonymous');
       const expiredCacheSnapshot = JSON.stringify(
@@ -698,17 +709,6 @@ describe('QueryProvider session expiry handling', () => {
         sidebarCollapsed: true,
       });
 
-      await act(async () => {
-        lateCurrentUser.resolve(expiredIdentity);
-        await lateCurrentUser.promise;
-      });
-      await waitFor(() => {
-        expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined();
-        expect(
-          authClient.getQueryCache().findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
-        ).toHaveLength(0);
-      });
-
       fireEvent.click(screen.getByRole('button', { name: 'Sign in replacement user' }));
       await waitFor(() => {
         expect(screen.getByTestId('expiry-cache-identity')).toHaveTextContent(
@@ -728,6 +728,118 @@ describe('QueryProvider session expiry handling', () => {
       ).toHaveLength(1);
     }
   );
+
+  it.each(['injected', 'default'] as const)(
+    'removes the prior identity when current-user revalidation expires with the %s auth client',
+    async (clientMode) => {
+      const expiredIdentity = {
+        id: 'revalidation-expired-user-id',
+        username: 'revalidation-expired-username',
+        display_name: 'Revalidation Expired User',
+        role: 'revalidation-expired-role',
+        role_id: 'revalidation-expired-role-id',
+        role_name: 'Revalidation Expired Role',
+        permissions: ['admin.security.manage'],
+        auth_provider: 'local',
+      };
+      let currentUserRequestCount = 0;
+      server.use(
+        http.get('/api/v1/auth/me', () => {
+          currentUserRequestCount += 1;
+          if (currentUserRequestCount === 1) return HttpResponse.json(expiredIdentity);
+          return HttpResponse.json(
+            { error: 'unauthorized', message_key: 'error.unauthorized' },
+            { status: 401 }
+          );
+        })
+      );
+      const authClient = clientMode === 'default'
+        ? queryClient
+        : new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const observeFeatureClient = () => undefined;
+
+      render(
+        <QueryProvider client={clientMode === 'injected' ? authClient : undefined}>
+          <SessionExpiryCacheProbe observeFeatureClient={observeFeatureClient} />
+        </QueryProvider>
+      );
+
+      expect(await screen.findByTestId('expiry-cache-identity')).toHaveTextContent(
+        expiredIdentity.id
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Start current-user refresh' }));
+
+      await waitFor(() => expect(window.location.pathname).toBe('/sign-in'));
+      expect(window.location.search).toBe('?error=session_expired');
+      await waitFor(() => expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined());
+      const currentUserQueries = authClient
+        .getQueryCache()
+        .findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true });
+      expect(currentUserQueries.every((query) => query.state.data === undefined)).toBe(true);
+      const authCacheSnapshot = JSON.stringify(
+        authClient.getQueryCache().getAll().map((query) => query.state.data)
+      );
+      expect(authCacheSnapshot).not.toContain(expiredIdentity.id);
+      expect(authCacheSnapshot).not.toContain(expiredIdentity.permissions[0]);
+    }
+  );
+
+  it('ignores a late current-user response after the expiry generation begins', async () => {
+    const expiredIdentity = {
+      id: 'late-expired-user-id',
+      username: 'late-expired-username',
+      display_name: 'Late Expired User',
+      role: 'late-expired-role',
+      role_id: 'late-expired-role-id',
+      role_name: 'Late Expired Role',
+      permissions: ['admin.audit.verify'],
+      auth_provider: 'local',
+    };
+    const lateCurrentUser = deferredValue<typeof expiredIdentity>();
+    let currentUserRequestCount = 0;
+    server.use(
+      http.get('/api/v1/auth/me', async () => {
+        currentUserRequestCount += 1;
+        return HttpResponse.json(
+          currentUserRequestCount === 1 ? expiredIdentity : await lateCurrentUser.promise
+        );
+      }),
+      http.get('/api/v1/session-expiry-cache-state', () =>
+        HttpResponse.json(
+          { error: 'unauthorized', message_key: 'error.unauthorized' },
+          { status: 401 }
+        )
+      )
+    );
+    const authClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const observeFeatureClient = () => undefined;
+
+    render(
+      <QueryProvider client={authClient}>
+        <SessionExpiryCacheProbe observeFeatureClient={observeFeatureClient} />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByTestId('expiry-cache-identity')).toHaveTextContent(
+      expiredIdentity.id
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger auth-expiry race' }));
+    await waitFor(() => expect(currentUserRequestCount).toBe(2));
+    await waitFor(() => expect(window.location.pathname).toBe('/sign-in'));
+    await waitFor(() => expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined());
+
+    await act(async () => {
+      lateCurrentUser.resolve(expiredIdentity);
+      await lateCurrentUser.promise;
+    });
+
+    await waitFor(() => expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined());
+    const settledAuthCache = JSON.stringify(
+      authClient.getQueryCache().getAll().map((query) => query.state.data)
+    );
+    expect(settledAuthCache).not.toContain(expiredIdentity.id);
+    expect(settledAuthCache).not.toContain(expiredIdentity.permissions[0]);
+  });
 
   it('reconciles a permission-revocation 403 without logging out or retaining privileged state', async () => {
     let permissions = ['admin.audit.verify'];
