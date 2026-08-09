@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-05` are resolved on their tested product commits. CHUNK-05 passed exact retry quota accounting, ordered durable audit lifecycle, rollback, cancellation and PostgreSQL/MySQL/MSSQL adapter-denial proof on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2`; see [evidence](evidence/chunk-05-retry-quota-audit.md). `CHUNK-06` is the next dispatch after the CHUNK-05 PR merges with green backend/frontend CI; no CHUNK-06 work has started.
+Status: `CHUNK-01` through `CHUNK-05` are resolved on their tested product commits. CHUNK-05 passed exact retry quota accounting, ordered durable audit lifecycle, rollback, cancellation and PostgreSQL/MySQL/MSSQL adapter-denial proof on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2` via [#303](https://github.com/RkShanks/QueryCraft/pull/303); see [evidence](evidence/chunk-05-retry-quota-audit.md). `CHUNK-06` is the next dispatch after the CHUNK-05 PR merges with green backend/frontend CI; no CHUNK-06 work has started.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -66,7 +66,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-05 — retry quotas and audit lifecycle
 
-- **Progress:** Resolved on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2`. Direct regenerate and explicit reject share one query/execution accounting boundary and one durable, sanitized retry lifecycle. Real HTTP counters/call spies, exact audit action/resource/outcome assertions, hash-chain verification, failure rollback, cancellation/deadline compatibility and PostgreSQL/MySQL/MSSQL execution-denial proof passed. Merge remains gated on backend/frontend CI; CHUNK-06 has not started.
+- **Progress:** Resolved on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2` via [#303](https://github.com/RkShanks/QueryCraft/pull/303). Direct regenerate and explicit reject share one query/execution accounting boundary and one durable, sanitized retry lifecycle. Real HTTP counters/call spies, exact audit action/resource/outcome assertions, hash-chain verification, failure rollback, cancellation/deadline compatibility and PostgreSQL/MySQL/MSSQL execution-denial proof passed. Merge remains gated on backend/frontend CI; CHUNK-06 has not started.
 
 - **IDs / role / branch / context:** `IS-GAP-005`, `IS-GAP-006`; Backend Implementer; `phase-6/wave-19.05-retry-quota-audit`; 120–160k.
 - **Likely source:** `backend/src/app/services/query_service.py`, quota/audit services, query API and focused quota/audit tests.

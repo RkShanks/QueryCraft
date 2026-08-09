@@ -9,6 +9,7 @@
 | Starting main | `ca6069b4430aa947f15cbd53f493f478a9e8b4a1` |
 | Tested branch commit | `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2` |
 | Product GREEN commit | `a612fe2a254c16ea1c61e7dddfed6442a25048d5` |
+| Pull request | [#303](https://github.com/RkShanks/QueryCraft/pull/303) |
 | IS-GAP-005 | Resolved |
 | IS-GAP-006 | Resolved |
 | Response/UI contract changed | False |

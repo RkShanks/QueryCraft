@@ -111,7 +111,7 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-004` is resolved on tested product commit `61723e46dc267e74c7aa3539a40990b1482e9edc` via [#302](https://github.com/RkShanks/QueryCraft/pull/302). Its [CHUNK-04 evidence](evidence/chunk-04-timeout-config.md) records the shared monotonic deadline, remaining provider/source budgets, derived five-second lock grace, sanitized exactly-once timeout state, deletion precedence, real HTTP timing, three-dialect slow-query behavior, gates, and cleanup.
 
-`IS-GAP-005` and `IS-GAP-006` are resolved on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2` (PR pending). Their [CHUNK-05 evidence](evidence/chunk-05-retry-quota-audit.md) records shared reject/regenerate quota boundaries, exact provider/source call and Redis counter deltas, ordered durable audit lifecycles, hash-chain verification, rollback, session-deletion/deadline compatibility, three-dialect denial behavior, sanitization and cleanup.
+`IS-GAP-005` and `IS-GAP-006` are resolved on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2` via [#303](https://github.com/RkShanks/QueryCraft/pull/303). Their [CHUNK-05 evidence](evidence/chunk-05-retry-quota-audit.md) records shared reject/regenerate quota boundaries, exact provider/source call and Redis counter deltas, ordered durable audit lifecycles, hash-chain verification, rollback, session-deletion/deadline compatibility, three-dialect denial behavior, sanitization and cleanup.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
