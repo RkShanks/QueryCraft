@@ -37,6 +37,7 @@ def test_head_to_006_refuses_incompatible_users_atomically_then_allows_explicit_
 ) -> None:
     head_revision = revision_ids()[-1]
     upgrade(disposable_database_url, "head")
+    assert current_revision(disposable_database_url) == head_revision
     seed_revision_state(disposable_database_url, head_revision, incompatible_user_count=2)
     before_refusal = database_snapshot(disposable_database_url)
 
@@ -59,6 +60,7 @@ def test_direct_007_to_006_refuses_one_incompatible_user_without_mutation(
     disposable_database_url: str,
 ) -> None:
     upgrade(disposable_database_url, "007")
+    assert current_revision(disposable_database_url) == "007"
     seed_revision_state(disposable_database_url, "007", incompatible_user_count=1)
     before_refusal = database_snapshot(disposable_database_url)
 
@@ -71,6 +73,7 @@ def test_direct_007_to_006_refuses_one_incompatible_user_without_mutation(
 @pytest.mark.integration
 def test_populated_local_only_007_downgrades_to_006(disposable_database_url: str) -> None:
     upgrade(disposable_database_url, "007")
+    assert current_revision(disposable_database_url) == "007"
     seed_local_only_revision_007_state(disposable_database_url)
 
     downgrade(disposable_database_url, "006")

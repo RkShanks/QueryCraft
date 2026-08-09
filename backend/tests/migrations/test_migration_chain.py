@@ -55,6 +55,7 @@ def test_fresh_database_upgrades_from_base_to_dynamic_head(disposable_database_u
 @pytest.mark.integration
 def test_populated_head_cycles_stepwise_to_base_and_back(disposable_database_url: str) -> None:
     upgrade(disposable_database_url, "head")
+    assert current_revision(disposable_database_url) == REVISIONS[-1]
     seed_revision_state(disposable_database_url, REVISIONS[-1])
 
     for revision_index in range(len(REVISIONS) - 1, -1, -1):
@@ -81,8 +82,10 @@ def test_each_revision_cycles_populated_state(disposable_database_url: str, revi
     parent_schema_fingerprint = None
     if revision_index:
         upgrade(disposable_database_url, parent)
+        assert current_revision(disposable_database_url) == parent
         parent_schema_fingerprint = database_snapshot(disposable_database_url).schema_fingerprint
     upgrade(disposable_database_url, revision)
+    assert current_revision(disposable_database_url) == revision
     assert_revision_schema(disposable_database_url, revision)
     seed_revision_state(disposable_database_url, revision)
     before_downgrade = database_snapshot(disposable_database_url)
@@ -109,6 +112,7 @@ def test_each_historical_revision_upgrades_directly_to_dynamic_head(
     historical_revision: str,
 ) -> None:
     upgrade(disposable_database_url, historical_revision)
+    assert current_revision(disposable_database_url) == historical_revision
     seed_revision_state(disposable_database_url, historical_revision)
 
     upgrade(disposable_database_url, "head")
@@ -125,6 +129,7 @@ def test_populated_head_downgrades_to_each_historical_target(
     historical_target: str,
 ) -> None:
     upgrade(disposable_database_url, "head")
+    assert current_revision(disposable_database_url) == REVISIONS[-1]
     seed_revision_state(disposable_database_url, REVISIONS[-1])
 
     downgrade(disposable_database_url, historical_target)
