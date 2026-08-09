@@ -6,13 +6,15 @@ import { useAuthSessionContext } from '../auth/AuthSessionContext';
 import { CURRENT_USER_QUERY_KEY } from '../providers/QueryProvider';
 
 export const useSignIn = () => {
+  const authSession = useAuthSessionContext();
   const queryClient = useQueryClient();
-  return useMutation({
+  const fallbackMutation = useMutation({
     mutationFn: (data: SignInData['body']) => signIn({ body: data, throwOnError: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     },
   });
+  return authSession?.signInMutation ?? fallbackMutation;
 };
 
 export const useCurrentUser = () => {

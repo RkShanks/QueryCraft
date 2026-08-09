@@ -7,9 +7,10 @@ import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query';
-import { useLayoutEffect, useState, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useState, type ReactNode } from 'react';
 import { handleSessionExpiry } from '../auth/sessionExpiry';
-import { getMe, signOut } from '../api/generated/sdk.gen';
+import { getMe, signIn, signOut } from '../api/generated/sdk.gen';
+import type { SignInData } from '../api/generated/types.gen';
 import {
   AuthSessionContext,
   type CurrentUserResponse,
@@ -98,19 +99,35 @@ function IdentityQueryBoundary({
   const needsIdentityReset =
     observedFingerprint !== null && observedFingerprint !== featureSession.fingerprint;
 
+  const beginAuthTransition = useCallback(() => {
+    setAuthTransitionPending(true);
+    void featureSession.client.cancelQueries();
+    featureSession.client.clear();
+    resetIdentityState();
+    setFeatureSession((current) => ({
+      client: createFeatureQueryClient(),
+      fingerprint: current.fingerprint,
+      generation: current.generation + 1,
+    }));
+  }, [featureSession.client]);
+
+  const signInMutation = useMutation({
+    mutationFn: (data: SignInData['body']) =>
+      signIn({ body: data, throwOnError: true }),
+    onMutate: beginAuthTransition,
+    onError: () => {
+      setAuthTransitionPending(false);
+    },
+    onSuccess: (response) => {
+      authClient.setQueryData(CURRENT_USER_QUERY_KEY, response);
+      setExplicitlySignedOut(false);
+      setAuthTransitionPending(false);
+    },
+  }, authClient);
+
   const signOutMutation = useMutation({
     mutationFn: () => signOut({ throwOnError: true }),
-    onMutate: () => {
-      setAuthTransitionPending(true);
-      void featureSession.client.cancelQueries();
-      featureSession.client.clear();
-      resetIdentityState();
-      setFeatureSession((current) => ({
-        client: createFeatureQueryClient(),
-        fingerprint: current.fingerprint,
-        generation: current.generation + 1,
-      }));
-    },
+    onMutate: beginAuthTransition,
     onError: () => {
       setAuthTransitionPending(false);
     },
@@ -137,6 +154,7 @@ function IdentityQueryBoundary({
   const contextValue = {
     authClient,
     currentUserQuery: exposedCurrentUserQuery,
+    signInMutation,
     signOutMutation,
   };
   if (exposedCurrentUserQuery.isLoading || needsIdentityReset || isAuthTransitionPending) {
