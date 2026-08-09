@@ -2,11 +2,11 @@
   "schema_version": "1.0",
   "chunk": "CHUNK-09",
   "gap_ids": ["IS-GAP-014"],
-  "status": "local_proof_passed_pr_pending",
+  "status": "pr_open_ci_pending",
   "starting_sha": "7924a0da2839eb51c2fbb463433213a4fcd6e90b",
   "tested_product_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51",
   "verification_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51",
-  "fix_pr": null,
+  "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/307",
   "contract": {
     "database_authority": "PostgreSQL",
     "transition_before_database_mutation": true,

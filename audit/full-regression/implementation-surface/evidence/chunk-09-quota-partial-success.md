@@ -1,6 +1,6 @@
 # CHUNK-09 quota partial-success recovery evidence
 
-Status: local backend, frontend, disposable PostgreSQL/Redis and isolated Chromium proof passed on tested product commit `dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51`. Authoritative PR CI and squash merge remain the CHUNK-10 dispatch gate.
+Status: local backend, frontend, disposable PostgreSQL/Redis and isolated Chromium proof passed on tested product commit `dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51` in [#307](https://github.com/RkShanks/QueryCraft/pull/307). Authoritative PR CI and squash merge remain the CHUNK-10 dispatch gate.
 
 Starting main: `7924a0da2839eb51c2fbb463433213a4fcd6e90b`.
 
