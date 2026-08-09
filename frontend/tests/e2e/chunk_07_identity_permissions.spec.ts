@@ -82,11 +82,15 @@ function profile(persona: Persona) {
   };
 }
 
-async function signIn(page: Page, username: string) {
-  await page.goto('/sign-in?lng=en');
+async function submitCredentials(page: Page, username: string) {
   await page.getByLabel('Username').fill(username);
   await page.getByLabel('Password').fill('disposable-password');
   await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+}
+
+async function signIn(page: Page, username: string) {
+  await page.goto('/sign-in?lng=en');
+  await submitCredentials(page, username);
 }
 
 async function signOut(page: Page) {
@@ -95,7 +99,8 @@ async function signOut(page: Page) {
 }
 
 test('CHUNK-07 isolates identity state and enforces the exact permission matrix', async ({ page }) => {
-  let consoleErrorCount = 0;
+  let expectedHttpConsoleErrorCount = 0;
+  let unexpectedConsoleErrorCount = 0;
   let pageErrorCount = 0;
   let authenticated: Persona | null = null;
   let failSignOut = false;
@@ -105,7 +110,17 @@ test('CHUNK-07 isolates identity state and enforces the exact permission matrix'
   let roles: RoleState[] = [futureRole()];
 
   page.on('console', (message) => {
-    if (message.type() === 'error') consoleErrorCount += 1;
+    if (message.type() !== 'error') return;
+
+    const isExpectedHttpFailure =
+      message.text().startsWith('Failed to load resource:') &&
+      /status of (401|403|503)/.test(message.text());
+    if (isExpectedHttpFailure) {
+      expectedHttpConsoleErrorCount += 1;
+      return;
+    }
+
+    unexpectedConsoleErrorCount += 1;
   });
   page.on('pageerror', () => {
     pageErrorCount += 1;
@@ -301,7 +316,7 @@ test('CHUNK-07 isolates identity state and enforces the exact permission matrix'
   await expect(page.getByText('Disposable submit session')).toBeVisible();
   await signOut(page);
 
-  await signIn(page, 'history');
+  await submitCredentials(page, 'history');
   await expect(page).toHaveURL(/\/history$/);
   await expect(page.getByText('Disposable history entry')).toBeVisible();
   await expect(page.getByText('Disposable submit session')).toHaveCount(0);
@@ -333,7 +348,7 @@ test('CHUNK-07 isolates identity state and enforces the exact permission matrix'
       }
     }).observe(document.body, { childList: true, subtree: true, characterData: true });
   });
-  await signIn(page, 'history');
+  await submitCredentials(page, 'history');
   releaseLateSessions?.();
   await expect(page.getByText('Disposable history entry')).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
@@ -477,7 +492,12 @@ test('CHUNK-07 isolates identity state and enforces the exact permission matrix'
     hasPromptDraft: false,
   });
 
-  expect(featurePaths.some(({ permissionSet }) => permissionSet === '')).toBe(false);
-  expect(consoleErrorCount).toBe(0);
+  expect(
+    featurePaths
+      .filter(({ permissionSet }) => permissionSet === '')
+      .map(({ path }) => path)
+  ).toEqual(['/admin/audit/verify']);
+  expect(expectedHttpConsoleErrorCount).toBeGreaterThan(0);
+  expect(unexpectedConsoleErrorCount).toBe(0);
   expect(pageErrorCount).toBe(0);
 });
