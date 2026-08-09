@@ -2,8 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { QueryProvider, queryClient } from './QueryProvider';
-import { useCurrentUser } from '../hooks/useAuth';
-import { useSignOut } from '../hooks/useAuth';
+import { useCurrentUser, useSignIn, useSignOut } from '../hooks/useAuth';
 import { useUIStore } from '../stores/uiStore';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/server';
@@ -77,6 +76,37 @@ function SignOutBoundaryProbe() {
       {signOut.isError && <span role="alert">Sign out failed; retry</span>}
       <button type="button" onClick={() => signOut.mutate()}>
         Sign out
+      </button>
+    </div>
+  );
+}
+
+function AuthSwitchProbe() {
+  const currentUser = useCurrentUser();
+  const signIn = useSignIn();
+  const signOut = useSignOut();
+  const featureState = useQuery({
+    queryKey: ['auth-switch-feature-state'],
+    queryFn: async () => {
+      const response = await fetch('/api/v1/auth-switch-feature-state');
+      return (await response.json()) as { owner: string };
+    },
+    enabled: currentUser.data?.data !== undefined,
+    retry: false,
+  });
+
+  return (
+    <div>
+      <span data-testid="switch-identity">{currentUser.data?.data?.id ?? 'anonymous'}</span>
+      <span data-testid="switch-feature-owner">{featureState.data?.owner}</span>
+      <button type="button" onClick={() => signOut.mutate()}>
+        End user A session
+      </button>
+      <button
+        type="button"
+        onClick={() => signIn.mutate({ username: 'user-b', password: 'password' })}
+      >
+        Sign in user B
       </button>
     </div>
   );
@@ -241,6 +271,69 @@ describe('QueryProvider session expiry handling', () => {
       expect(screen.getByTestId('signed-in-identity')).toHaveTextContent('anonymous');
     });
     expect(screen.queryByText('user-a-sensitive-state')).not.toBeInTheDocument();
+  });
+
+  it('starts explicit sign-in with a fresh feature cache for the new identity', async () => {
+    let identity: 'user-a' | 'anonymous' | 'user-b' = 'user-a';
+    server.use(
+      http.get('/api/v1/auth/me', () => {
+        if (identity === 'anonymous') {
+          return HttpResponse.json(
+            { error: 'unauthorized', message_key: 'error.unauthorized' },
+            { status: 401 }
+          );
+        }
+        return HttpResponse.json({
+          id: identity,
+          username: identity,
+          display_name: identity,
+          role: 'member',
+          role_id: `role-${identity}`,
+          role_name: identity,
+          permissions: ['query.submit'],
+          auth_provider: 'local',
+        });
+      }),
+      http.get('/api/v1/auth-switch-feature-state', () =>
+        HttpResponse.json({ owner: identity })
+      ),
+      http.post('/api/v1/auth/sign-out', () => {
+        identity = 'anonymous';
+        return new HttpResponse(null, { status: 204 });
+      }),
+      http.post('/api/v1/auth/sign-in', () => {
+        identity = 'user-b';
+        return HttpResponse.json({
+          id: 'user-b',
+          username: 'user-b',
+          display_name: 'User B',
+          role: 'member',
+          role_id: 'role-user-b',
+          role_name: 'User B',
+          permissions: ['query.submit'],
+          auth_provider: 'local',
+        });
+      })
+    );
+
+    render(
+      <QueryProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <AuthSwitchProbe />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByText('user-a', { selector: '[data-testid="switch-feature-owner"]' }))
+      .toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'End user A session' }));
+    await waitFor(() => expect(screen.getByTestId('switch-identity')).toHaveTextContent('anonymous'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in user B' }));
+
+    await waitFor(() => expect(screen.getByTestId('switch-identity')).toHaveTextContent('user-b'));
+    expect(await screen.findByText('user-b', { selector: '[data-testid="switch-feature-owner"]' }))
+      .toBeInTheDocument();
+    expect(screen.queryByText('user-a', { selector: '[data-testid="switch-feature-owner"]' }))
+      .not.toBeInTheDocument();
   });
 
   afterEach(() => {
