@@ -1,10 +1,12 @@
 """Regression coverage for IS-GAP-014 quota mutation recovery."""
 
+import asyncio
 import uuid
 from unittest.mock import AsyncMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import text
 
@@ -18,6 +20,12 @@ class _PublicationFaultRedis:
     def __init__(self, redis) -> None:
         self._redis = redis
         self.fail_publication = False
+        self.block_publication = False
+        self.publication_started = asyncio.Event()
+        self.release_publication = asyncio.Event()
+        self.existing_transition_barrier = 0
+        self._existing_transition_waiters = 0
+        self._existing_transition_ready = asyncio.Event()
 
     def __getattr__(self, name: str):
         return getattr(self._redis, name)
@@ -26,7 +34,16 @@ class _PublicationFaultRedis:
         script_arguments = args[numkeys:]
         if self.fail_publication and len(script_arguments) == 3:
             raise RedisConnectionError("private cache publication failure")
-        return await self._redis.eval(script, numkeys, *args)
+        if self.block_publication and len(script_arguments) == 3:
+            self.publication_started.set()
+            await self.release_publication.wait()
+        response = await self._redis.eval(script, numkeys, *args)
+        if self.existing_transition_barrier and len(script_arguments) == 1 and response[0] == 0:
+            self._existing_transition_waiters += 1
+            if self._existing_transition_waiters == self.existing_transition_barrier:
+                self._existing_transition_ready.set()
+            await self._existing_transition_ready.wait()
+        return response
 
 
 async def _admin_role_id(async_engine_fixture) -> uuid.UUID:
@@ -289,3 +306,122 @@ async def test_database_commit_failure_rolls_back_audit_and_republishes_prior_co
         assert quota_repo.get.await_count == 0
     finally:
         await _drop_deferred_quota_failure(async_engine_fixture)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_pending_transition_fails_closed_for_a_separate_worker(
+    authenticated_client,
+    async_engine_fixture,
+    redis_client,
+    test_env_vars,
+):
+    role_id = await _admin_role_id(async_engine_fixture)
+    fault_redis = _PublicationFaultRedis(redis_client)
+    worker_redis = Redis.from_url(test_env_vars["REDIS_URL"], decode_responses=True)
+
+    async def quota_redis():
+        yield fault_redis
+
+    app = authenticated_client._transport.app
+    app.dependency_overrides[get_redis] = quota_redis
+    try:
+        initial_response = await authenticated_client.put(
+            f"/api/v1/admin/quotas/{role_id}",
+            json={"daily_query_limit": 10},
+        )
+        assert initial_response.status_code == 200
+
+        quota_repo = AsyncMock()
+        quota_repo.get.return_value = RoleQuota(role_id=role_id, daily_query_limit=10)
+        worker_service = QuotaService(worker_redis, quota_repo)
+        assert (await worker_service.check_and_increment(uuid.uuid4(), role_id, "queries"))[1] == 10
+
+        fault_redis.block_publication = True
+        mutation = asyncio.create_task(
+            authenticated_client.put(
+                f"/api/v1/admin/quotas/{role_id}",
+                json={"daily_query_limit": 2},
+            )
+        )
+        await fault_redis.publication_started.wait()
+
+        counter_keys = await worker_redis.keys("quota:*")
+        with pytest.raises(QuotaUnavailableError):
+            await worker_service.check_and_increment(uuid.uuid4(), role_id, "queries")
+        assert await worker_redis.keys("quota:*") == counter_keys
+
+        fault_redis.release_publication.set()
+        response = await mutation
+        assert response.status_code == 200
+        assert (await worker_service.check_and_increment(uuid.uuid4(), role_id, "queries"))[1] == 2
+    finally:
+        fault_redis.release_publication.set()
+        app.dependency_overrides.pop(get_redis, None)
+        await worker_redis.aclose()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_identical_put_retries_reconcile_once_across_workers(
+    authenticated_client,
+    async_engine_fixture,
+    redis_client,
+):
+    role_id = await _admin_role_id(async_engine_fixture)
+    fault_redis = _PublicationFaultRedis(redis_client)
+
+    async def quota_redis():
+        yield fault_redis
+
+    app = authenticated_client._transport.app
+    app.dependency_overrides[get_redis] = quota_redis
+    try:
+        initial_response = await authenticated_client.put(
+            f"/api/v1/admin/quotas/{role_id}",
+            json={"daily_query_limit": 10},
+        )
+        assert initial_response.status_code == 200
+        initial_audits = await _quota_audit_count(async_engine_fixture, role_id)
+
+        fault_redis.fail_publication = True
+        applied_response = await authenticated_client.put(
+            f"/api/v1/admin/quotas/{role_id}",
+            json={"daily_query_limit": 4},
+        )
+        assert applied_response.status_code == 503
+        applied_row = await _quota_row(async_engine_fixture, role_id)
+
+        fault_redis.fail_publication = False
+        fault_redis.existing_transition_barrier = 2
+        transport = ASGITransport(app=app)
+        async with (
+            AsyncClient(
+                transport=transport,
+                base_url="http://test",
+                cookies=authenticated_client.cookies,
+                headers={"origin": "http://test"},
+            ) as first_worker,
+            AsyncClient(
+                transport=transport,
+                base_url="http://test",
+                cookies=authenticated_client.cookies,
+                headers={"origin": "http://test"},
+            ) as second_worker,
+        ):
+            responses = await asyncio.gather(
+                first_worker.put(
+                    f"/api/v1/admin/quotas/{role_id}",
+                    json={"daily_query_limit": 4},
+                ),
+                second_worker.put(
+                    f"/api/v1/admin/quotas/{role_id}",
+                    json={"daily_query_limit": 4},
+                ),
+            )
+
+        assert [response.status_code for response in responses] == [200, 200]
+        assert await _quota_row(async_engine_fixture, role_id) == applied_row
+        assert await _quota_audit_count(async_engine_fixture, role_id) == initial_audits + 1
+    finally:
+        app.dependency_overrides.pop(get_redis, None)
