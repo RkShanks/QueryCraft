@@ -24,3 +24,10 @@ export function handleSessionExpiry(error: unknown, sourcePath = window.location
   window.history.replaceState({}, '', '/sign-in?error=session_expired');
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
+
+export function sessionAwareSignInPath(): '/sign-in' | '/sign-in?error=session_expired' {
+  const errorCode = new URLSearchParams(window.location.search).get('error');
+  return window.location.pathname === '/sign-in' && errorCode === 'session_expired'
+    ? '/sign-in?error=session_expired'
+    : '/sign-in';
+}

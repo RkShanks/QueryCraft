@@ -19,6 +19,7 @@ import { AdminQuotasPage } from './pages/AdminQuotasPage';
 import { AdminDetectionPage } from './pages/AdminDetectionPage';
 import { AccessDeniedPage } from './pages/AccessDeniedPage';
 import { AppShell } from './components/shell/AppShell';
+import { sessionAwareSignInPath } from './auth/sessionExpiry';
 
 import { PermissionGuard } from './components/auth/PermissionGuard';
 import {
@@ -38,7 +39,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
   if (!response?.data) {
-    return <Navigate to="/sign-in" replace />;
+    return <Navigate to={sessionAwareSignInPath()} replace />;
   }
   return <>{children}</>;
 }
@@ -69,7 +70,7 @@ function RootRedirect() {
   if (user) {
     return <Navigate to={firstPermittedRoute(user) ?? '/access-denied'} replace />;
   }
-  return <Navigate to="/sign-in" replace />;
+  return <Navigate to={sessionAwareSignInPath()} replace />;
 }
 
 function ProtectedLayout({

@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useCurrentUser } from '../../hooks/useAuth';
 import { hasPermission } from '../../auth/permissions';
 import type { Permission } from '../../auth/permissions';
+import { sessionAwareSignInPath } from '../../auth/sessionExpiry';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -25,7 +26,7 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({ children, perm
 
   const user = response?.data;
   if (!user) {
-    return <Navigate to="/sign-in" replace />;
+    return <Navigate to={sessionAwareSignInPath()} replace />;
   }
 
   if (!hasPermission(user, permission)) {

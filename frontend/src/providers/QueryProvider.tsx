@@ -35,12 +35,16 @@ const CURRENT_USER_QUERY_FILTER = {
   exact: true,
 } as const;
 
+function publishSessionExpiry(error: unknown, sourcePath?: string): boolean {
+  if (!isSessionExpiryError(error)) return false;
+  notifySessionExpiry();
+  handleSessionExpiry(error, sourcePath);
+  return true;
+}
+
 function createFeatureQueryClient(): QueryClient {
   const handleFeatureError = (error: unknown) => {
-    handleSessionExpiry(error);
-    if (isSessionExpiryError(error)) {
-      notifySessionExpiry();
-    } else if (isPermissionDeniedError(error)) {
+    if (!publishSessionExpiry(error) && isPermissionDeniedError(error)) {
       notifyPermissionDenied();
     }
   };
@@ -125,8 +129,7 @@ function IdentityQueryBoundary({
         }
         return response;
       } catch (error) {
-        handleSessionExpiry(error, sourcePath);
-        if (isSessionExpiryError(error)) notifySessionExpiry();
+        publishSessionExpiry(error, sourcePath);
         throw error;
       }
     },
@@ -174,8 +177,7 @@ function IdentityQueryBoundary({
       if (path.includes('/auth/')) return response;
 
       if (response.status === 401) {
-        handleSessionExpiry({ status: 401 }, window.location.pathname);
-        notifySessionExpiry();
+        publishSessionExpiry({ status: 401 }, window.location.pathname);
       } else if (response.status === 403) {
         notifyPermissionDenied();
       }

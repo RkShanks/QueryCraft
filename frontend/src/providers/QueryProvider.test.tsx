@@ -2,7 +2,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLayoutEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CURRENT_USER_QUERY_KEY, QueryProvider, queryClient } from './QueryProvider';
 import { useCurrentUser, useSignIn, useSignOut } from '../hooks/useAuth';
@@ -10,6 +10,8 @@ import { useUIStore } from '../stores/uiStore';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/server';
 import { client as apiClient } from '../api/generated/client.gen';
+import { PermissionGuard } from '../components/auth/PermissionGuard';
+import { PERMISSIONS } from '../auth/permissions';
 
 function ExpiredSessionProbe() {
   const query = useQuery({
@@ -237,8 +239,6 @@ function SessionExpiryCacheProbe({
 
 function RoutedSessionExpiryProbe() {
   const currentUser = useCurrentUser();
-  if (!currentUser.data?.data) return <Navigate to="/sign-in" replace />;
-
   return (
     <button
       type="button"
@@ -907,7 +907,14 @@ describe('QueryProvider session expiry handling', () => {
       <BrowserRouter>
         <QueryProvider client={authClient}>
           <Routes>
-            <Route path="/history" element={<RoutedSessionExpiryProbe />} />
+            <Route
+              path="/history"
+              element={
+                <PermissionGuard permission={PERMISSIONS.QUERY_SUBMIT}>
+                  <RoutedSessionExpiryProbe />
+                </PermissionGuard>
+              }
+            />
             <Route path="/sign-in" element={<span>Expired sign-in route</span>} />
           </Routes>
         </QueryProvider>
