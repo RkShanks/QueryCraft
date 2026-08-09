@@ -17,6 +17,7 @@ from app.db.models.enums import AuditActionType
 from app.db.models.session import Session
 from app.db.models.user import User
 from app.evaluator.schema_context import Column, SchemaContext, Table
+from app.services.policy_enforcement import PolicyEnforcementService
 from app.services.query_service import QueryService, RolePolicy
 from app.source_db.adapters import ExecuteResult
 from tests.lifecycle.helpers import FakeRedis
@@ -76,8 +77,10 @@ class _AdvancingProvider:
     def __init__(self, clock: _Clock, seconds: float) -> None:
         self.clock = clock
         self.seconds = seconds
+        self.timeouts: list[float | None] = []
 
-    async def generate_sql(self, *_args, **_kwargs) -> str:
+    async def generate_sql(self, *_args, timeout: float | None = None, **_kwargs) -> str:
+        self.timeouts.append(timeout)
         self.clock.advance(self.seconds)
         return "SELECT orders.id FROM orders"
 
@@ -127,7 +130,7 @@ class _RaisingAdapter:
         raise self.error
 
 
-class _AdvancingMaskPolicy:
+class _AdvancingMaskPolicy(PolicyEnforcementService):
     def __init__(self, clock: _Clock, seconds: float) -> None:
         self.clock = clock
         self.seconds = seconds
@@ -349,17 +352,20 @@ async def test_processing_lock_uses_deadline_plus_cleanup_grace(operation: str) 
 async def test_earlier_stage_consumption_reduces_source_budget_without_thirty_second_cap() -> None:
     clock = _Clock()
     adapter = _Adapter()
+    provider = _AdvancingProvider(clock, 5)
     service, _ = _build_service(
         timeout_seconds=60,
         clock=clock,
-        provider=_AdvancingProvider(clock, 5),
+        provider=provider,
         adapter=adapter,
+        quota_service=_AdvancingQuota(clock, 5),
     )
 
     with patch("app.services.query_service.AuditService.log", new_callable=AsyncMock):
         await _invoke_operation(service, "submit")
 
-    assert adapter.timeouts == [pytest.approx(55)]
+    assert provider.timeouts == [pytest.approx(55)]
+    assert adapter.timeouts == [pytest.approx(45)]
     assert adapter.timeouts[0] > 30
 
 
