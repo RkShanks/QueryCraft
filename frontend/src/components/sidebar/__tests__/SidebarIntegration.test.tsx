@@ -25,6 +25,24 @@ vi.mock('../../../hooks/useSessions', () => ({
   useDeleteSession: vi.fn(),
 }));
 
+vi.mock('../../../hooks/useAuth', () => ({
+  useSignOut: vi.fn(() => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+  })),
+  useCurrentUser: vi.fn(() => ({
+    data: {
+      data: {
+        id: 'query-user',
+        role: 'member',
+        permissions: ['query.submit'],
+      },
+    },
+    isLoading: false,
+  })),
+}));
+
 import { useSessionsList, useDeleteSession } from '../../../hooks/useSessions';
 
 const mockMutate = vi.fn();

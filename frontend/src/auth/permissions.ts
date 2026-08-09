@@ -66,7 +66,7 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
       {
         path: '/admin/connections',
         landingOrder: 2,
-        navigation: { id: 'admin-connections', labelKey: 'nav.adminConnections' },
+        navigation: { id: 'connections', labelKey: 'nav.adminConnections' },
       },
     ],
   },
@@ -78,7 +78,7 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
       {
         path: '/admin/roles',
         landingOrder: 3,
-        navigation: { id: 'admin-roles', labelKey: 'nav.adminRoles' },
+        navigation: { id: 'roles', labelKey: 'nav.adminRoles' },
       },
     ],
   },
@@ -90,7 +90,7 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
       {
         path: '/admin/sso',
         landingOrder: 4,
-        navigation: { id: 'admin-sso', labelKey: 'nav.adminSso' },
+        navigation: { id: 'sso', labelKey: 'nav.adminSso' },
       },
     ],
   },
@@ -102,7 +102,7 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
       {
         path: '/admin/audit',
         landingOrder: 5,
-        navigation: { id: 'admin-audit', labelKey: 'nav.adminAudit' },
+        navigation: { id: 'audit', labelKey: 'nav.adminAudit' },
       },
     ],
   },
@@ -114,7 +114,7 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
       {
         path: '/admin/quotas',
         landingOrder: 6,
-        navigation: { id: 'admin-quotas', labelKey: 'nav.adminQuotas' },
+        navigation: { id: 'quotas', labelKey: 'nav.adminQuotas' },
       },
     ],
   },
@@ -126,7 +126,7 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
       {
         path: '/admin/detection',
         landingOrder: 7,
-        navigation: { id: 'admin-detection', labelKey: 'detection.page_title' },
+        navigation: { id: 'detection', labelKey: 'detection.page_title' },
       },
     ],
   },

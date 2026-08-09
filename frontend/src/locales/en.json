@@ -11,6 +11,7 @@
   "accessDenied.signingOut": "Signing out…",
   "nav.history": "History",
   "nav.settings": "Settings",
+  "nav.adminSso": "Single Sign-On",
   "auth.signIn.title": "Sign In",
   "auth.signIn.username.label": "Username",
   "auth.signIn.username.placeholder": "Enter your username",

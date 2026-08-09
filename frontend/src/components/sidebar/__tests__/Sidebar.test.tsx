@@ -91,6 +91,16 @@ describe('Sidebar', () => {
       useUIStore.getState().toggleSidebar();
     }
     vi.clearAllMocks();
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: {
+        data: {
+          id: 'user-admin',
+          role: 'admin',
+          permissions: Object.values(PERMISSIONS),
+        },
+      },
+      isLoading: false,
+    } as any);
     setupSignOutMock();
   });
 
@@ -192,6 +202,25 @@ describe('Sidebar', () => {
     setup();
     fireEvent.click(screen.getByTestId('sidebar-sign-out'));
     expect(mutate).toHaveBeenCalled();
+  });
+
+  it.each([
+    ['en', 'Sign out failed. Your server session is still active. Please try again.'],
+    ['ar', 'فشل تسجيل الخروج. لا تزال جلستك على الخادم نشطة. حاول مرة أخرى.'],
+  ])('keeps a truthful localized retry state after failed sign-out in %s', async (language, message) => {
+    await i18n.changeLanguage(language);
+    try {
+      const mutate = setupSignOutMock({ isError: true });
+      setup();
+
+      expect(screen.getByRole('alert')).toHaveTextContent(message);
+      const signOut = screen.getByTestId('sidebar-sign-out');
+      expect(signOut).toBeEnabled();
+      fireEvent.click(signOut);
+      expect(mutate).toHaveBeenCalledTimes(1);
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   it('collapsed sidebar still exposes sign-out button', () => {

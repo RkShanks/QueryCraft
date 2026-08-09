@@ -12,6 +12,7 @@
   "accessDenied.signingOut": "جارٍ تسجيل الخروج…",
   "nav.history": "السجل",
   "nav.settings": "الإعدادات",
+  "nav.adminSso": "تسجيل الدخول الموحّد",
 
   "auth.signIn.title": "تسجيل الدخول",
   "auth.signIn.username.label": "اسم المستخدم",

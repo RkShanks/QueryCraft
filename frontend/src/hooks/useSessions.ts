@@ -16,10 +16,11 @@ interface SessionListCache {
 }
 
 
-export const useSessionsList = () => {
+export const useSessionsList = ({ enabled = true }: { enabled?: boolean } = {}) => {
   return useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions({ throwOnError: true }).then((res) => res.data),
+    enabled,
   });
 };
 
