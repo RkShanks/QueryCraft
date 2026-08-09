@@ -12,6 +12,11 @@ export function isSessionExpiryError(error: unknown): boolean {
   return apiError?.status === 401 || apiError?.response?.status === 401 || isUnauthorizedPayload;
 }
 
+export function isPermissionDeniedError(error: unknown): boolean {
+  const apiError = error as ApiError | undefined;
+  return apiError?.status === 403 || apiError?.response?.status === 403;
+}
+
 export function handleSessionExpiry(error: unknown, sourcePath = window.location.pathname) {
   const isUnauthorized = isSessionExpiryError(error);
   if (!isUnauthorized || sourcePath === '/sign-in') return;

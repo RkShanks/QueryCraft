@@ -8,9 +8,15 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { handleSessionExpiry, isSessionExpiryError } from '../auth/sessionExpiry';
 import {
+  handleSessionExpiry,
+  isPermissionDeniedError,
+  isSessionExpiryError,
+} from '../auth/sessionExpiry';
+import {
+  notifyPermissionDenied,
   notifySessionExpiry,
+  subscribeToPermissionDenied,
   subscribeToSessionExpiry,
 } from '../auth/authorizationEvents';
 import { getMe, signIn, signOut } from '../api/generated/sdk.gen';
@@ -29,6 +35,8 @@ function createFeatureQueryClient(): QueryClient {
     handleSessionExpiry(error);
     if (isSessionExpiryError(error)) {
       notifySessionExpiry();
+    } else if (isPermissionDeniedError(error)) {
+      notifyPermissionDenied();
     }
   };
   return new QueryClient({
@@ -79,6 +87,8 @@ function IdentityQueryBoundary({
 }) {
   const [isExplicitlySignedOut, setExplicitlySignedOut] = useState(false);
   const sessionExpiredRef = useRef(false);
+  const authorizationRefreshRef = useRef(false);
+  const lastDeniedFingerprintRef = useRef<string | null>(null);
   const createIdentityClient = useCallback(() => createFeatureQueryClient(), []);
   const currentUserQuery = useQuery({
     queryKey: CURRENT_USER_QUERY_KEY,
@@ -108,6 +118,7 @@ function IdentityQueryBoundary({
     generation: 0,
   }));
   const [isAuthTransitionPending, setAuthTransitionPending] = useState(false);
+  const [isAuthorizationRefreshPending, setAuthorizationRefreshPending] = useState(false);
   const needsIdentityReset =
     observedFingerprint !== null && observedFingerprint !== featureSession.fingerprint;
 
@@ -127,6 +138,35 @@ function IdentityQueryBoundary({
       }));
     });
   }, [authClient, createIdentityClient, featureSession.client]);
+
+  useLayoutEffect(() => {
+    return subscribeToPermissionDenied(() => {
+      if (
+        observedFingerprint === null ||
+        authorizationRefreshRef.current ||
+        lastDeniedFingerprintRef.current === observedFingerprint
+      ) {
+        return;
+      }
+      authorizationRefreshRef.current = true;
+      lastDeniedFingerprintRef.current = observedFingerprint;
+      setAuthorizationRefreshPending(true);
+      void featureSession.client.cancelQueries();
+      featureSession.client.clear();
+      resetIdentityState();
+      setFeatureSession((current) => ({
+        client: createIdentityClient(),
+        fingerprint: current.fingerprint,
+        generation: current.generation + 1,
+      }));
+      void authClient
+        .refetchQueries({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+        .finally(() => {
+          authorizationRefreshRef.current = false;
+          setAuthorizationRefreshPending(false);
+        });
+    });
+  }, [authClient, createIdentityClient, featureSession.client, observedFingerprint]);
 
   const beginAuthTransition = useCallback(() => {
     setAuthTransitionPending(true);
@@ -149,6 +189,7 @@ function IdentityQueryBoundary({
     },
     onSuccess: (response) => {
       sessionExpiredRef.current = false;
+      lastDeniedFingerprintRef.current = null;
       authClient.setQueryData(CURRENT_USER_QUERY_KEY, response);
       setExplicitlySignedOut(false);
       setAuthTransitionPending(false);
@@ -191,7 +232,12 @@ function IdentityQueryBoundary({
     signInMutation,
     signOutMutation,
   };
-  if (exposedCurrentUserQuery.isLoading || needsIdentityReset || isAuthTransitionPending) {
+  if (
+    exposedCurrentUserQuery.isLoading ||
+    needsIdentityReset ||
+    isAuthTransitionPending ||
+    isAuthorizationRefreshPending
+  ) {
     return (
       <AuthSessionContext.Provider value={contextValue}>
         <div className="min-h-screen flex items-center justify-center" role="status">
