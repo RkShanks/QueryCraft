@@ -608,7 +608,7 @@ describe('QueryProvider session expiry handling', () => {
   });
 
   it.each(['injected', 'default'] as const)(
-    'removes expired identity caches and ignores late auth settlement with the %s auth client',
+    'removes expired identity caches and admits only a later sign-in with the %s auth client',
     async (clientMode) => {
       const expiredIdentity = {
         id: 'expired-user-id',
@@ -771,11 +771,15 @@ describe('QueryProvider session expiry handling', () => {
 
       await waitFor(() => expect(window.location.pathname).toBe('/sign-in'));
       expect(window.location.search).toBe('?error=session_expired');
-      await waitFor(() => expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined());
-      const currentUserQueries = authClient
-        .getQueryCache()
-        .findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true });
-      expect(currentUserQueries.every((query) => query.state.data === undefined)).toBe(true);
+      await waitFor(() => {
+        expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined();
+        expect(
+          authClient
+            .getQueryCache()
+            .findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+            .every((query) => query.state.data === undefined)
+        ).toBe(true);
+      });
       const authCacheSnapshot = JSON.stringify(
         authClient.getQueryCache().getAll().map((query) => query.state.data)
       );
@@ -826,7 +830,15 @@ describe('QueryProvider session expiry handling', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Trigger auth-expiry race' }));
     await waitFor(() => expect(currentUserRequestCount).toBe(2));
     await waitFor(() => expect(window.location.pathname).toBe('/sign-in'));
-    await waitFor(() => expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined());
+    await waitFor(() => {
+      expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined();
+      expect(
+        authClient
+          .getQueryCache()
+          .findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+          .every((query) => query.state.data === undefined)
+      ).toBe(true);
+    });
 
     await act(async () => {
       lateCurrentUser.resolve(expiredIdentity);

@@ -30,6 +30,10 @@ import { useUIStore } from '../stores/uiStore';
 import { resetSessionDeletionLifecycle } from '../sessionDeletionLifecycle';
 
 export const CURRENT_USER_QUERY_KEY = ['currentUser'] as const;
+const CURRENT_USER_QUERY_FILTER = {
+  queryKey: CURRENT_USER_QUERY_KEY,
+  exact: true,
+} as const;
 
 function createFeatureQueryClient(): QueryClient {
   const handleFeatureError = (error: unknown) => {
@@ -103,6 +107,7 @@ function IdentityQueryBoundary({
 }) {
   const [isExplicitlySignedOut, setExplicitlySignedOut] = useState(false);
   const sessionExpiredRef = useRef(false);
+  const authGenerationRef = useRef(0);
   const authorizationRefreshRef = useRef(false);
   const authorizationKeyInFlightRef = useRef<string | null>(null);
   const authorizationRefreshSequenceRef = useRef(0);
@@ -110,12 +115,18 @@ function IdentityQueryBoundary({
   const createIdentityClient = useCallback(() => createFeatureQueryClient(), []);
   const currentUserQuery = useQuery({
     queryKey: CURRENT_USER_QUERY_KEY,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const sourcePath = window.location.pathname;
+      const requestGeneration = authGenerationRef.current;
       try {
-        return await getMe({ throwOnError: true });
+        const response = await getMe({ throwOnError: true, signal });
+        if (requestGeneration !== authGenerationRef.current) {
+          throw new DOMException('Superseded authentication request', 'AbortError');
+        }
+        return response;
       } catch (error) {
         handleSessionExpiry(error, sourcePath);
+        if (isSessionExpiryError(error)) notifySessionExpiry();
         throw error;
       }
     },
@@ -205,8 +216,9 @@ function IdentityQueryBoundary({
     return subscribeToSessionExpiry(() => {
       if (sessionExpiredRef.current) return;
       sessionExpiredRef.current = true;
+      authGenerationRef.current += 1;
       setExplicitlySignedOut(true);
-      authClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+      void authClient.cancelQueries(CURRENT_USER_QUERY_FILTER);
       void featureSession.client.cancelQueries();
       featureSession.client.clear();
       resetIdentityState();
@@ -217,6 +229,19 @@ function IdentityQueryBoundary({
       }));
     });
   }, [authClient, createIdentityClient, featureSession.client]);
+
+  useLayoutEffect(() => {
+    if (!isExplicitlySignedOut) return;
+    const expiredGeneration = authGenerationRef.current;
+    void authClient.cancelQueries(CURRENT_USER_QUERY_FILTER).then(() => {
+      if (
+        authGenerationRef.current === expiredGeneration &&
+        sessionExpiredRef.current
+      ) {
+        authClient.removeQueries(CURRENT_USER_QUERY_FILTER);
+      }
+    });
+  }, [authClient, isExplicitlySignedOut]);
 
   useLayoutEffect(() => {
     return subscribeToPermissionDenied(() => {
@@ -248,7 +273,9 @@ function IdentityQueryBoundary({
   }, [authClient, createIdentityClient, featureSession.client, observedFingerprint]);
 
   const beginAuthTransition = useCallback(() => {
+    authGenerationRef.current += 1;
     setAuthTransitionPending(true);
+    void authClient.cancelQueries(CURRENT_USER_QUERY_FILTER);
     void featureSession.client.cancelQueries();
     featureSession.client.clear();
     resetIdentityState();
@@ -257,7 +284,7 @@ function IdentityQueryBoundary({
       fingerprint: current.fingerprint,
       generation: current.generation + 1,
     }));
-  }, [createIdentityClient, featureSession.client]);
+  }, [authClient, createIdentityClient, featureSession.client]);
 
   const signInMutation = useMutation({
     mutationFn: (data: SignInData['body']) =>
@@ -284,7 +311,6 @@ function IdentityQueryBoundary({
     onSuccess: () => {
       sessionExpiredRef.current = true;
       setExplicitlySignedOut(true);
-      authClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
       setAuthTransitionPending(false);
     },
   }, authClient);
