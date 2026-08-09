@@ -25,6 +25,35 @@ function countUnicodeCodePoints(text: string): number {
   return Array.from(text).length;
 }
 
+function isPythonStripWhitespace(codePoint: number): boolean {
+  return (
+    (codePoint >= 0x0009 && codePoint <= 0x000d) ||
+    (codePoint >= 0x001c && codePoint <= 0x0020) ||
+    codePoint === 0x0085 ||
+    codePoint === 0x00a0 ||
+    codePoint === 0x1680 ||
+    (codePoint >= 0x2000 && codePoint <= 0x200a) ||
+    codePoint === 0x2028 ||
+    codePoint === 0x2029 ||
+    codePoint === 0x202f ||
+    codePoint === 0x205f ||
+    codePoint === 0x3000
+  );
+}
+
+function canonicalizeQuestion(text: string): string {
+  const codePoints = Array.from(text);
+  let start = 0;
+  let end = codePoints.length;
+  while (start < end && isPythonStripWhitespace(codePoints[start].codePointAt(0) ?? 0)) {
+    start += 1;
+  }
+  while (end > start && isPythonStripWhitespace(codePoints[end - 1].codePointAt(0) ?? 0)) {
+    end -= 1;
+  }
+  return codePoints.slice(start, end).join('');
+}
+
 export const PromptInput: React.FC<PromptInputProps> = ({
   onSubmit,
   disabled,
@@ -47,7 +76,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
     }
   }, [initialText]);
 
-  const canonicalText = text.trim();
+  const canonicalText = canonicalizeQuestion(text);
   const questionLength = countUnicodeCodePoints(canonicalText);
   const isLimitReady = questionLimit.status === 'ready';
   const isOverLimit = isLimitReady && questionLength > questionLimit.maxQuestionLength;
