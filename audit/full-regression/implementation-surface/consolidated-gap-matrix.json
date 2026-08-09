@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 38, "Resolved": 6, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 37, "Resolved": 7, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -64,6 +64,13 @@
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/303",
       "tested_commit": "d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-05-retry-quota-audit.json"
+    },
+    "CHUNK-06": {
+      "gap_id": "IS-GAP-009",
+      "status": "Resolved",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/304",
+      "tested_commit": "2a48ec9b0da9c7abe408cb5248104525f5350604",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-06-migration-cycle.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -218,7 +225,7 @@
       "backend_candidates": ["BE-GAP-009"], "frontend_candidates": [],
       "surface_ids": ["BE-DATA-016", "BE-DATA-017", "BE-DATA-018", "BE-DATA-019", "BE-DATA-020", "BE-DATA-021", "BE-DATA-022", "BE-DATA-023"],
       "root_cause": "Historical migrations were not exercised with representative populated states; revision 007 makes password_hash nullable on upgrade but restores NOT NULL without handling SSO NULL rows on downgrade.",
-      "current_behavior": "Current evidence covers the 009 edge and structural inspection of 006, while a populated revision-007 downgrade can fail before schema restoration.",
+      "current_behavior": "A disposable populated PostgreSQL matrix now proves every 001-009 transition. Revision 007 refuses incompatible downgrades with one constant preflight before mutation, and revision 006 restores the exact revision-005 name contract.",
       "required_behavior": "Define destructive downgrade expectations and make fresh/stepwise 001-009 upgrade/downgrade cycles succeed or fail explicitly and safely with representative data.",
       "impact": "Rollback may fail during an incident and leave an indeterminate schema/data state.",
       "dependencies": [],
@@ -226,8 +233,9 @@
       "required_evidence": "Revision/schema/data-count ledger for every step; no identity values.",
       "isolation": "Fresh disposable PostgreSQL database only; destroy after cycle.",
       "regression_rows": ["P5-FR-115", "P5-FR-118", "XP-018"],
-      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-06", "status": "Pending",
-      "source_refs": ["backend/alembic/versions/001_initial_schema.py::upgrade", "backend/alembic/versions/001_initial_schema.py::downgrade", "backend/alembic/versions/002_seed_admin_user.py::upgrade", "backend/alembic/versions/002_seed_admin_user.py::downgrade", "backend/alembic/versions/003_add_attempt_id_to_accepted_queries.py::upgrade", "backend/alembic/versions/003_add_attempt_id_to_accepted_queries.py::downgrade", "backend/alembic/versions/004_add_sessions_and_extend_accepted_queries.py::upgrade", "backend/alembic/versions/004_add_sessions_and_extend_accepted_queries.py::downgrade", "backend/alembic/versions/005_add_result_payload_to_accepted_queries.py::upgrade", "backend/alembic/versions/005_add_result_payload_to_accepted_queries.py::downgrade", "backend/alembic/versions/006_phase3_multi_dialect_connections.py::upgrade", "backend/alembic/versions/006_phase3_multi_dialect_connections.py::downgrade", "backend/alembic/versions/007_phase5_sso_rbac_security.py::upgrade", "backend/alembic/versions/007_phase5_sso_rbac_security.py::downgrade", "backend/alembic/versions/008_phase6_quotas_detection_audit_hardening.py::upgrade", "backend/alembic/versions/008_phase6_quotas_detection_audit_hardening.py::downgrade", "backend/tests/unit/test_t156_migration_parameterized.py", "backend/tests/unit/db/test_migration_006_phase3.py"]
+      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-06", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/304", "tested_commit": "2a48ec9b0da9c7abe408cb5248104525f5350604", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-06-migration-cycle.json", "authoritative_ci": "Passed"},
+      "source_refs": ["backend/alembic/versions/001_initial_schema.py::upgrade", "backend/alembic/versions/001_initial_schema.py::downgrade", "backend/alembic/versions/002_seed_admin_user.py::upgrade", "backend/alembic/versions/002_seed_admin_user.py::downgrade", "backend/alembic/versions/003_add_attempt_id_to_accepted_queries.py::upgrade", "backend/alembic/versions/003_add_attempt_id_to_accepted_queries.py::downgrade", "backend/alembic/versions/004_add_sessions_and_extend_accepted_queries.py::upgrade", "backend/alembic/versions/004_add_sessions_and_extend_accepted_queries.py::downgrade", "backend/alembic/versions/005_add_result_payload_to_accepted_queries.py::upgrade", "backend/alembic/versions/005_add_result_payload_to_accepted_queries.py::downgrade", "backend/alembic/versions/006_phase3_multi_dialect_connections.py::upgrade", "backend/alembic/versions/006_phase3_multi_dialect_connections.py::downgrade", "backend/alembic/versions/007_phase5_sso_rbac_security.py::upgrade", "backend/alembic/versions/007_phase5_sso_rbac_security.py::downgrade", "backend/alembic/versions/008_phase6_quotas_detection_audit_hardening.py::upgrade", "backend/alembic/versions/008_phase6_quotas_detection_audit_hardening.py::downgrade", "backend/alembic/versions/009_phase6_audit_search_indexes.py::upgrade", "backend/alembic/versions/009_phase6_audit_search_indexes.py::downgrade", "backend/tests/migrations/test_migration_chain.py", "backend/tests/migrations/test_migration_concurrency.py", "backend/tests/migrations/test_revision_007_downgrade.py", "backend/tests/unit/test_t156_migration_parameterized.py", "backend/tests/unit/db/test_migration_006_phase3.py", "backend/tests/unit/db/test_migration_009_phase6.py"]
     },
     {
       "id": "IS-GAP-010", "severity": "Mid", "disposition": "Confirmed Operational Gap",
