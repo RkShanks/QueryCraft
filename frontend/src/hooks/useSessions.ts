@@ -9,6 +9,8 @@ import {
   beginSessionDeletion,
   rollbackSessionDeletion,
 } from '../sessionDeletionLifecycle';
+import { PERMISSIONS } from '../auth/permissions';
+import { requirePermission, usePermission } from './usePermission';
 
 interface SessionListCache {
   items: Array<{ id: string }>;
@@ -16,27 +18,33 @@ interface SessionListCache {
 }
 
 
-export const useSessionsList = () => {
+export const useSessionsList = ({ enabled = true }: { enabled?: boolean } = {}) => {
+  const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
   return useQuery({
     queryKey: ['sessions'],
     queryFn: () => getSessions({ throwOnError: true }).then((res) => res.data),
+    enabled: enabled && canSubmitQuery,
   });
 };
 
 export const useSessionDetail = (sessionId: string) => {
+  const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
   return useQuery({
     queryKey: ['sessions', sessionId],
     queryFn: () =>
       getSession({ path: { sessionId }, throwOnError: true }).then((res) => res.data),
-    enabled: !!sessionId,
+    enabled: !!sessionId && canSubmitQuery,
   });
 };
 
 export const useCreateSession = () => {
   const queryClient = useQueryClient();
+  const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
   return useMutation({
-    mutationFn: () =>
-      createSession({ throwOnError: true }).then((res) => res.data),
+    mutationFn: () => {
+      requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
+      return createSession({ throwOnError: true }).then((res) => res.data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
@@ -45,10 +53,16 @@ export const useCreateSession = () => {
 
 export const useDeleteSession = () => {
   const queryClient = useQueryClient();
+  const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
   return useMutation({
-    mutationFn: (sessionId: string) =>
-      deleteSession({ path: { sessionId }, throwOnError: true }).then((res) => res.data),
+    mutationFn: (sessionId: string) => {
+      requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
+      return deleteSession({ path: { sessionId }, throwOnError: true }).then(
+        (res) => res.data
+      );
+    },
     onMutate: async (sessionId: string) => {
+      requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
       beginSessionDeletion(sessionId);
       await queryClient.cancelQueries({ queryKey: ['sessions', sessionId], exact: true });
       const previousDetail = queryClient.getQueryData(['sessions', sessionId]);

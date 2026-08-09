@@ -4,6 +4,8 @@ import type { ReactElement } from 'react';
 import React from 'react';
 
 import { MemoryRouter } from 'react-router-dom';
+import { CURRENT_USER_QUERY_KEY } from '../providers/QueryProvider';
+import { PERMISSIONS, type Permission } from '../auth/permissions';
 
 const createTestQueryClient = () => new QueryClient({
   defaultOptions: {
@@ -13,8 +15,27 @@ const createTestQueryClient = () => new QueryClient({
   },
 });
 
-export function renderWithClient(ui: ReactElement) {
+export function seedAuthenticatedUser(
+  queryClient: QueryClient,
+  permissions: readonly Permission[] = Object.values(PERMISSIONS)
+): void {
+  queryClient.setQueryData(CURRENT_USER_QUERY_KEY, {
+    data: {
+      id: 'test-user',
+      username: 'admin',
+      display_name: 'Admin User',
+      role: 'admin',
+      permissions: [...permissions],
+    },
+  });
+}
+
+export function renderWithClient(
+  ui: ReactElement,
+  permissions: readonly Permission[] = Object.values(PERMISSIONS)
+) {
   const testQueryClient = createTestQueryClient();
+  seedAuthenticatedUser(testQueryClient, permissions);
   const { rerender, ...result } = render(
     <MemoryRouter>
       <QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>
@@ -31,8 +52,11 @@ export function renderWithClient(ui: ReactElement) {
   };
 }
 
-export function createWrapper() {
+export function createWrapper({ authenticated = true }: { authenticated?: boolean } = {}) {
   const testQueryClient = createTestQueryClient();
+  if (authenticated) {
+    seedAuthenticatedUser(testQueryClient);
+  }
   return ({ children }: { children: React.ReactNode }) => (
     <MemoryRouter>
       <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>

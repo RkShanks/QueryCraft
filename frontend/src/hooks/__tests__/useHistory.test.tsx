@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useHistory } from '../useHistory';
+import { seedAuthenticatedUser } from '../../test/utils';
 
 vi.mock('../../api/historyApi', () => ({
   listHistory: vi.fn(),
@@ -12,6 +13,7 @@ import * as historyApi from '../../api/historyApi';
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  seedAuthenticatedUser(qc);
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 

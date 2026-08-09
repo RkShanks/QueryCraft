@@ -9,6 +9,8 @@ import type {
   SsoProviderCreate,
   SsoProviderUpdate,
 } from '../api/generated/types.gen';
+import { PERMISSIONS } from '../auth/permissions';
+import { requirePermission, usePermission } from './usePermission';
 
 export interface UseAdminSsoOptions {
   onCreateSuccess?: (data: unknown) => void;
@@ -21,15 +23,19 @@ export interface UseAdminSsoOptions {
 
 export const useAdminSso = (options?: UseAdminSsoOptions) => {
   const queryClient = useQueryClient();
+  const canManageSso = usePermission(PERMISSIONS.ADMIN_SSO_MANAGE);
 
   const listQuery = useQuery({
     queryKey: ['adminSsoProviders'],
     queryFn: () => listAdminSsoProviders({ throwOnError: true }).then((res) => res.data),
+    enabled: canManageSso,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: SsoProviderCreate) =>
-      createSsoProvider({ body: data, throwOnError: true }).then((res) => res.data),
+    mutationFn: (data: SsoProviderCreate) => {
+      requirePermission(canManageSso, PERMISSIONS.ADMIN_SSO_MANAGE);
+      return createSsoProvider({ body: data, throwOnError: true }).then((res) => res.data);
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminSsoProviders'] });
       options?.onCreateSuccess?.(data);
@@ -40,10 +46,12 @@ export const useAdminSso = (options?: UseAdminSsoOptions) => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: SsoProviderUpdate }) =>
-      updateSsoProvider({ path: { providerId: id }, body: data, throwOnError: true }).then(
+    mutationFn: ({ id, data }: { id: string; data: SsoProviderUpdate }) => {
+      requirePermission(canManageSso, PERMISSIONS.ADMIN_SSO_MANAGE);
+      return updateSsoProvider({ path: { providerId: id }, body: data, throwOnError: true }).then(
         (res) => res.data
-      ),
+      );
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminSsoProviders'] });
       options?.onUpdateSuccess?.(data);
@@ -54,8 +62,10 @@ export const useAdminSso = (options?: UseAdminSsoOptions) => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) =>
-      deleteSsoProvider({ path: { providerId: id }, throwOnError: true }),
+    mutationFn: (id: string) => {
+      requirePermission(canManageSso, PERMISSIONS.ADMIN_SSO_MANAGE);
+      return deleteSsoProvider({ path: { providerId: id }, throwOnError: true });
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminSsoProviders'] });
       options?.onDeleteSuccess?.(data);

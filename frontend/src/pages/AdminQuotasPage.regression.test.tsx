@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { AdminQuotasPage } from './AdminQuotasPage';
 import { server } from '../test/server';
 import { renderWithClient } from '../test/utils';
+import { PERMISSIONS } from '../auth/permissions';
 
 const quotaOnlyUser = {
   id: 'quota-admin-id',
@@ -43,6 +44,13 @@ function installQuotaOnlyHandlers(
   );
 }
 
+function renderQuotaOnlyPage() {
+  return renderWithClient(
+    <AdminQuotasPage />,
+    [PERMISSIONS.ADMIN_QUOTAS_MANAGE]
+  );
+}
+
 describe('AdminQuotasPage Phase 6A regressions', () => {
   it('P6-FR-149 shows quota-only empty states without requesting role or SSO data', async () => {
     let rolesRequested = false;
@@ -59,7 +67,7 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
       })
     );
 
-    renderWithClient(<AdminQuotasPage />);
+    renderQuotaOnlyPage();
 
     expect(await screen.findByText('No quota configurations yet.')).toBeInTheDocument();
     expect(screen.getByText('No quota usage to display.')).toBeInTheDocument();
@@ -87,7 +95,7 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
         http.get('/api/v1/admin/quotas/status', () => HttpResponse.json(body, { status }))
       );
 
-      renderWithClient(<AdminQuotasPage />);
+      renderQuotaOnlyPage();
 
       await waitFor(() => {
         expect(screen.getAllByText(message)).toHaveLength(2);
@@ -107,7 +115,7 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
         })
       );
 
-      renderWithClient(<AdminQuotasPage />);
+      renderQuotaOnlyPage();
       fireEvent.click(await screen.findByTestId('edit-quota-analyst-role-id'));
 
       const queryLimitInput = screen.getByLabelText('Daily Query Limit');
@@ -124,7 +132,7 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
   it('P6-FR-149 exposes complete compact quota summaries for narrow layouts', async () => {
     installQuotaOnlyHandlers();
 
-    renderWithClient(<AdminQuotasPage />);
+    renderQuotaOnlyPage();
 
     const configSummary = await screen.findByRole('article', {
       name: 'analyst quota configuration',

@@ -1,36 +1,382 @@
 /* eslint-disable react-refresh/only-export-components */
-import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
-import { handleSessionExpiry } from '../auth/sessionExpiry';
+import {
+  QueryClient,
+  QueryClientProvider,
+  QueryCache,
+  MutationCache,
+  useMutation,
+  useQuery,
+} from '@tanstack/react-query';
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  handleSessionExpiry,
+  isPermissionDeniedError,
+  isSessionExpiryError,
+} from '../auth/sessionExpiry';
+import {
+  notifyPermissionDenied,
+  notifySessionExpiry,
+  subscribeToPermissionDenied,
+  subscribeToSessionExpiry,
+} from '../auth/authorizationEvents';
+import { getMe, signIn, signOut } from '../api/generated/sdk.gen';
+import { client as apiClient } from '../api/generated/client.gen';
+import type { SignInData } from '../api/generated/types.gen';
+import {
+  AuthSessionContext,
+  type CurrentUserResponse,
+} from '../auth/AuthSessionContext';
+import { useUIStore } from '../stores/uiStore';
+import { resetSessionDeletionLifecycle } from '../sessionDeletionLifecycle';
+
+export const CURRENT_USER_QUERY_KEY = ['currentUser'] as const;
+const CURRENT_USER_QUERY_FILTER = {
+  queryKey: CURRENT_USER_QUERY_KEY,
+  exact: true,
+} as const;
+
+function publishSessionExpiry(error: unknown, sourcePath?: string): boolean {
+  if (!isSessionExpiryError(error)) return false;
+  notifySessionExpiry();
+  handleSessionExpiry(error, sourcePath);
+  return true;
+}
+
+function createFeatureQueryClient(): QueryClient {
+  const handleFeatureError = (error: unknown) => {
+    if (!publishSessionExpiry(error) && isPermissionDeniedError(error)) {
+      notifyPermissionDenied();
+    }
+  };
+  return new QueryClient({
+    queryCache: new QueryCache({
+      onError: handleFeatureError,
+    }),
+    mutationCache: new MutationCache({
+      onError: handleFeatureError,
+    }),
+    defaultOptions: {
+      queries: {
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+        refetchOnWindowFocus: false,
+      },
+      mutations: {
+        retry: 0,
+      },
+    },
+  });
+}
 
 const queryClient = new QueryClient({
-  queryCache: new QueryCache({
-    onError: (error) => handleSessionExpiry(error),
-  }),
-  mutationCache: new MutationCache({
-    onError: (error) => handleSessionExpiry(error),
-  }),
   defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,       // 5 minutes
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-    mutations: {
-      retry: 0,
-    },
+    queries: { retry: false },
+    mutations: { retry: 0 },
   },
 });
+
+function identityFingerprint(response: CurrentUserResponse | undefined): string {
+  const user = response?.data;
+  if (!user) return 'anonymous';
+  const permissions = [...(user.permissions ?? [])].sort().join(',');
+  return [user.id, user.role_id ?? '', user.role_name ?? '', permissions].join('|');
+}
+
+function failClosedAuthorizationSnapshot(
+  response: CurrentUserResponse | undefined
+): CurrentUserResponse | undefined {
+  if (!response?.data) return response;
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      permissions: [],
+    },
+  };
+}
+
+function resetIdentityState(): void {
+  useUIStore.getState().resetIdentityState();
+  resetSessionDeletionLifecycle();
+}
+
+function IdentityQueryBoundary({
+  authClient,
+  authorizationKey,
+  children,
+}: {
+  authClient: QueryClient;
+  authorizationKey?: string;
+  children: ReactNode;
+}) {
+  const [isExplicitlySignedOut, setExplicitlySignedOut] = useState(false);
+  const sessionExpiredRef = useRef(false);
+  const authGenerationRef = useRef(0);
+  const authorizationRefreshRef = useRef(false);
+  const authorizationKeyInFlightRef = useRef<string | null>(null);
+  const authorizationRefreshSequenceRef = useRef(0);
+  const lastDeniedFingerprintRef = useRef<string | null>(null);
+  const createIdentityClient = useCallback(() => createFeatureQueryClient(), []);
+  const currentUserQuery = useQuery({
+    queryKey: CURRENT_USER_QUERY_KEY,
+    queryFn: async ({ signal }) => {
+      const sourcePath = window.location.pathname;
+      const requestGeneration = authGenerationRef.current;
+      try {
+        const response = await getMe({ throwOnError: true, signal });
+        if (requestGeneration !== authGenerationRef.current) {
+          throw new DOMException('Superseded authentication request', 'AbortError');
+        }
+        return response;
+      } catch (error) {
+        publishSessionExpiry(error, sourcePath);
+        throw error;
+      }
+    },
+    retry: false,
+    refetchOnMount: 'always',
+    enabled: !isExplicitlySignedOut,
+  }, authClient);
+  const sessionSnapshotExpired =
+    currentUserQuery.isError && isSessionExpiryError(currentUserQuery.error);
+  const exposedCurrentUserQuery = isExplicitlySignedOut || sessionSnapshotExpired
+    ? {
+        ...currentUserQuery,
+        data: undefined,
+        isLoading: false,
+        isFetching: false,
+        isError: false,
+        isSuccess: false,
+        error: null,
+      }
+    : currentUserQuery.isError
+      ? {
+          ...currentUserQuery,
+          data: failClosedAuthorizationSnapshot(currentUserQuery.data),
+        }
+      : currentUserQuery;
+  const observedFingerprint = exposedCurrentUserQuery.isFetching
+    ? null
+    : identityFingerprint(exposedCurrentUserQuery.data);
+  const [featureSession, setFeatureSession] = useState(() => ({
+    client: createIdentityClient(),
+    fingerprint: 'pending',
+    generation: 0,
+  }));
+  const [isAuthTransitionPending, setAuthTransitionPending] = useState(false);
+  const [isAuthorizationRefreshPending, setAuthorizationRefreshPending] = useState(false);
+  const [verifiedAuthorizationKey, setVerifiedAuthorizationKey] = useState(authorizationKey);
+  const needsIdentityReset =
+    observedFingerprint !== null && observedFingerprint !== featureSession.fingerprint;
+  const needsLocationAuthorizationRefresh =
+    authorizationKey !== undefined && authorizationKey !== verifiedAuthorizationKey;
+
+  useLayoutEffect(() => {
+    const interceptorId = apiClient.interceptors.response.use((response, request) => {
+      const path = new URL(request.url).pathname;
+      if (path.includes('/auth/')) return response;
+
+      if (response.status === 401) {
+        publishSessionExpiry({ status: 401 }, window.location.pathname);
+      } else if (response.status === 403) {
+        notifyPermissionDenied();
+      }
+      return response;
+    });
+    return () => {
+      apiClient.interceptors.response.eject(interceptorId);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (
+      !needsLocationAuthorizationRefresh ||
+      authorizationKey === undefined ||
+      authorizationKeyInFlightRef.current === authorizationKey
+    ) {
+      return;
+    }
+
+    const sequence = authorizationRefreshSequenceRef.current + 1;
+    authorizationRefreshSequenceRef.current = sequence;
+    authorizationKeyInFlightRef.current = authorizationKey;
+    authorizationRefreshRef.current = true;
+    setAuthorizationRefreshPending(true);
+    void authClient
+      .refetchQueries({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+      .finally(() => {
+        if (authorizationRefreshSequenceRef.current !== sequence) return;
+        authorizationKeyInFlightRef.current = null;
+        authorizationRefreshRef.current = false;
+        lastDeniedFingerprintRef.current = null;
+        setVerifiedAuthorizationKey(authorizationKey);
+        setAuthorizationRefreshPending(false);
+      });
+  }, [authClient, authorizationKey, needsLocationAuthorizationRefresh]);
+
+  useLayoutEffect(() => {
+    return subscribeToSessionExpiry(() => {
+      if (sessionExpiredRef.current) return;
+      sessionExpiredRef.current = true;
+      authGenerationRef.current += 1;
+      setExplicitlySignedOut(true);
+      void authClient.cancelQueries(CURRENT_USER_QUERY_FILTER);
+      void featureSession.client.cancelQueries();
+      featureSession.client.clear();
+      resetIdentityState();
+      setFeatureSession((current) => ({
+        client: createIdentityClient(),
+        fingerprint: 'anonymous',
+        generation: current.generation + 1,
+      }));
+    });
+  }, [authClient, createIdentityClient, featureSession.client]);
+
+  useLayoutEffect(() => {
+    if (!isExplicitlySignedOut) return;
+    const expiredGeneration = authGenerationRef.current;
+    void authClient.cancelQueries(CURRENT_USER_QUERY_FILTER).then(() => {
+      if (
+        authGenerationRef.current === expiredGeneration &&
+        sessionExpiredRef.current
+      ) {
+        authClient.removeQueries(CURRENT_USER_QUERY_FILTER);
+      }
+    });
+  }, [authClient, isExplicitlySignedOut]);
+
+  useLayoutEffect(() => {
+    return subscribeToPermissionDenied(() => {
+      if (
+        observedFingerprint === null ||
+        authorizationRefreshRef.current ||
+        lastDeniedFingerprintRef.current === observedFingerprint
+      ) {
+        return;
+      }
+      authorizationRefreshRef.current = true;
+      lastDeniedFingerprintRef.current = observedFingerprint;
+      setAuthorizationRefreshPending(true);
+      void featureSession.client.cancelQueries();
+      featureSession.client.clear();
+      resetIdentityState();
+      setFeatureSession((current) => ({
+        client: createIdentityClient(),
+        fingerprint: current.fingerprint,
+        generation: current.generation + 1,
+      }));
+      void authClient
+        .refetchQueries({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+        .finally(() => {
+          authorizationRefreshRef.current = false;
+          setAuthorizationRefreshPending(false);
+        });
+    });
+  }, [authClient, createIdentityClient, featureSession.client, observedFingerprint]);
+
+  const beginAuthTransition = useCallback(() => {
+    authGenerationRef.current += 1;
+    setAuthTransitionPending(true);
+    void authClient.cancelQueries(CURRENT_USER_QUERY_FILTER);
+    void featureSession.client.cancelQueries();
+    featureSession.client.clear();
+    resetIdentityState();
+    setFeatureSession((current) => ({
+      client: createIdentityClient(),
+      fingerprint: current.fingerprint,
+      generation: current.generation + 1,
+    }));
+  }, [authClient, createIdentityClient, featureSession.client]);
+
+  const signInMutation = useMutation({
+    mutationFn: (data: SignInData['body']) =>
+      signIn({ body: data, throwOnError: true }),
+    onMutate: beginAuthTransition,
+    onError: () => {
+      setAuthTransitionPending(false);
+    },
+    onSuccess: (response) => {
+      sessionExpiredRef.current = false;
+      lastDeniedFingerprintRef.current = null;
+      authClient.setQueryData(CURRENT_USER_QUERY_KEY, response);
+      setExplicitlySignedOut(false);
+      setAuthTransitionPending(false);
+    },
+  }, authClient);
+
+  const signOutMutation = useMutation({
+    mutationFn: () => signOut({ throwOnError: true }),
+    onMutate: beginAuthTransition,
+    onError: () => {
+      setAuthTransitionPending(false);
+    },
+    onSuccess: () => {
+      sessionExpiredRef.current = true;
+      setExplicitlySignedOut(true);
+      setAuthTransitionPending(false);
+    },
+  }, authClient);
+
+  useLayoutEffect(() => {
+    if (!needsIdentityReset || observedFingerprint === null) return;
+
+    void featureSession.client.cancelQueries();
+    featureSession.client.clear();
+    resetIdentityState();
+    // The permission fingerprint is an async external snapshot. Withhold children
+    // above, then rotate the client in this guarded synchronization effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFeatureSession((current) => ({
+      client: createIdentityClient(),
+      fingerprint: observedFingerprint,
+      generation: current.generation + 1,
+    }));
+  }, [createIdentityClient, featureSession.client, needsIdentityReset, observedFingerprint]);
+
+  const contextValue = {
+    authClient,
+    currentUserQuery: exposedCurrentUserQuery,
+    signInMutation,
+    signOutMutation,
+  };
+  if (
+    exposedCurrentUserQuery.isFetching ||
+    needsIdentityReset ||
+    isAuthTransitionPending ||
+    isAuthorizationRefreshPending ||
+    needsLocationAuthorizationRefresh
+  ) {
+    return (
+      <AuthSessionContext.Provider value={contextValue}>
+        <div className="min-h-screen flex items-center justify-center" role="status">
+          <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        </div>
+      </AuthSessionContext.Provider>
+    );
+  }
+
+  return (
+    <AuthSessionContext.Provider value={contextValue}>
+      <QueryClientProvider client={featureSession.client} key={featureSession.generation}>
+        {children}
+      </QueryClientProvider>
+    </AuthSessionContext.Provider>
+  );
+}
 
 interface QueryProviderProps {
   children: ReactNode;
   client?: QueryClient;
+  authorizationKey?: string;
 }
 
-export function QueryProvider({ children, client }: QueryProviderProps) {
+export function QueryProvider({ children, client, authorizationKey }: QueryProviderProps) {
+  const authClient = client ?? queryClient;
   return (
-    <QueryClientProvider client={client ?? queryClient}>
-      {children}
+    <QueryClientProvider client={authClient}>
+      <IdentityQueryBoundary authClient={authClient} authorizationKey={authorizationKey}>
+        {children}
+      </IdentityQueryBoundary>
     </QueryClientProvider>
   );
 }

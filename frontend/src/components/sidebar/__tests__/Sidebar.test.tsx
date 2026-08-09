@@ -5,6 +5,7 @@ import { Sidebar } from '../Sidebar';
 import { useUIStore } from '../../../stores/uiStore';
 import { createWrapper } from '../../../test/utils';
 import i18n from '../../../i18n';
+import { PERMISSIONS, type Permission } from '../../../auth/permissions';
 
 const mockSessions: Array<{
   id: string;
@@ -90,6 +91,16 @@ describe('Sidebar', () => {
       useUIStore.getState().toggleSidebar();
     }
     vi.clearAllMocks();
+    vi.mocked(useCurrentUser).mockReturnValue({
+      data: {
+        data: {
+          id: 'user-admin',
+          role: 'admin',
+          permissions: Object.values(PERMISSIONS),
+        },
+      },
+      isLoading: false,
+    } as any);
     setupSignOutMock();
   });
 
@@ -193,6 +204,25 @@ describe('Sidebar', () => {
     expect(mutate).toHaveBeenCalled();
   });
 
+  it.each([
+    ['en', 'Sign out failed. Your server session is still active. Please try again.'],
+    ['ar', 'فشل تسجيل الخروج. لا تزال جلستك على الخادم نشطة. حاول مرة أخرى.'],
+  ])('keeps a truthful localized retry state after failed sign-out in %s', async (language, message) => {
+    await i18n.changeLanguage(language);
+    try {
+      const mutate = setupSignOutMock({ isError: true });
+      setup();
+
+      expect(screen.getByRole('alert')).toHaveTextContent(message);
+      const signOut = screen.getByTestId('sidebar-sign-out');
+      expect(signOut).toBeEnabled();
+      fireEvent.click(signOut);
+      expect(mutate).toHaveBeenCalledTimes(1);
+    } finally {
+      await i18n.changeLanguage('en');
+    }
+  });
+
   it('collapsed sidebar still exposes sign-out button', () => {
     setup();
     useUIStore.getState().toggleSidebar();
@@ -266,6 +296,64 @@ describe('Sidebar', () => {
       } finally {
         await i18n.changeLanguage('en');
       }
+    }
+  );
+
+  const permissionNavigationCases: Array<{
+    permission: Permission;
+    visible: string[];
+  }> = [
+    { permission: PERMISSIONS.QUERY_SUBMIT, visible: ['sidebar-new-chat'] },
+    { permission: PERMISSIONS.QUERY_HISTORY_VIEW, visible: ['sidebar-nav-history'] },
+    {
+      permission: PERMISSIONS.ADMIN_CONNECTIONS_MANAGE,
+      visible: ['sidebar-nav-settings', 'sidebar-nav-connections'],
+    },
+    { permission: PERMISSIONS.ADMIN_ROLES_MANAGE, visible: ['sidebar-nav-roles'] },
+    { permission: PERMISSIONS.ADMIN_SSO_MANAGE, visible: ['sidebar-nav-sso'] },
+    { permission: PERMISSIONS.ADMIN_AUDIT_VERIFY, visible: ['sidebar-nav-audit'] },
+    { permission: PERMISSIONS.ADMIN_QUOTAS_MANAGE, visible: ['sidebar-nav-quotas'] },
+    { permission: PERMISSIONS.ADMIN_SECURITY_MANAGE, visible: ['sidebar-nav-detection'] },
+  ];
+
+  it.each(permissionNavigationCases)(
+    'shows only navigation authorized by $permission and gates session discovery',
+    ({ permission, visible }) => {
+      vi.mocked(useCurrentUser).mockReturnValue({
+        data: {
+          data: {
+            id: 'exact-permission-user',
+            role: 'admin',
+            role_name: 'admin',
+            permissions: [permission],
+          },
+        },
+        isLoading: false,
+      } as any);
+
+      setup();
+
+      const navigationTestIds = [
+        'sidebar-new-chat',
+        'sidebar-nav-history',
+        'sidebar-nav-settings',
+        'sidebar-nav-connections',
+        'sidebar-nav-roles',
+        'sidebar-nav-sso',
+        'sidebar-nav-audit',
+        'sidebar-nav-quotas',
+        'sidebar-nav-detection',
+      ];
+      for (const testId of navigationTestIds) {
+        if (visible.includes(testId)) {
+          expect(screen.getByTestId(testId)).toBeInTheDocument();
+        } else {
+          expect(screen.queryByTestId(testId)).not.toBeInTheDocument();
+        }
+      }
+      expect(useSessionsList).toHaveBeenLastCalledWith({
+        enabled: permission === PERMISSIONS.QUERY_SUBMIT,
+      });
     }
   );
 

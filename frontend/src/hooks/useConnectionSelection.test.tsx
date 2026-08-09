@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useConnectionSelection } from './useConnectionSelection';
 import { updateSessionConnection } from '../api/generated/sdk.gen';
 import type { UserConnectionResponse } from '../api/generated/types.gen';
+import { seedAuthenticatedUser } from '../test/utils';
 
 vi.mock('../api/generated/sdk.gen', () => ({
   updateSessionConnection: vi.fn(),
@@ -29,6 +30,7 @@ describe('useConnectionSelection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     queryClient.clear();
+    seedAuthenticatedUser(queryClient);
   });
 
   it('initializes with existing selected connection id', () => {

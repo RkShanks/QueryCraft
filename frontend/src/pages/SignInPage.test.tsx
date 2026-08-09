@@ -77,7 +77,7 @@ describe('SignInPage', () => {
   });
 
   it('renders branded premium layout with title and subtitle', async () => {
-    render(<SignInPage />, { wrapper: createWrapper() });
+    render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
     
     // Wait for the page to finish loading and show the sign in text
     await screen.findByRole('heading', { name: /Sign In/i });
@@ -90,7 +90,7 @@ describe('SignInPage', () => {
   it('sets dir="rtl" and renders Arabic localized text when language is ar', async () => {
     mockLanguageState.language = 'ar';
 
-    render(<SignInPage />, { wrapper: createWrapper() });
+    render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
 
     // Wait for the page to finish loading and show Arabic heading
     await screen.findByRole('heading', { name: 'تسجيل الدخول' });
@@ -162,7 +162,7 @@ describe('SignInPage', () => {
     it('renders localized SSO provider buttons when configured', async () => {
       configureActiveSsoProviders();
 
-      render(<SignInPage />, { wrapper: createWrapper() });
+      render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
 
       const oidcButton = await screen.findByRole('button', { name: /Sign in with Corporate OIDC/i });
       const samlButton = await screen.findByRole('button', { name: /Sign in with Okta SAML/i });
@@ -177,7 +177,7 @@ describe('SignInPage', () => {
       mockLanguageState.language = 'ar';
       configureActiveSsoProviders();
 
-      render(<SignInPage />, { wrapper: createWrapper() });
+      render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
 
       const oidcButton = await screen.findByRole('button', { name: /Corporate OIDC/i });
       const samlButton = await screen.findByRole('button', { name: /Okta SAML/i });
@@ -202,7 +202,7 @@ describe('SignInPage', () => {
         })
       );
 
-      render(<SignInPage />, { wrapper: createWrapper() });
+      render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
 
       const oidcButton = await screen.findByRole('button', { name: /Sign in with Corporate OIDC/i });
       oidcButton.click();
@@ -217,7 +217,7 @@ describe('SignInPage', () => {
         })
       );
 
-      render(<SignInPage />, { wrapper: createWrapper() });
+      render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
 
       const warningText = await screen.findByText(/SSO is not configured/i);
       expect(warningText).toBeInTheDocument();

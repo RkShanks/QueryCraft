@@ -9,6 +9,8 @@ import {
   getAuditRetention,
   type AuditExportRequest,
 } from '../api/audit';
+import { PERMISSIONS } from '../auth/permissions';
+import { requirePermission, usePermission } from '../hooks/usePermission';
 
 interface Toast {
   id: string;
@@ -39,6 +41,7 @@ export const AdminAuditPage: React.FC = () => {
   };
 
   const { statusQuery, verifyMutation } = useAdminAudit();
+  const canVerifyAudit = usePermission(PERMISSIONS.ADMIN_AUDIT_VERIFY);
 
   const [isExporting, setIsExporting] = useState<'csv' | 'json' | null>(null);
 
@@ -107,6 +110,7 @@ export const AdminAuditPage: React.FC = () => {
   };
 
   const handleExport = async (format: 'csv' | 'json') => {
+    requirePermission(canVerifyAudit, PERMISSIONS.ADMIN_AUDIT_VERIFY);
     setIsExporting(format);
     try {
       const blob = await exportAuditEntries(buildExportRequest(format));
@@ -156,11 +160,13 @@ export const AdminAuditPage: React.FC = () => {
     queryKey: ['adminAuditEntries', searchParams],
     queryFn: () => searchAuditEntries(searchParams),
     placeholderData: (previousData) => previousData,
+    enabled: canVerifyAudit,
   });
 
   const { data: retentionData, isLoading: isRetentionLoading, isError: isRetentionError } = useQuery({
     queryKey: ['adminAuditRetention'],
     queryFn: getAuditRetention,
+    enabled: canVerifyAudit,
   });
 
   const handleVerify = () => {

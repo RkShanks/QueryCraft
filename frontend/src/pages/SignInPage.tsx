@@ -4,6 +4,7 @@ import { SignInForm } from '../components/auth/SignInForm';
 import { useTranslation } from 'react-i18next';
 import { useCurrentUser, useSsoProviders } from '../hooks/useAuth';
 import { Database, Sparkles, AlertTriangle, XCircle, Shield } from 'lucide-react';
+import { firstPermittedRoute } from '../auth/permissions';
 
 export const SignInPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -19,8 +20,8 @@ export const SignInPage: React.FC = () => {
     );
   }
 
-  if (user) {
-    return <Navigate to="/" replace />;
+  if (user?.data) {
+    return <Navigate to={firstPermittedRoute(user.data) ?? '/access-denied'} replace />;
   }
 
   const dir = i18n.language === 'ar' ? 'rtl' : 'ltr';

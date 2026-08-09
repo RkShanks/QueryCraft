@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryProvider } from './providers/QueryProvider';
 import { useCurrentUser } from './hooks/useAuth';
 import './i18n';
@@ -17,13 +17,20 @@ import { AdminRolesPage } from './pages/AdminRolesPage';
 import { AdminAuditPage } from './pages/AdminAuditPage';
 import { AdminQuotasPage } from './pages/AdminQuotasPage';
 import { AdminDetectionPage } from './pages/AdminDetectionPage';
+import { AccessDeniedPage } from './pages/AccessDeniedPage';
 import { AppShell } from './components/shell/AppShell';
+import { sessionAwareSignInPath } from './auth/sessionExpiry';
 
 import { PermissionGuard } from './components/auth/PermissionGuard';
-
+import {
+  firstPermittedRoute,
+  PROTECTED_ROUTE_CATALOG,
+  type Permission,
+  type ProtectedRoutePath,
+} from './auth/permissions';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { data: user, isLoading } = useCurrentUser();
+  const { data: response, isLoading } = useCurrentUser();
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -31,16 +38,27 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!user) {
-    return <Navigate to="/sign-in" replace />;
+  if (!response?.data) {
+    return <Navigate to={sessionAwareSignInPath()} replace />;
   }
   return <>{children}</>;
 }
 
-
+const protectedPageByPath: Record<ProtectedRoutePath, React.ReactNode> = {
+  '/': <WorkspacePage />,
+  '/ask': <AskQuestionPage />,
+  '/history': <HistoryPage />,
+  '/settings': <SettingsPage />,
+  '/admin/connections': <AdminConnectionsPage />,
+  '/admin/roles': <AdminRolesPage />,
+  '/admin/sso': <AdminSsoPage />,
+  '/admin/audit': <AdminAuditPage />,
+  '/admin/quotas': <AdminQuotasPage />,
+  '/admin/detection': <AdminDetectionPage />,
+};
 
 function RootRedirect() {
-  const { data: user, isLoading } = useCurrentUser();
+  const { data: response, isLoading } = useCurrentUser();
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -48,17 +66,55 @@ function RootRedirect() {
       </div>
     );
   }
+  const user = response?.data;
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={firstPermittedRoute(user) ?? '/access-denied'} replace />;
   }
-  return <Navigate to="/sign-in" replace />;
+  return <Navigate to={sessionAwareSignInPath()} replace />;
 }
 
-function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+function ProtectedLayout({
+  children,
+  permission,
+}: {
+  children: React.ReactNode;
+  permission: Permission;
+}) {
   return (
-    <AuthGuard>
+    <PermissionGuard permission={permission}>
       <AppShell>{children}</AppShell>
-    </AuthGuard>
+    </PermissionGuard>
+  );
+}
+
+function ApplicationRoutes() {
+  const location = useLocation();
+  return (
+    <QueryProvider authorizationKey={`${location.key}:${location.pathname}`}>
+      <Routes>
+          <Route path="/sign-in" element={<SignInPage />} />
+          {PROTECTED_ROUTE_CATALOG.map(({ path, permission }) => (
+            <Route
+              key={path}
+              path={path}
+              element={
+                <ProtectedLayout permission={permission}>
+                  {protectedPageByPath[path]}
+                </ProtectedLayout>
+              }
+            />
+          ))}
+          <Route
+            path="/access-denied"
+            element={
+              <AuthGuard>
+                <AccessDeniedPage />
+              </AuthGuard>
+            }
+          />
+          <Route path="*" element={<RootRedirect />} />
+      </Routes>
+    </QueryProvider>
   );
 }
 
@@ -72,109 +128,9 @@ function App() {
   }, [i18n.language]);
 
   return (
-    <QueryProvider>
-
-      <BrowserRouter>
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage />} />
-          <Route
-            path="/"
-            element={
-              <AuthenticatedLayout>
-                <WorkspacePage />
-              </AuthenticatedLayout>
-            }
-          />
-          <Route
-            path="/ask"
-            element={
-              <AuthenticatedLayout>
-                <AskQuestionPage />
-              </AuthenticatedLayout>
-            }
-          />
-          <Route
-            path="/history"
-            element={
-              <AuthenticatedLayout>
-                <HistoryPage />
-              </AuthenticatedLayout>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <AuthenticatedLayout>
-                <SettingsPage />
-              </AuthenticatedLayout>
-            }
-          />
-          <Route
-            path="/admin/connections"
-            element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.connections.manage">
-                  <AdminConnectionsPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
-            }
-          />
-          <Route
-            path="/admin/sso"
-            element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.sso.manage">
-                  <AdminSsoPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
-            }
-          />
-          <Route
-            path="/admin/roles"
-            element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.roles.manage">
-                  <AdminRolesPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
-            }
-          />
-          <Route
-            path="/admin/audit"
-            element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.audit.verify">
-                  <AdminAuditPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
-            }
-          />
-          <Route
-            path="/admin/quotas"
-            element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.quotas.manage">
-                  <AdminQuotasPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
-            }
-          />
-          <Route
-            path="/admin/detection"
-            element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.security.manage">
-                  <AdminDetectionPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
-            }
-          />
-          <Route path="*" element={<RootRedirect />} />
-
-
-        </Routes>
-      </BrowserRouter>
-    </QueryProvider>
+    <BrowserRouter>
+      <ApplicationRoutes />
+    </BrowserRouter>
   );
 }
 

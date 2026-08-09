@@ -10,10 +10,12 @@ import { UserBubble } from '../components/chat/UserBubble';
 import { AssistantResponseCard } from '../components/chat/AssistantResponseCard';
 import { PromptInput } from '../components/chat/PromptInput';
 import { MessageSquare } from '../components/icons';
-import { deleteHistoryEntry, listUserConnections } from '../api/generated/sdk.gen';
+import { deleteHistoryEntry } from '../api/generated/sdk.gen';
 import type { QueryResult, RefinePrompt, EvaluatorRejection, AttemptSummary, UserConnectionResponse } from '../api/generated/types.gen';
-import { useQuery } from '@tanstack/react-query';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
+import { useUserConnections } from '../hooks/useUserConnections';
+import { PERMISSIONS } from '../auth/permissions';
+import { requirePermission, usePermission } from '../hooks/usePermission';
 import { ConnectionErrorCard } from '../components/chat/ConnectionErrorCard';
 import type { ConnectionErrorKind } from '../components/chat/ConnectionErrorCard';
 import { EvaluatorRejectionBanner } from '../components/query/EvaluatorRejectionBanner';
@@ -138,6 +140,7 @@ export const WorkspacePage: React.FC = () => {
   const activeSessionId = useUIStore((state) => state.activeSessionId);
   const { data: sessionDetail, isLoading } = useSessionDetail(activeSessionId ?? '');
   const querySubmit = useQuerySubmit();
+  const canViewHistory = usePermission(PERMISSIONS.QUERY_HISTORY_VIEW);
 
   const [alert, setAlert] = useState<{
     id: string;
@@ -159,10 +162,7 @@ export const WorkspacePage: React.FC = () => {
   }, []);
 
   // Fetch available connections for T-460
-  const { data: userConnectionsResponse } = useQuery({
-    queryKey: ['userConnections'],
-    queryFn: () => listUserConnections({ throwOnError: true }).then((res) => res.data),
-  });
+  const { data: userConnectionsResponse } = useUserConnections();
   const availableConnections = React.useMemo(
     () => userConnectionsResponse?.connections ?? [],
     [userConnectionsResponse]
@@ -265,6 +265,7 @@ export const WorkspacePage: React.FC = () => {
 
   const handleDelete = useCallback(
     async (savedQueryId: string) => {
+      requirePermission(canViewHistory, PERMISSIONS.QUERY_HISTORY_VIEW);
       // Optimistically remove from both history and local turns
       setDeletedSavedIds((prev) => new Set(prev).add(savedQueryId));
       setLocalTurns((prev) => prev.filter((t) => t.savedQueryId !== savedQueryId));
@@ -278,7 +279,7 @@ export const WorkspacePage: React.FC = () => {
         // Silently ignore — turn is already removed from UI
       }
     },
-    [queryClient, activeSessionId]
+    [activeSessionId, canViewHistory, queryClient]
   );
 
   const handleRegenerate = useCallback(
@@ -518,7 +519,7 @@ export const WorkspacePage: React.FC = () => {
                     connectionName={turn.connectionName}
                     databaseType={turn.databaseType}
                     onRegenerate={turn.attemptId ? handleRegenerate : undefined}
-                    onDelete={turn.savedQueryId ? handleDelete : undefined}
+                    onDelete={turn.savedQueryId && canViewHistory ? handleDelete : undefined}
                   />
                 )}
               </div>

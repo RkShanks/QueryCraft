@@ -5,14 +5,29 @@ type ApiError = {
   message_key?: string;
 };
 
-export function handleSessionExpiry(error: unknown, sourcePath = window.location.pathname) {
+export function isSessionExpiryError(error: unknown): boolean {
   const apiError = error as ApiError | undefined;
   const isUnauthorizedPayload =
     apiError?.error === 'unauthorized' && apiError.message_key === 'error.unauthorized';
-  const isUnauthorized =
-    apiError?.status === 401 || apiError?.response?.status === 401 || isUnauthorizedPayload;
+  return apiError?.status === 401 || apiError?.response?.status === 401 || isUnauthorizedPayload;
+}
+
+export function isPermissionDeniedError(error: unknown): boolean {
+  const apiError = error as ApiError | undefined;
+  return apiError?.status === 403 || apiError?.response?.status === 403;
+}
+
+export function handleSessionExpiry(error: unknown, sourcePath = window.location.pathname) {
+  const isUnauthorized = isSessionExpiryError(error);
   if (!isUnauthorized || sourcePath === '/sign-in') return;
 
   window.history.replaceState({}, '', '/sign-in?error=session_expired');
   window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
+export function sessionAwareSignInPath(): '/sign-in' | '/sign-in?error=session_expired' {
+  const errorCode = new URLSearchParams(window.location.search).get('error');
+  return window.location.pathname === '/sign-in' && errorCode === 'session_expired'
+    ? '/sign-in?error=session_expired'
+    : '/sign-in';
 }

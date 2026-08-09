@@ -1,5 +1,6 @@
 import type { Page, Route } from '@playwright/test';
 import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse, UserProfile } from '../../../src/api/generated/types.gen';
+import { PERMISSIONS } from '../../../src/auth/permissions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Playwright page.route() factories for US-2 frontend E2E isolation.
@@ -31,15 +32,7 @@ const E2E_USER: UserProfile = {
   username: 'e2e_user',
   display_name: 'E2E User',
   role: 'admin',
-  permissions: [
-    'query.submit',
-    'history.read',
-    'admin.connections.manage',
-    'admin.roles.manage',
-    'admin.audit.verify',
-    'admin.quotas.manage',
-    'admin.security.manage',
-  ],
+  permissions: Object.values(PERMISSIONS),
   auth_provider: 'local',
 };
 

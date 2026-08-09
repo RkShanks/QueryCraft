@@ -2,20 +2,25 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { signIn, getMe, signOut, listSsoProviders } from '../api/generated/sdk.gen';
 import type { SignInData } from '../api/generated/types.gen';
 import { handleSessionExpiry } from '../auth/sessionExpiry';
+import { useAuthSessionContext } from '../auth/AuthSessionContext';
+import { CURRENT_USER_QUERY_KEY } from '../providers/QueryProvider';
 
 export const useSignIn = () => {
+  const authSession = useAuthSessionContext();
   const queryClient = useQueryClient();
-  return useMutation({
+  const fallbackMutation = useMutation({
     mutationFn: (data: SignInData['body']) => signIn({ body: data, throwOnError: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     },
   });
+  return authSession?.signInMutation ?? fallbackMutation;
 };
 
 export const useCurrentUser = () => {
-  return useQuery({
-    queryKey: ['currentUser'],
+  const authSession = useAuthSessionContext();
+  const fallbackQuery = useQuery({
+    queryKey: CURRENT_USER_QUERY_KEY,
     queryFn: async () => {
       const sourcePath = window.location.pathname;
       try {
@@ -26,17 +31,21 @@ export const useCurrentUser = () => {
       }
     },
     retry: false,
-  });
+    enabled: authSession === null,
+  }, authSession?.authClient);
+  return authSession?.currentUserQuery ?? fallbackQuery;
 };
 
 export const useSignOut = () => {
+  const authSession = useAuthSessionContext();
   const queryClient = useQueryClient();
-  return useMutation({
+  const fallbackMutation = useMutation({
     mutationFn: () => signOut({ throwOnError: true }),
     onSuccess: () => {
       queryClient.clear();
     },
   });
+  return authSession?.signOutMutation ?? fallbackMutation;
 };
 
 export const useSsoProviders = () => {

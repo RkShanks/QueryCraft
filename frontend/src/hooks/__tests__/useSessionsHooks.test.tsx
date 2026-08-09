@@ -6,7 +6,7 @@ import { http, HttpResponse } from 'msw';
 import { useSessionsList, useSessionDetail, useCreateSession, useDeleteSession } from '../useSessions';
 import { useUpdateFeedback } from '../useFeedback';
 import { useAdminSettings, useUpdateAdminSettings } from '../useAdminSettings';
-import { createWrapper } from '../../test/utils';
+import { createWrapper, seedAuthenticatedUser } from '../../test/utils';
 import { server } from '../../test/server';
 import {
   isSessionUnavailable,
@@ -16,6 +16,7 @@ import {
 const SESSION_ID = '550e8400-e29b-41d4-a716-446655440001';
 
 function deleteHookWrapper(queryClient: QueryClient) {
+  seedAuthenticatedUser(queryClient);
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );

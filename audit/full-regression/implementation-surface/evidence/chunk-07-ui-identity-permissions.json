@@ -1,0 +1,141 @@
+{
+  "schema_version": "1.0",
+  "chunk": "CHUNK-07",
+  "gap_ids": ["IS-GAP-023", "IS-GAP-025", "IS-GAP-022"],
+  "status": "ci_passed_merge_pending",
+  "starting_sha": "9cf46653d190d0b778fa70c709575d9758a3bd1e",
+  "tested_product_commit": "3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db",
+  "ci_validated_commit": "51037f0f8c70604cb92df2c6e89d8e09841137e3",
+  "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/305",
+  "identity_boundary": {
+    "outer_auth_and_feature_clients_separated": true,
+    "identity_permission_fingerprint": true,
+    "auth_generation_rejects_late_settlement": true,
+    "current_user_disabled_before_post_transition_removal": true,
+    "matching_current_user_queries_with_expired_data": 0,
+    "feature_queries_after_transition": 0,
+    "feature_mutations_after_transition": 0,
+    "identity_zustand_reset": true,
+    "identity_neutral_preferences_preserved": true,
+    "failed_signout_truthful_and_cache_safe": true,
+    "permission_403_reconciles_without_logout": true,
+    "active_session_revocation_added": false
+  },
+  "permission_catalog": [
+    "query.submit",
+    "query.history.view",
+    "admin.connections.manage",
+    "admin.roles.manage",
+    "admin.sso.manage",
+    "admin.audit.verify",
+    "admin.quotas.manage",
+    "admin.security.manage"
+  ],
+  "route_matrix": [
+    {"permission": "query.submit", "routes": ["/", "/ask"], "landing": "/", "navigation": ["new-chat"]},
+    {"permission": "query.history.view", "routes": ["/history"], "landing": "/history", "navigation": ["history"]},
+    {"permission": "admin.connections.manage", "routes": ["/settings", "/admin/connections"], "landing": "/admin/connections", "navigation": ["settings", "connections"]},
+    {"permission": "admin.roles.manage", "routes": ["/admin/roles"], "landing": "/admin/roles", "navigation": ["roles"]},
+    {"permission": "admin.sso.manage", "routes": ["/admin/sso"], "landing": "/admin/sso", "navigation": ["sso"]},
+    {"permission": "admin.audit.verify", "routes": ["/admin/audit"], "landing": "/admin/audit", "navigation": ["audit"]},
+    {"permission": "admin.quotas.manage", "routes": ["/admin/quotas"], "landing": "/admin/quotas", "navigation": ["quotas"]},
+    {"permission": "admin.security.manage", "routes": ["/admin/detection"], "landing": "/admin/detection", "navigation": ["detection"]}
+  ],
+  "request_contract": {
+    "no_permission_feature_requests": 0,
+    "sidebar_sessions_requires": "query.submit",
+    "history_requires": "query.history.view",
+    "settings_requires": "admin.connections.manage",
+    "sso_group_mapping_requires": "admin.roles.manage",
+    "quota_role_discovery_requires": "admin.roles.manage",
+    "legacy_role_bypass": false,
+    "direct_forbidden_target": "/access-denied"
+  },
+  "role_editor": {
+    "catalog_checkbox_count": 8,
+    "all_catalog_permissions_create_roundtrip": true,
+    "independent_add_remove": true,
+    "reload_preserved": true,
+    "unknown_permission_preserved": true,
+    "unknown_permission_rendered_as_translation_key": false,
+    "next_request_revoke_grant_verified": true,
+    "role_detail_hydration_race_changed": false
+  },
+  "blocker_tdd_commits": {
+    "red": [
+      "a8c33d7031710a4314f103a436a63dfbefc59d82",
+      "0f0b91286c9cd0617d96076b9d13839cab9f94ba",
+      "52ab72eb0c811066822d56fcb3d42f907cdc3e2f"
+    ],
+    "green": [
+      "61d5694e522785245a4585ac0a944d3b0119350d",
+      "3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db"
+    ],
+    "history_rewritten": false
+  },
+  "browser": {
+    "exact_permission_personas": 8,
+    "no_permission_personas": 1,
+    "final_mocked_chromium_matrix": "1 passed",
+    "fresh_live_profile": true,
+    "live_disjoint_users": 2,
+    "live_disjoint_roles": 2,
+    "late_auth_response_held_until_after_expiry": true,
+    "duplicate_feature_401_count": 2,
+    "expiry_route_exact": true,
+    "outer_auth_direct_value_absent": true,
+    "outer_current_user_queries_with_data": 0,
+    "outer_old_snapshot_present": false,
+    "old_dom_value_present": false,
+    "old_accessibility_value_present": false,
+    "old_storage_value_present": false,
+    "old_dom_flash_observed": false,
+    "settled_feature_request_count": 0,
+    "settled_unauthorized_count": 0,
+    "unexpected_console_error_count": 0,
+    "settled_console_error_count": 0,
+    "relogin_console_error_count": 0,
+    "page_error_count": 0,
+    "expected_401_resource_diagnostic_count": 3,
+    "expected_canceled_resource_diagnostic_count": 1,
+    "replacement_route_exact": true,
+    "replacement_current_user_queries_with_data": 1,
+    "replacement_old_snapshot_present": false,
+    "replacement_exact_permission_present": true,
+    "raw_sensitive_values_retained": false
+  },
+  "local_gates": {
+    "focused_frontend": "8 files, 117 passed",
+    "query_provider": "19 passed",
+    "focused_playwright_chromium": "1 passed",
+    "full_frontend_vitest_once": "70 files, 927 passed",
+    "eslint": "passed",
+    "typecheck": "passed",
+    "build": "passed",
+    "css_lint": "passed",
+    "git_diff_check": "passed",
+    "test_guard": "passed",
+    "clean_code_guard": "passed",
+    "docs_guard": "passed"
+  },
+  "authoritative_ci": {
+    "backend_test": "passed",
+    "frontend_test": "passed"
+  },
+  "cleanup": {
+    "disposable_users_remaining": 0,
+    "disposable_roles_remaining": 0,
+    "disposable_sessions_remaining": 0,
+    "disposable_containers_remaining": 0,
+    "disposable_volumes_remaining": 0,
+    "disposable_networks_remaining": 0,
+    "disposable_images_remaining": 0,
+    "browser_profiles_remaining": 0,
+    "browser_outputs_remaining": 0,
+    "temporary_scripts_remaining": 0,
+    "local_test_ports_remaining": 0,
+    "protected_baseline_unchanged": true
+  },
+  "chunk_08_unblocked": false,
+  "chunk_08_unblocked_on_squash_merge": true
+}

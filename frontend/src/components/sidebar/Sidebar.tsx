@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../stores/uiStore';
 import { useSessionsList } from '../../hooks/useSessions';
 import { useSignOut, useCurrentUser } from '../../hooks/useAuth';
-import { hasPermission } from '../../auth/permissions';
-import { resetSessionDeletionLifecycle } from '../../sessionDeletionLifecycle';
+import { hasPermission, NAVIGATION_CATALOG, PERMISSIONS } from '../../auth/permissions';
 import { SessionItem } from './SessionItem';
 import { UndoToast, type UndoToastItem } from './UndoToast';
 import { Shield } from 'lucide-react';
@@ -20,6 +19,21 @@ import {
   Database,
 } from '../icons';
 import './Sidebar.css';
+
+const navigationIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  history: MessageSquare,
+  settings: Settings,
+  connections: Database,
+  roles: Shield,
+  sso: Shield,
+  audit: Shield,
+  quotas: Shield,
+  detection: Shield,
+};
+
+const newChatNavigation = NAVIGATION_CATALOG.find(
+  ({ navigation }) => navigation.id === 'new-chat'
+);
 
 function groupSessionsByDate(
   sessions: Array<{
@@ -63,14 +77,13 @@ export const Sidebar: React.FC = () => {
   const { data: userResponse } = useCurrentUser();
   const user = userResponse?.data;
 
-  const hasConnectionsPermission = hasPermission(user, 'admin.connections.manage');
-  const hasRolesPermission = hasPermission(user, 'admin.roles.manage');
-  const hasAuditPermission = hasPermission(user, 'admin.audit.verify');
-  const hasQuotasPermission = hasPermission(user, 'admin.quotas.manage');
-  const hasSecurityPermission = hasPermission(user, 'admin.security.manage');
+  const canSubmitQuery = hasPermission(user, PERMISSIONS.QUERY_SUBMIT);
+  const visibleNavigation = NAVIGATION_CATALOG.filter(
+    (route) =>
+      route.navigation.id !== 'new-chat' && hasPermission(user, route.permission)
+  );
 
-
-  const { data, isLoading } = useSessionsList();
+  const { data, isLoading } = useSessionsList({ enabled: canSubmitQuery });
   const deletingSessionIds = React.useMemo(() => new Set(toasts.map((t) => t.sessionId)), [toasts]);
   const sessions = React.useMemo(() => {
     return (data?.items ?? []).filter((s) => !deletingSessionIds.has(s.id));
@@ -132,7 +145,6 @@ export const Sidebar: React.FC = () => {
   const handleSignOut = () => {
     signOutMutation.mutate(undefined as never, {
       onSuccess: () => {
-        resetSessionDeletionLifecycle();
         navigate('/sign-in');
       },
     });
@@ -157,96 +169,39 @@ export const Sidebar: React.FC = () => {
         )}
       </div>
 
-      <div className="sidebar-new-chat">
-        <button
-          className="sidebar-new-chat-btn"
-          onClick={handleNewChat}
-          aria-label={t('sidebar.newChat')}
-          data-testid="sidebar-new-chat"
-        >
-          <Plus className="w-4 h-4" />
-          {!sidebarCollapsed && t('sidebar.newChat')}
-        </button>
-      </div>
+      {canSubmitQuery && newChatNavigation && (
+        <div className="sidebar-new-chat">
+          <button
+            className="sidebar-new-chat-btn"
+            onClick={handleNewChat}
+            aria-label={t(newChatNavigation.navigation.labelKey)}
+            data-testid="sidebar-new-chat"
+          >
+            <Plus className="w-4 h-4" />
+            {!sidebarCollapsed && t(newChatNavigation.navigation.labelKey)}
+          </button>
+        </div>
+      )}
 
       <div className="sidebar-nav-buttons">
-        <button
-          className="sidebar-nav-btn"
-          onClick={() => navigate('/history')}
-          aria-label={t('nav.history')}
-          data-testid="sidebar-nav-history"
-        >
-          <MessageSquare className="w-4 h-4" />
-          {!sidebarCollapsed && t('nav.history')}
-        </button>
-        <button
-          className="sidebar-nav-btn"
-          onClick={() => navigate('/settings')}
-          aria-label={t('nav.settings')}
-          data-testid="sidebar-nav-settings"
-        >
-          <Settings className="w-4 h-4" />
-          {!sidebarCollapsed && t('nav.settings')}
-        </button>
-        {hasConnectionsPermission && (
+        {visibleNavigation.map((route) => {
+          const Icon = navigationIcons[route.navigation.id] ?? Shield;
+          return (
           <button
+            key={route.path}
             className="sidebar-nav-btn"
-            onClick={() => navigate('/admin/connections')}
-            aria-label={t('nav.adminConnections')}
-            data-testid="sidebar-nav-connections"
+            onClick={() => navigate(route.path)}
+            aria-label={t(route.navigation.labelKey)}
+            data-testid={`sidebar-nav-${route.navigation.id}`}
           >
-            <Database className="w-4 h-4" />
-            {!sidebarCollapsed && t('nav.adminConnections')}
+            <Icon className="w-4 h-4" />
+            {!sidebarCollapsed && t(route.navigation.labelKey)}
           </button>
-        )}
-        {hasRolesPermission && (
-          <button
-            className="sidebar-nav-btn"
-            onClick={() => navigate('/admin/roles')}
-            aria-label={t('nav.adminRoles') || 'Roles'}
-            data-testid="sidebar-nav-roles"
-          >
-            <Shield className="w-4 h-4" />
-            {!sidebarCollapsed && (t('nav.adminRoles') || 'Roles')}
-          </button>
-        )}
-        {hasAuditPermission && (
-          <button
-            className="sidebar-nav-btn"
-            onClick={() => navigate('/admin/audit')}
-            aria-label={t('nav.adminAudit') || 'Audit Verification'}
-            data-testid="sidebar-nav-audit"
-          >
-            <Shield className="w-4 h-4" />
-            {!sidebarCollapsed && (t('nav.adminAudit') || 'Audit Verification')}
-          </button>
-        )}
-        {hasQuotasPermission && (
-          <button
-            className="sidebar-nav-btn"
-            onClick={() => navigate('/admin/quotas')}
-            aria-label={t('nav.adminQuotas') || 'Quotas'}
-            data-testid="sidebar-nav-quotas"
-          >
-            <Shield className="w-4 h-4" />
-            {!sidebarCollapsed && (t('nav.adminQuotas') || 'Quotas')}
-          </button>
-        )}
-        {hasSecurityPermission && (
-          <button
-            className="sidebar-nav-btn"
-            onClick={() => navigate('/admin/detection')}
-            aria-label={t('detection.page_title') || 'Detection'}
-            data-testid="sidebar-nav-detection"
-          >
-            <Shield className="w-4 h-4" />
-            {!sidebarCollapsed && (t('detection.page_title') || 'Detection')}
-          </button>
-        )}
-
+          );
+        })}
       </div>
 
-      <div className="sidebar-sessions">
+      {canSubmitQuery && <div className="sidebar-sessions">
         {sidebarCollapsed ? (
           sessions.map((session) => (
             <SessionItem
@@ -308,18 +263,26 @@ export const Sidebar: React.FC = () => {
             )}
           </>
         )}
-      </div>
+      </div>}
 
       <div className="sidebar-footer">
+        {signOutMutation.isError && (
+          <div className="sidebar-sign-out-error" role="alert">
+            {t('accessDenied.signOutFailed')}
+          </div>
+        )}
         <button
           className="sidebar-sign-out-btn"
           onClick={handleSignOut}
-          aria-label={t('nav.signOut')}
+          aria-label={
+            signOutMutation.isPending ? t('accessDenied.signingOut') : t('nav.signOut')
+          }
           data-testid="sidebar-sign-out"
           disabled={signOutMutation.isPending}
         >
           <LogOut className="w-4 h-4" />
-          {!sidebarCollapsed && t('nav.signOut')}
+          {!sidebarCollapsed &&
+            (signOutMutation.isPending ? t('accessDenied.signingOut') : t('nav.signOut'))}
         </button>
       </div>
 
