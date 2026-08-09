@@ -288,6 +288,72 @@ describe('AdminRolesPage', () => {
     });
   });
 
+  it('edits every current permission while preserving an unknown server permission', async () => {
+    const roleWithFuturePermission = {
+      ...mockCustomRole,
+      permissions: [
+        'query.submit',
+        'query.history.view',
+        'admin.connections.manage',
+        'admin.roles.manage',
+        'admin.sso.manage',
+        'admin.audit.verify',
+        'admin.quotas.manage',
+        'admin.security.manage',
+        'future.exports.manage',
+      ],
+    };
+    vi.mocked(useAdminRoles).mockReturnValue({
+      ...mockPopulatedRoles,
+      listQuery: { ...mockPopulatedRoles.listQuery, data: { roles: [roleWithFuturePermission] } },
+    } as any);
+
+    render(<AdminRolesPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'common.edit' }));
+
+    const currentPermissions = [
+      'query.submit',
+      'query.history.view',
+      'admin.connections.manage',
+      'admin.roles.manage',
+      'admin.sso.manage',
+      'admin.audit.verify',
+      'admin.quotas.manage',
+      'admin.security.manage',
+    ];
+    currentPermissions.forEach((permission) => {
+      expect(
+        screen.getByLabelText(`admin.roles.permissions.${permission}`, { exact: false })
+      ).toBeChecked();
+    });
+    expect(screen.queryByText('future.exports.manage')).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByLabelText('admin.roles.permissions.admin.quotas.manage', { exact: false })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
+
+    await waitFor(() => {
+      expect(mockMutations.updateMutation.mutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: '123',
+          data: expect.objectContaining({
+            permissions: [
+              'query.submit',
+              'query.history.view',
+              'admin.connections.manage',
+              'admin.roles.manage',
+              'admin.sso.manage',
+              'admin.audit.verify',
+              'admin.security.manage',
+              'future.exports.manage',
+            ],
+          }),
+        })
+      );
+    });
+  });
+
   it('loads full role detail with connection_policies when editing an existing role', async () => {
     // T-741: list row has only connection_policy_count (no connection_policies).
     // Editing must call useAdminRole(id) to fetch the full detail, otherwise
