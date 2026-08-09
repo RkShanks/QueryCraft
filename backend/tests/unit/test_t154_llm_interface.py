@@ -16,10 +16,10 @@ from app.llm.openai_adapter import OpenAIAdapter
 @pytest.mark.parametrize(
     "adapter_cls, kwargs",
     [
-        (AnthropicAdapter, {"api_key": "test"}),
-        (OpenAIAdapter, {"api_key": "test"}),
-        (GeminiAdapter, {"api_key": "test"}),
-        (OllamaAdapter, {"host": "http://localhost:11434"}),
+        (AnthropicAdapter, {"api_key": "test", "timeout_s": 45}),
+        (OpenAIAdapter, {"api_key": "test", "timeout_s": 45}),
+        (GeminiAdapter, {"api_key": "test", "timeout_s": 45}),
+        (OllamaAdapter, {"host": "http://localhost:11434", "timeout_s": 45}),
     ],
 )
 def test_adapter_has_generate_sql(adapter_cls, kwargs):

@@ -24,8 +24,8 @@ class LLMProviderFactory:
     _cache: dict[str, LLMProvider] = {}
 
     @classmethod
-    def _cache_key(cls, provider: str, model_name: str, api_key: str) -> str:
-        return f"{provider}:{model_name}:{_api_key_fingerprint(api_key)}"
+    def _cache_key(cls, provider: str, model_name: str, api_key: str, timeout_seconds: int) -> str:
+        return f"{provider}:{model_name}:{_api_key_fingerprint(api_key)}:{timeout_seconds}"
 
     @classmethod
     def from_config(cls, settings) -> LLMProvider:
@@ -39,6 +39,7 @@ class LLMProviderFactory:
         """
         provider_name = (getattr(settings, "LLM_PROVIDER", "ollama") or "ollama").lower()
         model_name = getattr(settings, "LLM_MODEL_NAME", None) or ""
+        timeout_seconds = settings.QUERY_TIMEOUT_SECONDS
 
         if provider_name == "stub":
             return StubLLM()
@@ -51,25 +52,33 @@ class LLMProviderFactory:
         elif provider_name == "gemini":
             api_key = getattr(settings, "LLM_API_KEY_GEMINI", "") or os.getenv("GOOGLE_API_KEY", "")
 
-        key = cls._cache_key(provider_name, model_name, api_key)
+        key = cls._cache_key(provider_name, model_name, api_key, timeout_seconds)
         if key in cls._cache:
             return cls._cache[key]
 
         if provider_name == "anthropic":
             if not api_key:
                 raise LLMConfigurationError("Missing ANTHROPIC_API_KEY")
-            adapter = AnthropicAdapter(api_key=api_key, model=model_name or "claude-3-5-sonnet-20241022")
+            adapter = AnthropicAdapter(
+                api_key=api_key,
+                model=model_name or "claude-3-5-sonnet-20241022",
+                timeout_s=timeout_seconds,
+            )
         elif provider_name == "openai":
             if not api_key:
                 raise LLMConfigurationError("Missing OPENAI_API_KEY")
-            adapter = OpenAIAdapter(api_key=api_key, model=model_name or "gpt-4o")
+            adapter = OpenAIAdapter(api_key=api_key, model=model_name or "gpt-4o", timeout_s=timeout_seconds)
         elif provider_name == "gemini":
             if not api_key:
                 raise LLMConfigurationError("Missing GOOGLE_API_KEY")
-            adapter = GeminiAdapter(api_key=api_key, model=model_name or "gemini-1.5-pro")
+            adapter = GeminiAdapter(
+                api_key=api_key,
+                model=model_name or "gemini-1.5-pro",
+                timeout_s=timeout_seconds,
+            )
         elif provider_name == "ollama":
             host = getattr(settings, "LLM_BASE_URL_OLLAMA", "http://localhost:11434")
-            adapter = OllamaAdapter(host=host, model=model_name or "llama3.1")
+            adapter = OllamaAdapter(host=host, model=model_name or "llama3.1", timeout_s=timeout_seconds)
         else:
             raise LLMConfigurationError(f"Unknown LLM provider: {provider_name}")
 

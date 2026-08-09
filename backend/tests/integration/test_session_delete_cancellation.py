@@ -211,9 +211,9 @@ async def test_delete_interrupts_real_postgres_source_execution(
     source_entered = asyncio.Event()
     original_execute = PostgresAdapter.execute
 
-    async def observed_execute(adapter, sql, params=()):
+    async def observed_execute(adapter, sql, params=(), *, timeout=None):
         source_entered.set()
-        return await original_execute(adapter, sql, params)
+        return await original_execute(adapter, sql, params, timeout=timeout)
 
     async def execution_count() -> int:
         await observer.execute("SELECT pg_stat_clear_snapshot()")

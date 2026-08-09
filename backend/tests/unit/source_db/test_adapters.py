@@ -388,6 +388,7 @@ class FakeMSSQLConnection:
 
     def __init__(self) -> None:
         self._closed = False
+        self._conn = SimpleNamespace(timeout=0)
         self._fetch_calls: list[tuple[str, tuple]] = []
         self._execute_calls: list[str] = []
         self._fail_on: str | None = None
@@ -597,7 +598,7 @@ async def test_query_execution_timeout_cancels_each_dialect_adapter(
         with pytest.raises(SourceDBTimeout):
             await adapter.execute("SELECT id FROM users", timeout=2.9)
 
-        assert fake_conn._cursor._impl.timeout == 2
+        assert fake_conn._conn.timeout == 2
         return
 
     execution_cancelled = asyncio.Event()

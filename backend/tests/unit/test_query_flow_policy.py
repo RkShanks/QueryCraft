@@ -84,6 +84,7 @@ class _RecordingLLM:
         negative_examples=None,
         conversation_history=None,
         target_dialect=None,
+        timeout=None,
     ):
         self.calls.append(
             {
@@ -92,6 +93,7 @@ class _RecordingLLM:
                 "negative_examples": negative_examples,
                 "conversation_history": conversation_history,
                 "target_dialect": target_dialect,
+                "timeout": timeout,
             }
         )
         return self._sql

@@ -33,7 +33,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, NoReturn
 
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
@@ -42,11 +42,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.detection  # noqa: F401 — registers built-in rules into REGISTRY
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
+from app.core.config import get_settings
 from app.core.exceptions import (
     AttemptContextInvalid,
     AttemptNotFound,
     AttemptOwnershipViolation,
     DetectionUnavailableError,
+    LLMTimeout,
     PolicySchemaConflictError,
     QuotaExceededError,
     QuotaUnavailableError,
@@ -56,6 +58,11 @@ from app.core.exceptions import (
     SourceDBTimeout,
 )
 from app.core.processing_lock import acquire_lock, release_lock_if_owned
+from app.core.query_deadline import (
+    QueryDeadline,
+    QueryDeadlineExpired,
+    query_lock_ttl_seconds,
+)
 from app.core.session_cancellation import (
     QueryOperation,
     TrackedAttempt,
@@ -126,6 +133,15 @@ class _ExecutionFailureAudit:
     actor_identity: str | None = None
 
 
+@dataclass(frozen=True)
+class _TimeoutFailure:
+    audit: _ExecutionFailureAudit
+    attempt: EphemeralAttempt | None = None
+    http_session_id: str | None = None
+    chat_session_id: str | None = None
+    tracked_attempt: TrackedAttempt | None = None
+
+
 def _sanitize_for_json(obj: Any) -> Any:
     """Recursively convert Decimal (and other non-JSON types) to JSON-safe values."""
     if isinstance(obj, Decimal):
@@ -186,6 +202,8 @@ class QueryService:
         policy_enforcement: PolicyEnforcementService | None = None,
         role_policy_provider: RolePolicyProvider | None = None,
         quota_service: Any = None,
+        query_timeout_seconds: int | None = None,
+        monotonic_clock: Callable[[], float] | None = None,
     ) -> None:
         self._repo = accepted_query_repository
         self._session_repo = session_repository
@@ -202,8 +220,12 @@ class QueryService:
         self._policy = policy_enforcement or PolicyEnforcementService()
         self._role_policy_provider = role_policy_provider
         self._quota_service = quota_service
+        if query_timeout_seconds is None:
+            query_timeout_seconds = get_settings().QUERY_TIMEOUT_SECONDS
+        self._query_timeout_seconds = query_timeout_seconds
+        self._monotonic_clock = monotonic_clock
 
-    async def _acquire_lock(self, session_id: str, ttl: int = 60) -> str | None:
+    async def _acquire_lock(self, session_id: str, ttl: int) -> str | None:
         """Try to acquire a per-session processing lock.
 
         Returns an owner token (uuid string) if acquired, None if already held.
@@ -214,9 +236,29 @@ class QueryService:
         """Release the processing lock only if we own it."""
         return await release_lock_if_owned(session_id, owner, self._redis)
 
+    def _start_query_deadline(self) -> QueryDeadline:
+        deadline = QueryDeadline.start(
+            self._query_timeout_seconds,
+            clock=self._monotonic_clock,
+        )
+        deadline.arm_current_task()
+        return deadline
+
+    @property
+    def _query_lock_ttl(self) -> int:
+        return query_lock_ttl_seconds(self._query_timeout_seconds)
+
     async def _ensure_chat_session_active(self, chat_session_id: str | None) -> None:
         if chat_session_id is not None:
             await ensure_session_active(chat_session_id, self._redis)
+
+    async def _ensure_operation_active(
+        self,
+        chat_session_id: str | None,
+        deadline: QueryDeadline,
+    ) -> None:
+        await self._ensure_chat_session_active(chat_session_id)
+        deadline.ensure_active()
 
     async def _run_chat_session_stage(
         self,
@@ -289,6 +331,25 @@ class QueryService:
             outcome="failure",
             context={"reason": event.reason},
         )
+
+    async def _raise_timeout(self, failure: _TimeoutFailure, cause: BaseException) -> NoReturn:
+        try:
+            await self._ensure_chat_session_active(failure.chat_session_id)
+            if failure.attempt is not None and failure.http_session_id is not None:
+                failure.attempt.state = "TIMEOUT"
+                await store_attempt(failure.attempt, failure.http_session_id, self._redis)
+            if failure.http_session_id is not None:
+                await self._redis.delete(f"active_attempt:{failure.http_session_id}")
+            await self._ensure_chat_session_active(failure.chat_session_id)
+        except SessionInvalidated:
+            await self._discard_invalidated_attempt(failure.tracked_attempt)
+            raise
+
+        await self._persist_execution_failure_audit(failure.audit)
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail={"error": "timeout", "message_key": "error.timeout"},
+        ) from cause
 
     async def _get_llm_context_cap(self) -> int:
         """Read llm_context_cap from app_config (default 3)."""
@@ -436,18 +497,21 @@ class QueryService:
         connection_id: str | None = None,
     ) -> QueryResult | EvaluatorRejection:
         """Submit a question: LLM -> evaluate -> execute -> result."""
-        lock_owner = await self._acquire_lock(http_session_id, ttl=300)
+        lock_owner = await self._acquire_lock(http_session_id, ttl=self._query_lock_ttl)
         if lock_owner is None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"error": "concurrent", "message_key": "error.concurrent"},
             )
 
+        deadline = self._start_query_deadline()
+        user_uuid = uuid.UUID(user_id)
+        attempt_id = str(uuid.uuid4())
+        attempt: EphemeralAttempt | None = None
+        actor_identity: str | None = None
         query_operation: QueryOperation | None = None
         tracked_attempt: TrackedAttempt | None = None
         try:
-            user_uuid = uuid.UUID(user_id)
-
             # Verify user exists in DB (guard against stale Redis sessions)
             result = await self._db_session.execute(select(User).where(User.id == user_uuid))
             user_row = result.scalar_one_or_none()
@@ -456,6 +520,8 @@ class QueryService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={"error": "unauthorized", "message_key": "error.unauthorized"},
                 )
+            actor_identity = getattr(user_row, "username", None)
+            deadline.ensure_active()
 
             # T-845: Hostile input detection FIRST — before quota check.
             # Blocked requests: emit HOSTILE_INPUT_BLOCKED audit (redacted context)
@@ -475,6 +541,7 @@ class QueryService:
                         "message_key": "error.service_unavailable",
                     },
                 ) from None
+            deadline.ensure_active()
             _detection_context = build_detection_audit_context(
                 outcome=_detection_outcome.outcome,
                 results=_detection_outcome.results,
@@ -513,6 +580,7 @@ class QueryService:
                 # Downstream quota or generation failures roll back their own
                 # transaction; preserve the security event before continuing.
                 await self._db_session.commit()
+            deadline.ensure_active()
 
             # T-800/T-845: Query quota check immediately after hostile input detection.
             # Non-hostile requests spend query quota before chat session, attempt,
@@ -545,6 +613,7 @@ class QueryService:
                                 "message_key": "error.service_unavailable",
                             },
                         ) from exc
+            deadline.ensure_active()
 
             # Lazy session creation
             if chat_session_id is None:
@@ -572,6 +641,7 @@ class QueryService:
                 if not sess.preview_text:
                     await self._session_repo.update_preview_text(uuid.UUID(chat_session_id), user_uuid, question)
 
+            deadline.ensure_active()
             source_connection_id = await self._get_database_connection_id()
             if connection_id is not None and uuid.UUID(connection_id) != uuid.UUID(source_connection_id):
                 raise HTTPException(
@@ -579,7 +649,6 @@ class QueryService:
                     detail={"error": "attempt_invalid", "message_key": "error.attemptInvalid"},
                 )
 
-            attempt_id = str(uuid.uuid4())
             attempt = EphemeralAttempt(
                 attempt_id=attempt_id,
                 session_id=http_session_id,
@@ -591,7 +660,7 @@ class QueryService:
                 llm_provider=self._llm_provider,
             )
 
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             if chat_session_id is not None:
                 query_operation = QueryOperation(
                     session_id=chat_session_id,
@@ -613,9 +682,9 @@ class QueryService:
                     attempt_id=attempt_id,
                 )
                 await track_session_attempt(tracked_attempt, self._redis)
-                await self._ensure_chat_session_active(chat_session_id)
+                await self._ensure_operation_active(chat_session_id, deadline)
             await store_attempt(attempt, http_session_id, self._redis)
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # FR-140: emit a tamper-evident query.submit audit
             # entry on every submission attempt. Context carries
@@ -636,6 +705,7 @@ class QueryService:
                     "dialect": self._target_dialect or "postgres",
                 },
             )
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # T-712: Resolve role policy. When the user has a role_id
             # and a connection-scoped policy exists, the LLM prompt
@@ -648,7 +718,7 @@ class QueryService:
                 user_id,
                 source_connection_id,
             )
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             if role_policy is not None and not role_policy.allowed_tables:
                 # Deny-all policy: fail closed before the LLM so the
                 # user never gets a prompt that mentions any table.
@@ -670,7 +740,7 @@ class QueryService:
                     outcome="denied",
                     context={"reason": "deny_all"},
                 )
-                await self._ensure_chat_session_active(chat_session_id)
+                await self._ensure_operation_active(chat_session_id, deadline)
                 return self._role_auth_rejection()
 
             # Load conversation history for context
@@ -693,7 +763,7 @@ class QueryService:
                 role_policy,
                 self._schema_context,
             )
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             try:
                 sql = await self._run_chat_session_stage(
                     chat_session_id,
@@ -703,21 +773,25 @@ class QueryService:
                         schema_context=schema_for_prompt,
                         conversation_history=conversation_history or None,
                         target_dialect=self._target_dialect,
+                        timeout=deadline.remaining_seconds(),
                     ),
                 )
             except asyncio.CancelledError:
                 await self._ensure_chat_session_active(chat_session_id)
                 raise
+            except LLMTimeout as exc:
+                raise QueryDeadlineExpired() from exc
             except Exception as exc:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
                 ) from exc
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             attempt.sql = sql
             attempt.state = "GENERATED"
             await store_attempt(attempt, http_session_id, self._redis)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # 2. Evaluator gate (existing rules)
             try:
@@ -729,7 +803,7 @@ class QueryService:
             except asyncio.CancelledError:
                 await self._ensure_chat_session_active(chat_session_id)
                 raise
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             if not eval_result.passed:
                 attempt.state = "REJECTED"
                 attempt.evaluator_result = {
@@ -751,6 +825,7 @@ class QueryService:
                         "rules": [v.rule_name for v in eval_result.violations],
                     },
                 )
+                await self._ensure_operation_active(chat_session_id, deadline)
                 violations = [Violation(rule=v.rule_name, message_key=v.message_key) for v in eval_result.violations]
                 return EvaluatorRejection(
                     message_key="query.evaluator.rejected",
@@ -776,8 +851,9 @@ class QueryService:
                 outcome="success",
                 context={},
             )
+            await self._ensure_operation_active(chat_session_id, deadline)
             role_auth_rejection = await self._enforce_role_authorization(sql, role_policy)
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             if role_auth_rejection is not None:
                 attempt.state = "REJECTED"
                 attempt.evaluator_result = {
@@ -796,11 +872,12 @@ class QueryService:
                     outcome="denied",
                     context={"reason": "role_authorization"},
                 )
-                await self._ensure_chat_session_active(chat_session_id)
+                await self._ensure_operation_active(chat_session_id, deadline)
                 return role_auth_rejection
 
             attempt.state = "EVALUATED"
             await store_attempt(attempt, http_session_id, self._redis)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # 3. T-712: Apply per-role row filters via
             # PolicyEnforcementService.apply_row_filters. Returns a
@@ -833,6 +910,7 @@ class QueryService:
                     ) from exc
                 effective_sql = bound.sql
                 row_filter_params = bound.params
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # T-802: Execution quota check before SQL execution.
             # If QuotaService is wired, check the "executions" dimension
@@ -864,21 +942,24 @@ class QueryService:
                                 "message_key": "error.service_unavailable",
                             },
                         ) from exc
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # 4. Execute against source DB. Adapter and legacy
             # executor both receive the rewritten SQL + row-filter
             # params. asyncpg positional binding is used; the
             # adapter's ``execute(sql, params)`` signature accepts
             # the tuple unchanged.
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             try:
+                source_timeout = deadline.remaining_seconds()
                 if self._adapter is not None:
                     exec_result = await self._run_chat_session_stage(
                         chat_session_id,
                         user_id,
-                        asyncio.wait_for(
-                            self._adapter.execute(effective_sql, row_filter_params),
-                            timeout=30,
+                        self._adapter.execute(
+                            effective_sql,
+                            row_filter_params,
+                            timeout=source_timeout,
                         ),
                     )
                     columns, rows = exec_result.columns, exec_result.rows
@@ -886,9 +967,10 @@ class QueryService:
                     columns, rows = await self._run_chat_session_stage(
                         chat_session_id,
                         user_id,
-                        asyncio.wait_for(
-                            self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
-                            timeout=30,
+                        self._executor.execute(
+                            effective_sql,
+                            timeout=source_timeout,
+                            params=row_filter_params,
                         ),
                     )
             except asyncio.CancelledError:
@@ -897,31 +979,7 @@ class QueryService:
                 await store_attempt(attempt, http_session_id, self._redis)
                 raise
             except (TimeoutError, SourceDBTimeout) as exc:
-                attempt.state = "TIMEOUT"
-                await store_attempt(attempt, http_session_id, self._redis)
-                # FR-140: emit query.execute with outcome='failure'
-                # on source DB timeout. Context carries only the
-                # constant reason; no raw driver error, no
-                # host/port/credential. attempt_id is in
-                # resource_id (audit standard) so it is NOT
-                # duplicated in context. The HTTP 504 detail
-                # below uses the constant i18n key
-                # 'error.timeout' which never carries the
-                # underlying exception message.
-                await self._persist_execution_failure_audit(
-                    _ExecutionFailureAudit(
-                        action=AuditActionType.QUERY_EXECUTE,
-                        actor_id=user_uuid,
-                        actor_identity=getattr(user_row, "username", None),
-                        resource_type="query_attempt",
-                        resource_id=attempt_id,
-                        reason="timeout",
-                    )
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                    detail={"error": "timeout", "message_key": "error.timeout"},
-                ) from exc
+                raise QueryDeadlineExpired() from exc
             except Exception as exc:
                 # The source adapter is an external boundary. Collapse every
                 # non-timeout driver failure before it can reach HTTP or logs.
@@ -942,26 +1000,7 @@ class QueryService:
                     status_code=failure_status,
                     detail=failure_detail,
                 ) from None
-            await self._ensure_chat_session_active(chat_session_id)
-
-            # FR-140: emit query.execute (success) right after the
-            # executor returns. Context carries only row_count;
-            # no rows, no columns, no SQL, no host/port/credential.
-            # attempt_id is in resource_id (audit standard) so
-            # it is NOT duplicated in context. The audit log
-            # itself is not the source of truth for the result —
-            # the accepted-query history (auto-saved below) is.
-            await AuditService.log(
-                self._db_session,
-                action=AuditActionType.QUERY_EXECUTE,
-                actor_id=user_uuid,
-                actor_identity=getattr(user_row, "username", None),
-                resource_type="query_attempt",
-                resource_id=attempt_id,
-                outcome="success",
-                context={"row_count": len(rows)},
-            )
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # 4a. T-712: Apply per-role column masks to the
             # ``QueryResult`` after execution. Returns a new
@@ -972,7 +1011,7 @@ class QueryService:
             # are what get persisted to the accepted-query history
             # — unmasked sensitive values never touch the response
             # or the DB.
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             column_metas = []
             for c in columns:
                 if isinstance(c, dict):
@@ -1003,12 +1042,13 @@ class QueryService:
                 rows = masked_result.rows
             result = masked_result
 
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             attempt.state = "EXECUTED"
             await store_attempt(attempt, http_session_id, self._redis)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # 5. Auto-save (idempotent: skip if already persisted for this attempt_id)
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             session_uuid = uuid.UUID(chat_session_id) if chat_session_id else None
             db_conn_id = await self._get_database_connection_id()
             existing = await self._repo.get_by_attempt_id(attempt_id, user_uuid)
@@ -1031,15 +1071,50 @@ class QueryService:
             else:
                 result.accepted_query_id = str(existing.id)
 
+            await self._ensure_operation_active(chat_session_id, deadline)
+
             # Track active attempt for session (G-001+G-004)
             await self._redis.set(f"active_attempt:{http_session_id}", attempt_id)
 
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
+            await AuditService.log(
+                self._db_session,
+                action=AuditActionType.QUERY_EXECUTE,
+                actor_id=user_uuid,
+                actor_identity=actor_identity,
+                resource_type="query_attempt",
+                resource_id=attempt_id,
+                outcome="success",
+                context={"row_count": len(rows)},
+            )
+            await self._ensure_operation_active(chat_session_id, deadline)
             return result
         except SessionInvalidated:
             await self._discard_invalidated_attempt(tracked_attempt)
             raise
+        except (QueryDeadlineExpired, asyncio.CancelledError) as exc:
+            if isinstance(exc, asyncio.CancelledError) and not deadline.cancelled_current_task:
+                raise
+            deadline.disarm()
+            await self._raise_timeout(
+                _TimeoutFailure(
+                    audit=_ExecutionFailureAudit(
+                        action=AuditActionType.QUERY_EXECUTE,
+                        actor_id=user_uuid,
+                        actor_identity=actor_identity,
+                        resource_type="query_attempt",
+                        resource_id=attempt_id,
+                        reason="timeout",
+                    ),
+                    attempt=attempt,
+                    http_session_id=http_session_id,
+                    chat_session_id=chat_session_id,
+                    tracked_attempt=tracked_attempt,
+                ),
+                exc,
+            )
         finally:
+            deadline.disarm()
             if query_operation is not None:
                 await clear_query_operation_if_owned(query_operation, self._redis)
             await self._release_lock_if_owned(http_session_id, lock_owner)
@@ -1244,13 +1319,17 @@ class QueryService:
             HTTPException 409: if another operation holds the session processing lock.
             HTTPException 401: if the user has been deleted from DB.
         """
-        lock_owner = await self._acquire_lock(http_session_id, ttl=300)
+        lock_owner = await self._acquire_lock(http_session_id, ttl=self._query_lock_ttl)
         if lock_owner is None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"error": "concurrent", "message_key": "error.concurrent"},
             )
 
+        deadline = self._start_query_deadline()
+        user_uuid = uuid.UUID(user_id)
+        prior: EphemeralAttempt | None = None
+        timeout_attempt: EphemeralAttempt | None = None
         query_operation: QueryOperation | None = None
         tracked_attempt: TrackedAttempt | None = None
         chat_session_id: str | None = None
@@ -1262,13 +1341,15 @@ class QueryService:
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail={"error": "attempt_not_active", "message_key": "error.attemptInvalid"},
                 )
+            deadline.ensure_active()
 
             prior = await get_attempt(attempt_id, http_session_id, self._redis)
+            timeout_attempt = prior
             connection_id = self._require_attempt_binding(prior, user_id)
             chat_session_id = prior.chat_session_id
             if chat_session_id is None:
                 raise AttemptContextInvalid()
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             query_operation = QueryOperation(
                 session_id=chat_session_id,
                 user_id=user_id,
@@ -1289,11 +1370,11 @@ class QueryService:
                 attempt_id=attempt_id,
             )
             await track_session_attempt(tracked_attempt, self._redis)
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             await delete_attempt(attempt_id, self._redis)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # Critical 2: verify user exists in DB before any writes
-            user_uuid = uuid.UUID(user_id)
             user_result = await self._db_session.execute(select(User).where(User.id == user_uuid))
             if user_result.scalar_one_or_none() is None:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
@@ -1301,10 +1382,12 @@ class QueryService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={"error": "unauthorized", "message_key": "error.unauthorized"},
                 )
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # Max retries: max_regenerate_attempts = regen clicks after original (default 3)
             next_attempt_number = (prior.attempt_number or 1) + 1
             max_regens = await self._get_max_regenerate_attempts()
+            await self._ensure_operation_active(chat_session_id, deadline)
             if next_attempt_number > max_regens + 1:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return RefinePrompt(
@@ -1318,7 +1401,7 @@ class QueryService:
                 user_id,
                 connection_id,
             )
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             if role_policy is not None and not role_policy.allowed_tables:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return self._role_auth_rejection()
@@ -1334,7 +1417,7 @@ class QueryService:
             )
 
             # Call LLM
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             try:
                 new_sql = await self._run_chat_session_stage(
                     chat_session_id,
@@ -1344,18 +1427,21 @@ class QueryService:
                         schema_for_prompt,
                         negative_examples=negative_examples,
                         target_dialect=self._target_dialect,
+                        timeout=deadline.remaining_seconds(),
                     ),
                 )
             except asyncio.CancelledError:
                 await self._ensure_chat_session_active(chat_session_id)
                 raise
+            except LLMTimeout as exc:
+                raise QueryDeadlineExpired() from exc
             except Exception as exc:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
                 ) from exc
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # Inv 4: byte-equal duplicate detection
             if new_sql == prior.sql:
@@ -1375,7 +1461,7 @@ class QueryService:
             except asyncio.CancelledError:
                 await self._ensure_chat_session_active(chat_session_id)
                 raise
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             if not eval_result.passed:
                 new_attempt_id = str(uuid.uuid4())
                 failed_attempt = EphemeralAttempt(
@@ -1395,6 +1481,7 @@ class QueryService:
                         ],
                     },
                 )
+                timeout_attempt = failed_attempt
                 tracked_attempt = TrackedAttempt(
                     session_id=chat_session_id,
                     user_id=user_id,
@@ -1402,9 +1489,9 @@ class QueryService:
                     attempt_id=new_attempt_id,
                 )
                 await track_session_attempt(tracked_attempt, self._redis)
-                await self._ensure_chat_session_active(chat_session_id)
+                await self._ensure_operation_active(chat_session_id, deadline)
                 await store_attempt(failed_attempt, http_session_id, self._redis)
-                await self._ensure_chat_session_active(chat_session_id)
+                await self._ensure_operation_active(chat_session_id, deadline)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
@@ -1416,7 +1503,7 @@ class QueryService:
             # as a rejected regenerate) — the next click would be a
             # refine prompt anyway.
             role_auth_rejection = await self._enforce_role_authorization(new_sql, role_policy)
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             if role_auth_rejection is not None:
                 new_attempt_id = str(uuid.uuid4())
                 failed_attempt = EphemeralAttempt(
@@ -1436,6 +1523,7 @@ class QueryService:
                         ],
                     },
                 )
+                timeout_attempt = failed_attempt
                 tracked_attempt = TrackedAttempt(
                     session_id=chat_session_id,
                     user_id=user_id,
@@ -1443,9 +1531,9 @@ class QueryService:
                     attempt_id=new_attempt_id,
                 )
                 await track_session_attempt(tracked_attempt, self._redis)
-                await self._ensure_chat_session_active(chat_session_id)
+                await self._ensure_operation_active(chat_session_id, deadline)
                 await store_attempt(failed_attempt, http_session_id, self._redis)
-                await self._ensure_chat_session_active(chat_session_id)
+                await self._ensure_operation_active(chat_session_id, deadline)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
@@ -1477,17 +1565,20 @@ class QueryService:
                     ) from exc
                 effective_sql = bound.sql
                 row_filter_params = bound.params
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # Execute against source DB
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             try:
+                source_timeout = deadline.remaining_seconds()
                 if self._adapter is not None:
                     exec_result = await self._run_chat_session_stage(
                         chat_session_id,
                         user_id,
-                        asyncio.wait_for(
-                            self._adapter.execute(effective_sql, row_filter_params),
-                            timeout=30,
+                        self._adapter.execute(
+                            effective_sql,
+                            row_filter_params,
+                            timeout=source_timeout,
                         ),
                     )
                     columns, rows = exec_result.columns, exec_result.rows
@@ -1495,9 +1586,10 @@ class QueryService:
                     columns, rows = await self._run_chat_session_stage(
                         chat_session_id,
                         user_id,
-                        asyncio.wait_for(
-                            self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
-                            timeout=30,
+                        self._executor.execute(
+                            effective_sql,
+                            timeout=source_timeout,
+                            params=row_filter_params,
                         ),
                     )
             except asyncio.CancelledError:
@@ -1505,20 +1597,7 @@ class QueryService:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise
             except (TimeoutError, SourceDBTimeout) as exc:
-                await self._redis.delete(f"active_attempt:{http_session_id}")
-                await self._persist_execution_failure_audit(
-                    _ExecutionFailureAudit(
-                        action=AuditActionType.QUERY_EXECUTE,
-                        actor_id=user_uuid,
-                        resource_type="query_attempt",
-                        resource_id=prior.attempt_id,
-                        reason="timeout",
-                    )
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                    detail={"error": "timeout", "message_key": "error.timeout"},
-                ) from exc
+                raise QueryDeadlineExpired() from exc
             except Exception as exc:
                 failure_status, failure_detail, failure_reason = _source_failure_response(exc)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
@@ -1535,7 +1614,7 @@ class QueryService:
                     status_code=failure_status,
                     detail=failure_detail,
                 ) from None
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # Build result and store ephemeral attempt
             new_attempt_id = str(uuid.uuid4())
@@ -1565,6 +1644,7 @@ class QueryService:
                 column_metas = list(masked_result.columns)
                 rows = masked_result.rows
             result = masked_result
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             new_attempt = EphemeralAttempt(
                 attempt_id=new_attempt_id,
@@ -1578,7 +1658,8 @@ class QueryService:
                 llm_provider=self._llm_provider,
                 state="EXECUTED",
             )
-            await self._ensure_chat_session_active(chat_session_id)
+            timeout_attempt = new_attempt
+            await self._ensure_operation_active(chat_session_id, deadline)
             tracked_attempt = TrackedAttempt(
                 session_id=chat_session_id,
                 user_id=user_id,
@@ -1586,10 +1667,10 @@ class QueryService:
                 attempt_id=new_attempt_id,
             )
             await track_session_attempt(tracked_attempt, self._redis)
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             await store_attempt(new_attempt, http_session_id, self._redis)
             await self._redis.set(f"active_attempt:{http_session_id}", new_attempt_id)
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # Auto-save regenerated result (Option B: update prior saved row in-place)
             # High 3: instead of creating a duplicate row, update the prior saved row
@@ -1629,12 +1710,33 @@ class QueryService:
                 if session_uuid is not None:
                     result.session_id = str(session_uuid)
 
-            await self._ensure_chat_session_active(chat_session_id)
+            await self._ensure_operation_active(chat_session_id, deadline)
             return result
         except SessionInvalidated:
             await self._discard_invalidated_attempt(tracked_attempt)
             raise
+        except (QueryDeadlineExpired, asyncio.CancelledError) as exc:
+            if isinstance(exc, asyncio.CancelledError) and not deadline.cancelled_current_task:
+                raise
+            deadline.disarm()
+            await self._raise_timeout(
+                _TimeoutFailure(
+                    audit=_ExecutionFailureAudit(
+                        action=AuditActionType.QUERY_EXECUTE,
+                        actor_id=user_uuid,
+                        resource_type="query_attempt",
+                        resource_id=attempt_id,
+                        reason="timeout",
+                    ),
+                    attempt=timeout_attempt,
+                    http_session_id=http_session_id,
+                    chat_session_id=chat_session_id,
+                    tracked_attempt=tracked_attempt,
+                ),
+                exc,
+            )
         finally:
+            deadline.disarm()
             if query_operation is not None:
                 await clear_query_operation_if_owned(query_operation, self._redis)
             await self._release_lock_if_owned(http_session_id, lock_owner)
@@ -1644,6 +1746,52 @@ class QueryService:
         accepted_query_id: str,
         user_id: str,
         connection_id: str | None = None,
+    ) -> QueryResult | EvaluatorRejection | None:
+        """Re-execute accepted SQL within the configured operation deadline."""
+        user_uuid = uuid.UUID(user_id)
+        accepted_uuid = uuid.UUID(accepted_query_id)
+        lock_session_id = f"rerun:{accepted_query_id}"
+        lock_owner = await self._acquire_lock(lock_session_id, ttl=self._query_lock_ttl)
+        if lock_owner is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error": "concurrent", "message_key": "error.concurrent"},
+            )
+
+        deadline = self._start_query_deadline()
+        try:
+            return await self._rerun_accepted_query_with_deadline(
+                accepted_query_id,
+                user_id,
+                connection_id,
+                deadline,
+            )
+        except (QueryDeadlineExpired, asyncio.CancelledError) as exc:
+            if isinstance(exc, asyncio.CancelledError) and not deadline.cancelled_current_task:
+                raise
+            deadline.disarm()
+            await self._raise_timeout(
+                _TimeoutFailure(
+                    audit=_ExecutionFailureAudit(
+                        action=AuditActionType.QUERY_RERUN,
+                        actor_id=user_uuid,
+                        resource_type="accepted_query",
+                        resource_id=str(accepted_uuid),
+                        reason="timeout",
+                    ),
+                ),
+                exc,
+            )
+        finally:
+            deadline.disarm()
+            await self._release_lock_if_owned(lock_session_id, lock_owner)
+
+    async def _rerun_accepted_query_with_deadline(
+        self,
+        accepted_query_id: str,
+        user_id: str,
+        connection_id: str | None,
+        deadline: QueryDeadline,
     ) -> QueryResult | EvaluatorRejection | None:
         """Re-execute a previously accepted query.
 
@@ -1692,6 +1840,7 @@ class QueryService:
         user_uuid = uuid.UUID(user_id)
         aq_uuid = uuid.UUID(accepted_query_id)
         accepted = await self._repo.get_by_id(aq_uuid, user_uuid)
+        deadline.ensure_active()
         if accepted is None:
             return None
 
@@ -1742,11 +1891,13 @@ class QueryService:
             str(accepted.database_connection_id) if accepted.database_connection_id is not None else connection_id
         )
         role_policy = await self._resolve_role_policy(user_id, resolved_connection_id)
+        deadline.ensure_active()
 
         if role_policy is not None and not role_policy.allowed_tables:
             return self._role_auth_rejection()
 
         rejection = await self._enforce_role_authorization(stored_sql, role_policy)
+        deadline.ensure_active()
         if rejection is not None:
             return rejection
 
@@ -1773,33 +1924,25 @@ class QueryService:
                 ) from exc
             effective_sql = bound.sql
             row_filter_params = bound.params
+        deadline.ensure_active()
 
         try:
+            source_timeout = deadline.remaining_seconds()
             if self._adapter is not None:
-                exec_result = await asyncio.wait_for(
-                    self._adapter.execute(effective_sql, row_filter_params),
-                    timeout=30,
+                exec_result = await self._adapter.execute(
+                    effective_sql,
+                    row_filter_params,
+                    timeout=source_timeout,
                 )
                 columns, rows = exec_result.columns, exec_result.rows
             else:
-                columns, rows = await asyncio.wait_for(
-                    self._executor.execute(effective_sql, timeout=30, params=row_filter_params),
-                    timeout=30,
+                columns, rows = await self._executor.execute(
+                    effective_sql,
+                    timeout=source_timeout,
+                    params=row_filter_params,
                 )
         except (TimeoutError, SourceDBTimeout) as exc:
-            await self._persist_execution_failure_audit(
-                _ExecutionFailureAudit(
-                    action=AuditActionType.QUERY_RERUN,
-                    actor_id=user_uuid,
-                    resource_type="accepted_query",
-                    resource_id=str(aq_uuid),
-                    reason="timeout",
-                )
-            )
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail={"error": "timeout", "message_key": "error.timeout"},
-            ) from exc
+            raise QueryDeadlineExpired() from exc
         except Exception as exc:
             failure_status, failure_detail, failure_reason = _source_failure_response(exc)
             await self._persist_execution_failure_audit(
@@ -1815,6 +1958,7 @@ class QueryService:
                 status_code=failure_status,
                 detail=failure_detail,
             ) from None
+        deadline.ensure_active()
 
         column_metas = []
         for c in columns:
@@ -1841,6 +1985,7 @@ class QueryService:
                 role_policy.column_masks,
                 dialect=self._target_dialect,
             )
+        deadline.ensure_active()
 
         await AuditService.log(
             self._db_session,
@@ -1851,5 +1996,6 @@ class QueryService:
             outcome="success",
             context={},
         )
+        deadline.ensure_active()
 
         return masked_result
