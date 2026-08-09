@@ -112,6 +112,31 @@ function AuthSwitchProbe() {
   );
 }
 
+function SessionExpiryBoundaryProbe() {
+  const currentUser = useCurrentUser();
+  const sensitiveQuery = useQuery({
+    queryKey: ['session-expiry-sensitive-state'],
+    queryFn: async () => {
+      const response = await fetch('/api/v1/session-expiry-sensitive-state');
+      if (!response.ok) {
+        throw { status: response.status };
+      }
+      return (await response.json()) as { marker: string };
+    },
+    retry: false,
+  });
+
+  return (
+    <div>
+      <span data-testid="expiry-identity">{currentUser.data?.data?.id ?? 'anonymous'}</span>
+      <span data-testid="expiry-sensitive-marker">{sensitiveQuery.data?.marker}</span>
+      <button type="button" onClick={() => sensitiveQuery.refetch()}>
+        Trigger expired request
+      </button>
+    </div>
+  );
+}
+
 describe('QueryProvider session expiry handling', () => {
   beforeEach(() => {
     queryClient.clear();
@@ -334,6 +359,49 @@ describe('QueryProvider session expiry handling', () => {
       .toBeInTheDocument();
     expect(screen.queryByText('user-a', { selector: '[data-testid="switch-feature-owner"]' }))
       .not.toBeInTheDocument();
+  });
+
+  it('removes the old identity and feature state when a request reports session expiry', async () => {
+    let featureRequestCount = 0;
+    server.use(
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json({
+          id: 'user-a',
+          username: 'user-a',
+          display_name: 'User A',
+          role: 'member',
+          role_id: 'role-a',
+          role_name: 'Role A',
+          permissions: ['query.submit'],
+          auth_provider: 'local',
+        })
+      ),
+      http.get('/api/v1/session-expiry-sensitive-state', () => {
+        featureRequestCount += 1;
+        if (featureRequestCount > 1) {
+          return HttpResponse.json(
+            { error: 'unauthorized', message_key: 'error.unauthorized' },
+            { status: 401 }
+          );
+        }
+        return HttpResponse.json({ marker: 'expired-user-a-state' });
+      })
+    );
+    window.history.replaceState({}, '', '/history');
+
+    render(
+      <QueryProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <SessionExpiryBoundaryProbe />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByText('expired-user-a-state')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger expired request' }));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/sign-in'));
+    expect(window.location.search).toBe('?error=session_expired');
+    await waitFor(() => expect(screen.getByTestId('expiry-identity')).toHaveTextContent('anonymous'));
+    expect(screen.queryByText('expired-user-a-state')).not.toBeInTheDocument();
   });
 
   afterEach(() => {
