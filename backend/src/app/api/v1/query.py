@@ -184,6 +184,7 @@ async def _build_query_service_for_connection(
         source_db_adapter=adapter,
         role_policy_provider=make_role_policy_provider(db),
         quota_service=quota_service,
+        query_timeout_seconds=settings.QUERY_TIMEOUT_SECONDS,
     )
 
 

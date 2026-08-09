@@ -18,6 +18,7 @@ class LLMProvider(Protocol):
         negative_examples: list[str] | None = None,
         conversation_history: list[dict] | None = None,
         target_dialect: str | None = None,
+        timeout: float | None = None,
     ) -> str:
         """Generate SQL from a user question and schema context.
 
@@ -27,6 +28,7 @@ class LLMProvider(Protocol):
             negative_examples: Previously rejected SQL variants to avoid.
             conversation_history: Optional list of prior Q&A dicts for context.
             target_dialect: Optional SQL dialect (e.g. "postgresql", "mysql", "tsql").
+            timeout: Remaining query-operation budget for the provider request.
 
         Returns:
             The generated SQL string.

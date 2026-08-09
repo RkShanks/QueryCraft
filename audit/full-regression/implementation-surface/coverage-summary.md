@@ -97,8 +97,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 | Status | Count |
 | --- | ---: |
-| Pending | 41 |
-| Resolved | 3 |
+| Pending | 40 |
+| Resolved | 4 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
 | **Total** | **47** |
@@ -109,9 +109,10 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-003` is resolved on tested product commit `4580925594c872ae0283485155bbdf4bd7e225f4` via [#301](https://github.com/RkShanks/QueryCraft/pull/301). Its [CHUNK-03 evidence](evidence/chunk-03-session-cancel.md) records durable cancellation, ownership-safe cleanup, failure/rollback races, frontend Undo/cache behavior, deterministic provider/second-worker proof, and real PostgreSQL source cancellation with DB/Redis/audit/browser inspection.
 
+`IS-GAP-004` is resolved on tested product commit `61723e46dc267e74c7aa3539a40990b1482e9edc` via [#302](https://github.com/RkShanks/QueryCraft/pull/302). Its [CHUNK-04 evidence](evidence/chunk-04-timeout-config.md) records the shared monotonic deadline, remaining provider/source budgets, derived five-second lock grace, sanitized exactly-once timeout state, deletion precedence, real HTTP timing, three-dialect slow-query behavior, gates, and cleanup.
+
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
-- Timeout evidence proves default failure shape, not configured non-default behavior.
 - Phase 6 quota and audit evidence covers initial submit/export and sanitized retry failure, not retry accounting and successful regenerate lifecycle.
 - Final browser privacy evidence genuinely covers API/UI/audit/export/log/storage/accessibility slices, but not a single joint same-browser cache/console/network/download flow after failed or implicit identity change.
 
@@ -121,7 +122,7 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-04` is unblocked after #301 merges; no CHUNK-04 work has started.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-05` is unblocked after #302 merges; no CHUNK-05 work has started.
 
 ## Validation scope
 

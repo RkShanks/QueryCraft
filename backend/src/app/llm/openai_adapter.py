@@ -8,7 +8,7 @@ from app.llm.exceptions import LLMTimeout, LLMUnavailable
 class OpenAIAdapter:
     """Adapter for the OpenAI Chat Completions API."""
 
-    def __init__(self, api_key: str, model: str = "gpt-4o", timeout_s: int = 30):
+    def __init__(self, api_key: str, *, timeout_s: int, model: str = "gpt-4o"):
         self._api_key = api_key
         self._model = model
         self._timeout_s = timeout_s
@@ -18,16 +18,17 @@ class OpenAIAdapter:
             timeout=timeout_s,
         )
 
-    async def generate(self, prompt: str) -> str:
+    async def generate(self, prompt: str, *, timeout: float | None = None) -> str:
         """Send prompt to OpenAI Chat Completions and return generated SQL."""
         payload = {
             "model": self._model,
             "messages": [{"role": "user", "content": prompt}],
         }
         try:
-            response = await self._client.post("/v1/chat/completions", json=payload)
+            request_timeout = timeout if timeout is not None else self._timeout_s
+            response = await self._client.post("/v1/chat/completions", json=payload, timeout=request_timeout)
         except httpx.TimeoutException as exc:
-            raise LLMTimeout(provider="openai", timeout_s=self._timeout_s) from exc
+            raise LLMTimeout(provider="openai", timeout_s=request_timeout) from exc
         except httpx.HTTPStatusError as exc:
             raise LLMUnavailable(provider="openai") from exc
 
@@ -49,6 +50,7 @@ class OpenAIAdapter:
         negative_examples: list[str] | None = None,
         conversation_history: list[dict] | None = None,
         target_dialect: str | None = None,
+        timeout: float | None = None,
     ) -> str:
         """Build prompt and generate SQL."""
         from app.llm.prompt_builder import build_prompt
@@ -56,4 +58,4 @@ class OpenAIAdapter:
         prompt = build_prompt(question, schema_context, conversation_history, target_dialect=target_dialect)
         if negative_examples:
             prompt += "\nAvoid generating these SQL variants:\n" + "\n".join(f"- {ex}" for ex in negative_examples)
-        return await self.generate(prompt)
+        return await self.generate(prompt, timeout=timeout)

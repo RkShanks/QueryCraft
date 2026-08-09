@@ -11,7 +11,7 @@ from app.llm.exceptions import LLMTimeout, LLMUnavailable
 
 @pytest.fixture
 def adapter() -> AnthropicAdapter:
-    return AnthropicAdapter(api_key="fake-api-key", model="claude-3-opus-20240229")
+    return AnthropicAdapter(api_key="fake-api-key", model="claude-3-opus-20240229", timeout_s=30)
 
 
 @respx.mock

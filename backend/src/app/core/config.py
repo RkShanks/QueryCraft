@@ -92,6 +92,14 @@ class Settings(BaseSettings):
             raise ValueError("PLATFORM_ENCRYPTION_KEY is required")
         return v
 
+    @field_validator("QUERY_TIMEOUT_SECONDS")
+    @classmethod
+    def validate_query_timeout(cls, value: int) -> int:
+        """Reject query deadlines that cannot bound runtime safely."""
+        if value <= 0:
+            raise ValueError("QUERY_TIMEOUT_SECONDS must be positive")
+        return value
+
     @property
     def allowed_origins_list(self) -> list[str]:
         """Parse ALLOWED_ORIGINS as a list."""

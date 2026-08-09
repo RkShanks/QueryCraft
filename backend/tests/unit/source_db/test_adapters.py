@@ -5,6 +5,7 @@ Tests use mock connections to verify adapter contract compliance.
 
 import asyncio
 import secrets
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -221,7 +222,7 @@ class FakeMySQLConnection:
     def cursor(self) -> "FakeMySQLCursor":
         return self._cursor
 
-    async def close(self) -> None:
+    def close(self) -> None:
         self._closed = True
 
 
@@ -387,6 +388,7 @@ class FakeMSSQLConnection:
 
     def __init__(self) -> None:
         self._closed = False
+        self._conn = SimpleNamespace(timeout=0)
         self._fetch_calls: list[tuple[str, tuple]] = []
         self._execute_calls: list[str] = []
         self._fail_on: str | None = None
@@ -404,6 +406,7 @@ class FakeMSSQLCursor:
 
     def __init__(self, conn: FakeMSSQLConnection) -> None:
         self._conn = conn
+        self._impl = SimpleNamespace(timeout=0)
         self._rows: list[dict] = []
         self._description: list | None = None
 
@@ -557,6 +560,124 @@ _ADAPTER_CASES = [
     pytest.param("MySQLAdapter", FakeMySQLConnection, FakeMySQLPool, 3306, id="mysql"),
     pytest.param("MSSQLAdapter", FakeMSSQLConnection, FakeMSSQLPool, 1433, id="mssql"),
 ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("adapter_cls_name", "connection_cls", "pool_cls", "port"),
+    _ADAPTER_CASES,
+)
+async def test_query_execution_timeout_cancels_each_dialect_adapter(
+    adapter_cls_name: str,
+    connection_cls: type,
+    pool_cls: type,
+    port: int,
+) -> None:
+    """The remaining operation budget bounds PostgreSQL, MySQL, and MSSQL."""
+    from app.core.credential_provider import FernetCredentialProvider
+    from app.core.exceptions import SourceDBTimeout
+    from app.source_db import adapters
+
+    fake_conn = connection_cls()
+
+    if isinstance(fake_conn, FakeMSSQLConnection):
+        fake_conn._cursor.execute = AsyncMock(side_effect=RuntimeError("HYT00", "driver timeout"))
+        credential_provider = FernetCredentialProvider(_VALID_FERNET_KEY)
+        adapter_cls = getattr(adapters, adapter_cls_name)
+        adapter = adapter_cls(
+            host="localhost",
+            port=port,
+            database="testdb",
+            username="testuser",
+            encrypted_password=credential_provider.encrypt("test_password"),
+            ssl_mode="disable",
+            credential_provider=credential_provider,
+        )
+        adapter._pool = pool_cls(fake_conn)
+
+        with pytest.raises(SourceDBTimeout):
+            await adapter.execute("SELECT id FROM users", timeout=2.9)
+
+        assert fake_conn._conn.timeout == 2
+        return
+
+    execution_cancelled = asyncio.Event()
+
+    async def slow_execution(*_args, **_kwargs):
+        try:
+            await asyncio.Event().wait()
+        finally:
+            execution_cancelled.set()
+
+    if isinstance(fake_conn, FakePGConnection):
+        fake_conn.fetch = slow_execution
+    else:
+        fake_conn._cursor.execute = slow_execution
+
+    credential_provider = FernetCredentialProvider(_VALID_FERNET_KEY)
+    adapter_cls = getattr(adapters, adapter_cls_name)
+    adapter = adapter_cls(
+        host="localhost",
+        port=port,
+        database="testdb",
+        username="testuser",
+        encrypted_password=credential_provider.encrypt("test_password"),
+        ssl_mode="disable",
+        credential_provider=credential_provider,
+    )
+    adapter._pool = pool_cls(fake_conn)
+
+    with pytest.raises(SourceDBTimeout):
+        await adapter.execute("SELECT id FROM users", timeout=0.01)
+
+    assert execution_cancelled.is_set()
+    if isinstance(fake_conn, FakeMySQLConnection):
+        assert fake_conn._closed
+
+
+@pytest.mark.asyncio
+async def test_mssql_external_cancellation_waits_for_driver_task_cleanup() -> None:
+    """Session deletion must not abandon or cancel an in-flight ODBC worker."""
+    from app.core.credential_provider import FernetCredentialProvider
+    from app.source_db.adapters import MSSQLAdapter
+
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    driver_cancelled = asyncio.Event()
+    fake_conn = FakeMSSQLConnection()
+
+    async def controlled_execution(*_args, **_kwargs):
+        entered.set()
+        try:
+            await release.wait()
+        except asyncio.CancelledError:
+            driver_cancelled.set()
+            raise
+
+    fake_conn._cursor.execute = controlled_execution
+    credential_provider = FernetCredentialProvider(_VALID_FERNET_KEY)
+    adapter = MSSQLAdapter(
+        host="localhost",
+        port=1433,
+        database="testdb",
+        username="testuser",
+        encrypted_password=credential_provider.encrypt("test_password"),
+        ssl_mode="disable",
+        credential_provider=credential_provider,
+    )
+    adapter._pool = FakeMSSQLPool(fake_conn)
+
+    operation = asyncio.create_task(adapter.execute("SELECT id FROM users", timeout=2.9))
+    await entered.wait()
+    operation.cancel()
+    await asyncio.sleep(0)
+
+    assert not driver_cancelled.is_set()
+    assert not operation.done()
+
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await operation
 
 
 def _adapter_with_execution_error(

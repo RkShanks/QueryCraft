@@ -8,6 +8,7 @@ T-106: Full rewrite of SourceDBExecutor.
 """
 
 import asyncio
+import math
 from typing import Any
 
 import asyncpg
@@ -29,7 +30,7 @@ class SourceDBExecutor:
     async def execute(
         self,
         sql: str,
-        timeout: float = 30.0,
+        timeout: float,
         params: tuple[Any, ...] = (),
     ) -> tuple[list[str], list[tuple[Any, ...]]]:
         """Execute *sql* and return (column_names, rows).
@@ -49,7 +50,7 @@ class SourceDBExecutor:
         try:
             async with self._connector.get_connection() as conn:
                 # Defence-in-depth: set postgres-side statement timeout
-                timeout_ms = int(timeout * 1000)
+                timeout_ms = max(1, math.ceil(timeout * 1000))
                 await conn.execute(f"SET LOCAL statement_timeout = '{timeout_ms}ms'")
 
                 try:
@@ -58,9 +59,9 @@ class SourceDBExecutor:
                         timeout=timeout,
                     )
                 except TimeoutError as exc:
-                    raise SourceDBTimeout(timeout_seconds=int(timeout)) from exc
+                    raise SourceDBTimeout(timeout_seconds=math.ceil(timeout)) from exc
                 except asyncpg.exceptions.QueryCanceledError as exc:
-                    raise SourceDBTimeout(timeout_seconds=int(timeout)) from exc
+                    raise SourceDBTimeout(timeout_seconds=math.ceil(timeout)) from exc
                 except asyncpg.exceptions.InsufficientPrivilegeError as exc:
                     raise SourceDBPermissionDenied() from exc
 

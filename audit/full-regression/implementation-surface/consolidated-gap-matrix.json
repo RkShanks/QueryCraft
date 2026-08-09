@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 41, "Resolved": 3, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 40, "Resolved": 4, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -50,6 +50,13 @@
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/301",
       "tested_commit": "4580925594c872ae0283485155bbdf4bd7e225f4",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-03-session-cancel.json"
+    },
+    "CHUNK-04": {
+      "gap_id": "IS-GAP-004",
+      "status": "Resolved",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/302",
+      "tested_commit": "61723e46dc267e74c7aa3539a40990b1482e9edc",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-04-timeout-config.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -129,8 +136,9 @@
       "required_evidence": "Controlled slow-source API timing with value-safe lock TTL inspection.",
       "isolation": "Disposable Redis and slow adapter; bounded clocks and cleanup.",
       "regression_rows": ["P1-FR-012", "XP-013", "XP-014"],
-      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-04", "status": "Pending",
-      "source_refs": ["backend/src/app/core/config.py::Settings.QUERY_TIMEOUT_SECONDS", "backend/src/app/services/query_service.py::QueryService.submit_question", "backend/src/app/services/query_service.py::QueryService.regenerate_query", "backend/src/app/services/query_service.py::QueryService.rerun_accepted_query", "backend/src/app/core/processing_lock.py::acquire_lock", "backend/tests/unit/test_query_service_submit.py", "backend/tests/unit/services/test_query_service_regenerate.py", "backend/tests/integration/test_f011_lock_leak.py"]
+      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-04", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/302", "tested_commit": "61723e46dc267e74c7aa3539a40990b1482e9edc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-04-timeout-config.json"},
+      "source_refs": ["backend/src/app/core/config.py::Settings.QUERY_TIMEOUT_SECONDS", "backend/src/app/core/query_deadline.py::QueryDeadline", "backend/src/app/core/processing_lock.py::acquire_lock", "backend/src/app/services/query_service.py::QueryService.submit_question", "backend/src/app/services/query_service.py::QueryService.regenerate_query", "backend/src/app/services/query_service.py::QueryService.rerun_accepted_query", "backend/src/app/llm/factory.py::LLMProviderFactory.from_config", "backend/src/app/source_db/adapters.py::SourceDBAdapter.execute", "backend/src/app/source_db/executor.py::SourceDBExecutor.execute", "backend/tests/unit/core/test_processing_lock.py", "backend/tests/unit/core/test_query_deadline.py", "backend/tests/unit/test_query_timeout_config.py", "backend/tests/integration/test_query_timeout_config.py", "backend/tests/integration/test_session_delete_cancellation.py"]
     },
     {
       "id": "IS-GAP-005", "severity": "High", "disposition": "Confirmed Product Gap",

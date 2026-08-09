@@ -11,7 +11,7 @@ from app.llm.openai_adapter import OpenAIAdapter
 
 @pytest.fixture
 def adapter() -> OpenAIAdapter:
-    return OpenAIAdapter(api_key="fake-openai-key", model="gpt-4o")
+    return OpenAIAdapter(api_key="fake-openai-key", model="gpt-4o", timeout_s=30)
 
 
 @respx.mock

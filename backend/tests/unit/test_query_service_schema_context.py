@@ -23,6 +23,7 @@ class StubLLM:
         negative_examples=None,
         conversation_history=None,
         target_dialect=None,
+        timeout=None,
     ):
         self.calls.append(
             {
@@ -31,6 +32,7 @@ class StubLLM:
                 "negative_examples": negative_examples,
                 "conversation_history": conversation_history,
                 "target_dialect": target_dialect,
+                "timeout": timeout,
             }
         )
         return "SELECT 1"
@@ -70,7 +72,7 @@ class TopSqlStubLLM:
 
 
 class MssqlResultAdapter:
-    async def execute(self, sql, params):
+    async def execute(self, sql, params, **_kwargs):
         return MagicMock(
             columns=[{"name": "CustomerID", "type": "int"}],
             rows=[[1]],
