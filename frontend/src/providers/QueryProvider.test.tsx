@@ -1,11 +1,13 @@
+/* eslint-disable local/no-inline-user-strings */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { QueryProvider, queryClient } from './QueryProvider';
 import { useCurrentUser, useSignIn, useSignOut } from '../hooks/useAuth';
 import { useUIStore } from '../stores/uiStore';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/server';
+import { client as apiClient } from '../api/generated/client.gen';
 
 function ExpiredSessionProbe() {
   const query = useQuery({
@@ -33,6 +35,9 @@ function IdentityBoundaryProbe() {
   const currentUser = useCurrentUser();
   const featureClient = useQueryClient();
   const activeSessionId = useUIStore((state) => state.activeSessionId);
+  const hoveredSessionId = useUIStore((state) => state.hoveredSessionId);
+  const promptDraft = useUIStore((state) => state.promptDraft);
+  const sidebarCollapsed = useUIStore((state) => state.sidebarCollapsed);
   const history = useQuery({
     queryKey: ['identity-boundary-history'],
     queryFn: async () => {
@@ -47,11 +52,49 @@ function IdentityBoundaryProbe() {
       <span data-testid="identity">{currentUser.data?.data?.id}</span>
       <span data-testid="history-owner">{history.data?.owner}</span>
       <span data-testid="active-session">{activeSessionId ?? 'none'}</span>
+      <span data-testid="hovered-session">{hoveredSessionId ?? 'none'}</span>
+      <span data-testid="prompt-draft">{promptDraft}</span>
+      <span data-testid="sidebar-collapsed">{String(sidebarCollapsed)}</span>
       <span data-testid="feature-cache-owner">
         {featureClient.getQueryData<{ owner: string }>(['identity-boundary-history'])?.owner}
       </span>
       <button type="button" onClick={() => currentUser.refetch()}>
         Refresh identity
+      </button>
+    </div>
+  );
+}
+
+function MutationBoundaryProbe() {
+  const currentUser = useCurrentUser();
+  const featureClient = useQueryClient();
+  const featureState = useQuery({
+    queryKey: ['mutation-boundary-state'],
+    queryFn: async () => {
+      const response = await fetch('/api/v1/mutation-boundary-state');
+      return (await response.json()) as { owner: string };
+    },
+    retry: false,
+  });
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/v1/late-user-a-mutation', { method: 'POST' });
+      return response.json();
+    },
+    onSuccess: () => {
+      void featureClient.invalidateQueries({ queryKey: ['mutation-boundary-state'] });
+    },
+  });
+
+  return (
+    <div>
+      <span data-testid="mutation-identity">{currentUser.data?.data?.id}</span>
+      <span data-testid="mutation-state-owner">{featureState.data?.owner}</span>
+      <button type="button" onClick={() => mutation.mutate()}>
+        Start user A mutation
+      </button>
+      <button type="button" onClick={() => currentUser.refetch()}>
+        Refresh mutation identity
       </button>
     </div>
   );
@@ -168,6 +211,27 @@ function PermissionReconciliationProbe() {
   );
 }
 
+function RawClientPermissionProbe() {
+  const currentUser = useCurrentUser();
+  return (
+    <div>
+      <span data-testid="raw-client-permissions">
+        {currentUser.data?.data?.permissions?.join(',') ?? ''}
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          void apiClient
+            .get({ url: '/raw-permission-probe', throwOnError: true })
+            .catch(() => undefined);
+        }}
+      >
+        Trigger raw forbidden request
+      </button>
+    </div>
+  );
+}
+
 describe('QueryProvider session expiry handling', () => {
   beforeEach(() => {
     queryClient.clear();
@@ -203,6 +267,9 @@ describe('QueryProvider session expiry handling', () => {
       defaultOptions: { queries: { retry: false } },
     });
     useUIStore.getState().setActiveSessionId('user-a-session');
+    useUIStore.getState().setHoveredSessionId('user-a-hover');
+    useUIStore.getState().setPromptDraft('user-a-draft');
+    useUIStore.setState({ sidebarCollapsed: true });
 
     render(
       <QueryProvider client={authClient}>
@@ -218,6 +285,9 @@ describe('QueryProvider session expiry handling', () => {
     expect(await screen.findByText('user-b', { selector: '[data-testid="history-owner"]' }))
       .toBeInTheDocument();
     expect(screen.getByTestId('active-session')).toHaveTextContent('none');
+    expect(screen.getByTestId('hovered-session')).toHaveTextContent('none');
+    expect(screen.getByTestId('prompt-draft')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('sidebar-collapsed')).toHaveTextContent('true');
 
     await act(async () => {
       userAHistory.resolve({ owner: 'user-a' });
@@ -228,6 +298,54 @@ describe('QueryProvider session expiry handling', () => {
     expect(screen.getByTestId('feature-cache-owner')).toHaveTextContent('user-b');
     expect(screen.queryByText('user-a', { selector: '[data-testid="history-owner"]' }))
       .not.toBeInTheDocument();
+    useUIStore.setState({ sidebarCollapsed: false });
+  });
+
+  it('prevents a late user-A mutation from invalidating user-B feature state', async () => {
+    const userAMutation = deferredValue<{ ok: boolean }>();
+    let identity = 'user-a';
+    let userBFeatureRequestCount = 0;
+    server.use(
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json({
+          id: identity,
+          username: identity,
+          display_name: identity,
+          role: 'member',
+          permissions: ['query.submit'],
+        })
+      ),
+      http.get('/api/v1/mutation-boundary-state', () => {
+        if (identity === 'user-b') userBFeatureRequestCount += 1;
+        return HttpResponse.json({ owner: identity });
+      }),
+      http.post('/api/v1/late-user-a-mutation', async () =>
+        HttpResponse.json(await userAMutation.promise)
+      )
+    );
+
+    render(
+      <QueryProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MutationBoundaryProbe />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByText('user-a', { selector: '[data-testid="mutation-state-owner"]' }))
+      .toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start user A mutation' }));
+    identity = 'user-b';
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh mutation identity' }));
+
+    expect(await screen.findByText('user-b', { selector: '[data-testid="mutation-state-owner"]' }))
+      .toBeInTheDocument();
+    await act(async () => {
+      userAMutation.resolve({ ok: true });
+      await userAMutation.promise;
+    });
+
+    expect(screen.getByTestId('mutation-identity')).toHaveTextContent('user-b');
+    expect(screen.getByTestId('mutation-state-owner')).toHaveTextContent('user-b');
+    expect(userBFeatureRequestCount).toBe(1);
   });
 
   it('keeps a truthful retry state without restoring sensitive caches after sign-out fails', async () => {
@@ -485,8 +603,178 @@ describe('QueryProvider session expiry handling', () => {
     expect(currentUserRequestCount).toBe(2);
   });
 
+  it('revalidates permissions before rendering a newly entered protected location', async () => {
+    let permissions = ['admin.audit.verify'];
+    let currentUserRequestCount = 0;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    server.use(
+      http.get('/api/v1/auth/me', () => {
+        currentUserRequestCount += 1;
+        return HttpResponse.json({
+          id: 'user-a',
+          username: 'user-a',
+          display_name: 'User A',
+          role: 'member',
+          role_id: 'role-a',
+          role_name: 'Role A',
+          permissions,
+          auth_provider: 'local',
+        });
+      }),
+      http.get('/api/v1/permission-reconciliation-state', () =>
+        HttpResponse.json({ marker: 'protected-audit-state' })
+      )
+    );
+
+    const { rerender } = render(
+      <QueryProvider client={client} authorizationKey="location-a">
+        <PermissionReconciliationProbe />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByText('protected-audit-state')).toBeInTheDocument();
+    permissions = [];
+    rerender(
+      <QueryProvider client={client} authorizationKey="location-b">
+        <PermissionReconciliationProbe />
+      </QueryProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('reconciliation-permissions')).toBeEmptyDOMElement();
+    });
+    expect(screen.queryByText('protected-audit-state')).not.toBeInTheDocument();
+    expect(currentUserRequestCount).toBe(2);
+  });
+
+  it('publishes newly granted permissions on the next protected navigation', async () => {
+    let permissions: string[] = [];
+    let currentUserRequestCount = 0;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    server.use(
+      http.get('/api/v1/auth/me', () => {
+        currentUserRequestCount += 1;
+        return HttpResponse.json({
+          id: 'user-a',
+          username: 'user-a',
+          display_name: 'User A',
+          role: 'member',
+          permissions,
+        });
+      }),
+      http.get('/api/v1/permission-reconciliation-state', () =>
+        HttpResponse.json({ marker: 'newly-granted-audit-state' })
+      )
+    );
+
+    const { rerender } = render(
+      <QueryProvider client={client} authorizationKey="location-a">
+        <PermissionReconciliationProbe />
+      </QueryProvider>
+    );
+    expect(await screen.findByTestId('reconciliation-permissions')).toBeEmptyDOMElement();
+
+    permissions = ['admin.audit.verify'];
+    rerender(
+      <QueryProvider client={client} authorizationKey="location-b">
+        <PermissionReconciliationProbe />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByText('newly-granted-audit-state')).toBeInTheDocument();
+    expect(currentUserRequestCount).toBe(2);
+  });
+
+  it('fails closed without logging out when authorization revalidation cannot be verified', async () => {
+    let currentUserRequestCount = 0;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    server.use(
+      http.get('/api/v1/auth/me', () => {
+        currentUserRequestCount += 1;
+        if (currentUserRequestCount > 1) {
+          return HttpResponse.json(
+            { error: 'service_unavailable', message_key: 'error.service_unavailable' },
+            { status: 503 }
+          );
+        }
+        return HttpResponse.json({
+          id: 'user-a',
+          username: 'user-a',
+          display_name: 'User A',
+          role: 'member',
+          permissions: ['admin.audit.verify'],
+        });
+      }),
+      http.get('/api/v1/permission-reconciliation-state', () =>
+        HttpResponse.json({ marker: 'unverified-audit-state' })
+      )
+    );
+
+    const { rerender } = render(
+      <QueryProvider client={client} authorizationKey="location-a">
+        <PermissionReconciliationProbe />
+      </QueryProvider>
+    );
+    expect(await screen.findByText('unverified-audit-state')).toBeInTheDocument();
+
+    rerender(
+      <QueryProvider client={client} authorizationKey="location-b">
+        <PermissionReconciliationProbe />
+      </QueryProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('reconciliation-permissions')).toBeEmptyDOMElement();
+    });
+    expect(screen.getByTestId('reconciliation-identity')).toHaveTextContent('user-a');
+    expect(screen.queryByText('unverified-audit-state')).not.toBeInTheDocument();
+    expect(currentUserRequestCount).toBe(2);
+  });
+
+  it('reconciles a raw generated-client 403 outside TanStack Query', async () => {
+    let permissions = ['admin.audit.verify'];
+    let currentUserRequestCount = 0;
+    server.use(
+      http.get('/api/v1/auth/me', () => {
+        currentUserRequestCount += 1;
+        return HttpResponse.json({
+          id: 'user-a',
+          username: 'user-a',
+          display_name: 'User A',
+          role: 'member',
+          permissions,
+        });
+      }),
+      http.get('/api/v1/raw-permission-probe', () =>
+        HttpResponse.json(
+          { error: 'forbidden', message_key: 'error.forbidden' },
+          { status: 403 }
+        )
+      )
+    );
+
+    render(
+      <QueryProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <RawClientPermissionProbe />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByTestId('raw-client-permissions')).toHaveTextContent(
+      'admin.audit.verify'
+    );
+    permissions = [];
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger raw forbidden request' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('raw-client-permissions')).toBeEmptyDOMElement();
+    });
+    expect(currentUserRequestCount).toBe(2);
+  });
+
   afterEach(() => {
     queryClient.clear();
+    useUIStore.setState({ sidebarCollapsed: false });
+    useUIStore.getState().resetIdentityState();
   });
 
   it('redirects rejected authenticated queries with a sanitized session error code', async () => {

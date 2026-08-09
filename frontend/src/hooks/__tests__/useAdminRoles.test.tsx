@@ -5,9 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAdminRoles } from '../useAdminRoles';
 import { server } from '../../test/server';
 import { http, HttpResponse } from 'msw';
+import { seedAuthenticatedUser } from '../../test/utils';
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  seedAuthenticatedUser(qc);
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
 

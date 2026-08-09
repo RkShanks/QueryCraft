@@ -19,6 +19,47 @@ import { useSessionDetail, useSessionsList } from './useSessions';
 import { useCreateSession, useDeleteSession } from './useSessions';
 import { useAcceptQuery, useSubmitQuestion } from './useQuerySubmit';
 import { useUpdateFeedback } from './useFeedback';
+import { useUserConnections } from './useUserConnections';
+import { PERMISSIONS, type Permission } from '../auth/permissions';
+import {
+  getSessionDeletionVersion,
+  resetSessionDeletionLifecycle,
+} from '../sessionDeletionLifecycle';
+
+const exactRequestCases: Array<[Permission, string[]]> = [
+  [
+    PERMISSIONS.QUERY_SUBMIT,
+    ['/api/v1/connections', '/api/v1/sessions', '/api/v1/sessions/session-id'],
+  ],
+  [
+    PERMISSIONS.QUERY_HISTORY_VIEW,
+    ['/api/v1/history', '/api/v1/history/history-id'],
+  ],
+  [
+    PERMISSIONS.ADMIN_CONNECTIONS_MANAGE,
+    [
+      '/api/v1/admin/connections',
+      '/api/v1/admin/connections/connection-id/schema',
+      '/api/v1/admin/settings',
+    ],
+  ],
+  [
+    PERMISSIONS.ADMIN_ROLES_MANAGE,
+    [
+      '/api/v1/admin/connections/connection-id/schema',
+      '/api/v1/admin/roles',
+      '/api/v1/admin/roles/role-id',
+      '/api/v1/admin/sso/group-mappings',
+    ],
+  ],
+  [PERMISSIONS.ADMIN_SSO_MANAGE, ['/api/v1/admin/sso/providers']],
+  [PERMISSIONS.ADMIN_AUDIT_VERIFY, ['/api/v1/admin/audit/status']],
+  [
+    PERMISSIONS.ADMIN_QUOTAS_MANAGE,
+    ['/api/v1/admin/quotas', '/api/v1/admin/quotas/status'],
+  ],
+  [PERMISSIONS.ADMIN_SECURITY_MANAGE, ['/api/v1/admin/detection/config']],
+];
 
 function PermissionGatingProbe() {
   const sessions = useSessionsList();
@@ -34,6 +75,7 @@ function PermissionGatingProbe() {
   const quotas = useAdminQuotas();
   const detection = useAdminDetection();
   const schema = useConnectionSchema('connection-id');
+  const userConnections = useUserConnections();
 
   const isFetching = [
     sessions,
@@ -49,6 +91,7 @@ function PermissionGatingProbe() {
     quotas.statusQuery,
     detection.configQuery,
     schema,
+    userConnections,
   ].some((query) => query.isFetching) || history.isFetching;
 
   return <span>{isFetching ? 'fetching' : 'settled'}</span>;
@@ -123,6 +166,7 @@ describe('permission-gated feature hooks', () => {
   });
 
   it('rejects imperative feature mutations before they reach the network', async () => {
+    resetSessionDeletionLifecycle();
     let featureRequestCount = 0;
     server.use(
       http.all('/api/v1/*', ({ request }) => {
@@ -153,5 +197,50 @@ describe('permission-gated feature hooks', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Trigger mutations' }));
     await screen.findByRole('button', { name: 'Mutations settled' });
     expect(featureRequestCount).toBe(0);
+    expect(getSessionDeletionVersion('session-id')).toBe(0);
   });
+
+  it.each(exactRequestCases)(
+    'allows only the exact background requests for %s',
+    async (permission, expectedPaths) => {
+      const featurePaths = new Set<string>();
+      server.use(
+        http.all('/api/v1/*', ({ request }) => {
+          const path = new URL(request.url).pathname;
+          if (path === '/api/v1/auth/me') {
+            return HttpResponse.json({
+              id: 'exact-permission-user',
+              username: 'exact-permission-user',
+              display_name: 'Exact Permission User',
+              role: 'admin',
+              role_name: 'admin',
+              permissions: [permission],
+            });
+          }
+          featurePaths.add(path);
+          if (path === '/api/v1/admin/connections') {
+            return HttpResponse.json({ connections: [] });
+          }
+          if (path === '/api/v1/admin/roles') {
+            return HttpResponse.json({ roles: [] });
+          }
+          if (path === '/api/v1/admin/sso/group-mappings') {
+            return HttpResponse.json({ mappings: [] });
+          }
+          return HttpResponse.json({});
+        })
+      );
+
+      render(
+        <QueryProvider
+          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+        >
+          <PermissionGatingProbe />
+        </QueryProvider>
+      );
+
+      expect(await screen.findByText('settled')).toBeInTheDocument();
+      expect([...featurePaths].sort()).toEqual([...expectedPaths].sort());
+    }
+  );
 });

@@ -23,6 +23,7 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
           display_name: 'Platform Administrator',
           role: 'admin',
           permissions: [
+            'query.submit',
             'admin.audit.verify',
             'admin.sso.manage',
             'admin.roles.manage',

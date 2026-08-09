@@ -9,6 +9,7 @@ import {
   listAdminConnections,
   updateAdminConnection,
 } from '../api/generated/sdk.gen';
+import { seedAuthenticatedUser } from '../test/utils';
 
 vi.mock('../api/generated/sdk.gen', () => ({
   listAdminConnections: vi.fn(),
@@ -61,6 +62,7 @@ describe('useConnections', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     queryClient.clear();
+    seedAuthenticatedUser(queryClient);
   });
 
   it('handles loading and successful list fetch', async () => {
