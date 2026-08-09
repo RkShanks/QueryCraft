@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 34, "Resolved": 10, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 33, "Resolved": 11, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -80,6 +80,15 @@
       "ci_validated_commit": "51037f0f8c70604cb92df2c6e89d8e09841137e3",
       "authoritative_ci": {"backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-07-ui-identity-permissions.json"
+    },
+    "CHUNK-08": {
+      "gap_id": "IS-GAP-020",
+      "status": "Resolved",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/306",
+      "tested_product_commit": "1a11980ad3e395bf3b65131b1d5e6ce0209a19b5",
+      "verification_commit": "7aa5914fe6baf9e68160107177cf39818e06ead9",
+      "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"},
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-08-prompt-length.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -421,8 +430,9 @@
       "required_evidence": "Browser boundary checks using synthetic length counts only.",
       "isolation": "Synthetic prompts; never persist complete text.",
       "regression_rows": ["P1-FR-004", "P1-FR-005", "P1-FR-012", "XP-006"],
-      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-08", "status": "Pending",
-      "source_refs": ["backend/src/app/core/config.py::Settings.MAX_QUESTION_LENGTH", "backend/src/app/api/v1/query.py::submit_question", "frontend/src/components/chat/PromptInput.tsx::PromptInput.handleSubmit", "frontend/src/components/query/QueryInput.tsx::QueryInput", "frontend/src/components/chat/__tests__/PromptInput.test.tsx", "frontend/src/components/query/QueryInput.test.tsx"]
+      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-08", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/306", "tested_product_commit": "1a11980ad3e395bf3b65131b1d5e6ce0209a19b5", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-08-prompt-length.json"},
+      "source_refs": ["backend/src/app/core/config.py::Settings.MAX_QUESTION_LENGTH", "backend/src/app/api/v1/query.py::get_query_limits", "backend/src/app/api/v1/query.py::submit_question", "backend/src/app/schemas/query.py::SubmitQuestionRequest", "frontend/src/api/queryLimits.ts::getQueryLimits", "frontend/src/hooks/useQueryLimits.ts::useQueryLimits", "frontend/src/components/chat/PromptInput.tsx::PromptInput", "frontend/src/pages/WorkspacePage.tsx::WorkspacePage", "frontend/src/components/chat/__tests__/PromptInput.test.tsx", "frontend/src/pages/__tests__/WorkspacePageSubmit.test.tsx"]
     },
     {
       "id": "IS-GAP-021", "severity": "Low", "disposition": "Confirmed Product Gap",
