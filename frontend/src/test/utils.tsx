@@ -30,9 +30,12 @@ export function seedAuthenticatedUser(
   });
 }
 
-export function renderWithClient(ui: ReactElement) {
+export function renderWithClient(
+  ui: ReactElement,
+  permissions: readonly Permission[] = Object.values(PERMISSIONS)
+) {
   const testQueryClient = createTestQueryClient();
-  seedAuthenticatedUser(testQueryClient);
+  seedAuthenticatedUser(testQueryClient, permissions);
   const { rerender, ...result } = render(
     <MemoryRouter>
       <QueryClientProvider client={testQueryClient}>{ui}</QueryClientProvider>
