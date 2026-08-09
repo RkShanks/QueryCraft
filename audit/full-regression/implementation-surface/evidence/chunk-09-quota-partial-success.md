@@ -1,6 +1,6 @@
 # CHUNK-09 quota partial-success recovery evidence
 
-Status: local backend, frontend, disposable PostgreSQL/Redis and isolated Chromium proof passed on tested product commit `dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51` in [#307](https://github.com/RkShanks/QueryCraft/pull/307). Authoritative PR CI and squash merge remain the CHUNK-10 dispatch gate.
+Status: local backend, frontend, disposable PostgreSQL/Redis and isolated Chromium proof passed on tested product commit `dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51` in [#307](https://github.com/RkShanks/QueryCraft/pull/307). Authoritative `backend-test` and `frontend-test` passed on `42df59fe56e1dbebc6485b10c4ba96d936973454`; squash merge remains the CHUNK-10 dispatch gate.
 
 Starting main: `7924a0da2839eb51c2fbb463433213a4fcd6e90b`.
 
@@ -91,7 +91,7 @@ All three cases preserved quota-only permission isolation and made zero role/SSO
 - `git diff --check`: passed before evidence; rerun after evidence and ledger updates.
 - Test Guard, Clean Code Guard and Vercel React Best Practices: passed.
 - Docs Guard: applied to endpoint documentation, this evidence and the five progress ledgers.
-- Authoritative PR `backend-test` and `frontend-test`: pending before merge.
+- Authoritative PR `backend-test` and `frontend-test`: passed on `42df59fe56e1dbebc6485b10c4ba96d936973454`.
 
 ## Contract remediation note
 

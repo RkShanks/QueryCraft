@@ -2,10 +2,11 @@
   "schema_version": "1.0",
   "chunk": "CHUNK-09",
   "gap_ids": ["IS-GAP-014"],
-  "status": "pr_open_ci_pending",
+  "status": "ci_passed_merge_pending",
   "starting_sha": "7924a0da2839eb51c2fbb463433213a4fcd6e90b",
   "tested_product_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51",
   "verification_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51",
+  "ci_validated_commit": "42df59fe56e1dbebc6485b10c4ba96d936973454",
   "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/307",
   "contract": {
     "database_authority": "PostgreSQL",
@@ -127,8 +128,8 @@
     "docs_guard": "applied"
   },
   "authoritative_ci": {
-    "backend_test": "pending",
-    "frontend_test": "pending",
+    "backend_test": "passed",
+    "frontend_test": "passed",
     "required_before_merge": true
   },
   "cleanup": {
