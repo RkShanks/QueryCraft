@@ -11,6 +11,7 @@ interface UIState {
   setActiveSessionId: (id: string | null) => void;
   setHoveredSessionId: (id: string | null) => void;
   setPromptDraft: (draft: string) => void;
+  resetIdentityState: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -25,6 +26,11 @@ export const useUIStore = create<UIState>()(
       setActiveSessionId: (id) => set({ activeSessionId: id }),
       setHoveredSessionId: (id) => set({ hoveredSessionId: id }),
       setPromptDraft: (draft) => set({ promptDraft: draft }),
+      resetIdentityState: () => set({
+        activeSessionId: null,
+        hoveredSessionId: null,
+        promptDraft: '',
+      }),
     }),
     {
       name: 'querycraft-ui',
