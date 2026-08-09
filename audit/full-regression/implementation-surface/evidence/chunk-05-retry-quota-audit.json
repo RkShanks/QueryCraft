@@ -1,0 +1,116 @@
+{
+  "schema_version": "1.0",
+  "status": "Implementation Passed; Merge CI Pending",
+  "starting_main": "ca6069b4430aa947f15cbd53f493f478a9e8b4a1",
+  "tested_commit": "d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2",
+  "product_green_commit": "a612fe2a254c16ea1c61e7dddfed6442a25048d5",
+  "gaps": {
+    "IS-GAP-005": "Resolved",
+    "IS-GAP-006": "Resolved"
+  },
+  "tdd": [
+    {"stage": "quota_red", "commit": "460c0ccf86889d0166f254bbc2f22f52c5eb503b", "failed": 12, "passed": 2},
+    {"stage": "quota_green", "commit": "45f36299a7255e04596bcf1c9af38afff2a3c334", "status": "Passed"},
+    {"stage": "audit_red", "commit": "845abfc6bfdf21b74335ba38acdf6631d363b1a9", "failed": 14, "passed": 14},
+    {"stage": "audit_green", "commit": "a612fe2a254c16ea1c61e7dddfed6442a25048d5", "status": "Passed"}
+  ],
+  "quota_semantics": {
+    "query_unit": "one per actual retry provider invocation",
+    "execution_unit": "one per actual retry source invocation",
+    "reject_independent_charge": false,
+    "query_charge_boundary": "immediately before provider invocation",
+    "execution_charge_boundary": "after validation and immediately before source invocation",
+    "failure_refund": false,
+    "retry_limit_charge": 0,
+    "invalid_attempt_charge": 0,
+    "pre_provider_policy_denial_charge": 0,
+    "submit_hostile_quota_provider_order_preserved": true,
+    "existing_dimensions_keys_reset_responses_preserved": true
+  },
+  "real_http_accounting": [
+    {"scenario": "regenerate_success", "query_delta": 1, "execution_delta": 1, "provider_calls": 1, "source_calls": 1, "status": 200},
+    {"scenario": "reject_success", "query_delta": 1, "execution_delta": 1, "provider_calls": 1, "source_calls": 1, "status": 200},
+    {"scenario": "query_at_limit", "query_delta": 0, "execution_delta": 0, "provider_calls": 0, "source_calls": 0, "status": 429},
+    {"scenario": "query_over_limit", "query_delta": 0, "execution_delta": 0, "provider_calls": 0, "source_calls": 0, "status": 429},
+    {"scenario": "execution_at_limit", "query_delta": 1, "execution_delta": 0, "provider_calls": 1, "source_calls": 0, "status": 429},
+    {"scenario": "query_unavailable", "query_delta": 0, "execution_delta": 0, "provider_calls": 0, "source_calls": 0, "status": 503},
+    {"scenario": "execution_unavailable", "query_delta": 1, "execution_delta": 0, "provider_calls": 1, "source_calls": 0, "status": 503}
+  ],
+  "dialects": {
+    "postgresql": {"execution_denial_before_adapter": true},
+    "mysql": {"execution_denial_before_adapter": true},
+    "mssql": {"execution_denial_before_adapter": true}
+  },
+  "audit_lifecycles": {
+    "success": ["query.submit:success", "query.validate.pass:success", "query.execute:success"],
+    "explicit_reject_success": ["query.reject:success", "query.submit:success", "query.validate.pass:success", "query.execute:success"],
+    "evaluator_rejection": ["query.submit:success", "query.validate.fail:failure:evaluator_rejected"],
+    "duplicate_candidate": ["query.submit:success", "query.validate.fail:failure:duplicate_candidate"],
+    "role_authorization_denial": ["query.submit:success", "query.validate.pass:success", "access.denied:denied:role_authorization"],
+    "policy_schema_conflict": ["query.submit:success", "query.validate.pass:success", "policy.schema_mismatch:failure:policy_schema_conflict"],
+    "query_quota_denial": ["quota.exceeded:blocked"],
+    "reject_query_quota_denial": ["query.reject:success", "quota.exceeded:blocked"],
+    "execution_quota_denial": ["query.submit:success", "query.validate.pass:success", "quota.exceeded:blocked"],
+    "provider_failure": ["query.submit:failure:provider_failure"],
+    "provider_timeout": ["query.submit:failure:timeout"],
+    "source_failure": ["query.submit:success", "query.validate.pass:success", "query.execute:failure:execution_failed"],
+    "source_timeout": ["query.submit:success", "query.validate.pass:success", "query.execute:failure:timeout"],
+    "masking_failure": ["query.submit:success", "query.validate.pass:success", "query.execute:failure:result_processing_failed"],
+    "source_success_persistence_failure": ["query.submit:success", "query.validate.pass:success", "query.execute:success"]
+  },
+  "audit": {
+    "new_retry_id_before_lifecycle": true,
+    "resource_identity_in_standard_fields": true,
+    "isolated_durable_transactions": true,
+    "pending_history_committed_by_audit": false,
+    "audit_failure_fail_closed": true,
+    "concurrent_duplicate_events": false,
+    "chain_verified": true,
+    "first_break_at": null,
+    "new_action_type_added": false,
+    "raw_prompt_sql_rows_schema_policy_counter_limit_credentials_provider_details_redis_key_exception_in_context": false
+  },
+  "compatibility": {
+    "immutable_source_binding": true,
+    "metadata_only_state": true,
+    "session_deletion_authoritative": true,
+    "configured_monotonic_deadline_preserved": true,
+    "late_success_after_deletion": false,
+    "frontend_contract_changed": false,
+    "browser_required": false
+  },
+  "gates": {
+    "core_retry_unit": {"passed": 88},
+    "focused_retry_compatibility": {"passed": 157},
+    "broad_quota_audit_hostile": {"passed": 275, "skipped": 11},
+    "real_http_quota_audit_chain": {"passed": 12},
+    "retry_cancellation_three_dialect_additions": {"passed": 5},
+    "post_fix_full_unit": {"passed": 2476, "warnings": 4},
+    "one_time_full_backend": {"passed_before_stop": 899, "skipped": 17, "stopped_on_legacy_fixture": true, "repeated": false},
+    "ruff_check": true,
+    "ruff_format_check_files": 422,
+    "diff_check": true,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "docs_guard": true,
+    "backend_ci_status": "Required before merge",
+    "frontend_ci_status": "Required before merge"
+  },
+  "sanitized_statuses": [429, 503, 504, 422, 502],
+  "cleanup": {
+    "audit_rows_remaining": 0,
+    "history_rows_remaining": 0,
+    "session_rows_remaining": 0,
+    "retry_attempt_lock_operation_counter_keys_remaining": 0,
+    "test_authentication_keys_removed": 2,
+    "live_tasks_remaining": 0,
+    "preexisting_services_restored_stopped": true,
+    "preexisting_volumes_deleted": false,
+    "temporary_proof_files_retained": false,
+    "protected_baseline_changed_by_chunk_05": false
+  },
+  "scope": {
+    "chunk_06_started": false,
+    "chunk_06_unblocked_after_merge_and_ci": true
+  }
+}

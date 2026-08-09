@@ -307,9 +307,7 @@ async def test_retry_quota_unavailable_returns_sanitized_503_without_unmetered_w
     }
     assert provider.calls == (0 if dimension == "queries" else 1)
     assert source.calls == 0
-    assert await _counter(redis_client, user_id, "queries") == before_queries + (
-        0 if dimension == "queries" else 1
-    )
+    assert await _counter(redis_client, user_id, "queries") == before_queries + (0 if dimension == "queries" else 1)
     assert await _counter(redis_client, user_id, "executions") == before_executions
 
 

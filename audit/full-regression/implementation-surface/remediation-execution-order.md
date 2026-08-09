@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-04` are resolved. CHUNK-04 passed configured short/long deadline, remaining-budget, sanitized timeout, ownership-safe cleanup, deletion-race, and real PostgreSQL/MySQL/MSSQL slow-query proof on `61723e46dc267e74c7aa3539a40990b1482e9edc` via [#302](https://github.com/RkShanks/QueryCraft/pull/302) and [evidence](evidence/chunk-04-timeout-config.md). `CHUNK-05` is unblocked after #302 merges; no CHUNK-05 work has started.
+Status: `CHUNK-01` through `CHUNK-05` are resolved on their tested product commits. CHUNK-05 passed exact retry quota accounting, ordered durable audit lifecycle, rollback, cancellation and PostgreSQL/MySQL/MSSQL adapter-denial proof on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2`; see [evidence](evidence/chunk-05-retry-quota-audit.md). `CHUNK-06` is the next dispatch after the CHUNK-05 PR merges with green backend/frontend CI; no CHUNK-06 work has started.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -53,7 +53,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-04 — configured query deadline and lock lifetime
 
-- **Progress:** Resolved. Submit, regenerate, and accepted-query rerun share one monotonic configured deadline; provider and source calls receive only the remaining budget while every other stage shares the same timer. Locks use `ceil(deadline) + 5 seconds`, timeout cleanup is ownership-safe, and CHUNK-03 deletion remains authoritative. Controlled HTTP and real PostgreSQL/MySQL/MSSQL proof passed. `CHUNK-05` is unblocked after #302 merges.
+- **Progress:** Resolved. Submit, regenerate, and accepted-query rerun share one monotonic configured deadline; provider and source calls receive only the remaining budget while every other stage shares the same timer. Locks use `ceil(deadline) + 5 seconds`, timeout cleanup is ownership-safe, and CHUNK-03 deletion remains authoritative. Controlled HTTP and real PostgreSQL/MySQL/MSSQL proof passed. CHUNK-05 subsequently resolved the next dependency.
 
 - **IDs / role / branch / context:** `IS-GAP-004`; Backend Implementer; `phase-6/wave-19.04-query-timeout-config`; 80–110k.
 - **Likely source:** `backend/src/app/core/config.py`, `processing_lock.py`, `query_service.py`, source executor and focused tests.
@@ -65,6 +65,8 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Stop conditions:** Exact lock-margin policy is ambiguous, timing cannot be made deterministic, or cleanup leaves a live lock/task.
 
 ## CHUNK-05 — retry quotas and audit lifecycle
+
+- **Progress:** Resolved on tested branch commit `d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2`. Direct regenerate and explicit reject share one query/execution accounting boundary and one durable, sanitized retry lifecycle. Real HTTP counters/call spies, exact audit action/resource/outcome assertions, hash-chain verification, failure rollback, cancellation/deadline compatibility and PostgreSQL/MySQL/MSSQL execution-denial proof passed. Merge remains gated on backend/frontend CI; CHUNK-06 has not started.
 
 - **IDs / role / branch / context:** `IS-GAP-005`, `IS-GAP-006`; Backend Implementer; `phase-6/wave-19.05-retry-quota-audit`; 120–160k.
 - **Likely source:** `backend/src/app/services/query_service.py`, quota/audit services, query API and focused quota/audit tests.
@@ -363,4 +365,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-04` are resolved. `CHUNK-05 / IS-GAP-005 + IS-GAP-006` is the next unblocked dispatch after #302 merges; no CHUNK-05 work has started.
+`CHUNK-01` through `CHUNK-05` are resolved on their tested commits. `CHUNK-06 / IS-GAP-009` is the next dispatch only after the CHUNK-05 PR merges with green backend/frontend CI; no CHUNK-06 work has started.
