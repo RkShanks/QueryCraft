@@ -26,6 +26,7 @@ def _attempt(**overrides):
         "chat_session_id": "550e8400-e29b-41d4-a716-446655440001",
         "user_id": USER_ID,
         "database_connection_id": CONNECTION_ID,
+        "state": "EXECUTED",
     }
     values.update(overrides)
     return EphemeralAttempt(**values)
@@ -345,8 +346,8 @@ class TestQueryServiceRegenerate:
         ):
             await service.regenerate_query("a1", "s1", USER_ID)
 
-        assert len(created_kwargs) == 1
-        assert created_kwargs[0].get("state") == "EXECUTED"
+        assert created_kwargs[-1].get("state") == "EXECUTED"
+        assert created_kwargs[0]["attempt_id"] == created_kwargs[-1]["attempt_id"]
 
     async def test_regenerate_wrong_active_attempt_returns_422(self, service, mock_deps):
         """G-004: regenerate with mismatched active_attempt returns 422."""

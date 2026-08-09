@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 40, "Resolved": 4, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 38, "Resolved": 6, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -57,6 +57,13 @@
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/302",
       "tested_commit": "61723e46dc267e74c7aa3539a40990b1482e9edc",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-04-timeout-config.json"
+    },
+    "CHUNK-05": {
+      "gap_ids": ["IS-GAP-005", "IS-GAP-006"],
+      "status": "Resolved",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/303",
+      "tested_commit": "d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-05-retry-quota-audit.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -153,8 +160,9 @@
       "required_evidence": "API counter deltas and dependency call counts only; no prompts or SQL.",
       "isolation": "Disposable Redis counters, controlled provider/source and audit DB.",
       "regression_rows": ["P6-FR-151", "P6-FR-152", "P6-FR-155", "XP-005"],
-      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-05", "status": "Pending",
-      "source_refs": ["backend/src/app/services/query_service.py::QueryService.submit_question", "backend/src/app/services/query_service.py::QueryService.reject_query", "backend/src/app/services/query_service.py::QueryService.regenerate_query", "backend/src/app/services/quota_service.py::QuotaService.check_and_increment", "backend/tests/unit/test_quota_enforcement.py", "backend/tests/unit/services/test_query_service_regenerate.py"]
+      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-05", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/303", "tested_commit": "d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-05-retry-quota-audit.json"},
+      "source_refs": ["backend/src/app/services/query_service.py::QueryService.submit_question", "backend/src/app/services/query_service.py::QueryService.reject_query", "backend/src/app/services/query_service.py::QueryService.regenerate_query", "backend/src/app/services/query_service.py::QueryService._retry_query", "backend/src/app/services/query_service.py::QueryService._consume_retry_quota", "backend/src/app/services/quota_service.py::QuotaService.check_and_increment", "backend/tests/unit/test_quota_enforcement.py", "backend/tests/unit/services/test_query_retry_quota.py", "backend/tests/integration/test_retry_quota_audit.py", "backend/tests/integration/test_cross_dialect_quota.py"]
     },
     {
       "id": "IS-GAP-006", "severity": "High", "disposition": "Confirmed Product Gap",
@@ -169,8 +177,9 @@
       "required_evidence": "API action followed by chain verification and sanitized event summaries.",
       "isolation": "Disposable platform DB, Redis and deterministic provider/source.",
       "regression_rows": ["P5-FR-140", "P5-FR-141", "XP-010"],
-      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-05", "status": "Pending",
-      "source_refs": ["backend/src/app/services/query_service.py::QueryService.reject_query", "backend/src/app/services/query_service.py::QueryService.regenerate_query", "backend/src/app/services/audit_service.py::AuditService.log", "backend/tests/unit/test_query_audit_logging.py"]
+      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-05", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/303", "tested_commit": "d4cff9cbb1edb22b8a0bbb78bd4733151293b9c2", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-05-retry-quota-audit.json"},
+      "source_refs": ["backend/src/app/services/query_service.py::QueryService.reject_query", "backend/src/app/services/query_service.py::QueryService.regenerate_query", "backend/src/app/services/query_service.py::QueryService._persist_retry_audit", "backend/src/app/services/query_service.py::QueryService._log_audit_durably", "backend/src/app/services/audit_service.py::AuditService.log", "backend/tests/unit/test_query_audit_logging.py", "backend/tests/unit/services/test_query_retry_quota.py", "backend/tests/integration/test_retry_quota_audit.py", "backend/tests/integration/test_session_delete_cancellation.py"]
     },
     {
       "id": "IS-GAP-007", "severity": "High", "disposition": "Confirmed Operational Gap",

@@ -54,6 +54,43 @@ def _start_submit(authenticated_client, query_submit_payload, chat_session_id: s
     )
 
 
+def _start_regenerate(authenticated_client, attempt_id: str):
+    return asyncio.create_task(
+        authenticated_client.post(
+            "/api/v1/query/regenerate",
+            json={"attempt_id": attempt_id},
+        )
+    )
+
+
+async def _audit_watermark(async_engine_fixture) -> int:
+    async with async_engine_fixture.connect() as connection:
+        value = await connection.scalar(text("SELECT COALESCE(MAX(sequence_number), 0) FROM audit_log_entries"))
+    return int(value or 0)
+
+
+async def _retry_audit_actions(async_engine_fixture, watermark: int) -> list[tuple[str, str]]:
+    async with async_engine_fixture.connect() as connection:
+        rows = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT action_type, outcome
+                    FROM audit_log_entries
+                    WHERE sequence_number > :watermark
+                      AND action_type IN (
+                          'query.submit', 'query.validate.pass',
+                          'query.validate.fail', 'query.execute'
+                      )
+                    ORDER BY sequence_number
+                    """
+                ),
+                {"watermark": watermark},
+            )
+        ).all()
+    return [(row.action_type, row.outcome) for row in rows]
+
+
 async def _assert_query_state_removed(redis_client, chat_session_id: str, operation: str) -> None:
     _user_id, http_session_id, attempt_id, _lock_owner, _token = operation.split("|")
     assert await redis_client.get(f"session_operation:{chat_session_id}") is None
@@ -135,6 +172,84 @@ async def test_is_gap_003_delete_during_provider_invalidates_late_submit(
     assert delete_response.status_code == 204
     assert submit_response.status_code == 404
     assert submit_response.json() == _PRIVATE_NOT_FOUND
+    await _assert_query_state_removed(redis_client, chat_session_id, operation)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_delete_during_retry_provider_prevents_late_retry_lifecycle(
+    authenticated_client,
+    query_submit_payload,
+    deterministic_query_llm,
+    redis_client,
+    async_engine_fixture,
+):
+    """CHUNK-05 preserves CHUNK-03 precedence while retry provider work is active."""
+    chat_session_id = await _create_chat_session(authenticated_client)
+    initial_response = await authenticated_client.post(
+        "/api/v1/query/submit",
+        json=query_submit_payload("Retry cancellation", session_id=chat_session_id),
+    )
+    assert initial_response.status_code == 200
+    provider = _ControllableProvider()
+    source = AsyncMock(return_value=ExecuteResult(columns=["id"], rows=[(2,)]))
+    watermark = await _audit_watermark(async_engine_fixture)
+
+    with (
+        patch("app.api.v1.query.LLMProviderFactory.from_config", return_value=provider),
+        patch("app.source_db.adapters.PostgresAdapter.execute", new=source),
+    ):
+        retry_task = _start_regenerate(authenticated_client, initial_response.json()["attempt_id"])
+        await asyncio.wait_for(provider.entered.wait(), timeout=2)
+        operation = await _wait_for_value(redis_client, f"session_operation:{chat_session_id}")
+        delete_response = await authenticated_client.delete(f"/api/v1/sessions/{chat_session_id}")
+        retry_response = await retry_task
+
+    assert delete_response.status_code == 204
+    assert retry_response.status_code == 404
+    assert retry_response.json() == _PRIVATE_NOT_FOUND
+    source.assert_not_awaited()
+    assert await _retry_audit_actions(async_engine_fixture, watermark) == []
+    await _assert_query_state_removed(redis_client, chat_session_id, operation)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_delete_during_retry_source_prevents_late_execute_success(
+    authenticated_client,
+    query_submit_payload,
+    deterministic_query_llm,
+    redis_client,
+    async_engine_fixture,
+):
+    """A deleted session cannot acquire a late retry execution audit or history result."""
+    chat_session_id = await _create_chat_session(authenticated_client)
+    initial_response = await authenticated_client.post(
+        "/api/v1/query/submit",
+        json=query_submit_payload("Retry source cancellation", session_id=chat_session_id),
+    )
+    assert initial_response.status_code == 200
+    provider = AsyncMock(generate_sql=AsyncMock(return_value="SELECT 2 AS id"))
+    source = _ControllableSource()
+    watermark = await _audit_watermark(async_engine_fixture)
+
+    with (
+        patch("app.api.v1.query.LLMProviderFactory.from_config", return_value=provider),
+        patch("app.source_db.adapters.PostgresAdapter.execute", new=source.execute),
+    ):
+        retry_task = _start_regenerate(authenticated_client, initial_response.json()["attempt_id"])
+        await asyncio.wait_for(source.entered.wait(), timeout=2)
+        operation = await _wait_for_value(redis_client, f"session_operation:{chat_session_id}")
+        delete_response = await authenticated_client.delete(f"/api/v1/sessions/{chat_session_id}")
+        retry_response = await retry_task
+
+    assert delete_response.status_code == 204
+    assert retry_response.status_code == 404
+    assert retry_response.json() == _PRIVATE_NOT_FOUND
+    assert await _retry_audit_actions(async_engine_fixture, watermark) == [
+        ("query.submit", "success"),
+        ("query.validate.pass", "success"),
+    ]
     await _assert_query_state_removed(redis_client, chat_session_id, operation)
 
 

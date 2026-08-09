@@ -28,6 +28,7 @@ def _attempt(**overrides):
         "chat_session_id": "550e8400-e29b-41d4-a716-446655440001",
         "user_id": USER_ID,
         "database_connection_id": CONNECTION_ID,
+        "state": "EXECUTED",
     }
     values.update(overrides)
     return EphemeralAttempt(**values)
