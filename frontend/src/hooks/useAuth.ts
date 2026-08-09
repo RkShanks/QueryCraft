@@ -35,13 +35,15 @@ export const useCurrentUser = () => {
 };
 
 export const useSignOut = () => {
+  const authSession = useAuthSessionContext();
   const queryClient = useQueryClient();
-  return useMutation({
+  const fallbackMutation = useMutation({
     mutationFn: () => signOut({ throwOnError: true }),
     onSuccess: () => {
       queryClient.clear();
     },
   });
+  return authSession?.signOutMutation ?? fallbackMutation;
 };
 
 export const useSsoProviders = () => {

@@ -4,11 +4,12 @@ import {
   QueryClientProvider,
   QueryCache,
   MutationCache,
+  useMutation,
   useQuery,
 } from '@tanstack/react-query';
 import { useLayoutEffect, useState, type ReactNode } from 'react';
 import { handleSessionExpiry } from '../auth/sessionExpiry';
-import { getMe } from '../api/generated/sdk.gen';
+import { getMe, signOut } from '../api/generated/sdk.gen';
 import {
   AuthSessionContext,
   type CurrentUserResponse,
@@ -86,8 +87,27 @@ function IdentityQueryBoundary({
     fingerprint: 'pending',
     generation: 0,
   }));
+  const [isAuthTransitionPending, setAuthTransitionPending] = useState(false);
   const needsIdentityReset =
     observedFingerprint !== null && observedFingerprint !== featureSession.fingerprint;
+
+  const signOutMutation = useMutation({
+    mutationFn: () => signOut({ throwOnError: true }),
+    onMutate: () => {
+      setAuthTransitionPending(true);
+      void featureSession.client.cancelQueries();
+      featureSession.client.clear();
+      resetIdentityState();
+      setFeatureSession((current) => ({
+        client: createFeatureQueryClient(),
+        fingerprint: current.fingerprint,
+        generation: current.generation + 1,
+      }));
+    },
+    onError: () => {
+      setAuthTransitionPending(false);
+    },
+  }, authClient);
 
   useLayoutEffect(() => {
     if (!needsIdentityReset || observedFingerprint === null) return;
@@ -102,8 +122,8 @@ function IdentityQueryBoundary({
     }));
   }, [featureSession.client, needsIdentityReset, observedFingerprint]);
 
-  const contextValue = { authClient, currentUserQuery };
-  if (currentUserQuery.isLoading || needsIdentityReset) {
+  const contextValue = { authClient, currentUserQuery, signOutMutation };
+  if (currentUserQuery.isLoading || needsIdentityReset || isAuthTransitionPending) {
     return (
       <AuthSessionContext.Provider value={contextValue}>
         <div className="min-h-screen flex items-center justify-center" role="status">
