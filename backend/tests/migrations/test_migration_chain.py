@@ -78,6 +78,10 @@ def test_populated_head_cycles_stepwise_to_base_and_back(disposable_database_url
 def test_each_revision_cycles_populated_state(disposable_database_url: str, revision: str) -> None:
     revision_index = REVISIONS.index(revision)
     parent = REVISIONS[revision_index - 1] if revision_index else "base"
+    parent_schema_fingerprint = None
+    if revision_index:
+        upgrade(disposable_database_url, parent)
+        parent_schema_fingerprint = database_snapshot(disposable_database_url).schema_fingerprint
     upgrade(disposable_database_url, revision)
     assert_revision_schema(disposable_database_url, revision)
     seed_revision_state(disposable_database_url, revision)
@@ -88,6 +92,8 @@ def test_each_revision_cycles_populated_state(disposable_database_url: str, revi
     expected_parent = None if parent == "base" else parent
     assert current_revision(disposable_database_url) == expected_parent
     assert_revision_schema(disposable_database_url, expected_parent)
+    if parent_schema_fingerprint is not None:
+        assert database_snapshot(disposable_database_url).schema_fingerprint == parent_schema_fingerprint
     _assert_documented_downgrade_behavior(disposable_database_url, revision, before_downgrade)
 
     upgrade(disposable_database_url, revision)
