@@ -2,6 +2,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLayoutEffect } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CURRENT_USER_QUERY_KEY, QueryProvider, queryClient } from './QueryProvider';
 import { useCurrentUser, useSignIn, useSignOut } from '../hooks/useAuth';
@@ -231,6 +232,26 @@ function SessionExpiryCacheProbe({
         Sign in replacement user
       </button>
     </div>
+  );
+}
+
+function RoutedSessionExpiryProbe() {
+  const currentUser = useCurrentUser();
+  if (!currentUser.data?.data) return <Navigate to="/sign-in" replace />;
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void currentUser.refetch();
+        void Promise.allSettled([
+          apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
+          apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
+        ]);
+      }}
+    >
+      Trigger routed expiry race
+    </button>
   );
 }
 
@@ -851,6 +872,59 @@ describe('QueryProvider session expiry handling', () => {
     );
     expect(settledAuthCache).not.toContain(expiredIdentity.id);
     expect(settledAuthCache).not.toContain(expiredIdentity.permissions[0]);
+  });
+
+  it('preserves the sanitized session-expired route through a late-auth expiry race', async () => {
+    const expiredIdentity = {
+      id: 'routed-expired-user-id',
+      username: 'routed-expired-username',
+      display_name: 'Routed Expired User',
+      role: 'routed-expired-role',
+      role_id: 'routed-expired-role-id',
+      role_name: 'Routed Expired Role',
+      permissions: ['query.submit'],
+      auth_provider: 'local',
+    };
+    const lateCurrentUser = deferredValue<typeof expiredIdentity>();
+    let currentUserRequestCount = 0;
+    server.use(
+      http.get('/api/v1/auth/me', async () => {
+        currentUserRequestCount += 1;
+        return HttpResponse.json(
+          currentUserRequestCount === 1 ? expiredIdentity : await lateCurrentUser.promise
+        );
+      }),
+      http.get('/api/v1/session-expiry-cache-state', () =>
+        HttpResponse.json(
+          { error: 'unauthorized', message_key: 'error.unauthorized' },
+          { status: 401 }
+        )
+      )
+    );
+    const authClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <BrowserRouter>
+        <QueryProvider client={authClient}>
+          <Routes>
+            <Route path="/history" element={<RoutedSessionExpiryProbe />} />
+            <Route path="/sign-in" element={<span>Expired sign-in route</span>} />
+          </Routes>
+        </QueryProvider>
+      </BrowserRouter>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Trigger routed expiry race' }));
+    await waitFor(() => expect(currentUserRequestCount).toBe(2));
+    await waitFor(() => expect(window.location.pathname).toBe('/sign-in'));
+
+    expect(window.location.search).toBe('?error=session_expired');
+    expect(await screen.findByText('Expired sign-in route')).toBeInTheDocument();
+    await act(async () => {
+      lateCurrentUser.resolve(expiredIdentity);
+      await lateCurrentUser.promise;
+    });
+    expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined();
   });
 
   it('reconciles a permission-revocation 403 without logging out or retaining privileged state', async () => {
