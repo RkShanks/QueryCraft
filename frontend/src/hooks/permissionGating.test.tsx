@@ -1,7 +1,9 @@
+/* eslint-disable local/no-inline-user-strings */
 import { QueryClient } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
+import { useState } from 'react';
 import { QueryProvider } from '../providers/QueryProvider';
 import { server } from '../test/server';
 import { useAdminAudit } from './useAdminAudit';
@@ -14,6 +16,9 @@ import { useConnections } from './useConnections';
 import { useConnectionSchema } from './useConnectionSchema';
 import { useHistory, useHistoryDetail } from './useHistory';
 import { useSessionDetail, useSessionsList } from './useSessions';
+import { useCreateSession, useDeleteSession } from './useSessions';
+import { useAcceptQuery, useSubmitQuestion } from './useQuerySubmit';
+import { useUpdateFeedback } from './useFeedback';
 
 function PermissionGatingProbe() {
   const sessions = useSessionsList();
@@ -47,6 +52,32 @@ function PermissionGatingProbe() {
   ].some((query) => query.isFetching) || history.isFetching;
 
   return <span>{isFetching ? 'fetching' : 'settled'}</span>;
+}
+
+function MutationGatingProbe() {
+  const [isSettled, setSettled] = useState(false);
+  const submit = useSubmitQuestion();
+  const accept = useAcceptQuery();
+  const createSession = useCreateSession();
+  const deleteSession = useDeleteSession();
+  const feedback = useUpdateFeedback();
+
+  const triggerRequests = async () => {
+    await Promise.allSettled([
+      submit.mutateAsync({ question: 'probe', connection_id: 'connection-id' }),
+      accept.mutateAsync({ attempt_id: 'attempt-id' }),
+      createSession.mutateAsync(),
+      deleteSession.mutateAsync('session-id'),
+      feedback.mutateAsync({ attemptId: 'attempt-id', feedback: 1 }),
+    ]);
+    setSettled(true);
+  };
+
+  return (
+    <button onClick={() => void triggerRequests()}>
+      {isSettled ? 'Mutations settled' : 'Trigger mutations'}
+    </button>
+  );
 }
 
 describe('permission-gated feature hooks', () => {
@@ -88,6 +119,39 @@ describe('permission-gated feature hooks', () => {
     );
 
     expect(await screen.findByText('settled')).toBeInTheDocument();
+    expect(featureRequestCount).toBe(0);
+  });
+
+  it('rejects imperative feature mutations before they reach the network', async () => {
+    let featureRequestCount = 0;
+    server.use(
+      http.all('/api/v1/*', ({ request }) => {
+        const path = new URL(request.url).pathname;
+        if (path === '/api/v1/auth/me') {
+          return HttpResponse.json({
+            id: 'restricted-user',
+            username: 'restricted',
+            display_name: 'Restricted',
+            role: 'admin',
+            role_name: 'admin',
+            permissions: [],
+          });
+        }
+        featureRequestCount += 1;
+        return HttpResponse.json({});
+      })
+    );
+
+    render(
+      <QueryProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <MutationGatingProbe />
+      </QueryProvider>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Trigger mutations' }));
+    await screen.findByRole('button', { name: 'Mutations settled' });
     expect(featureRequestCount).toBe(0);
   });
 });
