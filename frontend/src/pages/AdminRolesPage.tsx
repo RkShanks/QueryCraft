@@ -5,6 +5,11 @@ import { GroupMappingEditor } from '../components/admin/GroupMappingEditor';
 import { PolicyEditor } from '../components/admin/PolicyEditor';
 import { Shield, Plus, RefreshCw, Trash2, Edit2, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
 import type { Role, RoleCreateData, RoleUpdateData, ConnectionPolicyItem } from '../hooks/useAdminRoles';
+import {
+  isKnownPermission,
+  PERMISSION_CATALOG,
+  type Permission,
+} from '../auth/permissions';
 
 interface Toast {
   id: string;
@@ -22,15 +27,6 @@ const ALLOWED_ERROR_KEYS = new Set([
   'error.builtinRoleProtected',
   'error.filterValidationFailed'
 ]);
-
-const AVAILABLE_PERMISSIONS = [
-  'query.submit',
-  'query.history.view',
-  'admin.connections.manage',
-  'admin.roles.manage',
-  'admin.sso.manage',
-  'admin.audit.verify',
-];
 
 function extractErrorKey(err: unknown): string | null {
   if (!err || typeof err !== 'object') {
@@ -234,7 +230,7 @@ export const AdminRolesPage: React.FC = () => {
     }
   };
 
-  const handlePermissionToggle = (permission: string) => {
+  const handlePermissionToggle = (permission: Permission) => {
     setSelectedPermissions((prev) =>
       prev.includes(permission)
         ? prev.filter((p) => p !== permission)
@@ -332,26 +328,26 @@ export const AdminRolesPage: React.FC = () => {
               {t('admin.roles.form.permissions') || 'Permissions'}
             </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {AVAILABLE_PERMISSIONS.map((perm) => (
+              {PERMISSION_CATALOG.map(({ permission, labelKey, descriptionKey }) => (
                 <label
-                  key={perm}
-                  htmlFor={`perm-${perm}`}
+                  key={permission}
+                  htmlFor={`perm-${permission}`}
                   className="flex items-start gap-3 p-3 bg-gray-950 border border-gray-850 rounded-lg cursor-pointer hover:border-gray-800 transition-colors"
                 >
                   <input
-                    id={`perm-${perm}`}
+                    id={`perm-${permission}`}
                     type="checkbox"
-                    checked={selectedPermissions.includes(perm)}
-                    onChange={() => handlePermissionToggle(perm)}
+                    checked={selectedPermissions.includes(permission)}
+                    onChange={() => handlePermissionToggle(permission)}
                     disabled={editingRole?.is_builtin}
                     className="mt-1 accent-neon-cyan rounded"
                   />
                   <div>
                     <span className="text-sm font-semibold text-white block">
-                      {t(`admin.roles.permissions.${perm}`)}
+                      {t(labelKey)}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {t(`admin.roles.permissions.${perm}.desc`) || `Allows permission: ${perm}`}
+                      {t(descriptionKey)}
                     </span>
                   </div>
                 </label>
@@ -489,7 +485,7 @@ export const AdminRolesPage: React.FC = () => {
                   <td dir="ltr" className="py-3 px-4 font-mono text-xs">{role.priority}</td>
                   <td className="py-3 px-4">
                     <div className="flex flex-wrap gap-1 max-w-sm">
-                      {role.permissions.map((p) => (
+                      {role.permissions.filter(isKnownPermission).map((p) => (
                         <span
                           key={p}
                           dir="ltr"
