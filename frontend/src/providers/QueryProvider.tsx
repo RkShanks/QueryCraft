@@ -132,6 +132,8 @@ function IdentityQueryBoundary({
         isLoading: false,
         isFetching: false,
         isError: false,
+        isSuccess: false,
+        error: null,
       }
     : currentUserQuery.isError
       ? {

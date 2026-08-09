@@ -10,10 +10,14 @@ import type { SignInData } from '../api/generated/types.gen';
 export type CurrentUserResponse = Awaited<ReturnType<typeof getMe>>;
 export type SignInResponse = Awaited<ReturnType<typeof signIn>>;
 export type SignOutResponse = Awaited<ReturnType<typeof signOut>>;
+export type CurrentUserQuery = Pick<
+  UseQueryResult<CurrentUserResponse, Error>,
+  'data' | 'isLoading' | 'isFetching' | 'isError' | 'isSuccess' | 'error' | 'refetch'
+>;
 
 export interface AuthSessionContextValue {
   authClient: QueryClient;
-  currentUserQuery: UseQueryResult<CurrentUserResponse, Error>;
+  currentUserQuery: CurrentUserQuery;
   signInMutation: UseMutationResult<SignInResponse, Error, SignInData['body'], unknown>;
   signOutMutation: UseMutationResult<SignOutResponse, Error, void, unknown>;
 }

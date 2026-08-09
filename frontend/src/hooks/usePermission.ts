@@ -6,10 +6,12 @@ import { useCurrentUser } from './useAuth';
 
 export class PermissionRequiredError extends Error {
   readonly code = 'permission_required';
+  readonly permission: Permission;
 
-  constructor(readonly permission: Permission) {
+  constructor(permission: Permission) {
     super(`Permission required: ${permission}`);
     this.name = 'PermissionRequiredError';
+    this.permission = permission;
   }
 }
 

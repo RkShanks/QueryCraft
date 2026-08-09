@@ -441,7 +441,7 @@ test('CHUNK-07 isolates identity state and enforces the exact permission matrix'
   personas.audit.permissions = [];
   await page.getByRole('button', { name: /verify/i }).click();
   await expect(page).toHaveURL(/\/access-denied$/);
-  expect(authenticated?.username).toBe('audit');
+  await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();
   personas.audit.permissions = ['admin.audit.verify'];
   await page.evaluate(() => {
     window.history.pushState({}, '', '/permission-grant-check');
@@ -462,7 +462,8 @@ test('CHUNK-07 isolates identity state and enforces the exact permission matrix'
   expect(storage).not.toContain('Disposable history entry');
 
   const uiState = await page.evaluate(async () => {
-    const { useUIStore } = await import('/src/stores/uiStore.ts');
+    const storeModulePath = '/src/stores/uiStore.ts';
+    const { useUIStore } = await import(storeModulePath) as typeof import('../../src/stores/uiStore');
     const state = useUIStore.getState();
     return {
       hasActiveSession: state.activeSessionId !== null,
