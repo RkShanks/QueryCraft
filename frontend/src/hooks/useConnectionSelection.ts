@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { updateSessionConnection } from '../api/generated/sdk.gen';
 import type { UserConnectionResponse } from '../api/generated/types.gen';
+import { PERMISSIONS } from '../auth/permissions';
+import { requirePermission, usePermission } from './usePermission';
 
 export interface UseConnectionSelectionOptions {
   sessionId: string | null;
@@ -26,6 +28,7 @@ export const useConnectionSelection = ({
     initialConnectionId
   );
   const queryClient = useQueryClient();
+  const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
 
   // Track whether the user has explicitly made a selection.
   // User selection takes precedence over prop-driven sync.
@@ -36,14 +39,15 @@ export const useConnectionSelection = ({
   const skipNextPatchRef = useRef(false);
 
   const mutation = useMutation({
-    mutationFn: (connectionId: string) =>
-      sessionId
-        ? updateSessionConnection({
+    mutationFn: (connectionId: string) => {
+      if (!sessionId) return Promise.resolve(null);
+      requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
+      return updateSessionConnection({
             path: { sessionId },
             body: { connection_id: connectionId },
             throwOnError: true,
-          }).then((res) => res.data)
-        : Promise.resolve(null),
+          }).then((res) => res.data);
+    },
     onSuccess: () => {
       if (sessionId) {
         queryClient.invalidateQueries({ queryKey: ['sessions', sessionId] });

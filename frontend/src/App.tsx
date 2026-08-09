@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryProvider } from './providers/QueryProvider';
 import { useCurrentUser } from './hooks/useAuth';
 import './i18n';
@@ -21,8 +21,12 @@ import { AccessDeniedPage } from './pages/AccessDeniedPage';
 import { AppShell } from './components/shell/AppShell';
 
 import { PermissionGuard } from './components/auth/PermissionGuard';
-import { firstPermittedRoute, PERMISSIONS, type Permission } from './auth/permissions';
-
+import {
+  firstPermittedRoute,
+  PROTECTED_ROUTE_CATALOG,
+  type Permission,
+  type ProtectedRoutePath,
+} from './auth/permissions';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { data: response, isLoading } = useCurrentUser();
@@ -39,7 +43,18 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-
+const protectedPageByPath: Record<ProtectedRoutePath, React.ReactNode> = {
+  '/': <WorkspacePage />,
+  '/ask': <AskQuestionPage />,
+  '/history': <HistoryPage />,
+  '/settings': <SettingsPage />,
+  '/admin/connections': <AdminConnectionsPage />,
+  '/admin/roles': <AdminRolesPage />,
+  '/admin/sso': <AdminSsoPage />,
+  '/admin/audit': <AdminAuditPage />,
+  '/admin/quotas': <AdminQuotasPage />,
+  '/admin/detection': <AdminDetectionPage />,
+};
 
 function RootRedirect() {
   const { data: response, isLoading } = useCurrentUser();
@@ -71,6 +86,37 @@ function ProtectedLayout({
   );
 }
 
+function ApplicationRoutes() {
+  const location = useLocation();
+  return (
+    <QueryProvider authorizationKey={`${location.key}:${location.pathname}`}>
+      <Routes>
+          <Route path="/sign-in" element={<SignInPage />} />
+          {PROTECTED_ROUTE_CATALOG.map(({ path, permission }) => (
+            <Route
+              key={path}
+              path={path}
+              element={
+                <ProtectedLayout permission={permission}>
+                  {protectedPageByPath[path]}
+                </ProtectedLayout>
+              }
+            />
+          ))}
+          <Route
+            path="/access-denied"
+            element={
+              <AuthGuard>
+                <AccessDeniedPage />
+              </AuthGuard>
+            }
+          />
+          <Route path="*" element={<RootRedirect />} />
+      </Routes>
+    </QueryProvider>
+  );
+}
+
 function App() {
   const { i18n } = useTranslation();
 
@@ -81,105 +127,9 @@ function App() {
   }, [i18n.language]);
 
   return (
-    <QueryProvider>
-
-      <BrowserRouter>
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.QUERY_SUBMIT}>
-                <WorkspacePage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/ask"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.QUERY_SUBMIT}>
-                <AskQuestionPage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/history"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.QUERY_HISTORY_VIEW}>
-                <HistoryPage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.ADMIN_CONNECTIONS_MANAGE}>
-                <SettingsPage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/admin/connections"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.ADMIN_CONNECTIONS_MANAGE}>
-                <AdminConnectionsPage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/admin/sso"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.ADMIN_SSO_MANAGE}>
-                <AdminSsoPage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/admin/roles"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.ADMIN_ROLES_MANAGE}>
-                <AdminRolesPage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/admin/audit"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.ADMIN_AUDIT_VERIFY}>
-                <AdminAuditPage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/admin/quotas"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.ADMIN_QUOTAS_MANAGE}>
-                <AdminQuotasPage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/admin/detection"
-            element={
-              <ProtectedLayout permission={PERMISSIONS.ADMIN_SECURITY_MANAGE}>
-                <AdminDetectionPage />
-              </ProtectedLayout>
-            }
-          />
-          <Route
-            path="/access-denied"
-            element={
-              <AuthGuard>
-                <AccessDeniedPage />
-              </AuthGuard>
-            }
-          />
-          <Route path="*" element={<RootRedirect />} />
-
-
-        </Routes>
-      </BrowserRouter>
-    </QueryProvider>
+    <BrowserRouter>
+      <ApplicationRoutes />
+    </BrowserRouter>
   );
 }
 

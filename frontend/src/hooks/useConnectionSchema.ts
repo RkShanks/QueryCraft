@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { client } from '../api/generated/client.gen';
+import { PERMISSIONS } from '../auth/permissions';
+import { useAnyPermission } from './usePermission';
 
 export interface ColumnSchema {
   column_name: string;
@@ -21,6 +23,10 @@ export interface ConnectionSchema {
 }
 
 export const useConnectionSchema = (connectionId: string | null) => {
+  const canViewSchema = useAnyPermission([
+    PERMISSIONS.ADMIN_CONNECTIONS_MANAGE,
+    PERMISSIONS.ADMIN_ROLES_MANAGE,
+  ]);
   return useQuery<ConnectionSchema>({
     queryKey: ['connectionSchema', connectionId],
     queryFn: async () => {
@@ -31,6 +37,6 @@ export const useConnectionSchema = (connectionId: string | null) => {
       });
       return res.data as ConnectionSchema;
     },
-    enabled: !!connectionId,
+    enabled: !!connectionId && canViewSchema,
   });
 };

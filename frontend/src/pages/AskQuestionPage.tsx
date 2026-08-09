@@ -11,8 +11,9 @@ import { useQuerySubmit } from '../hooks/useQuerySubmit';
 import type { EvaluatorRejection } from '../api/generated/types.gen';
 import { History, Database, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { listUserConnections } from '../api/generated/sdk.gen';
+import { useUserConnections } from '../hooks/useUserConnections';
+import { PERMISSIONS } from '../auth/permissions';
+import { usePermission } from '../hooks/usePermission';
 
 function mapEvaluatorRejection(
   rejection: EvaluatorRejection
@@ -82,10 +83,8 @@ export const AskQuestionPage: React.FC = () => {
     reset,
   } = useQuerySubmit();
 
-  const { data: userConnectionsResponse } = useQuery({
-    queryKey: ['userConnections'],
-    queryFn: () => listUserConnections({ throwOnError: true }).then((res) => res.data),
-  });
+  const { data: userConnectionsResponse } = useUserConnections();
+  const canViewHistory = usePermission(PERMISSIONS.QUERY_HISTORY_VIEW);
 
   const availableConnections = userConnectionsResponse?.connections ?? [];
   const connectionId = availableConnections[0]?.id ?? null;
@@ -213,13 +212,13 @@ export const AskQuestionPage: React.FC = () => {
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">{t('app.title')}</h1>
         </div>
         <nav className="flex items-center gap-4">
-          <Link
+          {canViewHistory && <Link
             to="/history"
             className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
           >
             <History className="w-4 h-4" />
             {t('nav.history')}
-          </Link>
+          </Link>}
         </nav>
       </header>
 

@@ -10,17 +10,27 @@ import {
   isSessionUnavailable,
   SessionDeletionError,
 } from '../sessionDeletionLifecycle';
+import { PERMISSIONS } from '../auth/permissions';
+import { requirePermission, usePermission } from './usePermission';
 
 export const useSubmitQuestion = () => {
+  const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
   return useMutation({
-    mutationFn: (data: SubmitQuestionData['body']) => submitQuestion({ body: data, throwOnError: true }).then(res => res.data),
+    mutationFn: (data: SubmitQuestionData['body']) => {
+      requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
+      return submitQuestion({ body: data, throwOnError: true }).then((res) => res.data);
+    },
   });
 };
 
 export const useAcceptQuery = () => {
   const queryClient = useQueryClient();
+  const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
   return useMutation({
-    mutationFn: (data: AcceptQueryData['body']) => acceptQuery({ body: data, throwOnError: true }).then(res => res.data),
+    mutationFn: (data: AcceptQueryData['body']) => {
+      requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
+      return acceptQuery({ body: data, throwOnError: true }).then((res) => res.data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['history'] });
     },
@@ -50,6 +60,7 @@ function isApiError(err: unknown): err is Record<string, unknown> {
 
 export const useQuerySubmit = (): UseQuerySubmitReturn => {
   const queryClient = useQueryClient();
+  const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
   const setActiveSessionId = useUIStore((state) => state.setActiveSessionId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -124,6 +135,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
 
 
   const submitQuestionFn = useCallback(async (q: string, sessionId?: string | null, connectionId?: string | null) => {
+    requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
     if (submittingRef.current) {
       throw new Error('submit_in_progress');
     }
@@ -175,9 +187,10 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
       submittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [clearStates, handleError, setActiveSessionId, queryClient]);
+  }, [canSubmitQuery, clearStates, handleError, setActiveSessionId, queryClient]);
 
   const rejectQueryFn = useCallback(async (attemptId: string) => {
+    requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
     if (submittingRef.current) {
       throw new Error('submit_in_progress');
     }
@@ -202,9 +215,10 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
       submittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [clearStates, handleError]);
+  }, [canSubmitQuery, clearStates, handleError]);
 
   const regenerateQueryFn = useCallback(async (attemptId: string) => {
+    requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
     if (submittingRef.current) {
       throw new Error('submit_in_progress');
     }
@@ -230,9 +244,10 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
       submittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [clearStates, handleError]);
+  }, [canSubmitQuery, clearStates, handleError]);
 
   const acceptQueryFn = useCallback(async (attemptId: string, sessionId?: string | null) => {
+    requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
     if (submittingRef.current) {
       throw new Error('submit_in_progress');
     }
@@ -249,7 +264,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
       submittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [clearStates, handleError]);
+  }, [canSubmitQuery, clearStates, handleError]);
 
   return {
     submitQuestion: submitQuestionFn,

@@ -1,11 +1,14 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { listHistory, getHistoryItem } from '../api/historyApi';
+import { PERMISSIONS } from '../auth/permissions';
+import { usePermission } from './usePermission';
 
 export interface UseHistoryOptions {
   pageSize?: number;
 }
 
 export function useHistory(opts: UseHistoryOptions = {}) {
+  const canViewHistory = usePermission(PERMISSIONS.QUERY_HISTORY_VIEW);
   const query = useInfiniteQuery({
     queryKey: ['history', opts.pageSize ?? 20],
     queryFn: ({ pageParam }) => listHistory({
@@ -14,6 +17,7 @@ export function useHistory(opts: UseHistoryOptions = {}) {
     }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    enabled: canViewHistory,
   });
 
   return {
@@ -29,10 +33,11 @@ export function useHistory(opts: UseHistoryOptions = {}) {
 }
 
 export function useHistoryDetail(id: string | null) {
+  const canViewHistory = usePermission(PERMISSIONS.QUERY_HISTORY_VIEW);
   const query = useQuery({
     queryKey: ['history', 'detail', id],
     queryFn: () => getHistoryItem(id!),
-    enabled: !!id,
+    enabled: !!id && canViewHistory,
   });
 
   return {

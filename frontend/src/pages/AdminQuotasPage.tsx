@@ -9,7 +9,7 @@ import type {
   RoleQuotaStatus,
   RoleQuotaUpsert,
 } from '../api/quotas';
-import { hasPermission } from '../auth/permissions';
+import { hasPermission, PERMISSIONS } from '../auth/permissions';
 import { Shield, RefreshCw, Trash2, Edit2, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
 
 interface Toast {
@@ -282,7 +282,7 @@ export const AdminQuotasPage: React.FC = () => {
   const { data: userResponse } = useCurrentUser();
   const user = userResponse?.data;
 
-  const hasRolesPermission = hasPermission(user, 'admin.roles.manage');
+  const hasRolesPermission = hasPermission(user, PERMISSIONS.ADMIN_ROLES_MANAGE);
 
   const rolesQuery = useAdminRoles({
     enabled: !!hasRolesPermission,

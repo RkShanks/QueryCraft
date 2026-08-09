@@ -20,6 +20,7 @@ import {
   subscribeToSessionExpiry,
 } from '../auth/authorizationEvents';
 import { getMe, signIn, signOut } from '../api/generated/sdk.gen';
+import { client as apiClient } from '../api/generated/client.gen';
 import type { SignInData } from '../api/generated/types.gen';
 import {
   AuthSessionContext,
@@ -73,6 +74,19 @@ function identityFingerprint(response: CurrentUserResponse | undefined): string 
   return [user.id, user.role_id ?? '', user.role_name ?? '', permissions].join('|');
 }
 
+function failClosedAuthorizationSnapshot(
+  response: CurrentUserResponse | undefined
+): CurrentUserResponse | undefined {
+  if (!response?.data) return response;
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      permissions: [],
+    },
+  };
+}
+
 function resetIdentityState(): void {
   useUIStore.getState().resetIdentityState();
   resetSessionDeletionLifecycle();
@@ -80,14 +94,18 @@ function resetIdentityState(): void {
 
 function IdentityQueryBoundary({
   authClient,
+  authorizationKey,
   children,
 }: {
   authClient: QueryClient;
+  authorizationKey?: string;
   children: ReactNode;
 }) {
   const [isExplicitlySignedOut, setExplicitlySignedOut] = useState(false);
   const sessionExpiredRef = useRef(false);
   const authorizationRefreshRef = useRef(false);
+  const authorizationKeyInFlightRef = useRef<string | null>(null);
+  const authorizationRefreshSequenceRef = useRef(0);
   const lastDeniedFingerprintRef = useRef<string | null>(null);
   const createIdentityClient = useCallback(() => createFeatureQueryClient(), []);
   const currentUserQuery = useQuery({
@@ -105,7 +123,9 @@ function IdentityQueryBoundary({
     refetchOnMount: 'always',
     enabled: !isExplicitlySignedOut,
   }, authClient);
-  const exposedCurrentUserQuery = isExplicitlySignedOut
+  const sessionSnapshotExpired =
+    currentUserQuery.isError && isSessionExpiryError(currentUserQuery.error);
+  const exposedCurrentUserQuery = isExplicitlySignedOut || sessionSnapshotExpired
     ? {
         ...currentUserQuery,
         data: undefined,
@@ -113,12 +133,15 @@ function IdentityQueryBoundary({
         isFetching: false,
         isError: false,
       }
-    : currentUserQuery;
+    : currentUserQuery.isError
+      ? {
+          ...currentUserQuery,
+          data: failClosedAuthorizationSnapshot(currentUserQuery.data),
+        }
+      : currentUserQuery;
   const observedFingerprint = exposedCurrentUserQuery.isFetching
     ? null
-    : identityFingerprint(
-        exposedCurrentUserQuery.isError ? undefined : exposedCurrentUserQuery.data
-      );
+    : identityFingerprint(exposedCurrentUserQuery.data);
   const [featureSession, setFeatureSession] = useState(() => ({
     client: createIdentityClient(),
     fingerprint: 'pending',
@@ -126,8 +149,55 @@ function IdentityQueryBoundary({
   }));
   const [isAuthTransitionPending, setAuthTransitionPending] = useState(false);
   const [isAuthorizationRefreshPending, setAuthorizationRefreshPending] = useState(false);
+  const [verifiedAuthorizationKey, setVerifiedAuthorizationKey] = useState(authorizationKey);
   const needsIdentityReset =
     observedFingerprint !== null && observedFingerprint !== featureSession.fingerprint;
+  const needsLocationAuthorizationRefresh =
+    authorizationKey !== undefined && authorizationKey !== verifiedAuthorizationKey;
+
+  useLayoutEffect(() => {
+    const interceptorId = apiClient.interceptors.response.use((response, request) => {
+      const path = new URL(request.url).pathname;
+      if (path.includes('/auth/')) return response;
+
+      if (response.status === 401) {
+        handleSessionExpiry({ status: 401 }, window.location.pathname);
+        notifySessionExpiry();
+      } else if (response.status === 403) {
+        notifyPermissionDenied();
+      }
+      return response;
+    });
+    return () => {
+      apiClient.interceptors.response.eject(interceptorId);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (
+      !needsLocationAuthorizationRefresh ||
+      authorizationKey === undefined ||
+      authorizationKeyInFlightRef.current === authorizationKey
+    ) {
+      return;
+    }
+
+    const sequence = authorizationRefreshSequenceRef.current + 1;
+    authorizationRefreshSequenceRef.current = sequence;
+    authorizationKeyInFlightRef.current = authorizationKey;
+    authorizationRefreshRef.current = true;
+    setAuthorizationRefreshPending(true);
+    void authClient
+      .refetchQueries({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+      .finally(() => {
+        if (authorizationRefreshSequenceRef.current !== sequence) return;
+        authorizationKeyInFlightRef.current = null;
+        authorizationRefreshRef.current = false;
+        lastDeniedFingerprintRef.current = null;
+        setVerifiedAuthorizationKey(authorizationKey);
+        setAuthorizationRefreshPending(false);
+      });
+  }, [authClient, authorizationKey, needsLocationAuthorizationRefresh]);
 
   useLayoutEffect(() => {
     return subscribeToSessionExpiry(() => {
@@ -243,7 +313,8 @@ function IdentityQueryBoundary({
     exposedCurrentUserQuery.isFetching ||
     needsIdentityReset ||
     isAuthTransitionPending ||
-    isAuthorizationRefreshPending
+    isAuthorizationRefreshPending ||
+    needsLocationAuthorizationRefresh
   ) {
     return (
       <AuthSessionContext.Provider value={contextValue}>
@@ -266,13 +337,16 @@ function IdentityQueryBoundary({
 interface QueryProviderProps {
   children: ReactNode;
   client?: QueryClient;
+  authorizationKey?: string;
 }
 
-export function QueryProvider({ children, client }: QueryProviderProps) {
+export function QueryProvider({ children, client, authorizationKey }: QueryProviderProps) {
   const authClient = client ?? queryClient;
   return (
     <QueryClientProvider client={authClient}>
-      <IdentityQueryBoundary authClient={authClient}>{children}</IdentityQueryBoundary>
+      <IdentityQueryBoundary authClient={authClient} authorizationKey={authorizationKey}>
+        {children}
+      </IdentityQueryBoundary>
     </QueryClientProvider>
   );
 }

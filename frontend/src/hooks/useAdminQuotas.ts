@@ -8,6 +8,8 @@ import {
   type RoleQuotaUpsert,
   type RoleQuotaStatus,
 } from '../api/quotas';
+import { PERMISSIONS } from '../auth/permissions';
+import { requirePermission, usePermission } from './usePermission';
 
 export interface UseAdminQuotasOptions {
   onUpsertSuccess?: (data: RoleQuotaConfig) => void;
@@ -18,20 +20,25 @@ export interface UseAdminQuotasOptions {
 
 export const useAdminQuotas = (options?: UseAdminQuotasOptions) => {
   const queryClient = useQueryClient();
+  const canManageQuotas = usePermission(PERMISSIONS.ADMIN_QUOTAS_MANAGE);
 
   const listQuery = useQuery<{ quotas: RoleQuotaConfig[] }>({
     queryKey: ['adminQuotas'],
     queryFn: listQuotas,
+    enabled: canManageQuotas,
   });
 
   const statusQuery = useQuery<{ status: RoleQuotaStatus[] }>({
     queryKey: ['adminQuotasStatus'],
     queryFn: getQuotaStatus,
+    enabled: canManageQuotas,
   });
 
   const upsertMutation = useMutation({
-    mutationFn: ({ roleId, data }: { roleId: string; data: RoleQuotaUpsert }) =>
-      upsertQuota(roleId, data),
+    mutationFn: ({ roleId, data }: { roleId: string; data: RoleQuotaUpsert }) => {
+      requirePermission(canManageQuotas, PERMISSIONS.ADMIN_QUOTAS_MANAGE);
+      return upsertQuota(roleId, data);
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminQuotas'] });
       queryClient.invalidateQueries({ queryKey: ['adminQuotasStatus'] });
@@ -43,7 +50,10 @@ export const useAdminQuotas = (options?: UseAdminQuotasOptions) => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (roleId: string) => deleteQuota(roleId),
+    mutationFn: (roleId: string) => {
+      requirePermission(canManageQuotas, PERMISSIONS.ADMIN_QUOTAS_MANAGE);
+      return deleteQuota(roleId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminQuotas'] });
       queryClient.invalidateQueries({ queryKey: ['adminQuotasStatus'] });

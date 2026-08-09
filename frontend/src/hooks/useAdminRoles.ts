@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { client } from '../api/generated/client.gen';
+import { PERMISSIONS } from '../auth/permissions';
+import { requirePermission, usePermission } from './usePermission';
 
 export interface ConnectionPolicyItem {
   id?: string;
@@ -61,6 +63,7 @@ export interface UseAdminRolesOptions {
 
 export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   const queryClient = useQueryClient();
+  const canManageRoles = usePermission(PERMISSIONS.ADMIN_ROLES_MANAGE);
 
   const listQuery = useQuery<{ roles: Role[] }>({
     queryKey: ['adminRoles'],
@@ -68,11 +71,12 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
       client
         .get({ url: '/admin/roles', throwOnError: true })
         .then((res) => res.data as { roles: Role[] }),
-    enabled: options?.enabled !== false,
+    enabled: canManageRoles && options?.enabled !== false,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: RoleCreateData) => {
+      requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
       const res = await client.post({
         url: '/admin/roles',
         body: {
@@ -119,6 +123,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
       data: RoleUpdateData;
       existingMappings?: Array<{ id: string; sso_group_value: string }>;
     }) => {
+      requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
       const res = await client.put({
         url: `/admin/roles/${id}`,
         body: {
@@ -170,8 +175,10 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) =>
-      client.delete({ url: `/admin/roles/${id}`, throwOnError: true }),
+    mutationFn: (id: string) => {
+      requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
+      return client.delete({ url: `/admin/roles/${id}`, throwOnError: true });
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminRoles'] });
       options?.onDeleteSuccess?.(data);
@@ -188,14 +195,16 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
       client
         .get({ url: '/admin/sso/group-mappings', throwOnError: true })
         .then((res) => res.data as { mappings: GroupMapping[] }),
-    enabled: options?.enabled !== false,
+    enabled: canManageRoles && options?.enabled !== false,
   });
 
   const createGroupMappingMutation = useMutation({
-    mutationFn: (data: { sso_group_value: string; role_id: string }) =>
-      client
+    mutationFn: (data: { sso_group_value: string; role_id: string }) => {
+      requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
+      return client
         .post({ url: '/admin/sso/group-mappings', body: data, throwOnError: true })
-        .then((res) => res.data),
+        .then((res) => res.data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminGroupMappings'] });
       queryClient.invalidateQueries({ queryKey: ['adminRoles'] });
@@ -203,8 +212,10 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   });
 
   const deleteGroupMappingMutation = useMutation({
-    mutationFn: (id: string) =>
-      client.delete({ url: `/admin/sso/group-mappings/${id}`, throwOnError: true }),
+    mutationFn: (id: string) => {
+      requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
+      return client.delete({ url: `/admin/sso/group-mappings/${id}`, throwOnError: true });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminGroupMappings'] });
       queryClient.invalidateQueries({ queryKey: ['adminRoles'] });
@@ -230,6 +241,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
  * disable the query.
  */
 export const useAdminRole = (roleId: string | null | undefined) => {
+  const canManageRoles = usePermission(PERMISSIONS.ADMIN_ROLES_MANAGE);
   return useQuery<Role>({
     queryKey: ['adminRole', roleId],
     queryFn: async () => {
@@ -242,6 +254,6 @@ export const useAdminRole = (roleId: string | null | undefined) => {
       });
       return res.data as Role;
     },
-    enabled: !!roleId,
+    enabled: !!roleId && canManageRoles,
   });
 };
