@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import json
 import uuid
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import text
+
+from app.source_db.adapters import ExecuteResult
 
 _DIALECTS = ["postgresql", "mysql", "mssql"]
 
@@ -191,6 +194,67 @@ class TestCrossDialectQuotaIntegration:
         assert dialect not in body_str
         assert "counter" not in body_str
         assert "limit" not in body_str.replace("error.quota_exceeded", "")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("dialect", _DIALECTS)
+    async def test_retry_execution_quota_blocks_each_dialect_adapter(
+        self,
+        authenticated_client,
+        async_engine_fixture,
+        redis_client,
+        dialect,
+    ) -> None:
+        """A retry consumes provider work once, then stops before any dialect adapter."""
+        async with async_engine_fixture.connect() as conn:
+            await conn.execute(text("DELETE FROM source_database_connections"))
+            role_id = str(
+                (
+                    await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
+                ).scalar_one()
+            )
+            connection_id = await self._setup_dialect_connection(conn, dialect, role_id)
+            await conn.commit()
+
+        quota_response = await authenticated_client.put(
+            f"/api/v1/admin/quotas/{role_id}",
+            json={"daily_query_limit": 100, "daily_execution_limit": 1},
+        )
+        assert quota_response.status_code == 200
+
+        provider = AsyncMock()
+        provider.generate_sql = AsyncMock(side_effect=["SELECT 1 AS id", "SELECT 2 AS id"])
+        adapter_execute = AsyncMock(return_value=ExecuteResult(columns=["id"], rows=[(1,)]))
+        adapter_target = {
+            "postgresql": "app.source_db.adapters.PostgresAdapter.execute",
+            "mysql": "app.source_db.adapters.MySQLAdapter.execute",
+            "mssql": "app.source_db.adapters.MSSQLAdapter.execute",
+        }[dialect]
+
+        with (
+            patch("app.api.v1.query.LLMProviderFactory.from_config", return_value=provider),
+            patch(adapter_target, new=adapter_execute),
+        ):
+            submit_response = await authenticated_client.post(
+                "/api/v1/query/submit",
+                json={
+                    "question": "dialect retry quota proof",
+                    "session_id": None,
+                    "connection_id": connection_id,
+                },
+            )
+            assert submit_response.status_code == 200, submit_response.text
+            provider.generate_sql.reset_mock()
+            adapter_execute.reset_mock()
+
+            retry_response = await authenticated_client.post(
+                "/api/v1/query/regenerate",
+                json={"attempt_id": submit_response.json()["attempt_id"]},
+            )
+
+        assert retry_response.status_code == 429
+        assert retry_response.json()["message_key"] == "error.quota_exceeded"
+        provider.generate_sql.assert_awaited_once()
+        adapter_execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_quota_status_endpoint_response_safe(

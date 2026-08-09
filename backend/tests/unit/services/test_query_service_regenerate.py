@@ -346,8 +346,8 @@ class TestQueryServiceRegenerate:
         ):
             await service.regenerate_query("a1", "s1", USER_ID)
 
-        assert len(created_kwargs) == 1
-        assert created_kwargs[0].get("state") == "EXECUTED"
+        assert created_kwargs[-1].get("state") == "EXECUTED"
+        assert created_kwargs[0]["attempt_id"] == created_kwargs[-1]["attempt_id"]
 
     async def test_regenerate_wrong_active_attempt_returns_422(self, service, mock_deps):
         """G-004: regenerate with mismatched active_attempt returns 422."""

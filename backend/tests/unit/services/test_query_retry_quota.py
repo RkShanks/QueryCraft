@@ -13,6 +13,8 @@ from fastapi import HTTPException
 
 from app.core.attempt_store import EphemeralAttempt, store_attempt
 from app.core.exceptions import (
+    AttemptContextInvalid,
+    AttemptNotFound,
     LLMTimeout,
     PolicySchemaConflictError,
     QuotaExceededError,
@@ -250,8 +252,41 @@ async def test_retry_execution_quota_denial_stops_after_one_provider_call(availa
         await service.regenerate_query(PRIOR_ATTEMPT_ID, HTTP_SESSION_ID, USER_ID)
 
     assert exc_info.value.status_code == (503 if availability == "unavailable" else 429)
+    if availability == "unavailable":
+        assert exc_info.value.detail == {
+            "error": "service_unavailable",
+            "message_key": "error.service_unavailable",
+        }
     assert dependencies.quota.check_and_increment.await_count == 2
     assert dependencies.provider.calls == 1
+    assert dependencies.source.calls == 0
+
+
+@pytest.mark.parametrize("scenario", ["inactive", "forged", "wrong_user"])
+async def test_invalid_or_unowned_retry_attempts_charge_nothing(scenario: str) -> None:
+    service, dependencies = _service()
+    await _seed_attempt(service)
+
+    with patch("app.services.query_service.AuditService.log", new_callable=AsyncMock):
+        if scenario == "inactive":
+            await service._redis.set(f"active_attempt:{HTTP_SESSION_ID}", "replacement-attempt")
+            with pytest.raises(HTTPException) as exc_info:
+                await service.regenerate_query(PRIOR_ATTEMPT_ID, HTTP_SESSION_ID, USER_ID)
+            assert exc_info.value.status_code == 422
+        elif scenario == "forged":
+            await service._redis.set(f"active_attempt:{HTTP_SESSION_ID}", "forged-attempt")
+            with pytest.raises(AttemptNotFound):
+                await service.regenerate_query("forged-attempt", HTTP_SESSION_ID, USER_ID)
+        else:
+            with pytest.raises(AttemptContextInvalid):
+                await service.regenerate_query(
+                    PRIOR_ATTEMPT_ID,
+                    HTTP_SESSION_ID,
+                    "550e8400-e29b-41d4-a716-446655440001",
+                )
+
+    dependencies.quota.check_and_increment.assert_not_awaited()
+    assert dependencies.provider.calls == 0
     assert dependencies.source.calls == 0
     dependencies.repository.create.assert_not_awaited()
 
@@ -493,6 +528,11 @@ async def test_provider_failure_emits_one_sanitized_submit_failure(
 
     assert exc_info.value.status_code == expected_status
     assert "provider secret" not in str(exc_info.value.detail)
+    assert exc_info.value.detail == (
+        {"error": "timeout", "message_key": "error.timeout"}
+        if expected_status == 504
+        else {"error": "llm_unavailable", "message_key": "error.llmUnavailable"}
+    )
     assert dependencies.provider.calls == 1
     assert dependencies.source.calls == 0
     assert [(event[0], event[1], event[3]) for event in _audit_contract(audit)] == [
@@ -523,6 +563,14 @@ async def test_source_failure_emits_failed_execute_after_successful_validation(
 
     assert exc_info.value.status_code == expected_status
     assert "source secret" not in str(exc_info.value.detail)
+    assert exc_info.value.detail == (
+        {"error": "timeout", "message_key": "error.timeout"}
+        if expected_status == 504
+        else {
+            "error": "source_db_execution_failed",
+            "message_key": "error.sourceDbExecutionFailed",
+        }
+    )
     assert dependencies.provider.calls == 1
     assert dependencies.source.calls == 1
     assert [(event[0], event[1], event[3]) for event in _audit_contract(audit)] == [
@@ -580,7 +628,7 @@ async def test_success_audit_precedes_persistence_failure_and_history_rolls_back
     dependencies.database.rollback.assert_awaited()
 
 
-async def test_success_audit_failure_is_fail_closed_before_persistence() -> None:
+async def test_success_audit_failure_rolls_back_pending_persistence() -> None:
     service, dependencies = _service()
     await _seed_attempt(service)
 
@@ -594,10 +642,12 @@ async def test_success_audit_failure_is_fail_closed_before_persistence() -> None
     ):
         await service.regenerate_query(PRIOR_ATTEMPT_ID, HTTP_SESSION_ID, USER_ID)
 
-    dependencies.repository.create.assert_not_awaited()
+    dependencies.repository.create.assert_awaited_once()
+    dependencies.database.rollback.assert_awaited()
 
 
-async def test_concurrent_reject_records_one_decision_and_one_retry_lifecycle() -> None:
+@pytest.mark.parametrize("decision", ["regenerate", "reject"])
+async def test_concurrent_retry_records_one_lifecycle_and_one_quota_charge_per_stage(decision: str) -> None:
     entered = asyncio.Event()
     release = asyncio.Event()
 
@@ -612,13 +662,19 @@ async def test_concurrent_reject_records_one_decision_and_one_retry_lifecycle() 
     await _seed_attempt(service)
 
     with patch("app.services.query_service.AuditService.log", new_callable=AsyncMock) as audit:
-        winner = asyncio.create_task(service.reject_query(PRIOR_ATTEMPT_ID, HTTP_SESSION_ID, USER_ID))
+        winner = asyncio.create_task(_retry(service, decision))
         await entered.wait()
         with pytest.raises(HTTPException) as loser:
-            await service.reject_query(PRIOR_ATTEMPT_ID, HTTP_SESSION_ID, USER_ID)
+            await _retry(service, decision)
         release.set()
         await winner
 
     assert loser.value.status_code == 409
     assert dependencies.provider.calls == 1
-    assert [event[0] for event in _audit_contract(audit)].count(AuditActionType.QUERY_REJECT) == 1
+    assert dependencies.source.calls == 1
+    assert dependencies.quota.check_and_increment.await_args_list == [
+        call(uuid.UUID(USER_ID), uuid.UUID(ROLE_ID), "queries"),
+        call(uuid.UUID(USER_ID), uuid.UUID(ROLE_ID), "executions"),
+    ]
+    reject_count = [event[0] for event in _audit_contract(audit)].count(AuditActionType.QUERY_REJECT)
+    assert reject_count == (1 if decision == "reject" else 0)

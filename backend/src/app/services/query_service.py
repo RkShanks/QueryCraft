@@ -38,7 +38,7 @@ from typing import Any, NoReturn
 from fastapi import HTTPException, status
 from redis.asyncio import Redis
 from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.services.detection  # noqa: F401 — registers built-in rules into REGISTRY
 from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt, store_attempt
@@ -140,6 +140,38 @@ class _TimeoutFailure:
     http_session_id: str | None = None
     chat_session_id: str | None = None
     tracked_attempt: TrackedAttempt | None = None
+
+
+@dataclass(frozen=True)
+class _RetryAuditEvent:
+    action: AuditActionType
+    actor_id: uuid.UUID
+    actor_identity: str | None
+    attempt_id: str
+    outcome: str
+    context: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class _RetryRequest:
+    attempt_id: str
+    http_session_id: str
+    user_id: str
+    decision_action: AuditActionType | None = None
+
+
+@dataclass(frozen=True)
+class _RejectedRetry:
+    prior_attempt_id: str
+    retry_attempt_id: str
+    http_session_id: str
+    chat_session_id: str
+    user_id: str
+    database_connection_id: uuid.UUID | None
+    sql: str
+    question: str
+    attempt_number: int
+    violations: list[dict[str, str]]
 
 
 def _sanitize_for_json(obj: Any) -> Any:
@@ -288,8 +320,7 @@ class QueryService:
     ) -> None:
         """Rollback pending work, then persist one sanitized audit event."""
         await self._db_session.rollback()
-        await AuditService.log(
-            self._db_session,
+        await self._log_audit_durably(
             action=action,
             actor_id=actor_id,
             actor_identity=actor_identity,
@@ -298,7 +329,45 @@ class QueryService:
             outcome=outcome,
             context=context,
         )
-        await self._db_session.commit()
+
+    async def _log_audit_durably(
+        self,
+        *,
+        action: AuditActionType,
+        actor_id: uuid.UUID,
+        outcome: str,
+        context: dict[str, Any],
+        actor_identity: str | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+    ) -> None:
+        """Commit one audit event independently of request-side mutations."""
+        audit_kwargs: dict[str, Any] = {
+            "action": action,
+            "actor_id": actor_id,
+            "outcome": outcome,
+            "context": context,
+        }
+        if actor_identity is not None:
+            audit_kwargs["actor_identity"] = actor_identity
+        if resource_type is not None:
+            audit_kwargs["resource_type"] = resource_type
+        if resource_id is not None:
+            audit_kwargs["resource_id"] = resource_id
+
+        if not isinstance(self._db_session, AsyncSession):
+            await AuditService.log(self._db_session, **audit_kwargs)
+            await self._db_session.commit()
+            return
+
+        audit_session_factory = async_sessionmaker(
+            bind=self._db_session.bind,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+        async with audit_session_factory() as audit_session:
+            await AuditService.log(audit_session, **audit_kwargs)
+            await audit_session.commit()
 
     async def _persist_quota_exceeded_audit(
         self,
@@ -307,9 +376,7 @@ class QueryService:
         reset_at: str,
     ) -> None:
         """Persist a quota denial without committing pending request side effects."""
-        await self._db_session.rollback()
-        await AuditService.log(
-            self._db_session,
+        await self._persist_audit_without_request_side_effects(
             action=AuditActionType.QUOTA_EXCEEDED,
             actor_id=user_id,
             outcome="blocked",
@@ -318,7 +385,6 @@ class QueryService:
                 "reset_at": reset_at,
             },
         )
-        await self._db_session.commit()
 
     async def _persist_execution_failure_audit(self, event: _ExecutionFailureAudit) -> None:
         """Persist a sanitized failure without committing pending request work."""
@@ -331,6 +397,85 @@ class QueryService:
             outcome="failure",
             context={"reason": event.reason},
         )
+
+    async def _persist_retry_audit(self, event: _RetryAuditEvent) -> None:
+        await self._log_audit_durably(
+            action=event.action,
+            actor_id=event.actor_id,
+            actor_identity=event.actor_identity,
+            resource_type="query_attempt",
+            resource_id=event.attempt_id,
+            outcome=event.outcome,
+            context=event.context,
+        )
+
+    async def _consume_retry_quota(
+        self,
+        user: User,
+        dimension: str,
+        chat_session_id: str,
+        deadline: QueryDeadline,
+    ) -> None:
+        if self._quota_service is None or user.role_id is None:
+            return
+        try:
+            await self._quota_service.check_and_increment(user.id, user.role_id, dimension)
+        except QuotaExceededError as exc:
+            await self._ensure_operation_active(chat_session_id, deadline)
+            await self._persist_quota_exceeded_audit(user.id, dimension, exc.reset_at)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error": "quota_exceeded",
+                    "message_key": "error.quota_exceeded",
+                    "reset_at": exc.reset_at,
+                },
+            ) from exc
+        except QuotaUnavailableError as exc:
+            await self._ensure_operation_active(chat_session_id, deadline)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "service_unavailable",
+                    "message_key": "error.service_unavailable",
+                },
+            ) from exc
+
+    async def _store_rejected_retry(
+        self,
+        rejection: _RejectedRetry,
+        deadline: QueryDeadline,
+    ) -> tuple[EphemeralAttempt, TrackedAttempt]:
+        """Replace a prior attempt with one sanitized rejected retry record."""
+        failed_attempt = EphemeralAttempt(
+            attempt_id=rejection.retry_attempt_id,
+            session_id=rejection.http_session_id,
+            chat_session_id=rejection.chat_session_id,
+            user_id=rejection.user_id,
+            database_connection_id=rejection.database_connection_id,
+            sql=rejection.sql,
+            question=rejection.question,
+            attempt_number=rejection.attempt_number,
+            llm_provider=self._llm_provider,
+            state="REJECTED",
+            evaluator_result={
+                "passed": False,
+                "violations": rejection.violations,
+            },
+        )
+        tracked_attempt = TrackedAttempt(
+            session_id=rejection.chat_session_id,
+            user_id=rejection.user_id,
+            http_session_id=rejection.http_session_id,
+            attempt_id=rejection.retry_attempt_id,
+        )
+        await track_session_attempt(tracked_attempt, self._redis)
+        await self._ensure_operation_active(rejection.chat_session_id, deadline)
+        await store_attempt(failed_attempt, rejection.http_session_id, self._redis)
+        await delete_attempt(rejection.prior_attempt_id, self._redis)
+        await self._ensure_operation_active(rejection.chat_session_id, deadline)
+        await self._redis.delete(f"active_attempt:{rejection.http_session_id}")
+        return failed_attempt, tracked_attempt
 
     async def _raise_timeout(self, failure: _TimeoutFailure, cause: BaseException) -> NoReturn:
         try:
@@ -1256,44 +1401,15 @@ class QueryService:
         http_session_id: str,
         user_id: str,
     ) -> QueryResult | RefinePrompt:
-        """Reject a query result and trigger one auto-retry.
-
-        Behaviour is identical to regenerate_query: discards the current
-        attempt, provides it as negative context to the LLM, and generates
-        a new SQL attempt. If this is the second consecutive rejection (or
-        the regenerated SQL is byte-equal), returns a RefinePrompt instead
-        of a new result.
-
-        Args:
-            attempt_id: The ephemeral attempt id to reject.
-            http_session_id: The HTTP session id (Redis lock key).
-            user_id: The authenticated user id used for ownership and
-                FR-140 audit attribution.
-
-        Raises:
-            SessionBusy: if a concurrent operation is in progress.
-            AttemptNotFound: if the attempt does not exist.
-            AttemptOwnershipViolation: if session_id doesn't match.
-        """
-        # FR-140: emit query.reject BEFORE delegating to
-        # regenerate_query. The user made a distinct reject
-        # decision (click); the subsequent regeneration is
-        # audited separately only if it reaches a new
-        # submit/validate/execute path (currently out of
-        # T-720 scope — regenerate logs no further events
-        # to keep the diff minimal).
-        reject_actor_id = uuid.UUID(user_id)
-        await AuditService.log(
-            self._db_session,
-            action=AuditActionType.QUERY_REJECT,
-            actor_id=reject_actor_id,
-            actor_identity=user_id,
-            resource_type="query_attempt",
-            resource_id=attempt_id,
-            outcome="success",
-            context={},
+        """Record an explicit rejection and run the shared retry lifecycle."""
+        return await self._retry_query(
+            _RetryRequest(
+                attempt_id=attempt_id,
+                http_session_id=http_session_id,
+                user_id=user_id,
+                decision_action=AuditActionType.QUERY_REJECT,
+            )
         )
-        return await self.regenerate_query(attempt_id, http_session_id, user_id)
 
     async def regenerate_query(
         self,
@@ -1301,24 +1417,23 @@ class QueryService:
         http_session_id: str,
         user_id: str,
     ) -> QueryResult | RefinePrompt:
-        """Regenerate SQL for a rejected query result.
+        """Run the shared retry lifecycle without a rejection decision event."""
+        return await self._retry_query(
+            _RetryRequest(
+                attempt_id=attempt_id,
+                http_session_id=http_session_id,
+                user_id=user_id,
+            )
+        )
 
-        Flow:
-        1. Acquire processing lock (Critical 1 fix).
-        2. Verify user exists in DB (Critical 2 fix).
-        3. Get prior attempt (validate ownership).
-        4. Build LLM prompt with negative context.
-        5. Call LLM.
-        6. Inv 4 byte-equal check.
-        7. Run evaluator (Inv 1).
-        8. Run executor.
-        9. Auto-save: update prior row in-place (Option B, High 3 fix).
-        10. Release lock, return QueryResult.
-
-        Raises:
-            HTTPException 409: if another operation holds the session processing lock.
-            HTTPException 401: if the user has been deleted from DB.
-        """
+    async def _retry_query(
+        self,
+        request: _RetryRequest,
+    ) -> QueryResult | RefinePrompt:
+        """Run the ordered quota, provider, validation, source, and audit retry lifecycle."""
+        attempt_id = request.attempt_id
+        http_session_id = request.http_session_id
+        user_id = request.user_id
         lock_owner = await self._acquire_lock(http_session_id, ttl=self._query_lock_ttl)
         if lock_owner is None:
             raise HTTPException(
@@ -1333,6 +1448,14 @@ class QueryService:
         query_operation: QueryOperation | None = None
         tracked_attempt: TrackedAttempt | None = None
         chat_session_id: str | None = None
+        actor_identity: str | None = None
+        timeout_audit = _ExecutionFailureAudit(
+            action=AuditActionType.QUERY_SUBMIT,
+            actor_id=user_uuid,
+            resource_type="query_attempt",
+            resource_id=attempt_id,
+            reason="timeout",
+        )
         try:
             # G-001+G-004: verify active attempt
             active_attempt_id = await self._redis.get(f"active_attempt:{http_session_id}")
@@ -1386,7 +1509,20 @@ class QueryService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={"error": "unauthorized", "message_key": "error.unauthorized"},
                 )
+            actor_identity = user_row.username
             await self._ensure_operation_active(chat_session_id, deadline)
+
+            if request.decision_action is not None:
+                await self._persist_retry_audit(
+                    _RetryAuditEvent(
+                        action=request.decision_action,
+                        actor_id=user_uuid,
+                        actor_identity=actor_identity,
+                        attempt_id=attempt_id,
+                        outcome="success",
+                    )
+                )
+                await self._ensure_operation_active(chat_session_id, deadline)
 
             # Max retries: max_regenerate_attempts = regen clicks after original (default 3)
             next_attempt_number = (prior.attempt_number or 1) + 1
@@ -1407,6 +1543,16 @@ class QueryService:
             )
             await self._ensure_operation_active(chat_session_id, deadline)
             if role_policy is not None and not role_policy.allowed_tables:
+                await self._persist_retry_audit(
+                    _RetryAuditEvent(
+                        action=AuditActionType.ACCESS_DENIED,
+                        actor_id=user_uuid,
+                        actor_identity=actor_identity,
+                        attempt_id=attempt_id,
+                        outcome="denied",
+                        context={"reason": "deny_all"},
+                    )
+                )
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return self._role_auth_rejection()
 
@@ -1419,33 +1565,28 @@ class QueryService:
                 role_policy,
                 self._schema_context,
             )
-
-            if self._quota_service is not None and user_row.role_id is not None:
-                try:
-                    await self._quota_service.check_and_increment(user_uuid, user_row.role_id, "queries")
-                except QuotaExceededError as exc:
-                    await self._ensure_operation_active(chat_session_id, deadline)
-                    await self._persist_quota_exceeded_audit(user_uuid, "queries", exc.reset_at)
-                    raise HTTPException(
-                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                        detail={
-                            "error": "quota_exceeded",
-                            "message_key": "error.quota_exceeded",
-                            "reset_at": exc.reset_at,
-                        },
-                    ) from exc
-                except QuotaUnavailableError as exc:
-                    await self._ensure_operation_active(chat_session_id, deadline)
-                    raise HTTPException(
-                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail={
-                            "error": "service_unavailable",
-                            "message_key": "error.service_unavailable",
-                        },
-                    ) from exc
-
-            # Call LLM immediately after consuming one query unit.
             await self._ensure_operation_active(chat_session_id, deadline)
+            retry_attempt_id = str(uuid.uuid4())
+            timeout_attempt = EphemeralAttempt(
+                attempt_id=retry_attempt_id,
+                session_id=http_session_id,
+                chat_session_id=chat_session_id,
+                user_id=user_id,
+                database_connection_id=prior.database_connection_id,
+                question=prior.question,
+                attempt_number=next_attempt_number,
+                llm_provider=self._llm_provider,
+            )
+            timeout_audit = _ExecutionFailureAudit(
+                action=AuditActionType.QUERY_SUBMIT,
+                actor_id=user_uuid,
+                actor_identity=actor_identity,
+                resource_type="query_attempt",
+                resource_id=retry_attempt_id,
+                reason="timeout",
+            )
+            provider_timeout = deadline.remaining_seconds()
+            await self._consume_retry_quota(user_row, "queries", chat_session_id, deadline)
             try:
                 new_sql = await self._run_chat_session_stage(
                     chat_session_id,
@@ -1455,7 +1596,7 @@ class QueryService:
                         schema_for_prompt,
                         negative_examples=negative_examples,
                         target_dialect=self._target_dialect,
-                        timeout=deadline.remaining_seconds(),
+                        timeout=provider_timeout,
                     ),
                 )
             except asyncio.CancelledError:
@@ -1463,16 +1604,56 @@ class QueryService:
                 raise
             except LLMTimeout as exc:
                 raise QueryDeadlineExpired() from exc
-            except Exception as exc:
+            except Exception:
+                await self._ensure_operation_active(chat_session_id, deadline)
+                await self._persist_retry_audit(
+                    _RetryAuditEvent(
+                        action=AuditActionType.QUERY_SUBMIT,
+                        actor_id=user_uuid,
+                        actor_identity=actor_identity,
+                        attempt_id=retry_attempt_id,
+                        outcome="failure",
+                        context={"reason": "provider_failure"},
+                    )
+                )
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail={"error": "llm_unavailable", "message_key": "error.llmUnavailable"},
-                ) from exc
+                ) from None
+            await self._ensure_operation_active(chat_session_id, deadline)
+            await self._persist_retry_audit(
+                _RetryAuditEvent(
+                    action=AuditActionType.QUERY_SUBMIT,
+                    actor_id=user_uuid,
+                    actor_identity=actor_identity,
+                    attempt_id=retry_attempt_id,
+                    outcome="success",
+                )
+            )
+            timeout_audit = _ExecutionFailureAudit(
+                action=AuditActionType.QUERY_VALIDATE_FAIL,
+                actor_id=user_uuid,
+                actor_identity=actor_identity,
+                resource_type="query_attempt",
+                resource_id=retry_attempt_id,
+                reason="timeout",
+            )
             await self._ensure_operation_active(chat_session_id, deadline)
 
             # Inv 4: byte-equal duplicate detection
             if new_sql == prior.sql:
+                await self._persist_retry_audit(
+                    _RetryAuditEvent(
+                        action=AuditActionType.QUERY_VALIDATE_FAIL,
+                        actor_id=user_uuid,
+                        actor_identity=actor_identity,
+                        attempt_id=retry_attempt_id,
+                        outcome="failure",
+                        context={"reason": "duplicate_candidate"},
+                    )
+                )
+                await delete_attempt(attempt_id, self._redis)
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
@@ -1491,40 +1672,57 @@ class QueryService:
                 raise
             await self._ensure_operation_active(chat_session_id, deadline)
             if not eval_result.passed:
-                new_attempt_id = str(uuid.uuid4())
-                failed_attempt = EphemeralAttempt(
-                    attempt_id=new_attempt_id,
-                    session_id=http_session_id,
-                    chat_session_id=chat_session_id,
-                    user_id=user_id,
-                    database_connection_id=prior.database_connection_id,
-                    sql=new_sql,
-                    question=prior.question,
-                    attempt_number=next_attempt_number,
-                    llm_provider=self._llm_provider,
-                    evaluator_result={
-                        "passed": False,
-                        "violations": [
-                            {"rule": v.rule_name, "message_key": v.message_key} for v in eval_result.violations
+                await self._persist_retry_audit(
+                    _RetryAuditEvent(
+                        action=AuditActionType.QUERY_VALIDATE_FAIL,
+                        actor_id=user_uuid,
+                        actor_identity=actor_identity,
+                        attempt_id=retry_attempt_id,
+                        outcome="failure",
+                        context={"reason": "evaluator_rejected"},
+                    )
+                )
+                timeout_attempt, tracked_attempt = await self._store_rejected_retry(
+                    _RejectedRetry(
+                        prior_attempt_id=attempt_id,
+                        retry_attempt_id=retry_attempt_id,
+                        http_session_id=http_session_id,
+                        chat_session_id=chat_session_id,
+                        user_id=user_id,
+                        database_connection_id=prior.database_connection_id,
+                        sql=new_sql,
+                        question=prior.question,
+                        attempt_number=next_attempt_number,
+                        violations=[
+                            {"rule": violation.rule_name, "message_key": violation.message_key}
+                            for violation in eval_result.violations
                         ],
-                    },
+                    ),
+                    deadline,
                 )
-                timeout_attempt = failed_attempt
-                tracked_attempt = TrackedAttempt(
-                    session_id=chat_session_id,
-                    user_id=user_id,
-                    http_session_id=http_session_id,
-                    attempt_id=new_attempt_id,
-                )
-                await track_session_attempt(tracked_attempt, self._redis)
-                await self._ensure_operation_active(chat_session_id, deadline)
-                await store_attempt(failed_attempt, http_session_id, self._redis)
-                await self._ensure_operation_active(chat_session_id, deadline)
-                await self._redis.delete(f"active_attempt:{http_session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
                     should_refine=True,
                 )
+
+            await self._persist_retry_audit(
+                _RetryAuditEvent(
+                    action=AuditActionType.QUERY_VALIDATE_PASS,
+                    actor_id=user_uuid,
+                    actor_identity=actor_identity,
+                    attempt_id=retry_attempt_id,
+                    outcome="success",
+                )
+            )
+            timeout_audit = _ExecutionFailureAudit(
+                action=AuditActionType.QUERY_EXECUTE,
+                actor_id=user_uuid,
+                actor_identity=actor_identity,
+                resource_type="query_attempt",
+                resource_id=retry_attempt_id,
+                reason="timeout",
+            )
+            await self._ensure_operation_active(chat_session_id, deadline)
 
             # T-712: policy-based role authorization on the
             # regenerated SQL. Returns a RefinePrompt (treating it
@@ -1533,36 +1731,34 @@ class QueryService:
             role_auth_rejection = await self._enforce_role_authorization(new_sql, role_policy)
             await self._ensure_operation_active(chat_session_id, deadline)
             if role_auth_rejection is not None:
-                new_attempt_id = str(uuid.uuid4())
-                failed_attempt = EphemeralAttempt(
-                    attempt_id=new_attempt_id,
-                    session_id=http_session_id,
-                    chat_session_id=chat_session_id,
-                    user_id=user_id,
-                    database_connection_id=prior.database_connection_id,
-                    sql=new_sql,
-                    question=prior.question,
-                    attempt_number=next_attempt_number,
-                    llm_provider=self._llm_provider,
-                    evaluator_result={
-                        "passed": False,
-                        "violations": [
-                            {"rule": v.rule, "message_key": v.message_key} for v in role_auth_rejection.violations
+                await self._persist_retry_audit(
+                    _RetryAuditEvent(
+                        action=AuditActionType.ACCESS_DENIED,
+                        actor_id=user_uuid,
+                        actor_identity=actor_identity,
+                        attempt_id=retry_attempt_id,
+                        outcome="denied",
+                        context={"reason": "role_authorization"},
+                    )
+                )
+                timeout_attempt, tracked_attempt = await self._store_rejected_retry(
+                    _RejectedRetry(
+                        prior_attempt_id=attempt_id,
+                        retry_attempt_id=retry_attempt_id,
+                        http_session_id=http_session_id,
+                        chat_session_id=chat_session_id,
+                        user_id=user_id,
+                        database_connection_id=prior.database_connection_id,
+                        sql=new_sql,
+                        question=prior.question,
+                        attempt_number=next_attempt_number,
+                        violations=[
+                            {"rule": violation.rule, "message_key": violation.message_key}
+                            for violation in role_auth_rejection.violations
                         ],
-                    },
+                    ),
+                    deadline,
                 )
-                timeout_attempt = failed_attempt
-                tracked_attempt = TrackedAttempt(
-                    session_id=chat_session_id,
-                    user_id=user_id,
-                    http_session_id=http_session_id,
-                    attempt_id=new_attempt_id,
-                )
-                await track_session_attempt(tracked_attempt, self._redis)
-                await self._ensure_operation_active(chat_session_id, deadline)
-                await store_attempt(failed_attempt, http_session_id, self._redis)
-                await self._ensure_operation_active(chat_session_id, deadline)
-                await self._redis.delete(f"active_attempt:{http_session_id}")
                 return RefinePrompt(
                     message_key="query.refine.message",
                     should_refine=True,
@@ -1583,6 +1779,17 @@ class QueryService:
                         dialect=self._target_dialect or "postgres",
                     )
                 except PolicySchemaConflictError as exc:
+                    await self._persist_retry_audit(
+                        _RetryAuditEvent(
+                            action=AuditActionType.POLICY_SCHEMA_MISMATCH,
+                            actor_id=user_uuid,
+                            actor_identity=actor_identity,
+                            attempt_id=retry_attempt_id,
+                            outcome="failure",
+                            context={"reason": "policy_schema_conflict"},
+                        )
+                    )
+                    await delete_attempt(attempt_id, self._redis)
                     await self._redis.delete(f"active_attempt:{http_session_id}")
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
@@ -1594,35 +1801,9 @@ class QueryService:
                 effective_sql = bound.sql
                 row_filter_params = bound.params
             await self._ensure_operation_active(chat_session_id, deadline)
-
-            if self._quota_service is not None and user_row.role_id is not None:
-                try:
-                    await self._quota_service.check_and_increment(user_uuid, user_row.role_id, "executions")
-                except QuotaExceededError as exc:
-                    await self._ensure_operation_active(chat_session_id, deadline)
-                    await self._persist_quota_exceeded_audit(user_uuid, "executions", exc.reset_at)
-                    raise HTTPException(
-                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                        detail={
-                            "error": "quota_exceeded",
-                            "message_key": "error.quota_exceeded",
-                            "reset_at": exc.reset_at,
-                        },
-                    ) from exc
-                except QuotaUnavailableError as exc:
-                    await self._ensure_operation_active(chat_session_id, deadline)
-                    raise HTTPException(
-                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail={
-                            "error": "service_unavailable",
-                            "message_key": "error.service_unavailable",
-                        },
-                    ) from exc
-
-            # Execute immediately after consuming one execution unit.
-            await self._ensure_operation_active(chat_session_id, deadline)
+            source_timeout = deadline.remaining_seconds()
+            await self._consume_retry_quota(user_row, "executions", chat_session_id, deadline)
             try:
-                source_timeout = deadline.remaining_seconds()
                 if self._adapter is not None:
                     exec_result = await self._run_chat_session_stage(
                         chat_session_id,
@@ -1652,24 +1833,26 @@ class QueryService:
                 raise QueryDeadlineExpired() from exc
             except Exception as exc:
                 failure_status, failure_detail, failure_reason = _source_failure_response(exc)
-                await self._redis.delete(f"active_attempt:{http_session_id}")
                 await self._persist_execution_failure_audit(
                     _ExecutionFailureAudit(
                         action=AuditActionType.QUERY_EXECUTE,
                         actor_id=user_uuid,
+                        actor_identity=actor_identity,
                         resource_type="query_attempt",
-                        resource_id=prior.attempt_id,
+                        resource_id=retry_attempt_id,
                         reason=failure_reason,
                     )
                 )
+                await delete_attempt(attempt_id, self._redis)
+                await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise HTTPException(
                     status_code=failure_status,
                     detail=failure_detail,
                 ) from None
             await self._ensure_operation_active(chat_session_id, deadline)
 
-            # Build result and store ephemeral attempt
-            new_attempt_id = str(uuid.uuid4())
+            # Mask the source result before recording successful execution.
+            new_attempt_id = retry_attempt_id
             column_metas = []
             for c in columns:
                 if isinstance(c, dict):
@@ -1688,14 +1871,99 @@ class QueryService:
                 is_last_auto_retry=next_attempt_number >= max_regens + 1,
             )
             if role_policy is not None and role_policy.column_masks:
-                masked_result = self._policy.apply_column_masks(
-                    masked_result,
-                    role_policy.column_masks,
-                    dialect=self._target_dialect,
-                )
+                try:
+                    masked_result = self._policy.apply_column_masks(
+                        masked_result,
+                        role_policy.column_masks,
+                        dialect=self._target_dialect,
+                    )
+                except Exception:
+                    await self._persist_execution_failure_audit(
+                        _ExecutionFailureAudit(
+                            action=AuditActionType.QUERY_EXECUTE,
+                            actor_id=user_uuid,
+                            actor_identity=actor_identity,
+                            resource_type="query_attempt",
+                            resource_id=retry_attempt_id,
+                            reason="result_processing_failed",
+                        )
+                    )
+                    await delete_attempt(attempt_id, self._redis)
+                    await self._redis.delete(f"active_attempt:{http_session_id}")
+                    raise HTTPException(
+                        status_code=status.HTTP_502_BAD_GATEWAY,
+                        detail={
+                            "error": "source_db_execution_failed",
+                            "message_key": "error.sourceDbExecutionFailed",
+                        },
+                    ) from None
                 column_metas = list(masked_result.columns)
                 rows = masked_result.rows
             result = masked_result
+            await self._ensure_operation_active(chat_session_id, deadline)
+
+            # Auto-save regenerated result (Option B: update prior saved row in-place)
+            # High 3: instead of creating a duplicate row, update the prior saved row
+            # with new SQL/results to avoid confusing duplicates in history.
+            session_uuid = None
+            try:
+                prior_saved = await self._repo.get_by_attempt_id(prior.attempt_id, user_uuid)
+                if prior_saved is None:
+                    db_conn_id = await self._get_database_connection_id()
+                    saved_query = await self._repo.create(
+                        user_id=user_uuid,
+                        database_connection_id=uuid.UUID(db_conn_id),
+                        question_text=prior.question,
+                        generated_sql=new_sql,
+                        llm_provider=self._llm_provider,
+                        attempt_id=new_attempt_id,
+                        session_id=uuid.UUID(chat_session_id),
+                        saved=True,
+                        feedback=1,
+                        result_columns=[column.model_dump() for column in column_metas],
+                        result_rows=_sanitize_for_json(rows),
+                        result_row_count=len(rows),
+                    )
+                    result.accepted_query_id = str(saved_query.id)
+                else:
+                    session_uuid = prior_saved.session_id
+                    prior_saved.generated_sql = new_sql
+                    prior_saved.attempt_id = new_attempt_id
+                    prior_saved.result_columns = [column.model_dump() for column in column_metas]
+                    prior_saved.result_rows = _sanitize_for_json(rows)
+                    prior_saved.result_row_count = len(rows)
+                    prior_saved.accepted_at = datetime.now(UTC)
+                    await self._db_session.flush()
+                    result.accepted_query_id = str(prior_saved.id)
+                    if session_uuid is not None:
+                        result.session_id = str(session_uuid)
+            except Exception:
+                await self._db_session.rollback()
+                await self._persist_retry_audit(
+                    _RetryAuditEvent(
+                        action=AuditActionType.QUERY_EXECUTE,
+                        actor_id=user_uuid,
+                        actor_identity=actor_identity,
+                        attempt_id=retry_attempt_id,
+                        outcome="success",
+                    )
+                )
+                raise
+
+            await self._ensure_operation_active(chat_session_id, deadline)
+            try:
+                await self._persist_retry_audit(
+                    _RetryAuditEvent(
+                        action=AuditActionType.QUERY_EXECUTE,
+                        actor_id=user_uuid,
+                        actor_identity=actor_identity,
+                        attempt_id=retry_attempt_id,
+                        outcome="success",
+                    )
+                )
+            except Exception:
+                await self._db_session.rollback()
+                raise
             await self._ensure_operation_active(chat_session_id, deadline)
 
             new_attempt = EphemeralAttempt(
@@ -1711,7 +1979,6 @@ class QueryService:
                 state="EXECUTED",
             )
             timeout_attempt = new_attempt
-            await self._ensure_operation_active(chat_session_id, deadline)
             tracked_attempt = TrackedAttempt(
                 session_id=chat_session_id,
                 user_id=user_id,
@@ -1723,46 +1990,7 @@ class QueryService:
             await store_attempt(new_attempt, http_session_id, self._redis)
             await self._redis.set(f"active_attempt:{http_session_id}", new_attempt_id)
             await self._ensure_operation_active(chat_session_id, deadline)
-
-            # Auto-save regenerated result (Option B: update prior saved row in-place)
-            # High 3: instead of creating a duplicate row, update the prior saved row
-            # with new SQL/results to avoid confusing duplicates in history.
-            session_uuid = None
-            if user_uuid is not None:
-                prior_saved = await self._repo.get_by_attempt_id(prior.attempt_id, user_uuid)
-                if prior_saved is not None:
-                    session_uuid = prior_saved.session_id
-                    # Update in-place: replace SQL, results, and attempt_id
-                    prior_saved.generated_sql = new_sql
-                    prior_saved.attempt_id = new_attempt_id
-                    prior_saved.result_columns = [c.model_dump() for c in column_metas]
-                    prior_saved.result_rows = _sanitize_for_json(rows)
-                    prior_saved.result_row_count = len(rows)
-                    prior_saved.accepted_at = datetime.now(UTC)
-                    await self._db_session.flush()
-                    result.accepted_query_id = str(prior_saved.id)
-                else:
-                    # No prior row — create fresh
-                    db_conn_id = await self._get_database_connection_id()
-                    saved_query = await self._repo.create(
-                        user_id=user_uuid,
-                        database_connection_id=uuid.UUID(db_conn_id),
-                        question_text=prior.question,
-                        generated_sql=new_sql,
-                        llm_provider=self._llm_provider,
-                        attempt_id=new_attempt_id,
-                        session_id=uuid.UUID(chat_session_id),
-                        saved=True,
-                        feedback=1,
-                        result_columns=[c.model_dump() for c in column_metas],
-                        result_rows=_sanitize_for_json(rows),
-                        result_row_count=len(rows),
-                    )
-                    result.accepted_query_id = str(saved_query.id)
-                if session_uuid is not None:
-                    result.session_id = str(session_uuid)
-
-            await self._ensure_operation_active(chat_session_id, deadline)
+            await delete_attempt(attempt_id, self._redis)
             return result
         except SessionInvalidated:
             await self._discard_invalidated_attempt(tracked_attempt)
@@ -1771,15 +1999,11 @@ class QueryService:
             if isinstance(exc, asyncio.CancelledError) and not deadline.cancelled_current_task:
                 raise
             deadline.disarm()
+            if timeout_audit.resource_id != attempt_id:
+                await delete_attempt(attempt_id, self._redis)
             await self._raise_timeout(
                 _TimeoutFailure(
-                    audit=_ExecutionFailureAudit(
-                        action=AuditActionType.QUERY_EXECUTE,
-                        actor_id=user_uuid,
-                        resource_type="query_attempt",
-                        resource_id=attempt_id,
-                        reason="timeout",
-                    ),
+                    audit=timeout_audit,
                     attempt=timeout_attempt,
                     http_session_id=http_session_id,
                     chat_session_id=chat_session_id,

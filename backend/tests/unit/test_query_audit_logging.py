@@ -781,7 +781,7 @@ class TestRejectAuditLogging:
         assert reject_call.kwargs.get("actor_id") == uuid.UUID(deps["user_id"]), (
             f"actor_id missing or wrong on QUERY_REJECT: {reject_call.kwargs.get('actor_id')!r}"
         )
-        assert reject_call.kwargs.get("actor_identity") == deps["user_id"], (
+        assert reject_call.kwargs.get("actor_identity") == "alice@example.com", (
             f"actor_identity missing or wrong on QUERY_REJECT: {reject_call.kwargs.get('actor_identity')!r}"
         )
 
@@ -839,23 +839,11 @@ class TestRejectAuditLogging:
         )
         await store_attempt(ephemeral, http_session_id, service._redis)
 
-        # Reuse the existing rejection-patch pattern by
-        # isolating only the QUERY_REJECT audit call
-        # (patch regenerate_query to a no-op so the
-        # subsequent active-attempt check inside
-        # regenerate is not exercised — the test
-        # focuses on the QUERY_REJECT audit shape
-        # only).
-        async def _noop_regen(attempt_id, http_session_id, user_id):
-            from app.schemas.query import RefinePrompt
-
-            return RefinePrompt(message_key="query.refine.message", should_refine=True)
-
         with patch(
             "app.services.audit_service.AuditService.log",
             new_callable=AsyncMock,
         ) as mock_audit:
-            with patch.object(service, "regenerate_query", new=_noop_regen):
+            with patch.object(service._llm, "generate_sql", new=AsyncMock(return_value="SELECT 1")):
                 await service.reject_query(
                     attempt_id=attempt_id,
                     http_session_id=http_session_id,
@@ -874,28 +862,6 @@ class TestRejectAuditLogging:
         assert attempt_id not in str(ctx)
         # resource_id still carries the attempt_id
         assert reject_calls[0].kwargs.get("resource_id") == attempt_id
-        await store_attempt(ephemeral, http_session_id, service._redis)
-
-        with patch(
-            "app.services.audit_service.AuditService.log",
-            new_callable=AsyncMock,
-        ) as mock_audit:
-            # Patch LLM/evaluator on the regenerate path so
-            # the call returns a RefinePrompt quickly. The
-            # point of this test is the QUERY_REJECT event.
-            with patch.object(
-                service._llm,
-                "generate_sql",
-                new=AsyncMock(return_value="SELECT 1"),
-            ):
-                await service.reject_query(
-                    attempt_id=attempt_id,
-                    http_session_id=http_session_id,
-                    user_id=deps["user_id"],
-                )
-
-        actions = _audit_actions(mock_audit)
-        assert AuditActionType.QUERY_REJECT in actions, f"Expected QUERY_REJECT in audit calls, got {actions}"
 
 
 # ── 7. Source DB timeout / execution failure ───────────────────────────
@@ -1063,9 +1029,10 @@ def _assert_execution_state_clean(service, operation: str, expected_submit_state
         assert "active_attempt:http-sess-1" not in service._redis._data
 
 
-def _assert_failure_audit_is_durable(deps) -> None:
-    deps["db"].rollback.assert_awaited_once_with()
-    deps["db"].commit.assert_awaited_once_with()
+def _assert_failure_audit_is_durable(deps, operation: str) -> None:
+    expected_commits = 3 if operation == "regenerate" else 1
+    assert deps["db"].rollback.await_count == 1
+    assert deps["db"].commit.await_count == expected_commits
 
 
 @pytest.mark.asyncio
@@ -1092,7 +1059,7 @@ class TestSourceDbExecutionFailureAuditLogging:
             "message_key": "error.sourceDbExecutionFailed",
         }
         _assert_failure_audit(mock_audit, operation, "execution_failed")
-        _assert_failure_audit_is_durable(deps)
+        _assert_failure_audit_is_durable(deps, operation)
         _assert_execution_state_clean(service, operation, "FAILED")
         deps["repo"].create.assert_not_awaited()
 
@@ -1131,7 +1098,7 @@ class TestSourceDbExecutionFailureAuditLogging:
         assert http_error.status_code == expected_status
         assert http_error.detail == expected_detail
         _assert_failure_audit(mock_audit, operation, expected_reason)
-        _assert_failure_audit_is_durable(deps)
+        _assert_failure_audit_is_durable(deps, operation)
         _assert_execution_state_clean(service, operation, "FAILED")
         deps["repo"].create.assert_not_awaited()
 
@@ -1151,7 +1118,7 @@ class TestSourceDbExecutionFailureAuditLogging:
         assert http_error.status_code == 504
         assert http_error.detail == {"error": "timeout", "message_key": "error.timeout"}
         _assert_failure_audit(mock_audit, operation, "timeout")
-        _assert_failure_audit_is_durable(deps)
+        _assert_failure_audit_is_durable(deps, operation)
         _assert_execution_state_clean(service, operation, "TIMEOUT")
         deps["repo"].create.assert_not_awaited()
 
@@ -1173,8 +1140,9 @@ class TestSourceDbExecutionFailureAuditLogging:
             with pytest.raises(RuntimeError, match="audit unavailable"):
                 await _invoke_execution_operation(service, deps, operation)
 
-        deps["db"].rollback.assert_awaited_once_with()
-        deps["db"].commit.assert_not_awaited()
+        expected_commits = 2 if operation == "regenerate" else 0
+        assert deps["db"].rollback.await_count == 1
+        assert deps["db"].commit.await_count == expected_commits
 
     @pytest.mark.parametrize("operation", _EXECUTION_OPERATIONS)
     async def test_source_execution_cancellation_propagates_after_state_cleanup(self, operation):
