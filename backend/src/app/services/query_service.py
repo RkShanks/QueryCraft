@@ -1346,6 +1346,11 @@ class QueryService:
             prior = await get_attempt(attempt_id, http_session_id, self._redis)
             timeout_attempt = prior
             connection_id = self._require_attempt_binding(prior, user_id)
+            if prior.state != "EXECUTED":
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail={"error": "attempt_state_invalid", "message_key": "error.attemptStateInvalid"},
+                )
             chat_session_id = prior.chat_session_id
             if chat_session_id is None:
                 raise AttemptContextInvalid()
@@ -1371,12 +1376,11 @@ class QueryService:
             )
             await track_session_attempt(tracked_attempt, self._redis)
             await self._ensure_operation_active(chat_session_id, deadline)
-            await delete_attempt(attempt_id, self._redis)
-            await self._ensure_operation_active(chat_session_id, deadline)
 
             # Critical 2: verify user exists in DB before any writes
             user_result = await self._db_session.execute(select(User).where(User.id == user_uuid))
-            if user_result.scalar_one_or_none() is None:
+            user_row = user_result.scalar_one_or_none()
+            if user_row is None:
                 await self._redis.delete(f"active_attempt:{http_session_id}")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -1416,7 +1420,31 @@ class QueryService:
                 self._schema_context,
             )
 
-            # Call LLM
+            if self._quota_service is not None and user_row.role_id is not None:
+                try:
+                    await self._quota_service.check_and_increment(user_uuid, user_row.role_id, "queries")
+                except QuotaExceededError as exc:
+                    await self._ensure_operation_active(chat_session_id, deadline)
+                    await self._persist_quota_exceeded_audit(user_uuid, "queries", exc.reset_at)
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail={
+                            "error": "quota_exceeded",
+                            "message_key": "error.quota_exceeded",
+                            "reset_at": exc.reset_at,
+                        },
+                    ) from exc
+                except QuotaUnavailableError as exc:
+                    await self._ensure_operation_active(chat_session_id, deadline)
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail={
+                            "error": "service_unavailable",
+                            "message_key": "error.service_unavailable",
+                        },
+                    ) from exc
+
+            # Call LLM immediately after consuming one query unit.
             await self._ensure_operation_active(chat_session_id, deadline)
             try:
                 new_sql = await self._run_chat_session_stage(
@@ -1567,7 +1595,31 @@ class QueryService:
                 row_filter_params = bound.params
             await self._ensure_operation_active(chat_session_id, deadline)
 
-            # Execute against source DB
+            if self._quota_service is not None and user_row.role_id is not None:
+                try:
+                    await self._quota_service.check_and_increment(user_uuid, user_row.role_id, "executions")
+                except QuotaExceededError as exc:
+                    await self._ensure_operation_active(chat_session_id, deadline)
+                    await self._persist_quota_exceeded_audit(user_uuid, "executions", exc.reset_at)
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail={
+                            "error": "quota_exceeded",
+                            "message_key": "error.quota_exceeded",
+                            "reset_at": exc.reset_at,
+                        },
+                    ) from exc
+                except QuotaUnavailableError as exc:
+                    await self._ensure_operation_active(chat_session_id, deadline)
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail={
+                            "error": "service_unavailable",
+                            "message_key": "error.service_unavailable",
+                        },
+                    ) from exc
+
+            # Execute immediately after consuming one execution unit.
             await self._ensure_operation_active(chat_session_id, deadline)
             try:
                 source_timeout = deadline.remaining_seconds()
