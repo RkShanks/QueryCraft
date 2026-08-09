@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-03` are resolved. CHUNK-03 passed deterministic provider, evaluator, persistence-boundary, cross-worker, and real PostgreSQL source cancellation proof on `4580925594c872ae0283485155bbdf4bd7e225f4` via [#301](https://github.com/RkShanks/QueryCraft/pull/301) and [evidence](evidence/chunk-03-session-cancel.md). `CHUNK-04` is unblocked after #301 merges; no CHUNK-04 work has started.
+Status: `CHUNK-01` through `CHUNK-04` are resolved. CHUNK-04 passed configured short/long deadline, remaining-budget, sanitized timeout, ownership-safe cleanup, deletion-race, and real PostgreSQL/MySQL/MSSQL slow-query proof on `61723e46dc267e74c7aa3539a40990b1482e9edc` via [#302](https://github.com/RkShanks/QueryCraft/pull/302) and [evidence](evidence/chunk-04-timeout-config.md). `CHUNK-05` is unblocked after #302 merges; no CHUNK-05 work has started.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -40,7 +40,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-03 — session delete/cancel lifecycle
 
-- **Progress:** Resolved. DELETE establishes durable cancellation before database deletion; same-process work is interrupted where safe, late cross-worker completion is suppressed, owned attempt/lock state is cleaned without racing replacement owners, and frontend Undo/cache/workspace behavior remains coherent. Deterministic browser/API and real PostgreSQL source proof passed. `CHUNK-04` is unblocked after #301 merges.
+- **Progress:** Resolved. DELETE establishes durable cancellation before database deletion; same-process work is interrupted where safe, late cross-worker completion is suppressed, owned attempt/lock state is cleaned without racing replacement owners, and frontend Undo/cache/workspace behavior remains coherent. Deterministic browser/API and real PostgreSQL source proof passed. `CHUNK-04` subsequently resolved the next dependency.
 
 - **IDs / role / branch / context:** `IS-GAP-003`; Backend Implementer then Frontend Implementer; `phase-6/wave-19.03-session-delete-cancel`; 130–170k.
 - **Likely source:** `backend/src/app/api/v1/sessions.py`, `backend/src/app/repositories/session_repository.py`, processing/attempt state, `frontend/src/hooks/useSessions.ts`, `frontend/src/components/sidebar/UndoToast.tsx`, `WorkspacePage.tsx`.
@@ -52,6 +52,8 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Stop conditions:** Undo meaning cannot be preserved without a product decision, adapter cancellation is unsafe, or any task survives cleanup.
 
 ## CHUNK-04 — configured query deadline and lock lifetime
+
+- **Progress:** Resolved. Submit, regenerate, and accepted-query rerun share one monotonic configured deadline; provider and source calls receive only the remaining budget while every other stage shares the same timer. Locks use `ceil(deadline) + 5 seconds`, timeout cleanup is ownership-safe, and CHUNK-03 deletion remains authoritative. Controlled HTTP and real PostgreSQL/MySQL/MSSQL proof passed. `CHUNK-05` is unblocked after #302 merges.
 
 - **IDs / role / branch / context:** `IS-GAP-004`; Backend Implementer; `phase-6/wave-19.04-query-timeout-config`; 80–110k.
 - **Likely source:** `backend/src/app/core/config.py`, `processing_lock.py`, `query_service.py`, source executor and focused tests.
@@ -361,4 +363,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-03` are resolved. `CHUNK-04 / IS-GAP-004` is the next unblocked dispatch after #301 merges; no CHUNK-04 work has started.
+`CHUNK-01` through `CHUNK-04` are resolved. `CHUNK-05 / IS-GAP-005 + IS-GAP-006` is the next unblocked dispatch after #302 merges; no CHUNK-05 work has started.

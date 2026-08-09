@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.0",
+  "status": "Passed",
+  "http": {
+    "timeout_status": 504,
+    "sanitized_body": true,
+    "duration_seconds": 1.05,
+    "browser_required": false,
+    "response_ui_contract_changed": false
+  },
+  "operation_deadlines": {
+    "configured_short_seconds": 1,
+    "submit_duration_seconds": 1.01,
+    "regenerate_duration_seconds": 1.0,
+    "rerun_duration_seconds": 1.0,
+    "submit_timed_out": true,
+    "regenerate_timed_out": true,
+    "rerun_timed_out": true
+  },
+  "remaining_budget": {
+    "configured_long_seconds": 60,
+    "provider_remaining_seconds": 55,
+    "source_remaining_seconds": 45,
+    "hidden_30_second_cap": false
+  },
+  "configuration": {
+    "invalid_zero_accepted": false,
+    "invalid_negative_accepted": false,
+    "invalid_non_integer_accepted": false,
+    "invalid_non_finite_accepted": false
+  },
+  "lock_lifetime": {
+    "configured_seconds": 7,
+    "cleanup_grace_seconds": 5,
+    "derived_ttl_seconds": 12,
+    "replacement_owner_preserved": true
+  },
+  "boundaries": {
+    "detection": true,
+    "quota": true,
+    "provider": true,
+    "evaluator": true,
+    "policy": true,
+    "source": true,
+    "masking": true,
+    "persistence": true,
+    "success_audit": true
+  },
+  "outcomes": {
+    "exactly_one_timeout_audit": true,
+    "false_success_audit": false,
+    "accepted_history_after_timeout": false,
+    "accepted_result_after_timeout": false,
+    "truthful_timeout_attempt_state": true,
+    "session_deletion_precedence": true,
+    "owned_lock_cleaned": true,
+    "owned_active_attempt_cleaned": true,
+    "owned_operation_cleaned": true,
+    "live_task_after_cleanup": false,
+    "live_coroutine_after_cleanup": false
+  },
+  "dialects": {
+    "postgresql": {
+      "duration_seconds": 0.258,
+      "timed_out": true,
+      "immediately_reusable": true
+    },
+    "mysql": {
+      "duration_seconds": 0.251,
+      "timed_out": true,
+      "immediately_reusable": true
+    },
+    "mssql": {
+      "duration_seconds": 1.021,
+      "timed_out": true,
+      "immediately_reusable": true
+    }
+  },
+  "gates": {
+    "focused_status": "Passed",
+    "unit_status": "Passed",
+    "source_continuity_status": "Passed",
+    "full_backend_status": "Passed",
+    "ruff_check": true,
+    "ruff_format": true,
+    "diff_check": true,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "docs_guard": true,
+    "backend_ci_status": "Required before merge",
+    "frontend_ci_status": "Required before merge"
+  },
+  "cleanup": {
+    "disposable_services_removed": true,
+    "disposable_volumes_removed": true,
+    "temporary_proof_files_removed": true,
+    "browser_artifacts_retained": false,
+    "protected_baseline_preserved": true
+  },
+  "scope": {
+    "chunk_05_started": false
+  }
+}
