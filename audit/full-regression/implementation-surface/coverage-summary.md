@@ -115,7 +115,7 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-009` is resolved on tested branch commit `2a48ec9b0da9c7abe408cb5248104525f5350604` via [#304](https://github.com/RkShanks/QueryCraft/pull/304). Its [CHUNK-06 evidence](evidence/chunk-06-migration-cycle.md) records the complete disposable PostgreSQL 001-009 transition matrix, exact schema fingerprints/counts, revision-007 atomic refusal and explicit fixture remediation, revision-006 parent-contract restoration, model/repository smoke, concurrency behavior and zero-resource cleanup. Authoritative backend/frontend CI passed.
 
-`IS-GAP-023`, `IS-GAP-025` and `IS-GAP-022` are resolved on tested product commit `3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db`; PR/CI pending. Their [CHUNK-07 evidence](evidence/chunk-07-ui-identity-permissions.md) records generation-safe outer/feature cache isolation, late-settlement suppression, distinct 401/403 behavior, the typed eight-permission catalog, exact route/navigation/request gating, role round trips, localized access denial, same-browser switching and zero-resource cleanup.
+`IS-GAP-023`, `IS-GAP-025` and `IS-GAP-022` are resolved on tested product commit `3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db` in [#305](https://github.com/RkShanks/QueryCraft/pull/305); CI pending. Their [CHUNK-07 evidence](evidence/chunk-07-ui-identity-permissions.md) records generation-safe outer/feature cache isolation, late-settlement suppression, distinct 401/403 behavior, the typed eight-permission catalog, exact route/navigation/request gating, role round trips, localized access denial, same-browser switching and zero-resource cleanup.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
@@ -127,7 +127,7 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-08` is next after the CHUNK-07 PR passes authoritative CI and merges; no CHUNK-08 work has started.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-08` is next after [#305](https://github.com/RkShanks/QueryCraft/pull/305) passes authoritative CI and merges; no CHUNK-08 work has started.
 
 ## Validation scope
 

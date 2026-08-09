@@ -5,7 +5,7 @@
   "status": "local_gates_passed",
   "starting_sha": "9cf46653d190d0b778fa70c709575d9758a3bd1e",
   "tested_product_commit": "3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db",
-  "fix_pr": null,
+  "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/305",
   "identity_boundary": {
     "outer_auth_and_feature_clients_separated": true,
     "identity_permission_fingerprint": true,
