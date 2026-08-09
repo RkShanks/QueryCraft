@@ -132,6 +132,24 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
   },
 ];
 
+export const PROTECTED_ROUTE_CATALOG = PERMISSION_CATALOG.flatMap(({ permission, routes }) =>
+  routes.map((route) => ({ ...route, permission }))
+);
+
+export const NAVIGATION_CATALOG = PROTECTED_ROUTE_CATALOG.filter(
+  (route): route is typeof route & { navigation: NonNullable<typeof route.navigation> } =>
+    route.navigation !== undefined
+);
+
+export function firstPermittedRoute(
+  user: PermissionBearingUser | null | undefined
+): ProtectedRoutePath | null {
+  const landingRoutes = PROTECTED_ROUTE_CATALOG
+    .filter((route) => route.landingOrder !== undefined && hasPermission(user, route.permission))
+    .sort((first, second) => first.landingOrder! - second.landingOrder!);
+  return landingRoutes[0]?.path ?? null;
+}
+
 const knownPermissions = new Set<Permission>(
   PERMISSION_CATALOG.map(({ permission }) => permission)
 );

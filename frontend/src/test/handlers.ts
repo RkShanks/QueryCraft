@@ -93,6 +93,16 @@ export const handlers = [
       username: 'admin',
       display_name: 'Admin User',
       role: 'admin',
+      permissions: [
+        'query.submit',
+        'query.history.view',
+        'admin.connections.manage',
+        'admin.roles.manage',
+        'admin.sso.manage',
+        'admin.audit.verify',
+        'admin.quotas.manage',
+        'admin.security.manage',
+      ],
     };
     return HttpResponse.json(user, { status: 200 });
   }),
@@ -109,6 +119,16 @@ export const handlers = [
       username: 'admin',
       display_name: 'Admin User',
       role: 'admin',
+      permissions: [
+        'query.submit',
+        'query.history.view',
+        'admin.connections.manage',
+        'admin.roles.manage',
+        'admin.sso.manage',
+        'admin.audit.verify',
+        'admin.quotas.manage',
+        'admin.security.manage',
+      ],
     };
     return HttpResponse.json(user, { status: 200 });
   }),

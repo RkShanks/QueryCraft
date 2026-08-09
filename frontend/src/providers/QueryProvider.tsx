@@ -102,12 +102,19 @@ function IdentityQueryBoundary({
       }
     },
     retry: false,
+    refetchOnMount: 'always',
     enabled: !isExplicitlySignedOut,
   }, authClient);
   const exposedCurrentUserQuery = isExplicitlySignedOut
-    ? { ...currentUserQuery, data: undefined, isLoading: false, isError: false }
+    ? {
+        ...currentUserQuery,
+        data: undefined,
+        isLoading: false,
+        isFetching: false,
+        isError: false,
+      }
     : currentUserQuery;
-  const observedFingerprint = exposedCurrentUserQuery.isLoading
+  const observedFingerprint = exposedCurrentUserQuery.isFetching
     ? null
     : identityFingerprint(
         exposedCurrentUserQuery.isError ? undefined : exposedCurrentUserQuery.data
@@ -233,7 +240,7 @@ function IdentityQueryBoundary({
     signOutMutation,
   };
   if (
-    exposedCurrentUserQuery.isLoading ||
+    exposedCurrentUserQuery.isFetching ||
     needsIdentityReset ||
     isAuthTransitionPending ||
     isAuthorizationRefreshPending

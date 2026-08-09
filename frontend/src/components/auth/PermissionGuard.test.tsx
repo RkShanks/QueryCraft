@@ -104,16 +104,16 @@ describe('PermissionGuard', () => {
               </PermissionGuard>
             }
           />
-          <Route path="/" element={<div>Home Page</div>} />
+          <Route path="/access-denied" element={<div>Access Denied Page</div>} />
         </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Home Page')).toBeInTheDocument();
+    expect(screen.getByText('Access Denied Page')).toBeInTheDocument();
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 
-  it('redirects to home if user is logged in but lacks the permission', () => {
+  it('redirects to access denied if user is logged in but lacks the permission', () => {
     vi.mocked(useCurrentUser).mockReturnValue({
       data: {
         data: {
@@ -136,12 +136,12 @@ describe('PermissionGuard', () => {
               </PermissionGuard>
             }
           />
-          <Route path="/" element={<div>Home Page</div>} />
+          <Route path="/access-denied" element={<div>Access Denied Page</div>} />
         </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Home Page')).toBeInTheDocument();
+    expect(screen.getByText('Access Denied Page')).toBeInTheDocument();
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 });

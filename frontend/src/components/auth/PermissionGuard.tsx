@@ -2,10 +2,11 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useCurrentUser } from '../../hooks/useAuth';
 import { hasPermission } from '../../auth/permissions';
+import type { Permission } from '../../auth/permissions';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
-  permission: string;
+  permission: Permission;
 }
 
 export const PermissionGuard: React.FC<PermissionGuardProps> = ({ children, permission }) => {
@@ -28,7 +29,7 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({ children, perm
   }
 
   if (!hasPermission(user, permission)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/access-denied" replace />;
   }
 
   return <>{children}</>;

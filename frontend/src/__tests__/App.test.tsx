@@ -4,6 +4,7 @@ import App from '../App';
 import { useAdminSettings, useUpdateAdminSettings } from '../hooks/useAdminSettings';
 import { server } from '../test/server';
 import { http, HttpResponse } from 'msw';
+import { queryClient } from '../providers/QueryProvider';
 
 const mockUseTranslation = vi.fn().mockReturnValue({
   t: (key: string) => key,
@@ -28,6 +29,7 @@ vi.mock('../hooks/useAdminSettings', () => ({
 
 describe('App /settings route', () => {
   beforeEach(() => {
+    queryClient.clear();
     vi.mocked(useAdminSettings).mockReturnValue({
       data: { llm_context_cap: 3 },
       isLoading: false,
@@ -111,5 +113,4 @@ describe('App /settings route', () => {
     expect(featureRequestCount).toBe(0);
   });
 });
-
 

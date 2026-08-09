@@ -6,6 +6,10 @@
   "app.subtitle": "منصة تحليلات النص إلى SQL",
   "nav.signIn": "تسجيل الدخول",
   "nav.signOut": "تسجيل الخروج",
+  "accessDenied.title": "تم رفض الوصول",
+  "accessDenied.description": "لا يملك حسابك الإذن لاستخدام هذه المنطقة.",
+  "accessDenied.signOutFailed": "فشل تسجيل الخروج. لا تزال جلستك على الخادم نشطة. حاول مرة أخرى.",
+  "accessDenied.signingOut": "جارٍ تسجيل الخروج…",
   "nav.history": "السجل",
   "nav.settings": "الإعدادات",
 

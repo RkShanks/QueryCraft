@@ -17,13 +17,15 @@ import { AdminRolesPage } from './pages/AdminRolesPage';
 import { AdminAuditPage } from './pages/AdminAuditPage';
 import { AdminQuotasPage } from './pages/AdminQuotasPage';
 import { AdminDetectionPage } from './pages/AdminDetectionPage';
+import { AccessDeniedPage } from './pages/AccessDeniedPage';
 import { AppShell } from './components/shell/AppShell';
 
 import { PermissionGuard } from './components/auth/PermissionGuard';
+import { firstPermittedRoute, PERMISSIONS, type Permission } from './auth/permissions';
 
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { data: user, isLoading } = useCurrentUser();
+  const { data: response, isLoading } = useCurrentUser();
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -31,7 +33,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (!user) {
+  if (!response?.data) {
     return <Navigate to="/sign-in" replace />;
   }
   return <>{children}</>;
@@ -40,7 +42,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 
 function RootRedirect() {
-  const { data: user, isLoading } = useCurrentUser();
+  const { data: response, isLoading } = useCurrentUser();
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -48,17 +50,24 @@ function RootRedirect() {
       </div>
     );
   }
+  const user = response?.data;
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={firstPermittedRoute(user) ?? '/access-denied'} replace />;
   }
   return <Navigate to="/sign-in" replace />;
 }
 
-function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+function ProtectedLayout({
+  children,
+  permission,
+}: {
+  children: React.ReactNode;
+  permission: Permission;
+}) {
   return (
-    <AuthGuard>
+    <PermissionGuard permission={permission}>
       <AppShell>{children}</AppShell>
-    </AuthGuard>
+    </PermissionGuard>
   );
 }
 
@@ -80,93 +89,89 @@ function App() {
           <Route
             path="/"
             element={
-              <AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.QUERY_SUBMIT}>
                 <WorkspacePage />
-              </AuthenticatedLayout>
+              </ProtectedLayout>
             }
           />
           <Route
             path="/ask"
             element={
-              <AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.QUERY_SUBMIT}>
                 <AskQuestionPage />
-              </AuthenticatedLayout>
+              </ProtectedLayout>
             }
           />
           <Route
             path="/history"
             element={
-              <AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.QUERY_HISTORY_VIEW}>
                 <HistoryPage />
-              </AuthenticatedLayout>
+              </ProtectedLayout>
             }
           />
           <Route
             path="/settings"
             element={
-              <AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.ADMIN_CONNECTIONS_MANAGE}>
                 <SettingsPage />
-              </AuthenticatedLayout>
+              </ProtectedLayout>
             }
           />
           <Route
             path="/admin/connections"
             element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.connections.manage">
-                  <AdminConnectionsPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.ADMIN_CONNECTIONS_MANAGE}>
+                <AdminConnectionsPage />
+              </ProtectedLayout>
             }
           />
           <Route
             path="/admin/sso"
             element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.sso.manage">
-                  <AdminSsoPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.ADMIN_SSO_MANAGE}>
+                <AdminSsoPage />
+              </ProtectedLayout>
             }
           />
           <Route
             path="/admin/roles"
             element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.roles.manage">
-                  <AdminRolesPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.ADMIN_ROLES_MANAGE}>
+                <AdminRolesPage />
+              </ProtectedLayout>
             }
           />
           <Route
             path="/admin/audit"
             element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.audit.verify">
-                  <AdminAuditPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.ADMIN_AUDIT_VERIFY}>
+                <AdminAuditPage />
+              </ProtectedLayout>
             }
           />
           <Route
             path="/admin/quotas"
             element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.quotas.manage">
-                  <AdminQuotasPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.ADMIN_QUOTAS_MANAGE}>
+                <AdminQuotasPage />
+              </ProtectedLayout>
             }
           />
           <Route
             path="/admin/detection"
             element={
-              <AuthenticatedLayout>
-                <PermissionGuard permission="admin.security.manage">
-                  <AdminDetectionPage />
-                </PermissionGuard>
-              </AuthenticatedLayout>
+              <ProtectedLayout permission={PERMISSIONS.ADMIN_SECURITY_MANAGE}>
+                <AdminDetectionPage />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/access-denied"
+            element={
+              <AuthGuard>
+                <AccessDeniedPage />
+              </AuthGuard>
             }
           />
           <Route path="*" element={<RootRedirect />} />
