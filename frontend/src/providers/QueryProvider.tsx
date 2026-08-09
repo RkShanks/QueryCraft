@@ -7,8 +7,12 @@ import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query';
-import { useCallback, useLayoutEffect, useState, type ReactNode } from 'react';
-import { handleSessionExpiry } from '../auth/sessionExpiry';
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { handleSessionExpiry, isSessionExpiryError } from '../auth/sessionExpiry';
+import {
+  notifySessionExpiry,
+  subscribeToSessionExpiry,
+} from '../auth/authorizationEvents';
 import { getMe, signIn, signOut } from '../api/generated/sdk.gen';
 import type { SignInData } from '../api/generated/types.gen';
 import {
@@ -21,12 +25,18 @@ import { resetSessionDeletionLifecycle } from '../sessionDeletionLifecycle';
 export const CURRENT_USER_QUERY_KEY = ['currentUser'] as const;
 
 function createFeatureQueryClient(): QueryClient {
+  const handleFeatureError = (error: unknown) => {
+    handleSessionExpiry(error);
+    if (isSessionExpiryError(error)) {
+      notifySessionExpiry();
+    }
+  };
   return new QueryClient({
     queryCache: new QueryCache({
-      onError: (error) => handleSessionExpiry(error),
+      onError: handleFeatureError,
     }),
     mutationCache: new MutationCache({
-      onError: (error) => handleSessionExpiry(error),
+      onError: handleFeatureError,
     }),
     defaultOptions: {
       queries: {
@@ -68,6 +78,8 @@ function IdentityQueryBoundary({
   children: ReactNode;
 }) {
   const [isExplicitlySignedOut, setExplicitlySignedOut] = useState(false);
+  const sessionExpiredRef = useRef(false);
+  const createIdentityClient = useCallback(() => createFeatureQueryClient(), []);
   const currentUserQuery = useQuery({
     queryKey: CURRENT_USER_QUERY_KEY,
     queryFn: async () => {
@@ -91,7 +103,7 @@ function IdentityQueryBoundary({
         exposedCurrentUserQuery.isError ? undefined : exposedCurrentUserQuery.data
       );
   const [featureSession, setFeatureSession] = useState(() => ({
-    client: createFeatureQueryClient(),
+    client: createIdentityClient(),
     fingerprint: 'pending',
     generation: 0,
   }));
@@ -99,17 +111,34 @@ function IdentityQueryBoundary({
   const needsIdentityReset =
     observedFingerprint !== null && observedFingerprint !== featureSession.fingerprint;
 
+  useLayoutEffect(() => {
+    return subscribeToSessionExpiry(() => {
+      if (sessionExpiredRef.current) return;
+      sessionExpiredRef.current = true;
+      setExplicitlySignedOut(true);
+      authClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+      void featureSession.client.cancelQueries();
+      featureSession.client.clear();
+      resetIdentityState();
+      setFeatureSession((current) => ({
+        client: createIdentityClient(),
+        fingerprint: 'anonymous',
+        generation: current.generation + 1,
+      }));
+    });
+  }, [authClient, createIdentityClient, featureSession.client]);
+
   const beginAuthTransition = useCallback(() => {
     setAuthTransitionPending(true);
     void featureSession.client.cancelQueries();
     featureSession.client.clear();
     resetIdentityState();
     setFeatureSession((current) => ({
-      client: createFeatureQueryClient(),
+      client: createIdentityClient(),
       fingerprint: current.fingerprint,
       generation: current.generation + 1,
     }));
-  }, [featureSession.client]);
+  }, [createIdentityClient, featureSession.client]);
 
   const signInMutation = useMutation({
     mutationFn: (data: SignInData['body']) =>
@@ -119,6 +148,7 @@ function IdentityQueryBoundary({
       setAuthTransitionPending(false);
     },
     onSuccess: (response) => {
+      sessionExpiredRef.current = false;
       authClient.setQueryData(CURRENT_USER_QUERY_KEY, response);
       setExplicitlySignedOut(false);
       setAuthTransitionPending(false);
@@ -132,6 +162,7 @@ function IdentityQueryBoundary({
       setAuthTransitionPending(false);
     },
     onSuccess: () => {
+      sessionExpiredRef.current = true;
       setExplicitlySignedOut(true);
       authClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
       setAuthTransitionPending(false);
@@ -144,12 +175,15 @@ function IdentityQueryBoundary({
     void featureSession.client.cancelQueries();
     featureSession.client.clear();
     resetIdentityState();
+    // The permission fingerprint is an async external snapshot. Withhold children
+    // above, then rotate the client in this guarded synchronization effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFeatureSession((current) => ({
-      client: createFeatureQueryClient(),
+      client: createIdentityClient(),
       fingerprint: observedFingerprint,
       generation: current.generation + 1,
     }));
-  }, [featureSession.client, needsIdentityReset, observedFingerprint]);
+  }, [createIdentityClient, featureSession.client, needsIdentityReset, observedFingerprint]);
 
   const contextValue = {
     authClient,
