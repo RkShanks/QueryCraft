@@ -133,7 +133,7 @@ def downgrade() -> None:
     # Re-add obsolete columns
     op.add_column(
         "source_database_connections",
-        sa.Column("name", sa.String(), nullable=True),
+        sa.Column("name", sa.Text(), nullable=True),
     )
     op.add_column(
         "source_database_connections",
@@ -149,6 +149,12 @@ def downgrade() -> None:
         UPDATE source_database_connections
         SET name = display_name
     """)
+    op.alter_column("source_database_connections", "name", nullable=False)
+    op.create_unique_constraint(
+        "database_connections_name_key",
+        "source_database_connections",
+        ["name"],
+    )
 
     # Drop new columns
     op.drop_column("source_database_connections", "schema_last_refreshed_at")
