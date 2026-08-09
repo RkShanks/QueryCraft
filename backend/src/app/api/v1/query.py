@@ -248,13 +248,7 @@ async def submit_question(
     response_model is intentionally omitted because the endpoint returns
     discriminated union shapes; openapi.yaml remains the source of truth.
     """
-    stripped = req.question.strip()
-    if not stripped:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "validation", "message_key": "error.validation.questionEmpty"},
-        )
-    if len(stripped) > 2000:
+    if len(req.question) > get_settings().MAX_QUESTION_LENGTH:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": "validation", "message_key": "error.validation.questionTooLong"},
@@ -263,7 +257,7 @@ async def submit_question(
     result = await service.submit_question(
         http_session_id=request.state.session_id,
         user_id=user_id,
-        question=stripped,
+        question=req.question,
         chat_session_id=req.session_id,
         connection_id=req.connection_id,
     )

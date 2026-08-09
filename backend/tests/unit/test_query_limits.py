@@ -1,18 +1,15 @@
 """Configured prompt-length discovery contract."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
-from httpx import ASGITransport, AsyncClient
+from fastapi import HTTPException, Request
 from pydantic import ValidationError
-from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api.v1.query import router
+from app.api.v1.query import get_query_limits, router
 from app.core.config import get_settings
 from app.db.models.enums import Permission
-from tests.unit.permission_test_helpers import use_test_session_current_role
+from tests.unit.permission_test_helpers import evaluate_permission_dependency
 
 AUTHORIZED_SESSION = {
     "user_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -23,21 +20,16 @@ AUTHORIZED_SESSION = {
 }
 
 
-def _limits_app(session: dict | None) -> FastAPI:
-    class SessionInjectionMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request: Request, call_next):
-            request.state.session = session
-            return await call_next(request)
+def _limits_permission_dependency():
+    route = next(route for route in router.routes if route.path == "/query/limits")
+    assert route.methods == {"GET"}
+    return route.dependant.dependencies[0].call
 
-    async def sanitized_http_exception_handler(_request: Request, exc: HTTPException):
-        return JSONResponse(status_code=exc.status_code, content=exc.detail)
 
-    app = FastAPI()
-    use_test_session_current_role(app)
-    app.add_middleware(SessionInjectionMiddleware)
-    app.add_exception_handler(HTTPException, sanitized_http_exception_handler)
-    app.include_router(router, prefix="/api/v1")
-    return app
+def _request_with_session(session: dict | None) -> Request:
+    request = MagicMock(spec=Request)
+    request.state.session = session
+    return request
 
 
 def test_max_question_length_loads_non_default_positive_integer(monkeypatch):
@@ -56,14 +48,24 @@ def test_non_positive_max_question_length_is_rejected(monkeypatch, configured_li
         get_settings()
 
 
+@pytest.mark.asyncio
+async def test_query_limits_exposes_only_the_authorized_configured_limit(monkeypatch):
+    monkeypatch.setenv("MAX_QUESTION_LENGTH", "37")
+    get_settings.cache_clear()
+    request = _request_with_session(AUTHORIZED_SESSION)
+
+    session = await evaluate_permission_dependency(
+        _limits_permission_dependency(),
+        request,
+    )
+    response = await get_query_limits(_session=session)
+
+    assert response.model_dump() == {"max_question_length": 37}
+
+
 @pytest.mark.parametrize(
     ("session", "expected_status", "expected_body"),
     [
-        (
-            AUTHORIZED_SESSION,
-            200,
-            {"max_question_length": 37},
-        ),
         (
             {**AUTHORIZED_SESSION, "permissions": [Permission.QUERY_HISTORY_VIEW.value]},
             403,
@@ -77,22 +79,18 @@ def test_non_positive_max_question_length_is_rejected(monkeypatch, configured_li
     ],
 )
 @pytest.mark.asyncio
-async def test_query_limits_exposes_only_the_authorized_configured_limit(
-    monkeypatch,
+async def test_query_limits_rejects_callers_without_submit_permission(
     session,
     expected_status,
     expected_body,
 ):
-    monkeypatch.setenv("MAX_QUESTION_LENGTH", "37")
-    get_settings.cache_clear()
-    app = _limits_app(session)
+    request = _request_with_session(session)
 
-    with patch(
-        "app.api.dependencies.permissions.AuditService.log",
-        new_callable=AsyncMock,
-    ):
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.get("/api/v1/query/limits")
+    with pytest.raises(HTTPException) as exc_info:
+        await evaluate_permission_dependency(
+            _limits_permission_dependency(),
+            request,
+        )
 
-    assert response.status_code == expected_status
-    assert response.json() == expected_body
+    assert exc_info.value.status_code == expected_status
+    assert exc_info.value.detail == expected_body

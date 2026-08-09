@@ -16,7 +16,7 @@ def _reject_control_chars(value: str) -> str:
 class SubmitQuestionRequest(BaseModel):
     """POST /query/submit request body."""
 
-    question: str = Field(..., min_length=1, max_length=2000)
+    question: str = Field(..., min_length=1)
     session_id: str | None = Field(default=None, min_length=1)
     connection_id: str = Field(..., min_length=1)
 
