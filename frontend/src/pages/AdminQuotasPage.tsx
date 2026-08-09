@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCurrentUser } from '../hooks/useAuth';
 import { useAdminRoles } from '../hooks/useAdminRoles';
 import { useAdminQuotas } from '../hooks/useAdminQuotas';
+import {
+  useQuotaMutationRecovery,
+  type QuotaMutationRecovery,
+} from '../hooks/useQuotaMutationRecovery';
+import { isQuotaSynchronizationPending } from '../api/quotas';
 import type {
   QuotaDimensionStatus,
   RoleQuotaConfig,
@@ -137,6 +142,7 @@ interface QuotaConfigCardProps {
   isConfigured: boolean;
   startEdit: (quota: RoleQuotaConfig) => void;
   confirmDelete: (roleId: string) => void;
+  mutationsDisabled: boolean;
 }
 
 const QuotaConfigCard: React.FC<QuotaConfigCardProps> = ({
@@ -144,6 +150,7 @@ const QuotaConfigCard: React.FC<QuotaConfigCardProps> = ({
   isConfigured,
   startEdit,
   confirmDelete,
+  mutationsDisabled,
 }) => {
   const { t } = useTranslation();
   return (
@@ -158,6 +165,7 @@ const QuotaConfigCard: React.FC<QuotaConfigCardProps> = ({
         <div className="flex shrink-0 items-center justify-end gap-2">
           <button
             onClick={() => startEdit(quota)}
+            disabled={mutationsDisabled}
             className="p-2 hover:bg-gray-850 rounded text-gray-400 hover:text-white transition-colors"
             title={t('common.edit')}
           >
@@ -166,6 +174,7 @@ const QuotaConfigCard: React.FC<QuotaConfigCardProps> = ({
           {isConfigured && (
             <button
               onClick={() => confirmDelete(quota.role_id)}
+              disabled={mutationsDisabled}
               className="p-2 hover:bg-gray-850 rounded text-gray-400 hover:text-red-500 transition-colors"
               title={t('quota.reset_to_uncapped')}
             >
@@ -201,6 +210,44 @@ const QuotaConfigCard: React.FC<QuotaConfigCardProps> = ({
         </div>
       </dl>
     </article>
+  );
+};
+
+interface QuotaRecoveryAlertProps {
+  isRetrying: boolean;
+  retry: () => void;
+}
+
+const QuotaRecoveryAlert: React.FC<QuotaRecoveryAlertProps> = ({
+  isRetrying,
+  retry,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <section
+      role="alert"
+      aria-labelledby="quota-recovery-title"
+      className="flex min-w-0 flex-col gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200 sm:flex-row sm:items-center"
+    >
+      <ShieldAlert className="h-5 w-5 shrink-0" aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <h2 id="quota-recovery-title" className="font-semibold text-amber-100">
+          {t('quota.recovery.title')}
+        </h2>
+        <p className="mt-1 break-words text-sm text-amber-200/90">
+          {t('quota.recovery.description')}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={retry}
+        disabled={isRetrying}
+        className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-400/40 px-4 py-2 text-sm font-semibold text-amber-100 transition-colors hover:bg-amber-400/10 disabled:opacity-50 sm:w-auto"
+      >
+        <RefreshCw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
+        {t('common.retry')}
+      </button>
+    </section>
   );
 };
 
@@ -281,6 +328,13 @@ export const AdminQuotasPage: React.FC = () => {
 
   const { data: userResponse } = useCurrentUser();
   const user = userResponse?.data;
+  const {
+    operation: recoveryOperation,
+    remember: rememberRecovery,
+    clear: clearRecovery,
+  } = useQuotaMutationRecovery(user?.id);
+  const mutationInFlight = useRef(false);
+  const attemptedMutation = useRef<QuotaMutationRecovery | null>(null);
 
   const hasRolesPermission = hasPermission(user, PERMISSIONS.ADMIN_ROLES_MANAGE);
 
@@ -290,20 +344,53 @@ export const AdminQuotasPage: React.FC = () => {
 
   const { listQuery, statusQuery, upsertMutation, deleteMutation } = useAdminQuotas({
     onUpsertSuccess: () => {
+      mutationInFlight.current = false;
+      attemptedMutation.current = null;
+      clearRecovery();
       addToast('success', t('common.saveSuccess'));
       setEditingQuota(null);
       setValidationError(null);
     },
     onUpsertError: (error) => {
+      mutationInFlight.current = false;
+      const attempted = attemptedMutation.current;
+      attemptedMutation.current = null;
+      if (attempted && isQuotaSynchronizationPending(error)) {
+        rememberRecovery(attempted);
+        setEditingQuota(null);
+        setValidationError(null);
+        return;
+      }
       addToast('error', getErrorMessage(error, 'admin.settings.error'));
     },
     onDeleteSuccess: () => {
+      mutationInFlight.current = false;
+      attemptedMutation.current = null;
+      clearRecovery();
       addToast('success', t('admin.quotas.deleteSuccess'));
     },
     onDeleteError: (error) => {
+      mutationInFlight.current = false;
+      const attempted = attemptedMutation.current;
+      attemptedMutation.current = null;
+      if (attempted && isQuotaSynchronizationPending(error)) {
+        rememberRecovery(attempted);
+        return;
+      }
       addToast('error', getErrorMessage(error, 'admin.settings.error'));
     },
   });
+
+  const runQuotaMutation = (operation: QuotaMutationRecovery) => {
+    if (mutationInFlight.current) return;
+    mutationInFlight.current = true;
+    attemptedMutation.current = operation;
+    if (operation.kind === 'upsert') {
+      upsertMutation.mutate({ roleId: operation.roleId, data: operation.data });
+      return;
+    }
+    deleteMutation.mutate(operation.roleId);
+  };
 
   const startQuotaEdit = (quota: RoleQuotaConfig) => {
     setEditingQuota(quota);
@@ -324,7 +411,7 @@ export const AdminQuotasPage: React.FC = () => {
 
   const saveQuota = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!editingQuota) return;
+    if (!editingQuota || recoveryOperation) return;
 
     const parsedQueryLimit = parseQuotaLimit(queryLimit);
     const parsedExecutionLimit = parseQuotaLimit(executionLimit);
@@ -345,17 +432,27 @@ export const AdminQuotasPage: React.FC = () => {
     };
 
     setValidationError(null);
-    upsertMutation.mutate({
+    runQuotaMutation({
+      kind: 'upsert',
       roleId: editingQuota.role_id,
       data: quotaUpdate,
     });
   };
 
   const confirmQuotaDelete = (roleId: string) => {
-    if (window.confirm(t('quota.deleteConfirm'))) {
-      deleteMutation.mutate(roleId);
+    if (!recoveryOperation && window.confirm(t('quota.deleteConfirm'))) {
+      runQuotaMutation({ kind: 'delete', roleId });
     }
   };
+
+  const retryQuotaMutation = () => {
+    if (recoveryOperation) runQuotaMutation(recoveryOperation);
+  };
+
+  const mutationsDisabled =
+    recoveryOperation !== null ||
+    upsertMutation.isPending ||
+    deleteMutation.isPending;
 
   const isLoading =
     listQuery.isLoading ||
@@ -445,6 +542,13 @@ export const AdminQuotasPage: React.FC = () => {
             <p className="font-semibold">{t('quota.discovery_warning')}</p>
           </div>
         </div>
+      )}
+
+      {recoveryOperation && (
+        <QuotaRecoveryAlert
+          isRetrying={upsertMutation.isPending || deleteMutation.isPending}
+          retry={retryQuotaMutation}
+        />
       )}
 
       {hasRolesPermission && rolesQuery.isError && (
@@ -556,7 +660,7 @@ export const AdminQuotasPage: React.FC = () => {
               </button>
               <button
                 type="submit"
-                disabled={upsertMutation.isPending}
+                disabled={mutationsDisabled}
                 className="px-4 py-2 bg-neon-cyan text-gray-900 font-semibold rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50"
               >
                 {t('common.save')}
@@ -586,6 +690,7 @@ export const AdminQuotasPage: React.FC = () => {
                   )}
                   startEdit={startQuotaEdit}
                   confirmDelete={confirmQuotaDelete}
+                  mutationsDisabled={mutationsDisabled}
                 />
               ))}
             </div>
@@ -633,6 +738,7 @@ export const AdminQuotasPage: React.FC = () => {
                           <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => startQuotaEdit(quota)}
+                              disabled={mutationsDisabled}
                               className="p-1.5 hover:bg-gray-850 rounded text-gray-400 hover:text-white transition-colors"
                               title={t('common.edit')}
                               data-testid={`edit-quota-${quota.role_id}`}
@@ -642,6 +748,7 @@ export const AdminQuotasPage: React.FC = () => {
                             {isConfigured && (
                               <button
                                 onClick={() => confirmQuotaDelete(quota.role_id)}
+                                disabled={mutationsDisabled}
                                 className="p-1.5 hover:bg-gray-850 rounded text-gray-400 hover:text-red-500 transition-colors"
                                 title={t('quota.reset_to_uncapped')}
                                 data-testid={`delete-quota-${quota.role_id}`}

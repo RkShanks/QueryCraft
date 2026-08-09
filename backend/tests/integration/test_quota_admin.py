@@ -270,13 +270,24 @@ class TestQuotaAdminCacheRefresh:
         from app.core.dependencies import get_redis
 
         class CacheFailingRedis:
-            async def incr(self, _key):
+            async def eval(self, *_args):
                 raise ConnectionError("internal cache endpoint unavailable")
 
         async with async_engine_fixture.connect() as conn:
             role_id = (
                 await conn.execute(text("SELECT id FROM roles WHERE name = 'Admin' AND is_builtin = true LIMIT 1"))
             ).scalar_one()
+            quota_count_before = await conn.scalar(
+                text("SELECT COUNT(*) FROM role_quotas WHERE role_id = :role_id"),
+                {"role_id": role_id},
+            )
+            audit_count_before = await conn.scalar(
+                text(
+                    "SELECT COUNT(*) FROM audit_log_entries "
+                    "WHERE action_type = 'quota.config.change' AND resource_id = :role_id"
+                ),
+                {"role_id": str(role_id)},
+            )
 
         async def failing_cache():
             yield CacheFailingRedis()
@@ -296,3 +307,21 @@ class TestQuotaAdminCacheRefresh:
             "error": "service_unavailable",
             "message_key": "error.service_unavailable",
         }
+        async with async_engine_fixture.connect() as conn:
+            assert (
+                await conn.scalar(
+                    text("SELECT COUNT(*) FROM role_quotas WHERE role_id = :role_id"),
+                    {"role_id": role_id},
+                )
+                == quota_count_before
+            )
+            assert (
+                await conn.scalar(
+                    text(
+                        "SELECT COUNT(*) FROM audit_log_entries "
+                        "WHERE action_type = 'quota.config.change' AND resource_id = :role_id"
+                    ),
+                    {"role_id": str(role_id)},
+                )
+                == audit_count_before
+            )

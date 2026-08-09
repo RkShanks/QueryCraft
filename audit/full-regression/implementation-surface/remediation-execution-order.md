@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-08` are resolved on their tested product commits. CHUNK-08 passed configured backend boundaries, fail-closed primary prompt behavior, exact Unicode parity, isolated API and EN/AR desktop/375px Chromium proof on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5` in [#306](https://github.com/RkShanks/QueryCraft/pull/306); see [evidence](evidence/chunk-08-prompt-length.md). Authoritative backend/frontend CI passed; squash merge remains the `CHUNK-09` dispatch gate.
+Status: `CHUNK-01` through `CHUNK-09` are resolved on their tested product commits. CHUNK-09 passed real PostgreSQL/Redis fault seams, fail-closed cross-worker enforcement, idempotent PUT/DELETE audit/timestamp recovery, authoritative frontend refetch/reload and EN/AR desktop/375px/768px Chromium proof on tested product commit `dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51` in [#307](https://github.com/RkShanks/QueryCraft/pull/307); see [evidence](evidence/chunk-09-quota-partial-success.md). Authoritative backend/frontend CI passed on `42df59fe56e1dbebc6485b10c4ba96d936973454`; squash merge remains the `CHUNK-10` dispatch gate.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -117,6 +117,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-09 — quota DB/cache partial success
 
+- **Progress:** Resolved on tested product commit `dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51` in [#307](https://github.com/RkShanks/QueryCraft/pull/307). PostgreSQL is authoritative; a cross-worker Redis transition invalidates stale enforcement before DB mutation, pending checks fail closed without counter increments, and post-commit publication failure returns the documented applied/pending 503. PUT/DELETE retry, timestamp/audit idempotency, rollback republish, concurrent readers/workers, authoritative frontend reload, localized retry and desktop/375px/768px browser proof passed. Disposable resources were removed and the protected baseline was preserved. Authoritative CI passed on `42df59fe56e1dbebc6485b10c4ba96d936973454`; squash merge remains required before CHUNK-10.
 - **IDs / role / branch / context:** `IS-GAP-014`; Backend Implementer then Frontend Implementer; `phase-6/wave-19.09-quota-partial-success`; 105–140k.
 - **Likely source:** `admin_quotas.py`, quota service/repository, `useAdminQuotas.ts`, `AdminQuotasPage.tsx` and tests.
 - **TDD:** RED cache-refresh failure after commit for PUT/DELETE, audit count and idempotent retry; RED UI authoritative refetch/recovery.
@@ -370,4 +371,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-08` are resolved on their tested product commits. `CHUNK-09 / IS-GAP-014` is next but remains blocked until CI-passed [#306](https://github.com/RkShanks/QueryCraft/pull/306) is squash-merged.
+`CHUNK-01` through `CHUNK-09` are resolved on their tested product commits. `CHUNK-10 / IS-GAP-017 + IS-GAP-013` is next but remains blocked until CHUNK-09 passes authoritative backend/frontend CI and is squash-merged. Do not start CHUNK-10 from branch-local proof.

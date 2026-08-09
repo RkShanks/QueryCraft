@@ -36,7 +36,33 @@ _CONFIG_CACHE_TTL_SECONDS = 60
 _CONFIG_CACHE_FIELDS = frozenset((*_DIMENSION_LIMIT_MAP.values(), "revision"))
 _CONFIG_CACHE_RETRIES = 3
 
+_BEGIN_CONFIG_TRANSITION_SCRIPT = """
+local existing = redis.call('GET', KEYS[3])
+if existing then
+    return {0, existing}
+end
+
+local revision = redis.call('INCR', KEYS[2])
+local marker = ARGV[1] .. ':' .. tostring(revision)
+redis.call('SET', KEYS[3], marker)
+redis.call('DEL', KEYS[1])
+return {1, marker}
+"""
+
+_PUBLISH_CONFIG_TRANSITION_SCRIPT = """
+if redis.call('GET', KEYS[3]) ~= ARGV[1] then
+    return 0
+end
+redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
+redis.call('DEL', KEYS[3])
+return 1
+"""
+
 _CHECK_SCRIPT = """
+if redis.call('GET', KEYS[2]) then
+    return redis.error_reply('quota configuration transition pending')
+end
+
 local limit = tonumber(ARGV[1])
 local requested_ttl = tonumber(ARGV[2])
 if not limit or limit < 0 or not requested_ttl or requested_ttl < 1 or requested_ttl > 86400 then
@@ -78,10 +104,11 @@ def _today_key_suffix(now: datetime | None = None) -> str:
     return (now or datetime.now(UTC)).strftime("%Y-%m-%d")
 
 
-def _config_cache_keys(role_id: uuid.UUID) -> tuple[str, str]:
+def _config_cache_keys(role_id: uuid.UUID) -> tuple[str, str, str]:
     return (
         f"quota_config:{role_id}",
         f"quota_config_revision:{role_id}",
+        f"quota_config_transition:{role_id}",
     )
 
 
@@ -133,6 +160,34 @@ class _QuotaLimits:
         return cls(*limits), revision
 
 
+@dataclass(frozen=True)
+class QuotaConfigTransition:
+    role_id: uuid.UUID
+    token: str
+    revision: int
+    created: bool
+
+    @property
+    def redis_value(self) -> str:
+        return f"{self.token}:{self.revision}"
+
+    @classmethod
+    def from_redis(
+        cls,
+        role_id: uuid.UUID,
+        marker: str,
+        *,
+        created: bool,
+    ) -> "QuotaConfigTransition":
+        token, separator, raw_revision = marker.rpartition(":")
+        if not separator or not token:
+            raise ValueError("invalid quota transition marker")
+        revision = int(raw_revision)
+        if revision < 1:
+            raise ValueError("invalid quota transition revision")
+        return cls(role_id, token, revision, created)
+
+
 class QuotaService:
     """Checks and increments daily quota counters in Redis.
 
@@ -175,6 +230,7 @@ class QuotaService:
         limit = getattr(quota_limits, limit_attr)
 
         if limit is None:
+            await self._assert_config_available(role_id)
             return (0, None, self._next_midnight())
 
         now = datetime.now(UTC)
@@ -185,7 +241,7 @@ class QuotaService:
 
         try:
             response = await self._check_script(
-                keys=[key],
+                keys=[key, _config_cache_keys(role_id)[2]],
                 args=[str(limit), str(ttl)],
                 client=self._redis,
             )
@@ -220,7 +276,7 @@ class QuotaService:
         role_id: uuid.UUID,
         expected_revision: int,
     ) -> _QuotaLimits | None:
-        cache_key, _revision_key = _config_cache_keys(role_id)
+        cache_key, _revision_key, _transition_key = _config_cache_keys(role_id)
         cached_payload = await self._redis.get(cache_key)
         if cached_payload is None:
             return None
@@ -236,7 +292,7 @@ class QuotaService:
         role_id: uuid.UUID,
         expected_revision: int,
     ) -> _QuotaLimits | None:
-        cache_key, _revision_key = _config_cache_keys(role_id)
+        cache_key, _revision_key, _transition_key = _config_cache_keys(role_id)
         quota_limits = _QuotaLimits.from_record(await self._quota_repo.get(role_id))
         await self._redis.set(
             cache_key,
@@ -248,11 +304,86 @@ class QuotaService:
         return quota_limits
 
     async def _cache_revision(self, role_id: uuid.UUID) -> int:
-        _cache_key, revision_key = _config_cache_keys(role_id)
+        _cache_key, revision_key, transition_key = _config_cache_keys(role_id)
+        if await self._redis.get(transition_key) is not None:
+            raise ValueError("quota configuration transition pending")
         revision = int(await self._redis.get(revision_key) or 0)
         if revision < 0:
             raise ValueError("invalid quota cache revision")
         return revision
+
+    async def _assert_config_available(self, role_id: uuid.UUID) -> None:
+        _cache_key, _revision_key, transition_key = _config_cache_keys(role_id)
+        try:
+            if await self._redis.get(transition_key) is not None:
+                raise QuotaUnavailableError()
+        except (RedisError, OSError, TypeError, ValueError) as exc:
+            raise QuotaUnavailableError() from exc
+
+    @staticmethod
+    async def begin_config_transition(
+        redis: Redis,
+        role_id: uuid.UUID,
+    ) -> QuotaConfigTransition:
+        cache_key, revision_key, transition_key = _config_cache_keys(role_id)
+        token = uuid.uuid4().hex
+        try:
+            response = await redis.eval(
+                _BEGIN_CONFIG_TRANSITION_SCRIPT,
+                3,
+                cache_key,
+                revision_key,
+                transition_key,
+                token,
+            )
+            if not isinstance(response, (list, tuple)) or len(response) != 2:
+                raise ValueError("invalid quota transition response")
+            created, marker = response
+            if created not in (0, 1) or isinstance(created, bool) or not isinstance(marker, str):
+                raise ValueError("invalid quota transition response")
+            return QuotaConfigTransition.from_redis(
+                role_id,
+                marker,
+                created=created == 1,
+            )
+        except (RedisError, OSError, TypeError, ValueError) as exc:
+            raise QuotaUnavailableError() from exc
+
+    @staticmethod
+    async def publish_config_transition(
+        redis: Redis,
+        transition: QuotaConfigTransition,
+        quota_config: "RoleQuota | None",
+    ) -> bool:
+        cache_key, revision_key, transition_key = _config_cache_keys(transition.role_id)
+        quota_limits = _QuotaLimits.from_record(quota_config)
+        try:
+            published = await redis.eval(
+                _PUBLISH_CONFIG_TRANSITION_SCRIPT,
+                3,
+                cache_key,
+                revision_key,
+                transition_key,
+                transition.redis_value,
+                quota_limits.serialize(transition.revision),
+                str(_CONFIG_CACHE_TTL_SECONDS),
+            )
+            if published not in (0, 1) or isinstance(published, bool):
+                raise ValueError("invalid quota publication response")
+            return published == 1
+        except (RedisError, OSError, TypeError, ValueError) as exc:
+            raise QuotaUnavailableError() from exc
+
+    @staticmethod
+    async def owns_config_transition(
+        redis: Redis,
+        transition: QuotaConfigTransition,
+    ) -> bool:
+        _cache_key, _revision_key, transition_key = _config_cache_keys(transition.role_id)
+        try:
+            return await redis.get(transition_key) == transition.redis_value
+        except (RedisError, OSError, TypeError, ValueError) as exc:
+            raise QuotaUnavailableError() from exc
 
     @staticmethod
     async def refresh_config_cache(
@@ -260,17 +391,11 @@ class QuotaService:
         role_id: uuid.UUID,
         quota_config: "RoleQuota | None",
     ) -> None:
-        cache_key, revision_key = _config_cache_keys(role_id)
-        quota_limits = _QuotaLimits.from_record(quota_config)
-        try:
-            revision = int(await redis.incr(revision_key))
-            await redis.set(
-                cache_key,
-                quota_limits.serialize(revision),
-                ex=_CONFIG_CACHE_TTL_SECONDS,
-            )
-        except (RedisError, OSError, TypeError, ValueError) as exc:
-            raise QuotaUnavailableError() from exc
+        transition = await QuotaService.begin_config_transition(redis, role_id)
+        if not transition.created:
+            raise QuotaUnavailableError()
+        if not await QuotaService.publish_config_transition(redis, transition, quota_config):
+            raise QuotaUnavailableError()
 
     @staticmethod
     def _next_midnight(now: datetime | None = None) -> datetime:

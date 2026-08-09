@@ -44,7 +44,8 @@ export const useAdminQuotas = (options?: UseAdminQuotasOptions) => {
       queryClient.invalidateQueries({ queryKey: ['adminQuotasStatus'] });
       options?.onUpsertSuccess?.(data);
     },
-    onError: (error) => {
+    onError: async (error) => {
+      await queryClient.refetchQueries({ queryKey: ['adminQuotas'], type: 'active' });
       options?.onUpsertError?.(error);
     },
   });
@@ -59,7 +60,8 @@ export const useAdminQuotas = (options?: UseAdminQuotasOptions) => {
       queryClient.invalidateQueries({ queryKey: ['adminQuotasStatus'] });
       options?.onDeleteSuccess?.();
     },
-    onError: (error) => {
+    onError: async (error) => {
+      await queryClient.refetchQueries({ queryKey: ['adminQuotas'], type: 'active' });
       options?.onDeleteError?.(error);
     },
   });
