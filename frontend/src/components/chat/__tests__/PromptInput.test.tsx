@@ -111,6 +111,8 @@ describe('PromptInput', () => {
     ['limit', 'x'.repeat(4), '4 / 4', false],
     ['limit plus one', 'x'.repeat(5), '5 / 4', true],
     ['surrounding whitespace', ` \t${'x'.repeat(4)}\n`, '4 / 4', false],
+    ['Python edge whitespace', `\u001c${'x'.repeat(4)}\u001c`, '4 / 4', false],
+    ['non-Python whitespace', `\ufeff${'x'.repeat(3)}`, '4 / 4', false],
     ['Arabic', 'س'.repeat(4), '4 / 4', false],
     ['non-BMP', '😀'.repeat(4), '4 / 4', false],
     ['non-BMP over limit', '😀'.repeat(5), '5 / 4', true],

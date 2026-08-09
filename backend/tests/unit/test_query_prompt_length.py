@@ -49,6 +49,8 @@ class QueryPipelineBoundary:
         pytest.param("x" * 4, 200, [4], id="limit"),
         pytest.param("x" * 5, 400, [], id="limit-plus-one"),
         pytest.param(" \t" + "x" * 4 + "\n", 200, [4], id="trim-before-count"),
+        pytest.param("\u001c" + "x" * 4 + "\u001c", 200, [4], id="python-edge-whitespace"),
+        pytest.param("\ufeff" + "x" * 3, 200, [4], id="non-python-whitespace"),
         pytest.param("س" * 4, 200, [4], id="arabic-code-points"),
         pytest.param("😀" * 4, 200, [4], id="non-bmp-code-points"),
         pytest.param("😀" * 5, 400, [], id="non-bmp-over-limit"),
