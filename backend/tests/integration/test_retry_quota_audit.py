@@ -274,8 +274,9 @@ async def test_retry_quota_unavailable_returns_sanitized_503_without_unmetered_w
     authenticated_client,
     query_submit_payload,
     async_engine_fixture,
+    redis_client,
 ) -> None:
-    _user_id, role_id = await _admin_identity(async_engine_fixture)
+    user_id, role_id = await _admin_identity(async_engine_fixture)
     await _set_quotas(authenticated_client, role_id, queries=100, executions=100)
     provider = _ProviderSpy()
     source = _SourceSpy()
@@ -291,6 +292,8 @@ async def test_retry_quota_unavailable_returns_sanitized_503_without_unmetered_w
         patch("app.source_db.adapters.PostgresAdapter.execute", new=source.execute),
     ):
         initial = await _submit_initial_attempt(authenticated_client, query_submit_payload, provider, source)
+        before_queries = await _counter(redis_client, user_id, "queries")
+        before_executions = await _counter(redis_client, user_id, "executions")
         with patch.object(QuotaService, "check_and_increment", new=fail_selected_dimension):
             response = await authenticated_client.post(
                 "/api/v1/query/regenerate",
@@ -304,6 +307,10 @@ async def test_retry_quota_unavailable_returns_sanitized_503_without_unmetered_w
     }
     assert provider.calls == (0 if dimension == "queries" else 1)
     assert source.calls == 0
+    assert await _counter(redis_client, user_id, "queries") == before_queries + (
+        0 if dimension == "queries" else 1
+    )
+    assert await _counter(redis_client, user_id, "executions") == before_executions
 
 
 async def test_failed_retry_rolls_back_history_but_preserves_truthful_audit_chain(
