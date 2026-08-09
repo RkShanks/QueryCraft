@@ -1,10 +1,11 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminQuotasPage } from './AdminQuotasPage';
 import { server } from '../test/server';
 import { renderWithClient } from '../test/utils';
 import { PERMISSIONS } from '../auth/permissions';
+import i18n from '../i18n';
 
 const quotaOnlyUser = {
   id: 'quota-admin-id',
@@ -33,6 +34,12 @@ const configuredStatus = {
   reset_at: '2026-07-29T00:00:00Z',
 };
 
+const pendingResponse = {
+  error: 'quota_sync_pending',
+  message_key: 'error.quota_sync_pending',
+  mutation_applied: true,
+};
+
 function installQuotaOnlyHandlers(
   quotas: unknown[] = [configuredQuota],
   status: unknown[] = [configuredStatus]
@@ -52,6 +59,11 @@ function renderQuotaOnlyPage() {
 }
 
 describe('AdminQuotasPage Phase 6A regressions', () => {
+  beforeEach(async () => {
+    sessionStorage.clear();
+    await i18n.changeLanguage('en');
+  });
+
   it('P6-FR-149 shows quota-only empty states without requesting role or SSO data', async () => {
     let rolesRequested = false;
     let mappingsRequested = false;
@@ -147,5 +159,152 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
       name: 'analyst quota status',
     });
     expect(within(statusSummary).getByText('Resets at')).toBeInTheDocument();
+  });
+
+  it('refetches an applied save, suppresses duplicate clicks, and retries without a premature success', async () => {
+    let authoritativeQuota = configuredQuota;
+    let listRequests = 0;
+    const putBodies: unknown[] = [];
+    installQuotaOnlyHandlers();
+    server.use(
+      http.get('/api/v1/admin/quotas', () => {
+        listRequests += 1;
+        return HttpResponse.json({ quotas: [authoritativeQuota] });
+      }),
+      http.put('/api/v1/admin/quotas/:roleId', async ({ request }) => {
+        putBodies.push(await request.json());
+        authoritativeQuota = { ...configuredQuota, daily_query_limit: 4 };
+        if (putBodies.length === 1) {
+          return HttpResponse.json(pendingResponse, { status: 503 });
+        }
+        return HttpResponse.json(authoritativeQuota);
+      })
+    );
+
+    renderQuotaOnlyPage();
+    fireEvent.click(await screen.findByTestId('edit-quota-analyst-role-id'));
+    fireEvent.change(screen.getByLabelText('Daily Query Limit'), {
+      target: { value: '4' },
+    });
+    const saveButton = screen.getByRole('button', { name: 'Save' });
+    fireEvent.click(saveButton);
+    fireEvent.click(saveButton);
+
+    const recovery = await screen.findByRole('alert', {
+      name: 'Quota change needs synchronization',
+    });
+    expect(putBodies).toHaveLength(1);
+    expect(within(recovery).getByRole('button', { name: 'Retry' })).toBeEnabled();
+    expect(screen.queryByText('Changes saved successfully')).not.toBeInTheDocument();
+    await waitFor(() => expect(listRequests).toBeGreaterThanOrEqual(2));
+    expect(screen.getAllByText('4').length).toBeGreaterThan(0);
+
+    fireEvent.click(within(recovery).getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => expect(putBodies).toHaveLength(2));
+    expect(putBodies[1]).toEqual(putBodies[0]);
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('alert', { name: 'Quota change needs synchronization' })
+      ).not.toBeInTheDocument();
+    });
+    expect(await screen.findByText('Changes saved successfully')).toBeInTheDocument();
+  });
+
+  it('restores an applied delete after reload and retries it accessibly in Arabic', async () => {
+    let authoritativeQuotas: unknown[] = [configuredQuota];
+    let deleteRequests = 0;
+    let listRequests = 0;
+    installQuotaOnlyHandlers();
+    server.use(
+      http.get('/api/v1/admin/quotas', () => {
+        listRequests += 1;
+        return HttpResponse.json({ quotas: authoritativeQuotas });
+      }),
+      http.delete('/api/v1/admin/quotas/:roleId', () => {
+        deleteRequests += 1;
+        authoritativeQuotas = [];
+        if (deleteRequests === 1) {
+          return HttpResponse.json(pendingResponse, { status: 503 });
+        }
+        return new HttpResponse(null, { status: 204 });
+      })
+    );
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await i18n.changeLanguage('ar');
+
+    const firstRender = renderQuotaOnlyPage();
+    fireEvent.click(
+      await screen.findByTestId('delete-quota-analyst-role-id')
+    );
+    expect(
+      await screen.findByRole('alert', { name: 'تغيير الحصة يحتاج إلى مزامنة' })
+    ).toBeInTheDocument();
+    await waitFor(() => expect(listRequests).toBeGreaterThanOrEqual(2));
+    expect(screen.queryByText('تم حفظ التغييرات بنجاح')).not.toBeInTheDocument();
+
+    firstRender.unmount();
+    renderQuotaOnlyPage();
+
+    const restoredRecovery = await screen.findByRole('alert', {
+      name: 'تغيير الحصة يحتاج إلى مزامنة',
+    });
+    expect(screen.getByText('لا توجد تكوينات حصص بعد.')).toBeInTheDocument();
+    fireEvent.click(
+      within(restoredRecovery).getByRole('button', { name: 'إعادة المحاولة' })
+    );
+
+    await waitFor(() => expect(deleteRequests).toBe(2));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('alert', { name: 'تغيير الحصة يحتاج إلى مزامنة' })
+      ).not.toBeInTheDocument();
+    });
+    expect(await screen.findByText('تم حذف تكوين الحصص بنجاح')).toBeInTheDocument();
+  });
+
+  it('distinguishes an ordinary mutation failure and keeps configuration when status fails', async () => {
+    let listRequests = 0;
+    server.use(
+      http.get('/api/v1/auth/me', () => HttpResponse.json(quotaOnlyUser)),
+      http.get('/api/v1/admin/quotas', () => {
+        listRequests += 1;
+        return HttpResponse.json({ quotas: [configuredQuota] });
+      }),
+      http.get('/api/v1/admin/quotas/status', () =>
+        HttpResponse.json(
+          { error: 'service_unavailable', message_key: 'error.service_unavailable' },
+          { status: 503 }
+        )
+      ),
+      http.put('/api/v1/admin/quotas/:roleId', () =>
+        HttpResponse.json(
+          { error: 'service_unavailable', message_key: 'error.service_unavailable' },
+          { status: 503 }
+        )
+      )
+    );
+
+    renderQuotaOnlyPage();
+    const configSummary = await screen.findByRole('article', {
+      name: 'analyst quota configuration',
+    });
+    expect(configSummary).toBeInTheDocument();
+    expect(
+      await screen.findByText('Service temporarily unavailable. Please try again later.')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('edit-quota-analyst-role-id'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(listRequests).toBeGreaterThanOrEqual(2));
+    expect(
+      screen.queryByRole('alert', { name: 'Quota change needs synchronization' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText('Service temporarily unavailable. Please try again later.')
+        .length
+    ).toBeGreaterThanOrEqual(2);
+    expect(configSummary).toBeInTheDocument();
   });
 });
