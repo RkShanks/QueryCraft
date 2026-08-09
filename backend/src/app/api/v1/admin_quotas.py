@@ -30,6 +30,11 @@ from app.services.quota_service import QuotaConfigTransition, QuotaService
 
 router = APIRouter(prefix="/admin/quotas", tags=["Admin Quotas"])
 _TRANSITION_RECONCILIATION_RETRIES = 3
+_QUOTA_LIMIT_FIELDS = (
+    "daily_query_limit",
+    "daily_execution_limit",
+    "daily_export_limit",
+)
 
 
 def _quota_unavailable() -> HTTPException:
@@ -111,9 +116,35 @@ def _changed_quota_fields(
     data: RoleQuotaUpsert,
     fields_set: set[str],
 ) -> list[str]:
-    if quota is None:
-        return sorted(fields_set)
-    return sorted(field for field in fields_set if getattr(quota, field) != getattr(data, field))
+    return [
+        field
+        for field in _QUOTA_LIMIT_FIELDS
+        if field in fields_set and (quota is None or getattr(quota, field) != getattr(data, field))
+    ]
+
+
+async def _log_quota_change(
+    db: AsyncSession,
+    session: dict,
+    role_id: str,
+    action: str,
+    *,
+    changed_fields: list[str] | None = None,
+) -> None:
+    context: dict[str, object] = {"action": action, "role_id": role_id}
+    if changed_fields is not None:
+        context["dims_changed"] = changed_fields
+    actor_id = uuid.UUID(session["user_id"]) if "user_id" in session else None
+    await AuditService.log(
+        db,
+        action=AuditActionType.QUOTA_CONFIG_CHANGE,
+        actor_id=actor_id,
+        actor_identity=session.get("user_id"),
+        resource_type="role_quota",
+        resource_id=role_id,
+        outcome="success",
+        context=context,
+    )
 
 
 async def _own_transition_after_reconciliation(
@@ -298,6 +329,12 @@ async def upsert_quota(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
 ):
+    """Apply a quota update or return a sanitized synchronization-pending 503.
+
+    A pending response means PostgreSQL and its success audit committed once,
+    while quota enforcement remains fail closed until an identical retry
+    publishes the authoritative configuration.
+    """
     try:
         role_uuid = uuid.UUID(role_id)
     except ValueError:
@@ -341,20 +378,12 @@ async def upsert_quota(
 
     try:
         quota = await repo.upsert(role_uuid, data, fields_set=fields_set)
-        actor_id = uuid.UUID(_session["user_id"]) if "user_id" in _session else None
-        await AuditService.log(
+        await _log_quota_change(
             db,
-            action=AuditActionType.QUOTA_CONFIG_CHANGE,
-            actor_id=actor_id,
-            actor_identity=_session.get("user_id"),
-            resource_type="role_quota",
-            resource_id=role_id,
-            outcome="success",
-            context={
-                "action": "created" if existing_quota is None else "updated",
-                "role_id": role_id,
-                "dims_changed": changed_fields,
-            },
+            _session,
+            role_id,
+            "created" if existing_quota is None else "updated",
+            changed_fields=changed_fields,
         )
         await db.commit()
     except SQLAlchemyError:
@@ -377,6 +406,11 @@ async def delete_quota(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
 ):
+    """Delete a quota or reconcile a committed deletion before returning 204.
+
+    A pending 503 is retryable and distinct from the preserved 404 response
+    for a genuinely unknown, non-pending quota configuration.
+    """
     try:
         role_uuid = uuid.UUID(role_id)
     except ValueError:
@@ -424,16 +458,11 @@ async def delete_quota(
 
     try:
         await repo.delete(role_uuid)
-        actor_id = uuid.UUID(_session["user_id"]) if "user_id" in _session else None
-        await AuditService.log(
+        await _log_quota_change(
             db,
-            action=AuditActionType.QUOTA_CONFIG_CHANGE,
-            actor_id=actor_id,
-            actor_identity=_session.get("user_id"),
-            resource_type="role_quota",
-            resource_id=role_id,
-            outcome="success",
-            context={"action": "removed", "role_id": role_id},
+            _session,
+            role_id,
+            "removed",
         )
         await db.commit()
     except SQLAlchemyError:

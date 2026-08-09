@@ -36,10 +36,7 @@ export function isQuotaSynchronizationPending(
   ) {
     return true;
   }
-  return (
-    isQuotaSynchronizationPending(response.detail) ||
-    isQuotaSynchronizationPending(response.body)
-  );
+  return false;
 }
 
 export interface QuotaDimensionStatus {
