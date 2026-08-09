@@ -270,7 +270,7 @@ class TestQuotaAdminCacheRefresh:
         from app.core.dependencies import get_redis
 
         class CacheFailingRedis:
-            async def incr(self, _key):
+            async def eval(self, *_args):
                 raise ConnectionError("internal cache endpoint unavailable")
 
         async with async_engine_fixture.connect() as conn:

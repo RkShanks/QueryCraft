@@ -375,6 +375,17 @@ class QuotaService:
             raise QuotaUnavailableError() from exc
 
     @staticmethod
+    async def owns_config_transition(
+        redis: Redis,
+        transition: QuotaConfigTransition,
+    ) -> bool:
+        _cache_key, _revision_key, transition_key = _config_cache_keys(transition.role_id)
+        try:
+            return await redis.get(transition_key) == transition.redis_value
+        except (RedisError, OSError, TypeError, ValueError) as exc:
+            raise QuotaUnavailableError() from exc
+
+    @staticmethod
     async def refresh_config_cache(
         redis: Redis,
         role_id: uuid.UUID,
