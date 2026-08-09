@@ -75,7 +75,7 @@ async def test_submit_uses_configured_trimmed_unicode_code_point_boundary(
     with patch(
         "app.api.v1.query._build_query_service_for_connection",
         new=AsyncMock(return_value=pipeline),
-    ):
+    ) as service_builder:
         if expected_status == 400:
             with pytest.raises(HTTPException) as exc_info:
                 await submit_question(
@@ -101,6 +101,7 @@ async def test_submit_uses_configured_trimmed_unicode_code_point_boundary(
             response_body = response.model_dump()
 
     assert response_status == expected_status
+    assert service_builder.await_count == (1 if expected_status == 200 else 0)
     assert pipeline.submitted_lengths == expected_pipeline_lengths
     assert all(pipeline.received_canonical_text)
     if expected_status == 400:

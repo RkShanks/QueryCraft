@@ -26,6 +26,7 @@ function countUnicodeCodePoints(text: string): number {
 }
 
 function isPythonStripWhitespace(codePoint: number): boolean {
+  // Mirrors CPython 3.12 str.strip() so browser and API canonicalization agree.
   return (
     (codePoint >= 0x0009 && codePoint <= 0x000d) ||
     (codePoint >= 0x001c && codePoint <= 0x0020) ||
@@ -104,7 +105,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
     }
   }, [canSubmitPrompt, canonicalText, onSubmit]);
 
-  const handleKeyDown = useCallback(
+  const submitOnEnter = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
         e.preventDefault();
@@ -114,14 +115,14 @@ export const PromptInput: React.FC<PromptInputProps> = ({
     [submitPrompt]
   );
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const updatePromptText = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
   }, []);
 
-  const getPlaceholder = () => {
+  const getPromptPlaceholder = () => {
     if (connections.length === 0) {
       return t('query.input.placeholderNoConnections');
     }
@@ -151,10 +152,10 @@ export const PromptInput: React.FC<PromptInputProps> = ({
           ref={textareaRef}
           className="prompt-input-textarea"
           aria-label={t('query.input.label')}
-          placeholder={getPlaceholder()}
+          placeholder={getPromptPlaceholder()}
           value={text}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
+          onChange={updatePromptText}
+          onKeyDown={submitOnEnter}
           disabled={isPromptDisabled}
           aria-describedby={describedBy}
           aria-invalid={isOverLimit}

@@ -136,26 +136,26 @@ describe('PromptInput', () => {
   it.each(['button click', 'Enter'])(
     'keeps over-limit pasted text available and blocks %s',
     (submitAction) => {
-    const onSubmit = vi.fn();
-    render(
-      <PromptInput
-        onSubmit={onSubmit}
-        {...defaultProps}
-        questionLimit={{ status: 'ready', maxQuestionLength: 4 }}
-      />
-    );
-    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
-    const pastedText = 'x'.repeat(5);
-    fireEvent.change(textarea, { target: { value: pastedText } });
+      const onSubmit = vi.fn();
+      render(
+        <PromptInput
+          onSubmit={onSubmit}
+          {...defaultProps}
+          questionLimit={{ status: 'ready', maxQuestionLength: 4 }}
+        />
+      );
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+      const pastedText = 'x'.repeat(5);
+      fireEvent.change(textarea, { target: { value: pastedText } });
 
-    if (submitAction === 'button click') {
-      fireEvent.click(screen.getByTestId('prompt-send'));
-    } else {
-      fireEvent.keyDown(textarea, { key: 'Enter' });
-    }
+      if (submitAction === 'button click') {
+        fireEvent.click(screen.getByTestId('prompt-send'));
+      } else {
+        fireEvent.keyDown(textarea, { key: 'Enter' });
+      }
 
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(textarea).toHaveValue(pastedText);
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(textarea).toHaveValue(pastedText);
     }
   );
 
