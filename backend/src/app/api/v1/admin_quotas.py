@@ -142,20 +142,6 @@ async def _republish_after_rollback(
     await db.commit()
 
 
-async def _refresh_quota_cache(
-    redis: Redis,
-    role_id: uuid.UUID,
-    quota_config: RoleQuota | None,
-) -> None:
-    try:
-        await QuotaService.refresh_config_cache(redis, role_id, quota_config)
-    except QuotaUnavailableError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"error": "service_unavailable", "message_key": "error.service_unavailable"},
-        ) from exc
-
-
 @router.get("", response_model=QuotaListResponse)
 async def list_quotas(
     _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_QUOTAS_MANAGE)),  # noqa: B008
@@ -375,24 +361,63 @@ async def delete_quota(
             detail={"error": "invalid_uuid", "message_key": "error.validation.invalidUUID"},
         ) from None
 
-    repo = QuotaRepository(db)
-    deleted = await repo.delete(role_uuid)
-    if not deleted:
+    transition = await _begin_quota_transition(redis, role_uuid)
+    role = await _locked_role(db, role_uuid)
+    if role is None:
+        await _publish_quota_transition(
+            redis,
+            transition,
+            None,
+            mutation_applied=False,
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "not_found", "message_key": "error.notFound"},
         )
 
-    actor_id = uuid.UUID(_session["user_id"]) if "user_id" in _session else None
-    await AuditService.log(
-        db,
-        action=AuditActionType.QUOTA_CONFIG_CHANGE,
-        actor_id=actor_id,
-        actor_identity=_session.get("user_id"),
-        resource_type="role_quota",
-        resource_id=role_id,
-        outcome="success",
-        context={"action": "removed", "role_id": role_id},
+    repo = QuotaRepository(db)
+    existing_quota = await repo.get(role_uuid)
+    was_pending = not transition.created
+    transition = await _own_transition_after_reconciliation(
+        redis,
+        transition,
+        existing_quota,
     )
-    await db.commit()
-    await _refresh_quota_cache(redis, role_uuid, None)
+    if existing_quota is None:
+        await _publish_quota_transition(
+            redis,
+            transition,
+            None,
+            mutation_applied=was_pending,
+        )
+        if was_pending:
+            return
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "not_found", "message_key": "error.notFound"},
+        )
+
+    try:
+        await repo.delete(role_uuid)
+        actor_id = uuid.UUID(_session["user_id"]) if "user_id" in _session else None
+        await AuditService.log(
+            db,
+            action=AuditActionType.QUOTA_CONFIG_CHANGE,
+            actor_id=actor_id,
+            actor_identity=_session.get("user_id"),
+            resource_type="role_quota",
+            resource_id=role_id,
+            outcome="success",
+            context={"action": "removed", "role_id": role_id},
+        )
+        await db.commit()
+    except SQLAlchemyError:
+        await _republish_after_rollback(db, redis, transition)
+        raise
+
+    await _publish_quota_transition(
+        redis,
+        transition,
+        None,
+        mutation_applied=True,
+    )
