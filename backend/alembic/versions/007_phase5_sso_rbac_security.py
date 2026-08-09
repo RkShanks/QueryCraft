@@ -28,6 +28,12 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+INCOMPATIBLE_USER_DOWNGRADE_ERROR = (
+    "Revision 007 downgrade blocked: remove incompatible users or assign valid local authentication "
+    "hashes before retrying."
+)
+
+
 PERMISSIONS_JSON = json.dumps([
     "query.submit",
     "query.history.view",
@@ -255,6 +261,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    incompatible_user_exists = op.get_bind().execute(
+        sa.text("SELECT EXISTS (SELECT 1 FROM users WHERE password_hash IS NULL)")
+    ).scalar_one()
+    if incompatible_user_exists:
+        raise RuntimeError(INCOMPATIBLE_USER_DOWNGRADE_ERROR)
+
     # Drop indexes
     op.drop_index("ix_audit_log_entries_actor_id", table_name="audit_log_entries")
     op.drop_index("ix_audit_log_entries_action_type", table_name="audit_log_entries")
