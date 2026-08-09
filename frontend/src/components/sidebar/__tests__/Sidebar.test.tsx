@@ -5,6 +5,7 @@ import { Sidebar } from '../Sidebar';
 import { useUIStore } from '../../../stores/uiStore';
 import { createWrapper } from '../../../test/utils';
 import i18n from '../../../i18n';
+import { PERMISSIONS, type Permission } from '../../../auth/permissions';
 
 const mockSessions: Array<{
   id: string;
@@ -266,6 +267,64 @@ describe('Sidebar', () => {
       } finally {
         await i18n.changeLanguage('en');
       }
+    }
+  );
+
+  const permissionNavigationCases: Array<{
+    permission: Permission;
+    visible: string[];
+  }> = [
+    { permission: PERMISSIONS.QUERY_SUBMIT, visible: ['sidebar-new-chat'] },
+    { permission: PERMISSIONS.QUERY_HISTORY_VIEW, visible: ['sidebar-nav-history'] },
+    {
+      permission: PERMISSIONS.ADMIN_CONNECTIONS_MANAGE,
+      visible: ['sidebar-nav-settings', 'sidebar-nav-connections'],
+    },
+    { permission: PERMISSIONS.ADMIN_ROLES_MANAGE, visible: ['sidebar-nav-roles'] },
+    { permission: PERMISSIONS.ADMIN_SSO_MANAGE, visible: ['sidebar-nav-sso'] },
+    { permission: PERMISSIONS.ADMIN_AUDIT_VERIFY, visible: ['sidebar-nav-audit'] },
+    { permission: PERMISSIONS.ADMIN_QUOTAS_MANAGE, visible: ['sidebar-nav-quotas'] },
+    { permission: PERMISSIONS.ADMIN_SECURITY_MANAGE, visible: ['sidebar-nav-detection'] },
+  ];
+
+  it.each(permissionNavigationCases)(
+    'shows only navigation authorized by $permission and gates session discovery',
+    ({ permission, visible }) => {
+      vi.mocked(useCurrentUser).mockReturnValue({
+        data: {
+          data: {
+            id: 'exact-permission-user',
+            role: 'admin',
+            role_name: 'admin',
+            permissions: [permission],
+          },
+        },
+        isLoading: false,
+      } as any);
+
+      setup();
+
+      const navigationTestIds = [
+        'sidebar-new-chat',
+        'sidebar-nav-history',
+        'sidebar-nav-settings',
+        'sidebar-nav-connections',
+        'sidebar-nav-roles',
+        'sidebar-nav-sso',
+        'sidebar-nav-audit',
+        'sidebar-nav-quotas',
+        'sidebar-nav-detection',
+      ];
+      for (const testId of navigationTestIds) {
+        if (visible.includes(testId)) {
+          expect(screen.getByTestId(testId)).toBeInTheDocument();
+        } else {
+          expect(screen.queryByTestId(testId)).not.toBeInTheDocument();
+        }
+      }
+      expect(useSessionsList).toHaveBeenLastCalledWith({
+        enabled: permission === PERMISSIONS.QUERY_SUBMIT,
+      });
     }
   );
 
