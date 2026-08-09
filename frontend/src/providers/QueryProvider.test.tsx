@@ -198,6 +198,51 @@ describe('QueryProvider session expiry handling', () => {
     expect(screen.getByTestId('signed-in-identity')).toHaveTextContent('user-a');
   });
 
+  it('removes authenticated state and feature caches after sign-out succeeds', async () => {
+    let authenticated = true;
+    server.use(
+      http.get('/api/v1/auth/me', () => {
+        if (!authenticated) {
+          return HttpResponse.json(
+            { error: 'unauthorized', message_key: 'error.unauthorized' },
+            { status: 401 }
+          );
+        }
+        return HttpResponse.json({
+          id: 'user-a',
+          username: 'user-a',
+          display_name: 'User A',
+          role: 'member',
+          role_id: 'role-a',
+          role_name: 'Role A',
+          permissions: ['query.submit'],
+          auth_provider: 'local',
+        });
+      }),
+      http.get('/api/v1/sign-out-sensitive-state', () =>
+        HttpResponse.json({ marker: 'user-a-sensitive-state' })
+      ),
+      http.post('/api/v1/auth/sign-out', () => {
+        authenticated = false;
+        return new HttpResponse(null, { status: 204 });
+      })
+    );
+
+    render(
+      <QueryProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <SignOutBoundaryProbe />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByText('user-a-sensitive-state')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('signed-in-identity')).toHaveTextContent('anonymous');
+    });
+    expect(screen.queryByText('user-a-sensitive-state')).not.toBeInTheDocument();
+  });
+
   afterEach(() => {
     queryClient.clear();
   });
