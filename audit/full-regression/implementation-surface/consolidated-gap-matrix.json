@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 37, "Resolved": 7, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 34, "Resolved": 10, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -71,6 +71,13 @@
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/304",
       "tested_commit": "2a48ec9b0da9c7abe408cb5248104525f5350604",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-06-migration-cycle.json"
+    },
+    "CHUNK-07": {
+      "gap_ids": ["IS-GAP-023", "IS-GAP-025", "IS-GAP-022"],
+      "status": "Resolved",
+      "fix_pr": null,
+      "tested_product_commit": "3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-07-ui-identity-permissions.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -444,7 +451,8 @@
       "required_evidence": "Authenticated browser matrix with disposable users per exact permission set.",
       "isolation": "Disposable roles/users/sessions with disjoint permissions.",
       "regression_rows": ["P5-FR-127", "XP-011"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-07", "status": "Pending",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-07", "status": "Resolved",
+      "resolution": {"fix_pr": null, "tested_product_commit": "3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-07-ui-identity-permissions.json"},
       "source_refs": ["frontend/src/App.tsx::App", "frontend/src/App.tsx::AuthenticatedLayout", "frontend/src/components/sidebar/Sidebar.tsx::Sidebar", "frontend/src/components/auth/PermissionGuard.tsx::PermissionGuard", "backend/src/app/api/v1/query.py::submit_question", "backend/src/app/api/v1/history.py", "backend/src/app/api/v1/admin.py::get_settings_admin", "backend/src/app/api/v1/admin.py::update_settings_admin", "frontend/src/__tests__/App.test.tsx", "frontend/src/components/sidebar/__tests__/Sidebar.test.tsx"]
     },
     {
@@ -460,7 +468,8 @@
       "required_evidence": "Same-browser two-user/role switch with DOM, network and in-memory cache inspection.",
       "isolation": "Two disposable users with disjoint histories, connections and permissions; clear browser profile afterward.",
       "regression_rows": ["P5-FR-127", "P5-FR-134", "XP-001", "XP-003", "XP-012"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-07", "status": "Pending",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-07", "status": "Resolved",
+      "resolution": {"fix_pr": null, "tested_product_commit": "3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-07-ui-identity-permissions.json"},
       "source_refs": ["frontend/src/hooks/useAuth.ts::useSignIn", "frontend/src/hooks/useAuth.ts::useSignOut", "frontend/src/hooks/useAuth.ts::useCurrentUser", "frontend/src/providers/QueryProvider.tsx::queryClient", "frontend/src/providers/QueryProvider.tsx::QueryProvider", "frontend/src/stores/uiStore.ts::useUIStore", "frontend/src/hooks/useSessions.ts", "frontend/src/hooks/useHistory.ts", "frontend/src/hooks/useAdminRoles.ts", "frontend/src/hooks/useAuth.test.tsx"]
     },
     {
@@ -492,7 +501,8 @@
       "required_evidence": "Browser assign/remove each permission and verify nav/API access for a disposable user.",
       "isolation": "Disposable custom role/user.",
       "regression_rows": ["P5-FR-122", "P5-FR-127", "P6-FR-177", "XP-011"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-07", "status": "Pending",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-07", "status": "Resolved",
+      "resolution": {"fix_pr": null, "tested_product_commit": "3d2f05a6046ed1bd9f6b2a461fedd2c7f82b10db", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-07-ui-identity-permissions.json"},
       "source_refs": ["frontend/src/pages/AdminRolesPage.tsx::AVAILABLE_PERMISSIONS", "frontend/src/pages/AdminRolesPage.tsx::handleSave", "backend/src/app/db/models/enums.py::Permission", "backend/src/app/main.py::_sync_admin_user", "frontend/src/App.tsx::App", "frontend/src/pages/AdminRolesPage.test.tsx"]
     },
     {
