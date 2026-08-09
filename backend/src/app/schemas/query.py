@@ -29,6 +29,12 @@ class SubmitQuestionRequest(BaseModel):
         return stripped
 
 
+class QueryLimitsResponse(BaseModel):
+    """Safe public subset of the query submission configuration."""
+
+    max_question_length: int = Field(..., gt=0)
+
+
 class ColumnMeta(BaseModel):
     """Column metadata in QueryResult."""
 

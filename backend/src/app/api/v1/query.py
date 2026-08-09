@@ -30,6 +30,7 @@ from app.repositories.session_repository import SessionRepository
 from app.schemas.query import (
     AcceptQueryRequest,
     EvaluatorRejection,
+    QueryLimitsResponse,
     QueryResult,
     RefinePrompt,
     RegenerateQueryRequest,
@@ -216,6 +217,16 @@ async def _build_query_service_for_attempt(
     service = await _build_query_service_for_connection(str(attempt.database_connection_id), db, redis)
     await service.ensure_connection_authorized(context.user_id)
     return service
+
+
+@router.get("/limits", response_model=QueryLimitsResponse)
+async def get_query_limits(
+    _session: dict = Depends(require_permission(Permission.QUERY_SUBMIT)),  # noqa: B008
+) -> QueryLimitsResponse:
+    """Return the configured question limit for authorized submitters."""
+    return QueryLimitsResponse(
+        max_question_length=get_settings().MAX_QUESTION_LENGTH,
+    )
 
 
 @router.post("/submit")
