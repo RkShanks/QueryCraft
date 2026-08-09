@@ -16,6 +16,32 @@ export interface RoleQuotaUpsert {
   daily_export_limit?: number | null;
 }
 
+interface QuotaSynchronizationPending {
+  error: 'quota_sync_pending';
+  message_key: 'error.quota_sync_pending';
+  mutation_applied: true;
+}
+
+export function isQuotaSynchronizationPending(
+  error: unknown
+): error is QuotaSynchronizationPending {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const response = error as Record<string, unknown>;
+  if (
+    response.error === 'quota_sync_pending' &&
+    response.message_key === 'error.quota_sync_pending' &&
+    response.mutation_applied === true
+  ) {
+    return true;
+  }
+  return (
+    isQuotaSynchronizationPending(response.detail) ||
+    isQuotaSynchronizationPending(response.body)
+  );
+}
+
 export interface QuotaDimensionStatus {
   limit: number | null;
   used: number;
