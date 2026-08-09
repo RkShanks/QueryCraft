@@ -137,6 +137,37 @@ function SessionExpiryBoundaryProbe() {
   );
 }
 
+function PermissionReconciliationProbe() {
+  const currentUser = useCurrentUser();
+  const privilegedQuery = useQuery({
+    queryKey: ['permission-reconciliation-state'],
+    queryFn: async () => {
+      const response = await fetch('/api/v1/permission-reconciliation-state');
+      if (!response.ok) {
+        throw { status: response.status };
+      }
+      return (await response.json()) as { marker: string };
+    },
+    enabled: currentUser.data?.data?.permissions?.includes('admin.audit.verify') === true,
+    retry: false,
+  });
+
+  return (
+    <div>
+      <span data-testid="reconciliation-identity">
+        {currentUser.data?.data?.id ?? 'anonymous'}
+      </span>
+      <span data-testid="reconciliation-permissions">
+        {currentUser.data?.data?.permissions?.join(',') ?? ''}
+      </span>
+      <span data-testid="privileged-marker">{privilegedQuery.data?.marker}</span>
+      <button type="button" onClick={() => privilegedQuery.refetch()}>
+        Trigger revoked request
+      </button>
+    </div>
+  );
+}
+
 describe('QueryProvider session expiry handling', () => {
   beforeEach(() => {
     queryClient.clear();
@@ -402,6 +433,56 @@ describe('QueryProvider session expiry handling', () => {
     expect(window.location.search).toBe('?error=session_expired');
     await waitFor(() => expect(screen.getByTestId('expiry-identity')).toHaveTextContent('anonymous'));
     expect(screen.queryByText('expired-user-a-state')).not.toBeInTheDocument();
+  });
+
+  it('reconciles a permission-revocation 403 without logging out or retaining privileged state', async () => {
+    let permissions = ['admin.audit.verify'];
+    let privilegedRequestCount = 0;
+    let currentUserRequestCount = 0;
+    server.use(
+      http.get('/api/v1/auth/me', () => {
+        currentUserRequestCount += 1;
+        return HttpResponse.json({
+          id: 'user-a',
+          username: 'user-a',
+          display_name: 'User A',
+          role: 'member',
+          role_id: 'role-a',
+          role_name: 'Role A',
+          permissions,
+          auth_provider: 'local',
+        });
+      }),
+      http.get('/api/v1/permission-reconciliation-state', () => {
+        privilegedRequestCount += 1;
+        if (privilegedRequestCount > 1) {
+          return HttpResponse.json(
+            { error: 'forbidden', message_key: 'error.forbidden' },
+            { status: 403 }
+          );
+        }
+        return HttpResponse.json({ marker: 'revoked-audit-state' });
+      })
+    );
+    window.history.replaceState({}, '', '/admin/audit');
+
+    render(
+      <QueryProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <PermissionReconciliationProbe />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByText('revoked-audit-state')).toBeInTheDocument();
+    permissions = [];
+    fireEvent.click(screen.getByRole('button', { name: 'Trigger revoked request' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('reconciliation-permissions')).toBeEmptyDOMElement();
+    });
+    expect(screen.getByTestId('reconciliation-identity')).toHaveTextContent('user-a');
+    expect(screen.queryByText('revoked-audit-state')).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe('/admin/audit');
+    expect(currentUserRequestCount).toBe(2);
   });
 
   afterEach(() => {
