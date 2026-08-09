@@ -66,6 +66,7 @@ function IdentityQueryBoundary({
   authClient: QueryClient;
   children: ReactNode;
 }) {
+  const [isExplicitlySignedOut, setExplicitlySignedOut] = useState(false);
   const currentUserQuery = useQuery({
     queryKey: CURRENT_USER_QUERY_KEY,
     queryFn: async () => {
@@ -78,10 +79,16 @@ function IdentityQueryBoundary({
       }
     },
     retry: false,
+    enabled: !isExplicitlySignedOut,
   }, authClient);
-  const observedFingerprint = currentUserQuery.isLoading
+  const exposedCurrentUserQuery = isExplicitlySignedOut
+    ? { ...currentUserQuery, data: undefined, isLoading: false, isError: false }
+    : currentUserQuery;
+  const observedFingerprint = exposedCurrentUserQuery.isLoading
     ? null
-    : identityFingerprint(currentUserQuery.isError ? undefined : currentUserQuery.data);
+    : identityFingerprint(
+        exposedCurrentUserQuery.isError ? undefined : exposedCurrentUserQuery.data
+      );
   const [featureSession, setFeatureSession] = useState(() => ({
     client: createFeatureQueryClient(),
     fingerprint: 'pending',
@@ -107,6 +114,11 @@ function IdentityQueryBoundary({
     onError: () => {
       setAuthTransitionPending(false);
     },
+    onSuccess: () => {
+      setExplicitlySignedOut(true);
+      authClient.removeQueries({ queryKey: CURRENT_USER_QUERY_KEY });
+      setAuthTransitionPending(false);
+    },
   }, authClient);
 
   useLayoutEffect(() => {
@@ -122,8 +134,12 @@ function IdentityQueryBoundary({
     }));
   }, [featureSession.client, needsIdentityReset, observedFingerprint]);
 
-  const contextValue = { authClient, currentUserQuery, signOutMutation };
-  if (currentUserQuery.isLoading || needsIdentityReset || isAuthTransitionPending) {
+  const contextValue = {
+    authClient,
+    currentUserQuery: exposedCurrentUserQuery,
+    signOutMutation,
+  };
+  if (exposedCurrentUserQuery.isLoading || needsIdentityReset || isAuthTransitionPending) {
     return (
       <AuthSessionContext.Provider value={contextValue}>
         <div className="min-h-screen flex items-center justify-center" role="status">
