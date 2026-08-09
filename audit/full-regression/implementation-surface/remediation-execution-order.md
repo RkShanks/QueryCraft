@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-08` are resolved on their tested product commits. CHUNK-08 passed configured backend boundaries, fail-closed primary prompt behavior, exact Unicode parity, isolated API and EN/AR desktop/375px Chromium proof on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5` in [#306](https://github.com/RkShanks/QueryCraft/pull/306); see [evidence](evidence/chunk-08-prompt-length.md). Authoritative backend/frontend CI and squash merge remain the `CHUNK-09` dispatch gate.
+Status: `CHUNK-01` through `CHUNK-08` are resolved on their tested product commits. CHUNK-08 passed configured backend boundaries, fail-closed primary prompt behavior, exact Unicode parity, isolated API and EN/AR desktop/375px Chromium proof on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5` in [#306](https://github.com/RkShanks/QueryCraft/pull/306); see [evidence](evidence/chunk-08-prompt-length.md). Authoritative backend/frontend CI passed; squash merge remains the `CHUNK-09` dispatch gate.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -104,7 +104,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-08 — configured primary prompt length
 
-- **Progress:** Resolved on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5` in [#306](https://github.com/RkShanks/QueryCraft/pull/306). One positive configured setting now drives safe authenticated discovery, early API rejection and the primary Workspace counter/submission boundary. Exact Python/browser Unicode behavior, loading/error/retry, IME/newline, retained correction, double-submit, isolated 200/401/403/400 API and EN/AR desktop/375px Chromium proof passed. Disposable resources were removed and the protected baseline was preserved. Authoritative backend/frontend CI and squash merge remain required before CHUNK-09 dispatch.
+- **Progress:** Resolved on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5` in [#306](https://github.com/RkShanks/QueryCraft/pull/306). One positive configured setting now drives safe authenticated discovery, early API rejection and the primary Workspace counter/submission boundary. Exact Python/browser Unicode behavior, loading/error/retry, IME/newline, retained correction, double-submit, isolated 200/401/403/400 API and EN/AR desktop/375px Chromium proof passed. Disposable resources were removed and the protected baseline was preserved. Authoritative backend/frontend CI passed; squash merge remains required before CHUNK-09 dispatch.
 
 - **IDs / role / branch / context:** `IS-GAP-020`; Backend Implementer then Frontend Implementer; `phase-6/wave-19.08-prompt-length-contract`; 80–115k.
 - **Likely source:** backend settings/query schema/API; `PromptInput.tsx`, Workspace, locale keys and tests.
@@ -370,4 +370,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-08` are resolved on their tested product commits. `CHUNK-09 / IS-GAP-014` is next but remains blocked until [#306](https://github.com/RkShanks/QueryCraft/pull/306) passes authoritative backend/frontend CI and is squash-merged.
+`CHUNK-01` through `CHUNK-08` are resolved on their tested product commits. `CHUNK-09 / IS-GAP-014` is next but remains blocked until CI-passed [#306](https://github.com/RkShanks/QueryCraft/pull/306) is squash-merged.

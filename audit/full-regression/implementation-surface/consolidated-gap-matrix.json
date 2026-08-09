@@ -87,7 +87,8 @@
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/306",
       "tested_product_commit": "1a11980ad3e395bf3b65131b1d5e6ce0209a19b5",
       "verification_commit": "7aa5914fe6baf9e68160107177cf39818e06ead9",
-      "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"},
+      "ci_validated_commit": "48ad094d8b95480aa87110c4a477b63533217bd0",
+      "authoritative_ci": {"backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-08-prompt-length.json"
     }
   },

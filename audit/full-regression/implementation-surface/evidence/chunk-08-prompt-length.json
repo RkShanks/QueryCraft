@@ -2,11 +2,11 @@
   "schema_version": "1.0",
   "chunk": "CHUNK-08",
   "gap_ids": ["IS-GAP-020"],
-  "status": "local_proof_passed_ci_pending",
+  "status": "ci_passed_merge_pending",
   "starting_sha": "8581ac25ad38b006488b80a92c7f2b27916c2416",
   "tested_product_commit": "1a11980ad3e395bf3b65131b1d5e6ce0209a19b5",
   "verification_commit": "7aa5914fe6baf9e68160107177cf39818e06ead9",
-  "ci_validated_commit": null,
+  "ci_validated_commit": "48ad094d8b95480aa87110c4a477b63533217bd0",
   "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/306",
   "contract": {
     "authority": "Settings.MAX_QUESTION_LENGTH",
@@ -135,8 +135,8 @@
     "docs_guard": "applied"
   },
   "authoritative_ci": {
-    "backend_test": "pending",
-    "frontend_test": "pending",
+    "backend_test": "passed",
+    "frontend_test": "passed",
     "required_before_merge": true
   },
   "cleanup": {
@@ -153,5 +153,5 @@
     "protected_baseline_unchanged": true
   },
   "chunk_09_unblocked": false,
-  "chunk_09_unblocked_on_ci_passed_squash_merge": true
+  "chunk_09_unblocked_on_squash_merge": true
 }

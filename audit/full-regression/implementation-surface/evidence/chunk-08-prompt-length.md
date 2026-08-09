@@ -1,6 +1,6 @@
 # CHUNK-08 configured primary prompt-length evidence
 
-Status: local backend, frontend, isolated API and real-browser proof passed on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5`; authoritative `backend-test` and `frontend-test` are required before [#306](https://github.com/RkShanks/QueryCraft/pull/306) may merge.
+Status: local backend, frontend, isolated API and real-browser proof passed on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5`; authoritative `backend-test` and `frontend-test` passed on `48ad094d8b95480aa87110c4a477b63533217bd0` in [#306](https://github.com/RkShanks/QueryCraft/pull/306). Squash merge is the remaining CHUNK-09 dispatch gate.
 
 Starting main: `8581ac25ad38b006488b80a92c7f2b27916c2416`.
 
@@ -92,7 +92,7 @@ The Chrome DevTools connector was unavailable in this session, so the repository
 - `git diff --check`: passed after evidence and ledger updates.
 - Test Guard, Clean Code Guard and Vercel React Best Practices: passed.
 - Docs Guard: applied to this evidence and the linked ledgers.
-- Authoritative PR `backend-test` and `frontend-test`: pending and required before merge.
+- Authoritative PR `backend-test` and `frontend-test`: passed on `48ad094d8b95480aa87110c4a477b63533217bd0`.
 
 ## Contract remediation note
 
@@ -107,4 +107,4 @@ No broad OpenAPI or generated-client regeneration was performed. The narrow clie
 - Complete prompt text retained in evidence, logs, screenshots, traces or temporary files: false.
 - The 14 protected modified PNGs, seven untracked historical screenshots and untracked traces directory are unchanged from the starting dirty baseline and were never staged.
 
-CHUNK-09 becomes unblocked only after [#306](https://github.com/RkShanks/QueryCraft/pull/306) passes authoritative backend/frontend CI and is squash-merged. Do not start CHUNK-09 from this evidence alone. The machine-readable peer is [chunk-08-prompt-length.json](chunk-08-prompt-length.json).
+CHUNK-09 becomes unblocked only after CI-passed [#306](https://github.com/RkShanks/QueryCraft/pull/306) is squash-merged. Do not start CHUNK-09 from this evidence alone. The machine-readable peer is [chunk-08-prompt-length.json](chunk-08-prompt-length.json).
