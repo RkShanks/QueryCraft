@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import ast
 import json
 
 import pytest
 
 from tests.migrations.migration_support import (
+    ALEMBIC_DIR,
     DatabaseSnapshot,
     current_revision,
     database_snapshot,
@@ -26,6 +28,16 @@ from tests.migrations.scenario_support import (
 
 REVISIONS = revision_ids()
 HISTORICAL_REVISIONS = REVISIONS[:-1]
+
+
+def test_migration_revisions_are_self_contained() -> None:
+    for migration_path in sorted((ALEMBIC_DIR / "versions").glob("*.py")):
+        syntax_tree = ast.parse(migration_path.read_text())
+        imported_modules = {
+            alias.name for node in ast.walk(syntax_tree) if isinstance(node, ast.Import) for alias in node.names
+        }
+        imported_modules.update(node.module or "" for node in ast.walk(syntax_tree) if isinstance(node, ast.ImportFrom))
+        assert all(module_name != "app" and not module_name.startswith("app.") for module_name in imported_modules)
 
 
 @pytest.mark.integration
