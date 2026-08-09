@@ -1,8 +1,9 @@
 /* eslint-disable local/no-inline-user-strings */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLayoutEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { QueryProvider, queryClient } from './QueryProvider';
+import { CURRENT_USER_QUERY_KEY, QueryProvider, queryClient } from './QueryProvider';
 import { useCurrentUser, useSignIn, useSignOut } from '../hooks/useAuth';
 import { useUIStore } from '../stores/uiStore';
 import { http, HttpResponse } from 'msw';
@@ -175,6 +176,46 @@ function SessionExpiryBoundaryProbe() {
       <span data-testid="expiry-sensitive-marker">{sensitiveQuery.data?.marker}</span>
       <button type="button" onClick={() => sensitiveQuery.refetch()}>
         Trigger expired request
+      </button>
+    </div>
+  );
+}
+
+function SessionExpiryCacheProbe({
+  observeFeatureClient,
+}: {
+  observeFeatureClient: (client: QueryClient) => void;
+}) {
+  const currentUser = useCurrentUser();
+  const signIn = useSignIn();
+  const featureClient = useQueryClient();
+
+  useLayoutEffect(() => {
+    observeFeatureClient(featureClient);
+  }, [featureClient, observeFeatureClient]);
+
+  return (
+    <div>
+      <span data-testid="expiry-cache-identity">
+        {currentUser.data?.data?.id ?? 'anonymous'}
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          void currentUser.refetch();
+          void Promise.allSettled([
+            apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
+            apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
+          ]);
+        }}
+      >
+        Trigger duplicate expiry
+      </button>
+      <button
+        type="button"
+        onClick={() => signIn.mutate({ username: 'user-b', password: 'password' })}
+      >
+        Sign in replacement user
       </button>
     </div>
   );
@@ -552,6 +593,141 @@ describe('QueryProvider session expiry handling', () => {
     await waitFor(() => expect(screen.getByTestId('expiry-identity')).toHaveTextContent('anonymous'));
     expect(screen.queryByText('expired-user-a-state')).not.toBeInTheDocument();
   });
+
+  it.each(['injected', 'default'] as const)(
+    'removes expired identity caches and ignores late auth settlement with the %s auth client',
+    async (clientMode) => {
+      const expiredIdentity = {
+        id: 'expired-user-id',
+        username: 'expired-username',
+        display_name: 'Expired User',
+        role: 'expired-role',
+        role_id: 'expired-role-id',
+        role_name: 'Expired Role',
+        permissions: ['admin.audit.verify'],
+        auth_provider: 'local',
+      };
+      const replacementIdentity = {
+        id: 'replacement-user-id',
+        username: 'replacement-username',
+        display_name: 'Replacement User',
+        role: 'replacement-role',
+        role_id: 'replacement-role-id',
+        role_name: 'Replacement Role',
+        permissions: ['query.history.view'],
+        auth_provider: 'local',
+      };
+      const lateCurrentUser = deferredValue<typeof expiredIdentity>();
+      let currentUserRequestCount = 0;
+      server.use(
+        http.get('/api/v1/auth/me', async () => {
+          currentUserRequestCount += 1;
+          if (currentUserRequestCount === 1) {
+            return HttpResponse.json(expiredIdentity);
+          }
+          return HttpResponse.json(await lateCurrentUser.promise);
+        }),
+        http.get('/api/v1/session-expiry-cache-state', () =>
+          HttpResponse.json(
+            { error: 'unauthorized', message_key: 'error.unauthorized' },
+            { status: 401 }
+          )
+        ),
+        http.post('/api/v1/auth/sign-in', () => HttpResponse.json(replacementIdentity))
+      );
+
+      const authClient = clientMode === 'default'
+        ? queryClient
+        : new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const featureClients: QueryClient[] = [];
+      const observeFeatureClient = (client: QueryClient) => {
+        if (!featureClients.includes(client)) featureClients.push(client);
+      };
+      useUIStore.getState().setActiveSessionId('expired-session-id');
+      useUIStore.getState().setHoveredSessionId('expired-hover-id');
+      useUIStore.getState().setPromptDraft('expired prompt');
+      useUIStore.setState({ sidebarCollapsed: true });
+
+      render(
+        <QueryProvider client={clientMode === 'injected' ? authClient : undefined}>
+          <SessionExpiryCacheProbe observeFeatureClient={observeFeatureClient} />
+        </QueryProvider>
+      );
+
+      expect(await screen.findByTestId('expiry-cache-identity')).toHaveTextContent(
+        expiredIdentity.id
+      );
+      await waitFor(() => expect(featureClients).toHaveLength(1));
+      featureClients[0].setQueryData(['expired-feature-state'], {
+        owner: expiredIdentity.id,
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Trigger duplicate expiry' }));
+      await waitFor(() => expect(currentUserRequestCount).toBe(2));
+
+      await waitFor(() => expect(window.location.pathname).toBe('/sign-in'));
+      expect(window.location.search).toBe('?error=session_expired');
+      await waitFor(() => {
+        expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined();
+        expect(
+          authClient.getQueryCache().findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+        ).toHaveLength(0);
+      });
+      expect(screen.getByTestId('expiry-cache-identity')).toHaveTextContent('anonymous');
+      const expiredCacheSnapshot = JSON.stringify(
+        authClient.getQueryCache().getAll().map((query) => query.state.data)
+      );
+      for (const identityValue of [
+        expiredIdentity.username,
+        expiredIdentity.id,
+        expiredIdentity.role,
+        expiredIdentity.role_id,
+        expiredIdentity.role_name,
+        ...expiredIdentity.permissions,
+      ]) {
+        expect(expiredCacheSnapshot).not.toContain(identityValue);
+      }
+      expect(featureClients.length).toBeGreaterThan(1);
+      for (const featureClient of featureClients) {
+        expect(featureClient.getQueryCache().getAll()).toHaveLength(0);
+        expect(featureClient.getMutationCache().getAll()).toHaveLength(0);
+      }
+      expect(useUIStore.getState()).toMatchObject({
+        activeSessionId: null,
+        hoveredSessionId: null,
+        promptDraft: '',
+        sidebarCollapsed: true,
+      });
+
+      await act(async () => {
+        lateCurrentUser.resolve(expiredIdentity);
+        await lateCurrentUser.promise;
+      });
+      await waitFor(() => {
+        expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toBeUndefined();
+        expect(
+          authClient.getQueryCache().findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+        ).toHaveLength(0);
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in replacement user' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('expiry-cache-identity')).toHaveTextContent(
+          replacementIdentity.id
+        );
+      });
+      expect(authClient.getQueryData(CURRENT_USER_QUERY_KEY)).toMatchObject({
+        data: replacementIdentity,
+      });
+      const replacementCacheSnapshot = JSON.stringify(
+        authClient.getQueryCache().getAll().map((query) => query.state.data)
+      );
+      expect(replacementCacheSnapshot).toContain(replacementIdentity.id);
+      expect(replacementCacheSnapshot).not.toContain(expiredIdentity.id);
+      expect(
+        authClient.getQueryCache().findAll({ queryKey: CURRENT_USER_QUERY_KEY, exact: true })
+      ).toHaveLength(1);
+    }
+  );
 
   it('reconciles a permission-revocation 403 without logging out or retaining privileged state', async () => {
     let permissions = ['admin.audit.verify'];
