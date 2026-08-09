@@ -13,16 +13,17 @@ Phase 3 migration:
 - Add connection_id to sessions table
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
 revision: str = "006"
-down_revision: Union[str, None] = "005"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "005"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -92,7 +93,9 @@ def upgrade() -> None:
         sa.Column("foreign_key_column", sa.String(), nullable=True),
         sa.Column("introspected_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.ForeignKeyConstraint(["connection_id"], ["source_database_connections.id"], ondelete="CASCADE"),
-        sa.UniqueConstraint("connection_id", "table_name", "column_name", name="uq_schema_entry_connection_table_column"),
+        sa.UniqueConstraint(
+            "connection_id", "table_name", "column_name", name="uq_schema_entry_connection_table_column"
+        ),
     )
     op.create_index("ix_schema_entries_connection_id", "connection_schema_entries", ["connection_id"])
 

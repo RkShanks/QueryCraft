@@ -15,17 +15,18 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
-from typing import Sequence, Union
+from collections.abc import Sequence
+from datetime import UTC, datetime
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
 revision: str = "007"
-down_revision: Union[str, None] = "006"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "006"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 INCOMPATIBLE_USER_DOWNGRADE_ERROR = (
@@ -34,19 +35,21 @@ INCOMPATIBLE_USER_DOWNGRADE_ERROR = (
 )
 
 
-PERMISSIONS_JSON = json.dumps([
-    "query.submit",
-    "query.history.view",
-    "admin.connections.manage",
-    "admin.roles.manage",
-    "admin.sso.manage",
-    "admin.audit.verify",
-])
+PERMISSIONS_JSON = json.dumps(
+    [
+        "query.submit",
+        "query.history.view",
+        "admin.connections.manage",
+        "admin.roles.manage",
+        "admin.sso.manage",
+        "admin.audit.verify",
+    ]
+)
 
 
 def _make_genesis_hash() -> tuple[datetime, str]:
     """Compute the genesis audit entry row_hash using canonical JSON."""
-    ts = datetime.now(timezone.utc)
+    ts = datetime.now(UTC)
     payload = {
         "sequence_number": 1,
         "timestamp": ts.isoformat(),
@@ -59,7 +62,7 @@ def _make_genesis_hash() -> tuple[datetime, str]:
         "context": {"note": "Phase 5 audit genesis"},
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    row_hash = hashlib.sha256(f"{canonical}GENESIS".encode("utf-8")).hexdigest()
+    row_hash = hashlib.sha256(f"{canonical}GENESIS".encode()).hexdigest()
     return ts, row_hash
 
 
@@ -95,7 +98,12 @@ def upgrade() -> None:
         sa.Column("name", sa.String(100), nullable=False),
         sa.Column("description", sa.String(500), nullable=True),
         sa.Column("priority", sa.Integer(), nullable=False, server_default=sa.text("100")),
-        sa.Column("permissions", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "permissions",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
         sa.Column("is_builtin", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
@@ -109,9 +117,24 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
         sa.Column("role_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("connection_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("allowed_tables", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("row_filters", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'[]'::jsonb")),
-        sa.Column("column_masks", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "allowed_tables",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
+        sa.Column(
+            "row_filters",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
+        sa.Column(
+            "column_masks",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.PrimaryKeyConstraint("id"),
@@ -138,7 +161,9 @@ def upgrade() -> None:
         sa.Column("provider", sa.String(), nullable=False),
         sa.Column("subject_id", sa.String(), nullable=False),
         sa.Column("email", sa.String(), nullable=True),
-        sa.Column("sso_groups", postgresql.JSONB(astext_type=sa.Text()), nullable=True, server_default=sa.text("'[]'::jsonb")),
+        sa.Column(
+            "sso_groups", postgresql.JSONB(astext_type=sa.Text()), nullable=True, server_default=sa.text("'[]'::jsonb")
+        ),
         sa.Column("last_login_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.PrimaryKeyConstraint("id"),
@@ -157,7 +182,9 @@ def upgrade() -> None:
         sa.Column("resource_type", sa.String(), nullable=True),
         sa.Column("resource_id", sa.String(), nullable=True),
         sa.Column("outcome", sa.String(), nullable=False),
-        sa.Column("context", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column(
+            "context", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'{}'::jsonb")
+        ),
         sa.Column("prev_hash", sa.String(64), nullable=False),
         sa.Column("row_hash", sa.String(64), nullable=False),
         sa.PrimaryKeyConstraint("id"),
@@ -261,9 +288,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    incompatible_user_exists = op.get_bind().execute(
-        sa.text("SELECT EXISTS (SELECT 1 FROM users WHERE password_hash IS NULL)")
-    ).scalar_one()
+    incompatible_user_exists = (
+        op.get_bind().execute(sa.text("SELECT EXISTS (SELECT 1 FROM users WHERE password_hash IS NULL)")).scalar_one()
+    )
     if incompatible_user_exists:
         raise RuntimeError(INCOMPATIBLE_USER_DOWNGRADE_ERROR)
 
