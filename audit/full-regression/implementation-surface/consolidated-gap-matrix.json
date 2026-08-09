@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 33, "Resolved": 11, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 32, "Resolved": 12, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -90,6 +90,15 @@
       "ci_validated_commit": "48ad094d8b95480aa87110c4a477b63533217bd0",
       "authoritative_ci": {"backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-08-prompt-length.json"
+    },
+    "CHUNK-09": {
+      "gap_id": "IS-GAP-014",
+      "status": "Resolved on tested branch",
+      "fix_pr": null,
+      "tested_product_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51",
+      "verification_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51",
+      "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"},
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-09-quota-partial-success.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -335,8 +344,9 @@
       "required_evidence": "Browser/API save/reset with Redis refresh failure and authoritative reload.",
       "isolation": "Disposable quota role, PostgreSQL and Redis fault injection.",
       "regression_rows": ["P6-FR-148", "P6-FR-155", "XP-013"],
-      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-09", "status": "Pending",
-      "source_refs": ["backend/src/app/api/v1/admin_quotas.py::upsert_quota", "backend/src/app/api/v1/admin_quotas.py::delete_quota", "backend/src/app/api/v1/admin_quotas.py::_refresh_quota_cache", "frontend/src/hooks/useAdminQuotas.ts::useAdminQuotas", "frontend/src/pages/AdminQuotasPage.tsx::AdminQuotasPage", "frontend/src/pages/AdminQuotasPage.tsx::saveQuota", "backend/tests/integration/test_quota_admin.py", "frontend/src/pages/AdminQuotasPage.test.tsx"]
+      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-09", "status": "Resolved",
+      "resolution": {"fix_pr": null, "tested_product_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-09-quota-partial-success.json", "authoritative_ci": "pending"},
+      "source_refs": ["backend/src/app/api/v1/admin_quotas.py::upsert_quota", "backend/src/app/api/v1/admin_quotas.py::delete_quota", "backend/src/app/services/quota_service.py::QuotaService.begin_config_transition", "backend/src/app/services/quota_service.py::QuotaService.publish_config_transition", "frontend/src/hooks/useAdminQuotas.ts::useAdminQuotas", "frontend/src/hooks/useQuotaMutationRecovery.ts::useQuotaMutationRecovery", "frontend/src/pages/AdminQuotasPage.tsx::AdminQuotasPage", "backend/tests/integration/test_quota_partial_success.py", "frontend/src/pages/AdminQuotasPage.regression.test.tsx", "frontend/tests/e2e/chunk_09_quota_partial_success.spec.ts"]
     },
     {
       "id": "IS-GAP-015", "severity": "Mid", "disposition": "Confirmed Coverage Gap",

@@ -97,8 +97,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 | Status | Count |
 | --- | ---: |
-| Pending | 33 |
-| Resolved | 11 |
+| Pending | 32 |
+| Resolved | 12 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
 | **Total** | **47** |
@@ -119,6 +119,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-020` is resolved on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5` in [#306](https://github.com/RkShanks/QueryCraft/pull/306); authoritative backend/frontend CI passed on `48ad094d8b95480aa87110c4a477b63533217bd0`. Its [CHUNK-08 evidence](evidence/chunk-08-prompt-length.md) records positive configured authority, safe authenticated discovery, exact Python/browser Unicode boundaries, early no-downstream rejection, fail-closed localized prompt behavior, request deduplication, EN/AR desktop/375px Chromium proof and zero-resource cleanup.
 
+`IS-GAP-014` is resolved on tested branch product commit `dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51`. Its [CHUNK-09 evidence](evidence/chunk-09-quota-partial-success.md) records the pre-commit cross-worker fail-closed transition, sanitized post-commit partial-success response, idempotent PUT/DELETE reconciliation without timestamp/audit duplication, rollback republish, real PostgreSQL/Redis fault seams, authoritative frontend reload/retry, EN/AR desktop/375px/768px Chromium proof and zero-resource cleanup. Authoritative backend/frontend CI and squash merge remain the CHUNK-10 dispatch gate.
+
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
 - CHUNK-07 closes the identity/cache/permission slice with joint same-browser cache, DOM, accessibility, storage, network and console inspection. IS-GAP-047 remains open because its broader hostile/error/download privacy flow still depends on other unresolved gaps.
@@ -130,8 +132,8 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-09` is next but remains blocked until CI-passed [#306](https://github.com/RkShanks/QueryCraft/pull/306) is squash-merged; no CHUNK-09 work has started.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-10` is next but remains blocked until CHUNK-09 passes authoritative backend/frontend CI and is squash-merged; no CHUNK-10 work has started.
 
 ## Validation scope
 
-The original consolidation used only source/caller/assertion inspection, read-only app-factory OpenAPI generation, JSON/accounting/path/parity/cycle/size/secret checks and diff validation. CHUNK-06 separately ran the migration, persistence and cleanup gates recorded in its linked evidence. CHUNK-07 separately ran the frontend unit/build gates and mocked plus isolated live Chromium evidence recorded in its linked evidence. CHUNK-08 separately ran configured backend boundaries, the backend unit foundation, full frontend gates, isolated HTTP 200/401/403/400 proof and EN/AR desktop/375px Chromium evidence recorded in its linked evidence.
+The original consolidation used only source/caller/assertion inspection, read-only app-factory OpenAPI generation, JSON/accounting/path/parity/cycle/size/secret checks and diff validation. CHUNK-06 separately ran the migration, persistence and cleanup gates recorded in its linked evidence. CHUNK-07 separately ran the frontend unit/build gates and mocked plus isolated live Chromium evidence recorded in its linked evidence. CHUNK-08 separately ran configured backend boundaries, the backend unit foundation, full frontend gates, isolated HTTP 200/401/403/400 proof and EN/AR desktop/375px Chromium evidence recorded in its linked evidence. CHUNK-09 separately ran real PostgreSQL/Redis transition/publication fault seams, cross-worker enforcement and retry races, quota/audit regressions, full frontend gates and EN/AR desktop/375px/768px Chromium recovery evidence recorded in its linked evidence.
