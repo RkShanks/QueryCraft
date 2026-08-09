@@ -3,6 +3,7 @@ import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { QueryProvider, queryClient } from './QueryProvider';
 import { useCurrentUser } from '../hooks/useAuth';
+import { useSignOut } from '../hooks/useAuth';
 import { useUIStore } from '../stores/uiStore';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/server';
@@ -52,6 +53,30 @@ function IdentityBoundaryProbe() {
       </span>
       <button type="button" onClick={() => currentUser.refetch()}>
         Refresh identity
+      </button>
+    </div>
+  );
+}
+
+function SignOutBoundaryProbe() {
+  const currentUser = useCurrentUser();
+  const signOut = useSignOut();
+  const sensitiveQuery = useQuery({
+    queryKey: ['sign-out-sensitive-state'],
+    queryFn: async () => {
+      const response = await fetch('/api/v1/sign-out-sensitive-state');
+      return (await response.json()) as { marker: string };
+    },
+    retry: false,
+  });
+
+  return (
+    <div>
+      <span data-testid="signed-in-identity">{currentUser.data?.data?.id ?? 'anonymous'}</span>
+      <span data-testid="sensitive-marker">{sensitiveQuery.data?.marker}</span>
+      {signOut.isError && <span role="alert">Sign out failed; retry</span>}
+      <button type="button" onClick={() => signOut.mutate()}>
+        Sign out
       </button>
     </div>
   );
@@ -117,6 +142,60 @@ describe('QueryProvider session expiry handling', () => {
     expect(screen.getByTestId('feature-cache-owner')).toHaveTextContent('user-b');
     expect(screen.queryByText('user-a', { selector: '[data-testid="history-owner"]' }))
       .not.toBeInTheDocument();
+  });
+
+  it('keeps a truthful retry state without restoring sensitive caches after sign-out fails', async () => {
+    const signOutResponse = deferredValue<number>();
+    let featureRequestCount = 0;
+    server.use(
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json({
+          id: 'user-a',
+          username: 'user-a',
+          display_name: 'User A',
+          role: 'member',
+          role_id: 'role-a',
+          role_name: 'Role A',
+          permissions: ['query.submit'],
+          auth_provider: 'local',
+        })
+      ),
+      http.get('/api/v1/sign-out-sensitive-state', () => {
+        featureRequestCount += 1;
+        return HttpResponse.json({
+          marker: featureRequestCount === 1 ? 'discarded-user-a-cache' : 'fresh-user-a-state',
+        });
+      }),
+      http.post('/api/v1/auth/sign-out', async () => {
+        const status = await signOutResponse.promise;
+        return HttpResponse.json(
+          { error: 'service_unavailable', message_key: 'error.service_unavailable' },
+          { status }
+        );
+      })
+    );
+
+    render(
+      <QueryProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <SignOutBoundaryProbe />
+      </QueryProvider>
+    );
+
+    expect(await screen.findByText('discarded-user-a-cache')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    await waitFor(() => {
+      expect(screen.queryByText('discarded-user-a-cache')).not.toBeInTheDocument();
+    });
+
+    await act(async () => {
+      signOutResponse.resolve(503);
+      await signOutResponse.promise;
+    });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sign out failed; retry');
+    expect(await screen.findByText('fresh-user-a-state')).toBeInTheDocument();
+    expect(screen.queryByText('discarded-user-a-cache')).not.toBeInTheDocument();
+    expect(screen.getByTestId('signed-in-identity')).toHaveTextContent('user-a');
   });
 
   afterEach(() => {
