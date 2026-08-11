@@ -227,8 +227,14 @@ describe('useSessions hooks', () => {
       )
     );
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
-    const detail = { id: SESSION_ID, attempts: [] };
-    queryClient.setQueryData(['sessions'], { items: [{ id: SESSION_ID }], total: 1 });
+    const detail = {
+      pages: [{ id: SESSION_ID, attempts: [], attempts_total: 0, attempts_next_cursor: null }],
+      pageParams: [undefined],
+    };
+    queryClient.setQueryData(['sessions'], {
+      pages: [{ items: [{ id: SESSION_ID }], total: 1, next_cursor: null }],
+      pageParams: [undefined],
+    });
     queryClient.setQueryData(['sessions', SESSION_ID], detail);
     const { result } = renderHook(() => useDeleteSession(), {
       wrapper: deleteHookWrapper(queryClient),
