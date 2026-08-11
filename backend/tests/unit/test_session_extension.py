@@ -5,6 +5,7 @@ auth_provider, subject_id in Redis session. Verifies get_me returns
 extended UserProfile with new fields.
 """
 
+import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -28,6 +29,7 @@ class TestSessionExtension:
         redis.set = AsyncMock()
         redis.delete = AsyncMock()
         redis.get = AsyncMock(return_value=None)
+        redis.eval = AsyncMock(side_effect=lambda *args: [1, 1, 0] if args[1] == 3 else args[7])
         return redis
 
     @pytest.fixture
@@ -63,12 +65,7 @@ class TestSessionExtension:
         """Session must contain role_id from user.role_id."""
         mock_repo.get_by_username.return_value = user_with_role
         profile, session_id = await service.sign_in("analyst1", "secret")
-        call_args = mock_redis.set.await_args
-        # redis.set(key, value, ex=...), so value is second arg
-        raw_value = call_args[0][1]
-        import json
-
-        session = json.loads(raw_value)
+        session = json.loads(mock_redis.eval.await_args.args[6])
         assert session["role_id"] == "role-uuid-1234"
 
     @pytest.mark.asyncio
@@ -76,11 +73,7 @@ class TestSessionExtension:
         """Session must contain role_name from user.role_obj.name."""
         mock_repo.get_by_username.return_value = user_with_role
         profile, session_id = await service.sign_in("analyst1", "secret")
-        call_args = mock_redis.set.await_args
-        raw_value = call_args[0][1]
-        import json
-
-        session = json.loads(raw_value)
+        session = json.loads(mock_redis.eval.await_args.args[6])
         assert session["role_name"] == "Analyst"
 
     @pytest.mark.asyncio
@@ -88,11 +81,7 @@ class TestSessionExtension:
         """Session must contain permissions list from role."""
         mock_repo.get_by_username.return_value = user_with_role
         profile, session_id = await service.sign_in("analyst1", "secret")
-        call_args = mock_redis.set.await_args
-        raw_value = call_args[0][1]
-        import json
-
-        session = json.loads(raw_value)
+        session = json.loads(mock_redis.eval.await_args.args[6])
         assert session["permissions"] == ["query.submit", "query.history.view"]
 
     @pytest.mark.asyncio
@@ -100,11 +89,7 @@ class TestSessionExtension:
         """Session must contain auth_provider from user.auth_provider."""
         mock_repo.get_by_username.return_value = user_with_role
         profile, session_id = await service.sign_in("analyst1", "secret")
-        call_args = mock_redis.set.await_args
-        raw_value = call_args[0][1]
-        import json
-
-        session = json.loads(raw_value)
+        session = json.loads(mock_redis.eval.await_args.args[6])
         assert session["auth_provider"] == "local"
 
     @pytest.mark.asyncio
@@ -112,11 +97,7 @@ class TestSessionExtension:
         """Local users: subject_id defaults to username."""
         mock_repo.get_by_username.return_value = user_with_role
         profile, session_id = await service.sign_in("analyst1", "secret")
-        call_args = mock_redis.set.await_args
-        raw_value = call_args[0][1]
-        import json
-
-        session = json.loads(raw_value)
+        session = json.loads(mock_redis.eval.await_args.args[6])
         assert session["subject_id"] == "analyst1"
 
     @pytest.mark.asyncio
@@ -124,11 +105,7 @@ class TestSessionExtension:
         """Existing session fields (user_id, username, display_name, role, created_at, last_activity) are preserved."""
         mock_repo.get_by_username.return_value = user_with_role
         profile, session_id = await service.sign_in("analyst1", "secret")
-        call_args = mock_redis.set.await_args
-        raw_value = call_args[0][1]
-        import json
-
-        session = json.loads(raw_value)
+        session = json.loads(mock_redis.eval.await_args.args[6])
         assert session["user_id"] == "550e8400-e29b-41d4-a716-446655440000"
         assert session["username"] == "analyst1"
         assert session["display_name"] == "Analyst One"

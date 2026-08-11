@@ -9,6 +9,12 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from redis.exceptions import RedisError
 
+from app.repositories.session_repository import (
+    IndexedSessionCreateRequest,
+    IndexedSessionRefreshRequest,
+    SessionRepository,
+)
+
 _ph = PasswordHasher()
 
 
@@ -58,24 +64,21 @@ class SessionMiddleware:
 
     async def _load_session(self, session_id: str) -> dict | None:
         redis = await self._get_redis()
-        session_data = await redis.get(f"session:{session_id}")
+        idle_limit = self.idle_timeout_hours * 3600
+        session_data = await SessionRepository.refresh_indexed_session(
+            redis,
+            IndexedSessionRefreshRequest(
+                session_id=session_id,
+                now=time.time(),
+                ttl_seconds=idle_limit,
+            ),
+        )
         if session_data is None:
             return None
 
         session = json.loads(session_data)
         if not isinstance(session, dict):
             raise ValueError("invalid session payload")
-        idle_limit = self.idle_timeout_hours * 3600
-        if time.time() - session.get("last_activity", 0) > idle_limit:
-            await redis.delete(f"session:{session_id}")
-            return None
-
-        session["last_activity"] = time.time()
-        await redis.set(
-            f"session:{session_id}",
-            json.dumps(session),
-            ex=idle_limit,
-        )
         return session
 
     async def __call__(self, scope, receive, send):
@@ -124,17 +127,24 @@ class SessionMiddleware:
             "created_at": time.time(),
             "last_activity": time.time(),
         }
-        await redis.set(
-            f"session:{session_id}",
-            json.dumps(session),
-            ex=idle_timeout_hours * 3600,
+        user_id = str(session["user_id"])
+        await SessionRepository.create_indexed_session(
+            redis,
+            IndexedSessionCreateRequest(
+                user_id=user_id,
+                session_id=session_id,
+                session_json=json.dumps(session),
+                created_at=float(session["created_at"]),
+                max_sessions=0,
+                ttl_seconds=idle_timeout_hours * 3600,
+            ),
         )
         return session_id
 
     @classmethod
     async def delete_session(cls, redis, session_id: str) -> None:
         """Delete a session from Redis."""
-        await redis.delete(f"session:{session_id}")
+        await SessionRepository.delete_indexed_session(redis, session_id)
 
     @classmethod
     def set_cookie(cls, response, session_id: str, secure: bool = True) -> None:

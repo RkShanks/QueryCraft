@@ -52,6 +52,9 @@ class TestAuthRouter:
         """Session creation fails closed when Redis is unavailable."""
 
         class FailingRedis:
+            async def eval(self, *_args, **_kwargs):
+                raise RedisConnectionError("private redis location")
+
             async def set(self, *_args, **_kwargs):
                 raise RedisConnectionError("private redis location")
 
@@ -76,6 +79,7 @@ class TestAuthRouter:
             "error": "service_unavailable",
             "message_key": "error.service_unavailable",
         }
+        assert "session_id" not in response.cookies
         assert "private redis location" not in response.text
 
     @pytest.mark.asyncio

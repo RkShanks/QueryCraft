@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.db.base import get_db as _get_db  # noqa: F401 — re-exported
 from app.db.models.user import User
+from app.repositories.session_repository import SessionRepository
 
 # Re-export get_db for convenience
 get_db = _get_db
@@ -89,7 +90,7 @@ async def require_active_user(
     if result.scalar_one_or_none() is None:
         session_id = getattr(request.state, "session_id", None)
         if session_id:
-            await redis.delete(f"session:{session_id}")
+            await SessionRepository.delete_indexed_session(redis, session_id)
             request.state.session = None
             request.state.session_id = None
         raise HTTPException(
@@ -122,7 +123,7 @@ async def require_admin_user(
     if user is None:
         session_id = getattr(request.state, "session_id", None)
         if session_id:
-            await redis.delete(f"session:{session_id}")
+            await SessionRepository.delete_indexed_session(redis, session_id)
             request.state.session = None
             request.state.session_id = None
         raise HTTPException(

@@ -14,7 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings, get_settings
 from app.core.security import verify_password
 from app.db.models.enums import AuditActionType
-from app.repositories.session_repository import SessionRepository
+from app.repositories.session_repository import (
+    IndexedSessionCreateRequest,
+    IndexedSessionRefreshRequest,
+    SessionRepository,
+)
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import UserProfile
 from app.services.audit_service import AuditService
@@ -126,15 +130,7 @@ class AuthService:
             "created_at": time.time(),
             "last_activity": time.time(),
         }
-        ttl_seconds = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
-        await self._redis.set(
-            f"session:{session_id}",
-            json.dumps(session_data),
-            ex=ttl_seconds,
-        )
-
-        # Enforce concurrent session limit per user (FR-127, S-010)
-        await self._enforce_concurrent_session_limit(str(user.id), session_id, session_data["created_at"])
+        await self._create_indexed_session(str(user.id), session_id, session_data)
 
         profile = UserProfile(
             id=str(user.id),
@@ -169,22 +165,25 @@ class AuthService:
 
         return profile, session_id
 
-    async def _enforce_concurrent_session_limit(
+    async def _create_indexed_session(
         self,
         user_id: str,
-        new_session_id: str,
-        created_at: float,
+        session_id: str,
+        session_data: dict,
     ) -> None:
-        """Delegate to shared SessionRepository eviction logic."""
+        """Create Redis session state through the shared atomic writer."""
         max_sessions = getattr(self._settings, "MAX_CONCURRENT_SESSIONS_PER_USER", 5)
         ttl_seconds = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
-        await SessionRepository.enforce_concurrent_session_limit(
+        await SessionRepository.create_indexed_session(
             self._redis,
-            user_id,
-            new_session_id,
-            created_at,
-            max_sessions,
-            ttl_seconds,
+            IndexedSessionCreateRequest(
+                user_id=user_id,
+                session_id=session_id,
+                session_json=json.dumps(session_data),
+                created_at=float(session_data["created_at"]),
+                max_sessions=int(max_sessions),
+                ttl_seconds=int(ttl_seconds),
+            ),
         )
 
     async def sign_out(
@@ -203,21 +202,8 @@ class AuthService:
         the project-wide contract used by role_service,
         sso_service, and query_service.
         """
-        # Remove from user session index first (need to discover user_id)
-        raw = await self._redis.get(f"session:{session_id}")
-        actor_identity: str | None = None
-        if raw:
-            try:
-                data = json.loads(raw)
-                user_id = data.get("user_id")
-                if user_id:
-                    await self._redis.zrem(f"user_sessions:{user_id}", session_id)
-                _uname = data.get("username")
-                if isinstance(_uname, str):
-                    actor_identity = _uname
-            except Exception:
-                pass  # sanitize — never leak raw session content
-        await self._redis.delete(f"session:{session_id}")
+        delete_result = await SessionRepository.delete_indexed_session(self._redis, session_id)
+        actor_identity = delete_result.actor_identity
 
         if db_session is not None:
             session_token_digest = "sha256:" + hashlib.sha256(session_id.encode("utf-8")).hexdigest()
@@ -248,7 +234,7 @@ class AuthService:
         user_id = uuid.UUID(data["user_id"])
         user = await self._repo.get_by_id(user_id)
         if user is None:
-            await self._redis.delete(f"session:{session_id}")
+            await SessionRepository.delete_indexed_session(self._redis, session_id)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"error": "unauthorized", "message_key": "error.unauthorized"},
@@ -275,11 +261,21 @@ class AuthService:
             data["role_id"] = role_id
             data["role_name"] = role_name
             ttl_seconds = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
-            await self._redis.set(
-                f"session:{session_id}",
-                json.dumps(data),
-                ex=ttl_seconds,
+            refreshed_session = await SessionRepository.refresh_indexed_session(
+                self._redis,
+                IndexedSessionRefreshRequest(
+                    session_id=session_id,
+                    now=time.time(),
+                    ttl_seconds=ttl_seconds,
+                    expected_session_json=raw,
+                    replacement_session_json=json.dumps(data),
+                ),
             )
+            if refreshed_session is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+                )
 
         return UserProfile(
             id=str(user.id),
