@@ -27,7 +27,7 @@ def _make_scope_with_cookie():
 async def test_session_middleware_caches_redis_client():
     """Redis.from_url should be called exactly once for many requests."""
     mock_redis = MagicMock()
-    mock_redis.get = AsyncMock(return_value=None)
+    mock_redis.eval = AsyncMock(return_value=None)
 
     call_count = 0
 
@@ -53,7 +53,7 @@ async def test_session_middleware_caches_redis_client():
 async def test_session_middleware_aclose_closes_redis():
     """Calling aclose() should close the cached Redis client."""
     mock_redis = MagicMock()
-    mock_redis.get = AsyncMock(return_value=None)
+    mock_redis.eval = AsyncMock(return_value=None)
     mock_redis.aclose = AsyncMock()
 
     with patch("redis.asyncio.Redis.from_url", return_value=mock_redis):
@@ -85,9 +85,9 @@ async def test_invalid_session_dependency_state_returns_sanitized_503(redis_resp
     downstream_app = AsyncMock()
     mock_redis = MagicMock()
     if isinstance(redis_response, BaseException):
-        mock_redis.get = AsyncMock(side_effect=redis_response)
+        mock_redis.eval = AsyncMock(side_effect=redis_response)
     else:
-        mock_redis.get = AsyncMock(return_value=redis_response)
+        mock_redis.eval = AsyncMock(return_value=redis_response)
     middleware = SessionMiddleware(
         app=downstream_app,
         redis_url="redis://dependency.invalid:6379/0",
