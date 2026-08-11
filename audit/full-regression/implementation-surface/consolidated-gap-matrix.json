@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 32, "Resolved": 12, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 30, "Resolved": 14, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -93,13 +93,24 @@
     },
     "CHUNK-09": {
       "gap_id": "IS-GAP-014",
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/307",
       "tested_product_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51",
       "verification_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51",
       "ci_validated_commit": "42df59fe56e1dbebc6485b10c4ba96d936973454",
+      "merge_commit": "453875adb54599dd1ba16baa10101af6427588fa",
       "authoritative_ci": {"backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-09-quota-partial-success.json"
+    },
+    "CHUNK-10": {
+      "gap_ids": ["IS-GAP-017", "IS-GAP-013"],
+      "status": "Resolved on tested branch",
+      "fix_pr": "pending",
+      "tested_product_commit": "3b6f90dd938d51bef9e04ba4f5a57afce3335b68",
+      "verification_commit": "pending",
+      "ci_validated_commit": "pending",
+      "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"},
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-10-data-invariants.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -329,7 +340,8 @@
       "required_evidence": "Isolated DB row-count/state transitions only.",
       "isolation": "Disposable PostgreSQL database.",
       "regression_rows": ["P6-FR-159", "P6-FR-160", "XP-005"],
-      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-10", "status": "Pending",
+      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-10", "status": "Resolved",
+      "resolution": {"fix_pr": "pending", "tested_product_commit": "3b6f90dd938d51bef9e04ba4f5a57afce3335b68", "ci_validated_commit": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-10-data-invariants.json", "authoritative_ci": "pending"},
       "source_refs": ["backend/src/app/repositories/detection_config_repository.py::DetectionConfigRepository.get", "backend/src/app/repositories/detection_config_repository.py::DetectionConfigRepository.get_for_detection", "backend/src/app/db/models/detection_config.py::DetectionThresholdConfig", "backend/tests/unit/test_detection_config_repo.py"]
     },
     {
@@ -346,7 +358,7 @@
       "isolation": "Disposable quota role, PostgreSQL and Redis fault injection.",
       "regression_rows": ["P6-FR-148", "P6-FR-155", "XP-013"],
       "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-09", "status": "Resolved",
-      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/307", "tested_product_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51", "ci_validated_commit": "42df59fe56e1dbebc6485b10c4ba96d936973454", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-09-quota-partial-success.json", "authoritative_ci": "passed"},
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/307", "tested_product_commit": "dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51", "ci_validated_commit": "42df59fe56e1dbebc6485b10c4ba96d936973454", "merge_commit": "453875adb54599dd1ba16baa10101af6427588fa", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-09-quota-partial-success.json", "authoritative_ci": "passed"},
       "source_refs": ["backend/src/app/api/v1/admin_quotas.py::upsert_quota", "backend/src/app/api/v1/admin_quotas.py::delete_quota", "backend/src/app/services/quota_service.py::QuotaService.begin_config_transition", "backend/src/app/services/quota_service.py::QuotaService.publish_config_transition", "frontend/src/hooks/useAdminQuotas.ts::useAdminQuotas", "frontend/src/hooks/useQuotaMutationRecovery.ts::useQuotaMutationRecovery", "frontend/src/pages/AdminQuotasPage.tsx::AdminQuotasPage", "backend/tests/integration/test_quota_partial_success.py", "frontend/src/pages/AdminQuotasPage.regression.test.tsx", "frontend/tests/e2e/chunk_09_quota_partial_success.spec.ts"]
     },
     {
@@ -394,7 +406,8 @@
       "required_evidence": "Constraint/repair result matrix on disposable PostgreSQL.",
       "isolation": "Disposable populated PostgreSQL database.",
       "regression_rows": ["P3-FR-060", "P6-FR-148", "P6-FR-159", "XP-018"],
-      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-10", "status": "Pending",
+      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-10", "status": "Resolved",
+      "resolution": {"fix_pr": "pending", "tested_product_commit": "3b6f90dd938d51bef9e04ba4f5a57afce3335b68", "ci_validated_commit": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-10-data-invariants.json", "authoritative_ci": "pending"},
       "source_refs": ["backend/src/app/db/models/role_quota.py::RoleQuota", "backend/src/app/db/models/detection_config.py::DetectionThresholdConfig", "backend/src/app/db/models/database_connection.py::SourceDatabaseConnection", "backend/src/app/db/models/enums.py", "backend/tests/unit/test_quota_repository.py", "backend/tests/unit/test_detection_config_repo.py"]
     },
     {

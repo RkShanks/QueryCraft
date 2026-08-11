@@ -97,8 +97,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 | Status | Count |
 | --- | ---: |
-| Pending | 32 |
-| Resolved | 12 |
+| Pending | 30 |
+| Resolved | 14 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
 | **Total** | **47** |
@@ -119,7 +119,9 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-020` is resolved on tested product commit `1a11980ad3e395bf3b65131b1d5e6ce0209a19b5` in [#306](https://github.com/RkShanks/QueryCraft/pull/306); authoritative backend/frontend CI passed on `48ad094d8b95480aa87110c4a477b63533217bd0`. Its [CHUNK-08 evidence](evidence/chunk-08-prompt-length.md) records positive configured authority, safe authenticated discovery, exact Python/browser Unicode boundaries, early no-downstream rejection, fail-closed localized prompt behavior, request deduplication, EN/AR desktop/375px Chromium proof and zero-resource cleanup.
 
-`IS-GAP-014` is resolved on tested branch product commit `dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51` in [#307](https://github.com/RkShanks/QueryCraft/pull/307); authoritative backend/frontend CI passed on `42df59fe56e1dbebc6485b10c4ba96d936973454`. Its [CHUNK-09 evidence](evidence/chunk-09-quota-partial-success.md) records the pre-commit cross-worker fail-closed transition, sanitized post-commit partial-success response, idempotent PUT/DELETE reconciliation without timestamp/audit duplication, rollback republish, real PostgreSQL/Redis fault seams, authoritative frontend reload/retry, EN/AR desktop/375px/768px Chromium proof and zero-resource cleanup. Squash merge remains the CHUNK-10 dispatch gate.
+`IS-GAP-014` is resolved on tested branch product commit `dca6ed77ab6e16a762a0c0f5a2d4286b9f58ba51` in [#307](https://github.com/RkShanks/QueryCraft/pull/307); authoritative backend/frontend CI passed on `42df59fe56e1dbebc6485b10c4ba96d936973454` and squash merge `453875adb54599dd1ba16baa10101af6427588fa` unblocked CHUNK-10. Its [CHUNK-09 evidence](evidence/chunk-09-quota-partial-success.md) records the pre-commit cross-worker fail-closed transition, sanitized post-commit partial-success response, idempotent PUT/DELETE reconciliation without timestamp/audit duplication, rollback republish, real PostgreSQL/Redis fault seams, authoritative frontend reload/retry, EN/AR desktop/375px/768px Chromium proof and zero-resource cleanup.
+
+`IS-GAP-017` and `IS-GAP-013` are resolved on tested product commit `3b6f90dd938d51bef9e04ba4f5a57afce3335b68`; authoritative backend/frontend CI and squash merge are pending. Their [CHUNK-10 evidence](evidence/chunk-10-data-invariants.md) records revision-010 named constraints, value-safe atomic preflight/refusal, explicit repair, reversible migration cycles, direct invalid-write rejection, real concurrent singleton initialization, fail-closed quota/detection/source/provider consumers, API-only corruption/recovery, gates and cleanup.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
@@ -132,8 +134,8 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-10` is next but remains blocked until CHUNK-09 passes authoritative backend/frontend CI and is squash-merged; no CHUNK-10 work has started.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-11` is next but remains blocked until CHUNK-10 passes authoritative backend/frontend CI and is squash-merged; no CHUNK-11 work has started.
 
 ## Validation scope
 
-The original consolidation used only source/caller/assertion inspection, read-only app-factory OpenAPI generation, JSON/accounting/path/parity/cycle/size/secret checks and diff validation. CHUNK-06 separately ran the migration, persistence and cleanup gates recorded in its linked evidence. CHUNK-07 separately ran the frontend unit/build gates and mocked plus isolated live Chromium evidence recorded in its linked evidence. CHUNK-08 separately ran configured backend boundaries, the backend unit foundation, full frontend gates, isolated HTTP 200/401/403/400 proof and EN/AR desktop/375px Chromium evidence recorded in its linked evidence. CHUNK-09 separately ran real PostgreSQL/Redis transition/publication fault seams, cross-worker enforcement and retry races, quota/audit regressions, full frontend gates and EN/AR desktop/375px/768px Chromium recovery evidence recorded in its linked evidence.
+The original consolidation used only source/caller/assertion inspection, read-only app-factory OpenAPI generation, JSON/accounting/path/parity/cycle/size/secret checks and diff validation. CHUNK-06 separately ran the migration, persistence and cleanup gates recorded in its linked evidence. CHUNK-07 separately ran the frontend unit/build gates and mocked plus isolated live Chromium evidence recorded in its linked evidence. CHUNK-08 separately ran configured backend boundaries, the backend unit foundation, full frontend gates, isolated HTTP 200/401/403/400 proof and EN/AR desktop/375px Chromium evidence recorded in its linked evidence. CHUNK-09 separately ran real PostgreSQL/Redis transition/publication fault seams, cross-worker enforcement and retry races, quota/audit regressions, full frontend gates and EN/AR desktop/375px/768px Chromium recovery evidence recorded in its linked evidence. CHUNK-10 separately ran the complete disposable migration matrix, named direct-write constraints, atomic refusal/repair, real singleton concurrency, fail-closed consumers, API-only recovery and backend foundation gates recorded in its linked evidence.
