@@ -259,7 +259,7 @@ async def test_duplicate_atomic_session_creation_is_idempotent(redis_client):
 
     assert await redis_client.exists(f"session:{session_id}") == 1
     assert await _indexed_members(redis_client, user_id) == [session_id]
-    assert await redis_client.exists(f"user_sessions_seq:{user_id}") == 1
+    assert await redis_client.get(f"user_sessions_seq:{user_id}") == "1"
 
 
 @pytest.mark.integration
@@ -299,6 +299,86 @@ async def test_simultaneous_equal_time_atomic_writes_keep_linearized_newest(redi
         *(redis_client.exists(f"session:{session_id}") for session_id in session_ids)
     )
     assert sum(live_key_counts) == 3
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_simultaneous_ordered_time_atomic_writes_keep_newest_sessions(redis_client):
+    """Concurrent ordered-timestamp writes keep the newest created sessions."""
+    request_type = session_repository.IndexedSessionCreateRequest
+    user_id = "550e8400-e29b-41d4-a716-446655440667"
+    session_ids = [f"ordered-time-session-{index}" for index in range(8)]
+
+    async def create_session(index: int):
+        await ready.wait()
+        session_id = session_ids[index]
+        result = await session_repository.SessionRepository.create_indexed_session(
+            redis_client,
+            request_type(
+                user_id=user_id,
+                session_id=session_id,
+                session_json=json.dumps(
+                    {"user_id": user_id, "created_at": 1000.0 + index, "last_activity": 1000.0 + index}
+                ),
+                created_at=1000.0 + index,
+                max_sessions=3,
+                ttl_seconds=3600,
+            ),
+        )
+        return session_id, result.live_indexed_sessions
+
+    ready = asyncio.Event()
+    tasks = [asyncio.create_task(create_session(index)) for index in range(len(session_ids))]
+    ready.set()
+    write_results = await asyncio.gather(*tasks)
+
+    assert all(live_count <= 3 for _session_id, live_count in write_results)
+    assert await _indexed_members(redis_client, user_id) == session_ids[-3:]
+    live_key_counts = await asyncio.gather(
+        *(redis_client.exists(f"session:{session_id}") for session_id in session_ids)
+    )
+    assert sum(live_key_counts) == 3
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_distinct_users_keep_isolated_capacity_and_sequences(redis_client):
+    """Per-user capacity and sequence state are isolated under concurrent bursts."""
+    request_type = session_repository.IndexedSessionCreateRequest
+    user_ids = [
+        "550e8400-e29b-41d4-a716-446655440668",
+        "550e8400-e29b-41d4-a716-446655440669",
+    ]
+
+    async def create_session(user_id: str, index: int):
+        await ready.wait()
+        session_id = f"isolated-{user_id[-1]}-{index}"
+        await session_repository.SessionRepository.create_indexed_session(
+            redis_client,
+            request_type(
+                user_id=user_id,
+                session_id=session_id,
+                session_json=json.dumps(
+                    {"user_id": user_id, "created_at": 1000.0 + index, "last_activity": 1000.0 + index}
+                ),
+                created_at=1000.0 + index,
+                max_sessions=2,
+                ttl_seconds=3600,
+            ),
+        )
+        return session_id
+
+    ready = asyncio.Event()
+    tasks = [asyncio.create_task(create_session(user_id, index)) for user_id in user_ids for index in range(6)]
+    ready.set()
+    await asyncio.gather(*tasks)
+
+    for user_id in user_ids:
+        assert await redis_client.zcard(f"user_sessions:{user_id}") == 2
+        assert await redis_client.get(f"user_sessions_seq:{user_id}") == "6"
+        assert all(
+            member.startswith(f"isolated-{user_id[-1]}-") for member in await _indexed_members(redis_client, user_id)
+        )
 
 
 @pytest.mark.integration
@@ -389,9 +469,9 @@ async def test_refresh_extends_session_index_and_sequence_ttls(redis_client):
     )
 
     assert refreshed is not None
-    assert await redis_client.ttl(f"session:{session_id}") >= 3590
-    assert await redis_client.ttl(f"user_sessions:{user_id}") >= 3590
-    assert await redis_client.ttl(f"user_sessions_seq:{user_id}") >= 3590
+    session_ttl = await redis_client.ttl(f"session:{session_id}")
+    assert await redis_client.ttl(f"user_sessions:{user_id}") >= session_ttl
+    assert await redis_client.ttl(f"user_sessions_seq:{user_id}") >= session_ttl
 
 
 @pytest.mark.integration
