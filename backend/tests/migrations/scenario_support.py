@@ -369,7 +369,8 @@ async def _seed_phase6_security(connection) -> None:
         text(
             """
             INSERT INTO detection_threshold_config (block_confidence, flag_confidence, updated_by)
-            VALUES (0.8, 0.5, :updated_by)
+            SELECT 0.8, 0.5, :updated_by
+            WHERE NOT EXISTS (SELECT 1 FROM detection_threshold_config)
             """
         ),
         {"updated_by": user_id},
@@ -623,6 +624,11 @@ def _assert_expected_indexes(inventory: SchemaInventory, revision_number: int) -
             "ix_audit_log_entries_outcome",
             "ix_audit_log_entries_context_gin",
         }.isdisjoint(_all_index_names(inventory))
+    if revision_number >= 10:
+        assert "uq_detection_threshold_config_singleton" in _index_names(
+            inventory,
+            "detection_threshold_config",
+        )
 
 
 def _assert_expected_nullability_and_defaults(inventory: SchemaInventory, revision_number: int) -> None:

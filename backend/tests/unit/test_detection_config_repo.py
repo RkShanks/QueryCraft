@@ -189,6 +189,7 @@ class TestDetectionConfigRepositoryUpdate:
 
     @pytest.mark.asyncio
     async def test_update_creates_row_if_missing_then_sets_values(self):
+        from app.core.exceptions import DetectionUnavailableError
         from app.repositories.detection_config_repository import DetectionConfigRepository
         from app.schemas.detection import DetectionThresholdUpdate
 
@@ -199,10 +200,11 @@ class TestDetectionConfigRepositoryUpdate:
 
         repo = DetectionConfigRepository(session)
         data = DetectionThresholdUpdate(block_confidence=0.85, flag_confidence=0.45)
-        updated = await repo.update(data)
+        with pytest.raises(DetectionUnavailableError):
+            await repo.update(data)
 
-        assert updated.block_confidence == pytest.approx(0.85)
-        assert updated.flag_confidence == pytest.approx(0.45)
+        session.add.assert_not_called()
+        session.flush.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_update_calls_flush(self):

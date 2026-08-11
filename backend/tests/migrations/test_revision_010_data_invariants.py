@@ -9,11 +9,13 @@ from typing import Any
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.repositories.detection_config_repository import DetectionConfigRepository
 from tests.migrations.migration_support import (
     current_revision,
     database_snapshot,
+    downgrade,
     revision_ids,
     upgrade,
 )
@@ -272,3 +274,129 @@ def test_populated_preflight_refusal_is_atomic(
     assert str(refusal.value) == EXPECTED_REFUSAL
     assert current_revision(disposable_database_url) == "009"
     assert database_snapshot(disposable_database_url) == before_refusal
+
+
+@pytest.mark.integration
+def test_duplicate_detection_preflight_refusal_is_atomic(disposable_database_url: str) -> None:
+    upgrade(disposable_database_url, "009")
+    asyncio.run(
+        _execute_invalid_write(
+            disposable_database_url,
+            """
+            INSERT INTO detection_threshold_config (block_confidence, flag_confidence)
+            VALUES (0.8, 0.5), (0.9, 0.4)
+            """,
+        )
+    )
+    before_refusal = database_snapshot(disposable_database_url)
+
+    with pytest.raises(RuntimeError) as refusal:
+        upgrade(disposable_database_url, "010")
+
+    assert str(refusal.value) == EXPECTED_REFUSAL
+    assert current_revision(disposable_database_url) == "009"
+    assert database_snapshot(disposable_database_url) == before_refusal
+
+
+@pytest.mark.integration
+def test_second_detection_row_is_rejected(disposable_database_url: str) -> None:
+    upgrade(disposable_database_url, "head")
+
+    with pytest.raises(IntegrityError) as rejected:
+        asyncio.run(
+            _execute_invalid_write(
+                disposable_database_url,
+                """
+                INSERT INTO detection_threshold_config (block_confidence, flag_confidence)
+                VALUES (0.9, 0.4)
+                """,
+            )
+        )
+
+    assert _constraint_name(rejected.value) == "uq_detection_threshold_config_singleton"
+
+
+async def _initialize_detection_concurrently(database_url: str) -> tuple[set[object], int]:
+    engine = create_async_engine(database_url, pool_size=8, max_overflow=0)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    start = asyncio.Event()
+
+    async def initialize() -> object:
+        await start.wait()
+        async with session_factory() as session:
+            row = await DetectionConfigRepository(session).get()
+            await session.commit()
+            return row.id
+
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(text("DELETE FROM detection_threshold_config"))
+            await connection.execute(
+                text(
+                    """
+                    CREATE FUNCTION chunk10_slow_detection_insert() RETURNS trigger
+                    LANGUAGE plpgsql AS $$
+                    BEGIN
+                        PERFORM pg_sleep(0.1);
+                        RETURN NEW;
+                    END
+                    $$
+                    """
+                )
+            )
+            await connection.execute(
+                text(
+                    """
+                    CREATE TRIGGER chunk10_slow_detection_insert
+                    BEFORE INSERT ON detection_threshold_config
+                    FOR EACH ROW EXECUTE FUNCTION chunk10_slow_detection_insert()
+                    """
+                )
+            )
+        tasks = [asyncio.create_task(initialize()) for _ in range(8)]
+        start.set()
+        row_ids = set(await asyncio.gather(*tasks))
+        async with engine.connect() as connection:
+            row_count = int(await connection.scalar(text("SELECT count(*) FROM detection_threshold_config")) or 0)
+        return row_ids, row_count
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.integration
+def test_concurrent_empty_detection_initialization_returns_one_row(
+    disposable_database_url: str,
+) -> None:
+    upgrade(disposable_database_url, "head")
+
+    row_ids, row_count = asyncio.run(_initialize_detection_concurrently(disposable_database_url))
+
+    assert len(row_ids) == 1
+    assert row_count == 1
+
+
+@pytest.mark.integration
+def test_010_downgrade_and_reupgrade_preserve_detection_row(disposable_database_url: str) -> None:
+    upgrade(disposable_database_url, "009")
+    upgrade(disposable_database_url, "010")
+    first_head = database_snapshot(disposable_database_url)
+
+    downgrade(disposable_database_url, "009")
+    downgraded = database_snapshot(disposable_database_url)
+
+    assert current_revision(disposable_database_url) == "009"
+    assert dict(downgraded.row_counts)["detection_threshold_config"] == 1
+    assert (
+        dict(downgraded.row_fingerprints)["detection_threshold_config"]
+        == dict(first_head.row_fingerprints)["detection_threshold_config"]
+    )
+
+    upgrade(disposable_database_url, "010")
+    second_head = database_snapshot(disposable_database_url)
+
+    assert current_revision(disposable_database_url) == "010"
+    assert dict(second_head.row_counts)["detection_threshold_config"] == 1
+    assert (
+        dict(second_head.row_fingerprints)["detection_threshold_config"]
+        == dict(first_head.row_fingerprints)["detection_threshold_config"]
+    )
