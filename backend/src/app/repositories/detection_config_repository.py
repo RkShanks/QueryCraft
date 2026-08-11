@@ -66,13 +66,13 @@ class DetectionConfigRepository:
         The query path never repairs missing or corrupt security configuration
         as a side effect of processing user input.
         """
-        row = await self._valid_singleton_or_none()
-        if row is None:
-            raise DetectionUnavailableError()
-        return row
+        return await self._required_valid_singleton()
 
     async def get_for_admin(self) -> DetectionThresholdConfig:
         """Return one valid administrative config without repairing state."""
+        return await self._required_valid_singleton()
+
+    async def _required_valid_singleton(self) -> DetectionThresholdConfig:
         row = await self._valid_singleton_or_none()
         if row is None:
             raise DetectionUnavailableError()

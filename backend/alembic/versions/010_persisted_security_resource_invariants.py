@@ -62,6 +62,58 @@ _PREFLIGHT_LOCK_SQL = sa.text(
     IN SHARE ROW EXCLUSIVE MODE
     """
 )
+_CHECK_CONSTRAINTS = (
+    (
+        "role_quotas",
+        "ck_role_quotas_daily_query_limit_nonnegative",
+        "daily_query_limit IS NULL OR daily_query_limit >= 0",
+    ),
+    (
+        "role_quotas",
+        "ck_role_quotas_daily_execution_limit_nonnegative",
+        "daily_execution_limit IS NULL OR daily_execution_limit >= 0",
+    ),
+    (
+        "role_quotas",
+        "ck_role_quotas_daily_export_limit_nonnegative",
+        "daily_export_limit IS NULL OR daily_export_limit >= 0",
+    ),
+    (
+        "detection_threshold_config",
+        "ck_detection_thresholds_ordered_range",
+        "0 <= flag_confidence AND flag_confidence < block_confidence AND block_confidence <= 1",
+    ),
+    (
+        "source_database_connections",
+        "ck_source_db_connections_database_type_valid",
+        "database_type IN ('postgresql', 'mysql', 'mssql')",
+    ),
+    (
+        "source_database_connections",
+        "ck_source_db_connections_lifecycle_state_valid",
+        "lifecycle_state IN ('active', 'disabled')",
+    ),
+    (
+        "source_database_connections",
+        "ck_source_db_connections_health_status_valid",
+        "health_status IN ('untested', 'healthy', 'unhealthy')",
+    ),
+    (
+        "source_database_connections",
+        "ck_source_db_connections_schema_status_valid",
+        "schema_introspection_status IN ('none', 'success', 'failed', 'stale')",
+    ),
+    (
+        "users",
+        "ck_users_auth_provider_valid",
+        "auth_provider IN ('local', 'oidc', 'saml')",
+    ),
+    (
+        "sso_providers",
+        "ck_sso_providers_protocol_valid",
+        "protocol IN ('oidc', 'saml')",
+    ),
+)
 
 
 def _read_preflight_counts(connection) -> Mapping[str, int]:
@@ -80,65 +132,18 @@ def _run_preflight() -> None:
     _refuse_invalid_rows(_read_preflight_counts(connection))
 
 
-def upgrade() -> None:
-    _run_preflight()
-
-    op.create_check_constraint(
-        "ck_role_quotas_daily_query_limit_nonnegative",
-        "role_quotas",
-        "daily_query_limit IS NULL OR daily_query_limit >= 0",
-    )
-    op.create_check_constraint(
-        "ck_role_quotas_daily_execution_limit_nonnegative",
-        "role_quotas",
-        "daily_execution_limit IS NULL OR daily_execution_limit >= 0",
-    )
-    op.create_check_constraint(
-        "ck_role_quotas_daily_export_limit_nonnegative",
-        "role_quotas",
-        "daily_export_limit IS NULL OR daily_export_limit >= 0",
-    )
-    op.create_check_constraint(
-        "ck_detection_thresholds_ordered_range",
-        "detection_threshold_config",
-        "0 <= flag_confidence AND flag_confidence < block_confidence AND block_confidence <= 1",
-    )
-    op.create_check_constraint(
-        "ck_source_db_connections_database_type_valid",
-        "source_database_connections",
-        "database_type IN ('postgresql', 'mysql', 'mssql')",
-    )
-    op.create_check_constraint(
-        "ck_source_db_connections_lifecycle_state_valid",
-        "source_database_connections",
-        "lifecycle_state IN ('active', 'disabled')",
-    )
-    op.create_check_constraint(
-        "ck_source_db_connections_health_status_valid",
-        "source_database_connections",
-        "health_status IN ('untested', 'healthy', 'unhealthy')",
-    )
-    op.create_check_constraint(
-        "ck_source_db_connections_schema_status_valid",
-        "source_database_connections",
-        "schema_introspection_status IN ('none', 'success', 'failed', 'stale')",
-    )
-    op.create_check_constraint(
-        "ck_users_auth_provider_valid",
-        "users",
-        "auth_provider IN ('local', 'oidc', 'saml')",
-    )
-    op.create_check_constraint(
-        "ck_sso_providers_protocol_valid",
-        "sso_providers",
-        "protocol IN ('oidc', 'saml')",
-    )
+def _create_schema_invariants() -> None:
+    for table_name, constraint_name, condition in _CHECK_CONSTRAINTS:
+        op.create_check_constraint(constraint_name, table_name, condition)
     op.create_index(
         "uq_detection_threshold_config_singleton",
         "detection_threshold_config",
         [sa.text("(true)")],
         unique=True,
     )
+
+
+def _insert_default_detection_config_if_empty() -> None:
     op.execute(
         sa.text(
             """
@@ -150,50 +155,16 @@ def upgrade() -> None:
     )
 
 
+def upgrade() -> None:
+    _run_preflight()
+    _create_schema_invariants()
+    _insert_default_detection_config_if_empty()
+
+
 def downgrade() -> None:
     op.drop_index(
         "uq_detection_threshold_config_singleton",
         table_name="detection_threshold_config",
     )
-    op.drop_constraint("ck_sso_providers_protocol_valid", "sso_providers", type_="check")
-    op.drop_constraint("ck_users_auth_provider_valid", "users", type_="check")
-    op.drop_constraint(
-        "ck_source_db_connections_schema_status_valid",
-        "source_database_connections",
-        type_="check",
-    )
-    op.drop_constraint(
-        "ck_source_db_connections_health_status_valid",
-        "source_database_connections",
-        type_="check",
-    )
-    op.drop_constraint(
-        "ck_source_db_connections_lifecycle_state_valid",
-        "source_database_connections",
-        type_="check",
-    )
-    op.drop_constraint(
-        "ck_source_db_connections_database_type_valid",
-        "source_database_connections",
-        type_="check",
-    )
-    op.drop_constraint(
-        "ck_detection_thresholds_ordered_range",
-        "detection_threshold_config",
-        type_="check",
-    )
-    op.drop_constraint(
-        "ck_role_quotas_daily_export_limit_nonnegative",
-        "role_quotas",
-        type_="check",
-    )
-    op.drop_constraint(
-        "ck_role_quotas_daily_execution_limit_nonnegative",
-        "role_quotas",
-        type_="check",
-    )
-    op.drop_constraint(
-        "ck_role_quotas_daily_query_limit_nonnegative",
-        "role_quotas",
-        type_="check",
-    )
+    for table_name, constraint_name, _condition in reversed(_CHECK_CONSTRAINTS):
+        op.drop_constraint(constraint_name, table_name, type_="check")
