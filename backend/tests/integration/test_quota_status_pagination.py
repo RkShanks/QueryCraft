@@ -1,5 +1,6 @@
 """CHUNK-12 quota-status pagination and batching regressions."""
 
+import asyncio
 import math
 import uuid
 from collections import Counter
@@ -10,6 +11,7 @@ import pytest
 from fastapi import FastAPI, Request
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -46,17 +48,46 @@ class RecordingQuotaRedis:
         return await self._redis.mget(keys)
 
 
+class StaticCounterRedis(RecordingQuotaRedis):
+    def __init__(self, redis: Redis, counter_value: str) -> None:
+        super().__init__(redis)
+        self._counter_value = counter_value
+
+    async def mget(self, keys: Sequence[str]):
+        self.mget_sizes.append(len(keys))
+        self.dimensions.update(key.split(":")[2] for key in keys)
+        return [self._counter_value] * len(keys)
+
+
+class FailingBatchRedis(RecordingQuotaRedis):
+    async def mget(self, keys: Sequence[str]):
+        self.mget_sizes.append(len(keys))
+        raise RedisConnectionError("quota status batch unavailable")
+
+
+class BlockingBatchRedis(RecordingQuotaRedis):
+    def __init__(self, redis: Redis) -> None:
+        super().__init__(redis)
+        self.started = asyncio.Event()
+
+    async def mget(self, keys: Sequence[str]):
+        self.mget_sizes.append(len(keys))
+        self.started.set()
+        await asyncio.Event().wait()
+
+
 async def _quota_status_client(
     db_session: AsyncSession,
     redis: RecordingQuotaRedis,
     user_id: uuid.UUID,
-    role_id: uuid.UUID,
+    role_access: tuple[uuid.UUID, list[str]],
 ) -> AsyncGenerator[AsyncClient, None]:
     async def override_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
     async def override_role() -> tuple[uuid.UUID, str, list[str]]:
-        return role_id, "Quota Test Admin", [str(Permission.ADMIN_QUOTAS_MANAGE)]
+        role_id, permissions = role_access
+        return role_id, "Quota Test Admin", permissions
 
     async def override_redis() -> RecordingQuotaRedis:
         return redis
@@ -129,13 +160,44 @@ async def _seed_quota_status_dataset(
     return role_ids, user_ids
 
 
-@pytest.mark.asyncio
-async def test_high_cardinality_status_uses_bounded_database_and_redis_batches(
-    db_session: AsyncSession,
-    async_engine_fixture: AsyncEngine,
-    redis_client: Redis,
-) -> None:
-    admin_row = (
+async def _seed_single_quota_status(db_session: AsyncSession) -> None:
+    await db_session.execute(text("DELETE FROM role_quotas"))
+    role_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    await db_session.execute(
+        text(
+            """
+            INSERT INTO roles (id, name, description, priority, permissions, is_builtin)
+            VALUES (:id, :name, '', 62000, '[]'::jsonb, false)
+            """
+        ),
+        {"id": role_id, "name": f"Chunk12 Single {role_id}"},
+    )
+    await db_session.execute(
+        text(
+            """
+            INSERT INTO role_quotas (
+                id, role_id, daily_query_limit,
+                daily_execution_limit, daily_export_limit
+            )
+            VALUES (:id, :role_id, 100, NULL, NULL)
+            """
+        ),
+        {"id": uuid.uuid4(), "role_id": role_id},
+    )
+    await db_session.execute(
+        text(
+            """
+            INSERT INTO users (id, username, display_name, role, role_id, auth_provider)
+            VALUES (:id, :username, '', 'member', :role_id, 'oidc')
+            """
+        ),
+        {"id": user_id, "username": f"chunk12-single-{user_id}", "role_id": role_id},
+    )
+
+
+async def _admin_identity(db_session: AsyncSession) -> tuple[uuid.UUID, uuid.UUID]:
+    row = (
         await db_session.execute(
             text(
                 """
@@ -146,6 +208,16 @@ async def test_high_cardinality_status_uses_bounded_database_and_redis_batches(
             )
         )
     ).one()
+    return row.user_id, row.role_id
+
+
+@pytest.mark.asyncio
+async def test_high_cardinality_status_uses_bounded_database_and_redis_batches(
+    db_session: AsyncSession,
+    async_engine_fixture: AsyncEngine,
+    redis_client: Redis,
+) -> None:
+    admin_user_id, admin_role_id = await _admin_identity(db_session)
     role_ids, user_ids = await _seed_quota_status_dataset(db_session)
     date_suffix = datetime.now(UTC).strftime("%Y-%m-%d")
     await redis_client.mset(
@@ -166,8 +238,8 @@ async def test_high_cardinality_status_uses_bounded_database_and_redis_batches(
         async for client in _quota_status_client(
             db_session,
             recording_redis,
-            admin_row.user_id,
-            admin_row.role_id,
+            admin_user_id,
+            (admin_role_id, [str(Permission.ADMIN_QUOTAS_MANAGE)]),
         ):
             while True:
                 response = await client.get(
@@ -197,3 +269,94 @@ async def test_high_cardinality_status_uses_bounded_database_and_redis_batches(
     assert max(recording_redis.mget_sizes) <= _REDIS_BATCH_LIMIT
     assert recording_redis.dimensions["executions"] == 0
     assert user_selects == expected_user_batches
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("counter_value", ["malformed", "-1", "01"])
+async def test_noncanonical_counter_fails_whole_status_request_closed(
+    db_session: AsyncSession,
+    redis_client: Redis,
+    counter_value: str,
+) -> None:
+    admin_user_id, admin_role_id = await _admin_identity(db_session)
+    await _seed_single_quota_status(db_session)
+    redis = StaticCounterRedis(redis_client, counter_value)
+
+    async for client in _quota_status_client(
+        db_session,
+        redis,
+        admin_user_id,
+        (admin_role_id, [str(Permission.ADMIN_QUOTAS_MANAGE)]),
+    ):
+        response = await client.get("/api/v1/admin/quotas/status")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": {"error": "service_unavailable", "message_key": "error.service_unavailable"}}
+
+
+@pytest.mark.asyncio
+async def test_redis_batch_failure_returns_no_partial_status(
+    db_session: AsyncSession,
+    redis_client: Redis,
+) -> None:
+    admin_user_id, admin_role_id = await _admin_identity(db_session)
+    await _seed_single_quota_status(db_session)
+    redis = FailingBatchRedis(redis_client)
+
+    async for client in _quota_status_client(
+        db_session,
+        redis,
+        admin_user_id,
+        (admin_role_id, [str(Permission.ADMIN_QUOTAS_MANAGE)]),
+    ):
+        response = await client.get("/api/v1/admin/quotas/status")
+
+    assert response.status_code == 503
+    assert "status" not in response.json()
+    assert response.json()["detail"] == {
+        "error": "service_unavailable",
+        "message_key": "error.service_unavailable",
+    }
+
+
+@pytest.mark.asyncio
+async def test_cancelled_status_request_does_not_settle_with_partial_data(
+    db_session: AsyncSession,
+    redis_client: Redis,
+) -> None:
+    admin_user_id, admin_role_id = await _admin_identity(db_session)
+    await _seed_single_quota_status(db_session)
+    redis = BlockingBatchRedis(redis_client)
+
+    async for client in _quota_status_client(
+        db_session,
+        redis,
+        admin_user_id,
+        (admin_role_id, [str(Permission.ADMIN_QUOTAS_MANAGE)]),
+    ):
+        request_task = asyncio.create_task(client.get("/api/v1/admin/quotas/status"))
+        await redis.started.wait()
+        request_task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await request_task
+
+
+@pytest.mark.asyncio
+async def test_permission_denial_reads_no_quota_counters(
+    db_session: AsyncSession,
+    redis_client: Redis,
+) -> None:
+    admin_user_id, admin_role_id = await _admin_identity(db_session)
+    redis = RecordingQuotaRedis(redis_client)
+
+    async for client in _quota_status_client(
+        db_session,
+        redis,
+        admin_user_id,
+        (admin_role_id, []),
+    ):
+        response = await client.get("/api/v1/admin/quotas/status")
+
+    assert response.status_code == 403
+    assert redis.get_calls == 0
+    assert redis.mget_sizes == []
