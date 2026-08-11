@@ -32,6 +32,8 @@ _PREFLIGHT_SQL = sa.text(
             OR NOT (0 <= flag_confidence
                     AND flag_confidence < block_confidence
                     AND block_confidence <= 1)) AS invalid_thresholds,
+        (SELECT greatest(count(*) - 1, 0)
+         FROM detection_threshold_config) AS duplicate_thresholds,
         (SELECT count(*) FROM source_database_connections
          WHERE database_type IS NULL
             OR database_type NOT IN ('postgresql', 'mysql', 'mssql')
@@ -131,6 +133,12 @@ def upgrade() -> None:
         "sso_providers",
         "protocol IN ('oidc', 'saml')",
     )
+    op.create_index(
+        "uq_detection_threshold_config_singleton",
+        "detection_threshold_config",
+        [sa.text("(true)")],
+        unique=True,
+    )
     op.execute(
         sa.text(
             """
@@ -143,6 +151,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_index(
+        "uq_detection_threshold_config_singleton",
+        table_name="detection_threshold_config",
+    )
     op.drop_constraint("ck_sso_providers_protocol_valid", "sso_providers", type_="check")
     op.drop_constraint("ck_users_auth_provider_valid", "users", type_="check")
     op.drop_constraint(

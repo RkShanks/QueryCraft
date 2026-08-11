@@ -9,17 +9,28 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.phase6_permissions import require_phase6_admin_permission
 from app.core.dependencies import get_db
+from app.core.exceptions import DetectionUnavailableError
 from app.db.models.enums import AuditActionType, Permission
 from app.repositories.detection_config_repository import DetectionConfigRepository
 from app.schemas.detection import DetectionThresholdRead, DetectionThresholdUpdate
 from app.services.audit_service import AuditService
 
 router = APIRouter(prefix="/admin/detection", tags=["Admin Detection"])
+
+
+def _detection_unavailable() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "error": "service_unavailable",
+            "message_key": "error.service_unavailable",
+        },
+    )
 
 
 @router.get("/config", response_model=DetectionThresholdRead)
@@ -29,7 +40,10 @@ async def get_detection_config(
 ) -> DetectionThresholdRead:
     """Return current detection threshold configuration."""
     repo = DetectionConfigRepository(db)
-    row = await repo.get()
+    try:
+        row = await repo.get_for_admin()
+    except DetectionUnavailableError:
+        raise _detection_unavailable() from None
     return DetectionThresholdRead(
         block_confidence=row.block_confidence,
         flag_confidence=row.flag_confidence,
@@ -52,7 +66,10 @@ async def update_detection_config(
     """
 
     repo = DetectionConfigRepository(db)
-    row = await repo.update(data)
+    try:
+        row = await repo.update(data)
+    except DetectionUnavailableError:
+        raise _detection_unavailable() from None
 
     actor_id = uuid.UUID(_session["user_id"]) if "user_id" in _session else None
     await AuditService.log(
