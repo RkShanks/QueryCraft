@@ -268,6 +268,7 @@ async def test_simultaneous_equal_time_atomic_writes_keep_linearized_newest(redi
     ready.set()
     write_results = await asyncio.gather(*tasks)
 
+    assert all(write_result.live_indexed_sessions <= 3 for write_result in write_results)
     expected_live = [
         write_result.session_id
         for write_result in sorted(write_results, key=lambda write_result: write_result.sequence)[-3:]
