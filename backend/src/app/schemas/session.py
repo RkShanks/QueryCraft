@@ -38,6 +38,8 @@ class SessionDetail(BaseModel):
     created_at: str
     last_activity_at: str
     attempts: list[AttemptSummary]
+    attempts_total: int
+    attempts_next_cursor: str | None
 
 
 class CreateSessionResponse(BaseModel):

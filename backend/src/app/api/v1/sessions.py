@@ -96,6 +96,8 @@ async def list_sessions(
 async def get_session(
     request: Request,
     session_id: uuid.UUID,
+    attempt_cursor: Annotated[str | None, Query()] = None,
+    attempt_limit: Annotated[int, Query(ge=1, le=100)] = 50,
     session_repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
     query_repo: AcceptedQueryRepository = Depends(_get_accepted_query_repo),  # noqa: B008
     connection_repo: ConnectionRepository = Depends(_get_connection_repo),  # noqa: B008
@@ -109,7 +111,19 @@ async def get_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "not_found", "message_key": "error.notFound"},
         )
-    attempts = await query_repo.list_by_session(session_id, user_uuid)
+    try:
+        attempts, attempts_next_cursor = await query_repo.page_by_session(
+            session_id,
+            user_uuid,
+            cursor=attempt_cursor,
+            limit=attempt_limit,
+        )
+    except InvalidCursorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "invalid_cursor", "message_key": "error.invalidCursor"},
+        ) from exc
+    attempts_total = await query_repo.count_by_session(session_id, user_uuid)
     connection_ids = {attempt.database_connection_id for attempt in attempts if attempt.database_connection_id}
     connections = await connection_repo.get_by_ids(connection_ids)
     connection_meta = {
@@ -125,6 +139,8 @@ async def get_session(
         preview_text=sess.preview_text,
         created_at=sess.created_at.isoformat(),
         last_activity_at=sess.last_activity_at.isoformat(),
+        attempts_total=attempts_total,
+        attempts_next_cursor=attempts_next_cursor,
         attempts=[
             {
                 "id": str(a.id),

@@ -581,6 +581,8 @@ export type SessionDetail = {
     created_at: string;
     last_activity_at: string;
     attempts: Array<AttemptSummary>;
+    attempts_total: number;
+    attempts_next_cursor: string | null;
 };
 
 export type CreateSessionResponse = {
@@ -663,11 +665,15 @@ export type GetSessionData = {
     path: {
         sessionId: string;
     };
-    query?: never;
+    query?: {
+        attempt_cursor?: string | null;
+        attempt_limit?: number;
+    };
     url: '/sessions/{sessionId}';
 };
 
 export type GetSessionErrors = {
+    400: ErrorResponse;
     401: ErrorResponse;
     404: ErrorResponse;
 };
@@ -1218,4 +1224,3 @@ export type GetAuditStatusErrors = {
 export type GetAuditStatusResponses = {
     200: AuditStatusResponse;
 };
-
