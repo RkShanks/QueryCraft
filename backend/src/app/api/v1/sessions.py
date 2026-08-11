@@ -110,14 +110,15 @@ async def get_session(
             detail={"error": "not_found", "message_key": "error.notFound"},
         )
     attempts = await query_repo.list_by_session(session_id, user_uuid)
-    connection_meta: dict[uuid.UUID, tuple[str, str]] = {}
-    for attempt in attempts:
-        if not attempt.database_connection_id or attempt.database_connection_id in connection_meta:
-            continue
-        conn = await connection_repo.get_by_id(attempt.database_connection_id)
-        if conn is not None:
-            database_type = getattr(conn.database_type, "value", conn.database_type)
-            connection_meta[attempt.database_connection_id] = (conn.display_name, database_type)
+    connection_ids = {attempt.database_connection_id for attempt in attempts if attempt.database_connection_id}
+    connections = await connection_repo.get_by_ids(connection_ids)
+    connection_meta = {
+        connection.id: (
+            connection.display_name,
+            getattr(connection.database_type, "value", connection.database_type),
+        )
+        for connection in connections
+    }
     return SessionDetail(
         id=str(sess.id),
         connection_id=str(sess.connection_id) if sess.connection_id else None,
