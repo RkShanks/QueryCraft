@@ -629,6 +629,12 @@ def _assert_expected_indexes(inventory: SchemaInventory, revision_number: int) -
             inventory,
             "detection_threshold_config",
         )
+    if revision_number >= 11:
+        assert {
+            "ix_sessions_user_activity_page",
+            "ix_accepted_queries_session_user_accepted_page",
+            "ix_users_role_id_page",
+        }.issubset(_all_index_names(inventory))
 
 
 def _assert_expected_nullability_and_defaults(inventory: SchemaInventory, revision_number: int) -> None:

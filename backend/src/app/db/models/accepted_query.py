@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, SmallInteger, String, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, SmallInteger, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,7 +14,6 @@ class AcceptedQuery(Base):
     """Persisted accepted query (history)."""
 
     __tablename__ = "accepted_queries"
-
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
@@ -41,5 +40,15 @@ class AcceptedQuery(Base):
     result_columns: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     result_rows: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     result_row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    __table_args__ = (
+        Index(
+            "ix_accepted_queries_session_user_accepted_page",
+            "session_id",
+            "user_id",
+            accepted_at.desc(),
+            id.desc(),
+        ),
+    )
 
     session = relationship("Session", back_populates="accepted_queries")

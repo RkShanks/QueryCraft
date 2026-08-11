@@ -48,12 +48,14 @@ async def _execute_invalid_write(
 
 
 @pytest.mark.integration
-def test_revision_010_is_dynamic_head(disposable_database_url: str) -> None:
+def test_revision_010_invariants_survive_upgrade_to_dynamic_head(
+    disposable_database_url: str,
+) -> None:
     upgrade(disposable_database_url, "head")
 
-    assert revision_ids()[-1] == "010"
-    assert current_revision(disposable_database_url) == "010"
-    assert_revision_schema(disposable_database_url, "010")
+    assert revision_ids()[-1] == "011"
+    assert current_revision(disposable_database_url) == "011"
+    assert_revision_schema(disposable_database_url, "011")
 
 
 @pytest.mark.integration
