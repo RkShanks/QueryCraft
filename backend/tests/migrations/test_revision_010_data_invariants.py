@@ -7,10 +7,15 @@ from collections.abc import Mapping
 from typing import Any
 
 import pytest
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.api.v1 import admin_detection
+from app.core.dependencies import get_db
 from app.repositories.detection_config_repository import DetectionConfigRepository
 from tests.migrations.migration_support import (
     current_revision,
@@ -400,3 +405,89 @@ def test_010_downgrade_and_reupgrade_preserve_detection_row(disposable_database_
         dict(second_head.row_fingerprints)["detection_threshold_config"]
         == dict(first_head.row_fingerprints)["detection_threshold_config"]
     )
+
+
+async def _request_admin_detection_config(database_url: str) -> Response:
+    app = FastAPI()
+
+    @app.exception_handler(HTTPException)
+    async def handle_http_exception(_request, exception):
+        return JSONResponse(status_code=exception.status_code, content=exception.detail)
+
+    app.include_router(admin_detection.router, prefix="/api/v1")
+    engine = create_async_engine(database_url)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async def provide_database_session():
+        async with session_factory() as session:
+            yield session
+
+    async def provide_admin_session() -> dict[str, str]:
+        return {}
+
+    app.dependency_overrides[get_db] = provide_database_session
+    for route in admin_detection.router.routes:
+        for dependency in route.dependant.dependencies:
+            if dependency.name == "_session":
+                app.dependency_overrides[dependency.call] = provide_admin_session
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://chunk-10-proof",
+        ) as client:
+            return await client.get("/api/v1/admin/detection/config")
+    finally:
+        await engine.dispose()
+
+
+async def _repair_invalid_detection_thresholds(database_url: str) -> None:
+    engine = create_async_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text(
+                    """
+                    UPDATE detection_threshold_config
+                    SET block_confidence = 0.8, flag_confidence = 0.5
+                    """
+                )
+            )
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.integration
+def test_admin_api_is_sanitized_before_explicit_repair_and_migration_retry(
+    disposable_database_url: str,
+) -> None:
+    upgrade(disposable_database_url, "009")
+    asyncio.run(
+        _execute_invalid_write(
+            disposable_database_url,
+            """
+            INSERT INTO detection_threshold_config (block_confidence, flag_confidence)
+            VALUES ('NaN'::double precision, 0.5)
+            """,
+        )
+    )
+    before_api_request = database_snapshot(disposable_database_url)
+
+    response = asyncio.run(_request_admin_detection_config(disposable_database_url))
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "error": "service_unavailable",
+        "message_key": "error.service_unavailable",
+    }
+    assert "nan" not in response.text.lower()
+    assert "select" not in response.text.lower()
+    assert database_snapshot(disposable_database_url) == before_api_request
+    assert current_revision(disposable_database_url) == "009"
+
+    asyncio.run(_repair_invalid_detection_thresholds(disposable_database_url))
+    upgrade(disposable_database_url, "010")
+
+    repaired_response = asyncio.run(_request_admin_detection_config(disposable_database_url))
+    assert repaired_response.status_code == 200
+    assert current_revision(disposable_database_url) == "010"
