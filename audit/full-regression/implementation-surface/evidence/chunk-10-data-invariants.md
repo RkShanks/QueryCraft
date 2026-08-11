@@ -1,6 +1,6 @@
 # CHUNK-10 persisted security/resource invariant evidence
 
-Status: local disposable PostgreSQL, API, consumer and foundation proof passed on tested product commit `3b6f90dd938d51bef9e04ba4f5a57afce3335b68`. Authoritative `backend-test` and `frontend-test` are pending.
+Status: local disposable PostgreSQL, API, consumer and foundation proof passed on tested product commit `3b6f90dd938d51bef9e04ba4f5a57afce3335b68`. Authoritative `backend-test` and `frontend-test` passed on verification commit `c0a74d891b3a28b8b35d405a85a1969a69ec561f` in [#308](https://github.com/RkShanks/QueryCraft/pull/308); squash merge is pending.
 
 Starting main: `453875adb54599dd1ba16baa10101af6427588fa`.
 
@@ -87,7 +87,7 @@ Test Guard retained behavior-level direct-row, side-effect, API, snapshot, and c
 - Ruff check: all `src`, all tests, and revision 010 passed.
 - Ruff format: 436 files already formatted.
 - JSON validation and `git diff --check`: passed.
-- Authoritative PR `backend-test` and `frontend-test`: pending.
+- Authoritative PR `backend-test` and `frontend-test`: passed on `c0a74d891b3a28b8b35d405a85a1969a69ec561f`.
 
 The full-Alembic lint probe also found 31 pre-existing style findings confined to frozen revisions 001–008 and `alembic/env.py`; those immutable historical files were not edited. Revision 010 passed both Ruff gates explicitly.
 
@@ -97,7 +97,7 @@ The full-Alembic lint probe also found 31 pre-existing style findings confined t
 - CHUNK-10-created Compose containers and networks remaining: 0.
 - Pre-existing July development volumes deleted: 0.
 - Browser artifacts created or retained by CHUNK-10: 0.
-- Temporary CHUNK-10 cache removal: pending final evidence validation.
+- Temporary CHUNK-10 cache remaining: 0.
 - The 14 protected modified PNGs, seven untracked historical screenshots, and untracked traces directory remain unstaged and untouched from the starting dirty baseline.
 
 CHUNK-11 remains blocked until authoritative backend/frontend CI passes and this branch is squash-merged. Do not start CHUNK-11 from local evidence alone. The machine-readable peer is [chunk-10-data-invariants.json](chunk-10-data-invariants.json).
