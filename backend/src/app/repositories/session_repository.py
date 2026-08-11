@@ -237,6 +237,9 @@ if index_type == 'zset' then
     redis.call('DEL', sequence_key)
     return {1, true, true, user_id, type(actor_identity) == 'string' and actor_identity or ''}
   end
+else
+  redis.call('DEL', sequence_key)
+  return {1, true, true, user_id, type(actor_identity) == 'string' and actor_identity or ''}
 end
 return {1, true, false, user_id, type(actor_identity) == 'string' and actor_identity or ''}
 """
@@ -304,11 +307,19 @@ if now - last_activity > ttl_seconds then
   redis.call('DEL', KEYS[1])
   if index_key ~= nil then
     if index_type == 'zset' then
+      local members = redis.call('ZRANGE', index_key, 0, -1)
+      for _, member in ipairs(members) do
+        if member ~= ARGV[3] and redis.call('EXISTS', 'session:' .. member) == 0 then
+          redis.call('ZREM', index_key, member)
+        end
+      end
       redis.call('ZREM', index_key, ARGV[3])
       if redis.call('ZCARD', index_key) == 0 then
         redis.call('DEL', index_key)
         redis.call('DEL', sequence_key)
       end
+    else
+      redis.call('DEL', sequence_key)
     end
   end
   return nil

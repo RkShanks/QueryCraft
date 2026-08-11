@@ -172,6 +172,27 @@ async def test_sign_out_removes_empty_index_and_sequence(redis_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_delete_missing_index_removes_orphan_sequence(redis_client):
+    """Deleting a session with no index still removes orphan per-user sequence state."""
+    user_id = "550e8400-e29b-41d4-a716-446655440443"
+    session_id = "orphan-sequence-delete-session"
+    await redis_client.set(
+        f"session:{session_id}",
+        json.dumps({"user_id": user_id, "username": "admin"}),
+        ex=3600,
+    )
+    await redis_client.set(f"user_sessions_seq:{user_id}", "8", ex=3600)
+
+    result = await session_repository.SessionRepository.delete_indexed_session(redis_client, session_id)
+
+    assert result.index_empty is True
+    assert await redis_client.exists(f"session:{session_id}") == 0
+    assert await redis_client.exists(f"user_sessions:{user_id}") == 0
+    assert await redis_client.exists(f"user_sessions_seq:{user_id}") == 0
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_refresh_cas_mismatch_does_not_overwrite_newer_session_payload(redis_client):
     """A stale read-modify-write refresh must not replace newer session JSON."""
     user_id = "550e8400-e29b-41d4-a716-446655440445"
@@ -408,6 +429,38 @@ async def test_idle_expiry_removes_session_index_and_sequence(redis_client):
     )
     await redis_client.zadd(f"user_sessions:{user_id}", {session_id: 10.0})
     await redis_client.set(f"user_sessions_seq:{user_id}", "1", ex=3600)
+    middleware = SessionMiddleware(lambda *_: None, "redis://unused", idle_timeout_hours=1)
+    middleware._redis = redis_client
+
+    with patch("app.core.security.time.time", return_value=4000.0):
+        loaded = await middleware._load_session(session_id)
+
+    assert loaded is None
+    assert await redis_client.exists(f"session:{session_id}") == 0
+    assert await redis_client.exists(f"user_sessions:{user_id}") == 0
+    assert await redis_client.exists(f"user_sessions_seq:{user_id}") == 0
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_idle_expiry_prunes_stale_members_before_empty_index_cleanup(redis_client):
+    """Idle expiry does not leave an index alive only because it contained stale members."""
+    user_id = "550e8400-e29b-41d4-a716-446655440995"
+    session_id = "idle-expired-with-stale-member"
+    stale_session_id = "idle-expired-stale-member"
+    await redis_client.set(
+        f"session:{session_id}",
+        json.dumps({"user_id": user_id, "last_activity": 10.0}),
+        ex=3600,
+    )
+    await redis_client.zadd(
+        f"user_sessions:{user_id}",
+        {
+            session_id: 10.0,
+            stale_session_id: 11.0,
+        },
+    )
+    await redis_client.set(f"user_sessions_seq:{user_id}", "2", ex=3600)
     middleware = SessionMiddleware(lambda *_: None, "redis://unused", idle_timeout_hours=1)
     middleware._redis = redis_client
 
