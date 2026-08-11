@@ -83,7 +83,16 @@ export const Sidebar: React.FC = () => {
       route.navigation.id !== 'new-chat' && hasPermission(user, route.permission)
   );
 
-  const { data, isLoading } = useSessionsList({ enabled: canSubmitQuery });
+  const {
+    data,
+    isLoading,
+    isError,
+    isFetchNextPageError,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch,
+  } = useSessionsList({ enabled: canSubmitQuery });
   const deletingSessionIds = React.useMemo(() => new Set(toasts.map((t) => t.sessionId)), [toasts]);
   const sessions = React.useMemo(() => {
     return (data?.items ?? []).filter((s) => !deletingSessionIds.has(s.id));
@@ -202,24 +211,30 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {canSubmitQuery && <div className="sidebar-sessions">
-        {sidebarCollapsed ? (
-          sessions.map((session) => (
-            <SessionItem
-              key={session.id}
-              session={session}
-              isActive={session.id === activeSessionId}
-              onClick={() => handleSessionClick(session.id)}
-              onDelete={() => handleDeleteSession(session.id)}
-              collapsed
-            />
-          ))
-        ) : isLoading ? (
+        {isLoading ? (
           <div className="sidebar-loading">{t('history.loading')}</div>
+        ) : isError && sessions.length === 0 ? (
+          <div className="sidebar-collection-error" role="alert">
+            {!sidebarCollapsed && <span>{t('sidebar.loadError')}</span>}
+            <button type="button" onClick={() => void refetch()}>
+              {t('common.retry')}
+            </button>
+          </div>
         ) : sessions.length === 0 ? (
-          <div className="sidebar-empty">{t('sidebar.empty')}</div>
+          !sidebarCollapsed && <div className="sidebar-empty">{t('sidebar.empty')}</div>
         ) : (
           <>
-            {todayGroup.length > 0 && (
+            {sidebarCollapsed ? sessions.map((session) => (
+              <SessionItem
+                key={session.id}
+                session={session}
+                isActive={session.id === activeSessionId}
+                onClick={() => handleSessionClick(session.id)}
+                onDelete={() => handleDeleteSession(session.id)}
+                collapsed
+              />
+            )) : <>
+              {todayGroup.length > 0 && (
               <div className="sidebar-group">
                 <h3 className="sidebar-group-title">{t('sidebar.today')}</h3>
                 {todayGroup.map((session) => (
@@ -232,8 +247,8 @@ export const Sidebar: React.FC = () => {
                   />
                 ))}
               </div>
-            )}
-            {previous7Group.length > 0 && (
+              )}
+              {previous7Group.length > 0 && (
               <div className="sidebar-group">
                 <h3 className="sidebar-group-title">{t('sidebar.previous7Days')}</h3>
                 {previous7Group.map((session) => (
@@ -246,8 +261,8 @@ export const Sidebar: React.FC = () => {
                   />
                 ))}
               </div>
-            )}
-            {olderGroup.length > 0 && (
+              )}
+              {olderGroup.length > 0 && (
               <div className="sidebar-group">
                 <h3 className="sidebar-group-title">{t('sidebar.older')}</h3>
                 {olderGroup.map((session) => (
@@ -260,6 +275,26 @@ export const Sidebar: React.FC = () => {
                   />
                 ))}
               </div>
+              )}
+            </>}
+            {isFetchNextPageError && (
+              <div className="sidebar-collection-error" role="alert">
+                {!sidebarCollapsed && <span>{t('sidebar.loadError')}</span>}
+              </div>
+            )}
+            {hasNextPage && (
+              <button
+                type="button"
+                className="sidebar-load-more"
+                aria-label={t('sidebar.loadMore')}
+                disabled={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+              >
+                <Plus className="w-4 h-4" />
+                {!sidebarCollapsed && (
+                  isFetchingNextPage ? t('sidebar.loadingMore') : t('sidebar.loadMore')
+                )}
+              </button>
             )}
           </>
         )}

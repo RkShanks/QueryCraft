@@ -311,7 +311,10 @@ describe('WorkspacePage duplicate turn regression', () => {
     );
 
     renderWithClient(<WorkspacePage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load conversation history.');
+    const historyError = await screen.findByRole('alert', {
+      name: 'Unable to load conversation history.',
+    });
+    expect(historyError).toHaveTextContent('Unable to load conversation history.');
     expect(screen.queryByTestId('user-bubble')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
