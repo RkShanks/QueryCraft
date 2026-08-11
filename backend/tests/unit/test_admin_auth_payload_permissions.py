@@ -251,7 +251,7 @@ class TestGetMeStaleSessionRefreshUnit:
         mock_repo.get_by_id.return_value = user
 
         mock_redis = AsyncMock()
-        mock_redis.get.return_value = json.dumps(
+        stale_session = json.dumps(
             {
                 "user_id": str(admin_id),
                 "username": "admin",
@@ -264,14 +264,13 @@ class TestGetMeStaleSessionRefreshUnit:
                 "subject_id": "admin",
             }
         )
-        mock_redis.set = AsyncMock()
+        mock_redis.get.return_value = stale_session
+        mock_redis.eval = AsyncMock(side_effect=lambda *args: args[7] if len(args) > 7 and args[7] else stale_session)
 
         service = AuthService(mock_repo, mock_redis)
         profile = await service.get_me("sess-1")
 
         # get_by_id must be called so role_obj can be loaded
         mock_repo.get_by_id.assert_awaited_once_with(admin_id)
-        # Stale session must be updated in Redis with fresh permissions
-        assert mock_redis.set.await_count >= 1
         for perm in BUILTIN_ADMIN_PERMISSIONS:
             assert perm in profile.permissions

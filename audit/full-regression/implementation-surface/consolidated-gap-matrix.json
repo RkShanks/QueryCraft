@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 30, "Resolved": 14, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 29, "Resolved": 15, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -111,6 +111,14 @@
       "ci_validated_commit": "c0a74d891b3a28b8b35d405a85a1969a69ec561f",
       "authoritative_ci": {"backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-10-data-invariants.json"
+    },
+    "CHUNK-11": {
+      "gap_id": "IS-GAP-012",
+      "status": "Resolved on tested branch",
+      "tested_product_commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652",
+      "verification_commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652",
+      "authoritative_ci": {"head_commit": "f17bf48ba7a829a1f77aea374de2fe7276491c6c", "backend_test": "passed", "frontend_test": "passed"},
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-11-session-limit.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -324,8 +332,9 @@
       "required_evidence": "Bounded concurrency run reporting only counts and evicted-order hashes.",
       "isolation": "Disposable Redis namespace and sessions.",
       "regression_rows": ["P5-FR-127", "XP-001", "XP-013"],
-      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-11", "status": "Pending",
-      "source_refs": ["backend/src/app/repositories/session_repository.py::SessionRepository.enforce_concurrent_session_limit", "backend/tests/unit/test_concurrent_sessions.py"]
+      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-11", "status": "Resolved on tested branch",
+      "resolution": {"tested_product_commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-11-session-limit.json", "authoritative_ci": {"head_commit": "f17bf48ba7a829a1f77aea374de2fe7276491c6c", "backend_test": "passed", "frontend_test": "passed"}},
+      "source_refs": ["backend/src/app/repositories/session_repository.py::SessionRepository.create_indexed_session", "backend/src/app/repositories/session_repository.py::SessionRepository.delete_indexed_session", "backend/src/app/repositories/session_repository.py::SessionRepository.refresh_indexed_session", "backend/tests/unit/test_session_limit_atomic_redis.py", "backend/tests/unit/test_concurrent_sessions.py"]
     },
     {
       "id": "IS-GAP-013", "severity": "Mid", "disposition": "Confirmed Product Gap",

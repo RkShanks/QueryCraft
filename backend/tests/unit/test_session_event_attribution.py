@@ -35,6 +35,7 @@ class TestSessionEventAttribution:
         redis.get = AsyncMock()
         redis.set = AsyncMock()
         redis.delete = AsyncMock()
+        redis.eval = AsyncMock()
         return redis
 
     @pytest.fixture
@@ -60,7 +61,7 @@ class TestSessionEventAttribution:
             "created_at": now,
             "last_activity": now,
         }
-        mock_redis.get.return_value = json.dumps(session_data)
+        mock_redis.eval.return_value = json.dumps(session_data)
         session_middleware._get_redis = AsyncMock(return_value=mock_redis)
 
         bound_vars = {}

@@ -1,0 +1,160 @@
+{
+  "chunk": "CHUNK-11",
+  "gap_id": "IS-GAP-012",
+  "status": "implementation_and_ci_passed_merge_pending",
+  "branch": "phase-6/wave-19.11-session-limit-atomic",
+  "tested_product_commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652",
+  "tdd_commits": [
+    {
+      "stage": "red_race_reproduction",
+      "commit": "e87a49509ee6e3beb6199182c4a4a0eac4bff9f6"
+    },
+    {
+      "stage": "red_refresh_eviction_seam",
+      "commit": "e3fe105de66ec2fcfbf74206c1e1adc559f7be5c"
+    },
+    {
+      "stage": "green_atomic_implementation",
+      "commit": "a857495f9a4c2cd39e2305155a9baed182085c22"
+    },
+    {
+      "stage": "refactor_key_construction",
+      "commit": "7d698fd9d5a3b9fd30412f3c9f226e15dec4eca7"
+    },
+    {
+      "stage": "focused_test_alignment",
+      "commit": "8e4028ba0c7f64487cd40bd0eaae971632f6902b"
+    },
+    {
+      "stage": "transient_overlimit_assertion",
+      "commit": "bb42cc7e3a28c0d69c321f1ae7e9470f432b3e6a"
+    },
+    {
+      "stage": "cleanup_edge_hardening",
+      "commit": "2e8099700abd5cc4f19da1d52c391b089fcf48d8"
+    },
+    {
+      "stage": "result_privacy_cleanup",
+      "commit": "b91b50e4a770691a6a914b2d1301a94caa8ca825"
+    },
+    {
+      "stage": "ordered_isolation_burst_assertions",
+      "commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652"
+    }
+  ],
+  "atomic_design": {
+    "single_redis_operation_for_create": true,
+    "single_redis_operation_for_delete": true,
+    "single_redis_operation_for_refresh": true,
+    "uses_process_local_lock": false,
+    "tie_breaker": "per_user_redis_sequence",
+    "redis_linearization_authoritative": true,
+    "rollout_timestamp_score_compatibility": true,
+    "stale_index_pruning": true,
+    "generation_safe_refresh": true,
+    "sensitive_values_retained": false
+  },
+  "live_redis_proof": {
+    "redis_ping": true,
+    "limit": 3,
+    "atomic_equal_time_writes": {
+      "attempts": 8,
+      "live_indexed": 3,
+      "no_operation_over_limit": true
+    },
+    "local_login_burst": {
+      "attempts": 8,
+      "live_indexed": 3,
+      "usable_live": 3,
+      "evicted_unauthorized": 5,
+      "index_keys": 1,
+      "sequence_keys": 1
+    },
+    "sso_oidc_burst": {
+      "attempts": 8,
+      "live_indexed": 3,
+      "usable_live": 3,
+      "evicted_unauthorized": 5,
+      "index_keys": 1,
+      "sequence_keys": 1
+    },
+    "cleanup_zero_keys": true
+  },
+  "coverage_matrix": {
+    "exact_limit_1": true,
+    "default_limit_5": true,
+    "custom_limit": true,
+    "lowered_limit": true,
+    "unlimited_zero": true,
+    "unlimited_negative": true,
+    "oldest_evicted_first": true,
+    "ordered_timestamp_concurrent_burst": true,
+    "equal_timestamp_sequence_order": true,
+    "different_user_isolation": true,
+    "two_user_concurrent_capacity_sequence_isolation": true,
+    "duplicate_invocation_idempotent": true,
+    "stale_index_members_pruned": true,
+    "legacy_timestamp_score_rollout": true,
+    "index_and_sequence_ttl_refresh": true,
+    "refresh_no_resurrection": true,
+    "cas_mismatch_safe": true,
+    "explicit_sign_out_cleanup": true,
+    "idle_expiry_cleanup": true,
+    "deleted_user_cleanup": true,
+    "local_failed_audit_rollback": true,
+    "oidc_failed_audit_rollback": true,
+    "saml_failed_audit_rollback": true,
+    "redis_outage_fail_closed_no_cookie": true
+  },
+  "focused_gates": [
+    {
+      "command": "rtk uv run pytest tests/unit -q -m \"not integration\"",
+      "passed": 2102,
+      "skipped": 365,
+      "deselected": 44,
+      "warnings": 3,
+      "failed": 0
+    },
+    {
+      "command": "rtk uv run pytest tests/unit/test_session_limit_atomic_redis.py tests/unit/test_concurrent_sessions.py tests/integration/test_api_auth.py::TestAuthRouter::test_sign_in_session_store_failure_returns_sanitized_503 tests/unit/test_session_extension.py tests/unit/test_admin_auth_payload_permissions.py -q",
+      "passed": 35,
+      "skipped": 6,
+      "failed": 0
+    },
+    {
+      "command": "rtk uv run pytest tests/unit/test_session_limit_atomic_redis.py tests/unit/test_concurrent_sessions.py tests/unit/test_session_extension.py tests/unit/test_admin_auth_payload_permissions.py tests/unit/test_sso_oidc_callback.py tests/unit/test_sso_saml_callback.py tests/unit/test_replay_protection.py tests/unit/test_session_middleware_redis_lifecycle.py tests/integration/test_api_auth.py tests/integration/test_phase6_permission_revocation.py -q",
+      "passed": 75,
+      "skipped": 15,
+      "failed": 0
+    },
+    {
+      "command": "rtk uv run ruff check src tests",
+      "passed": true
+    },
+    {
+      "command": "rtk uv run ruff format --check src tests",
+      "passed": true
+    },
+    {
+      "command": "rtk uv run python -m json.tool evidence and consolidated matrix JSON",
+      "passed": true
+    },
+    {
+      "command": "rtk git diff --check",
+      "passed": true
+    }
+  ],
+  "cleanup": {
+    "disposable_redis_final_dbsize_zero": true,
+    "disposable_container_count_after_cleanup": 0,
+    "disposable_network_count_after_cleanup": 0,
+    "protected_baseline_untouched": true,
+    "evidence_contains_sensitive_values": false
+  },
+  "ci": {
+    "head_commit": "f17bf48ba7a829a1f77aea374de2fe7276491c6c",
+    "backend_test": "passed",
+    "frontend_test": "passed"
+  },
+  "next_chunk_unblocked": false
+}

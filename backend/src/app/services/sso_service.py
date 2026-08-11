@@ -18,7 +18,6 @@ Security:
 from __future__ import annotations
 
 import base64
-import contextlib
 import json
 import os
 import secrets
@@ -41,7 +40,7 @@ from app.db.models.sso_group_mapping import SsoGroupMapping
 from app.db.models.sso_provider import SsoProvider
 from app.db.models.user import User
 from app.db.models.user_identity import UserIdentity
-from app.repositories.session_repository import SessionRepository
+from app.repositories.session_repository import IndexedSessionCreateRequest, SessionRepository
 from app.services.audit_service import AuditService
 
 
@@ -267,11 +266,7 @@ class SsoService:
         except Exception:
             # Audit failure: revoke the session we just created so the login
             # cannot be used without an audit trail.
-            await self._redis.delete(f"session:{session_id}")
-            user_id = str(profile.get("user_id", ""))
-            if user_id:
-                with contextlib.suppress(Exception):
-                    await self._redis.zrem(f"user_sessions:{user_id}", session_id)
+            await SessionRepository.delete_indexed_session(self._redis, session_id)
             raise
 
         return profile, session_id
@@ -629,11 +624,7 @@ class SsoService:
         except Exception:
             # Audit failure: revoke the session we just created so the login
             # cannot be used without an audit trail.
-            await self._redis.delete(f"session:{session_id}")
-            user_id = str(profile.get("user_id", ""))
-            if user_id:
-                with contextlib.suppress(Exception):
-                    await self._redis.zrem(f"user_sessions:{user_id}", session_id)
+            await SessionRepository.delete_indexed_session(self._redis, session_id)
             raise
 
         return profile, session_id
@@ -865,21 +856,17 @@ class SsoService:
             "last_activity": time.time(),
         }
         ttl = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
-        await self._redis.set(
-            f"session:{session_id}",
-            json.dumps(session_data),
-            ex=ttl,
-        )
-
-        # Enforce concurrent session limit per user (FR-127, S-010)
         max_sessions = getattr(self._settings, "MAX_CONCURRENT_SESSIONS_PER_USER", 5)
-        await SessionRepository.enforce_concurrent_session_limit(
+        await SessionRepository.create_indexed_session(
             self._redis,
-            str(user.id),
-            session_id,
-            session_data["created_at"],
-            max_sessions,
-            ttl,
+            IndexedSessionCreateRequest(
+                user_id=str(user.id),
+                session_id=session_id,
+                session_json=json.dumps(session_data),
+                created_at=float(session_data["created_at"]),
+                max_sessions=int(max_sessions),
+                ttl_seconds=int(ttl),
+            ),
         )
 
         profile = {

@@ -306,6 +306,7 @@ class TestAuthLogoutEmits:
         redis.get = AsyncMock(return_value=None)
         redis.delete = AsyncMock(return_value=1)
         redis.zrem = AsyncMock(return_value=1)
+        redis.eval = AsyncMock(return_value=[0, False, True, "", ""])
 
         service = AuthService(
             user_repository=MagicMock(),
@@ -1002,6 +1003,7 @@ class TestForbiddenTokenSweep:
         redis.get = AsyncMock(return_value=None)
         redis.delete = AsyncMock(return_value=1)
         redis.zrem = AsyncMock(return_value=1)
+        redis.eval = AsyncMock(return_value=[0, False, True, "", ""])
         service = AuthService(user_repository=MagicMock(), redis=redis)
         with patch(_AUDIT_PATCH, new_callable=AsyncMock) as mock_audit:
             await service.sign_out("sess-id", db_session=MagicMock())

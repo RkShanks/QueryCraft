@@ -11,6 +11,10 @@ import pytest
 from app.services.auth_service import AuthService
 
 
+def _atomic_session_eval(*args):
+    return [1, 1, 0] if args[1] == 3 else [0, False, True, "", ""]
+
+
 class TestSessionTimeoutConfig:
     """Unit tests for session idle timeout configurability."""
 
@@ -23,7 +27,7 @@ class TestSessionTimeoutConfig:
     @pytest.fixture
     def mock_redis(self):
         redis = AsyncMock()
-        redis.set = AsyncMock()
+        redis.eval = AsyncMock(side_effect=_atomic_session_eval)
         return redis
 
     @pytest.fixture
@@ -40,7 +44,7 @@ class TestSessionTimeoutConfig:
 
     @pytest.mark.asyncio
     async def test_sign_in_uses_configured_timeout(self, mock_repo, mock_redis, mock_user):
-        """When SESSION_IDLE_TIMEOUT_HOURS=2, Redis SET ex=7200."""
+        """When SESSION_IDLE_TIMEOUT_HOURS=2, atomic creation receives TTL 7200."""
         mock_repo.get_by_username.return_value = mock_user
         settings = MagicMock()
         settings.SESSION_IDLE_TIMEOUT_HOURS = 2
@@ -48,13 +52,13 @@ class TestSessionTimeoutConfig:
         service = AuthService(mock_repo, mock_redis, settings=settings)
         await service.sign_in("admin", "secret")
 
-        mock_redis.set.assert_awaited_once()
-        call_args = mock_redis.set.await_args
-        assert call_args.kwargs["ex"] == 7200  # 2 * 3600
+        create_call = mock_redis.eval.await_args.args
+        assert create_call[1] == 3
+        assert create_call[9] == "7200"
 
     @pytest.mark.asyncio
     async def test_sign_in_uses_default_timeout(self, mock_repo, mock_redis, mock_user):
-        """When SESSION_IDLE_TIMEOUT_HOURS=8, Redis SET ex=28800."""
+        """When SESSION_IDLE_TIMEOUT_HOURS=8, atomic creation receives TTL 28800."""
         mock_repo.get_by_username.return_value = mock_user
         settings = MagicMock()
         settings.SESSION_IDLE_TIMEOUT_HOURS = 8
@@ -62,6 +66,6 @@ class TestSessionTimeoutConfig:
         service = AuthService(mock_repo, mock_redis, settings=settings)
         await service.sign_in("admin", "secret")
 
-        mock_redis.set.assert_awaited_once()
-        call_args = mock_redis.set.await_args
-        assert call_args.kwargs["ex"] == 28800  # 8 * 3600
+        create_call = mock_redis.eval.await_args.args
+        assert create_call[1] == 3
+        assert create_call[9] == "28800"
