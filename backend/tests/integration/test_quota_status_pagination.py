@@ -65,6 +65,12 @@ class FailingBatchRedis(RecordingQuotaRedis):
         raise RedisConnectionError("quota status batch unavailable")
 
 
+class UnexpectedFailingBatchRedis(RecordingQuotaRedis):
+    async def mget(self, keys: Sequence[str]):
+        self.mget_sizes.append(len(keys))
+        raise RuntimeError("unexpected quota status batch failure")
+
+
 class BlockingBatchRedis(RecordingQuotaRedis):
     def __init__(self, redis: Redis) -> None:
         super().__init__(redis)
@@ -295,6 +301,34 @@ async def test_noncanonical_counter_fails_whole_status_request_closed(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("invalid_cursor", ["not-a-cursor", "", "A" * 513])
+async def test_invalid_quota_status_cursor_is_sanitized_without_counter_reads(
+    db_session: AsyncSession,
+    redis_client: Redis,
+    invalid_cursor: str,
+) -> None:
+    admin_user_id, admin_role_id = await _admin_identity(db_session)
+    redis = RecordingQuotaRedis(redis_client)
+
+    async for client in _quota_status_client(
+        db_session,
+        redis,
+        admin_user_id,
+        (admin_role_id, [str(Permission.ADMIN_QUOTAS_MANAGE)]),
+    ):
+        response = await client.get(
+            "/api/v1/admin/quotas/status",
+            params={"cursor": invalid_cursor},
+        )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": {"error": "invalid_cursor", "message_key": "error.invalidCursor"}
+    }
+    assert redis.mget_sizes == []
+
+
+@pytest.mark.asyncio
 async def test_redis_batch_failure_returns_no_partial_status(
     db_session: AsyncSession,
     redis_client: Redis,
@@ -316,6 +350,32 @@ async def test_redis_batch_failure_returns_no_partial_status(
     assert response.json()["detail"] == {
         "error": "service_unavailable",
         "message_key": "error.service_unavailable",
+    }
+
+
+@pytest.mark.asyncio
+async def test_unexpected_redis_batch_failure_is_sanitized(
+    db_session: AsyncSession,
+    redis_client: Redis,
+) -> None:
+    admin_user_id, admin_role_id = await _admin_identity(db_session)
+    await _seed_single_quota_status(db_session)
+    redis = UnexpectedFailingBatchRedis(redis_client)
+
+    async for client in _quota_status_client(
+        db_session,
+        redis,
+        admin_user_id,
+        (admin_role_id, [str(Permission.ADMIN_QUOTAS_MANAGE)]),
+    ):
+        response = await client.get("/api/v1/admin/quotas/status")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {
+            "error": "service_unavailable",
+            "message_key": "error.service_unavailable",
+        }
     }
 
 

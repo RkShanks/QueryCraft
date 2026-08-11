@@ -245,14 +245,18 @@ async def test_attempt_page_defaults_to_fifty_and_rejects_malformed_cursor(
     app = create_app()
     async for client in _detail_client(app, db_session, owner_id):
         first_page = await client.get(f"/api/v1/sessions/{session_id}")
-        invalid_page = await client.get(
-            f"/api/v1/sessions/{session_id}",
-            params={"attempt_cursor": "not-a-cursor"},
-        )
+        invalid_pages = [
+            await client.get(
+                f"/api/v1/sessions/{session_id}",
+                params={"attempt_cursor": invalid_cursor},
+            )
+            for invalid_cursor in ("not-a-cursor", "", "A" * 513)
+        ]
 
     assert first_page.status_code == 200
     assert len(first_page.json()["attempts"]) == 50
     assert first_page.json()["attempts_total"] == 51
     assert first_page.json()["attempts_next_cursor"] is not None
-    assert invalid_page.status_code == 400
-    assert invalid_page.json() == {"error": "invalid_cursor", "message_key": "error.invalidCursor"}
+    for invalid_page in invalid_pages:
+        assert invalid_page.status_code == 400
+        assert invalid_page.json() == {"error": "invalid_cursor", "message_key": "error.invalidCursor"}
