@@ -321,6 +321,7 @@ export const handlers = [
         },
       ],
       total: 1,
+      next_cursor: null,
     };
     return HttpResponse.json(sessions, { status: 200 });
   }),

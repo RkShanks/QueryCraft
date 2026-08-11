@@ -53,6 +53,7 @@ class SessionListResponse(BaseModel):
 
     items: list[SessionSummary]
     total: int
+    next_cursor: str | None
 
 
 class SessionConnectionUpdate(BaseModel):

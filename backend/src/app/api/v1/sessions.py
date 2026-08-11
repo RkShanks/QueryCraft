@@ -2,12 +2,14 @@
 
 import asyncio
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, get_redis, require_active_user
+from app.core.exceptions import InvalidCursorError
 from app.core.session_cancellation import (
     cancel_local_session_work,
     cleanup_cancelled_session_state,
@@ -61,11 +63,20 @@ async def create_session(
 @router.get("", response_model=SessionListResponse)
 async def list_sessions(
     request: Request,
+    cursor: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
     repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
 ):
-    """GET /sessions — list sessions for the current user."""
-    items = await repo.list_by_user(uuid.UUID(user_id))
+    """Return one stable keyset page of sessions owned by the current user."""
+    user_uuid = uuid.UUID(user_id)
+    try:
+        items, next_cursor = await repo.page_by_user(user_uuid, cursor=cursor, limit=limit)
+    except InvalidCursorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "invalid_cursor", "message_key": "error.invalidCursor"},
+        ) from exc
     return SessionListResponse(
         items=[
             SessionSummary(
@@ -76,7 +87,8 @@ async def list_sessions(
             )
             for s in items
         ],
-        total=len(items),
+        total=await repo.count_by_user(user_uuid),
+        next_cursor=next_cursor,
     )
 
 

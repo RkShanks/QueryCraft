@@ -126,7 +126,7 @@ async def test_session_list_defaults_to_fifty_and_rejects_malformed_cursor(
     assert len(first_page.json()["items"]) == 50
     assert first_page.json()["next_cursor"] is not None
     assert invalid_page.status_code == 400
-    assert invalid_page.json() == {"detail": {"error": "invalid_cursor", "message_key": "error.invalidCursor"}}
+    assert invalid_page.json() == {"error": "invalid_cursor", "message_key": "error.invalidCursor"}
 
 
 @pytest.mark.asyncio

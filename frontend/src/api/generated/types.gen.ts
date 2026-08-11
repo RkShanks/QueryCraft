@@ -592,6 +592,7 @@ export type CreateSessionResponse = {
 export type SessionListResponse = {
     items: Array<SessionSummary>;
     total: number;
+    next_cursor: string | null;
 };
 
 export type UpdateFeedbackRequest = {
@@ -641,11 +642,15 @@ export type CreateSessionResponses = {
 export type ListSessionsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        cursor?: string | null;
+        limit?: number;
+    };
     url: '/sessions';
 };
 
 export type ListSessionsErrors = {
+    400: ErrorResponse;
     401: ErrorResponse;
 };
 
@@ -1213,5 +1218,4 @@ export type GetAuditStatusErrors = {
 export type GetAuditStatusResponses = {
     200: AuditStatusResponse;
 };
-
 
