@@ -108,6 +108,29 @@ async def test_local_login_default_limit_keeps_five_newest_sessions(redis_client
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_local_login_creates_observable_session_payload_and_index(redis_client):
+    user_id = str(LOCAL_USER_ID)
+
+    profile, session_id = await _local_sign_in(redis_client, max_sessions=5, token_byte=9, timestamp=1500.0)
+    session_payload = json.loads(await redis_client.get(f"session:{session_id}"))
+
+    assert await _members(redis_client, user_id) == [session_id]
+    assert profile.auth_provider == "local"
+    assert profile.permissions == ["query.submit"]
+    assert session_payload["user_id"] == user_id
+    assert session_payload["username"] == "admin"
+    assert session_payload["display_name"] == "Admin"
+    assert session_payload["role"] == "admin"
+    assert session_payload["role_name"] == "Admin"
+    assert session_payload["permissions"] == ["query.submit"]
+    assert session_payload["auth_provider"] == "local"
+    assert session_payload["subject_id"] == "admin"
+    assert "created_at" in session_payload
+    assert "last_activity" in session_payload
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_local_login_custom_lowered_limit_evicts_to_new_limit(redis_client):
     user_id = str(LOCAL_USER_ID)
 

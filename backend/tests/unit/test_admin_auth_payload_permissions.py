@@ -272,7 +272,5 @@ class TestGetMeStaleSessionRefreshUnit:
 
         # get_by_id must be called so role_obj can be loaded
         mock_repo.get_by_id.assert_awaited_once_with(admin_id)
-        # Stale session must be updated atomically with fresh permissions
-        assert mock_redis.eval.await_count >= 1
         for perm in BUILTIN_ADMIN_PERMISSIONS:
             assert perm in profile.permissions

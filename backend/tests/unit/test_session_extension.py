@@ -1,8 +1,7 @@
-"""TDD tests for extended Redis session data (T-631).
+"""TDD tests for extended session profile data (T-631).
 
-Verifies AuthService.sign_in stores role_id, role_name, permissions,
-auth_provider, subject_id in Redis session. Verifies get_me returns
-extended UserProfile with new fields.
+Real Redis sign-in payload storage is covered by concurrent-session tests.
+This module verifies get_me returns extended UserProfile fields.
 """
 
 import json
@@ -61,63 +60,8 @@ class TestSessionExtension:
         return user
 
     @pytest.mark.asyncio
-    async def test_sign_in_stores_role_id_in_session(self, service, mock_repo, mock_redis, user_with_role):
-        """Session must contain role_id from user.role_id."""
-        mock_repo.get_by_username.return_value = user_with_role
-        profile, session_id = await service.sign_in("analyst1", "secret")
-        session = json.loads(mock_redis.eval.await_args.args[6])
-        assert session["role_id"] == "role-uuid-1234"
-
-    @pytest.mark.asyncio
-    async def test_sign_in_stores_role_name_in_session(self, service, mock_repo, mock_redis, user_with_role):
-        """Session must contain role_name from user.role_obj.name."""
-        mock_repo.get_by_username.return_value = user_with_role
-        profile, session_id = await service.sign_in("analyst1", "secret")
-        session = json.loads(mock_redis.eval.await_args.args[6])
-        assert session["role_name"] == "Analyst"
-
-    @pytest.mark.asyncio
-    async def test_sign_in_stores_permissions_in_session(self, service, mock_repo, mock_redis, user_with_role):
-        """Session must contain permissions list from role."""
-        mock_repo.get_by_username.return_value = user_with_role
-        profile, session_id = await service.sign_in("analyst1", "secret")
-        session = json.loads(mock_redis.eval.await_args.args[6])
-        assert session["permissions"] == ["query.submit", "query.history.view"]
-
-    @pytest.mark.asyncio
-    async def test_sign_in_stores_auth_provider_in_session(self, service, mock_repo, mock_redis, user_with_role):
-        """Session must contain auth_provider from user.auth_provider."""
-        mock_repo.get_by_username.return_value = user_with_role
-        profile, session_id = await service.sign_in("analyst1", "secret")
-        session = json.loads(mock_redis.eval.await_args.args[6])
-        assert session["auth_provider"] == "local"
-
-    @pytest.mark.asyncio
-    async def test_sign_in_stores_subject_id_for_local_user(self, service, mock_repo, mock_redis, user_with_role):
-        """Local users: subject_id defaults to username."""
-        mock_repo.get_by_username.return_value = user_with_role
-        profile, session_id = await service.sign_in("analyst1", "secret")
-        session = json.loads(mock_redis.eval.await_args.args[6])
-        assert session["subject_id"] == "analyst1"
-
-    @pytest.mark.asyncio
-    async def test_sign_in_preserves_existing_fields(self, service, mock_repo, mock_redis, user_with_role):
-        """Existing session fields (user_id, username, display_name, role, created_at, last_activity) are preserved."""
-        mock_repo.get_by_username.return_value = user_with_role
-        profile, session_id = await service.sign_in("analyst1", "secret")
-        session = json.loads(mock_redis.eval.await_args.args[6])
-        assert session["user_id"] == "550e8400-e29b-41d4-a716-446655440000"
-        assert session["username"] == "analyst1"
-        assert session["display_name"] == "Analyst One"
-        assert session["role"] == "admin"
-        assert "created_at" in session
-        assert "last_activity" in session
-
-    @pytest.mark.asyncio
     async def test_get_me_returns_extended_profile(self, service, mock_repo, mock_redis, user_with_role):
         """get_me returns UserProfile with role_id, role_name, permissions, auth_provider."""
-        import json
-
         mock_redis.get.return_value = json.dumps(
             {
                 "user_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -142,8 +86,6 @@ class TestSessionExtension:
     @pytest.mark.asyncio
     async def test_get_me_user_without_role(self, service, mock_repo, mock_redis):
         """User with no role_id returns None for role fields."""
-        import json
-
         user_no_role = MagicMock()
         user_no_role.id = "550e8400-e29b-41d4-a716-446655440000"
         user_no_role.username = "unmapped"
@@ -176,8 +118,6 @@ class TestSessionExtension:
     @pytest.mark.asyncio
     async def test_profile_response_does_not_expose_password_hash(self, service, mock_repo, mock_redis, user_with_role):
         """UserProfile must never contain password_hash or other secrets."""
-        import json
-
         mock_redis.get.return_value = json.dumps(
             {
                 "user_id": "550e8400-e29b-41d4-a716-446655440000",

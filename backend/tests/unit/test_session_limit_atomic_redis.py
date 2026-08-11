@@ -272,7 +272,7 @@ async def test_simultaneous_equal_time_atomic_writes_keep_linearized_newest(redi
 
     async def create_session(session_id: str):
         await ready.wait()
-        return await session_repository.SessionRepository.create_indexed_session(
+        result = await session_repository.SessionRepository.create_indexed_session(
             redis_client,
             request_type(
                 user_id=user_id,
@@ -283,16 +283,16 @@ async def test_simultaneous_equal_time_atomic_writes_keep_linearized_newest(redi
                 ttl_seconds=3600,
             ),
         )
+        return session_id, result.sequence, result.live_indexed_sessions
 
     ready = asyncio.Event()
     tasks = [asyncio.create_task(create_session(session_id)) for session_id in session_ids]
     ready.set()
     write_results = await asyncio.gather(*tasks)
 
-    assert all(write_result.live_indexed_sessions <= 3 for write_result in write_results)
+    assert all(live_count <= 3 for _session_id, _sequence, live_count in write_results)
     expected_live = [
-        write_result.session_id
-        for write_result in sorted(write_results, key=lambda write_result: write_result.sequence)[-3:]
+        session_id for session_id, _sequence, _live_count in sorted(write_results, key=lambda item: item[1])[-3:]
     ]
     assert await _indexed_members(redis_client, user_id) == expected_live
     live_key_counts = await asyncio.gather(

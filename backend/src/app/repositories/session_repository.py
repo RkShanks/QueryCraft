@@ -28,7 +28,6 @@ class IndexedSessionCreateRequest:
 class IndexedSessionCreateResult:
     """Atomic session creation metadata."""
 
-    session_id: str
     sequence: int
     live_indexed_sessions: int
     evicted_sessions: int
@@ -489,7 +488,6 @@ class SessionRepository:
         )
         sequence, live_count, evicted_count = await redis.eval(_CREATE_INDEXED_SESSION_LUA, 3, *keys_and_args)
         return IndexedSessionCreateResult(
-            session_id=request.session_id,
             sequence=int(sequence),
             live_indexed_sessions=int(live_count),
             evicted_sessions=int(evicted_count),
