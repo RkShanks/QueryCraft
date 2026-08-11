@@ -18,6 +18,10 @@ from fastapi import HTTPException
 from app.services.auth_service import AuthService
 
 
+def _atomic_session_eval(*args):
+    return [1, 1, 0] if args[1] == 3 else [0, False, True, "", ""]
+
+
 def _make_user(
     username="admin",
     auth_provider="local",
@@ -57,6 +61,7 @@ class TestLocalLoginRestriction:
         redis.set = AsyncMock()
         redis.delete = AsyncMock()
         redis.get = AsyncMock(return_value=None)
+        redis.eval = AsyncMock(side_effect=_atomic_session_eval)
         return redis
 
     @pytest.fixture

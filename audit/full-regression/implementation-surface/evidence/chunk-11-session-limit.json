@@ -108,6 +108,14 @@
   },
   "focused_gates": [
     {
+      "command": "rtk uv run pytest tests/unit -q -m \"not integration\"",
+      "passed": 2102,
+      "skipped": 365,
+      "deselected": 44,
+      "warnings": 3,
+      "failed": 0
+    },
+    {
       "command": "rtk uv run pytest tests/unit/test_session_limit_atomic_redis.py tests/unit/test_concurrent_sessions.py tests/integration/test_api_auth.py::TestAuthRouter::test_sign_in_session_store_failure_returns_sanitized_503 tests/unit/test_session_extension.py tests/unit/test_admin_auth_payload_permissions.py -q",
       "passed": 35,
       "skipped": 6,
@@ -126,10 +134,20 @@
     {
       "command": "rtk uv run ruff format --check src tests",
       "passed": true
+    },
+    {
+      "command": "python -m json.tool evidence and consolidated matrix JSON",
+      "passed": true
+    },
+    {
+      "command": "git diff --check",
+      "passed": true
     }
   ],
   "cleanup": {
     "disposable_redis_final_dbsize_zero": true,
+    "disposable_container_count_after_cleanup": 0,
+    "disposable_network_count_after_cleanup": 0,
     "protected_baseline_untouched": true,
     "evidence_contains_sensitive_values": false
   },

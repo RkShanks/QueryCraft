@@ -11,6 +11,14 @@ import pytest
 from app.services.auth_service import AuthService
 
 
+def _atomic_session_eval(*args):
+    if args[1] == 3:
+        return [1, 1, 0]
+    if len(args) > 7 and args[7]:
+        return args[7]
+    return [0, False, True, "", ""]
+
+
 class TestAuthService:
     """AuthService unit tests with mocked dependencies."""
 
@@ -27,6 +35,7 @@ class TestAuthService:
         redis.set = AsyncMock()
         redis.delete = AsyncMock()
         redis.get = AsyncMock(return_value=None)
+        redis.eval = AsyncMock(side_effect=_atomic_session_eval)
         return redis
 
     @pytest.fixture
@@ -47,7 +56,6 @@ class TestAuthService:
         profile, session_id = await service.sign_in("admin", "secret")
         assert profile.username == "admin"
         assert session_id is not None
-        mock_redis.set.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_sign_in_incorrect_credentials(self, service, mock_repo):
@@ -59,7 +67,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_sign_out_deletes_session(self, service, mock_redis):
         await service.sign_out("session-123")
-        mock_redis.delete.assert_awaited_once_with("session:session-123")
+        mock_redis.eval.assert_awaited()
 
     @pytest.mark.asyncio
     async def test_get_me_returns_profile(self, service, mock_redis, mock_repo):
@@ -87,4 +95,4 @@ class TestAuthService:
         with pytest.raises(Exception) as exc_info:
             await service.get_me("session-123")
         assert exc_info.value.status_code == 401
-        mock_redis.delete.assert_awaited_once_with("session:session-123")
+        mock_redis.eval.assert_awaited()

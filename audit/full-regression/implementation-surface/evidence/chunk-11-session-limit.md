@@ -11,7 +11,7 @@ Tested product commit: `00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652`.
 - New scores are clamped after the current max score, so rollout-era timestamp-scored indexes do not outrank a newly linearized login.
 - Refresh uses an atomic script that only refreshes an existing key, repairs live legacy missing-index state, extends index/sequence TTLs, and returns no session for evicted or idle-expired keys.
 - Refresh replacement is generation-safe: exact raw-session matches replace the payload; CAS mismatches merge only role/permission fields and keep unrelated newer session fields.
-- Sign-out, idle expiry, deleted-user cleanup, local audit rollback, OIDC audit rollback, and SAML audit rollback call the shared atomic delete path.
+- Sign-out, idle expiry, deleted-user cleanup, local audit rollback, OIDC audit rollback, and SAML audit rollback use the shared atomic lifecycle.
 
 ## TDD commits
 
@@ -29,7 +29,7 @@ Tested product commit: `00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652`.
 
 ## Live Redis proof
 
-Disposable Redis: `querycraft-chunk11-redis-1`, test DB 1, flushed before and after proof.
+Disposable Redis proof used one isolated test DB, flushed before and after proof.
 
 | Scenario | Attempts | Limit | Live indexed | Usable live | Evicted 401 | Extra invariant |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
@@ -46,13 +46,17 @@ Cleanup proof: final disposable Redis DB size was zero after cleanup.
 | Real Redis concurrent session matrix, AuthService local paths, SSO paths, stale index, rollout, TTL, cleanup, audit rollback, API outage | `35 passed, 6 skipped` |
 | Auth/session refresh and admin permission-refresh regressions | included above and separately `10 passed, 5 skipped` before final batch |
 | OIDC/SAML callback and replay regressions, middleware Redis lifecycle, API auth outage, CHUNK-07 identity/permission regressions | `75 passed, 15 skipped` |
+| Backend unit foundation (`tests/unit -m "not integration"`) | `2102 passed, 365 skipped, 44 deselected, 3 warnings` |
 | Ruff check | `src tests` passed |
 | Ruff format check | `src tests` already formatted |
+| JSON validation | Evidence JSON and matrix JSON passed |
+| `git diff --check` | passed |
 
 All evidence records only counts, booleans, limits, statuses, and commit IDs. No session IDs, cookies, OIDC/SAML tokens, assertions, or complete session payloads were retained.
 
 ## Cleanup and protected baseline
 
 - Disposable live-proof Redis keys were removed; DB size ended at zero.
+- Disposable container count after cleanup: 0; disposable network count after cleanup: 0.
 - The protected PNG/screenshot/trace baseline remained unstaged and untouched.
 - CHUNK-12 remains gated on authoritative backend/frontend CI and merge completion; no CHUNK-12 work was started.

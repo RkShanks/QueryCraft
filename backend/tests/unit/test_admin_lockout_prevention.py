@@ -323,6 +323,12 @@ class TestRoleRepositoryUpdateBuiltinProtection:
 class TestAuthServiceBuiltinAdminLoginAlwaysWorks:
     """Built-in admin local login must work regardless of SSO/role state."""
 
+    @staticmethod
+    def _redis():
+        redis = AsyncMock()
+        redis.eval = AsyncMock(return_value=[1, 1, 0])
+        return redis
+
     @pytest.mark.asyncio
     async def test_builtin_admin_login_succeeds_with_local_provider(self):
         """Built-in admin with auth_provider='local' can sign in."""
@@ -330,8 +336,7 @@ class TestAuthServiceBuiltinAdminLoginAlwaysWorks:
         builtin_user = _make_builtin_user()
         mock_repo.get_by_username.return_value = builtin_user
 
-        mock_redis = AsyncMock()
-        mock_redis.set.return_value = True
+        mock_redis = self._redis()
 
         with patch("app.services.auth_service.verify_password", return_value=True):
             svc = AuthService(mock_repo, mock_redis)
@@ -348,8 +353,7 @@ class TestAuthServiceBuiltinAdminLoginAlwaysWorks:
         builtin_user = _make_builtin_user()
         mock_repo.get_by_username.return_value = builtin_user
 
-        mock_redis = AsyncMock()
-        mock_redis.set.return_value = True
+        mock_redis = self._redis()
 
         with patch("app.services.auth_service.verify_password", return_value=True):
             svc = AuthService(mock_repo, mock_redis)
@@ -367,8 +371,7 @@ class TestAuthServiceBuiltinAdminLoginAlwaysWorks:
         builtin_user.role_obj = builtin_role
         mock_repo.get_by_username.return_value = builtin_user
 
-        mock_redis = AsyncMock()
-        mock_redis.set.return_value = True
+        mock_redis = self._redis()
 
         with patch("app.services.auth_service.verify_password", return_value=True):
             svc = AuthService(mock_repo, mock_redis)
@@ -385,8 +388,7 @@ class TestAuthServiceBuiltinAdminLoginAlwaysWorks:
         builtin_user.role_obj = None
         mock_repo.get_by_username.return_value = builtin_user
 
-        mock_redis = AsyncMock()
-        mock_redis.set.return_value = True
+        mock_redis = self._redis()
 
         with patch("app.services.auth_service.verify_password", return_value=True):
             svc = AuthService(mock_repo, mock_redis)

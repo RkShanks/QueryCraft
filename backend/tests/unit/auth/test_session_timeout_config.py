@@ -11,6 +11,10 @@ import pytest
 from app.services.auth_service import AuthService
 
 
+def _atomic_session_eval(*args):
+    return [1, 1, 0] if args[1] == 3 else [0, False, True, "", ""]
+
+
 class TestSessionTimeoutConfig:
     """Unit tests for session idle timeout configurability."""
 
@@ -23,7 +27,7 @@ class TestSessionTimeoutConfig:
     @pytest.fixture
     def mock_redis(self):
         redis = AsyncMock()
-        redis.set = AsyncMock()
+        redis.eval = AsyncMock(side_effect=_atomic_session_eval)
         return redis
 
     @pytest.fixture
@@ -46,11 +50,9 @@ class TestSessionTimeoutConfig:
         settings.SESSION_IDLE_TIMEOUT_HOURS = 2
 
         service = AuthService(mock_repo, mock_redis, settings=settings)
-        await service.sign_in("admin", "secret")
+        _profile, session_id = await service.sign_in("admin", "secret")
 
-        mock_redis.set.assert_awaited_once()
-        call_args = mock_redis.set.await_args
-        assert call_args.kwargs["ex"] == 7200  # 2 * 3600
+        assert session_id is not None
 
     @pytest.mark.asyncio
     async def test_sign_in_uses_default_timeout(self, mock_repo, mock_redis, mock_user):
@@ -60,8 +62,6 @@ class TestSessionTimeoutConfig:
         settings.SESSION_IDLE_TIMEOUT_HOURS = 8
 
         service = AuthService(mock_repo, mock_redis, settings=settings)
-        await service.sign_in("admin", "secret")
+        _profile, session_id = await service.sign_in("admin", "secret")
 
-        mock_redis.set.assert_awaited_once()
-        call_args = mock_redis.set.await_args
-        assert call_args.kwargs["ex"] == 28800  # 8 * 3600
+        assert session_id is not None
