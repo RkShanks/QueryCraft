@@ -78,7 +78,7 @@ class QuotaRepository:
             .order_by(asc(Role.name), asc(Role.id))
             .limit(limit + 1)
         )
-        if cursor:
+        if cursor is not None:
             position = decode_cursor(cursor, _QUOTA_STATUS_CURSOR_NAMESPACE)
             statement = statement.where(
                 or_(Role.name > position.sort_value, and_(Role.name == position.sort_value, Role.id > position.item_id))

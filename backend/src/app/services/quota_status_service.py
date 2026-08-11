@@ -20,6 +20,10 @@ class InvalidQuotaCounterError(ValueError):
     """A stored quota counter is not a canonical non-negative integer."""
 
 
+class QuotaCounterReadError(RuntimeError):
+    """Redis could not return a complete counter batch."""
+
+
 @dataclass(frozen=True)
 class _CounterTarget:
     key: str
@@ -73,7 +77,10 @@ class QuotaStatusAggregator:
         usage: dict[uuid.UUID, dict[str, int]],
         targets: list[_CounterTarget],
     ) -> None:
-        values = await self._redis.mget([target.key for target in targets])
+        try:
+            values = await self._redis.mget([target.key for target in targets])
+        except Exception as exc:
+            raise QuotaCounterReadError from exc
         if len(values) != len(targets):
             raise InvalidQuotaCounterError
         for target, raw_value in zip(targets, values, strict=True):

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from app.core.exceptions import InvalidCursorError
 
 _CURSOR_VERSION = 1
+_MAX_CURSOR_LENGTH = 512
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,8 @@ def encode_cursor(namespace: str, sort_value: str, item_id: uuid.UUID) -> str:
 def decode_cursor(cursor: str, namespace: str) -> CursorPosition:
     """Decode a cursor only when its version, namespace, and value types match."""
     try:
+        if not cursor or len(cursor) > _MAX_CURSOR_LENGTH:
+            raise ValueError
         padding = b"=" * (-len(cursor) % 4)
         raw = base64.b64decode(cursor.encode("ascii") + padding, altchars=b"-_", validate=True)
         payload = json.loads(raw)

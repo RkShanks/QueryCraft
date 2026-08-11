@@ -408,7 +408,7 @@ class SessionRepository:
             .order_by(desc(Session.last_activity_at), desc(Session.id))
             .limit(limit + 1)
         )
-        if cursor:
+        if cursor is not None:
             position = decode_cursor(cursor, _SESSION_CURSOR_NAMESPACE)
             try:
                 activity_at = datetime.fromisoformat(position.sort_value)

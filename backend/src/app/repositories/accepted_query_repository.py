@@ -135,7 +135,7 @@ class AcceptedQueryRepository:
             .order_by(desc(AcceptedQuery.accepted_at), desc(AcceptedQuery.id))
             .limit(limit + 1)
         )
-        if cursor:
+        if cursor is not None:
             position = decode_cursor(cursor, _ATTEMPT_CURSOR_NAMESPACE)
             try:
                 accepted_at = datetime.fromisoformat(position.sort_value)

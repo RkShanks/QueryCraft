@@ -14,7 +14,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from redis.asyncio import Redis
-from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +29,11 @@ from app.repositories.quota_repository import QuotaRepository
 from app.schemas.quota import QuotaListResponse, QuotaStatusResponse, RoleQuotaConfig, RoleQuotaStatus, RoleQuotaUpsert
 from app.services.audit_service import AuditService
 from app.services.quota_service import QuotaConfigTransition, QuotaService
-from app.services.quota_status_service import InvalidQuotaCounterError, QuotaStatusAggregator
+from app.services.quota_status_service import (
+    InvalidQuotaCounterError,
+    QuotaCounterReadError,
+    QuotaStatusAggregator,
+)
 
 router = APIRouter(prefix="/admin/quotas", tags=["Admin Quotas"])
 _TRANSITION_RECONCILIATION_RETRIES = 3
@@ -247,7 +250,7 @@ async def get_quota_status(
     next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     try:
         usage = await QuotaStatusAggregator(repo, redis, date_suffix).usage_by_role(quotas)
-    except (InvalidQuotaCounterError, RedisError) as exc:
+    except (InvalidQuotaCounterError, QuotaCounterReadError) as exc:
         raise _quota_unavailable() from exc
 
     from app.schemas.quota import QuotaDimensionStatus
