@@ -1,4 +1,4 @@
-"""Populated-state builders and assertions for the 001-009 migration chain."""
+"""Populated-state builders and assertions for the Alembic migration chain."""
 
 from __future__ import annotations
 
@@ -82,7 +82,8 @@ def schema_evidence(database_url: str, revision: str) -> dict[str, int | str]:
         "table_count": len(inventory.tables),
         "column_count": sum(len(table.columns) for table in inventory.tables),
         "constraint_count": sum(
-            1 + len(table.foreign_keys) + len(table.unique_constraints) for table in inventory.tables
+            1 + len(table.foreign_keys) + len(table.unique_constraints) + len(table.check_constraints)
+            for table in inventory.tables
         ),
         "index_count": sum(len(table.indexes) for table in inventory.tables),
     }
@@ -577,6 +578,23 @@ def _assert_expected_constraints(inventory: SchemaInventory, revision_number: in
         assert ("role_id", "connection_id") in _unique_column_sets(inventory, "role_connection_policies")
     if revision_number >= 8:
         assert ("role_id",) in _unique_column_sets(inventory, "role_quotas")
+    if revision_number >= 10:
+        assert _check_names(inventory, "role_quotas") == {
+            "ck_role_quotas_daily_execution_limit_nonnegative",
+            "ck_role_quotas_daily_export_limit_nonnegative",
+            "ck_role_quotas_daily_query_limit_nonnegative",
+        }
+        assert _check_names(inventory, "detection_threshold_config") == {
+            "ck_detection_thresholds_ordered_range"
+        }
+        assert _check_names(inventory, "source_database_connections") == {
+            "ck_source_db_connections_database_type_valid",
+            "ck_source_db_connections_health_status_valid",
+            "ck_source_db_connections_lifecycle_state_valid",
+            "ck_source_db_connections_schema_status_valid",
+        }
+        assert _check_names(inventory, "users") == {"ck_users_auth_provider_valid"}
+        assert _check_names(inventory, "sso_providers") == {"ck_sso_providers_protocol_valid"}
 
 
 def _assert_expected_indexes(inventory: SchemaInventory, revision_number: int) -> None:
@@ -637,6 +655,10 @@ def _column(inventory: SchemaInventory, table_name: str, column_name: str) -> tu
 
 def _unique_column_sets(inventory: SchemaInventory, table_name: str) -> set[tuple[str, ...]]:
     return {columns for _, columns in inventory.table(table_name).unique_constraints}
+
+
+def _check_names(inventory: SchemaInventory, table_name: str) -> set[str]:
+    return {name for name, _sqltext in inventory.table(table_name).check_constraints}
 
 
 def _foreign_key_targets(inventory: SchemaInventory, table_name: str) -> set[str]:
