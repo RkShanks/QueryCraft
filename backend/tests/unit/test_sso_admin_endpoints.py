@@ -672,7 +672,15 @@ class TestRouteLevelStatusCodes:
 
     @pytest.mark.asyncio
     async def test_delete_returns_204(self):
+        from app.core.dependencies import get_db
+
         app = self._build_app(session={"permissions": ["admin.sso.manage"]})
+        provider = _make_oidc_provider()
+        mock_db = AsyncMock()
+        mock_db.execute = AsyncMock(return_value=FakeResult([provider]))
+        mock_db.delete = AsyncMock()
+        mock_db.commit = AsyncMock()
+        app.dependency_overrides[get_db] = lambda: mock_db
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
