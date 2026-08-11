@@ -108,6 +108,12 @@ class _EvictAfterReadRedis:
             await self._redis.zrem(self._index_key, self._session_id)
         return session_json
 
+    async def eval(self, script: str, numkeys: int, *keys_and_args: str):
+        if keys_and_args and keys_and_args[0] == self._session_key:
+            await self._redis.delete(self._session_key)
+            await self._redis.zrem(self._index_key, self._session_id)
+        return await self._redis.eval(script, numkeys, *keys_and_args)
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
