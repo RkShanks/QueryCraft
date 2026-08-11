@@ -497,6 +497,8 @@
   "quota.status_title": "حالة استهلاك الحصص",
   "quota.empty": "لا توجد تكوينات حصص بعد.",
   "quota.status_empty": "لا توجد بيانات استخدام للحصص لعرضها.",
+  "quota.load_more_status": "تحميل المزيد من حالة الحصص",
+  "quota.loading_more_status": "جارٍ تحميل المزيد من حالة الحصص…",
   "quota.used": "المستخدم",
   "quota.remaining": "المتبقي",
   "quota.reset_at": "إعادة التعيين في: {{time}}",

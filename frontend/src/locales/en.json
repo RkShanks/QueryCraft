@@ -483,6 +483,8 @@
   "quota.status_title": "Quota Consumption Status",
   "quota.empty": "No quota configurations yet.",
   "quota.status_empty": "No quota usage to display.",
+  "quota.load_more_status": "Load more quota status",
+  "quota.loading_more_status": "Loading more quota status…",
   "quota.used": "Used",
   "quota.remaining": "Remaining",
   "quota.reset_at": "Resets at: {{time}}",
