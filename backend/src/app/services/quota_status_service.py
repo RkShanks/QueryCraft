@@ -87,7 +87,12 @@ def _counter_value(raw_value: str | bytes | None) -> int:
         text_value = raw_value.decode("ascii") if isinstance(raw_value, bytes) else raw_value
     except UnicodeDecodeError:
         raise InvalidQuotaCounterError from None
-    if not isinstance(text_value, str) or not text_value.isascii() or not text_value.isdigit():
+    if (
+        not isinstance(text_value, str)
+        or not text_value.isascii()
+        or not text_value.isdigit()
+        or (len(text_value) > 1 and text_value.startswith("0"))
+    ):
         raise InvalidQuotaCounterError
     try:
         return int(text_value)
