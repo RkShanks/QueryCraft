@@ -1,0 +1,198 @@
+"""CHUNK-12 quota-status pagination and batching regressions."""
+
+import math
+import uuid
+from collections import Counter
+from collections.abc import AsyncGenerator, Sequence
+from datetime import UTC, datetime
+
+import pytest
+from fastapi import FastAPI, Request
+from httpx import ASGITransport, AsyncClient
+from redis.asyncio import Redis
+from sqlalchemy import event, text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+
+from app.api.dependencies.permissions import get_current_role
+from app.api.v1.admin_quotas import router
+from app.core.dependencies import get_db, get_redis
+from app.db.base import get_db as get_permission_db
+from app.db.models.enums import Permission
+
+_ROLE_COUNT = 120
+_USERS_PER_ROLE = 25
+_ROLE_PAGE_LIMIT = 50
+_USER_BATCH_LIMIT = 500
+_REDIS_BATCH_LIMIT = 500
+
+
+class RecordingQuotaRedis:
+    """Record batch sizes and dimensions while delegating to real Redis."""
+
+    def __init__(self, redis: Redis) -> None:
+        self._redis = redis
+        self.get_calls = 0
+        self.mget_sizes: list[int] = []
+        self.dimensions: Counter[str] = Counter()
+
+    async def get(self, key: str):
+        self.get_calls += 1
+        self.dimensions[key.split(":")[2]] += 1
+        return await self._redis.get(key)
+
+    async def mget(self, keys: Sequence[str]):
+        self.mget_sizes.append(len(keys))
+        self.dimensions.update(key.split(":")[2] for key in keys)
+        return await self._redis.mget(keys)
+
+
+async def _quota_status_client(
+    db_session: AsyncSession,
+    redis: RecordingQuotaRedis,
+    user_id: uuid.UUID,
+    role_id: uuid.UUID,
+) -> AsyncGenerator[AsyncClient, None]:
+    async def override_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+
+    async def override_role() -> tuple[uuid.UUID, str, list[str]]:
+        return role_id, "Quota Test Admin", [str(Permission.ADMIN_QUOTAS_MANAGE)]
+
+    async def override_redis() -> RecordingQuotaRedis:
+        return redis
+
+    app = FastAPI()
+
+    @app.middleware("http")
+    async def attach_session(request: Request, call_next):
+        request.state.session = {"user_id": str(user_id)}
+        return await call_next(request)
+
+    app.include_router(router, prefix="/api/v1")
+    app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_permission_db] = override_db
+    app.dependency_overrides[get_current_role] = override_role
+    app.dependency_overrides[get_redis] = override_redis
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client
+
+
+async def _seed_quota_status_dataset(
+    db_session: AsyncSession,
+) -> tuple[list[uuid.UUID], list[uuid.UUID]]:
+    await db_session.execute(text("DELETE FROM role_quotas"))
+    role_ids = [uuid.UUID(int=200_000 + index) for index in range(_ROLE_COUNT)]
+    await db_session.execute(
+        text(
+            """
+            INSERT INTO roles (id, name, description, priority, permissions, is_builtin)
+            VALUES (:id, :name, '', :priority, '[]'::jsonb, false)
+            """
+        ),
+        [
+            {"id": role_id, "name": f"Chunk12 Role {index:03d}", "priority": 50_000 + index}
+            for index, role_id in enumerate(role_ids)
+        ],
+    )
+    await db_session.execute(
+        text(
+            """
+            INSERT INTO role_quotas (
+                id, role_id, daily_query_limit,
+                daily_execution_limit, daily_export_limit
+            )
+            VALUES (:id, :role_id, 100, NULL, 100)
+            """
+        ),
+        [{"id": uuid.uuid4(), "role_id": role_id} for role_id in role_ids],
+    )
+
+    user_ids = [uuid.UUID(int=300_000 + index) for index in range(_ROLE_COUNT * _USERS_PER_ROLE)]
+    await db_session.execute(
+        text(
+            """
+            INSERT INTO users (
+                id, username, display_name, role, role_id, auth_provider
+            )
+            VALUES (:id, :username, '', 'member', :role_id, 'oidc')
+            """
+        ),
+        [
+            {
+                "id": user_id,
+                "username": f"chunk12-status-{index}",
+                "role_id": role_ids[index // _USERS_PER_ROLE],
+            }
+            for index, user_id in enumerate(user_ids)
+        ],
+    )
+    return role_ids, user_ids
+
+
+@pytest.mark.asyncio
+async def test_high_cardinality_status_uses_bounded_database_and_redis_batches(
+    db_session: AsyncSession,
+    async_engine_fixture: AsyncEngine,
+    redis_client: Redis,
+) -> None:
+    admin_row = (
+        await db_session.execute(
+            text(
+                """
+                SELECT users.id AS user_id, roles.id AS role_id
+                FROM users JOIN roles ON roles.id = users.role_id
+                WHERE users.username = 'admin'
+                """
+            )
+        )
+    ).one()
+    role_ids, user_ids = await _seed_quota_status_dataset(db_session)
+    date_suffix = datetime.now(UTC).strftime("%Y-%m-%d")
+    await redis_client.mset(
+        {f"quota:{user_ids[index * _USERS_PER_ROLE]}:queries:{date_suffix}": "3" for index in range(_ROLE_COUNT)}
+    )
+    recording_redis = RecordingQuotaRedis(redis_client)
+    user_selects = 0
+
+    def count_user_selects(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+        nonlocal user_selects
+        if statement.lstrip().upper().startswith("SELECT") and "FROM users" in statement:
+            user_selects += 1
+
+    event.listen(async_engine_fixture.sync_engine, "before_cursor_execute", count_user_selects)
+    seen_role_ids: list[str] = []
+    cursor: str | None = None
+    try:
+        async for client in _quota_status_client(
+            db_session,
+            recording_redis,
+            admin_row.user_id,
+            admin_row.role_id,
+        ):
+            while True:
+                response = await client.get(
+                    "/api/v1/admin/quotas/status",
+                    params={"limit": _ROLE_PAGE_LIMIT, **({"cursor": cursor} if cursor else {})},
+                )
+                assert response.status_code == 200
+                page = response.json()
+                assert len(page["status"]) <= _ROLE_PAGE_LIMIT
+                assert page["total"] == _ROLE_COUNT
+                for role_status in page["status"]:
+                    assert role_status["dimensions"]["queries"]["used"] == 3
+                    assert role_status["dimensions"]["executions"]["used"] == 0
+                    assert role_status["dimensions"]["exports"]["used"] == 0
+                seen_role_ids.extend(role_status["role_id"] for role_status in page["status"])
+                cursor = page["next_cursor"]
+                if cursor is None:
+                    break
+    finally:
+        event.remove(async_engine_fixture.sync_engine, "before_cursor_execute", count_user_selects)
+
+    expected_user_batches = math.ceil((_ROLE_PAGE_LIMIT * _USERS_PER_ROLE) / _USER_BATCH_LIMIT) * 2 + 1
+    assert seen_role_ids == [str(role_id) for role_id in role_ids]
+    assert recording_redis.get_calls == 0
+    assert recording_redis.mget_sizes
+    assert max(recording_redis.mget_sizes) <= _REDIS_BATCH_LIMIT
+    assert recording_redis.dimensions["executions"] == 0
+    assert user_selects == expected_user_batches
