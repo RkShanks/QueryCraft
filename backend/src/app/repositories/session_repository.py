@@ -57,6 +57,19 @@ class IndexedSessionRefreshRequest:
 
 _SESSION_SCORE_SCALE = 1_000_000
 
+
+def _session_key(session_id: str) -> str:
+    return f"session:{session_id}"
+
+
+def _user_index_key(user_id: str) -> str:
+    return f"user_sessions:{user_id}"
+
+
+def _user_sequence_key(user_id: str) -> str:
+    return f"user_sessions_seq:{user_id}"
+
+
 _CREATE_INDEXED_SESSION_LUA = f"""
 local session_type = redis.call('TYPE', KEYS[1]).ok
 local index_type = redis.call('TYPE', KEYS[2]).ok
@@ -453,9 +466,9 @@ class SessionRepository:
     ) -> IndexedSessionCreateResult:
         """Create a session key and enforce the per-user index atomically."""
         keys_and_args: tuple[Any, ...] = (
-            f"session:{request.session_id}",
-            f"user_sessions:{request.user_id}",
-            f"user_sessions_seq:{request.user_id}",
+            _session_key(request.session_id),
+            _user_index_key(request.user_id),
+            _user_sequence_key(request.user_id),
             request.session_id,
             request.session_json,
             str(float(request.created_at)),
@@ -477,7 +490,7 @@ class SessionRepository:
         session_deleted, user_found, index_empty, user_id, actor_identity = await redis.eval(
             _DELETE_INDEXED_SESSION_LUA,
             1,
-            f"session:{session_id}",
+            _session_key(session_id),
             session_id,
         )
         return IndexedSessionDeleteResult(
@@ -496,7 +509,7 @@ class SessionRepository:
         refreshed_session = await redis.eval(
             _REFRESH_INDEXED_SESSION_LUA,
             1,
-            f"session:{request.session_id}",
+            _session_key(request.session_id),
             str(float(request.now)),
             str(int(request.ttl_seconds)),
             request.session_id,
