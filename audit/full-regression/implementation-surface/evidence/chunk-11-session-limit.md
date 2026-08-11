@@ -1,6 +1,6 @@
 # CHUNK-11 / IS-GAP-012 — atomic concurrent-session eviction
 
-Status: implementation proof passed on branch `phase-6/wave-19.11-session-limit-atomic`; authoritative GitHub backend/frontend CI is pending.
+Status: implementation proof and authoritative GitHub backend/frontend CI passed on branch `phase-6/wave-19.11-session-limit-atomic`; squash merge is pending.
 
 Tested product commit: `00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652`.
 
@@ -51,6 +51,8 @@ Cleanup proof: final disposable Redis DB size was zero after cleanup.
 | Ruff format check | `src tests` already formatted |
 | JSON validation | Evidence JSON and matrix JSON passed |
 | `git diff --check` | passed |
+| GitHub backend-test | passed on `f17bf48ba7a829a1f77aea374de2fe7276491c6c` |
+| GitHub frontend-test | passed on `f17bf48ba7a829a1f77aea374de2fe7276491c6c` |
 
 All evidence records only counts, booleans, limits, statuses, and commit IDs. No session IDs, cookies, OIDC/SAML tokens, assertions, or complete session payloads were retained.
 

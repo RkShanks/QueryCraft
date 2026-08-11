@@ -1,7 +1,7 @@
 {
   "chunk": "CHUNK-11",
   "gap_id": "IS-GAP-012",
-  "status": "implementation_passed_ci_pending",
+  "status": "implementation_and_ci_passed_merge_pending",
   "branch": "phase-6/wave-19.11-session-limit-atomic",
   "tested_product_commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652",
   "tdd_commits": [
@@ -136,11 +136,11 @@
       "passed": true
     },
     {
-      "command": "python -m json.tool evidence and consolidated matrix JSON",
+      "command": "rtk uv run python -m json.tool evidence and consolidated matrix JSON",
       "passed": true
     },
     {
-      "command": "git diff --check",
+      "command": "rtk git diff --check",
       "passed": true
     }
   ],
@@ -152,8 +152,9 @@
     "evidence_contains_sensitive_values": false
   },
   "ci": {
-    "backend_test": "pending",
-    "frontend_test": "pending"
+    "head_commit": "f17bf48ba7a829a1f77aea374de2fe7276491c6c",
+    "backend_test": "passed",
+    "frontend_test": "passed"
   },
   "next_chunk_unblocked": false
 }
