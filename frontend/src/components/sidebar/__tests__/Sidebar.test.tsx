@@ -64,10 +64,20 @@ vi.mock('react-router-dom', async () => {
 import { useSessionsList } from '../../../hooks/useSessions';
 import { useSignOut, useCurrentUser } from '../../../hooks/useAuth';
 
-function setup(sessions = mockSessions, isLoading = false) {
+function setup(
+  sessions = mockSessions,
+  isLoading = false,
+  overrides: Record<string, unknown> = {}
+) {
   (useSessionsList as ReturnType<typeof vi.fn>).mockReturnValue({
     data: { items: sessions, total: sessions.length },
     isLoading,
+    isError: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
+    refetch: vi.fn(),
+    ...overrides,
   });
   return render(<Sidebar />, { wrapper: createWrapper() });
 }
@@ -130,6 +140,33 @@ describe('Sidebar', () => {
   it('renders loading state', () => {
     setup([], true);
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
+
+  it.each([
+    ['en', 'Load more sessions'],
+    ['ar', 'تحميل المزيد من الجلسات'],
+  ])('loads another page only from the localized action in %s', async (language, label) => {
+    await i18n.changeLanguage(language);
+    const fetchNextPage = vi.fn();
+    try {
+      setup(mockSessions, false, { hasNextPage: true, fetchNextPage });
+      const loadMore = screen.getByRole('button', { name: label });
+      expect(fetchNextPage).not.toHaveBeenCalled();
+      fireEvent.click(loadMore);
+      expect(fetchNextPage).toHaveBeenCalledTimes(1);
+    } finally {
+      await i18n.changeLanguage('en');
+    }
+  });
+
+  it('renders an accessible session-list error retry', () => {
+    const refetch = vi.fn();
+    setup([], false, { isError: true, refetch });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load sessions.');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it('clicking New Chat resets activeSessionId to null', () => {

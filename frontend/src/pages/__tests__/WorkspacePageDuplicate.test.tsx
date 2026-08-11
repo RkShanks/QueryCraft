@@ -6,6 +6,7 @@ import { WorkspacePage } from '../WorkspacePage';
 import { renderWithClient } from '../../test/utils';
 import { server } from '../../test/server';
 import { useUIStore } from '../../stores/uiStore';
+import i18n from '../../i18n';
 import type { QueryResult, SessionDetail } from '../../api/generated/types.gen';
 
 beforeEach(() => {
@@ -59,6 +60,8 @@ function mockSessionDetailWithSameAttempt() {
         preview_text: 'What is revenue?',
         created_at: new Date().toISOString(),
         last_activity_at: new Date().toISOString(),
+        attempts_total: 1,
+        attempts_next_cursor: null,
         attempts: [
           {
             id: ACCEPTED_QUERY_ID,
@@ -160,6 +163,8 @@ describe('WorkspacePage duplicate turn regression', () => {
           preview_text: 'What is revenue?',
           created_at: new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
+          attempts_total: 2,
+          attempts_next_cursor: null,
           attempts: [
             {
               id: ACCEPTED_QUERY_ID,
@@ -222,4 +227,95 @@ describe('WorkspacePage duplicate turn regression', () => {
     const userBubbles = screen.getAllByTestId('user-bubble');
     expect(userBubbles).toHaveLength(1);
   }, 10000);
+
+  it.each([
+    ['en', 'Load older messages'],
+    ['ar', 'تحميل الرسائل الأقدم'],
+  ])('loads older attempts explicitly in chronological order in %s', async (language, label) => {
+    await i18n.changeLanguage(language);
+    const requestedCursors: Array<string | null> = [];
+    useUIStore.setState({ activeSessionId: NEW_SESSION_ID });
+    server.use(
+      http.get('/api/v1/sessions/:sessionId', ({ params, request }) => {
+        const cursor = new URL(request.url).searchParams.get('attempt_cursor');
+        requestedCursors.push(cursor);
+        const base = {
+          id: params.sessionId as string,
+          connection_id: null,
+          preview_text: '',
+          created_at: '2026-08-10T00:00:00Z',
+          last_activity_at: '2026-08-12T00:00:00Z',
+          attempts_total: 2,
+        };
+        if (cursor === 'older-page') {
+          return HttpResponse.json({
+            ...base,
+            attempts: [
+              { id: 'newer-attempt', question_text: 'Newer question', generated_sql: '', accepted_at: '2026-08-12T00:00:00Z', saved: true },
+              { id: 'older-attempt', question_text: 'Older question', generated_sql: '', accepted_at: '2026-08-10T00:00:00Z', saved: true },
+            ],
+            attempts_next_cursor: null,
+          });
+        }
+        return HttpResponse.json({
+          ...base,
+          attempts: [
+            { id: 'newer-attempt', question_text: 'Newer question', generated_sql: '', accepted_at: '2026-08-12T00:00:00Z', saved: true },
+          ],
+          attempts_next_cursor: 'older-page',
+        });
+      })
+    );
+
+    try {
+      renderWithClient(<WorkspacePage />);
+      const loadOlder = await screen.findByRole('button', { name: label });
+      expect(requestedCursors).toEqual([null]);
+      fireEvent.click(loadOlder);
+
+      await waitFor(() => {
+        expect(screen.getAllByTestId('user-bubble').map((bubble) => bubble.textContent)).toEqual([
+          'Older question',
+          'Newer question',
+        ]);
+      });
+      expect(requestedCursors).toEqual([null, 'older-page']);
+    } finally {
+      await i18n.changeLanguage('en');
+    }
+  });
+
+  it('retries a failed initial attempt page without showing stale turns', async () => {
+    let requests = 0;
+    useUIStore.setState({ activeSessionId: NEW_SESSION_ID });
+    server.use(
+      http.get('/api/v1/sessions/:sessionId', ({ params }) => {
+        requests += 1;
+        if (requests === 1) {
+          return HttpResponse.json(
+            { error: 'service_unavailable', message_key: 'error.service_unavailable' },
+            { status: 503 }
+          );
+        }
+        return HttpResponse.json({
+          id: params.sessionId as string,
+          connection_id: null,
+          preview_text: '',
+          created_at: '2026-08-10T00:00:00Z',
+          last_activity_at: '2026-08-12T00:00:00Z',
+          attempts: [],
+          attempts_total: 0,
+          attempts_next_cursor: null,
+        });
+      })
+    );
+
+    renderWithClient(<WorkspacePage />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load conversation history.');
+    expect(screen.queryByTestId('user-bubble')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => expect(requests).toBe(2));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  });
 });
