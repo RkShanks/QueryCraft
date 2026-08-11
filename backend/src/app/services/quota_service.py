@@ -135,11 +135,17 @@ class _QuotaLimits:
     def from_record(cls, quota_config: "RoleQuota | None") -> "_QuotaLimits":
         if quota_config is None:
             return cls(None, None, None)
-        return cls(
+        limits = (
             quota_config.daily_query_limit,
             quota_config.daily_execution_limit,
             quota_config.daily_export_limit,
         )
+        if any(
+            limit is not None and (isinstance(limit, bool) or not isinstance(limit, int) or limit < 0)
+            for limit in limits
+        ):
+            raise ValueError("invalid persisted quota limit")
+        return cls(*limits)
 
     def serialize(self, revision: int) -> str:
         cache_payload = {**asdict(self), "revision": revision}

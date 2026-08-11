@@ -44,6 +44,7 @@ class TableSchema:
     primary_key: tuple[str, tuple[str, ...]]
     foreign_keys: tuple[tuple[object, ...], ...]
     unique_constraints: tuple[tuple[str, tuple[str, ...]], ...]
+    check_constraints: tuple[tuple[str, str], ...]
     indexes: tuple[tuple[object, ...], ...]
 
 
@@ -246,6 +247,12 @@ def _table_schema(inspector, table_name: str) -> TableSchema:
         unique_constraints=tuple(
             sorted(_constraint_contract(constraint) for constraint in inspector.get_unique_constraints(table_name))
         ),
+        check_constraints=tuple(
+            sorted(
+                (str(constraint.get("name") or ""), str(constraint.get("sqltext") or ""))
+                for constraint in inspector.get_check_constraints(table_name)
+            )
+        ),
         indexes=tuple(sorted(_index_contract(index) for index in inspector.get_indexes(table_name))),
     )
 
@@ -277,6 +284,7 @@ def _fingerprint(inventory: SchemaInventory) -> str:
             "primary_key": table.primary_key,
             "foreign_keys": table.foreign_keys,
             "unique_constraints": table.unique_constraints,
+            "check_constraints": table.check_constraints,
             "indexes": table.indexes,
         }
         for table in inventory.tables

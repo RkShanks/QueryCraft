@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from math import isfinite
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,41 +24,57 @@ class DetectionConfigRepository:
 
     There is exactly one row in the detection_threshold_config table.
     ``get()`` creates it with defaults if the table is empty.
-    ``update()`` validates block > flag before persisting.
+    ``update()`` requires one valid existing row before persisting.
     """
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def get(self) -> DetectionThresholdConfig:
-        """Return the singleton config row, creating it with defaults if missing."""
-        result = await self._session.execute(select(DetectionThresholdConfig))
-        row = result.scalar_one_or_none()
+        """Return the singleton, initializing an empty table atomically."""
+        row = await self._valid_singleton_or_none()
         if row is not None:
             return row
-        row = DetectionThresholdConfig(
-            block_confidence=_DEFAULT_BLOCK,
-            flag_confidence=_DEFAULT_FLAG,
-            updated_at=datetime.now(UTC),
+        statement = (
+            insert(DetectionThresholdConfig)
+            .values(
+                block_confidence=_DEFAULT_BLOCK,
+                flag_confidence=_DEFAULT_FLAG,
+                updated_at=datetime.now(UTC),
+            )
+            .on_conflict_do_nothing()
         )
-        self._session.add(row)
-        await self._session.flush()
+        await self._session.execute(statement)
+        row = await self._valid_singleton_or_none()
+        if row is None:
+            raise DetectionUnavailableError()
         return row
 
-    async def get_for_detection(self) -> DetectionThresholdConfig:
-        """Return one valid runtime config or fail closed.
-
-        The administrative read path may initialize the singleton. The query
-        path must never repair missing or corrupt security configuration as a
-        side effect of processing user input.
-        """
+    async def _valid_singleton_or_none(self) -> DetectionThresholdConfig | None:
         result = await self._session.execute(select(DetectionThresholdConfig))
         try:
             row = result.scalar_one_or_none()
         except MultipleResultsFound:
             raise DetectionUnavailableError() from None
+        if row is not None and not self._has_valid_thresholds(row):
+            raise DetectionUnavailableError()
+        return row
 
-        if row is None or not self._has_valid_thresholds(row):
+    async def get_for_detection(self) -> DetectionThresholdConfig:
+        """Return one valid runtime config or fail closed.
+
+        The query path never repairs missing or corrupt security configuration
+        as a side effect of processing user input.
+        """
+        return await self._required_valid_singleton()
+
+    async def get_for_admin(self) -> DetectionThresholdConfig:
+        """Return one valid administrative config without repairing state."""
+        return await self._required_valid_singleton()
+
+    async def _required_valid_singleton(self) -> DetectionThresholdConfig:
+        row = await self._valid_singleton_or_none()
+        if row is None:
             raise DetectionUnavailableError()
         return row
 
@@ -75,9 +92,9 @@ class DetectionConfigRepository:
         """Update block/flag confidence on the singleton row.
 
         ``data`` is already validated by Pydantic (block > flag).
-        Creates the singleton with defaults first if not yet present.
+        Missing or corrupt singleton state fails closed without mutation.
         """
-        row = await self.get()
+        row = await self.get_for_admin()
         row.block_confidence = data.block_confidence
         row.flag_confidence = data.flag_confidence
         row.updated_at = datetime.now(UTC)

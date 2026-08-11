@@ -1,0 +1,159 @@
+{
+  "schema_version": "1.0",
+  "chunk": "CHUNK-10",
+  "gap_ids": ["IS-GAP-017", "IS-GAP-013"],
+  "status": "ci_passed_merge_pending",
+  "starting_sha": "453875adb54599dd1ba16baa10101af6427588fa",
+  "tested_product_commit": "3b6f90dd938d51bef9e04ba4f5a57afce3335b68",
+  "verification_commit": "c0a74d891b3a28b8b35d405a85a1969a69ec561f",
+  "ci_validated_commit": "c0a74d891b3a28b8b35d405a85a1969a69ec561f",
+  "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/308",
+  "revision": {
+    "id": "010",
+    "parent": "009",
+    "dynamic_head": true,
+    "check_constraint_count": 10,
+    "unique_index_count": 1,
+    "sqlalchemy_metadata_mirrored": true,
+    "legacy_user_role_constrained": false,
+    "permission_strings_constrained": false,
+    "audit_action_types_constrained": false
+  },
+  "constraints": [
+    {"category": "quota_daily_query_nonnegative", "name": "ck_role_quotas_daily_query_limit_nonnegative", "count": 1},
+    {"category": "quota_daily_execution_nonnegative", "name": "ck_role_quotas_daily_execution_limit_nonnegative", "count": 1},
+    {"category": "quota_daily_export_nonnegative", "name": "ck_role_quotas_daily_export_limit_nonnegative", "count": 1},
+    {"category": "detection_finite_range_order", "name": "ck_detection_thresholds_ordered_range", "count": 1},
+    {"category": "source_database_type", "name": "ck_source_db_connections_database_type_valid", "count": 1},
+    {"category": "source_lifecycle_state", "name": "ck_source_db_connections_lifecycle_state_valid", "count": 1},
+    {"category": "source_health_state", "name": "ck_source_db_connections_health_status_valid", "count": 1},
+    {"category": "source_schema_state", "name": "ck_source_db_connections_schema_status_valid", "count": 1},
+    {"category": "user_auth_provider", "name": "ck_users_auth_provider_valid", "count": 1},
+    {"category": "sso_protocol", "name": "ck_sso_providers_protocol_valid", "count": 1},
+    {"category": "detection_singleton", "name": "uq_detection_threshold_config_singleton", "count": 1}
+  ],
+  "direct_write_proof": {
+    "negative_nullable_quota_cases": 3,
+    "threshold_boundary_cases": 10,
+    "nonfinite_threshold_cases": 6,
+    "source_enum_categories": 4,
+    "identity_provider_categories": 2,
+    "duplicate_singleton_cases": 1,
+    "total_rejected_cases": 20,
+    "expected_named_invariant_for_every_case": true
+  },
+  "preflight": {
+    "read_only_before_schema_or_data_mutation": true,
+    "repeated_under_write_excluding_locks": true,
+    "refusal_categories": 6,
+    "constant_value_safe_error": true,
+    "alembic_revision_unchanged_on_refusal": true,
+    "schema_unchanged_on_refusal": true,
+    "constraints_unchanged_on_refusal": true,
+    "indexes_unchanged_on_refusal": true,
+    "rows_unchanged_on_refusal": true,
+    "empty_detection_table_is_corruption": false,
+    "default_rows_inserted_when_empty": 1,
+    "silent_delete_or_normalize": false,
+    "authoritative_duplicate_selected": false
+  },
+  "migration_matrix": {
+    "base_to_dynamic_head": true,
+    "populated_stepwise_cycle": true,
+    "revision_009_to_010_to_009_to_010": true,
+    "dynamic_head_to_historical_targets": true,
+    "schema_names_verified": true,
+    "downgrade_application_rows_deleted": 0,
+    "disposable_suite_cases_passed": 66,
+    "revision_010_cases_passed": 30
+  },
+  "concurrency": {
+    "real_postgresql": true,
+    "simultaneous_initializers": 8,
+    "distinct_returned_row_ids": 1,
+    "rows_after_initialization": 1,
+    "atomic_initialization_proven": true
+  },
+  "runtime": {
+    "query_time_repair_side_effect": false,
+    "admin_repair_side_effect": false,
+    "admin_corruption_cases": 6,
+    "admin_corruption_status": 503,
+    "admin_corruption_responses_sanitized": true,
+    "valid_admin_update_and_audit_preserved": true,
+    "corrupt_quota_dimensions": 3,
+    "corrupt_quota_cache_publications": 0,
+    "corrupt_quota_counter_attempts": 0,
+    "source_provider_sanitized_cases": 3,
+    "response_persisted_values_present": false,
+    "response_database_details_present": false
+  },
+  "live_api_proof": {
+    "browser_used": false,
+    "disposable_populated_postgresql": true,
+    "pre_repair_status": 503,
+    "pre_repair_state_unchanged": true,
+    "pre_repair_revision": "009",
+    "explicit_repair_transaction": true,
+    "migration_retry_succeeded": true,
+    "post_repair_revision": "010",
+    "post_repair_status": 200,
+    "evidence_sql_payloads_present": false,
+    "evidence_corrupt_values_present": false
+  },
+  "repair_runbook": {
+    "path": "docs/operations/revision-010-invariant-repair.md",
+    "category_count_only_diagnosis": true,
+    "backup_required": true,
+    "operator_controlled_transaction": true,
+    "verification_before_retry": true,
+    "automatic_deletion_prescribed": false,
+    "newest_duplicate_selection_prescribed": false,
+    "owner_decision_required_for_duplicates": true
+  },
+  "tdd_commits": {
+    "red": [
+      "e940f7300667329aaa55cf6c082dcf6de44d8917",
+      "f58ab37e9b892d6c0aeda13cc1cca1c1e1d9e097",
+      "f7873483610b155b10af0699890163280a0601cc"
+    ],
+    "green": [
+      "08b235ec8de7c170ce04e64ddd0eb7911f39ac56",
+      "0ef7b21b3c41af4a3d94d8a91c9e52c23eba96ba"
+    ],
+    "refactor": ["17fcea09199ac33a6703f97ff8e0669a49bc0c30"],
+    "history_rewritten": false
+  },
+  "local_gates": {
+    "revision_010_postgresql": "30 passed",
+    "complete_migration_suite": "66 passed",
+    "migration_drift_schema_index": "39 passed",
+    "backend_unit_foundation": "2490 passed, 14 deselected",
+    "quota_detection_hostile_ordering": "155 passed",
+    "connection_auth_sso_persistence": "159 passed",
+    "required_integration_slice": "118 passed, 11 skipped",
+    "ruff_check": "passed",
+    "ruff_format": "436 files already formatted",
+    "json_validation": "passed",
+    "git_diff_check": "passed",
+    "test_guard": "passed",
+    "clean_code_guard": "passed",
+    "docs_guard": "passed"
+  },
+  "authoritative_ci": {
+    "backend_test": "passed",
+    "frontend_test": "passed",
+    "required_before_merge": true
+  },
+  "cleanup": {
+    "disposable_databases_remaining": 0,
+    "chunk_created_containers_remaining": 0,
+    "chunk_created_networks_remaining": 0,
+    "preexisting_volumes_deleted": 0,
+    "browser_artifacts_created": 0,
+    "temporary_test_cache_remaining": 0,
+    "protected_baseline_unchanged": true
+  },
+  "chunk_11_unblocked": false,
+  "chunk_11_unblocked_on_ci_passed_squash_merge": true
+}

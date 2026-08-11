@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, text
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Index, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,4 +26,16 @@ class DetectionThresholdConfig(Base):
     updated_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "0 <= flag_confidence AND flag_confidence < block_confidence AND block_confidence <= 1",
+            name="ck_detection_thresholds_ordered_range",
+        ),
+        Index(
+            "uq_detection_threshold_config_singleton",
+            text("(true)"),
+            unique=True,
+        ),
     )

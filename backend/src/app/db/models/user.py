@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,3 +41,10 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     role_obj: Mapped[Role] = relationship("Role", lazy="selectin")
+
+    __table_args__ = (
+        CheckConstraint(
+            "auth_provider IN ('local', 'oidc', 'saml')",
+            name="ck_users_auth_provider_valid",
+        ),
+    )

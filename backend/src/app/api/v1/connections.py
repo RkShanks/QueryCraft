@@ -4,7 +4,8 @@ GET /api/v1/connections — returns active + healthy + introspected connections
 with minimal payload (id, display_name, database_type). No sensitive fields.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -35,4 +36,13 @@ async def list_user_connections(
     Returns only active + healthy + successfully introspected connections.
     Minimal payload: id, display_name, database_type. No host/port/credentials.
     """
-    return await service.list_user_available()
+    try:
+        return await service.list_user_available()
+    except (LookupError, ValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "service_unavailable",
+                "message_key": "error.service_unavailable",
+            },
+        ) from None

@@ -58,35 +58,20 @@ class TestDetectionConfigRepositoryGet:
         from app.repositories.detection_config_repository import DetectionConfigRepository
 
         session = _make_session()
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = None
-        session.execute.return_value = result_mock
-
-        repo = DetectionConfigRepository(session)
-        await repo.get()
-
-        # Should have added a new row
-        session.add.assert_called_once()
-        added = session.add.call_args[0][0]
-        assert added.block_confidence == pytest.approx(0.8)
-        assert added.flag_confidence == pytest.approx(0.5)
-
-    @pytest.mark.asyncio
-    async def test_get_returns_created_row(self):
-        from app.repositories.detection_config_repository import DetectionConfigRepository
-
-        session = _make_session()
-        result_mock = MagicMock()
-        result_mock.scalar_one_or_none.return_value = None
-        session.execute.return_value = result_mock
+        missing_result = MagicMock()
+        missing_result.scalar_one_or_none.return_value = None
+        inserted = _make_threshold_row()
+        inserted_result = MagicMock()
+        inserted_result.scalar_one_or_none.return_value = inserted
+        session.execute.side_effect = [missing_result, MagicMock(), inserted_result]
 
         repo = DetectionConfigRepository(session)
         row = await repo.get()
 
-        # Returned value should be the newly created instance
-        assert row is not None
+        assert row is inserted
         assert row.block_confidence == pytest.approx(0.8)
         assert row.flag_confidence == pytest.approx(0.5)
+        session.add.assert_not_called()
 
 
 class TestDetectionConfigRepositoryForDetection:
@@ -189,6 +174,7 @@ class TestDetectionConfigRepositoryUpdate:
 
     @pytest.mark.asyncio
     async def test_update_creates_row_if_missing_then_sets_values(self):
+        from app.core.exceptions import DetectionUnavailableError
         from app.repositories.detection_config_repository import DetectionConfigRepository
         from app.schemas.detection import DetectionThresholdUpdate
 
@@ -199,10 +185,11 @@ class TestDetectionConfigRepositoryUpdate:
 
         repo = DetectionConfigRepository(session)
         data = DetectionThresholdUpdate(block_confidence=0.85, flag_confidence=0.45)
-        updated = await repo.update(data)
+        with pytest.raises(DetectionUnavailableError):
+            await repo.update(data)
 
-        assert updated.block_confidence == pytest.approx(0.85)
-        assert updated.flag_confidence == pytest.approx(0.45)
+        session.add.assert_not_called()
+        session.flush.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_update_calls_flush(self):
