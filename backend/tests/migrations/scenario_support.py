@@ -584,9 +584,7 @@ def _assert_expected_constraints(inventory: SchemaInventory, revision_number: in
             "ck_role_quotas_daily_export_limit_nonnegative",
             "ck_role_quotas_daily_query_limit_nonnegative",
         }
-        assert _check_names(inventory, "detection_threshold_config") == {
-            "ck_detection_thresholds_ordered_range"
-        }
+        assert _check_names(inventory, "detection_threshold_config") == {"ck_detection_thresholds_ordered_range"}
         assert _check_names(inventory, "source_database_connections") == {
             "ck_source_db_connections_database_type_valid",
             "ck_source_db_connections_health_status_valid",

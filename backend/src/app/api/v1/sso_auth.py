@@ -16,7 +16,7 @@ Security:
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter, Depends, Form, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -116,10 +116,20 @@ async def list_providers(
     providers = await _get_active_providers(db)
     result = []
     for p in providers:
-        login_url = "/api/v1/auth/sso/oidc/login" if p.protocol == SsoProtocol.OIDC else "/api/v1/auth/sso/saml/login"
+        try:
+            protocol = SsoProtocol(p.protocol)
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "service_unavailable",
+                    "message_key": "error.service_unavailable",
+                },
+            ) from None
+        login_url = "/api/v1/auth/sso/oidc/login" if protocol == SsoProtocol.OIDC else "/api/v1/auth/sso/saml/login"
         result.append(
             SsoProviderPublic(
-                protocol=p.protocol,
+                protocol=protocol.value,
                 display_name=p.display_name,
                 login_url=login_url,
             )

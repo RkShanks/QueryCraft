@@ -4,7 +4,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Index, Integer, String, text
+from sqlalchemy import CheckConstraint, DateTime, Enum, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -80,4 +80,22 @@ class SourceDatabaseConnection(Base):
         "updated_at", DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
 
-    __table_args__ = (Index("ix_source_db_connections_lifecycle_state", "lifecycle_state"),)
+    __table_args__ = (
+        CheckConstraint(
+            "database_type IN ('postgresql', 'mysql', 'mssql')",
+            name="ck_source_db_connections_database_type_valid",
+        ),
+        CheckConstraint(
+            "lifecycle_state IN ('active', 'disabled')",
+            name="ck_source_db_connections_lifecycle_state_valid",
+        ),
+        CheckConstraint(
+            "health_status IN ('untested', 'healthy', 'unhealthy')",
+            name="ck_source_db_connections_health_status_valid",
+        ),
+        CheckConstraint(
+            "schema_introspection_status IN ('none', 'success', 'failed', 'stale')",
+            name="ck_source_db_connections_schema_status_valid",
+        ),
+        Index("ix_source_db_connections_lifecycle_state", "lifecycle_state"),
+    )

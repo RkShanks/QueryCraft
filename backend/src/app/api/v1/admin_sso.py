@@ -56,9 +56,10 @@ def _get_encryption_key() -> str:
 
 def _provider_to_response(provider: SsoProvider) -> dict:
     """Convert ORM provider to masked response dict."""
+    protocol = _validated_provider_protocol(provider.protocol)
     return {
         "id": str(provider.id),
-        "protocol": provider.protocol,
+        "protocol": protocol.value,
         "display_name": provider.display_name,
         "issuer_url": provider.issuer_url,
         "client_id": provider.client_id,
@@ -74,6 +75,19 @@ def _provider_to_response(provider: SsoProvider) -> dict:
         "created_at": (provider.created_at.isoformat() if provider.created_at else None),
         "updated_at": (provider.updated_at.isoformat() if provider.updated_at else None),
     }
+
+
+def _validated_provider_protocol(protocol: object) -> SsoProtocol:
+    try:
+        return SsoProtocol(protocol)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "service_unavailable",
+                "message_key": "error.service_unavailable",
+            },
+        ) from None
 
 
 def _validate_oidc_required(body: SsoProviderCreate | SsoProviderUpdate) -> None:
@@ -274,6 +288,7 @@ async def update_provider(
                     "message_key": "error.notFound",
                 },
             )
+        protocol = _validated_provider_protocol(provider.protocol)
 
         key = _get_encryption_key()
 
@@ -315,7 +330,7 @@ async def update_provider(
             resource_id=str(provider.id),
             outcome="success",
             context={
-                "protocol": str(provider.protocol),
+                "protocol": protocol.value,
                 "display_name": provider.display_name,
                 "action": "update",
             },
@@ -354,11 +369,12 @@ async def delete_provider(
                     "message_key": "error.notFound",
                 },
             )
+        protocol = _validated_provider_protocol(provider.protocol)
 
         # Capture provider data before deletion for audit log
         try:
             audit_context = {
-                "protocol": str(provider.protocol),
+                "protocol": protocol.value,
                 "display_name": provider.display_name,
                 "action": "delete",
             }

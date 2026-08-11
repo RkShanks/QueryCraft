@@ -145,7 +145,7 @@ def test_invalid_source_connection_enum_is_rejected(
     constraint_name: str,
 ) -> None:
     upgrade(disposable_database_url, "head")
-    statement = f"""
+    statement = """
         INSERT INTO source_database_connections (
             display_name, database_type, host, port, database_name, username,
             encrypted_password, ssl_mode, lifecycle_state, health_status,

@@ -10,8 +10,8 @@ from fastapi import HTTPException
 
 from app.api.v1 import admin_sso, connections, sso_auth
 from app.core.exceptions import QuotaUnavailableError
-from app.db.models.sso_provider import SsoProvider
 from app.db.models.role_quota import RoleQuota
+from app.db.models.sso_provider import SsoProvider
 from app.services.connection_service import ConnectionService
 from app.services.quota_service import QuotaService
 

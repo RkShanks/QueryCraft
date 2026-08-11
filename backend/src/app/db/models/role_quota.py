@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -38,3 +38,18 @@ class RoleQuota(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
     role: Mapped[Role] = relationship("Role", lazy="selectin")
+
+    __table_args__ = (
+        CheckConstraint(
+            "daily_query_limit IS NULL OR daily_query_limit >= 0",
+            name="ck_role_quotas_daily_query_limit_nonnegative",
+        ),
+        CheckConstraint(
+            "daily_execution_limit IS NULL OR daily_execution_limit >= 0",
+            name="ck_role_quotas_daily_execution_limit_nonnegative",
+        ),
+        CheckConstraint(
+            "daily_export_limit IS NULL OR daily_export_limit >= 0",
+            name="ck_role_quotas_daily_export_limit_nonnegative",
+        ),
+    )
