@@ -47,6 +47,8 @@ class QuotaStatusResponse(BaseModel):
     """Quota status list response."""
 
     status: list[RoleQuotaStatus]
+    total: int
+    next_cursor: str | None
 
 
 class QuotaListResponse(BaseModel):

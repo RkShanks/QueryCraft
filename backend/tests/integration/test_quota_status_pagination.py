@@ -189,7 +189,8 @@ async def test_high_cardinality_status_uses_bounded_database_and_redis_batches(
     finally:
         event.remove(async_engine_fixture.sync_engine, "before_cursor_execute", count_user_selects)
 
-    expected_user_batches = math.ceil((_ROLE_PAGE_LIMIT * _USERS_PER_ROLE) / _USER_BATCH_LIMIT) * 2 + 1
+    # The final 500-user role page needs one empty keyset probe to prove completion.
+    expected_user_batches = math.ceil((_ROLE_PAGE_LIMIT * _USERS_PER_ROLE) / _USER_BATCH_LIMIT) * 2 + 2
     assert seen_role_ids == [str(role_id) for role_id in role_ids]
     assert recording_redis.get_calls == 0
     assert recording_redis.mget_sizes
