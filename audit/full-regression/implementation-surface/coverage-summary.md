@@ -97,8 +97,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 | Status | Count |
 | --- | ---: |
-| Pending | 30 |
-| Resolved | 14 |
+| Pending | 29 |
+| Resolved | 15 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
 | **Total** | **47** |
@@ -123,6 +123,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-017` and `IS-GAP-013` are resolved on tested product commit `3b6f90dd938d51bef9e04ba4f5a57afce3335b68` in [#308](https://github.com/RkShanks/QueryCraft/pull/308); authoritative backend/frontend CI passed on `c0a74d891b3a28b8b35d405a85a1969a69ec561f` and squash merge is pending. Their [CHUNK-10 evidence](evidence/chunk-10-data-invariants.md) records revision-010 named constraints, value-safe atomic preflight/refusal, explicit repair, reversible migration cycles, direct invalid-write rejection, real concurrent singleton initialization, fail-closed quota/detection/source/provider consumers, API-only corruption/recovery, gates and cleanup.
 
+`IS-GAP-012` is resolved on tested product commit `00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652`; authoritative backend/frontend CI is pending. Its [CHUNK-11 evidence](evidence/chunk-11-session-limit.md) records real Redis atomic create/delete/refresh, deterministic sequence ordering for equal timestamps, ordered-timestamp and two-user isolation bursts, rollout score compatibility, stale-member pruning, CAS/no-resurrection refresh, local/SSO concurrency, rollback/outage behavior, gates and cleanup.
+
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
 - CHUNK-07 closes the identity/cache/permission slice with joint same-browser cache, DOM, accessibility, storage, network and console inspection. IS-GAP-047 remains open because its broader hostile/error/download privacy flow still depends on other unresolved gaps.
@@ -134,7 +136,7 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-11` is next but remains blocked until CHUNK-10 passes authoritative backend/frontend CI and is squash-merged; no CHUNK-11 work has started.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-11` is resolved on tested branch commit `00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652`; authoritative backend/frontend CI and merge remain the `CHUNK-12` dispatch gate. No CHUNK-12 work has started.
 
 ## Validation scope
 
