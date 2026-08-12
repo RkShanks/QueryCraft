@@ -26,7 +26,7 @@ export interface UseAdminQuotasOptions {
 }
 
 function flattenedQuotaStatus(
-  pages: InfiniteData<QuotaStatusPage, string | undefined> | undefined
+  pages: InfiniteData<QuotaStatusPage> | undefined
 ): QuotaStatusPage | undefined {
   if (!pages?.pages.length) return undefined;
   const seenRoleIds = new Set<string>();

@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { InfiniteData, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type InfiniteData, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { useSessionsList, useSessionDetail, useCreateSession, useDeleteSession } from '../useSessions';
 import { useUpdateFeedback } from '../useFeedback';

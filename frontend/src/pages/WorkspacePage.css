@@ -102,15 +102,15 @@
   cursor: pointer;
 }
 
+.workspace-load-older:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .workspace-load-older:hover:not(:disabled),
 .workspace-history-error button:hover {
   border-color: var(--color-neon-cyan);
   color: var(--color-neon-cyan);
-}
-
-.workspace-load-older:disabled {
-  cursor: wait;
-  opacity: 0.65;
 }
 
 .workspace-message-pair {

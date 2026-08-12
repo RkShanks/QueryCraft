@@ -25,7 +25,7 @@ import {
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from './usePermission';
 
-type SessionListPages = InfiniteData<SessionListResponse, string | undefined>;
+type SessionListPages = InfiniteData<SessionListResponse>;
 
 function uniqueById<T extends { id: string }>(groups: T[][]): T[] {
   const seenIds = new Set<string>();
@@ -41,7 +41,7 @@ function uniqueById<T extends { id: string }>(groups: T[][]): T[] {
 }
 
 function flattenedSessionList(
-  pages: InfiniteData<SessionListResponse, string | undefined> | undefined
+  pages: InfiniteData<SessionListResponse> | undefined
 ): SessionListResponse | undefined {
   if (!pages?.pages.length) return undefined;
   return {
@@ -69,7 +69,7 @@ export const useSessionsList = ({ enabled = true }: { enabled?: boolean } = {}) 
 };
 
 function flattenedSessionDetail(
-  pages: InfiniteData<SessionDetail, string | undefined> | undefined
+  pages: InfiniteData<SessionDetail> | undefined
 ): SessionDetail | undefined {
   if (!pages?.pages.length) return undefined;
   const firstPage = pages.pages[0];

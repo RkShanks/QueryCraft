@@ -177,15 +177,15 @@
   padding-inline: 0.75rem;
 }
 
+.sidebar-load-more:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .sidebar-collection-error button:hover,
 .sidebar-load-more:hover:not(:disabled) {
   border-color: var(--color-neon-cyan);
   color: var(--color-neon-cyan);
-}
-
-.sidebar-load-more:disabled {
-  cursor: wait;
-  opacity: 0.65;
 }
 
 .sidebar-footer {
