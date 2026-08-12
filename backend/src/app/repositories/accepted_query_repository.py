@@ -1,13 +1,12 @@
 """AcceptedQueryRepository — data access for accepted_queries table."""
 
 import uuid
-from datetime import datetime
 
 from sqlalchemy import and_, desc, func, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidCursorError
-from app.core.pagination import decode_cursor, encode_cursor
+from app.core.pagination import decode_datetime_cursor, encode_cursor
 from app.db.models.accepted_query import AcceptedQuery
 
 _ATTEMPT_CURSOR_NAMESPACE = "session_attempts"
@@ -136,17 +135,11 @@ class AcceptedQueryRepository:
             .limit(limit + 1)
         )
         if cursor is not None:
-            position = decode_cursor(cursor, _ATTEMPT_CURSOR_NAMESPACE)
-            try:
-                accepted_at = datetime.fromisoformat(position.sort_value)
-                if accepted_at.tzinfo is None:
-                    raise ValueError
-            except ValueError:
-                raise InvalidCursorError() from None
+            accepted_at, attempt_id = decode_datetime_cursor(cursor, _ATTEMPT_CURSOR_NAMESPACE)
             statement = statement.where(
                 or_(
                     AcceptedQuery.accepted_at < accepted_at,
-                    and_(AcceptedQuery.accepted_at == accepted_at, AcceptedQuery.id < position.item_id),
+                    and_(AcceptedQuery.accepted_at == accepted_at, AcceptedQuery.id < attempt_id),
                 )
             )
 

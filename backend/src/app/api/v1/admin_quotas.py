@@ -26,7 +26,14 @@ from app.db.models.enums import AuditActionType, Permission
 from app.db.models.role import Role
 from app.db.models.role_quota import RoleQuota
 from app.repositories.quota_repository import QuotaRepository
-from app.schemas.quota import QuotaListResponse, QuotaStatusResponse, RoleQuotaConfig, RoleQuotaStatus, RoleQuotaUpsert
+from app.schemas.quota import (
+    QuotaDimensionStatus,
+    QuotaListResponse,
+    QuotaStatusResponse,
+    RoleQuotaConfig,
+    RoleQuotaStatus,
+    RoleQuotaUpsert,
+)
 from app.services.audit_service import AuditService
 from app.services.quota_service import QuotaConfigTransition, QuotaService
 from app.services.quota_status_service import (
@@ -41,6 +48,11 @@ _QUOTA_LIMIT_FIELDS = (
     "daily_query_limit",
     "daily_execution_limit",
     "daily_export_limit",
+)
+_QUOTA_STATUS_DIMENSIONS = (
+    ("queries", "daily_query_limit"),
+    ("executions", "daily_execution_limit"),
+    ("exports", "daily_export_limit"),
 )
 
 
@@ -59,6 +71,36 @@ def _quota_sync_pending() -> HTTPException:
             "message_key": "error.quota_sync_pending",
             "mutation_applied": True,
         },
+    )
+
+
+def _quota_statuses(
+    quotas: list[RoleQuota],
+    usage: dict[uuid.UUID, dict[str, int]],
+    reset_at: datetime,
+) -> list[RoleQuotaStatus]:
+    return [
+        RoleQuotaStatus(
+            role_id=quota.role_id,
+            role_name=quota.role.name,
+            dimensions={
+                dimension: _quota_dimension_status(
+                    getattr(quota, limit_field),
+                    usage[quota.role_id][dimension],
+                )
+                for dimension, limit_field in _QUOTA_STATUS_DIMENSIONS
+            },
+            reset_at=reset_at,
+        )
+        for quota in quotas
+    ]
+
+
+def _quota_dimension_status(limit: int | None, used: int) -> QuotaDimensionStatus:
+    return QuotaDimensionStatus(
+        limit=limit,
+        used=used,
+        remaining=limit - used if limit is not None else None,
     )
 
 
@@ -253,30 +295,8 @@ async def get_quota_status(
     except (InvalidQuotaCounterError, QuotaCounterReadError) as exc:
         raise _quota_unavailable() from exc
 
-    from app.schemas.quota import QuotaDimensionStatus
-
-    statuses = [
-        RoleQuotaStatus(
-            role_id=quota.role_id,
-            role_name=quota.role.name,
-            dimensions={
-                dimension: QuotaDimensionStatus(
-                    limit=(limit_value := getattr(quota, limit_field)),
-                    used=usage[quota.role_id][dimension],
-                    remaining=limit_value - usage[quota.role_id][dimension] if limit_value is not None else None,
-                )
-                for dimension, limit_field in (
-                    ("queries", "daily_query_limit"),
-                    ("executions", "daily_execution_limit"),
-                    ("exports", "daily_export_limit"),
-                )
-            },
-            reset_at=next_midnight,
-        )
-        for quota in quotas
-    ]
     return QuotaStatusResponse(
-        status=statuses,
+        status=_quota_statuses(quotas, usage, next_midnight),
         total=await repo.count_status_roles(),
         next_cursor=next_cursor,
     )

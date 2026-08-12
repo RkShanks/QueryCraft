@@ -9,8 +9,7 @@ from redis.asyncio import Redis
 from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import InvalidCursorError
-from app.core.pagination import decode_cursor, encode_cursor
+from app.core.pagination import decode_datetime_cursor, encode_cursor
 from app.db.models.session import Session
 
 _SESSION_CURSOR_NAMESPACE = "sessions"
@@ -409,17 +408,11 @@ class SessionRepository:
             .limit(limit + 1)
         )
         if cursor is not None:
-            position = decode_cursor(cursor, _SESSION_CURSOR_NAMESPACE)
-            try:
-                activity_at = datetime.fromisoformat(position.sort_value)
-                if activity_at.tzinfo is None:
-                    raise ValueError
-            except ValueError:
-                raise InvalidCursorError() from None
+            activity_at, session_id = decode_datetime_cursor(cursor, _SESSION_CURSOR_NAMESPACE)
             statement = statement.where(
                 or_(
                     Session.last_activity_at < activity_at,
-                    and_(Session.last_activity_at == activity_at, Session.id < position.item_id),
+                    and_(Session.last_activity_at == activity_at, Session.id < session_id),
                 )
             )
 

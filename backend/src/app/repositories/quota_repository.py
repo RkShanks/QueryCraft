@@ -102,8 +102,10 @@ class QuotaRepository:
         batch_size: int = 500,
     ) -> AsyncIterator[list[tuple[uuid.UUID, uuid.UUID]]]:
         """Keyset user IDs for the current role page in bounded batches."""
+        if not role_ids:
+            return
         last_position: tuple[uuid.UUID, uuid.UUID] | None = None
-        while role_ids:
+        while True:
             statement = select(User.role_id, User.id).where(User.role_id.in_(role_ids))
             if last_position:
                 last_role_id, last_user_id = last_position

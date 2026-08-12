@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from '../Sidebar';
 import { useUIStore } from '../../../stores/uiStore';
 import { createWrapper } from '../../../test/utils';
@@ -163,7 +163,9 @@ describe('Sidebar', () => {
     const refetch = vi.fn();
     setup([], false, { isError: true, refetch });
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load sessions.');
+    expect(screen.getByRole('alert', { name: 'Unable to load sessions.' })).toHaveTextContent(
+      'Unable to load sessions.'
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
     expect(refetch).toHaveBeenCalledTimes(1);
@@ -171,7 +173,7 @@ describe('Sidebar', () => {
 
   it('clicking New Chat resets activeSessionId to null', () => {
     setup();
-    useUIStore.getState().setActiveSessionId('sess-today-1');
+    act(() => useUIStore.getState().setActiveSessionId('sess-today-1'));
     expect(useUIStore.getState().activeSessionId).toBe('sess-today-1');
 
     fireEvent.click(screen.getByTestId('sidebar-new-chat'));
@@ -209,8 +211,7 @@ describe('Sidebar', () => {
 
   it('hides group titles when collapsed', () => {
     setup();
-    useUIStore.getState().toggleSidebar();
-    setup();
+    act(() => useUIStore.getState().toggleSidebar());
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
     expect(screen.queryByText('Previous 7 Days')).not.toBeInTheDocument();
     expect(screen.queryByText('Older')).not.toBeInTheDocument();
@@ -262,8 +263,7 @@ describe('Sidebar', () => {
 
   it('collapsed sidebar still exposes sign-out button', () => {
     setup();
-    useUIStore.getState().toggleSidebar();
-    setup();
+    act(() => useUIStore.getState().toggleSidebar());
     const buttons = screen.getAllByTestId('sidebar-sign-out');
     expect(buttons.length).toBeGreaterThanOrEqual(1);
   });
@@ -298,8 +298,7 @@ describe('Sidebar', () => {
 
   it('collapsed sidebar exposes History and Settings buttons by aria-label', () => {
     setup();
-    useUIStore.getState().toggleSidebar();
-    setup();
+    act(() => useUIStore.getState().toggleSidebar());
     const historyButtons = screen.getAllByLabelText('History');
     const settingsButtons = screen.getAllByLabelText('Settings');
     expect(historyButtons.length).toBeGreaterThanOrEqual(1);

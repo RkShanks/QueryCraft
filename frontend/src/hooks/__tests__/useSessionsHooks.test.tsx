@@ -208,7 +208,9 @@ describe('useSessions hooks', () => {
       wrapper: deleteHookWrapper(queryClient),
     });
 
-    await result.current.mutateAsync(SESSION_ID);
+    await act(async () => {
+      await result.current.mutateAsync(SESSION_ID);
+    });
 
     expect(queryClient.getQueryData(['sessions', SESSION_ID])).toBeUndefined();
     const cachedPages = queryClient.getQueryData<InfiniteData<{ items: Array<{ id: string }>; total: number }>>(['sessions']);
@@ -240,7 +242,11 @@ describe('useSessions hooks', () => {
       wrapper: deleteHookWrapper(queryClient),
     });
 
-    await expect(result.current.mutateAsync(SESSION_ID)).rejects.toBeDefined();
+    await expect(
+      act(async () => {
+        await result.current.mutateAsync(SESSION_ID);
+      })
+    ).rejects.toBeDefined();
 
     expect(queryClient.getQueryData(['sessions', SESSION_ID])).toEqual(detail);
     expect(isSessionUnavailable(SESSION_ID)).toBe(false);

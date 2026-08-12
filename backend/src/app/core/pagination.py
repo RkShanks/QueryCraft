@@ -5,6 +5,7 @@ import binascii
 import json
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 
 from app.core.exceptions import InvalidCursorError
 
@@ -49,3 +50,15 @@ def decode_cursor(cursor: str, namespace: str) -> CursorPosition:
         return CursorPosition(sort_value=payload["s"], item_id=uuid.UUID(payload["i"]))
     except (UnicodeError, binascii.Error, json.JSONDecodeError, TypeError, ValueError):
         raise InvalidCursorError() from None
+
+
+def decode_datetime_cursor(cursor: str, namespace: str) -> tuple[datetime, uuid.UUID]:
+    """Decode a cursor whose primary sort value is a timezone-aware datetime."""
+    position = decode_cursor(cursor, namespace)
+    try:
+        sort_time = datetime.fromisoformat(position.sort_value)
+        if sort_time.tzinfo is None:
+            raise ValueError
+    except ValueError:
+        raise InvalidCursorError() from None
+    return sort_time, position.item_id

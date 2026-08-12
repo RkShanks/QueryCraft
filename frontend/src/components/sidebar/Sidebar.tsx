@@ -214,7 +214,11 @@ export const Sidebar: React.FC = () => {
         {isLoading ? (
           <div className="sidebar-loading">{t('history.loading')}</div>
         ) : isError && sessions.length === 0 ? (
-          <div className="sidebar-collection-error" role="alert">
+          <div
+            className="sidebar-collection-error"
+            role="alert"
+            aria-label={t('sidebar.loadError')}
+          >
             {!sidebarCollapsed && <span>{t('sidebar.loadError')}</span>}
             <button type="button" onClick={() => void refetch()}>
               {t('common.retry')}
@@ -278,7 +282,11 @@ export const Sidebar: React.FC = () => {
               )}
             </>}
             {isFetchNextPageError && (
-              <div className="sidebar-collection-error" role="alert">
+              <div
+                className="sidebar-collection-error"
+                role="alert"
+                aria-label={t('sidebar.loadError')}
+              >
                 {!sidebarCollapsed && <span>{t('sidebar.loadError')}</span>}
               </div>
             )}

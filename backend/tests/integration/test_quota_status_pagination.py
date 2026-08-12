@@ -231,11 +231,14 @@ async def test_high_cardinality_status_uses_bounded_database_and_redis_batches(
     )
     recording_redis = RecordingQuotaRedis(redis_client)
     user_selects = 0
+    quota_selects = 0
 
     def count_user_selects(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
-        nonlocal user_selects
+        nonlocal quota_selects, user_selects
         if statement.lstrip().upper().startswith("SELECT") and "FROM users" in statement:
             user_selects += 1
+        if statement.lstrip().upper().startswith("SELECT") and "FROM role_quotas" in statement:
+            quota_selects += 1
 
     event.listen(async_engine_fixture.sync_engine, "before_cursor_execute", count_user_selects)
     seen_role_ids: list[str] = []
@@ -271,10 +274,10 @@ async def test_high_cardinality_status_uses_bounded_database_and_redis_batches(
     expected_user_batches = math.ceil((_ROLE_PAGE_LIMIT * _USERS_PER_ROLE) / _USER_BATCH_LIMIT) * 2 + 2
     assert seen_role_ids == [str(role_id) for role_id in role_ids]
     assert recording_redis.get_calls == 0
-    assert recording_redis.mget_sizes
-    assert max(recording_redis.mget_sizes) <= _REDIS_BATCH_LIMIT
+    assert recording_redis.mget_sizes == [_REDIS_BATCH_LIMIT] * 12
     assert recording_redis.dimensions["executions"] == 0
     assert user_selects == expected_user_batches
+    assert quota_selects == 6
 
 
 @pytest.mark.asyncio
@@ -322,9 +325,7 @@ async def test_invalid_quota_status_cursor_is_sanitized_without_counter_reads(
         )
 
     assert response.status_code == 400
-    assert response.json() == {
-        "detail": {"error": "invalid_cursor", "message_key": "error.invalidCursor"}
-    }
+    assert response.json() == {"detail": {"error": "invalid_cursor", "message_key": "error.invalidCursor"}}
     assert redis.mget_sizes == []
 
 
