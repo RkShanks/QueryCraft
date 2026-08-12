@@ -238,6 +238,27 @@ describe('permission-gated feature hooks', () => {
           if (path === '/api/v1/query/limits') {
             return HttpResponse.json({ max_question_length: 2000 });
           }
+          if (path === '/api/v1/sessions') {
+            return HttpResponse.json({ items: [], total: 0, next_cursor: null });
+          }
+          if (path === '/api/v1/sessions/session-id') {
+            return HttpResponse.json({
+              id: 'session-id',
+              connection_id: null,
+              preview_text: '',
+              created_at: '2026-08-12T00:00:00Z',
+              last_activity_at: '2026-08-12T00:00:00Z',
+              attempts: [],
+              attempts_total: 0,
+              attempts_next_cursor: null,
+            });
+          }
+          if (path === '/api/v1/admin/quotas') {
+            return HttpResponse.json({ quotas: [] });
+          }
+          if (path === '/api/v1/admin/quotas/status') {
+            return HttpResponse.json({ status: [], total: 0, next_cursor: null });
+          }
           return HttpResponse.json({});
         })
       );
