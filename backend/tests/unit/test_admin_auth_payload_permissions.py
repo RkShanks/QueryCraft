@@ -16,6 +16,7 @@ These tests pin down the contract:
 """
 
 import json
+import time
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
@@ -118,6 +119,7 @@ class TestGetMeRefreshesStaleSession:
 
         # Pre-populate Redis with a stale session that lacks permissions
         session_id = "stale-session-001"
+        now = time.time()
         stale_payload = {
             "user_id": str(admin_id),
             "username": "admin",
@@ -128,8 +130,8 @@ class TestGetMeRefreshesStaleSession:
             "permissions": [],  # STALE — pre-fix sessions stored empty
             "auth_provider": "local",
             "subject_id": "admin",
-            "created_at": 1.0,
-            "last_activity": 1.0,
+            "created_at": now,
+            "last_activity": now,
         }
         await redis_client.set(
             f"session:{session_id}",
@@ -162,6 +164,7 @@ class TestGetMeRefreshesStaleSession:
         admin_id = await _get_admin_id(db_session)
 
         session_id = "fresh-session-001"
+        now = time.time()
         fresh_payload = {
             "user_id": str(admin_id),
             "username": "admin",
@@ -172,8 +175,8 @@ class TestGetMeRefreshesStaleSession:
             "permissions": ["query.submit", "query.history.view"],
             "auth_provider": "local",
             "subject_id": "admin",
-            "created_at": 1.0,
-            "last_activity": 1.0,
+            "created_at": now,
+            "last_activity": now,
         }
         await redis_client.set(f"session:{session_id}", json.dumps(fresh_payload), ex=3600)
 
