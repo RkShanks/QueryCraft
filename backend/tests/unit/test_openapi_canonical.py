@@ -138,14 +138,14 @@ def test_browser_and_identity_provider_flows_remain_redirect_contracts(operation
 
 def test_query_success_and_rejection_contracts_are_typed():
     operations = _schema_operations(_canonical_schema())
+    submit_operation = operations[("POST", "/api/v1/query/submit")]
 
-    assert _json_schema(operations[("POST", "/api/v1/query/submit")], "200") == {
-        "$ref": "#/components/schemas/QueryResult"
-    }
-    assert set(_schema_refs(_json_schema(operations[("POST", "/api/v1/query/submit")], "422"))) == {
-        "EvaluatorRejection",
+    assert _json_schema(submit_operation, "200") == {"$ref": "#/components/schemas/QueryResult"}
+    assert set(_schema_refs(_json_schema(submit_operation, "400"))) == {
+        "ErrorResponse",
         "ValidationErrorResponse",
     }
+    assert _json_schema(submit_operation, "422") == {"$ref": "#/components/schemas/EvaluatorRejection"}
     for operation_key in (
         ("POST", "/api/v1/query/reject"),
         ("POST", "/api/v1/query/regenerate"),
