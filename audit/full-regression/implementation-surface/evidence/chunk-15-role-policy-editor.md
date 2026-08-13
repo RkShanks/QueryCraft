@@ -1,6 +1,6 @@
 # CHUNK-15 / IS-GAP-024, IS-GAP-026, IS-GAP-035 — role policy editor safety and preview
 
-Status: implementation and local verification passed on `phase-6/wave-19.15-role-policy-editor`; PR and authoritative CI are pending. Tested product commit: `750c21fa4f70bf1f1b106396852b9be846b931dc`. Starting main: `0cc010a59b128423169bd252aa63df2acfeb2130`, the squash merge of [PR #312](https://github.com/RkShanks/QueryCraft/pull/312).
+Status: implementation, local verification, and authoritative GitHub backend/frontend CI passed on `phase-6/wave-19.15-role-policy-editor` in [PR #313](https://github.com/RkShanks/QueryCraft/pull/313); squash merge is pending. Tested product commit: `750c21fa4f70bf1f1b106396852b9be846b931dc`. Starting main: `0cc010a59b128423169bd252aa63df2acfeb2130`, the squash merge of [PR #312](https://github.com/RkShanks/QueryCraft/pull/312).
 
 ## Outcome
 
@@ -95,7 +95,7 @@ A separate **real FastAPI ASGI check with local PostgreSQL and Redis** created a
 | Isolated Chromium | 4 passed in 15.1s |
 | `rtk git diff --check` | Passed |
 | Test Guard / Clean Code Guard / Vercel React guidance / Docs Guard | Passed |
-| Authoritative `backend-test` / `frontend-test` | Pending PR |
+| Authoritative `backend-test` / `frontend-test` | Passed on `6cbe326b8462c8924b1a3aadd4b14c04c655b00b`, run `31738776892` |
 
 The production build emitted only the repository's existing large-chunk warning. The full frontend suite emitted existing MSW/React `act(...)` warnings; no test failed.
 

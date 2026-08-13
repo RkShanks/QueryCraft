@@ -1,15 +1,16 @@
 {
   "chunk": "CHUNK-15",
   "gap_ids": ["IS-GAP-024", "IS-GAP-026", "IS-GAP-035"],
-  "status": "implementation_and_local_verification_passed_pr_pending",
+  "status": "implementation_and_ci_passed_merge_pending",
   "branch": "phase-6/wave-19.15-role-policy-editor",
   "starting_main": "0cc010a59b128423169bd252aa63df2acfeb2130",
   "tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc",
-  "pull_request": null,
+  "pull_request": 313,
   "authoritative_ci": {
-    "head_commit": null,
-    "backend_test": "pending",
-    "frontend_test": "pending"
+    "head_commit": "6cbe326b8462c8924b1a3aadd4b14c04c655b00b",
+    "run_id": 31738776892,
+    "backend_test": "passed",
+    "frontend_test": "passed"
   },
   "api_contract": {
     "previous_operations": 63,

@@ -153,9 +153,10 @@
     },
     "CHUNK-15": {
       "gap_ids": ["IS-GAP-024", "IS-GAP-026", "IS-GAP-035"],
-      "status": "Resolved on tested branch; PR and CI pending",
+      "status": "Resolved on tested branch; CI passed; merge pending",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/313",
       "tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc",
-      "authoritative_ci": {"head_commit": null, "backend_test": "pending", "frontend_test": "pending"},
+      "authoritative_ci": {"head_commit": "6cbe326b8462c8924b1a3aadd4b14c04c655b00b", "run_id": 31738776892, "backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json"
     }
   },
@@ -573,7 +574,7 @@
       "isolation": "Disposable role and connection schema; preview must not call LLM/source execution.",
       "regression_rows": ["P5-FR-136"],
       "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-15", "status": "Resolved",
-      "resolution": {"tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json"},
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/313", "tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json", "authoritative_ci": {"head_commit": "6cbe326b8462c8924b1a3aadd4b14c04c655b00b", "run_id": 31738776892, "backend_test": "passed", "frontend_test": "passed"}},
       "source_refs": ["backend/src/app/api/v1/admin_roles.py::test_draft_role_policy", "backend/src/app/api/v1/admin_roles.py::_evaluate_policy_preview", "backend/src/app/schemas/roles.py::DraftPolicyTestRequest", "backend/src/app/schemas/roles.py::PolicyTestResponse", "backend/tests/unit/test_policy_test_endpoint.py", "frontend/src/components/admin/RolePolicyPreview.tsx::RolePolicyPreview", "frontend/src/pages/AdminRolesPage.tsx::AdminRolesPage", "frontend/src/hooks/useAdminRoles.ts::useDraftRolePolicyPreview"]
     },
     {
@@ -607,7 +608,7 @@
       "isolation": "Disposable role/policy and controllable response delay.",
       "regression_rows": ["P5-FR-123", "P5-FR-128", "P5-FR-131", "P5-FR-132"],
       "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-15", "status": "Resolved",
-      "resolution": {"tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json"},
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/313", "tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json", "authoritative_ci": {"head_commit": "6cbe326b8462c8924b1a3aadd4b14c04c655b00b", "run_id": 31738776892, "backend_test": "passed", "frontend_test": "passed"}},
       "source_refs": ["frontend/src/pages/AdminRolesPage.tsx::AdminRolesPage", "frontend/src/pages/AdminRolesPage.tsx::detailQuery", "frontend/src/pages/AdminRolesPage.tsx::lastAppliedDetailIdRef", "frontend/src/pages/AdminRolesPage.tsx::handleSave", "frontend/src/hooks/useAdminRoles.ts::useAdminRole", "frontend/src/hooks/useAdminRoles.ts::updateMutation", "frontend/src/pages/AdminRolesPage.test.tsx"]
     },
     {
@@ -752,7 +753,7 @@
       "isolation": "Synthetic schema and identity placeholders.",
       "regression_rows": ["P5-FR-131", "P5-FR-136"],
       "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-15", "status": "Resolved",
-      "resolution": {"tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json"},
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/313", "tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json", "authoritative_ci": {"head_commit": "6cbe326b8462c8924b1a3aadd4b14c04c655b00b", "run_id": 31738776892, "backend_test": "passed", "frontend_test": "passed"}},
       "source_refs": ["contracts/row-filter-validation-corpus.json", "frontend/src/components/admin/PolicyEditor.tsx::getValidationErrors", "frontend/src/components/admin/PolicyEditor.preview.test.tsx", "backend/src/app/services/policy_enforcement.py::PolicyEnforcementService.validate_row_filter", "backend/tests/unit/test_row_filter_contract_corpus.py"]
     },
     {
