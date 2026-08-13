@@ -12,7 +12,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import quote
 
 import pytest
-from fastapi import FastAPI
 
 from app.core.logging import get_logger, redact_log_event, setup_logging
 
@@ -143,8 +142,9 @@ def test_logging_setup_redacts_rendered_failures_and_suppresses_sensitive_transp
 
 @pytest.mark.asyncio
 async def test_lifespan_startup_log_omits_redis_configuration():
-    from app.main import lifespan
+    from app.main import create_app, lifespan
 
+    app = create_app()
     runtime_probe = secrets.token_urlsafe(24)
     settings = SimpleNamespace(
         LOG_LEVEL="INFO",
@@ -168,7 +168,7 @@ async def test_lifespan_startup_log_omits_redis_configuration():
         patch("app.main.dispose_engine", new_callable=AsyncMock),
         patch("app.main.logger", application_logger),
     ):
-        async with lifespan(FastAPI()):
+        async with lifespan(app):
             pass
 
     probe_leaked = runtime_probe in str(application_logger.mock_calls)
