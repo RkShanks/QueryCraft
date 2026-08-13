@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 27, "Resolved": 17, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 26, "Resolved": 18, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -135,11 +135,20 @@
     },
     "CHUNK-13": {
       "gap_id": "IS-GAP-007",
-      "status": "Resolved on tested branch",
+      "status": "Resolved and merged",
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/311",
       "tested_product_commit": "1c56b6305329cbc82fff5cc4066c995f2717873b",
+      "merge_commit": "e18d2335f44a93f055bb7d3c03f08012c91443f6",
       "authoritative_ci": {"head_commit": "270ce0577c29f201f583a40c0f51a36b25984478", "backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-13-readiness.json"
+    },
+    "CHUNK-14": {
+      "gap_id": "IS-GAP-008",
+      "status": "Resolved on tested branch",
+      "fix_pr": null,
+      "tested_product_commit": "9f82c73c0abe1ec07199583343e954e65fd6d358",
+      "authoritative_ci": {"head_commit": null, "backend_test": "pending", "frontend_test": "pending"},
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-14-openapi-parity.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -279,16 +288,17 @@
       "backend_candidates": ["BE-GAP-008"], "frontend_candidates": ["FE-GAP-009"],
       "surface_ids": ["BE-OPS-009", "FE-API-004", "FE-API-005", "FE-API-006", "FE-API-007", "FE-HOOK-006", "FE-OPS-001", "FE-OPS-002"],
       "root_cause": "No current runtime-generated canonical OpenAPI artifact feeds contract tests and client generation; historical manual artifacts remain in use.",
-      "current_behavior": "Runtime exposes 60 operations, the static contract and generated SDK contain 35, and the stale Phase 5 updater has no production caller. Schemathesis tests only the 35 static operations.",
-      "required_behavior": "Choose one versioned canonical contract generated from stabilized runtime behavior, fully type requests/responses/errors/redirects/downloads, regenerate the client, and gate parity.",
+      "current_behavior": "The historical snapshot exposed 60 operations while the static contract and generated SDK contained 35. Current source later added query limits plus liveness/readiness; CHUNK-14 now proves 63 runtime = 63 canonical = 63 generated operations across 47 paths, and the uncalled historical updater is removed.",
+      "required_behavior": "Maintain one versioned canonical contract generated from stabilized runtime behavior, fully type requests/responses/errors/redirects/downloads, regenerate the client, and gate parity.",
       "impact": "Frontend raw casts and missing operations/statuses hide integration and security drift.",
       "dependencies": ["IS-GAP-001", "IS-GAP-003", "IS-GAP-005", "IS-GAP-006", "IS-GAP-007", "IS-GAP-009", "IS-GAP-020"],
       "required_automated_tests": "Static runtime/canonical/client parity and request/response/status/content-type contract tests for all operations.",
-      "required_evidence": "Deterministic generation diff with counts 60=60=60 and focused browser checks after client migration.",
+      "required_evidence": "Deterministic generation diff with current source-derived counts 63=63=63 and focused browser checks after client migration.",
       "isolation": "App factory only; placeholder non-secret settings; no live services.",
       "regression_rows": ["P1-FR-031", "P5-FR-145", "P6-FR-177", "XP-018"],
-      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-14", "status": "Pending",
-      "source_refs": ["backend/src/app/main.py::create_app", "backend/tests/contract/test_openapi_contract.py", "backend/scripts/update_openapi_phase5.py", "specs/001-core-text-to-sql/contracts/openapi.yaml", "frontend/scripts/generate-api-client.sh", "frontend/src/api/generated/sdk.gen.ts"]
+      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-14", "status": "Resolved",
+      "resolution": {"tested_commit": "9f82c73c0abe1ec07199583343e954e65fd6d358", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-14-openapi-parity.json", "authoritative_ci": "pending"},
+      "source_refs": ["backend/src/app/main.py::create_app", "backend/src/app/openapi_contract.py", "backend/openapi.json", "backend/scripts/generate_openapi.py", "backend/tests/contract/test_openapi_contract.py", "frontend/scripts/generate-api-client.mjs", "frontend/src/api/generated/sdk.gen.ts"]
     },
     {
       "id": "IS-GAP-009", "severity": "High", "disposition": "Confirmed Product Gap",
