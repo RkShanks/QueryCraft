@@ -88,6 +88,40 @@ def test_operation_ids_are_unique_stable_and_preserve_existing_client_names():
     assert runtime_ids[("GET", "/api/v1/admin/connections")] == "listAdminConnections"
 
 
+def test_all_request_bodies_match_runtime_schema_and_content_types():
+    runtime_operations = _schema_operations(create_app().openapi())
+    canonical_operations = _schema_operations(_canonical_schema())
+    runtime_bodies = {
+        key: operation["requestBody"] for key, operation in runtime_operations.items() if "requestBody" in operation
+    }
+    canonical_bodies = {
+        key: operation["requestBody"] for key, operation in canonical_operations.items() if "requestBody" in operation
+    }
+
+    assert canonical_bodies == runtime_bodies
+    assert canonical_bodies
+    for request_body in canonical_bodies.values():
+        assert request_body["content"]
+        assert all(media_type for media_type in request_body["content"])
+        assert all(media_contract.get("schema") for media_contract in request_body["content"].values())
+
+
+def test_all_response_status_schema_and_content_types_match_runtime():
+    runtime_operations = _schema_operations(create_app().openapi())
+    canonical_operations = _schema_operations(_canonical_schema())
+
+    assert {key: operation["responses"] for key, operation in canonical_operations.items()} == {
+        key: operation["responses"] for key, operation in runtime_operations.items()
+    }
+    for operation in canonical_operations.values():
+        assert operation["responses"]
+        for status_code, response in operation["responses"].items():
+            assert status_code.isdigit()
+            assert response["description"]
+            assert all(media_type for media_type in response.get("content", {}))
+            assert all(media_contract.get("schema") for media_contract in response.get("content", {}).values())
+
+
 @pytest.mark.parametrize(
     ("operation_key", "content_type", "schema_name"),
     [
