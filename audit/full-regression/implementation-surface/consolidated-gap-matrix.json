@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 29, "Resolved": 15, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 28, "Resolved": 16, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -104,21 +104,33 @@
     },
     "CHUNK-10": {
       "gap_ids": ["IS-GAP-017", "IS-GAP-013"],
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/308",
       "tested_product_commit": "3b6f90dd938d51bef9e04ba4f5a57afce3335b68",
       "verification_commit": "c0a74d891b3a28b8b35d405a85a1969a69ec561f",
       "ci_validated_commit": "c0a74d891b3a28b8b35d405a85a1969a69ec561f",
+      "merge_commit": "09651c2c130025512d63fa4b36ef1ba51675bd73",
       "authoritative_ci": {"backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-10-data-invariants.json"
     },
     "CHUNK-11": {
       "gap_id": "IS-GAP-012",
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/309",
       "tested_product_commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652",
       "verification_commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652",
+      "merge_commit": "fce00de777e400f38d53d0e20e90e38c2d7e8e5c",
       "authoritative_ci": {"head_commit": "f17bf48ba7a829a1f77aea374de2fe7276491c6c", "backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-11-session-limit.json"
+    },
+    "CHUNK-12": {
+      "gap_id": "IS-GAP-019",
+      "status": "Resolved on tested branch",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/310",
+      "tested_product_commit": "80652b47b6a53687bbe67f849c070b8ffb9f82d0",
+      "verification_commit": "80652b47b6a53687bbe67f849c070b8ffb9f82d0",
+      "authoritative_ci": {"head_commit": "80652b47b6a53687bbe67f849c070b8ffb9f82d0", "backend_test": "passed", "frontend_test": "passed"},
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-12-collection-bounds.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -332,8 +344,8 @@
       "required_evidence": "Bounded concurrency run reporting only counts and evicted-order hashes.",
       "isolation": "Disposable Redis namespace and sessions.",
       "regression_rows": ["P5-FR-127", "XP-001", "XP-013"],
-      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-11", "status": "Resolved on tested branch",
-      "resolution": {"tested_product_commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-11-session-limit.json", "authoritative_ci": {"head_commit": "f17bf48ba7a829a1f77aea374de2fe7276491c6c", "backend_test": "passed", "frontend_test": "passed"}},
+      "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-11", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/309", "tested_product_commit": "00b5ad8f266d7f6156a5c3ce6ed11b59c54f5652", "merge_commit": "fce00de777e400f38d53d0e20e90e38c2d7e8e5c", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-11-session-limit.json", "authoritative_ci": {"head_commit": "f17bf48ba7a829a1f77aea374de2fe7276491c6c", "backend_test": "passed", "frontend_test": "passed"}},
       "source_refs": ["backend/src/app/repositories/session_repository.py::SessionRepository.create_indexed_session", "backend/src/app/repositories/session_repository.py::SessionRepository.delete_indexed_session", "backend/src/app/repositories/session_repository.py::SessionRepository.refresh_indexed_session", "backend/tests/unit/test_session_limit_atomic_redis.py", "backend/tests/unit/test_concurrent_sessions.py"]
     },
     {
@@ -350,7 +362,7 @@
       "isolation": "Disposable PostgreSQL database.",
       "regression_rows": ["P6-FR-159", "P6-FR-160", "XP-005"],
       "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-10", "status": "Resolved",
-      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/308", "tested_product_commit": "3b6f90dd938d51bef9e04ba4f5a57afce3335b68", "ci_validated_commit": "c0a74d891b3a28b8b35d405a85a1969a69ec561f", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-10-data-invariants.json", "authoritative_ci": "passed"},
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/308", "tested_product_commit": "3b6f90dd938d51bef9e04ba4f5a57afce3335b68", "ci_validated_commit": "c0a74d891b3a28b8b35d405a85a1969a69ec561f", "merge_commit": "09651c2c130025512d63fa4b36ef1ba51675bd73", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-10-data-invariants.json", "authoritative_ci": "passed"},
       "source_refs": ["backend/src/app/repositories/detection_config_repository.py::DetectionConfigRepository.get", "backend/src/app/repositories/detection_config_repository.py::DetectionConfigRepository.get_for_detection", "backend/src/app/db/models/detection_config.py::DetectionThresholdConfig", "backend/tests/unit/test_detection_config_repo.py"]
     },
     {
@@ -448,8 +460,9 @@
       "required_evidence": "Synthetic high-cardinality API/browser latency and payload-size thresholds.",
       "isolation": "Synthetic platform DB/Redis data; remove all seeded rows and caches.",
       "regression_rows": ["P2-FR-045", "P6-FR-149", "XP-013"],
-      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-12", "status": "Pending",
-      "source_refs": ["backend/src/app/api/v1/sessions.py::list_sessions", "backend/src/app/api/v1/sessions.py::get_session", "backend/src/app/api/v1/admin_quotas.py::get_quota_status", "frontend/src/hooks/useSessions.ts::useSessionsList", "frontend/src/hooks/useSessions.ts::useSessionDetail", "backend/tests/integration/test_sessions.py", "frontend/src/hooks/__tests__/useSessionsHooks.test.tsx"]
+      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-12", "status": "Resolved on tested branch",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/310", "tested_product_commit": "80652b47b6a53687bbe67f849c070b8ffb9f82d0", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-12-collection-bounds.json", "authoritative_ci": {"head_commit": "80652b47b6a53687bbe67f849c070b8ffb9f82d0", "backend_test": "passed", "frontend_test": "passed"}},
+      "source_refs": ["backend/src/app/api/v1/sessions.py::list_sessions", "backend/src/app/api/v1/sessions.py::get_session", "backend/src/app/api/v1/admin_quotas.py::get_quota_status", "backend/src/app/repositories/session_repository.py::SessionRepository.page_by_user", "backend/src/app/repositories/accepted_query_repository.py::AcceptedQueryRepository.page_by_session", "backend/src/app/services/quota_status_service.py::QuotaStatusAggregator", "frontend/src/hooks/useSessions.ts::useSessionsList", "frontend/src/hooks/useSessions.ts::useSessionDetail", "frontend/src/hooks/useAdminQuotas.ts::useAdminQuotas", "backend/tests/integration/test_session_collection_pagination.py", "backend/tests/integration/test_session_attempt_pagination.py", "backend/tests/integration/test_quota_status_pagination.py", "frontend/src/hooks/__tests__/useSessionsHooks.test.tsx"]
     },
     {
       "id": "IS-GAP-020", "severity": "High", "disposition": "Confirmed Product Gap",
