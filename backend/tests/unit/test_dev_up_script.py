@@ -3,12 +3,22 @@
 import os
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 SOURCE_SCRIPT = REPOSITORY_ROOT / "scripts" / "dev-up.sh"
+
+
+@dataclass(frozen=True)
+class DevUpModeExpectation:
+    mode: str | None
+    build_fragment: str
+    reset_fragment: str | None
+    backend_fragment: str
+    frontend_fragment: str
 
 
 def _write_executable(path: Path, content: str) -> None:
@@ -38,15 +48,7 @@ def _run_disposable_dev_up(tmp_path: Path, mode: str | None, backend_health: str
 set -euo pipefail
 printf '%s\n' "$*" >> "$DEV_UP_COMMAND_LOG"
 if [[ "$*" == *" ps "* ]]; then
-  if [[ "$*" == *"--format json"* ]]; then
-    if [[ "$DEV_UP_BACKEND_HEALTH" == "healthy" ]]; then
-      printf '%s\n' '{"State":"running","Health":"healthy"}'
-    else
-      printf '%s\n' '{"State":"exited","Health":"starting"}'
-    fi
-  else
-    printf '%s\n' "$DEV_UP_BACKEND_HEALTH"
-  fi
+  printf '%s\n' "$DEV_UP_BACKEND_HEALTH"
 fi
 """,
     )
@@ -77,46 +79,48 @@ def _command_position(commands: list[str], fragment: str) -> int:
 
 
 @pytest.mark.parametrize(
-    ("mode", "build_fragment", "reset_fragment", "backend_fragment", "frontend_fragment"),
+    "expectation",
     [
-        (
-            None,
-            "build backend",
-            None,
-            "up -d --force-recreate backend",
-            "up -d --force-recreate frontend",
+        DevUpModeExpectation(
+            mode=None,
+            build_fragment="build backend",
+            reset_fragment=None,
+            backend_fragment="up -d --force-recreate backend",
+            frontend_fragment="up -d --force-recreate frontend",
         ),
-        (
-            "--rebuild",
-            "build --no-cache backend",
-            None,
-            "up -d --force-recreate backend",
-            "up -d --force-recreate frontend",
+        DevUpModeExpectation(
+            mode="--rebuild",
+            build_fragment="build --no-cache backend",
+            reset_fragment=None,
+            backend_fragment="up -d --force-recreate backend",
+            frontend_fragment="up -d --force-recreate frontend",
         ),
-        ("--reset", "build backend frontend", "down -v", "up -d backend", "up -d frontend"),
+        DevUpModeExpectation(
+            mode="--reset",
+            build_fragment="build backend frontend",
+            reset_fragment="down -v",
+            backend_fragment="up -d backend",
+            frontend_fragment="up -d frontend",
+        ),
     ],
 )
-def test_dev_up_orders_migration_readiness_and_frontend(
-    tmp_path,
-    mode,
-    build_fragment,
-    reset_fragment,
-    backend_fragment,
-    frontend_fragment,
-):
-    completed, commands = _run_disposable_dev_up(tmp_path, mode)
+def test_dev_up_orders_migration_readiness_and_frontend(tmp_path, expectation):
+    completed, commands = _run_disposable_dev_up(tmp_path, expectation.mode)
 
     assert completed.returncode == 0, completed.stderr
-    if reset_fragment is not None:
-        assert _command_position(commands, reset_fragment) < _command_position(commands, build_fragment)
+    if expectation.reset_fragment is not None:
+        assert _command_position(commands, expectation.reset_fragment) < _command_position(
+            commands,
+            expectation.build_fragment,
+        )
     positions = [
-        _command_position(commands, build_fragment),
+        _command_position(commands, expectation.build_fragment),
         _command_position(commands, "up -d --wait --wait-timeout 60 postgres-platform redis"),
         _command_position(commands, "stop frontend backend"),
         _command_position(commands, "run --rm --no-deps backend alembic upgrade head"),
-        _command_position(commands, backend_fragment),
+        _command_position(commands, expectation.backend_fragment),
         _command_position(commands, "ps --format {{.Health}} backend"),
-        _command_position(commands, frontend_fragment),
+        _command_position(commands, expectation.frontend_fragment),
     ]
     assert positions == sorted(positions)
 

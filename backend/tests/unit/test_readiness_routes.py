@@ -243,6 +243,8 @@ async def test_simultaneous_dependency_failures_share_one_response_deadline(prob
     assert response.status_code == 503
     assert response.json() == {"status": "not_ready"}
     assert elapsed_seconds < 0.15
+    assert database.active_checks == 0
+    assert redis.active_checks == 0
 
 
 @pytest.mark.asyncio

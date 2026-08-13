@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 from app.main import _sync_admin_user, _upsert_source_db_connection
 
@@ -38,6 +39,28 @@ async def test_lifespan_closes_query_source_connector():
             pass
 
     source_connector.aclose.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_startup_failure_never_reports_ready():
+    from app.main import create_app, lifespan
+
+    app = create_app()
+    with (
+        patch("app.main.init_redis", new=AsyncMock(side_effect=OSError("startup failed"))),
+        pytest.raises(OSError, match="startup failed"),
+    ):
+        async with lifespan(app):
+            pass
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        health_response = await client.get("/health")
+        ready_response = await client.get("/ready")
+
+    assert health_response.status_code == 200
+    assert health_response.json() == {"status": "live"}
+    assert ready_response.status_code == 503
+    assert ready_response.json() == {"status": "not_ready"}
 
 
 @pytest.mark.asyncio
