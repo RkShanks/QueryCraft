@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 
@@ -270,6 +270,23 @@ describe('WorkspacePage duplicate turn regression', () => {
     try {
       renderWithClient(<WorkspacePage />);
       const loadOlder = await screen.findByRole('button', { name: label });
+      const conversation = document.querySelector<HTMLElement>('.workspace-conversation');
+      expect(conversation).not.toBeNull();
+      Object.defineProperty(conversation!, 'scrollHeight', {
+        configurable: true,
+        get: () => screen.queryAllByTestId('user-bubble').length * 100,
+      });
+      Object.defineProperty(conversation!, 'scrollTop', {
+        configurable: true,
+        value: 25,
+        writable: true,
+      });
+      const animationFrame = vi
+        .spyOn(window, 'requestAnimationFrame')
+        .mockImplementation((callback) => {
+          callback(0);
+          return 1;
+        });
       expect(requestedCursors).toEqual([null]);
       fireEvent.click(loadOlder);
 
@@ -280,6 +297,8 @@ describe('WorkspacePage duplicate turn regression', () => {
         ]);
       });
       expect(requestedCursors).toEqual([null, 'older-page']);
+      expect(conversation!.scrollTop).toBe(125);
+      animationFrame.mockRestore();
     } finally {
       await i18n.changeLanguage('en');
     }
