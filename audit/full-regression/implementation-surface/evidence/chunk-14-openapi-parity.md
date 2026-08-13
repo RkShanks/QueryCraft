@@ -1,6 +1,6 @@
 # CHUNK-14 / IS-GAP-008 — canonical OpenAPI and generated client
 
-Status: implementation and local verification passed on branch `phase-6/wave-19.14-openapi-canonical`; PR creation and authoritative GitHub CI are pending.
+Status: implementation and local verification passed on branch `phase-6/wave-19.14-openapi-canonical` in [#312](https://github.com/RkShanks/QueryCraft/pull/312); authoritative GitHub CI is pending.
 
 Starting main: `e18d2335f44a93f055bb7d3c03f08012c91443f6`. Tested product commit: `9f82c73c0abe1ec07199583343e954e65fd6d358`.
 

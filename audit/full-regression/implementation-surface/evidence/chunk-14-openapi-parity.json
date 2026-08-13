@@ -1,10 +1,10 @@
 {
   "chunk": "CHUNK-14",
   "gap_id": "IS-GAP-008",
-  "status": "implementation_and_local_gates_passed_pr_pending",
+  "status": "implementation_and_local_gates_passed_ci_pending",
   "branch": "phase-6/wave-19.14-openapi-canonical",
   "starting_main": "e18d2335f44a93f055bb7d3c03f08012c91443f6",
-  "pull_request": null,
+  "pull_request": 312,
   "tested_product_commit": "9f82c73c0abe1ec07199583343e954e65fd6d358",
   "inventory_correction": {
     "historical_snapshot_operations": 60,

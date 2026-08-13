@@ -145,7 +145,7 @@
     "CHUNK-14": {
       "gap_id": "IS-GAP-008",
       "status": "Resolved on tested branch",
-      "fix_pr": null,
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/312",
       "tested_product_commit": "9f82c73c0abe1ec07199583343e954e65fd6d358",
       "authoritative_ci": {"head_commit": null, "backend_test": "pending", "frontend_test": "pending"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-14-openapi-parity.json"
@@ -297,7 +297,7 @@
       "isolation": "App factory only; placeholder non-secret settings; no live services.",
       "regression_rows": ["P1-FR-031", "P5-FR-145", "P6-FR-177", "XP-018"],
       "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-14", "status": "Resolved",
-      "resolution": {"tested_commit": "9f82c73c0abe1ec07199583343e954e65fd6d358", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-14-openapi-parity.json", "authoritative_ci": "pending"},
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/312", "tested_commit": "9f82c73c0abe1ec07199583343e954e65fd6d358", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-14-openapi-parity.json", "authoritative_ci": "pending"},
       "source_refs": ["backend/src/app/main.py::create_app", "backend/src/app/openapi_contract.py", "backend/openapi.json", "backend/scripts/generate_openapi.py", "backend/tests/contract/test_openapi_contract.py", "frontend/scripts/generate-api-client.mjs", "frontend/src/api/generated/sdk.gen.ts"]
     },
     {
