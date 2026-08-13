@@ -199,6 +199,7 @@ def test_declared_json_errors_use_sanitized_response_schemas():
     allowed_error_schemas = {
         "ErrorResponse",
         "EvaluatorRejection",
+        "NotReadyResponse",
         "QuotaExceededErrorResponse",
         "QuotaSyncPendingErrorResponse",
         "ValidationErrorResponse",
