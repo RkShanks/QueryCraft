@@ -36,10 +36,11 @@ class TestSessionDetail:
         mock_session_repo.get_by_id = AsyncMock(return_value=mock_session)
 
         mock_query_repo = MagicMock()
-        mock_query_repo.list_by_session = AsyncMock(return_value=[])
+        mock_query_repo.page_by_session = AsyncMock(return_value=([], None))
+        mock_query_repo.count_by_session = AsyncMock(return_value=0)
 
         mock_connection_repo = MagicMock()
-        mock_connection_repo.get_by_id = AsyncMock(return_value=None)
+        mock_connection_repo.get_by_ids = AsyncMock(return_value=[])
 
         async def override_session_repo():
             return mock_session_repo
@@ -112,10 +113,11 @@ class TestSessionDetail:
         mock_session_repo.get_by_id = AsyncMock(return_value=mock_session)
 
         mock_query_repo = MagicMock()
-        mock_query_repo.list_by_session = AsyncMock(return_value=[mock_attempt])
+        mock_query_repo.page_by_session = AsyncMock(return_value=([mock_attempt], None))
+        mock_query_repo.count_by_session = AsyncMock(return_value=1)
 
         mock_connection_repo = MagicMock()
-        mock_connection_repo.get_by_id = AsyncMock(return_value=mock_connection)
+        mock_connection_repo.get_by_ids = AsyncMock(return_value=[mock_connection])
 
         async def override_session_repo():
             return mock_session_repo
@@ -171,10 +173,11 @@ class TestSessionDetail:
         mock_session_repo.get_by_id = AsyncMock(return_value=mock_session)
 
         mock_query_repo = MagicMock()
-        mock_query_repo.list_by_session = AsyncMock(return_value=[])
+        mock_query_repo.page_by_session = AsyncMock(return_value=([], None))
+        mock_query_repo.count_by_session = AsyncMock(return_value=0)
 
         mock_connection_repo = MagicMock()
-        mock_connection_repo.get_by_id = AsyncMock(return_value=None)
+        mock_connection_repo.get_by_ids = AsyncMock(return_value=[])
 
         async def override_session_repo():
             return mock_session_repo

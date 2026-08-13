@@ -9,8 +9,10 @@ Endpoints:
 """
 
 import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,14 +21,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies.validation import validate_body
 from app.api.v1.phase6_permissions import require_phase6_admin_permission
 from app.core.dependencies import get_db, get_redis
-from app.core.exceptions import QuotaUnavailableError
+from app.core.exceptions import InvalidCursorError, QuotaUnavailableError
 from app.db.models.enums import AuditActionType, Permission
 from app.db.models.role import Role
 from app.db.models.role_quota import RoleQuota
 from app.repositories.quota_repository import QuotaRepository
-from app.schemas.quota import QuotaListResponse, QuotaStatusResponse, RoleQuotaConfig, RoleQuotaStatus, RoleQuotaUpsert
+from app.schemas.quota import (
+    QuotaDimensionStatus,
+    QuotaListResponse,
+    QuotaStatusResponse,
+    RoleQuotaConfig,
+    RoleQuotaStatus,
+    RoleQuotaUpsert,
+)
 from app.services.audit_service import AuditService
 from app.services.quota_service import QuotaConfigTransition, QuotaService
+from app.services.quota_status_service import (
+    InvalidQuotaCounterError,
+    QuotaCounterReadError,
+    QuotaStatusAggregator,
+)
 
 router = APIRouter(prefix="/admin/quotas", tags=["Admin Quotas"])
 _TRANSITION_RECONCILIATION_RETRIES = 3
@@ -34,6 +48,11 @@ _QUOTA_LIMIT_FIELDS = (
     "daily_query_limit",
     "daily_execution_limit",
     "daily_export_limit",
+)
+_QUOTA_STATUS_DIMENSIONS = (
+    ("queries", "daily_query_limit"),
+    ("executions", "daily_execution_limit"),
+    ("exports", "daily_export_limit"),
 )
 
 
@@ -52,6 +71,36 @@ def _quota_sync_pending() -> HTTPException:
             "message_key": "error.quota_sync_pending",
             "mutation_applied": True,
         },
+    )
+
+
+def _quota_statuses(
+    quotas: list[RoleQuota],
+    usage: dict[uuid.UUID, dict[str, int]],
+    reset_at: datetime,
+) -> list[RoleQuotaStatus]:
+    return [
+        RoleQuotaStatus(
+            role_id=quota.role_id,
+            role_name=quota.role.name,
+            dimensions={
+                dimension: _quota_dimension_status(
+                    getattr(quota, limit_field),
+                    usage[quota.role_id][dimension],
+                )
+                for dimension, limit_field in _QUOTA_STATUS_DIMENSIONS
+            },
+            reset_at=reset_at,
+        )
+        for quota in quotas
+    ]
+
+
+def _quota_dimension_status(limit: int | None, used: int) -> QuotaDimensionStatus:
+    return QuotaDimensionStatus(
+        limit=limit,
+        used=used,
+        remaining=limit - used if limit is not None else None,
     )
 
 
@@ -224,67 +273,33 @@ async def list_quotas(
 
 @router.get("/status", response_model=QuotaStatusResponse)
 async def get_quota_status(
+    cursor: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
     _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_QUOTAS_MANAGE)),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
 ):
-    from datetime import UTC, datetime, timedelta
-
     repo = QuotaRepository(db)
-    quotas = await repo.list_all()
+    try:
+        quotas, next_cursor = await repo.status_page(cursor=cursor, limit=limit)
+    except InvalidCursorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "invalid_cursor", "message_key": "error.invalidCursor"},
+        ) from exc
     now = datetime.now(UTC)
     date_suffix = now.strftime("%Y-%m-%d")
     next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    try:
+        usage = await QuotaStatusAggregator(repo, redis, date_suffix).usage_by_role(quotas)
+    except (InvalidQuotaCounterError, QuotaCounterReadError) as exc:
+        raise _quota_unavailable() from exc
 
-    from app.db.models.user import User
-
-    statuses = []
-    for q in quotas:
-        dims = {}
-        for dim_name, limit_attr in [
-            ("queries", "daily_query_limit"),
-            ("executions", "daily_execution_limit"),
-            ("exports", "daily_export_limit"),
-        ]:
-            limit_val = getattr(q, limit_attr, None)
-            used = 0
-            if limit_val is not None:
-                try:
-                    # Sum usage across all users with this role
-                    result = await db.execute(select(User).where(User.role_id == q.role_id))
-                    users = list(result.scalars().all())
-                    for user in users:
-                        key = f"quota:{user.id}:{dim_name}:{date_suffix}"
-                        val = await redis.get(key)
-                        if val is not None:
-                            used += int(val)
-                except Exception as exc:
-                    raise HTTPException(
-                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail={
-                            "error": "service_unavailable",
-                            "message_key": "error.service_unavailable",
-                        },
-                    ) from exc
-            from app.schemas.quota import QuotaDimensionStatus
-
-            dims[dim_name] = QuotaDimensionStatus(
-                limit=limit_val,
-                used=used,
-                remaining=limit_val - used if limit_val is not None else None,
-            )
-
-        role_name = q.role.name if q.role else ""
-        statuses.append(
-            RoleQuotaStatus(
-                role_id=q.role_id,
-                role_name=role_name,
-                dimensions=dims,
-                reset_at=next_midnight,
-            )
-        )
-
-    return QuotaStatusResponse(status=statuses)
+    return QuotaStatusResponse(
+        status=_quota_statuses(quotas, usage, next_midnight),
+        total=await repo.count_status_roles(),
+        next_cursor=next_cursor,
+    )
 
 
 @router.get("/{role_id}")

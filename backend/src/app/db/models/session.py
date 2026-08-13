@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, text
+from sqlalchemy import DateTime, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,7 +14,6 @@ class Session(Base):
     """Chat session grouping accepted queries."""
 
     __tablename__ = "sessions"
-
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
@@ -30,6 +29,15 @@ class Session(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     last_activity_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_sessions_user_activity_page",
+            "user_id",
+            last_activity_at.desc(),
+            id.desc(),
+        ),
     )
 
     accepted_queries = relationship("AcceptedQuery", back_populates="session", cascade="all, delete-orphan")

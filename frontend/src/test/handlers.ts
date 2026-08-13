@@ -321,6 +321,7 @@ export const handlers = [
         },
       ],
       total: 1,
+      next_cursor: null,
     };
     return HttpResponse.json(sessions, { status: 200 });
   }),
@@ -332,6 +333,8 @@ export const handlers = [
       preview_text: 'Session detail',
       created_at: new Date().toISOString(),
       last_activity_at: new Date().toISOString(),
+      attempts_total: 1,
+      attempts_next_cursor: null,
       attempts: [
         {
           id: 'session-attempt-1',

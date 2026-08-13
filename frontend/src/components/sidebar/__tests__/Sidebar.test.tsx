@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from '../Sidebar';
 import { useUIStore } from '../../../stores/uiStore';
 import { createWrapper } from '../../../test/utils';
@@ -64,10 +64,20 @@ vi.mock('react-router-dom', async () => {
 import { useSessionsList } from '../../../hooks/useSessions';
 import { useSignOut, useCurrentUser } from '../../../hooks/useAuth';
 
-function setup(sessions = mockSessions, isLoading = false) {
+function setup(
+  sessions = mockSessions,
+  isLoading = false,
+  overrides: Record<string, unknown> = {}
+) {
   (useSessionsList as ReturnType<typeof vi.fn>).mockReturnValue({
     data: { items: sessions, total: sessions.length },
     isLoading,
+    isError: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    fetchNextPage: vi.fn(),
+    refetch: vi.fn(),
+    ...overrides,
   });
   return render(<Sidebar />, { wrapper: createWrapper() });
 }
@@ -132,9 +142,38 @@ describe('Sidebar', () => {
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
 
+  it.each([
+    ['en', 'Load more sessions'],
+    ['ar', 'تحميل المزيد من الجلسات'],
+  ])('loads another page only from the localized action in %s', async (language, label) => {
+    await i18n.changeLanguage(language);
+    const fetchNextPage = vi.fn();
+    try {
+      setup(mockSessions, false, { hasNextPage: true, fetchNextPage });
+      const loadMore = screen.getByRole('button', { name: label });
+      expect(fetchNextPage).not.toHaveBeenCalled();
+      fireEvent.click(loadMore);
+      expect(fetchNextPage).toHaveBeenCalledTimes(1);
+    } finally {
+      await i18n.changeLanguage('en');
+    }
+  });
+
+  it('renders an accessible session-list error retry', () => {
+    const refetch = vi.fn();
+    setup([], false, { isError: true, refetch });
+
+    expect(screen.getByRole('alert', { name: 'Unable to load sessions.' })).toHaveTextContent(
+      'Unable to load sessions.'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
   it('clicking New Chat resets activeSessionId to null', () => {
     setup();
-    useUIStore.getState().setActiveSessionId('sess-today-1');
+    act(() => useUIStore.getState().setActiveSessionId('sess-today-1'));
     expect(useUIStore.getState().activeSessionId).toBe('sess-today-1');
 
     fireEvent.click(screen.getByTestId('sidebar-new-chat'));
@@ -172,8 +211,7 @@ describe('Sidebar', () => {
 
   it('hides group titles when collapsed', () => {
     setup();
-    useUIStore.getState().toggleSidebar();
-    setup();
+    act(() => useUIStore.getState().toggleSidebar());
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
     expect(screen.queryByText('Previous 7 Days')).not.toBeInTheDocument();
     expect(screen.queryByText('Older')).not.toBeInTheDocument();
@@ -225,8 +263,7 @@ describe('Sidebar', () => {
 
   it('collapsed sidebar still exposes sign-out button', () => {
     setup();
-    useUIStore.getState().toggleSidebar();
-    setup();
+    act(() => useUIStore.getState().toggleSidebar());
     const buttons = screen.getAllByTestId('sidebar-sign-out');
     expect(buttons.length).toBeGreaterThanOrEqual(1);
   });
@@ -261,8 +298,7 @@ describe('Sidebar', () => {
 
   it('collapsed sidebar exposes History and Settings buttons by aria-label', () => {
     setup();
-    useUIStore.getState().toggleSidebar();
-    setup();
+    act(() => useUIStore.getState().toggleSidebar());
     const historyButtons = screen.getAllByLabelText('History');
     const settingsButtons = screen.getAllByLabelText('Settings');
     expect(historyButtons.length).toBeGreaterThanOrEqual(1);

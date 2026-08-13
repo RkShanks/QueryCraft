@@ -182,7 +182,7 @@ def _assert_documented_downgrade_behavior(
         before_rows.pop("alembic_version")
         after_rows.pop("alembic_version")
         assert after_rows == before_rows
-    if revision == "010":
+    if revision in {"010", "011"}:
         before_rows = dict(before_downgrade.row_fingerprints)
         after_rows = dict(after_downgrade.row_fingerprints)
         before_rows.pop("alembic_version")

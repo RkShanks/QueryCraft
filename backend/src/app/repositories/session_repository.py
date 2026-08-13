@@ -6,10 +6,13 @@ from datetime import UTC, datetime
 from typing import Any
 
 from redis.asyncio import Redis
-from sqlalchemy import desc, select
+from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import decode_datetime_cursor, encode_cursor
 from app.db.models.session import Session
+
+_SESSION_CURSOR_NAMESPACE = "sessions"
 
 
 @dataclass(frozen=True)
@@ -390,6 +393,40 @@ class SessionRepository:
             select(Session).where(Session.user_id == user_id).order_by(desc(Session.last_activity_at))
         )
         return list(result.scalars().all())
+
+    async def page_by_user(
+        self,
+        user_id: uuid.UUID,
+        cursor: str | None = None,
+        limit: int = 50,
+    ) -> tuple[list[Session], str | None]:
+        """Return one stable, ownership-scoped keyset page."""
+        statement = (
+            select(Session)
+            .where(Session.user_id == user_id)
+            .order_by(desc(Session.last_activity_at), desc(Session.id))
+            .limit(limit + 1)
+        )
+        if cursor is not None:
+            activity_at, session_id = decode_datetime_cursor(cursor, _SESSION_CURSOR_NAMESPACE)
+            statement = statement.where(
+                or_(
+                    Session.last_activity_at < activity_at,
+                    and_(Session.last_activity_at == activity_at, Session.id < session_id),
+                )
+            )
+
+        rows = list((await self._session.execute(statement)).scalars().all())
+        if len(rows) <= limit:
+            return rows, None
+        page = rows[:limit]
+        last = page[-1]
+        return page, encode_cursor(_SESSION_CURSOR_NAMESPACE, last.last_activity_at.isoformat(), last.id)
+
+    async def count_by_user(self, user_id: uuid.UUID) -> int:
+        """Return the exact ownership-scoped session total."""
+        statement = select(func.count()).select_from(Session).where(Session.user_id == user_id)
+        return int((await self._session.execute(statement)).scalar_one())
 
     async def get_by_id(self, session_id: uuid.UUID, user_id: uuid.UUID) -> Session | None:
         """Fetch a single session by ID and user."""

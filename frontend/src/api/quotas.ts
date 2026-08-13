@@ -56,6 +56,12 @@ export interface RoleQuotaStatus {
   reset_at: string;
 }
 
+export interface QuotaStatusPage {
+  status: RoleQuotaStatus[];
+  total: number;
+  next_cursor: string | null;
+}
+
 export async function listQuotas(): Promise<{ quotas: RoleQuotaConfig[] }> {
   const res = await client.get({
     url: '/admin/quotas',
@@ -64,12 +70,17 @@ export async function listQuotas(): Promise<{ quotas: RoleQuotaConfig[] }> {
   return res.data as { quotas: RoleQuotaConfig[] };
 }
 
-export async function getQuotaStatus(): Promise<{ status: RoleQuotaStatus[] }> {
+export async function getQuotaStatus(
+  cursor?: string,
+  signal?: AbortSignal
+): Promise<QuotaStatusPage> {
   const res = await client.get({
     url: '/admin/quotas/status',
+    query: { cursor, limit: 50 },
+    signal,
     throwOnError: true,
   });
-  return res.data as { status: RoleQuotaStatus[] };
+  return res.data as QuotaStatusPage;
 }
 
 export async function upsertQuota(

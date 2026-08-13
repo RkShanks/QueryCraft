@@ -2,12 +2,14 @@
 
 import asyncio
 import uuid
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_db, get_redis, require_active_user
+from app.core.exceptions import InvalidCursorError
 from app.core.session_cancellation import (
     cancel_local_session_work,
     cleanup_cancelled_session_state,
@@ -61,11 +63,20 @@ async def create_session(
 @router.get("", response_model=SessionListResponse)
 async def list_sessions(
     request: Request,
+    cursor: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
     repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
     user_id: str = Depends(require_active_user),  # noqa: B008
 ):
-    """GET /sessions — list sessions for the current user."""
-    items = await repo.list_by_user(uuid.UUID(user_id))
+    """Return one stable keyset page of sessions owned by the current user."""
+    user_uuid = uuid.UUID(user_id)
+    try:
+        items, next_cursor = await repo.page_by_user(user_uuid, cursor=cursor, limit=limit)
+    except InvalidCursorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "invalid_cursor", "message_key": "error.invalidCursor"},
+        ) from exc
     return SessionListResponse(
         items=[
             SessionSummary(
@@ -76,7 +87,8 @@ async def list_sessions(
             )
             for s in items
         ],
-        total=len(items),
+        total=await repo.count_by_user(user_uuid),
+        next_cursor=next_cursor,
     )
 
 
@@ -84,6 +96,8 @@ async def list_sessions(
 async def get_session(
     request: Request,
     session_id: uuid.UUID,
+    attempt_cursor: Annotated[str | None, Query()] = None,
+    attempt_limit: Annotated[int, Query(ge=1, le=100)] = 50,
     session_repo: SessionRepository = Depends(_get_session_repo),  # noqa: B008
     query_repo: AcceptedQueryRepository = Depends(_get_accepted_query_repo),  # noqa: B008
     connection_repo: ConnectionRepository = Depends(_get_connection_repo),  # noqa: B008
@@ -97,21 +111,36 @@ async def get_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "not_found", "message_key": "error.notFound"},
         )
-    attempts = await query_repo.list_by_session(session_id, user_uuid)
-    connection_meta: dict[uuid.UUID, tuple[str, str]] = {}
-    for attempt in attempts:
-        if not attempt.database_connection_id or attempt.database_connection_id in connection_meta:
-            continue
-        conn = await connection_repo.get_by_id(attempt.database_connection_id)
-        if conn is not None:
-            database_type = getattr(conn.database_type, "value", conn.database_type)
-            connection_meta[attempt.database_connection_id] = (conn.display_name, database_type)
+    try:
+        attempts, attempts_next_cursor = await query_repo.page_by_session(
+            session_id,
+            user_uuid,
+            cursor=attempt_cursor,
+            limit=attempt_limit,
+        )
+    except InvalidCursorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "invalid_cursor", "message_key": "error.invalidCursor"},
+        ) from exc
+    attempts_total = await query_repo.count_by_session(session_id, user_uuid)
+    connection_ids = {attempt.database_connection_id for attempt in attempts if attempt.database_connection_id}
+    connections = await connection_repo.get_by_ids(connection_ids)
+    connection_meta = {
+        connection.id: (
+            connection.display_name,
+            getattr(connection.database_type, "value", connection.database_type),
+        )
+        for connection in connections
+    }
     return SessionDetail(
         id=str(sess.id),
         connection_id=str(sess.connection_id) if sess.connection_id else None,
         preview_text=sess.preview_text,
         created_at=sess.created_at.isoformat(),
         last_activity_at=sess.last_activity_at.isoformat(),
+        attempts_total=attempts_total,
+        attempts_next_cursor=attempts_next_cursor,
         attempts=[
             {
                 "id": str(a.id),

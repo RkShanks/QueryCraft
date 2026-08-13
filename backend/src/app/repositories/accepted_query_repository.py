@@ -2,11 +2,14 @@
 
 import uuid
 
-from sqlalchemy import desc, func, select, tuple_
+from sqlalchemy import and_, desc, func, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidCursorError
+from app.core.pagination import decode_datetime_cursor, encode_cursor
 from app.db.models.accepted_query import AcceptedQuery
+
+_ATTEMPT_CURSOR_NAMESPACE = "session_attempts"
 
 
 class AcceptedQueryRepository:
@@ -116,6 +119,45 @@ class AcceptedQueryRepository:
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def page_by_session(
+        self,
+        session_id: uuid.UUID,
+        user_id: uuid.UUID,
+        cursor: str | None = None,
+        limit: int = 50,
+    ) -> tuple[list[AcceptedQuery], str | None]:
+        """Return one stable, ownership-scoped attempt page."""
+        statement = (
+            select(AcceptedQuery)
+            .where(AcceptedQuery.session_id == session_id, AcceptedQuery.user_id == user_id)
+            .order_by(desc(AcceptedQuery.accepted_at), desc(AcceptedQuery.id))
+            .limit(limit + 1)
+        )
+        if cursor is not None:
+            accepted_at, attempt_id = decode_datetime_cursor(cursor, _ATTEMPT_CURSOR_NAMESPACE)
+            statement = statement.where(
+                or_(
+                    AcceptedQuery.accepted_at < accepted_at,
+                    and_(AcceptedQuery.accepted_at == accepted_at, AcceptedQuery.id < attempt_id),
+                )
+            )
+
+        rows = list((await self._session.execute(statement)).scalars().all())
+        if len(rows) <= limit:
+            return rows, None
+        page = rows[:limit]
+        last = page[-1]
+        return page, encode_cursor(_ATTEMPT_CURSOR_NAMESPACE, last.accepted_at.isoformat(), last.id)
+
+    async def count_by_session(self, session_id: uuid.UUID, user_id: uuid.UUID) -> int:
+        """Return the exact ownership-scoped attempt total."""
+        statement = (
+            select(func.count())
+            .select_from(AcceptedQuery)
+            .where(AcceptedQuery.session_id == session_id, AcceptedQuery.user_id == user_id)
+        )
+        return int((await self._session.execute(statement)).scalar_one())
 
     async def update_feedback(
         self, query_id: uuid.UUID, user_id: uuid.UUID, feedback: int, saved: bool | None = None

@@ -1,11 +1,13 @@
 .workspace-page {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 .workspace-conversation {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 1.5rem;
   display: flex;
@@ -67,6 +69,50 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.workspace-history-actions,
+.workspace-history-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding-block-end: 1rem;
+  text-align: center;
+}
+
+.workspace-history-error {
+  flex: 1;
+  justify-content: center;
+  color: var(--color-error-400, #f87171);
+}
+
+.workspace-history-inline-error {
+  color: var(--color-error-400, #f87171);
+  font-size: 0.875rem;
+}
+
+.workspace-load-older,
+.workspace-history-error button {
+  min-height: 2.5rem;
+  max-width: 100%;
+  padding-inline: 1rem;
+  border: 1px solid var(--color-obsidian-700);
+  border-radius: 0.5rem;
+  color: var(--color-obsidian-300);
+  background: var(--color-obsidian-900);
+  cursor: pointer;
+}
+
+.workspace-load-older:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.workspace-load-older:hover:not(:disabled),
+.workspace-history-error button:hover {
+  border-color: var(--color-neon-cyan);
+  color: var(--color-neon-cyan);
 }
 
 .workspace-message-pair {

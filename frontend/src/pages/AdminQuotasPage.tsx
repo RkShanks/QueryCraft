@@ -80,18 +80,31 @@ function parseQuotaLimit(rawLimit: string): ParsedQuotaLimit {
 interface PanelStateProps {
   message: string;
   variant: 'empty' | 'error';
+  retry?: () => void;
 }
 
-const PanelState: React.FC<PanelStateProps> = ({ message, variant }) => (
-  <div
-    className={`px-4 py-10 text-center text-sm ${
-      variant === 'error' ? 'text-red-400' : 'text-gray-500'
-    }`}
-    role={variant === 'error' ? 'alert' : 'status'}
-  >
-    {message}
-  </div>
-);
+const PanelState: React.FC<PanelStateProps> = ({ message, variant, retry }) => {
+  const { t } = useTranslation();
+  return (
+    <div
+      className={`px-4 py-10 text-center text-sm ${
+        variant === 'error' ? 'text-red-400' : 'text-gray-500'
+      }`}
+      role={variant === 'error' ? 'alert' : 'status'}
+    >
+      <p>{message}</p>
+      {retry && (
+        <button
+          type="button"
+          onClick={retry}
+          className="mt-4 min-h-10 rounded-lg border border-red-500/30 px-4 py-2 font-semibold text-red-300 hover:border-red-400 hover:text-red-200"
+        >
+          {t('common.retry')}
+        </button>
+      )}
+    </div>
+  );
+};
 
 function renderQuotaDimension(
   dimension: QuotaDimensionStatus,
@@ -454,6 +467,8 @@ export const AdminQuotasPage: React.FC = () => {
     upsertMutation.isPending ||
     deleteMutation.isPending;
 
+  const quotaStatuses = statusQuery.data?.status ?? [];
+
   const isLoading =
     listQuery.isLoading ||
     statusQuery.isLoading ||
@@ -773,17 +788,18 @@ export const AdminQuotasPage: React.FC = () => {
           {t('quota.status_title')}
         </h2>
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-          {statusQuery.isError ? (
+          {statusQuery.isError && quotaStatuses.length === 0 ? (
             <PanelState
               message={getErrorMessage(statusQuery.error, 'error.service_unavailable')}
               variant="error"
+              retry={() => void statusQuery.refetch()}
             />
-          ) : (statusQuery.data?.status || []).length === 0 ? (
+          ) : quotaStatuses.length === 0 ? (
             <PanelState message={t('quota.status_empty')} variant="empty" />
           ) : (
             <>
               <div className="lg:hidden divide-y divide-gray-800/50">
-                {(statusQuery.data?.status || []).map((quotaStatus) => (
+                {quotaStatuses.map((quotaStatus) => (
                   <QuotaStatusCard
                     key={quotaStatus.role_id}
                     quotaStatus={quotaStatus}
@@ -815,7 +831,7 @@ export const AdminQuotasPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800/50 text-sm text-gray-300">
-                    {(statusQuery.data?.status || []).map((quotaStatus) => {
+                    {quotaStatuses.map((quotaStatus) => {
                       const formattedReset = quotaStatus.reset_at
                         ? formatResetTime(quotaStatus.reset_at, i18n.language)
                         : '';
@@ -858,6 +874,27 @@ export const AdminQuotasPage: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+              {(statusQuery.hasNextPage || statusQuery.isFetchNextPageError) && (
+                <div className="flex flex-col items-center gap-3 border-t border-gray-800 p-4">
+                  {statusQuery.isFetchNextPageError && (
+                    <p className="text-center text-sm text-red-400" role="alert">
+                      {getErrorMessage(statusQuery.error, 'error.service_unavailable')}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void statusQuery.fetchNextPage()}
+                    disabled={statusQuery.isFetchingNextPage}
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-gray-200 transition-colors hover:border-neon-cyan hover:text-neon-cyan disabled:cursor-wait disabled:opacity-50 sm:w-auto"
+                  >
+                    {statusQuery.isFetchingNextPage
+                      ? t('quota.loading_more_status')
+                      : statusQuery.isFetchNextPageError
+                        ? t('common.retry')
+                        : t('quota.load_more_status')}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

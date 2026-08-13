@@ -1,6 +1,8 @@
 .app-shell {
   display: flex;
+  height: 100vh;
   min-height: 100vh;
+  overflow: hidden;
   background-color: var(--color-obsidian-950);
   color: var(--color-obsidian-200);
 }

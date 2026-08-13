@@ -34,6 +34,12 @@ const configuredStatus = {
   reset_at: '2026-07-29T00:00:00Z',
 };
 
+const viewerStatus = {
+  ...configuredStatus,
+  role_id: 'viewer-role-id',
+  role_name: 'viewer',
+};
+
 const pendingResponse = {
   error: 'quota_sync_pending',
   message_key: 'error.quota_sync_pending',
@@ -47,7 +53,9 @@ function installQuotaOnlyHandlers(
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json(quotaOnlyUser)),
     http.get('/api/v1/admin/quotas', () => HttpResponse.json({ quotas })),
-    http.get('/api/v1/admin/quotas/status', () => HttpResponse.json({ status }))
+    http.get('/api/v1/admin/quotas/status', () =>
+      HttpResponse.json({ status, total: status.length, next_cursor: null })
+    )
   );
 }
 
@@ -114,6 +122,103 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
       });
     }
   );
+
+  it.each([
+    ['en', 'Load more quota status'],
+    ['ar', 'تحميل المزيد من حالة الحصص'],
+  ])('loads and deduplicates quota status pages explicitly in %s', async (language, label) => {
+    const requestedCursors: Array<string | null> = [];
+    let rolesRequested = false;
+    let mappingsRequested = false;
+    installQuotaOnlyHandlers();
+    server.use(
+      http.get('/api/v1/admin/quotas/status', ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        requestedCursors.push(cursor);
+        if (cursor === 'viewer-page') {
+          return HttpResponse.json({
+            status: [configuredStatus, viewerStatus],
+            total: 2,
+            next_cursor: null,
+          });
+        }
+        return HttpResponse.json({
+          status: [configuredStatus],
+          total: 2,
+          next_cursor: 'viewer-page',
+        });
+      }),
+      http.get('/api/v1/admin/roles', () => {
+        rolesRequested = true;
+        return HttpResponse.json({ roles: [] });
+      }),
+      http.get('/api/v1/admin/sso/group-mappings', () => {
+        mappingsRequested = true;
+        return HttpResponse.json({ mappings: [] });
+      })
+    );
+    await i18n.changeLanguage(language);
+
+    try {
+      renderQuotaOnlyPage();
+      const loadMore = await screen.findByRole('button', { name: label });
+      expect(requestedCursors).toEqual([null]);
+      fireEvent.click(loadMore);
+
+      expect(
+        await screen.findByRole('article', {
+          name: language === 'ar' ? 'حالة حصص الدور viewer' : 'viewer quota status',
+        })
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByRole('article', {
+          name: language === 'ar' ? 'حالة حصص الدور analyst' : 'analyst quota status',
+        })
+      ).toHaveLength(1);
+      expect(requestedCursors).toEqual([null, 'viewer-page']);
+      expect(rolesRequested).toBe(false);
+      expect(mappingsRequested).toBe(false);
+    } finally {
+      await i18n.changeLanguage('en');
+    }
+  });
+
+  it('retries a failed quota-status page without hiding quota configuration', async () => {
+    let statusRequests = 0;
+    installQuotaOnlyHandlers();
+    server.use(
+      http.get('/api/v1/admin/quotas/status', () => {
+        statusRequests += 1;
+        if (statusRequests === 1) {
+          return HttpResponse.json(
+            { error: 'service_unavailable', message_key: 'error.service_unavailable' },
+            { status: 503 }
+          );
+        }
+        return HttpResponse.json({
+          status: [configuredStatus],
+          total: 1,
+          next_cursor: null,
+        });
+      })
+    );
+
+    renderQuotaOnlyPage();
+    expect(
+      await screen.findByRole('article', { name: 'analyst quota configuration' })
+    ).toBeInTheDocument();
+    const error = await screen.findByText(
+      'Service temporarily unavailable. Please try again later.'
+    );
+    const alert = error.closest('[role="alert"]');
+    expect(alert).not.toBeNull();
+    fireEvent.click(within(alert as HTMLElement).getByRole('button', { name: 'Retry' }));
+
+    expect(
+      await screen.findByRole('article', { name: 'analyst quota status' })
+    ).toBeInTheDocument();
+    expect(statusRequests).toBe(2);
+  });
 
   it.each(['-1', '1.5', '9007199254740992'])(
     'P6-FR-149 rejects invalid quota value %s before the API request',

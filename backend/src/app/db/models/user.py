@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -43,6 +43,7 @@ class User(Base):
     role_obj: Mapped[Role] = relationship("Role", lazy="selectin")
 
     __table_args__ = (
+        Index("ix_users_role_id_page", "role_id", "id"),
         CheckConstraint(
             "auth_provider IN ('local', 'oidc', 'saml')",
             name="ck_users_auth_provider_valid",

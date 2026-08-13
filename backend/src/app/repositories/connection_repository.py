@@ -29,6 +29,15 @@ class ConnectionRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_ids(self, connection_ids: set[uuid.UUID]) -> list[SourceDatabaseConnection]:
+        """Fetch one bounded page's connection metadata in a single query."""
+        if not connection_ids:
+            return []
+        result = await self._db_session.execute(
+            select(SourceDatabaseConnection).where(SourceDatabaseConnection.id.in_(connection_ids))
+        )
+        return list(result.scalars().all())
+
     async def list_all(self) -> list[SourceDatabaseConnection]:
         """Return all connections."""
         result = await self._db_session.execute(select(SourceDatabaseConnection))

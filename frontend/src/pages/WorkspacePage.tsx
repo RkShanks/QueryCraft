@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -139,7 +139,16 @@ export const WorkspacePage: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const activeSessionId = useUIStore((state) => state.activeSessionId);
-  const { data: sessionDetail, isLoading } = useSessionDetail(activeSessionId ?? '');
+  const {
+    data: sessionDetail,
+    isLoading,
+    isError: sessionDetailError,
+    isFetchNextPageError,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch: refetchSessionDetail,
+  } = useSessionDetail(activeSessionId ?? '');
   const querySubmit = useQuerySubmit();
   const {
     data: queryLimits,
@@ -220,6 +229,12 @@ export const WorkspacePage: React.FC = () => {
   const [renderedSessionId, setRenderedSessionId] = useState(activeSessionId);
   const prevSessionIdRef = useRef(activeSessionId);
   const pendingSubmitRef = useRef(false);
+  const conversationRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRestoreRef = useRef<{
+    sessionId: string;
+    previousHeight: number;
+    previousTop: number;
+  } | null>(null);
 
   useEffect(() => {
     const prevId = prevSessionIdRef.current;
@@ -269,6 +284,50 @@ export const WorkspacePage: React.FC = () => {
 
   const showEmptyState = activeSessionId === null && allTurns.length === 0;
   const showLoading = isLoading && allTurns.length === 0 && !querySubmit.isSubmitting;
+  const showHistoryError = sessionDetailError && allTurns.length === 0 && activeSessionId !== null;
+
+  useLayoutEffect(() => {
+    const pending = pendingScrollRestoreRef.current;
+    if (!pending) return;
+    if (activeSessionId !== pending.sessionId) {
+      pendingScrollRestoreRef.current = null;
+      return;
+    }
+    const conversation = conversationRef.current;
+    if (!conversation) return;
+    conversation.scrollTop =
+      pending.previousTop + conversation.scrollHeight - pending.previousHeight;
+    pendingScrollRestoreRef.current = null;
+  }, [activeSessionId, sessionDetail?.attempts.length]);
+
+  const handleLoadOlder = useCallback(async () => {
+    const conversation = conversationRef.current;
+    const requestedSessionId = activeSessionId;
+    if (!conversation || !requestedSessionId) return;
+    const previousAttemptCount = sessionDetail?.attempts.length ?? 0;
+    pendingScrollRestoreRef.current = {
+      sessionId: requestedSessionId,
+      previousHeight: conversation.scrollHeight,
+      previousTop: conversation.scrollTop,
+    };
+
+    const result = await fetchNextPage();
+    if (useUIStore.getState().activeSessionId !== requestedSessionId) {
+      if (pendingScrollRestoreRef.current?.sessionId === requestedSessionId) {
+        pendingScrollRestoreRef.current = null;
+      }
+      return;
+    }
+    const loadedAttemptCount = new Set(
+      result.data?.pages.flatMap((page) => page.attempts.map((attempt) => attempt.id)) ?? []
+    ).size;
+    if (
+      loadedAttemptCount <= previousAttemptCount &&
+      pendingScrollRestoreRef.current?.sessionId === requestedSessionId
+    ) {
+      pendingScrollRestoreRef.current = null;
+    }
+  }, [activeSessionId, fetchNextPage, sessionDetail?.attempts.length]);
 
   const updateTurn = useCallback(
     (matchKey: string, patch: Partial<ConversationTurn>) => {
@@ -484,7 +543,7 @@ export const WorkspacePage: React.FC = () => {
 
   return (
     <div className="workspace-page" data-testid="workspace-page">
-      <div className="workspace-conversation">
+      <div className="workspace-conversation" ref={conversationRef}>
         {showEmptyState ? (
           <div className="workspace-empty-state">
             <MessageSquare className="w-12 h-12 workspace-empty-icon" />
@@ -496,8 +555,39 @@ export const WorkspacePage: React.FC = () => {
             <div className="workspace-spinner" />
             <p>{t('history.loading')}</p>
           </div>
+        ) : showHistoryError ? (
+          <div
+            className="workspace-history-error"
+            role="alert"
+            aria-label={t('workspace.historyLoadError')}
+          >
+            <p>{t('workspace.historyLoadError')}</p>
+            <button type="button" onClick={() => void refetchSessionDetail()}>
+              {t('common.retry')}
+            </button>
+          </div>
         ) : (
-          <div className="workspace-messages">
+          <>
+            {(hasNextPage || isFetchNextPageError) && (
+              <div className="workspace-history-actions">
+                {isFetchNextPageError && (
+                  <p className="workspace-history-inline-error" role="alert">
+                    {t('workspace.historyLoadError')}
+                  </p>
+                )}
+                {hasNextPage && (
+                  <button
+                    type="button"
+                    className="workspace-load-older"
+                    disabled={isFetchingNextPage}
+                    onClick={() => void handleLoadOlder()}
+                  >
+                    {isFetchingNextPage ? t('workspace.loadingOlder') : t('workspace.loadOlder')}
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="workspace-messages">
             {allTurns.map((turn) => (
               <div key={turn.id} className="workspace-message-pair">
                 {!turn.hostileInputBlocked && <UserBubble text={turn.question} />}
@@ -543,7 +633,8 @@ export const WorkspacePage: React.FC = () => {
                 )}
               </div>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
       <PromptInput

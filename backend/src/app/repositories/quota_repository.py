@@ -1,12 +1,19 @@
 """QuotaRepository — data access for role_quotas table."""
 
 import uuid
+from collections.abc import AsyncIterator
 
-from sqlalchemy import select
+from sqlalchemy import and_, asc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import contains_eager
 
+from app.core.pagination import decode_cursor, encode_cursor
+from app.db.models.role import Role
 from app.db.models.role_quota import RoleQuota
+from app.db.models.user import User
 from app.schemas.quota import RoleQuotaUpsert
+
+_QUOTA_STATUS_CURSOR_NAMESPACE = "quota_status"
 
 
 class QuotaRepository:
@@ -57,3 +64,59 @@ class QuotaRepository:
     async def list_all(self) -> list[RoleQuota]:
         result = await self._session.execute(select(RoleQuota))
         return list(result.scalars().all())
+
+    async def status_page(
+        self,
+        cursor: str | None = None,
+        limit: int = 50,
+    ) -> tuple[list[RoleQuota], str | None]:
+        """Return one quota-status page in stable role-name order."""
+        statement = (
+            select(RoleQuota)
+            .join(Role, Role.id == RoleQuota.role_id)
+            .options(contains_eager(RoleQuota.role))
+            .order_by(asc(Role.name), asc(Role.id))
+            .limit(limit + 1)
+        )
+        if cursor is not None:
+            position = decode_cursor(cursor, _QUOTA_STATUS_CURSOR_NAMESPACE)
+            statement = statement.where(
+                or_(Role.name > position.sort_value, and_(Role.name == position.sort_value, Role.id > position.item_id))
+            )
+
+        rows = list((await self._session.execute(statement)).scalars().all())
+        if len(rows) <= limit:
+            return rows, None
+        page = rows[:limit]
+        last = page[-1]
+        return page, encode_cursor(_QUOTA_STATUS_CURSOR_NAMESPACE, last.role.name, last.role_id)
+
+    async def count_status_roles(self) -> int:
+        """Return the exact number of configured quota roles."""
+        statement = select(func.count()).select_from(RoleQuota)
+        return int((await self._session.execute(statement)).scalar_one())
+
+    async def user_id_batches(
+        self,
+        role_ids: set[uuid.UUID],
+        batch_size: int = 500,
+    ) -> AsyncIterator[list[tuple[uuid.UUID, uuid.UUID]]]:
+        """Keyset user IDs for the current role page in bounded batches."""
+        if not role_ids:
+            return
+        last_position: tuple[uuid.UUID, uuid.UUID] | None = None
+        while True:
+            statement = select(User.role_id, User.id).where(User.role_id.in_(role_ids))
+            if last_position:
+                last_role_id, last_user_id = last_position
+                statement = statement.where(
+                    or_(User.role_id > last_role_id, and_(User.role_id == last_role_id, User.id > last_user_id))
+                )
+            statement = statement.order_by(asc(User.role_id), asc(User.id)).limit(batch_size)
+            rows = [(row.role_id, row.id) for row in (await self._session.execute(statement)).all()]
+            if not rows:
+                return
+            yield rows
+            if len(rows) < batch_size:
+                return
+            last_position = rows[-1]
