@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI, HTTPException
@@ -230,6 +230,26 @@ class TestPermissionEnforcement:
         data = response.json()
         assert data["error"] == "forbidden"
         assert data["message_key"] == "error.forbidden"
+
+    @pytest.mark.asyncio
+    async def test_draft_preview_requires_role_management_permission(self):
+        app = _make_app(_non_admin_session())
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/roles/test-policy",
+                json={
+                    "question": "Show users",
+                    "connection_policy": {
+                        "connection_id": str(uuid.uuid4()),
+                        "allowed_tables": [],
+                        "row_filters": [],
+                        "column_masks": [],
+                    },
+                },
+            )
+
+        assert response.status_code == 403
+        assert response.json() == {"error": "forbidden", "message_key": "error.forbidden"}
 
 
 # ── Validation ─────────────────────────────────────────────────────────────
@@ -933,6 +953,91 @@ class TestNoExecution:
         assert "sql" not in data
         assert "generated_sql" not in data
         assert "rows" not in data
+
+    @pytest.mark.asyncio
+    async def test_draft_preview_uses_unsaved_policy_without_external_or_persistence_work(self):
+        from app.llm.factory import LLMProviderFactory
+        from app.source_db.executor import SourceDBExecutor
+
+        connection_id = uuid.uuid4()
+        connection = _active_healthy_conn(connection_id)
+        connection_repo = MagicMock()
+        connection_repo.get_by_id = AsyncMock(return_value=connection)
+        connection_repo.get_schema_entries = AsyncMock(return_value=_schema_entries())
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=AssertionError("persisted policy must not be read"))
+        db.commit = AsyncMock(side_effect=AssertionError("draft preview must not persist"))
+        app = _make_app(
+            _admin_session(),
+            connection_repo=connection_repo,
+            db=db,
+        )
+        draft_policy = {
+            "connection_id": str(connection_id),
+            "allowed_tables": [{"table": "orders", "columns": ["id", "customer_id"]}],
+            "row_filters": [{"table": "orders", "filter": "id >= 1"}],
+            "column_masks": [{"table": "orders", "columns": ["customer_id"]}],
+        }
+
+        with (
+            patch.object(LLMProviderFactory, "from_config", side_effect=AssertionError("LLM call")) as llm_factory,
+            patch.object(SourceDBExecutor, "execute", new_callable=AsyncMock) as source_execute,
+        ):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.post(
+                    "/api/v1/admin/roles/test-policy",
+                    json={
+                        "question": "Show draft orders",
+                        "sample_sql": "SELECT id FROM orders",
+                        "connection_policy": draft_policy,
+                    },
+                )
+
+        assert response.status_code == 200, response.text
+        assert response.json() == {
+            "accessible_tables": ["orders"],
+            "accessible_columns": {"orders": ["id", "customer_id"]},
+            "blocked_tables": ["customers", "payments"],
+            "applicable_row_filters": [{"table": "orders", "filter": "id >= 1"}],
+            "masked_columns": {"orders": ["customer_id"]},
+            "would_be_allowed": True,
+            "message_key": None,
+        }
+        llm_factory.assert_not_called()
+        source_execute.assert_not_awaited()
+        db.execute.assert_not_awaited()
+        db.commit.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_draft_preview_rejects_invalid_filter_with_sanitized_contract(self):
+        connection_id = uuid.uuid4()
+        connection = _active_healthy_conn(connection_id)
+        connection_repo = MagicMock()
+        connection_repo.get_by_id = AsyncMock(return_value=connection)
+        connection_repo.get_schema_entries = AsyncMock(return_value=_schema_entries())
+        app = _make_app(_admin_session(), connection_repo=connection_repo, db=MagicMock())
+        raw_filter = "SELECT secret FROM internal_table"
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/admin/roles/test-policy",
+                json={
+                    "question": "Invalid draft",
+                    "connection_policy": {
+                        "connection_id": str(connection_id),
+                        "allowed_tables": [{"table": "customers", "columns": ["id"]}],
+                        "row_filters": [{"table": "customers", "filter": raw_filter}],
+                        "column_masks": [],
+                    },
+                },
+            )
+
+        assert response.status_code == 422
+        assert response.json() == {
+            "error": "filter_validation_failed",
+            "message_key": "error.filterValidationFailed",
+        }
+        assert raw_filter not in response.text
 
 
 # ── Sample-SQL evaluation (FR-136 / SC-051 follow-up) ──────────────────────
