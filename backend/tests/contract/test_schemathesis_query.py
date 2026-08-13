@@ -1,6 +1,6 @@
 """T-124 + T-125: Schemathesis contract tests for /query endpoints.
 
-Loads the static OpenAPI 3.1 contract. Uses a pre-authenticated session
+Loads the canonical OpenAPI 3.1 contract. Uses a pre-authenticated session
 cookie.
 
 The property-based sweep runs on demand to keep the default gate bounded.
@@ -23,20 +23,14 @@ if not os.environ.get("SCHEMATHESIS_RUN"):
         allow_module_level=True,
     )
 
-_schema_path = (
-    pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    / "specs"
-    / "001-core-text-to-sql"
-    / "contracts"
-    / "openapi.yaml"
-)
+_schema_path = pathlib.Path(__file__).resolve().parents[2] / "openapi.json"
 schema = schemathesis.openapi.from_path(
     str(_schema_path),
     app=create_app(),
 )
 
 
-@schema.parametrize(endpoint="/query/submit")
+@schema.parametrize(endpoint="/api/v1/query/submit")
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_query_submit_contract(case, contract_session_cookie):
     """Property-based contract test for POST /query/submit."""
@@ -47,7 +41,7 @@ def test_query_submit_contract(case, contract_session_cookie):
     )
 
 
-@schema.parametrize(endpoint="/query/reject")
+@schema.parametrize(endpoint="/api/v1/query/reject")
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_query_reject_contract(case, contract_session_cookie):
     """Property-based contract test for POST /query/reject."""
@@ -58,7 +52,7 @@ def test_query_reject_contract(case, contract_session_cookie):
     )
 
 
-@schema.parametrize(endpoint="/query/regenerate")
+@schema.parametrize(endpoint="/api/v1/query/regenerate")
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_query_regenerate_contract(case, contract_session_cookie):
     """Property-based contract test for POST /query/regenerate."""

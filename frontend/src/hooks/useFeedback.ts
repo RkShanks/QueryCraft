@@ -10,7 +10,7 @@ export const useUpdateFeedback = () => {
     mutationFn: (data: { attemptId: string; feedback: number; saved?: boolean }) => {
       requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
       return updateFeedback({
-        path: { attemptId: data.attemptId },
+        path: { attempt_id: data.attemptId },
         body: { feedback: data.feedback, saved: data.saved },
         throwOnError: true,
       }).then((res) => res.data);

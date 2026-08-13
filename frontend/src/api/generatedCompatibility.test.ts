@@ -1,4 +1,5 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
+import { client } from './generated/client.gen';
 import * as sdk from './generated/sdk.gen';
 import type {
   AuditExportRequest,
@@ -26,5 +27,9 @@ describe('representative generated client compatibility', () => {
     expectTypeOf<QueryLimitsResponse>().toMatchTypeOf<{ max_question_length: number }>();
     expectTypeOf<QuotaStatusResponse>().toHaveProperty('next_cursor');
     expectTypeOf<AuditExportRequest>().toHaveProperty('format');
+  });
+
+  it('keeps cookie credentials enabled for generated API calls', () => {
+    expect(client.getConfig().credentials).toBe('include');
   });
 });

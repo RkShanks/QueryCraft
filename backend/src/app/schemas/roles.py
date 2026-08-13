@@ -29,6 +29,37 @@ class ConnectionPolicyItem(BaseModel):
         return _reject_control_chars(value)
 
 
+class RoleGroupMappingSummary(BaseModel):
+    """Group mapping embedded in a role response."""
+
+    id: str
+    sso_group_value: str
+
+
+class TableColumnPolicy(BaseModel):
+    """Allowed-table or column-mask entry in a persisted policy."""
+
+    table: str
+    columns: list[str]
+
+
+class RowFilterPolicy(BaseModel):
+    """Row-filter entry in a persisted policy."""
+
+    table: str
+    filter: str
+
+
+class ConnectionPolicyResponse(BaseModel):
+    """Persisted connection policy embedded in role detail."""
+
+    id: str
+    connection_id: str
+    allowed_tables: list[TableColumnPolicy] = Field(default_factory=list)
+    row_filters: list[RowFilterPolicy] = Field(default_factory=list)
+    column_masks: list[TableColumnPolicy] = Field(default_factory=list)
+
+
 class RoleResponse(BaseModel):
     """List view of a role."""
 
@@ -38,7 +69,7 @@ class RoleResponse(BaseModel):
     priority: int
     permissions: list[str] = Field(default_factory=list)
     is_builtin: bool = False
-    group_mappings: list[dict] = Field(default_factory=list)
+    group_mappings: list[RoleGroupMappingSummary] = Field(default_factory=list)
     connection_policy_count: int = 0
     created_at: str
     updated_at: str
@@ -53,8 +84,8 @@ class RoleDetailResponse(BaseModel):
     priority: int
     permissions: list[str] = Field(default_factory=list)
     is_builtin: bool = False
-    group_mappings: list[dict] = Field(default_factory=list)
-    connection_policies: list[dict] = Field(default_factory=list)
+    group_mappings: list[RoleGroupMappingSummary] = Field(default_factory=list)
+    connection_policies: list[ConnectionPolicyResponse] = Field(default_factory=list)
     created_at: str
     updated_at: str
 

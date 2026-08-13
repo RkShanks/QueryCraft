@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import { afterAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -8,7 +10,6 @@ import { spawnSync } from 'node:child_process';
 const FRONTEND_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const REPOSITORY_ROOT = resolve(FRONTEND_ROOT, '..');
 const CANONICAL_OPENAPI = join(REPOSITORY_ROOT, 'backend/openapi.json');
-const GENERATED_SDK = join(FRONTEND_ROOT, 'src/api/generated/sdk.gen.ts');
 const GENERATED_ROOT = join(FRONTEND_ROOT, 'src/api/generated');
 const GENERATOR = join(FRONTEND_ROOT, 'scripts/generate-api-client.mjs');
 const HTTP_METHODS = new Set(['delete', 'get', 'patch', 'post', 'put']);

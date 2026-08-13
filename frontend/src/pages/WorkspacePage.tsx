@@ -374,7 +374,7 @@ export const WorkspacePage: React.FC = () => {
               result,
               sql: result.generated_sql,
               attemptId: result.attempt_id,
-              savedQueryId: result.accepted_query_id,
+              savedQueryId: result.accepted_query_id ?? undefined,
               refinePrompt: undefined,
               evaluatorRejection: undefined,
             });
@@ -455,7 +455,7 @@ export const WorkspacePage: React.FC = () => {
                     result,
                     sql: result.generated_sql,
                     attemptId: result.attempt_id,
-                    savedQueryId: result.accepted_query_id,
+                    savedQueryId: result.accepted_query_id ?? undefined,
                   }
                 : t
             )

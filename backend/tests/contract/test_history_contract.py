@@ -1,6 +1,6 @@
 """T-161: Schemathesis-driven contract tests for /history and /history/{id}.
 
-Loads the static OpenAPI 3.1 contract. Uses session cookie for auth.
+Loads the canonical OpenAPI 3.1 contract. Uses session cookie for auth.
 
 The property-based sweep runs on demand to keep the default gate bounded.
 """
@@ -22,20 +22,14 @@ if not os.environ.get("SCHEMATHESIS_RUN"):
         allow_module_level=True,
     )
 
-_schema_path = (
-    pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    / "specs"
-    / "001-core-text-to-sql"
-    / "contracts"
-    / "openapi.yaml"
-)
+_schema_path = pathlib.Path(__file__).resolve().parents[2] / "openapi.json"
 schema = schemathesis.openapi.from_path(
     str(_schema_path),
     app=create_app(),
 )
 
 
-@schema.parametrize(endpoint="/history")
+@schema.parametrize(endpoint="/api/v1/history")
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_history_list_contract(case, contract_session_cookie):
     """Property-based contract test for GET /history."""
@@ -46,7 +40,7 @@ def test_history_list_contract(case, contract_session_cookie):
     )
 
 
-@schema.parametrize(endpoint="/history/.*")
+@schema.parametrize(endpoint="/api/v1/history/.*")
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_history_detail_contract(case, contract_session_cookie):
     """Property-based contract test for GET /history/{id}."""

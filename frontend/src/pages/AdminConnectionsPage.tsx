@@ -6,7 +6,10 @@ import { ConnectionForm } from '../components/admin/ConnectionForm';
 import { ConnectionTestButton } from '../components/admin/ConnectionTestButton';
 import { RefreshSchemaButton } from '../components/admin/RefreshSchemaButton';
 import { ConnectionActions } from '../components/admin/ConnectionActions';
-import type { ConnectionCreate, ConnectionUpdate } from '../api/generated/types.gen';
+import type {
+  ConnectionCreateWritable as ConnectionCreate,
+  ConnectionUpdateWritable as ConnectionUpdate,
+} from '../api/generated/types.gen';
 import { getSafeConnectionErrorKey } from '../components/admin/connectionErrorMessages';
 
 interface Toast {

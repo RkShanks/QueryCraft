@@ -1,54 +1,84 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { client } from '../api/generated/client.gen';
+import {
+  createGroupMapping,
+  createRole,
+  deleteGroupMapping,
+  deleteRole,
+  getRole,
+  listGroupMappings,
+  listRoles,
+  updateRole,
+} from '../api/generated/sdk.gen';
+import type {
+  ConnectionPolicyResponse,
+  GroupMappingResponse,
+  RoleCreate,
+  RoleDetailResponse,
+  RoleGroupMappingSummary,
+  RoleResponse,
+  RoleUpdate,
+} from '../api/generated/types.gen';
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from './usePermission';
 
-export interface ConnectionPolicyItem {
+export type ConnectionPolicyItem = Omit<
+  ConnectionPolicyResponse,
+  'allowed_tables' | 'column_masks' | 'id' | 'row_filters'
+> & {
   id?: string;
-  connection_id: string;
-  allowed_tables: Array<{ table: string; columns: string[] }>;
-  row_filters: Array<{ table: string; filter: string }>;
-  column_masks: Array<{ table: string; columns: string[] }>;
-}
+  allowed_tables: NonNullable<ConnectionPolicyResponse['allowed_tables']>;
+  column_masks: NonNullable<ConnectionPolicyResponse['column_masks']>;
+  row_filters: NonNullable<ConnectionPolicyResponse['row_filters']>;
+};
 
-export interface Role {
-  id: string;
-  name: string;
-  description?: string;
-  priority: number;
-  permissions: string[];
-  is_builtin: boolean;
-  group_mappings: Array<{ id: string; sso_group_value: string }>;
-  connection_policy_count: number;
+export type Role = Omit<
+  RoleResponse,
+  'group_mappings' | 'permissions' | 'is_builtin' | 'connection_policy_count'
+> & {
+  permissions: NonNullable<RoleResponse['permissions']>;
+  is_builtin: NonNullable<RoleResponse['is_builtin']>;
+  group_mappings: RoleGroupMappingSummary[];
+  connection_policy_count: NonNullable<RoleResponse['connection_policy_count']>;
   connection_policies?: ConnectionPolicyItem[];
-  created_at: string;
-  updated_at: string;
-}
+};
 
-export interface RoleCreateData {
-  name: string;
-  description?: string;
-  priority: number;
+export type RoleCreateData = Omit<
+  RoleCreate,
+  'connection_policies' | 'group_mappings' | 'permissions'
+> & {
   permissions: string[];
   group_mappings: string[];
   connection_policies?: ConnectionPolicyItem[];
-}
+};
 
-export interface RoleUpdateData {
-  name?: string;
-  description?: string;
-  priority?: number;
-  permissions?: string[];
+export type RoleUpdateData = Omit<RoleUpdate, 'connection_policies' | 'group_mappings'> & {
   group_mappings?: string[];
   connection_policies?: ConnectionPolicyItem[];
-}
+};
 
-export interface GroupMapping {
-  id: string;
-  sso_group_value: string;
-  role_id: string;
-  role_name: string;
-  created_at: string;
+export type GroupMapping = GroupMappingResponse;
+
+function normalizeRole(role: RoleResponse | RoleDetailResponse): Role {
+  const connectionPolicies =
+    'connection_policies' in role
+      ? role.connection_policies?.map((policy) => ({
+          ...policy,
+          allowed_tables: policy.allowed_tables ?? [],
+          column_masks: policy.column_masks ?? [],
+          row_filters: policy.row_filters ?? [],
+        }))
+      : undefined;
+  return {
+    ...role,
+    permissions: role.permissions ?? [],
+    is_builtin: role.is_builtin ?? false,
+    group_mappings: role.group_mappings ?? [],
+    connection_policy_count:
+      'connection_policy_count' in role
+        ? (role.connection_policy_count ?? 0)
+        : (connectionPolicies?.length ?? 0),
+    connection_policies: connectionPolicies,
+  };
 }
 
 export interface UseAdminRolesOptions {
@@ -68,17 +98,16 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   const listQuery = useQuery<{ roles: Role[] }>({
     queryKey: ['adminRoles'],
     queryFn: () =>
-      client
-        .get({ url: '/admin/roles', throwOnError: true })
-        .then((res) => res.data as { roles: Role[] }),
+      listRoles({ throwOnError: true }).then((response) => ({
+        roles: response.data.roles.map(normalizeRole),
+      })),
     enabled: canManageRoles && options?.enabled !== false,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: RoleCreateData) => {
       requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
-      const res = await client.post({
-        url: '/admin/roles',
+      const response = await createRole({
         body: {
           name: data.name,
           description: data.description,
@@ -88,13 +117,12 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
         },
         throwOnError: true,
       });
-      const createdRole = res.data as Role;
+      const createdRole = normalizeRole(response.data);
 
       if (data.group_mappings && data.group_mappings.length > 0) {
         await Promise.all(
           data.group_mappings.map((group) =>
-            client.post({
-              url: '/admin/sso/group-mappings',
+            createGroupMapping({
               body: { sso_group_value: group, role_id: createdRole.id },
               throwOnError: true,
             })
@@ -124,8 +152,8 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
       existingMappings?: Array<{ id: string; sso_group_value: string }>;
     }) => {
       requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
-      const res = await client.put({
-        url: `/admin/roles/${id}`,
+      const response = await updateRole({
+        path: { role_id: id },
         body: {
           name: data.name,
           description: data.description,
@@ -135,7 +163,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
         },
         throwOnError: true,
       });
-      const updatedRole = res.data as Role;
+      const updatedRole = normalizeRole(response.data);
 
       if (data.group_mappings) {
         const newGroups = data.group_mappings;
@@ -148,15 +176,14 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
 
         await Promise.all([
           ...groupsToAdd.map((group) =>
-            client.post({
-              url: '/admin/sso/group-mappings',
+            createGroupMapping({
               body: { sso_group_value: group, role_id: id },
               throwOnError: true,
             })
           ),
           ...mappingsToDelete.map((mapping) =>
-            client.delete({
-              url: `/admin/sso/group-mappings/${mapping.id}`,
+            deleteGroupMapping({
+              path: { mapping_id: mapping.id },
               throwOnError: true,
             })
           ),
@@ -177,7 +204,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
       requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
-      return client.delete({ url: `/admin/roles/${id}`, throwOnError: true });
+      return deleteRole({ path: { role_id: id }, throwOnError: true });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminRoles'] });
@@ -191,19 +218,16 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   // Standalone group mapping queries and mutations
   const groupMappingsQuery = useQuery<{ mappings: GroupMapping[] }>({
     queryKey: ['adminGroupMappings'],
-    queryFn: () =>
-      client
-        .get({ url: '/admin/sso/group-mappings', throwOnError: true })
-        .then((res) => res.data as { mappings: GroupMapping[] }),
+    queryFn: () => listGroupMappings({ throwOnError: true }).then((response) => response.data),
     enabled: canManageRoles && options?.enabled !== false,
   });
 
   const createGroupMappingMutation = useMutation({
     mutationFn: (data: { sso_group_value: string; role_id: string }) => {
       requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
-      return client
-        .post({ url: '/admin/sso/group-mappings', body: data, throwOnError: true })
-        .then((res) => res.data);
+      return createGroupMapping({ body: data, throwOnError: true }).then(
+        (response) => response.data
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminGroupMappings'] });
@@ -214,7 +238,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   const deleteGroupMappingMutation = useMutation({
     mutationFn: (id: string) => {
       requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
-      return client.delete({ url: `/admin/sso/group-mappings/${id}`, throwOnError: true });
+      return deleteGroupMapping({ path: { mapping_id: id }, throwOnError: true });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminGroupMappings'] });
@@ -248,11 +272,11 @@ export const useAdminRole = (roleId: string | null | undefined) => {
       if (!roleId) {
         throw new Error('Role id is required');
       }
-      const res = await client.get({
-        url: `/admin/roles/${roleId}`,
+      const response = await getRole({
+        path: { role_id: roleId },
         throwOnError: true,
       });
-      return res.data as Role;
+      return normalizeRole(response.data);
     },
     enabled: !!roleId && canManageRoles,
   });

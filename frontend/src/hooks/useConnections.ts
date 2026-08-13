@@ -7,13 +7,12 @@ import {
   testAdminConnection,
   disableAdminConnection,
   enableAdminConnection,
-  refreshSchema,
+  refreshAdminConnectionSchema,
 } from '../api/generated/sdk.gen';
 import type {
-  ConnectionCreate,
-  ConnectionListResponse,
+  ConnectionCreateWritable as ConnectionCreate,
   ConnectionResponse,
-  ConnectionUpdate,
+  ConnectionUpdateWritable as ConnectionUpdate,
 } from '../api/generated/types.gen';
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from './usePermission';
@@ -53,12 +52,8 @@ const normalizeConnection = (connection: ConnectionResponse): ConnectionView => 
   updated_at: connection.updated_at,
 });
 
-const normalizeConnectionList = (
-  connectionList: ConnectionListResponse | ConnectionResponse[]
-) => ({
-  connections: (Array.isArray(connectionList) ? connectionList : connectionList.connections).map(
-    normalizeConnection
-  ),
+const normalizeConnectionList = (connections: ConnectionResponse[]) => ({
+  connections: connections.map(normalizeConnection),
 });
 
 export const useConnections = () => {
@@ -90,7 +85,7 @@ export const useConnections = () => {
     mutationFn: ({ id, data }: { id: string; data: ConnectionUpdate }) => {
       requirePermission(canManageConnections, PERMISSIONS.ADMIN_CONNECTIONS_MANAGE);
       return updateAdminConnection({
-        path: { connectionId: id },
+        path: { connection_id: id },
         body: data,
         throwOnError: true,
         cache: 'no-store',
@@ -106,7 +101,7 @@ export const useConnections = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
       requirePermission(canManageConnections, PERMISSIONS.ADMIN_CONNECTIONS_MANAGE);
-      return deleteAdminConnection({ path: { connectionId: id }, throwOnError: true });
+      return deleteAdminConnection({ path: { connection_id: id }, throwOnError: true });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminConnections'] });
@@ -116,7 +111,7 @@ export const useConnections = () => {
   const testMutation = useMutation({
     mutationFn: (id: string) => {
       requirePermission(canManageConnections, PERMISSIONS.ADMIN_CONNECTIONS_MANAGE);
-      return testAdminConnection({ path: { connectionId: id }, throwOnError: true }).then(
+      return testAdminConnection({ path: { connection_id: id }, throwOnError: true }).then(
         (res) => res.data
       );
     },
@@ -129,7 +124,7 @@ export const useConnections = () => {
     mutationFn: (id: string) => {
       requirePermission(canManageConnections, PERMISSIONS.ADMIN_CONNECTIONS_MANAGE);
       return disableAdminConnection({
-        path: { connectionId: id },
+        path: { connection_id: id },
         throwOnError: true,
         cache: 'no-store',
       }).then(
@@ -145,7 +140,7 @@ export const useConnections = () => {
     mutationFn: (id: string) => {
       requirePermission(canManageConnections, PERMISSIONS.ADMIN_CONNECTIONS_MANAGE);
       return enableAdminConnection({
-        path: { connectionId: id },
+        path: { connection_id: id },
         throwOnError: true,
         cache: 'no-store',
       }).then(
@@ -160,9 +155,10 @@ export const useConnections = () => {
   const refreshSchemaMutation = useMutation({
     mutationFn: (id: string) => {
       requirePermission(canManageConnections, PERMISSIONS.ADMIN_CONNECTIONS_MANAGE);
-      return refreshSchema({ path: { connectionId: id }, throwOnError: true }).then(
-        (res) => res.data
-      );
+      return refreshAdminConnectionSchema({
+        path: { connection_id: id },
+        throwOnError: true,
+      }).then((response) => response.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminConnections'] });

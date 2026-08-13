@@ -25,6 +25,12 @@ jobs:
         working-directory: backend
         run: uv run ruff check src tests
 
+      - name: Check canonical OpenAPI parity
+        working-directory: backend
+        run: |
+          uv run python scripts/generate_openapi.py --check
+          uv run pytest tests/unit/test_openapi_canonical.py -q
+
       # Fast gate: unit tests excluding service-dependent integration-marked tests.
       # Integration/acceptance/contract tests run locally with `docker compose up`.
       - name: Run Pytest
@@ -47,6 +53,11 @@ jobs:
       - name: Run ESLint
         working-directory: ./frontend
         run: npm run lint
+      - name: Check generated API client parity
+        working-directory: ./frontend
+        run: |
+          npm run gen:api:check
+          npm test -- --run src/api/generatedContract.test.ts src/api/generatedCompatibility.test.ts
       - name: Run TypeScript Compiler Check
         working-directory: ./frontend
-        run: npx tsc --noEmit
+        run: npm run typecheck

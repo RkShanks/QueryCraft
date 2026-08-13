@@ -1,31 +1,26 @@
-import { client } from './generated/client.gen';
+import {
+  getDetectionConfig as getCanonicalDetectionConfig,
+  updateDetectionConfig as updateCanonicalDetectionConfig,
+} from './generated/sdk.gen';
+import type {
+  DetectionThresholdRead,
+  DetectionThresholdUpdate,
+} from './generated/types.gen';
 
-export interface DetectionConfig {
-  block_confidence: number;
-  flag_confidence: number;
-  updated_at?: string;
-}
-
-export interface DetectionConfigUpdate {
-  block_confidence: number;
-  flag_confidence: number;
-}
+export type DetectionConfig = DetectionThresholdRead;
+export type DetectionConfigUpdate = DetectionThresholdUpdate;
 
 export async function getDetectionConfig(): Promise<DetectionConfig> {
-  const res = await client.get({
-    url: '/admin/detection/config',
-    throwOnError: true,
-  });
-  return res.data as DetectionConfig;
+  const response = await getCanonicalDetectionConfig({ throwOnError: true });
+  return response.data;
 }
 
 export async function updateDetectionConfig(
   data: DetectionConfigUpdate
 ): Promise<DetectionConfig> {
-  const res = await client.put({
-    url: '/admin/detection/config',
+  const response = await updateCanonicalDetectionConfig({
     body: data,
     throwOnError: true,
   });
-  return res.data as DetectionConfig;
+  return response.data;
 }

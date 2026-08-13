@@ -288,6 +288,13 @@ SESSION_ONLY_OPERATIONS = {
     ("PATCH", "/api/v1/feedback/{attempt_id}"),
 }
 
+CUSTOM_QUERY_VALIDATION_OPERATIONS = {
+    ("POST", "/api/v1/query/submit"),
+    ("POST", "/api/v1/query/accept"),
+    ("POST", "/api/v1/query/reject"),
+    ("POST", "/api/v1/query/regenerate"),
+}
+
 REDIRECT_OPERATIONS = {
     ("GET", "/api/v1/auth/sso/oidc/login"),
     ("GET", "/api/v1/auth/sso/oidc/callback"),
@@ -301,7 +308,10 @@ def _merge_error_models(entries: dict[OperationKey, dict[int, ResponseModels]]) 
         if operation_key in PUBLIC_OPERATIONS:
             continue
         authentication_errors = {401: ErrorResponse}
-        if operation_key not in SESSION_ONLY_OPERATIONS:
+        if operation_key not in SESSION_ONLY_OPERATIONS and operation_key != (
+            "POST",
+            "/api/v1/admin/refresh-schema",
+        ):
             authentication_errors[403] = ErrorResponse
         entries[operation_key] = authentication_errors | entries.get(operation_key, {})
 
@@ -314,7 +324,7 @@ def _extend_operation_errors(operation_key: OperationKey, statuses: Iterable[int
 
 
 for _operation_key, _statuses in {
-    ("POST", "/api/v1/admin/refresh-schema"): (401, 403),
+    ("POST", "/api/v1/admin/refresh-schema"): (401,),
     ("PATCH", "/api/v1/admin/settings"): (422,),
     ("GET", "/api/v1/admin/connections"): (500,),
     ("POST", "/api/v1/admin/connections"): (422, 500),
@@ -360,7 +370,7 @@ for _operation_key, _statuses in {
 
 ERROR_MODELS[("PUT", "/api/v1/admin/quotas/{role_id}")].update(
     {
-        400: (ErrorResponse, ValidationErrorResponse),
+        400: ErrorResponse,
         404: ErrorResponse,
         503: (ErrorResponse, QuotaSyncPendingErrorResponse),
     }
@@ -369,6 +379,7 @@ ERROR_MODELS[("DELETE", "/api/v1/admin/quotas/{role_id}")].update(
     {400: ErrorResponse, 404: ErrorResponse, 503: (ErrorResponse, QuotaSyncPendingErrorResponse)}
 )
 ERROR_MODELS[("POST", "/api/v1/admin/audit/export")][429] = QuotaExceededErrorResponse
+ERROR_MODELS[("POST", "/api/v1/auth/sso/saml/callback")][422] = ValidationErrorResponse
 
 
 def _route_operations(app: FastAPI) -> dict[OperationKey, APIRoute]:
@@ -428,11 +439,33 @@ def _patch_success_response(operation: dict[str, Any], status_code: int, respons
     operation["responses"][str(status_code)] = _json_response(response_models, "Successful response.")
 
 
-def _patch_error_responses(operation: dict[str, Any], error_models: dict[int, ResponseModels]) -> None:
+def _with_automatic_validation(
+    operation_key: OperationKey,
+    operation: dict[str, Any],
+    error_models: dict[int, ResponseModels],
+) -> dict[int, ResponseModels]:
+    patched_models = error_models.copy()
+    if "422" not in operation["responses"] or operation_key in CUSTOM_QUERY_VALIDATION_OPERATIONS:
+        return patched_models
+    existing_models = patched_models.get(422)
+    if existing_models is None:
+        patched_models[422] = ValidationErrorResponse
+    elif existing_models != ValidationErrorResponse:
+        model_tuple = existing_models if isinstance(existing_models, tuple) else (existing_models,)
+        patched_models[422] = (*model_tuple, ValidationErrorResponse)
+    return patched_models
+
+
+def _patch_error_responses(
+    operation_key: OperationKey,
+    operation: dict[str, Any],
+    error_models: dict[int, ResponseModels],
+) -> None:
+    patched_models = _with_automatic_validation(operation_key, operation, error_models)
     for status_code in list(operation["responses"]):
         if int(status_code) >= 400:
             del operation["responses"][status_code]
-    for status_code, response_models in error_models.items():
+    for status_code, response_models in patched_models.items():
         operation["responses"][str(status_code)] = _json_response(response_models, "Sanitized error response.")
 
 
@@ -488,7 +521,7 @@ def _patch_operation(schema: dict[str, Any], operation_key: OperationKey) -> Non
         _patch_request_body(operation, REQUEST_MODELS[operation_key])
     if operation_key in SUCCESS_MODELS:
         _patch_success_response(operation, *SUCCESS_MODELS[operation_key])
-    _patch_error_responses(operation, ERROR_MODELS.get(operation_key, {}))
+    _patch_error_responses(operation_key, operation, ERROR_MODELS.get(operation_key, {}))
 
 
 def _patch_special_operations(schema: dict[str, Any]) -> None:

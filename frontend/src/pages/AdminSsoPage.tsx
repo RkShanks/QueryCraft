@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminSso } from '../hooks/useAdminSso';
 import { Shield, Plus, RefreshCw, Key, Settings, Trash2, Edit2, CheckCircle2, XCircle, X } from 'lucide-react';
-import type { SsoProviderResponse, SsoProviderCreate, SsoProviderUpdate } from '../api/generated/types.gen';
+import type {
+  SsoProviderCreateWritable as SsoProviderCreate,
+  SsoProviderResponse,
+  SsoProviderUpdateWritable as SsoProviderUpdate,
+} from '../api/generated/types.gen';
 
 interface Toast {
   id: string;

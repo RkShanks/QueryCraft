@@ -849,6 +849,46 @@
         "title": "ConnectionPolicyItem",
         "type": "object"
       },
+      "ConnectionPolicyResponse": {
+        "description": "Persisted connection policy embedded in role detail.",
+        "properties": {
+          "allowed_tables": {
+            "items": {
+              "$ref": "#/components/schemas/TableColumnPolicy"
+            },
+            "title": "Allowed Tables",
+            "type": "array"
+          },
+          "column_masks": {
+            "items": {
+              "$ref": "#/components/schemas/TableColumnPolicy"
+            },
+            "title": "Column Masks",
+            "type": "array"
+          },
+          "connection_id": {
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "row_filters": {
+            "items": {
+              "$ref": "#/components/schemas/RowFilterPolicy"
+            },
+            "title": "Row Filters",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "connection_id"
+        ],
+        "title": "ConnectionPolicyResponse",
+        "type": "object"
+      },
       "ConnectionResponse": {
         "description": "Response body for connection details with write-only metadata omitted.",
         "properties": {
@@ -1314,16 +1354,8 @@
         "description": "Constant, user-safe error response.",
         "properties": {
           "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Error"
+            "title": "Error",
+            "type": "string"
           },
           "field": {
             "anyOf": [
@@ -1356,6 +1388,7 @@
           }
         },
         "required": [
+          "error",
           "message_key"
         ],
         "title": "ErrorResponse",
@@ -1831,17 +1864,9 @@
         "description": "Quota denial with a safe retry timestamp.",
         "properties": {
           "error": {
-            "anyOf": [
-              {
-                "const": "quota_exceeded",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Error"
+            "const": "quota_exceeded",
+            "title": "Error",
+            "type": "string"
           },
           "message_key": {
             "title": "Message Key",
@@ -1853,6 +1878,7 @@
           }
         },
         "required": [
+          "error",
           "message_key",
           "reset_at"
         ],
@@ -1915,7 +1941,6 @@
         "properties": {
           "error": {
             "const": "quota_sync_pending",
-            "default": "quota_sync_pending",
             "title": "Error",
             "type": "string"
           },
@@ -1925,13 +1950,14 @@
           },
           "mutation_applied": {
             "const": true,
-            "default": true,
             "title": "Mutation Applied",
             "type": "boolean"
           }
         },
         "required": [
-          "message_key"
+          "error",
+          "message_key",
+          "mutation_applied"
         ],
         "title": "QuotaSyncPendingErrorResponse",
         "type": "object"
@@ -2077,8 +2103,7 @@
         "properties": {
           "connection_policies": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/ConnectionPolicyResponse"
             },
             "title": "Connection Policies",
             "type": "array"
@@ -2101,8 +2126,7 @@
           },
           "group_mappings": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/RoleGroupMappingSummary"
             },
             "title": "Group Mappings",
             "type": "array"
@@ -2144,6 +2168,25 @@
           "updated_at"
         ],
         "title": "RoleDetailResponse",
+        "type": "object"
+      },
+      "RoleGroupMappingSummary": {
+        "description": "Group mapping embedded in a role response.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "sso_group_value": {
+            "title": "Sso Group Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sso_group_value"
+        ],
+        "title": "RoleGroupMappingSummary",
         "type": "object"
       },
       "RoleListResponse": {
@@ -2337,8 +2380,7 @@
           },
           "group_mappings": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/RoleGroupMappingSummary"
             },
             "title": "Group Mappings",
             "type": "array"
@@ -2467,6 +2509,25 @@
           }
         },
         "title": "RoleUpdate",
+        "type": "object"
+      },
+      "RowFilterPolicy": {
+        "description": "Row-filter entry in a persisted policy.",
+        "properties": {
+          "filter": {
+            "title": "Filter",
+            "type": "string"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table",
+          "filter"
+        ],
+        "title": "RowFilterPolicy",
         "type": "object"
       },
       "SchemaIntrospectionStatus": {
@@ -3207,6 +3268,28 @@
         "title": "SubmitQuestionRequest",
         "type": "object"
       },
+      "TableColumnPolicy": {
+        "description": "Allowed-table or column-mask entry in a persisted policy.",
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table",
+          "columns"
+        ],
+        "title": "TableColumnPolicy",
+        "type": "object"
+      },
       "UpdateAdminSettingsRequest": {
         "description": "PATCH /admin/settings request body.",
         "properties": {
@@ -3472,7 +3555,6 @@
           },
           "error": {
             "const": "validation",
-            "default": "validation",
             "title": "Error",
             "type": "string"
           },
@@ -3482,6 +3564,7 @@
           }
         },
         "required": [
+          "error",
           "message_key",
           "details"
         ],
@@ -3702,7 +3785,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -3793,7 +3883,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4100,7 +4197,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4192,7 +4296,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4279,7 +4390,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4376,7 +4494,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4475,7 +4600,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4574,7 +4706,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4663,7 +4802,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4762,7 +4908,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4851,7 +5004,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -4983,7 +5143,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -5135,7 +5302,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -5217,6 +5391,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
                 }
               }
             },
@@ -5313,6 +5497,16 @@
               }
             },
             "description": "Sanitized error response."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
           }
         },
         "security": [
@@ -5364,14 +5558,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/ErrorResponse"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ValidationErrorResponse"
-                    }
-                  ]
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
@@ -5402,6 +5589,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
                 }
               }
             },
@@ -5479,11 +5676,11 @@
             },
             "description": "Sanitized error response."
           },
-          "403": {
+          "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
                 }
               }
             },
@@ -5625,7 +5822,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -5706,7 +5910,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -5783,6 +5994,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
                 }
               }
             },
@@ -5888,7 +6109,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -5996,7 +6224,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -6118,7 +6353,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -6260,7 +6502,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -6332,6 +6581,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
                 }
               }
             },
@@ -6483,7 +6742,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -6555,6 +6821,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
                 }
               }
             },
@@ -6660,7 +6936,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -6887,7 +7170,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -7008,7 +7298,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
                 }
               }
             },
@@ -7153,7 +7443,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -8173,7 +8470,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -8280,7 +8584,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -8395,7 +8706,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },
@@ -8494,7 +8812,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
                 }
               }
             },

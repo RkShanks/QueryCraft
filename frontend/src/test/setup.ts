@@ -28,7 +28,7 @@ if (typeof g.process === 'object' && g.process !== null) {
 
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
-  client.setConfig({ baseUrl: 'http://localhost:3000/api/v1' });
+  client.setConfig({ baseUrl: 'http://localhost:3000' });
 });
 
 import appI18n from '../i18n';
