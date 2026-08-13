@@ -40,12 +40,6 @@ const mockMutations = {
   deleteMutation: { mutate: vi.fn(), isPending: false },
 };
 
-const mockDetailQuery = {
-  data: undefined,
-  isLoading: false,
-  isError: false,
-};
-
 const mockEmptyRoles = {
   listQuery: {
     data: { roles: [] },
@@ -92,6 +86,11 @@ const mockBuiltinRole = {
   updated_at: '2026-06-01T00:00:00Z',
 };
 
+const mockDefaultDetail = {
+  ...mockCustomRole,
+  connection_policies: [],
+};
+
 const mockPopulatedRoles = {
   listQuery: {
     data: {
@@ -106,7 +105,13 @@ const mockPopulatedRoles = {
 describe('AdminRolesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useAdminRole).mockReturnValue(mockDetailQuery as any);
+    vi.mocked(useAdminRole).mockReturnValue({
+      data: mockDefaultDetail,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
   });
 
   it('renders title and empty state when no roles exist', () => {
@@ -306,6 +311,13 @@ describe('AdminRolesPage', () => {
     vi.mocked(useAdminRoles).mockReturnValue({
       ...mockPopulatedRoles,
       listQuery: { ...mockPopulatedRoles.listQuery, data: { roles: [roleWithFuturePermission] } },
+    } as any);
+    vi.mocked(useAdminRole).mockReturnValue({
+      data: { ...roleWithFuturePermission, connection_policies: [] },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      refetch: vi.fn(),
     } as any);
 
     render(<AdminRolesPage />);

@@ -68,9 +68,12 @@ export const AdminRolesPage: React.FC = () => {
   const [mappedGroups, setMappedGroups] = useState<string[]>([]);
   const [connectionPolicies, setConnectionPolicies] = useState<ConnectionPolicyItem[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [loadedDetail, setLoadedDetail] = useState<Role | null>(null);
+  const nextToastIdRef = useRef(0);
 
   const addToast = (type: 'success' | 'error', message: string) => {
-    const id = `${Date.now()}-${Math.random()}`;
+    nextToastIdRef.current += 1;
+    const id = String(nextToastIdRef.current);
     setToasts((prev) => [...prev, { id, type, message }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -108,35 +111,13 @@ export const AdminRolesPage: React.FC = () => {
     },
   });
 
-  // T-741: fetch full role detail (with connection_policies) when editing
-  // an existing role. The list endpoint only returns connection_policy_count,
-  // so initializing the editor from the list row would wipe the persisted
-  // policies on save.
   const detailQuery = useAdminRole(editingRole?.id);
-  // Guard against late detail arrivals overwriting user edits
-  // (KARPATHY async auto-select quirk). Reset on every editing target
-  // change so the new detail applies exactly once.
   const lastAppliedDetailIdRef = useRef<string | null>(null);
 
-  // Single effect: seed the form from the list row immediately when
-  // the editing target changes, then overwrite with the persisted
-  // detail once it lands. Guarded by lastAppliedDetailIdRef so the
-  // detail lands at most once per editing target and the apply path
-  // never runs in a no-data render (avoids cascading-render lint).
   useEffect(() => {
     if (!editingRole) {
       lastAppliedDetailIdRef.current = null;
       return;
-    }
-    if (lastAppliedDetailIdRef.current !== editingRole.id) {
-      lastAppliedDetailIdRef.current = null;
-      setValidationError(null);
-      setName(editingRole.name);
-      setDescription(editingRole.description || '');
-      setPriority(editingRole.priority);
-      setSelectedPermissions(editingRole.permissions);
-      setMappedGroups(editingRole.group_mappings.map((gm) => gm.sso_group_value));
-      setConnectionPolicies(editingRole.connection_policies || []);
     }
     const detail = detailQuery.data;
     if (!detail || detail.id !== editingRole.id) {
@@ -146,6 +127,7 @@ export const AdminRolesPage: React.FC = () => {
       return;
     }
     lastAppliedDetailIdRef.current = detail.id;
+    setLoadedDetail(detail);
     setName(detail.name);
     setDescription(detail.description || '');
     setPriority(detail.priority);
@@ -156,16 +138,26 @@ export const AdminRolesPage: React.FC = () => {
   }, [editingRole?.id, detailQuery.data]);
 
   const handleEdit = (role: Role) => {
-    // T-741: just select the target. The useEffects above seed the form
-    // from the list row first, then overwrite with the full detail once
-    // GET /admin/roles/{id} lands.
+    resetForm();
+    lastAppliedDetailIdRef.current = null;
+    setLoadedDetail(null);
     setEditingRole(role);
+  };
+
+  const handleAdd = () => {
+    resetForm();
+    lastAppliedDetailIdRef.current = null;
+    setLoadedDetail(null);
+    setEditingRole(undefined);
+    setIsAdding(true);
   };
 
   const handleCancel = () => {
     setIsAdding(false);
     setEditingRole(undefined);
     setValidationError(null);
+    lastAppliedDetailIdRef.current = null;
+    setLoadedDetail(null);
     resetForm();
   };
 
@@ -181,6 +173,10 @@ export const AdminRolesPage: React.FC = () => {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
+
+    if (editingRole && lastAppliedDetailIdRef.current !== editingRole.id) {
+      return;
+    }
 
     if (!name.trim() || priority === '') {
       setValidationError('error.validation.roleRequiredFields');
@@ -205,7 +201,7 @@ export const AdminRolesPage: React.FC = () => {
       updateMutation.mutate({
         id: editingRole.id,
         data: updateData,
-        existingMappings: editingRole.group_mappings,
+        existingMappings: loadedDetail?.group_mappings ?? [],
       });
     } else {
       const createData: RoleCreateData = {
@@ -258,6 +254,10 @@ export const AdminRolesPage: React.FC = () => {
 
   if (isAdding || editingRole) {
     const formTitle = editingRole ? 'admin.roles.form.editRoleTitle' : 'admin.roles.form.addRoleTitle';
+    const isDetailReady = !editingRole || loadedDetail?.id === editingRole.id;
+    const isDetailFailed = Boolean(editingRole && detailQuery.isError && !isDetailReady);
+    const isDetailLoading = Boolean(editingRole && !isDetailReady && !isDetailFailed);
+    const activeRole = editingRole ? loadedDetail : undefined;
 
     return (
       <div className="p-6 max-w-4xl mx-auto bg-gray-900 border border-gray-800 rounded-xl space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -266,10 +266,41 @@ export const AdminRolesPage: React.FC = () => {
             <Shield className="w-5 h-5 text-neon-cyan" />
             {t(formTitle)}
           </h2>
-          <button onClick={handleCancel} className="text-gray-400 hover:text-white transition-colors">
+          <button
+            onClick={handleCancel}
+            aria-label={t('admin.roles.closeEditor')}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {isDetailLoading && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-950 p-3 text-sm text-gray-300"
+          >
+            <RefreshCw className="h-4 w-4 animate-spin text-neon-cyan" />
+            {t('admin.roles.detailLoading')}
+          </div>
+        )}
+
+        {isDetailFailed && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300"
+          >
+            <span>{t('admin.roles.detailLoadError')}</span>
+            <button
+              type="button"
+              onClick={() => void detailQuery.refetch()}
+              className="rounded-md border border-red-400/40 px-3 py-1.5 font-medium hover:bg-red-500/10"
+            >
+              {t('common.retry')}
+            </button>
+          </div>
+        )}
 
         {validationError && (
           <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm font-medium flex items-center gap-2">
@@ -289,7 +320,7 @@ export const AdminRolesPage: React.FC = () => {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                disabled={editingRole?.is_builtin}
+                disabled={!isDetailReady || activeRole?.is_builtin}
                 className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-cyan transition-colors disabled:opacity-50"
               />
             </div>
@@ -304,7 +335,7 @@ export const AdminRolesPage: React.FC = () => {
                 min="0"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value === '' ? '' : Number(e.target.value))}
-                disabled={editingRole?.is_builtin}
+                disabled={!isDetailReady || activeRole?.is_builtin}
                 className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-cyan transition-colors disabled:opacity-50"
               />
             </div>
@@ -318,6 +349,7 @@ export const AdminRolesPage: React.FC = () => {
               id="roleDescription"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              disabled={!isDetailReady}
               rows={3}
               className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-cyan transition-colors"
             />
@@ -339,7 +371,7 @@ export const AdminRolesPage: React.FC = () => {
                     type="checkbox"
                     checked={selectedPermissions.includes(permission)}
                     onChange={() => handlePermissionToggle(permission)}
-                    disabled={editingRole?.is_builtin}
+                    disabled={!isDetailReady || activeRole?.is_builtin}
                     className="mt-1 accent-neon-cyan rounded"
                   />
                   <div>
@@ -355,15 +387,19 @@ export const AdminRolesPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-6">
-            <GroupMappingEditor groups={mappedGroups} onChange={setMappedGroups} />
-          </div>
+          {isDetailReady && (
+            <>
+              <div className="border-t border-gray-800 pt-6">
+                <GroupMappingEditor groups={mappedGroups} onChange={setMappedGroups} />
+              </div>
 
-          <div className="border-t border-gray-800 pt-6">
-            <PolicyEditor policies={connectionPolicies} onChange={setConnectionPolicies} />
-          </div>
+              <div className="border-t border-gray-800 pt-6">
+                <PolicyEditor policies={connectionPolicies} onChange={setConnectionPolicies} />
+              </div>
+            </>
+          )}
 
-          {editingRole?.is_builtin && (
+          {activeRole?.is_builtin && (
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-sm flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 shrink-0" />
               <span>{t('admin.roles.builtinEditNote') || 'Built-in role name, priority, and permissions are protected and cannot be changed.'}</span>
@@ -380,7 +416,7 @@ export const AdminRolesPage: React.FC = () => {
             </button>
             <button
               type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={!isDetailReady || createMutation.isPending || updateMutation.isPending}
               className="px-4 py-2 bg-neon-cyan text-gray-900 font-semibold rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50"
             >
               {t('common.save')}
@@ -434,7 +470,7 @@ export const AdminRolesPage: React.FC = () => {
         </div>
         <div>
           <button
-            onClick={() => setIsAdding(true)}
+            onClick={handleAdd}
             className="flex items-center gap-2 px-4 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors font-medium cursor-pointer"
           >
             <Plus className="w-4 h-4" />
