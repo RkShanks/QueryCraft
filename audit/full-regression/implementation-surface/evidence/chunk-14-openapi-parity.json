@@ -1,7 +1,7 @@
 {
   "chunk": "CHUNK-14",
   "gap_id": "IS-GAP-008",
-  "status": "implementation_and_local_gates_passed_ci_pending",
+  "status": "implementation_and_ci_passed_merge_pending",
   "branch": "phase-6/wave-19.14-openapi-canonical",
   "starting_main": "e18d2335f44a93f055bb7d3c03f08012c91443f6",
   "pull_request": 312,
@@ -242,8 +242,8 @@
     "docs_guard": true,
     "json_validation": true,
     "git_diff_check": true,
-    "github_backend_test": "pending",
-    "github_frontend_test": "pending"
+    "github_backend_test": true,
+    "github_frontend_test": true
   },
   "cleanup": {
     "obsolete_updater_non_audit_callers": 0,
@@ -258,9 +258,10 @@
     "protected_files_staged": 0
   },
   "ci": {
-    "head_commit": null,
-    "backend_test": "pending",
-    "frontend_test": "pending"
+    "head_commit": "257fbdeaa2fbba7aef2d31e8dc30ed219777b8e7",
+    "run_id": 31730146799,
+    "backend_test": "passed",
+    "frontend_test": "passed"
   },
   "next_chunk_unblocked_on_merge": true
 }
