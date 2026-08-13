@@ -1,6 +1,7 @@
 """Application settings loaded from environment variables via pydantic-settings."""
 
 from functools import lru_cache
+from math import isfinite
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -105,8 +106,8 @@ class Settings(BaseSettings):
     @classmethod
     def validate_readiness_timeout(cls, value: float) -> float:
         """Reject readiness deadlines that cannot bound dependency checks."""
-        if value <= 0:
-            raise ValueError("READINESS_TIMEOUT_SECONDS must be positive")
+        if not isfinite(value) or value <= 0:
+            raise ValueError("READINESS_TIMEOUT_SECONDS must be finite and positive")
         return value
 
     @field_validator("MAX_QUESTION_LENGTH")
