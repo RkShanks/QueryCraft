@@ -7,6 +7,11 @@ import { useAdminRoles, useAdminRole } from '../hooks/useAdminRoles.ts';
 vi.mock('../hooks/useAdminRoles', () => ({
   useAdminRoles: vi.fn(),
   useAdminRole: vi.fn(),
+  useDraftRolePolicyPreview: vi.fn(() => ({
+    mutate: vi.fn(),
+    reset: vi.fn(),
+    isPending: false,
+  })),
 }));
 
 vi.mock('../hooks/useConnections', () => ({

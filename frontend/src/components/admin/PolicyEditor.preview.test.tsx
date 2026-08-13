@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +26,7 @@ const CORPUS = JSON.parse(
   }>;
 };
 const VALID_FILTERS = CORPUS.cases.filter((entry) => entry.valid);
-const INVALID_FUNCTION_FILTER = CORPUS.cases.find((entry) => entry.id === 'function_call')!;
+const INVALID_UI_FILTERS = CORPUS.cases.filter((entry) => !entry.valid && entry.table === 'users');
 
 const CONNECTIONS = [{ id: 'conn-1', display_name: 'Main Database', database_type: 'postgresql' }];
 const SCHEMA = {
@@ -57,23 +56,22 @@ const ALLOWED_PREVIEW = {
 describe('PolicyEditor draft preview', () => {
   const onChange = vi.fn();
   const previewMutate = vi.fn();
-  const previewReset = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    previewMutate.mockReset();
     vi.mocked(useConnections).mockReturnValue({
       listQuery: { data: CONNECTIONS, isLoading: false, isError: false },
-    } as any);
+    } as unknown as ReturnType<typeof useConnections>);
     vi.mocked(useConnectionSchema).mockReturnValue({
       data: SCHEMA,
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as ReturnType<typeof useConnectionSchema>);
     vi.mocked(useDraftRolePolicyPreview).mockReturnValue({
       mutate: previewMutate,
-      reset: previewReset,
       isPending: false,
-    } as any);
+    } as unknown as ReturnType<typeof useDraftRolePolicyPreview>);
   });
 
   function openDraft(filter = "name = 'draft'") {
@@ -125,7 +123,7 @@ describe('PolicyEditor draft preview', () => {
     ['blocked', { response: { ...ALLOWED_PREVIEW, would_be_allowed: false, message_key: 'error.queryBlockedPolicy' } }, 'Draft policy blocks the sample.'],
     ['invalid', { error: { status: 422, body: { message_key: 'error.filterValidationFailed' } } }, 'The draft policy is invalid.'],
     ['retry', { error: { status: 500, body: { message_key: 'error.internal', detail: 'private detail' } } }, 'Policy preview is temporarily unavailable.'],
-    ['permission-denied', { error: { status: 403, body: { message_key: 'error.forbidden', detail: 'private detail' } } }, 'You do not have permission to preview role policies.'],
+    ['permission-denied', { error: { message_key: 'error.forbidden', detail: 'private detail' } }, 'You do not have permission to preview role policies.'],
   ])('renders the %s preview state with sanitized localized feedback', (state, outcome, message) => {
     previewMutate.mockImplementation((_request, callbacks) => {
       if ('response' in outcome) callbacks?.onSuccess?.(outcome.response);
@@ -144,11 +142,12 @@ describe('PolicyEditor draft preview', () => {
     openDraft();
     submitPreview();
 
-    expect(screen.getByText('audit_log')).toHaveAttribute('dir', 'ltr');
-    expect(screen.getAllByText('users')[0]).toHaveAttribute('dir', 'ltr');
-    expect(screen.getByText('id, name, email')).toHaveAttribute('dir', 'ltr');
-    expect(screen.getByText("name = 'draft'")).toHaveAttribute('dir', 'ltr');
-    expect(screen.getByText('email')).toHaveAttribute('dir', 'ltr');
+    const status = screen.getByTestId('policy-preview-status');
+    expect(within(status).getByText('audit_log')).toHaveAttribute('dir', 'ltr');
+    expect(within(status).getByText('users')).toHaveAttribute('dir', 'ltr');
+    expect(within(status).getByText(/users: id, name, email/)).toHaveAttribute('dir', 'ltr');
+    expect(within(status).getByText("name = 'draft'")).toHaveAttribute('dir', 'ltr');
+    expect(within(status).getByText(/users: email/)).toHaveAttribute('dir', 'ltr');
   });
 
   it('marks a completed preview stale when a relevant draft input changes', () => {
@@ -200,16 +199,22 @@ describe('PolicyEditor draft preview', () => {
     expect(screen.queryByText(/Invalid filter expression/)).not.toBeInTheDocument();
   });
 
-  it('sends backend-invalid filters and renders only localized authoritative feedback', () => {
-    previewMutate.mockImplementation((_request, callbacks) => callbacks?.onError?.({
-      status: 422,
-      body: { message_key: 'error.filterValidationFailed', detail: 'sqlglot internal schema detail' },
-    }));
-    openDraft(INVALID_FUNCTION_FILTER.filter);
-    submitPreview();
+  it.each(INVALID_UI_FILTERS)(
+    'sends backend-invalid corpus filter $id and renders only localized authoritative feedback',
+    (entry) => {
+      previewMutate.mockImplementation((_request, callbacks) => callbacks?.onError?.({
+        status: 422,
+        body: {
+          message_key: 'error.filterValidationFailed',
+          detail: 'sqlglot internal schema detail',
+        },
+      }));
+      openDraft(entry.filter);
+      submitPreview();
 
-    expect(previewMutate).toHaveBeenCalled();
-    expect(screen.getByText('The draft policy is invalid.')).toBeInTheDocument();
-    expect(screen.queryByText(/sqlglot|internal schema detail/i)).not.toBeInTheDocument();
-  });
+      expect(previewMutate).toHaveBeenCalled();
+      expect(screen.getByText('The draft policy is invalid.')).toBeInTheDocument();
+      expect(screen.queryByText(/sqlglot|internal schema detail/i)).not.toBeInTheDocument();
+    }
+  );
 });

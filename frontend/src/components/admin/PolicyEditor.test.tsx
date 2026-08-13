@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PolicyEditor } from './PolicyEditor';
 import { useConnections } from '../../hooks/useConnections';
 import { useConnectionSchema } from '../../hooks/useConnectionSchema';
+import { useDraftRolePolicyPreview } from '../../hooks/useAdminRoles';
 
 // Mock the hooks
 vi.mock('../../hooks/useConnections', () => ({
@@ -11,6 +12,10 @@ vi.mock('../../hooks/useConnections', () => ({
 
 vi.mock('../../hooks/useConnectionSchema', () => ({
   useConnectionSchema: vi.fn(),
+}));
+
+vi.mock('../../hooks/useAdminRoles', () => ({
+  useDraftRolePolicyPreview: vi.fn(),
 }));
 
 describe('PolicyEditor', () => {
@@ -62,6 +67,12 @@ describe('PolicyEditor', () => {
       isLoading: false,
       isError: false,
     } as unknown as ReturnType<typeof useConnectionSchema>);
+
+    vi.mocked(useDraftRolePolicyPreview).mockReturnValue({
+      mutate: vi.fn(),
+      reset: vi.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof useDraftRolePolicyPreview>);
   });
 
   it('renders title and empty state when policies are empty', () => {
@@ -174,7 +185,7 @@ describe('PolicyEditor', () => {
     expect(maskTableSelect).toHaveAttribute('dir', 'ltr');
   });
 
-  it('validates filter expressions and displays validation feedback', () => {
+  it('limits local filter validation to structural requirements', () => {
     render(<PolicyEditor policies={[]} onChange={mockOnChange} />);
 
     const addButton = screen.getByRole('button', { name: /Add Connection Policy/i });
@@ -198,15 +209,15 @@ describe('PolicyEditor', () => {
     expect(filterTableSelect.value).toBe('users');
 
     fireEvent.change(filterInput, { target: { value: 'SELECT * FROM users' } });
-    expect(screen.getByText('Invalid filter expression. Subqueries, JOINs, UNIONs, comments, and functions are not allowed.')).toBeInTheDocument();
+    expect(screen.queryByText(/Invalid filter expression/)).not.toBeInTheDocument();
 
     fireEvent.change(filterInput, { target: { value: 'email = {user.invalid_prop}' } });
-    expect(screen.getByText('Only {user.email}, {user.subject_id}, and {user.role} placeholders are allowed.')).toBeInTheDocument();
+    expect(screen.queryByText(/Only \{user.email\}/)).not.toBeInTheDocument();
 
     const nameCol = screen.getByTestId('column-checkbox-users-name');
     fireEvent.click(nameCol);
     fireEvent.change(filterInput, { target: { value: "name = 'test'" } });
-    expect(screen.getByText("Column 'name' not found in table 'users'.")).toBeInTheDocument();
+    expect(screen.queryByText("Column 'name' not found in table 'users'.")).not.toBeInTheDocument();
 
     fireEvent.change(filterInput, { target: { value: 'id = 1' } });
     expect(screen.queryByText("Column 'name' not found in table 'users'.")).not.toBeInTheDocument();
