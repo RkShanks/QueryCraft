@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAdminRoles } from '../useAdminRoles';
+import { useAdminRoles, useDraftRolePolicyPreview } from '../useAdminRoles';
 import { server } from '../../test/server';
 import { http, HttpResponse } from 'msw';
 import { seedAuthenticatedUser } from '../../test/utils';
@@ -194,5 +194,42 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
 
     expect(rolesFetched).toBe(false);
     expect(mappingsFetched).toBe(false);
+  });
+});
+
+describe('useDraftRolePolicyPreview', () => {
+  it('posts the complete unsaved policy to the canonical draft endpoint', async () => {
+    const requests: unknown[] = [];
+    server.use(
+      http.post('*/admin/roles/test-policy', async ({ request }) => {
+        requests.push(await request.json());
+        return HttpResponse.json({
+          accessible_tables: ['users'],
+          accessible_columns: { users: ['id'] },
+          blocked_tables: [],
+          applicable_row_filters: [],
+          masked_columns: {},
+          would_be_allowed: true,
+          message_key: null,
+        });
+      })
+    );
+    const draft = {
+      question: 'Show unsaved users',
+      sample_sql: 'SELECT id FROM users',
+      connection_policy: {
+        connection_id: 'connection-draft',
+        allowed_tables: [{ table: 'users', columns: ['id'] }],
+        row_filters: [],
+        column_masks: [],
+      },
+    };
+
+    const { result } = renderHook(() => useDraftRolePolicyPreview(), { wrapper });
+    result.current.mutate(draft);
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(requests).toEqual([draft]);
+    expect(result.current.data?.would_be_allowed).toBe(true);
   });
 });

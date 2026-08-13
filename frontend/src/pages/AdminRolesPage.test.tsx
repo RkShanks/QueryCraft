@@ -7,6 +7,11 @@ import { useAdminRoles, useAdminRole } from '../hooks/useAdminRoles.ts';
 vi.mock('../hooks/useAdminRoles', () => ({
   useAdminRoles: vi.fn(),
   useAdminRole: vi.fn(),
+  useDraftRolePolicyPreview: vi.fn(() => ({
+    mutate: vi.fn(),
+    reset: vi.fn(),
+    isPending: false,
+  })),
 }));
 
 vi.mock('../hooks/useConnections', () => ({
@@ -38,12 +43,6 @@ const mockMutations = {
   createMutation: { mutate: vi.fn(), isPending: false },
   updateMutation: { mutate: vi.fn(), isPending: false },
   deleteMutation: { mutate: vi.fn(), isPending: false },
-};
-
-const mockDetailQuery = {
-  data: undefined,
-  isLoading: false,
-  isError: false,
 };
 
 const mockEmptyRoles = {
@@ -92,6 +91,11 @@ const mockBuiltinRole = {
   updated_at: '2026-06-01T00:00:00Z',
 };
 
+const mockDefaultDetail = {
+  ...mockCustomRole,
+  connection_policies: [],
+};
+
 const mockPopulatedRoles = {
   listQuery: {
     data: {
@@ -106,7 +110,13 @@ const mockPopulatedRoles = {
 describe('AdminRolesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useAdminRole).mockReturnValue(mockDetailQuery as any);
+    vi.mocked(useAdminRole).mockReturnValue({
+      data: mockDefaultDetail,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
   });
 
   it('renders title and empty state when no roles exist', () => {
@@ -307,6 +317,13 @@ describe('AdminRolesPage', () => {
       ...mockPopulatedRoles,
       listQuery: { ...mockPopulatedRoles.listQuery, data: { roles: [roleWithFuturePermission] } },
     } as any);
+    vi.mocked(useAdminRole).mockReturnValue({
+      data: { ...roleWithFuturePermission, connection_policies: [] },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
 
     render(<AdminRolesPage />);
     fireEvent.click(screen.getByRole('button', { name: 'common.edit' }));
@@ -430,6 +447,132 @@ describe('AdminRolesPage', () => {
         })
       );
     });
+  });
+
+  it('blocks repeated and keyboard save attempts until matching role detail loads', () => {
+    vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
+    vi.mocked(useAdminRole).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isFetching: true,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
+    render(<AdminRolesPage />);
+    fireEvent.click(screen.getByTestId('edit-role-123'));
+
+    const saveButton = screen.getByRole('button', { name: 'common.save' });
+    expect(saveButton).toBeDisabled();
+    fireEvent.click(saveButton);
+    fireEvent.click(saveButton);
+    fireEvent.submit(saveButton.closest('form')!);
+    expect(mockMutations.updateMutation.mutate).not.toHaveBeenCalled();
+  });
+
+  it('failed role detail offers retry and cancel without serializing policy deletion', () => {
+    const refetch = vi.fn();
+    vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
+    vi.mocked(useAdminRole).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      isError: true,
+      refetch,
+    } as any);
+
+    render(<AdminRolesPage />);
+    fireEvent.click(screen.getByTestId('edit-role-123'));
+
+    expect(screen.getByText('admin.roles.detailLoadError')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'common.retry' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    const saveButton = screen.getByRole('button', { name: 'common.save' });
+    expect(saveButton).toBeDisabled();
+    fireEvent.submit(saveButton.closest('form')!);
+    expect(mockMutations.updateMutation.mutate).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'common.cancel' })).toBeEnabled();
+  });
+
+  it('ignores a late role-A detail response after switching to role B', () => {
+    const roleB = {
+      ...mockCustomRole,
+      id: '456',
+      name: 'Operations',
+      description: 'Operations summary',
+      group_mappings: [],
+      connection_policy_count: 1,
+    };
+    const roleADetail = {
+      ...mockCustomRole,
+      connection_policies: [{
+        id: 'policy-a',
+        connection_id: 'connection-a',
+        allowed_tables: [{ table: 'users', columns: ['id'] }],
+        row_filters: [],
+        column_masks: [],
+      }],
+    };
+    vi.mocked(useAdminRoles).mockReturnValue({
+      ...mockPopulatedRoles,
+      listQuery: { ...mockPopulatedRoles.listQuery, data: { roles: [mockCustomRole, roleB] } },
+    } as any);
+    vi.mocked(useAdminRole).mockImplementation((roleId) => ({
+      data: roleId === '456' ? roleADetail : undefined,
+      isLoading: true,
+      isFetching: true,
+      isError: false,
+      refetch: vi.fn(),
+    } as any));
+
+    render(<AdminRolesPage />);
+    fireEvent.click(screen.getByTestId('edit-role-123'));
+    fireEvent.click(screen.getByRole('button', { name: 'common.cancel' }));
+    fireEvent.click(screen.getByTestId('edit-role-456'));
+
+    expect(screen.queryByDisplayValue('Analyst')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'common.save' })).toBeDisabled();
+    expect(mockMutations.updateMutation.mutate).not.toHaveBeenCalled();
+  });
+
+  it('preserves dirty non-policy edits and loaded policies across a background detail refetch', () => {
+    const persistedPolicies = [{
+      id: 'cp-1',
+      connection_id: 'conn-1',
+      allowed_tables: [{ table: 'orders', columns: ['id', 'total'] }],
+      row_filters: [],
+      column_masks: [],
+    }];
+    let currentDetail = {
+      ...mockCustomRole,
+      connection_policies: persistedPolicies,
+    };
+    vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
+    vi.mocked(useAdminRole).mockImplementation(() => ({
+      data: currentDetail,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any));
+
+    const { rerender } = render(<AdminRolesPage />);
+    fireEvent.click(screen.getByTestId('edit-role-123'));
+    fireEvent.change(screen.getByLabelText('admin.roles.form.description'), {
+      target: { value: 'Dirty local description' },
+    });
+
+    currentDetail = { ...currentDetail, description: 'Background server description' };
+    rerender(<AdminRolesPage />);
+
+    expect(screen.getByDisplayValue('Dirty local description')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
+    expect(mockMutations.updateMutation.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: '123',
+        data: expect.objectContaining({ connection_policies: persistedPolicies }),
+      })
+    );
   });
 
   it('built-in roles hide delete button and block unsafe delete/mutation in UI', () => {

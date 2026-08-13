@@ -86,6 +86,8 @@ def test_operation_ids_are_unique_stable_and_preserve_existing_client_names():
     assert runtime_ids[("POST", "/api/v1/query/submit")] == "submitQuestion"
     assert runtime_ids[("GET", "/api/v1/sessions")] == "getSessions"
     assert runtime_ids[("GET", "/api/v1/admin/connections")] == "listAdminConnections"
+    assert runtime_ids[("POST", "/api/v1/admin/roles/test-policy")] == "testDraftRolePolicy"
+    assert len(runtime_ids) == 64
 
 
 def test_all_request_bodies_match_runtime_schema_and_content_types():
@@ -131,6 +133,7 @@ def test_all_response_status_schema_and_content_types_match_runtime():
         (("POST", "/api/v1/query/regenerate"), "application/json", "RegenerateQueryRequest"),
         (("PUT", "/api/v1/admin/quotas/{role_id}"), "application/json", "RoleQuotaUpsert"),
         (("POST", "/api/v1/admin/audit/export"), "application/json", "AuditExportRequest"),
+        (("POST", "/api/v1/admin/roles/test-policy"), "application/json", "DraftPolicyTestRequest"),
     ],
 )
 def test_json_request_bodies_are_typed(
@@ -152,6 +155,13 @@ def test_saml_callback_declares_its_form_body_and_redirect_response():
     assert set(operation["responses"]) == {"302", "422"}
     assert "content" not in operation["responses"]["302"]
     assert operation["responses"]["302"]["headers"]["Location"]["schema"] == {"type": "string"}
+
+
+def test_draft_policy_preview_reuses_the_safe_preview_response_contract():
+    operation = _schema_operations(_canonical_schema())[("POST", "/api/v1/admin/roles/test-policy")]
+
+    assert _json_schema(operation, "200") == {"$ref": "#/components/schemas/PolicyTestResponse"}
+    assert set(operation["responses"]) == {"200", "400", "401", "403", "422", "500"}
 
 
 @pytest.mark.parametrize(

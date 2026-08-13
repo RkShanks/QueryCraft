@@ -7,11 +7,14 @@ import {
   getRole,
   listGroupMappings,
   listRoles,
+  testDraftRolePolicy,
   updateRole,
 } from '../api/generated/sdk.gen';
 import type {
   ConnectionPolicyResponse,
+  DraftPolicyTestRequest,
   GroupMappingResponse,
+  PolicyTestResponse,
   RoleCreate,
   RoleDetailResponse,
   RoleGroupMappingSummary,
@@ -279,5 +282,20 @@ export const useAdminRole = (roleId: string | null | undefined) => {
       return normalizeRole(response.data);
     },
     enabled: !!roleId && canManageRoles,
+  });
+};
+
+export const useDraftRolePolicyPreview = () => {
+  const canManageRoles = usePermission(PERMISSIONS.ADMIN_ROLES_MANAGE);
+
+  return useMutation<PolicyTestResponse, unknown, DraftPolicyTestRequest>({
+    mutationFn: async (draft) => {
+      requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
+      const response = await testDraftRolePolicy({
+        body: draft,
+        throwOnError: true,
+      });
+      return response.data;
+    },
   });
 };

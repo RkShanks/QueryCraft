@@ -1,0 +1,176 @@
+{
+  "chunk": "CHUNK-15",
+  "gap_ids": ["IS-GAP-024", "IS-GAP-026", "IS-GAP-035"],
+  "status": "implementation_and_ci_passed_merge_pending",
+  "branch": "phase-6/wave-19.15-role-policy-editor",
+  "starting_main": "0cc010a59b128423169bd252aa63df2acfeb2130",
+  "tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc",
+  "pull_request": 313,
+  "authoritative_ci": {
+    "head_commit": "6cbe326b8462c8924b1a3aadd4b14c04c655b00b",
+    "run_id": 31738776892,
+    "backend_test": "passed",
+    "frontend_test": "passed"
+  },
+  "api_contract": {
+    "previous_operations": 63,
+    "current_runtime_operations": 64,
+    "canonical_operations": 64,
+    "generated_operations": 64,
+    "current_paths": 48,
+    "added_method": "POST",
+    "added_path": "/api/v1/admin/roles/test-policy",
+    "operation_id": "testDraftRolePolicy",
+    "request_schema": "DraftPolicyTestRequest",
+    "response_schema": "PolicyTestResponse",
+    "declared_statuses": [200, 400, 401, 403, 422, 500],
+    "required_permission": "admin.roles.manage",
+    "persists_role_or_policy": false,
+    "calls_llm": false,
+    "executes_source_query": false,
+    "persisted_endpoint_retained": true,
+    "canonical_generation_check": true,
+    "generated_client_check": true
+  },
+  "row_filter_corpus": {
+    "path": "contracts/row-filter-validation-corpus.json",
+    "total": 21,
+    "backend_valid": 8,
+    "backend_invalid": 13,
+    "frontend_valid_ui_cases": 8,
+    "frontend_invalid_user_table_ui_cases": 12,
+    "unknown_table_case_backend_only_because_ui_table_selection_is_structural": 1,
+    "dialects": ["postgres", "mysql", "tsql"],
+    "backend_authoritative": true,
+    "frontend_raw_string_parser_removed": true
+  },
+  "hydration_race_matrix": [
+    {
+      "case": "delayed matching detail plus repeated or keyboard submit",
+      "expected": "zero mutations until authoritative detail",
+      "result": "passed"
+    },
+    {
+      "case": "failed detail",
+      "expected": "localized retry/cancel and disabled Save",
+      "result": "passed"
+    },
+    {
+      "case": "late role-A detail after role-B selection",
+      "expected": "role B remains authoritative",
+      "result": "passed"
+    },
+    {
+      "case": "background refetch after dirty edit",
+      "expected": "dirty fields and loaded policies are preserved",
+      "result": "passed"
+    },
+    {
+      "case": "non-policy edit",
+      "expected": "loaded connection policies remain in update payload",
+      "result": "passed"
+    },
+    {
+      "case": "cancel or role switch",
+      "expected": "draft and preview state are cleared",
+      "result": "passed"
+    }
+  ],
+  "preview_state_matrix": [
+    {"state": "empty", "result": "passed"},
+    {"state": "loading", "result": "passed"},
+    {"state": "allowed", "result": "passed"},
+    {"state": "blocked", "result": "passed"},
+    {"state": "invalid", "result": "passed", "feedback": "localized_and_sanitized"},
+    {"state": "retry", "result": "passed", "feedback": "localized_and_sanitized"},
+    {"state": "permission-denied", "result": "passed", "feedback": "localized_and_sanitized"},
+    {"state": "stale", "result": "passed"}
+  ],
+  "browser": {
+    "classification": "isolated_playwright_chromium_with_disposable_mock_http_state",
+    "chrome_devtools_mcp_available": false,
+    "passed": 4,
+    "failed": 0,
+    "seconds": 15.1,
+    "viewports": [
+      {"width": 1440, "locale": "en", "direction": "ltr", "result": "passed"},
+      {"width": 768, "locale": "ar", "direction": "rtl", "result": "passed"},
+      {"width": 375, "locale": "en", "direction": "ltr", "result": "passed"}
+    ],
+    "verified": [
+      "delayed, failed, retried, and late detail hydration",
+      "new-role and edit-role unsaved previews",
+      "allowed, blocked, invalid, stale, empty, and loading preview states",
+      "backend-valid quoted literal",
+      "zero create/update role requests before outer Save",
+      "zero query, LLM, generation, or execution API requests",
+      "cancel clears preview and restores persisted role state",
+      "no unexpected API requests or request failures",
+      "only expected browser console resource errors for injected 422 and 500 responses"
+    ]
+  },
+  "real_api": {
+    "classification": "real_fastapi_asgi_with_local_postgresql_and_redis",
+    "disposable_connection_schema": true,
+    "disposable_role_with_non_empty_policy": true,
+    "allowed_status": 200,
+    "blocked_status": 200,
+    "invalid_status": 422,
+    "invalid_contract_exact_and_sanitized": true,
+    "persisted_policy_count": 1,
+    "persisted_policy_unchanged_after_draft_previews": true,
+    "llm_calls": 0,
+    "source_execute_calls": 0,
+    "cleanup": "role_and_connection_deleted"
+  },
+  "tdd_commits": [
+    {"stage": "red_backend_contract", "commit": "3b613645355a958802cddcc6a33dd67a99de60ad"},
+    {"stage": "green_backend_contract", "commit": "0c4d3a67bf755da44a40868e73b7c346e1098198"},
+    {"stage": "red_hydration_races", "commit": "31568725137ea415c6622ea1f383d7eca8fef4a3"},
+    {"stage": "green_hydration_safety", "commit": "e8d68043ee79b1fd5c614ef9fa0727341f58027a"},
+    {"stage": "red_preview_states", "commit": "cfee37e367cb819f68ddaf11d287e6871e4da92a"},
+    {"stage": "green_preview_and_grammar", "commit": "b354b89a15b5dae74f4e68f22a57d5fdc064c231"},
+    {"stage": "browser_regression", "commit": "750c21fa4f70bf1f1b106396852b9be846b931dc"}
+  ],
+  "gates": {
+    "focused_backend": {"passed": 122, "failed": 0, "seconds": 3.06},
+    "backend_unit_foundation": {"passed": 2539, "deselected": 44, "failed": 0, "seconds": 68.84, "preexisting_warnings": 3},
+    "focused_frontend": {"files": 7, "passed": 435, "failed": 0, "seconds": 2.72},
+    "full_vitest": {"files": 74, "passed": 1062, "failed": 0, "seconds": 11.46},
+    "ruff_check": true,
+    "ruff_format_files": 452,
+    "eslint": true,
+    "typecheck": true,
+    "production_build": true,
+    "css_lint": true,
+    "canonical_generation_check": true,
+    "frontend_generation_check": true,
+    "openapi_runtime_canonical_generated_parity": true,
+    "git_diff_check": true,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "vercel_react_best_practices": true,
+    "docs_guard": true
+  },
+  "cleanup": {
+    "temporary_browser_outputs_removed": true,
+    "temporary_api_script_removed": true,
+    "disposable_database_rows_removed": true,
+    "protected_baseline": {
+      "modified_tracked_pngs": 14,
+      "historical_untracked_screenshots": 7,
+      "untracked_trace_archives": 2,
+      "unchanged": true,
+      "staged": false
+    }
+  },
+  "ledger_status_totals_after_chunk": {
+    "total": 47,
+    "resolved": 20,
+    "pending": 23,
+    "needs_decision": 3,
+    "resolved_on_tested_branch": 1
+  },
+  "chunk_16_unblocked": false,
+  "chunk_16_gate": "authoritative backend/frontend CI and CHUNK-15 squash merge"
+}

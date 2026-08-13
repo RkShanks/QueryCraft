@@ -1,6 +1,6 @@
 # CHUNK-14 / IS-GAP-008 — canonical OpenAPI and generated client
 
-Status: implementation, local verification, and authoritative GitHub backend/frontend CI passed on branch `phase-6/wave-19.14-openapi-canonical` in [#312](https://github.com/RkShanks/QueryCraft/pull/312); squash merge is pending.
+Status: implementation, local verification, and authoritative GitHub backend/frontend CI passed on branch `phase-6/wave-19.14-openapi-canonical` in [#312](https://github.com/RkShanks/QueryCraft/pull/312); squash merge `0cc010a59b128423169bd252aa63df2acfeb2130` completed and unblocked CHUNK-15.
 
 Starting main: `e18d2335f44a93f055bb7d3c03f08012c91443f6`. Tested product commit: `9f82c73c0abe1ec07199583343e954e65fd6d358`.
 
@@ -99,4 +99,4 @@ API classification: real ASGI with local PostgreSQL and Redis for authentication
 - The protected baseline remains exactly 14 modified tracked PNGs, seven historical untracked screenshots, and two untracked trace archives. None was edited, staged, regenerated, deleted, or reverted by CHUNK-14.
 - Evidence contains only paths, schemas, statuses, counts, hashes, booleans, durations, and commit IDs; it retains no credentials, cookies, request values, database rows, raw errors, logs, screenshots, videos, or traces.
 
-CHUNK-15 becomes unblocked only when the focused CHUNK-14 PR passes authoritative backend/frontend CI and is squash-merged.
+CHUNK-15 started from synchronized main at the completed CHUNK-14 squash merge `0cc010a59b128423169bd252aa63df2acfeb2130`.

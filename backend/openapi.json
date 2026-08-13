@@ -1350,6 +1350,77 @@
         "title": "DetectionThresholdUpdate",
         "type": "object"
       },
+      "DraftConnectionPolicy": {
+        "description": "Complete unsaved connection policy used by the preview endpoint.",
+        "properties": {
+          "allowed_tables": {
+            "items": {
+              "$ref": "#/components/schemas/TableColumnPolicy"
+            },
+            "title": "Allowed Tables",
+            "type": "array"
+          },
+          "column_masks": {
+            "items": {
+              "$ref": "#/components/schemas/TableColumnPolicy"
+            },
+            "title": "Column Masks",
+            "type": "array"
+          },
+          "connection_id": {
+            "title": "Connection Id",
+            "type": "string"
+          },
+          "row_filters": {
+            "items": {
+              "$ref": "#/components/schemas/RowFilterPolicy"
+            },
+            "title": "Row Filters",
+            "type": "array"
+          }
+        },
+        "required": [
+          "connection_id",
+          "allowed_tables",
+          "row_filters",
+          "column_masks"
+        ],
+        "title": "DraftConnectionPolicy",
+        "type": "object"
+      },
+      "DraftPolicyTestRequest": {
+        "description": "Dry-run one complete unsaved connection policy.",
+        "properties": {
+          "connection_policy": {
+            "$ref": "#/components/schemas/DraftConnectionPolicy"
+          },
+          "question": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "sample_sql": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sample Sql"
+          }
+        },
+        "required": [
+          "question",
+          "connection_policy"
+        ],
+        "title": "DraftPolicyTestRequest",
+        "type": "object"
+      },
       "ErrorResponse": {
         "description": "Constant, user-safe error response.",
         "properties": {
@@ -5852,6 +5923,100 @@
           }
         ],
         "summary": "Create Role",
+        "tags": [
+          "Admin Roles"
+        ]
+      }
+    },
+    "/api/v1/admin/roles/test-policy": {
+      "post": {
+        "description": "Validate and evaluate one supplied policy without persistence or execution.",
+        "operationId": "testDraftRolePolicy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftPolicyTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyTestResponse"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          }
+        },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "summary": "Test Draft Role Policy",
         "tags": [
           "Admin Roles"
         ]

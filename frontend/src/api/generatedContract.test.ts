@@ -78,6 +78,7 @@ describe('canonical generated API contract', () => {
       'exportAuditEntries',
       'oidcLogin',
       'samlCallback',
+      'testDraftRolePolicy',
     ]) {
       expect(functions).toContain(operationName);
     }

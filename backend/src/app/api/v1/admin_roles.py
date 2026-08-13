@@ -7,10 +7,12 @@ Endpoints:
 - GET /admin/roles/{id}
 - PUT /admin/roles/{id}
 - DELETE /admin/roles/{id}
+- POST /admin/roles/test-policy  (CHUNK-15 draft preview)
 - POST /admin/roles/{id}/test-policy  (T-714)
 """
 
 import uuid
+from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import delete, func, select
@@ -29,11 +31,18 @@ from app.evaluator.rules.role_authorization import RoleAuthorizationRule
 from app.evaluator.schema_context import Column, SchemaContext, Table
 from app.repositories.connection_repository import ConnectionRepository
 from app.repositories.role_repository import RoleRepository
-from app.schemas.roles import PolicyTestRequest, RoleCreate, RoleUpdate
+from app.schemas.roles import DraftPolicyTestRequest, PolicyTestRequest, PolicyTestResponse, RoleCreate, RoleUpdate
 from app.services.policy_enforcement import PolicyEnforcementService
 from app.services.role_service import RoleService
 
 router = APIRouter(prefix="/admin/roles", tags=["Admin Roles"])
+
+
+@dataclass(frozen=True)
+class _PreviewPolicy:
+    allowed_tables: list[dict]
+    row_filters: list[dict]
+    column_masks: list[dict]
 
 
 def _role_to_list_response(role: Role, group_mappings: list, connection_policy_count: int) -> dict:
@@ -166,20 +175,28 @@ async def _validate_policy_row_filters(
         schema = _build_schema_from_entries(schema_entries)
         dialect = _resolve_dialect(connection.database_type)
 
-        for row_filter in policy.row_filters:
-            table_name = row_filter.get("table")
-            filter_sql = row_filter.get("filter")
-            if not isinstance(table_name, str) or not isinstance(filter_sql, str):
-                raise _row_filter_validation_error()
-            try:
-                PolicyEnforcementService.validate_row_filter(
-                    filter_sql,
-                    schema,
-                    table_name,
-                    dialect=dialect,
-                )
-            except ValueError:
-                raise _row_filter_validation_error() from None
+        _validate_preview_row_filters(policy.row_filters, schema, dialect)
+
+
+def _validate_preview_row_filters(
+    row_filters: list[dict],
+    schema: SchemaContext,
+    dialect: str,
+) -> None:
+    for row_filter in row_filters:
+        table_name = row_filter.get("table")
+        filter_sql = row_filter.get("filter")
+        if not isinstance(table_name, str) or not isinstance(filter_sql, str):
+            raise _row_filter_validation_error()
+        try:
+            PolicyEnforcementService.validate_row_filter(
+                filter_sql,
+                schema,
+                table_name,
+                dialect=dialect,
+            )
+        except ValueError:
+            raise _row_filter_validation_error() from None
 
 
 async def _replace_role_connection_policies(db: AsyncSession, role_id: uuid.UUID, policies) -> list[dict]:
@@ -267,6 +284,35 @@ async def list_roles(
                 for role in roles
             ]
         }
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "internal", "message_key": "error.internal"},
+        ) from None
+
+
+@router.post("/test-policy")
+async def test_draft_role_policy(
+    request: Request,
+    body: DraftPolicyTestRequest,
+    _session: dict = Depends(require_permission(Permission.ADMIN_ROLES_MANAGE)),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> PolicyTestResponse:
+    """Validate and evaluate one supplied policy without persistence or execution."""
+    connection_id = _parse_preview_connection_id(body.connection_policy.connection_id)
+    try:
+        connection, schema = await _load_preview_connection(request, connection_id, db)
+        draft = body.connection_policy
+        policy = _PreviewPolicy(
+            allowed_tables=[entry.model_dump() for entry in draft.allowed_tables],
+            row_filters=[entry.model_dump() for entry in draft.row_filters],
+            column_masks=[entry.model_dump() for entry in draft.column_masks],
+        )
+        dialect = _resolve_dialect(connection.database_type)
+        _validate_preview_row_filters(policy.row_filters, schema, dialect)
+        return await _evaluate_policy_preview(schema, policy, body.sample_sql, dialect)
     except HTTPException:
         raise
     except Exception:
@@ -640,6 +686,101 @@ def _resolve_dialect(database_type) -> str:
         return "postgres"
 
 
+async def _evaluate_policy_preview(
+    schema: SchemaContext,
+    policy: _PreviewPolicy,
+    sample_sql: str | None,
+    dialect: str,
+) -> PolicyTestResponse:
+    accessible_tables, accessible_columns, blocked_tables = _policy_access_summary(schema, policy)
+    would_be_allowed, message_key = await _preview_verdict(schema, policy, sample_sql, dialect)
+    return PolicyTestResponse(
+        accessible_tables=accessible_tables,
+        accessible_columns=accessible_columns,
+        blocked_tables=blocked_tables,
+        applicable_row_filters=[
+            {"table": row_filter.get("table"), "filter": row_filter.get("filter")}
+            for row_filter in policy.row_filters
+            if isinstance(row_filter, dict)
+        ],
+        masked_columns=_preview_masks(policy.column_masks),
+        would_be_allowed=would_be_allowed,
+        message_key=message_key,
+    )
+
+
+def _policy_access_summary(
+    schema: SchemaContext,
+    policy: _PreviewPolicy,
+) -> tuple[list[str], dict[str, list[str]], list[str]]:
+    filtered_schema = PolicyEnforcementService.filter_schema(schema, policy.allowed_tables)
+    accessible_tables = [table.name for table in filtered_schema.tables]
+    accessible_columns = {table.name: [column.name for column in table.columns] for table in filtered_schema.tables}
+    blocked_tables = [table.name for table in schema.tables if table.name not in accessible_tables]
+    return accessible_tables, accessible_columns, blocked_tables
+
+
+def _preview_masks(column_masks: list[dict]) -> dict[str, list[str]]:
+    return {
+        mask["table"]: [column for column in mask["columns"] if isinstance(column, str)]
+        for mask in column_masks
+        if isinstance(mask, dict) and isinstance(mask.get("table"), str) and isinstance(mask.get("columns"), list)
+    }
+
+
+async def _preview_verdict(
+    schema: SchemaContext,
+    policy: _PreviewPolicy,
+    sample_sql: str | None,
+    dialect: str,
+) -> tuple[bool, str | None]:
+    if not sample_sql or not sample_sql.strip():
+        return bool(PolicyEnforcementService.filter_schema(schema, policy.allowed_tables).tables), None
+    rule = RoleAuthorizationRule(
+        allowed_tables=policy.allowed_tables or None,
+        column_masks=policy.column_masks or None,
+        dialect=dialect,
+    )
+    allowed, _reason = await rule.evaluate(sample_sql, schema)
+    return bool(allowed), None if allowed else "error.queryBlockedPolicy"
+
+
+def _parse_preview_connection_id(connection_id: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(connection_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
+        ) from None
+
+
+async def _load_preview_connection(
+    request: Request,
+    connection_id: uuid.UUID,
+    db: AsyncSession,
+) -> tuple[SourceDatabaseConnection, SchemaContext]:
+    db_override = getattr(request.state, "db_override", None)
+    db_to_use = db_override if db_override is not None else db
+    repo_override = getattr(request.state, "connection_repo_override", None)
+    repo = repo_override if repo_override is not None else ConnectionRepository(db_to_use)
+    connection = await repo.get_by_id(connection_id)
+    if connection is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
+        )
+    state_error = _policy_test_connection_state_error(
+        connection.lifecycle_state,
+        connection.health_status,
+        connection.schema_introspection_status,
+    )
+    if state_error is not None:
+        raise state_error
+    schema_entries = await repo.get_schema_entries(connection.id)
+    return connection, _build_schema_from_entries(schema_entries)
+
+
 @router.post("/{role_id}/test-policy")
 async def test_role_policy(
     request: Request,
@@ -708,19 +849,12 @@ async def test_role_policy(
             detail={"error": "not_found", "message_key": "error.notFound"},
         ) from None
 
-    try:
-        conn_uuid = uuid.UUID(body.connection_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
-        ) from None
+    conn_uuid = _parse_preview_connection_id(body.connection_id)
 
     # Test seam: tests may inject mock repos on request.state. In
     # production the attributes are absent and the real db / repos
     # are used.
     role_repo_override = getattr(request.state, "role_repo_override", None)
-    conn_repo_override = getattr(request.state, "connection_repo_override", None)
     db_override = getattr(request.state, "db_override", None)
     db_to_use = db_override if db_override is not None else db
 
@@ -736,30 +870,7 @@ async def test_role_policy(
                 detail={"error": "not_found", "message_key": "error.notFound"},
             )
 
-        if conn_repo_override is not None:
-            conn = await conn_repo_override.get_by_id(conn_uuid)
-        else:
-            conn_repo = ConnectionRepository(db_to_use)
-            conn = await conn_repo.get_by_id(conn_uuid)
-        if conn is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"error": "connection_not_found", "message_key": "error.connection_not_found"},
-            )
-
-        state_err = _policy_test_connection_state_error(
-            getattr(conn, "lifecycle_state", None),
-            getattr(conn, "health_status", None),
-            getattr(conn, "schema_introspection_status", None),
-        )
-        if state_err is not None:
-            raise state_err
-
-        if conn_repo_override is not None:
-            schema_entries = await conn_repo_override.get_schema_entries(conn.id)
-        else:
-            schema_entries = await ConnectionRepository(db_to_use).get_schema_entries(conn.id)
-        schema_context = _build_schema_from_entries(schema_entries)
+        conn, schema_context = await _load_preview_connection(request, conn_uuid, db)
 
         # Load the role_connection_policies row for (role_id, conn_id).
         # Missing row -> deny-all (fail-closed, matches PR #129 provider).
@@ -780,78 +891,17 @@ async def test_role_policy(
             row_filters_list = policy_row.row_filters or []
             column_masks_list = policy_row.column_masks or []
 
-        # Apply the role policy to the connection schema. The
-        # policy_enforcement service never mutates its inputs.
-        filtered_schema = PolicyEnforcementService.filter_schema(schema_context, allowed_tables)
-        accessible_tables = [t.name for t in filtered_schema.tables]
-        accessible_columns = {t.name: [c.name for c in t.columns] for t in filtered_schema.tables}
-
-        # Blocked = every schema table not in accessible. Preserve the
-        # original schema order via a set difference.
-        all_tables = [t.name for t in schema_context.tables]
-        blocked_tables = [name for name in all_tables if name not in accessible_tables]
-
-        # Row filters / masks returned as metadata only. The endpoint
-        # does NOT bind placeholders, does NOT inject the filter into
-        # any SQL, and does NOT transform masked values. Placeholder
-        # syntax is preserved verbatim.
-        applicable_row_filters = [
-            {"table": rf.get("table"), "filter": rf.get("filter")} for rf in row_filters_list if isinstance(rf, dict)
-        ]
-        masked_columns = {}
-        for entry in column_masks_list:
-            if not isinstance(entry, dict):
-                continue
-            table_name = entry.get("table")
-            cols = entry.get("columns")
-            if not isinstance(table_name, str) or not isinstance(cols, list):
-                continue
-            masked_columns[table_name] = [c for c in cols if isinstance(c, str)]
-
-        # Verdict + message_key. Default to the policy-state preview
-        # (bool(accessible_tables)). When the request carries a
-        # non-empty sample_sql, run RoleAuthorizationRule against the
-        # full schema + policy and override the verdict with the
-        # SQL-level result. The rule's `evaluate` is fail-closed: it
-        # returns the constant "query_blocked_policy" reason for every
-        # failure mode (disallowed reference, malformed SQL, multi-
-        # statement, non-SELECT, empty) and never echoes the raw SQL,
-        # table, column, schema, or driver text. The i18n message key
-        # we surface is the constant "error.queryBlockedPolicy" per
-        # api-contracts.md line 385.
-        #
-        # Dialect: chosen from the connection's ``database_type`` via
-        # the canonical ``DIALECT_MAP`` (T-429 / FR-071). PostgreSQL
-        # gets ``"postgres"``, MySQL gets ``"mysql"``, MSSQL gets
-        # ``"tsql"``. Missing / unknown enum members fall back to
-        # ``"postgres"`` (the conservative default used by
-        # ``read_only`` and ``role_authorization``); the fallback is
-        # never surfaced in the response, the dialect name is internal
-        # to the rule's sqlglot call.
-        would_be_allowed = bool(accessible_tables)
-        message_key: str | None = None
-        sample_sql = body.sample_sql if isinstance(body.sample_sql, str) else None
-        if sample_sql and sample_sql.strip():
-            dialect = _resolve_dialect(getattr(conn, "database_type", None))
-            rule = RoleAuthorizationRule(
-                allowed_tables=allowed_tables if allowed_tables else None,
-                column_masks=column_masks_list if column_masks_list else None,
-                dialect=dialect,
-            )
-            allowed, _reason = await rule.evaluate(sample_sql, schema_context)
-            would_be_allowed = bool(allowed)
-            if not allowed:
-                message_key = "error.queryBlockedPolicy"
-
-        return {
-            "accessible_tables": accessible_tables,
-            "accessible_columns": accessible_columns,
-            "blocked_tables": blocked_tables,
-            "applicable_row_filters": applicable_row_filters,
-            "masked_columns": masked_columns,
-            "would_be_allowed": would_be_allowed,
-            "message_key": message_key,
-        }
+        policy = _PreviewPolicy(
+            allowed_tables=allowed_tables,
+            row_filters=row_filters_list,
+            column_masks=column_masks_list,
+        )
+        return await _evaluate_policy_preview(
+            schema_context,
+            policy,
+            body.sample_sql,
+            _resolve_dialect(getattr(conn, "database_type", None)),
+        )
     except HTTPException:
         raise
     except Exception:

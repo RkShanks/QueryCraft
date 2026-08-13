@@ -4,6 +4,7 @@ import { Plus, Trash2, Edit2, X, Shield, AlertTriangle, Info, Database } from 'l
 import { useConnections } from '../../hooks/useConnections';
 import { useConnectionSchema } from '../../hooks/useConnectionSchema';
 import type { ConnectionPolicyItem } from '../../hooks/useAdminRoles';
+import { RolePolicyPreview } from './RolePolicyPreview';
 
 interface ConnectionListItem {
   id: string;
@@ -37,10 +38,10 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
     activePolicy?.connection_id || null
   );
 
-  // Compute real-time validation on activePolicy row_filters change dynamically (no state/useEffect to avoid cascading renders)
+  // The backend owns SQL grammar validation. Local checks are structural only.
   const getValidationErrors = (): Record<string, string> => {
     const errors: Record<string, string> = {};
-    if (!activePolicy || !schema) return errors;
+    if (!activePolicy) return errors;
 
     activePolicy.row_filters.forEach((rf, idx) => {
       if (!rf.table) {
@@ -52,71 +53,6 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
         return;
       }
 
-      // Check comments
-      if (rf.filter.includes('--') || rf.filter.includes('/*') || rf.filter.includes('*/')) {
-        errors[`filter-val-${idx}`] = t('admin.roles.form.filterValidationFailed');
-        return;
-      }
-
-      // Check forbidden SQL constructs
-      const normalized = rf.filter.toLowerCase();
-      const dangerousKeywords = [
-        'select', 'union', 'join', 'update', 'delete', 'insert', 'truncate',
-        'drop', 'alter', 'create', 'grant', 'revoke', 'into', 'from'
-      ];
-      for (const keyword of dangerousKeywords) {
-        const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-        if (regex.test(normalized)) {
-          errors[`filter-val-${idx}`] = t('admin.roles.form.filterValidationFailed');
-          return;
-        }
-      }
-
-      // Check user placeholders
-      const placeholderRegex = /\{user\.([^}]+)\}/g;
-      let match;
-      const validPlaceholders = ['email', 'subject_id', 'role'];
-      while ((match = placeholderRegex.exec(rf.filter)) !== null) {
-        const key = match[1];
-        if (!validPlaceholders.includes(key)) {
-          errors[`filter-val-${idx}`] = t('admin.roles.form.filterPlaceholderError');
-          return;
-        }
-      }
-
-      // Check column existence
-      const targetTableSchema = schema.tables.find(t => t.table_name === rf.table);
-      const allowedCols = activePolicy.allowed_tables.find(t => t.table === rf.table)?.columns || [];
-      if (targetTableSchema) {
-        const cleanSql = rf.filter
-          .replace(/'[^']*'/g, '') // remove string literals
-          .replace(/\{user\.[^}]+\}/g, '') // remove placeholders
-          .replace(/[(),.=+<>!\-*/]/g, ' '); // replace operators with spaces
-
-        const words = cleanSql
-          .split(/\s+/)
-          .map(w => w.trim().toLowerCase())
-          .filter(w => w.length > 0 && /^[a-z_][a-z0-9_]*$/.test(w));
-
-        const sqlReservedWords = new Set([
-          'and', 'or', 'not', 'in', 'is', 'null', 'like', 'between', 'exists',
-          'true', 'false', 'any', 'all', 'some', 'current_date', 'current_time', 'now'
-        ]);
-
-        for (const word of words) {
-          if (sqlReservedWords.has(word)) continue;
-          if (!isNaN(Number(word))) continue;
-
-          const hasColumn = allowedCols.some(c => c.toLowerCase() === word);
-          if (!hasColumn) {
-            errors[`filter-val-${idx}`] = t('admin.roles.form.columnNotFound', {
-              column: word,
-              table: rf.table,
-            });
-            return;
-          }
-        }
-      }
     });
 
     return errors;
@@ -599,6 +535,10 @@ export const PolicyEditor: React.FC<PolicyEditorProps> = ({ policies, onChange }
                         </div>
                       )}
                     </div>
+                  )}
+
+                  {activePolicy.allowed_tables.length > 0 && (
+                    <RolePolicyPreview policy={activePolicy} />
                   )}
                 </div>
               )}

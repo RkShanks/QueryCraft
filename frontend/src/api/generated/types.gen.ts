@@ -724,6 +724,47 @@ export type DetectionThresholdUpdate = {
 };
 
 /**
+ * DraftConnectionPolicy
+ *
+ * Complete unsaved connection policy used by the preview endpoint.
+ */
+export type DraftConnectionPolicy = {
+    /**
+     * Allowed Tables
+     */
+    allowed_tables: Array<TableColumnPolicy>;
+    /**
+     * Column Masks
+     */
+    column_masks: Array<TableColumnPolicy>;
+    /**
+     * Connection Id
+     */
+    connection_id: string;
+    /**
+     * Row Filters
+     */
+    row_filters: Array<RowFilterPolicy>;
+};
+
+/**
+ * DraftPolicyTestRequest
+ *
+ * Dry-run one complete unsaved connection policy.
+ */
+export type DraftPolicyTestRequest = {
+    connection_policy: DraftConnectionPolicy;
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Sample Sql
+     */
+    sample_sql?: string | null;
+};
+
+/**
  * ErrorResponse
  *
  * Constant, user-safe error response.
@@ -3360,6 +3401,47 @@ export type CreateRoleResponses = {
 };
 
 export type CreateRoleResponse = CreateRoleResponses[keyof CreateRoleResponses];
+
+export type TestDraftRolePolicyData = {
+    body: DraftPolicyTestRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/roles/test-policy';
+};
+
+export type TestDraftRolePolicyErrors = {
+    /**
+     * Sanitized error response.
+     */
+    400: ErrorResponse;
+    /**
+     * Sanitized error response.
+     */
+    401: ErrorResponse;
+    /**
+     * Sanitized error response.
+     */
+    403: ErrorResponse;
+    /**
+     * Sanitized error response.
+     */
+    422: ErrorResponse | ValidationErrorResponse;
+    /**
+     * Sanitized error response.
+     */
+    500: ErrorResponse;
+};
+
+export type TestDraftRolePolicyError = TestDraftRolePolicyErrors[keyof TestDraftRolePolicyErrors];
+
+export type TestDraftRolePolicyResponses = {
+    /**
+     * Successful response.
+     */
+    200: PolicyTestResponse;
+};
+
+export type TestDraftRolePolicyResponse = TestDraftRolePolicyResponses[keyof TestDraftRolePolicyResponses];
 
 export type DeleteRoleData = {
     body?: never;

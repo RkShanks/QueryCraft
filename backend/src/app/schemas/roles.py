@@ -163,6 +163,28 @@ class PolicyTestRequest(BaseModel):
     )
 
 
+class DraftConnectionPolicy(BaseModel):
+    """Complete unsaved connection policy used by the preview endpoint."""
+
+    connection_id: str
+    allowed_tables: list[TableColumnPolicy]
+    row_filters: list[RowFilterPolicy]
+    column_masks: list[TableColumnPolicy]
+
+    @field_validator("connection_id")
+    @classmethod
+    def _validate_connection_id(cls, value: str) -> str:
+        return _reject_control_chars(value)
+
+
+class DraftPolicyTestRequest(BaseModel):
+    """Dry-run one complete unsaved connection policy."""
+
+    question: str = Field(..., min_length=1, max_length=2000)
+    sample_sql: str | None = Field(default=None, max_length=20000)
+    connection_policy: DraftConnectionPolicy
+
+
 class PolicyTestResponse(BaseModel):
     """Result of a policy dry-run test."""
 

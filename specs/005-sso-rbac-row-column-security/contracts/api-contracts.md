@@ -250,16 +250,51 @@ All endpoints under `/api/v1/`. Errors use existing `ErrorResponse` / `Validatio
 
 ---
 
-### `POST /admin/roles/{role_id}/test-policy`
+### `POST /admin/roles/test-policy`
+**Operation ID**: `testDraftRolePolicy`
 **Permission**: `admin.roles.manage`
-**Purpose**: Dry-run a sample question against role policy (FR-136).
+**Purpose**: Validate and dry-run one complete unsaved connection policy for a new or existing role (FR-136). This endpoint does not persist policy state, call an LLM, or execute a source query.
 **Body**:
 ```json
 {
   "question": "Show me all customers",
-  "connection_id": "uuid"
+  "sample_sql": "SELECT id, name FROM customers",
+  "connection_policy": {
+    "connection_id": "uuid",
+    "allowed_tables": [
+      {"table": "customers", "columns": ["id", "name"]}
+    ],
+    "row_filters": [
+      {"table": "customers", "filter": "region = {user.role}"}
+    ],
+    "column_masks": [
+      {"table": "customers", "columns": ["email"]}
+    ]
+  }
 }
 ```
+`sample_sql` is optional. All four `connection_policy` fields are required, including empty arrays when a policy has no entries of that kind.
+
+**Response 200**: Same safe policy-preview structure as the persisted-policy endpoint below.
+**Error 400**: Connection unavailable, disabled, unhealthy, or missing introspected schema; localized and sanitized.
+**Error 401**: Authentication required.
+**Error 403**: Missing `admin.roles.manage`.
+**Error 422**: Invalid request or row filter; localized and sanitized.
+**Error 500**: Sanitized internal failure.
+
+### `POST /admin/roles/{role_id}/test-policy`
+**Permission**: `admin.roles.manage`
+**Purpose**: Dry-run a sample question against the persisted role policy for compatibility and diagnostics (FR-136).
+**Body**:
+```json
+{
+  "question": "Show me all customers",
+  "connection_id": "uuid",
+  "sample_sql": "SELECT id, name FROM customers"
+}
+```
+`sample_sql` is optional.
+
 **Response 200**:
 ```json
 {
@@ -268,7 +303,8 @@ All endpoints under `/api/v1/`. Errors use existing `ErrorResponse` / `Validatio
   "blocked_tables": ["orders"],
   "applicable_row_filters": [{"table": "customers", "filter": "region = 'US'"}],
   "masked_columns": {"customers": ["email"]},
-  "would_be_allowed": true
+  "would_be_allowed": true,
+  "message_key": null
 }
 ```
 

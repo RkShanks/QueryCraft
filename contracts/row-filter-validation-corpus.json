@@ -1,0 +1,180 @@
+{
+  "schema": {
+    "tables": [
+      {
+        "name": "users",
+        "columns": ["id", "name", "email", "status", "subject_id"]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "postgres_quoted_literal_keywords",
+      "category": "quoted_literal",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "\"name\" = 'from union --'",
+      "valid": true
+    },
+    {
+      "id": "postgres_escaped_quoted_literal",
+      "category": "quoted_literal",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "name = 'O''Brien from union --'",
+      "valid": true
+    },
+    {
+      "id": "mysql_backtick_identifier",
+      "category": "cross_dialect",
+      "dialect": "mysql",
+      "table": "users",
+      "filter": "`name` = 'from union --'",
+      "valid": true
+    },
+    {
+      "id": "mssql_bracket_identifier",
+      "category": "cross_dialect",
+      "dialect": "tsql",
+      "table": "users",
+      "filter": "[name] = 'from union --'",
+      "valid": true
+    },
+    {
+      "id": "email_identity_placeholder",
+      "category": "identity_placeholder",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "email = {user.email}",
+      "valid": true
+    },
+    {
+      "id": "subject_identity_placeholder",
+      "category": "identity_placeholder",
+      "dialect": "mysql",
+      "table": "users",
+      "filter": "subject_id = {user.subject_id}",
+      "valid": true
+    },
+    {
+      "id": "role_identity_placeholder",
+      "category": "identity_placeholder",
+      "dialect": "tsql",
+      "table": "users",
+      "filter": "name = {user.role}",
+      "valid": true
+    },
+    {
+      "id": "boolean_expression",
+      "category": "boolean_expression",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "status = 'active' AND id >= 1",
+      "valid": true
+    },
+    {
+      "id": "inline_comment",
+      "category": "comment",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "status = 'active' -- trusted",
+      "valid": false
+    },
+    {
+      "id": "block_comment",
+      "category": "comment",
+      "dialect": "tsql",
+      "table": "users",
+      "filter": "status = 'active' /* trusted */",
+      "valid": false
+    },
+    {
+      "id": "mysql_hash_comment",
+      "category": "comment",
+      "dialect": "mysql",
+      "table": "users",
+      "filter": "status = 'active' # trusted",
+      "valid": false
+    },
+    {
+      "id": "statement_separator_dml",
+      "category": "statement_separator",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "id = 1; DELETE FROM users",
+      "valid": false
+    },
+    {
+      "id": "subquery",
+      "category": "subquery",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "id IN (SELECT id FROM users)",
+      "valid": false
+    },
+    {
+      "id": "union",
+      "category": "set_operation",
+      "dialect": "mysql",
+      "table": "users",
+      "filter": "id = 1 UNION SELECT id FROM users",
+      "valid": false
+    },
+    {
+      "id": "standalone_dml",
+      "category": "dml",
+      "dialect": "tsql",
+      "table": "users",
+      "filter": "DELETE FROM users WHERE id = 1",
+      "valid": false
+    },
+    {
+      "id": "function_call",
+      "category": "function_call",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "LOWER(name) = 'admin'",
+      "valid": false
+    },
+    {
+      "id": "unknown_table",
+      "category": "unknown_table",
+      "dialect": "postgres",
+      "table": "accounts",
+      "filter": "id = 1",
+      "valid": false
+    },
+    {
+      "id": "unknown_column",
+      "category": "unknown_column",
+      "dialect": "mysql",
+      "table": "users",
+      "filter": "secret_code = 'x'",
+      "valid": false
+    },
+    {
+      "id": "malformed_syntax",
+      "category": "malformed_syntax",
+      "dialect": "tsql",
+      "table": "users",
+      "filter": "(status = 'active'",
+      "valid": false
+    },
+    {
+      "id": "unknown_placeholder",
+      "category": "malformed_placeholder",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "email = {user.token}",
+      "valid": false
+    },
+    {
+      "id": "unclosed_placeholder",
+      "category": "malformed_placeholder",
+      "dialect": "postgres",
+      "table": "users",
+      "filter": "email = {user.email",
+      "valid": false
+    }
+  ]
+}
