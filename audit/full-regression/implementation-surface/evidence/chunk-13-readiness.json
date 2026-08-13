@@ -100,7 +100,7 @@
     {"stage": "caller_sweep_regression", "commit": "1c56b6305329cbc82fff5cc4066c995f2717873b"}
   ],
   "gates": {
-    "focused": {"passed": 37, "skipped": 1, "failed": 0},
+    "focused": {"passed": 38, "skipped": 0, "failed": 0, "seconds": 1.78},
     "backend_unit": {"passed": 2129, "skipped": 365, "deselected": 44, "warnings": 3, "failed": 0, "seconds": 39.88},
     "ruff_check": true,
     "ruff_format_files": 448,

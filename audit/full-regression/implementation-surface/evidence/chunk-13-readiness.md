@@ -64,7 +64,7 @@ Every degraded and restored readiness/Compose transition was observed within the
 
 | Gate | Result |
 | --- | --- |
-| Focused ASGI, lifecycle, configuration, Compose, and disposable script harness | 37 passed, 1 skipped |
+| Focused ASGI, lifecycle, configuration, Compose, and disposable script harness | 38 passed in 1.78s |
 | Backend unit foundation | 2,129 passed, 365 skipped, 44 deselected, 3 pre-existing warnings in 39.88s |
 | Ruff check | passed |
 | Ruff format check | 448 files already formatted |
