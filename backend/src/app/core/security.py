@@ -39,6 +39,7 @@ class SessionMiddleware:
     """
 
     COOKIE_NAME = "session_id"
+    OPERATIONAL_PROBE_PATHS = frozenset({"/health", "/ready"})
     _instances: list["SessionMiddleware"] = []
 
     def __init__(self, app, redis_url: str, idle_timeout_hours: int = 8, secure: bool = True):
@@ -82,6 +83,10 @@ class SessionMiddleware:
         return session
 
     async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope.get("path") in self.OPERATIONAL_PROBE_PATHS:
+            await self.app(scope, receive, send)
+            return
+
         if scope["type"] not in ("http", "websocket"):
             await self.app(scope, receive, send)
             return

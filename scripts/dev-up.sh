@@ -13,7 +13,7 @@
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
-COMPOSE="docker compose -f docker-compose.dev.yml"
+COMPOSE=(docker compose -f docker-compose.dev.yml)
 
 ensure_env() {
   if [ ! -f .env ]; then
@@ -27,47 +27,47 @@ ensure_env() {
   fi
 }
 
-wait_healthy() {
-  for i in {1..60}; do
-    state=$($COMPOSE ps --format json backend 2>/dev/null | grep -oE '"State":"[^"]*"' | head -1 || true)
-    if echo "$state" | grep -q running; then
-      echo "[dev-up] backend running"
+wait_backend_ready() {
+  for _ in {1..60}; do
+    health=$("${COMPOSE[@]}" ps --format '{{.Health}}' backend 2>/dev/null || true)
+    if [ "$health" = "healthy" ]; then
+      echo "[dev-up] backend ready"
       return 0
     fi
     sleep 1
   done
-  echo "[dev-up] timed out waiting for backend; check 'docker compose -f docker-compose.dev.yml logs backend'"
+  echo "[dev-up] backend readiness timed out; check 'docker compose -f docker-compose.dev.yml logs backend'" >&2
   return 1
 }
 
+RECREATE_ARGS=()
+ensure_env
 case "${1:-}" in
   --reset)
-    ensure_env
-    $COMPOSE down -v
-    $COMPOSE up -d --build
-    echo "[dev-up] running alembic upgrade head"
-    $COMPOSE run --rm backend alembic upgrade head
-    $COMPOSE up -d backend
+    "${COMPOSE[@]}" down -v
+    "${COMPOSE[@]}" build backend frontend
     ;;
   --rebuild)
-    ensure_env
-    $COMPOSE build --no-cache backend
-    $COMPOSE up -d --force-recreate
-    echo "[dev-up] waiting for backend healthy..."
-    wait_healthy
-    echo "[dev-up] running alembic upgrade head"
-    $COMPOSE exec -T backend alembic upgrade head
+    "${COMPOSE[@]}" build --no-cache backend
+    RECREATE_ARGS=(--force-recreate)
     ;;
   *)
-    ensure_env
-    $COMPOSE build backend
-    $COMPOSE up -d --force-recreate
+    "${COMPOSE[@]}" build backend
+    RECREATE_ARGS=(--force-recreate)
     ;;
 esac
 
-wait_healthy
+"${COMPOSE[@]}" up -d --wait --wait-timeout 60 postgres-platform redis
+"${COMPOSE[@]}" up -d postgres-source
+"${COMPOSE[@]}" stop frontend backend
+
 echo "[dev-up] running alembic upgrade head"
-$COMPOSE exec -T backend alembic upgrade head
+"${COMPOSE[@]}" run --rm --no-deps backend alembic upgrade head
+
+"${COMPOSE[@]}" up -d "${RECREATE_ARGS[@]}" backend
+wait_backend_ready
+"${COMPOSE[@]}" up -d "${RECREATE_ARGS[@]}" frontend
+
 echo
 echo "[dev-up] stack ready at http://localhost:5173"
 echo "[dev-up] sign in with the credentials from .env (ADMIN_USERNAME / ADMIN_PASSWORD)"
