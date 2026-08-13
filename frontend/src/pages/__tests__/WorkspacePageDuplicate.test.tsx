@@ -281,12 +281,10 @@ describe('WorkspacePage duplicate turn regression', () => {
         value: 25,
         writable: true,
       });
-      const animationFrame = vi
-        .spyOn(window, 'requestAnimationFrame')
-        .mockImplementation((callback) => {
-          callback(0);
-          return 1;
-        });
+      vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+        callback(0);
+        return 1;
+      });
       expect(requestedCursors).toEqual([null]);
       fireEvent.click(loadOlder);
 
@@ -298,8 +296,8 @@ describe('WorkspacePage duplicate turn regression', () => {
       });
       expect(requestedCursors).toEqual([null, 'older-page']);
       expect(conversation!.scrollTop).toBe(125);
-      animationFrame.mockRestore();
     } finally {
+      vi.restoreAllMocks();
       await i18n.changeLanguage('en');
     }
   });

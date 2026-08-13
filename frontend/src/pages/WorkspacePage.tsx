@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -230,6 +230,11 @@ export const WorkspacePage: React.FC = () => {
   const prevSessionIdRef = useRef(activeSessionId);
   const pendingSubmitRef = useRef(false);
   const conversationRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRestoreRef = useRef<{
+    sessionId: string;
+    previousHeight: number;
+    previousTop: number;
+  } | null>(null);
 
   useEffect(() => {
     const prevId = prevSessionIdRef.current;
@@ -281,21 +286,48 @@ export const WorkspacePage: React.FC = () => {
   const showLoading = isLoading && allTurns.length === 0 && !querySubmit.isSubmitting;
   const showHistoryError = sessionDetailError && allTurns.length === 0 && activeSessionId !== null;
 
+  useLayoutEffect(() => {
+    const pending = pendingScrollRestoreRef.current;
+    if (!pending) return;
+    if (activeSessionId !== pending.sessionId) {
+      pendingScrollRestoreRef.current = null;
+      return;
+    }
+    const conversation = conversationRef.current;
+    if (!conversation) return;
+    conversation.scrollTop =
+      pending.previousTop + conversation.scrollHeight - pending.previousHeight;
+    pendingScrollRestoreRef.current = null;
+  }, [activeSessionId, sessionDetail?.attempts.length]);
+
   const handleLoadOlder = useCallback(async () => {
     const conversation = conversationRef.current;
-    const previousHeight = conversation?.scrollHeight ?? 0;
-    const previousTop = conversation?.scrollTop ?? 0;
     const requestedSessionId = activeSessionId;
+    if (!conversation || !requestedSessionId) return;
+    const previousAttemptCount = sessionDetail?.attempts.length ?? 0;
+    pendingScrollRestoreRef.current = {
+      sessionId: requestedSessionId,
+      previousHeight: conversation.scrollHeight,
+      previousTop: conversation.scrollTop,
+    };
 
-    await fetchNextPage();
-    if (useUIStore.getState().activeSessionId !== requestedSessionId) return;
-
-    window.requestAnimationFrame(() => {
-      const currentConversation = conversationRef.current;
-      if (!currentConversation) return;
-      currentConversation.scrollTop = previousTop + currentConversation.scrollHeight - previousHeight;
-    });
-  }, [activeSessionId, fetchNextPage]);
+    const result = await fetchNextPage();
+    if (useUIStore.getState().activeSessionId !== requestedSessionId) {
+      if (pendingScrollRestoreRef.current?.sessionId === requestedSessionId) {
+        pendingScrollRestoreRef.current = null;
+      }
+      return;
+    }
+    const loadedAttemptCount = new Set(
+      result.data?.pages.flatMap((page) => page.attempts.map((attempt) => attempt.id)) ?? []
+    ).size;
+    if (
+      loadedAttemptCount <= previousAttemptCount &&
+      pendingScrollRestoreRef.current?.sessionId === requestedSessionId
+    ) {
+      pendingScrollRestoreRef.current = null;
+    }
+  }, [activeSessionId, fetchNextPage, sessionDetail?.attempts.length]);
 
   const updateTurn = useCallback(
     (matchKey: string, patch: Partial<ConversationTurn>) => {
