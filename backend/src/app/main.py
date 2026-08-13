@@ -358,4 +358,8 @@ def create_app() -> FastAPI:
     app.include_router(feedback.router, prefix="/api/v1")
     app.include_router(sso_auth.router, prefix="/api/v1")
 
+    from app.openapi_contract import configure_openapi
+
+    configure_openapi(app)
+
     return app

@@ -1,5 +1,7 @@
 """Admin settings Pydantic schemas."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -23,3 +25,12 @@ class UpdateAdminSettingsResponse(BaseModel):
     llm_context_cap: int
     max_regenerate_attempts: int
     updated_at: str
+
+
+class SchemaRefreshResponse(BaseModel):
+    """Schema introspection statistics returned by refresh operations."""
+
+    tables_count: int
+    columns_count: int
+    refreshed_at: datetime
+    approximate_tokens: int | None = None

@@ -21,3 +21,9 @@ class GroupMappingCreate(BaseModel):
 
     sso_group_value: str
     role_id: str
+
+
+class GroupMappingListResponse(BaseModel):
+    """Configured SSO group-to-role mappings."""
+
+    mappings: list[GroupMappingResponse]

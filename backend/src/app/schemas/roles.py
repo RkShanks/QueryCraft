@@ -59,6 +59,12 @@ class RoleDetailResponse(BaseModel):
     updated_at: str
 
 
+class RoleListResponse(BaseModel):
+    """Configured platform roles."""
+
+    roles: list[RoleResponse]
+
+
 class RoleCreate(BaseModel):
     """Create a new role (admin only)."""
 
