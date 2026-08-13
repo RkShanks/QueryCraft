@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.readiness import ReadinessState
 from app.main import _sync_admin_user, _upsert_source_db_connection
 
 
@@ -20,6 +21,8 @@ async def test_lifespan_closes_query_source_connector():
     settings.DB_CREDENTIAL_KEY = "test-key"
     source_connector = MagicMock()
     source_connector.aclose = AsyncMock()
+    app = FastAPI()
+    app.state.readiness = ReadinessState()
 
     with (
         patch("app.main.get_settings", return_value=settings),
@@ -35,7 +38,7 @@ async def test_lifespan_closes_query_source_connector():
         patch("app.main.dispose_engine", new_callable=AsyncMock),
         patch("app.api.v1.query._source_db_connector", source_connector),
     ):
-        async with lifespan(FastAPI()):
+        async with lifespan(app):
             pass
 
     source_connector.aclose.assert_awaited_once_with()

@@ -3,7 +3,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from redis.exceptions import RedisError
@@ -13,9 +13,11 @@ from app.core.credential_provider import init_credential_provider
 from app.core.dependencies import close_redis, init_redis
 from app.core.exceptions import SessionInvalidated
 from app.core.logging import get_logger, setup_logging
+from app.core.readiness import ReadinessState
 from app.core.security import OriginValidatorMiddleware, SessionMiddleware
 from app.db.base import dispose_engine, get_async_session_factory
 from app.llm.factory import LLMProviderFactory
+from app.schemas.operational import LivenessResponse, NotReadyResponse, ReadinessResponse
 
 logger = get_logger(__name__)
 
@@ -23,6 +25,8 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
+    readiness: ReadinessState = app.state.readiness
+    readiness.begin_startup()
     settings = get_settings()
     setup_logging(settings.LOG_LEVEL)
 
@@ -43,9 +47,11 @@ async def lifespan(app: FastAPI):
     # Sync admin user credentials from .env (dev/single-admin: picks up changes)
     await _sync_admin_user(settings)
 
+    readiness.complete_startup()
     yield
 
     # Shutdown
+    readiness.begin_shutdown()
     from app.api.v1.query import close_source_db_connector
 
     await close_source_db_connector()
@@ -228,6 +234,29 @@ def create_app() -> FastAPI:
         description="Text-to-SQL Analytics Platform API",
         lifespan=lifespan,
     )
+    app.state.readiness = ReadinessState()
+
+    @app.get(
+        "/health",
+        response_model=LivenessResponse,
+        openapi_extra={"security": []},
+    )
+    async def liveness_probe() -> LivenessResponse:
+        return LivenessResponse()
+
+    @app.get(
+        "/ready",
+        response_model=ReadinessResponse,
+        responses={status.HTTP_503_SERVICE_UNAVAILABLE: {"model": NotReadyResponse}},
+        openapi_extra={"security": []},
+    )
+    async def readiness_probe(request: Request) -> ReadinessResponse | JSONResponse:
+        if request.app.state.readiness.accepts_traffic:
+            return ReadinessResponse()
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=NotReadyResponse().model_dump(),
+        )
 
     # Middleware stack (applied in reverse order)
     # 1. CORS
