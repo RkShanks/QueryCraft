@@ -4,16 +4,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.readiness import ReadinessState
 from app.main import _sync_admin_user, _upsert_source_db_connection
 
 
 @pytest.mark.asyncio
 async def test_lifespan_closes_query_source_connector():
     """Application shutdown releases the module-level source pool."""
-    from fastapi import FastAPI
-
-    from app.main import lifespan
+    from app.main import create_app, lifespan
 
     settings = MagicMock()
     settings.LOG_LEVEL = "INFO"
@@ -21,8 +18,7 @@ async def test_lifespan_closes_query_source_connector():
     settings.DB_CREDENTIAL_KEY = "test-key"
     source_connector = MagicMock()
     source_connector.aclose = AsyncMock()
-    app = FastAPI()
-    app.state.readiness = ReadinessState()
+    app = create_app()
 
     with (
         patch("app.main.get_settings", return_value=settings),

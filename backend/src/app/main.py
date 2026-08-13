@@ -1,7 +1,6 @@
 """FastAPI application factory and lifespan event handler."""
 
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,12 +9,12 @@ from redis.exceptions import RedisError
 
 from app.core.config import get_settings
 from app.core.credential_provider import init_credential_provider
-from app.core.dependencies import close_redis, init_redis
+from app.core.dependencies import close_redis, get_initialized_redis, init_redis
 from app.core.exceptions import SessionInvalidated
 from app.core.logging import get_logger, setup_logging
-from app.core.readiness import ReadinessState
+from app.core.readiness import ReadinessState, source_tree_alembic_head
 from app.core.security import OriginValidatorMiddleware, SessionMiddleware
-from app.db.base import dispose_engine, get_async_session_factory
+from app.db.base import dispose_engine, get_async_engine, get_async_session_factory
 from app.llm.factory import LLMProviderFactory
 from app.schemas.operational import LivenessResponse, NotReadyResponse, ReadinessResponse
 
@@ -65,9 +64,7 @@ async def lifespan(app: FastAPI):
 
 async def _check_alembic_drift(database_url: str) -> None:
     """Raise RuntimeError if the DB schema is older than the source tree's alembic head."""
-    from alembic.config import Config
     from alembic.runtime.migration import MigrationContext
-    from alembic.script import ScriptDirectory
     from sqlalchemy.ext.asyncio import create_async_engine
 
     engine = create_async_engine(database_url)
@@ -75,11 +72,7 @@ async def _check_alembic_drift(database_url: str) -> None:
         current = await conn.run_sync(lambda sync_conn: MigrationContext.configure(sync_conn).get_current_revision())
     await engine.dispose()
 
-    alembic_ini = Path(__file__).resolve().parents[2] / "alembic.ini"
-    cfg = Config(str(alembic_ini))
-    cfg.set_main_option("script_location", str(alembic_ini.parent / "alembic"))
-    script = ScriptDirectory.from_config(cfg)
-    head = script.get_current_head()
+    head = source_tree_alembic_head()
 
     if current != head:
         logger.error("migration_drift_detected", current=current, head=head)
@@ -234,7 +227,12 @@ def create_app() -> FastAPI:
         description="Text-to-SQL Analytics Platform API",
         lifespan=lifespan,
     )
-    app.state.readiness = ReadinessState()
+    app.state.readiness = ReadinessState(
+        engine_provider=get_async_engine,
+        redis_provider=get_initialized_redis,
+        expected_revision=source_tree_alembic_head(),
+        deadline_seconds=settings.READINESS_TIMEOUT_SECONDS,
+    )
 
     @app.get(
         "/health",
@@ -251,7 +249,7 @@ def create_app() -> FastAPI:
         openapi_extra={"security": []},
     )
     async def readiness_probe(request: Request) -> ReadinessResponse | JSONResponse:
-        if request.app.state.readiness.accepts_traffic:
+        if await request.app.state.readiness.dependencies_ready():
             return ReadinessResponse()
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

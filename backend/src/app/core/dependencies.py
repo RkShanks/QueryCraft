@@ -43,6 +43,11 @@ async def init_redis() -> Redis:
     return _redis_client
 
 
+def get_initialized_redis() -> Redis | None:
+    """Return the application-managed Redis client without creating one."""
+    return _redis_client
+
+
 async def close_redis() -> None:
     """Close the Redis connection (for shutdown)."""
     global _redis_client

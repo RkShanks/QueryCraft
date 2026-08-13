@@ -263,12 +263,14 @@ async def test_concurrent_probes_use_one_bounded_dependency_slot(probe_app):
 
 
 @pytest.mark.asyncio
-async def test_ready_probe_ignores_cookie_and_feature_specific_dependencies(probe_app, monkeypatch):
+async def test_ready_probe_ignores_cookie_and_feature_specific_dependencies(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "unavailable-provider")
     monkeypatch.setenv("SOURCE_DB_HOST", "source.invalid")
+    monkeypatch.setenv("REDIS_URL", "redis://127.0.0.1:1/0")
+    get_settings.cache_clear()
     database = PlatformDatabaseBoundary()
     redis = RedisBoundary()
-    app = configure_started_app(probe_app, database, redis)
+    app = configure_started_app(create_app(), database, redis)
 
     response = await request_probe(app, cookies={"session_id": "stale"})
 
