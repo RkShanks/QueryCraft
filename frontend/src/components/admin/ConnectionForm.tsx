@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
-  ConnectionCreate,
-  ConnectionUpdate,
+  ConnectionCreateWritable as ConnectionCreate,
+  ConnectionUpdateWritable as ConnectionUpdate,
   DatabaseType,
 } from '../../api/generated/types.gen';
 import type { ConnectionView } from '../../hooks/useConnections';

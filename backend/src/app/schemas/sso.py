@@ -15,6 +15,12 @@ class SsoProviderPublic(BaseModel):
     login_url: str
 
 
+class SsoProviderPublicListResponse(BaseModel):
+    """Public active SSO providers."""
+
+    providers: list[SsoProviderPublic]
+
+
 class SsoProviderResponse(BaseModel):
     """Admin-facing SSO provider response with masked secrets."""
 
@@ -34,6 +40,12 @@ class SsoProviderResponse(BaseModel):
     is_active: bool = True
     created_at: str
     updated_at: str
+
+
+class SsoProviderListResponse(BaseModel):
+    """Admin-visible SSO providers with masked secrets."""
+
+    providers: list[SsoProviderResponse]
 
 
 class SsoProviderCreate(BaseModel):

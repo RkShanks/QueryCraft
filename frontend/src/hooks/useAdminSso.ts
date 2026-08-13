@@ -6,8 +6,8 @@ import {
   deleteSsoProvider,
 } from '../api/generated/sdk.gen';
 import type {
-  SsoProviderCreate,
-  SsoProviderUpdate,
+  SsoProviderCreateWritable as SsoProviderCreate,
+  SsoProviderUpdateWritable as SsoProviderUpdate,
 } from '../api/generated/types.gen';
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from './usePermission';
@@ -48,7 +48,7 @@ export const useAdminSso = (options?: UseAdminSsoOptions) => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: SsoProviderUpdate }) => {
       requirePermission(canManageSso, PERMISSIONS.ADMIN_SSO_MANAGE);
-      return updateSsoProvider({ path: { providerId: id }, body: data, throwOnError: true }).then(
+      return updateSsoProvider({ path: { provider_id: id }, body: data, throwOnError: true }).then(
         (res) => res.data
       );
     },
@@ -64,7 +64,7 @@ export const useAdminSso = (options?: UseAdminSsoOptions) => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
       requirePermission(canManageSso, PERMISSIONS.ADMIN_SSO_MANAGE);
-      return deleteSsoProvider({ path: { providerId: id }, throwOnError: true });
+      return deleteSsoProvider({ path: { provider_id: id }, throwOnError: true });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminSsoProviders'] });

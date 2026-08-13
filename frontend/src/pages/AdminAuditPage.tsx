@@ -78,9 +78,9 @@ export const AdminAuditPage: React.FC = () => {
       format,
       start_date: currentFilters.start_date || undefined,
       end_date: currentFilters.end_date || undefined,
-      action_type: currentFilters.action_type || undefined,
+      action_type: (currentFilters.action_type || undefined) as AuditExportRequest['action_type'],
       actor_identity: currentFilters.actor_identity || undefined,
-      outcome: currentFilters.outcome || undefined,
+      outcome: (currentFilters.outcome || undefined) as AuditExportRequest['outcome'],
       resource_type: currentFilters.resource_type || undefined,
     };
   };

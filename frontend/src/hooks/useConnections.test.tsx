@@ -19,7 +19,7 @@ vi.mock('../api/generated/sdk.gen', () => ({
   testAdminConnection: vi.fn(),
   disableAdminConnection: vi.fn(),
   enableAdminConnection: vi.fn(),
-  refreshSchema: vi.fn(),
+  refreshAdminConnectionSchema: vi.fn(),
 }));
 
 const queryClient = new QueryClient({
@@ -66,12 +66,10 @@ describe('useConnections', () => {
   });
 
   it('handles loading and successful list fetch', async () => {
-    const mockConnections = {
-      connections: [
-        { id: '1', display_name: 'Test DB', database_type: 'postgresql', lifecycle_state: 'active' },
-      ],
-    };
-    
+    const mockConnections = [
+      { id: '1', display_name: 'Test DB', database_type: 'postgresql', lifecycle_state: 'active' },
+    ];
+
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       data: mockConnections as any,
@@ -88,17 +86,14 @@ describe('useConnections', () => {
       expect(result.current.listQuery.isSuccess).toBe(true);
     });
 
-    expect(result.current.listQuery.data).toEqual(mockConnections);
+    expect(result.current.listQuery.data).toEqual({ connections: mockConnections });
   });
 
-  it.each([
-    ['a raw array', (connection: Record<string, unknown>) => [connection]],
-    ['a wrapped object', (connection: Record<string, unknown>) => ({ connections: [connection] })],
-  ])('normalizes %s response into a cache-safe connection list', async (_name, responseShape) => {
+  it('normalizes the canonical array response into a cache-safe connection list', async () => {
     const runtimeProbes = Array.from({ length: 8 }, () => crypto.randomUUID());
     const legacyConnection = legacyConnectionWithSensitiveExtras(runtimeProbes);
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
-      data: responseShape(legacyConnection),
+      data: [legacyConnection],
       response: new Response(),
       request: new Request('http://localhost'),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -118,9 +113,7 @@ describe('useConnections', () => {
   it('keeps legacy write-only and unexpected response fields out of the query cache', async () => {
     const runtimeProbes = Array.from({ length: 8 }, () => crypto.randomUUID());
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
-      data: {
-        connections: [legacyConnectionWithSensitiveExtras(runtimeProbes)],
-      },
+      data: [legacyConnectionWithSensitiveExtras(runtimeProbes)],
       response: new Response(),
       request: new Request('http://localhost'),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,7 +164,7 @@ describe('useConnections', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
     vi.mocked(listAdminConnections).mockResolvedValue({
-      data: { connections: [] },
+      data: [],
       response: new Response(),
       request: new Request('http://localhost'),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -223,7 +216,7 @@ describe('useConnections', () => {
 
   it('handles empty state data', async () => {
     vi.mocked(listAdminConnections).mockResolvedValueOnce({
-      data: { connections: [] },
+      data: [],
       response: new Response(),
       request: new Request('http://localhost'),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

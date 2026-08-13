@@ -1,8 +1,7 @@
-import { client } from './generated/client.gen';
+import { getQueryLimits as getCanonicalQueryLimits } from './generated/sdk.gen';
+import type { QueryLimitsResponse } from './generated/types.gen';
 
-export interface QueryLimitsResponse {
-  max_question_length: number;
-}
+export type { QueryLimitsResponse };
 
 function parseQueryLimits(responseBody: unknown): QueryLimitsResponse {
   if (responseBody === null || typeof responseBody !== 'object') {
@@ -20,9 +19,6 @@ function parseQueryLimits(responseBody: unknown): QueryLimitsResponse {
 }
 
 export async function getQueryLimits(): Promise<QueryLimitsResponse> {
-  const response = await client.get({
-    url: '/query/limits',
-    throwOnError: true,
-  });
+  const response = await getCanonicalQueryLimits({ throwOnError: true });
   return parseQueryLimits(response.data);
 }

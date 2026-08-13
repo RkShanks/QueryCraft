@@ -102,3 +102,35 @@ class UserConnectionListResponse(BaseModel):
     """Response body for user-facing connection list."""
 
     connections: list[UserConnectionResponse]
+
+
+class ConnectionSchemaForeignKey(BaseModel):
+    """Foreign-key target in a connection schema summary."""
+
+    table: str
+    column: str
+
+
+class ConnectionSchemaColumn(BaseModel):
+    """Column metadata in a connection schema summary."""
+
+    column_name: str
+    data_type: str
+    is_primary_key: bool
+    foreign_key: ConnectionSchemaForeignKey | None = None
+
+
+class ConnectionSchemaTable(BaseModel):
+    """Table metadata in a connection schema summary."""
+
+    table_name: str
+    column_count: int
+    columns: list[ConnectionSchemaColumn]
+
+
+class ConnectionSchemaResponse(BaseModel):
+    """Introspected schema for one source connection."""
+
+    connection_id: UUID
+    tables: list[ConnectionSchemaTable]
+    introspected_at: datetime | None = None

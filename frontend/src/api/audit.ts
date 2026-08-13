@@ -1,52 +1,19 @@
-import { client } from './generated/client.gen';
+import {
+  exportAuditEntries as exportCanonicalAuditEntries,
+  getAuditRetention as getCanonicalAuditRetention,
+  searchAuditEntries as searchCanonicalAuditEntries,
+} from './generated/sdk.gen';
+import type {
+  AuditEntryRead,
+  AuditExportRequest,
+  AuditRetentionResponse,
+  AuditSearchResponse,
+  SearchAuditEntriesData,
+} from './generated/types.gen';
 
-export interface AuditSearchParams {
-  start_date?: string;
-  end_date?: string;
-  action_type?: string;
-  actor_identity?: string;
-  outcome?: string;
-  resource_type?: string;
-  page?: number;
-  page_size?: number;
-}
-
-export interface AuditEntry {
-  sequence_number: number;
-  timestamp: string;
-  actor_identity: string | null;
-  action_type: string;
-  resource_type: string | null;
-  resource_id: string | null;
-  outcome: string;
-  context: Record<string, unknown>;
-}
-
-export interface AuditSearchResponse {
-  entries: AuditEntry[];
-  pagination: {
-    page: number;
-    page_size: number;
-    total_entries: number;
-    total_pages: number;
-  };
-}
-
-export interface AuditExportRequest {
-  format: 'csv' | 'json';
-  start_date?: string;
-  end_date?: string;
-  action_type?: string;
-  actor_identity?: string;
-  outcome?: string;
-  resource_type?: string;
-}
-
-export interface AuditRetentionResponse {
-  retention_months: number;
-  last_purge_at: string | null;
-  purged_count: number | null;
-}
+export type AuditSearchParams = NonNullable<SearchAuditEntriesData['query']>;
+export type AuditEntry = AuditEntryRead;
+export type { AuditExportRequest, AuditRetentionResponse, AuditSearchResponse };
 
 function isNonNegativeInteger(value: unknown): value is number {
   return Number.isInteger(value) && typeof value === 'number' && value >= 0;
@@ -84,28 +51,23 @@ function parseAuditRetentionResponse(value: unknown): AuditRetentionResponse {
 }
 
 export async function searchAuditEntries(params: AuditSearchParams): Promise<AuditSearchResponse> {
-  const res = await client.get({
-    url: '/admin/audit/entries',
+  const response = await searchCanonicalAuditEntries({
     query: params as Record<string, unknown>,
     throwOnError: true,
   });
-  return res.data as AuditSearchResponse;
+  return response.data;
 }
 
 export async function exportAuditEntries(request: AuditExportRequest): Promise<Blob> {
-  const res = await client.post({
-    url: '/admin/audit/export',
+  const response = await exportCanonicalAuditEntries({
     body: request,
     throwOnError: true,
     parseAs: 'blob',
   });
-  return res.data as Blob;
+  return response.data;
 }
 
 export async function getAuditRetention(): Promise<AuditRetentionResponse> {
-  const res = await client.get({
-    url: '/admin/audit/retention',
-    throwOnError: true,
-  });
-  return parseAuditRetentionResponse(res.data);
+  const response = await getCanonicalAuditRetention({ throwOnError: true });
+  return parseAuditRetentionResponse(response.data);
 }

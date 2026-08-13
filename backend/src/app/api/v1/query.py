@@ -246,7 +246,8 @@ async def submit_question(
     - 200 → QueryResult (returned directly)
     - 422 → EvaluatorRejection (raised as HTTPException, unwrapped by global handler)
     response_model is intentionally omitted because the endpoint returns
-    discriminated union shapes; openapi.yaml remains the source of truth.
+    distinct success and evaluator-rejection shapes. The runtime OpenAPI
+    contract documents both without changing the response behavior.
     """
     if len(req.question) > get_settings().MAX_QUESTION_LENGTH:
         raise HTTPException(

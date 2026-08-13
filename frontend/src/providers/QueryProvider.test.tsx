@@ -209,8 +209,8 @@ function SessionExpiryCacheProbe({
         type="button"
         onClick={() => {
           void Promise.allSettled([
-            apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
-            apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
+            apiClient.get({ url: '/api/v1/session-expiry-cache-state', throwOnError: true }),
+            apiClient.get({ url: '/api/v1/session-expiry-cache-state', throwOnError: true }),
           ]);
         }}
       >
@@ -221,7 +221,7 @@ function SessionExpiryCacheProbe({
         onClick={() => {
           void currentUser.refetch();
           void apiClient
-            .get({ url: '/session-expiry-cache-state', throwOnError: true })
+            .get({ url: '/api/v1/session-expiry-cache-state', throwOnError: true })
             .catch(() => undefined);
         }}
       >
@@ -245,8 +245,8 @@ function RoutedSessionExpiryProbe() {
       onClick={() => {
         void currentUser.refetch();
         void Promise.allSettled([
-          apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
-          apiClient.get({ url: '/session-expiry-cache-state', throwOnError: true }),
+          apiClient.get({ url: '/api/v1/session-expiry-cache-state', throwOnError: true }),
+          apiClient.get({ url: '/api/v1/session-expiry-cache-state', throwOnError: true }),
         ]);
       }}
     >
@@ -297,7 +297,7 @@ function RawClientPermissionProbe() {
         type="button"
         onClick={() => {
           void apiClient
-            .get({ url: '/raw-permission-probe', throwOnError: true })
+            .get({ url: '/api/v1/raw-permission-probe', throwOnError: true })
             .catch(() => undefined);
         }}
       >

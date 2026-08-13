@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-12` are resolved and merged; CHUNK-12 squash merge `58098c05dfc92b7fd22b1096d38229e5c8a66f52` unblocked CHUNK-13. `CHUNK-13` resolved `IS-GAP-007` on tested product commit `1c56b6305329cbc82fff5cc4066c995f2717873b` in [#311](https://github.com/RkShanks/QueryCraft/pull/311): exact public probes, bounded concurrent platform PostgreSQL/Redis/revision checks, lifecycle transitions, Compose/dev-up gating and isolated loss/recovery proof passed with zero backend restarts; see [evidence](evidence/chunk-13-readiness.md). Authoritative backend/frontend CI passed; squash merge remains the `CHUNK-14` dispatch gate.
+Status: `CHUNK-01` through `CHUNK-13` are resolved and merged; CHUNK-13 squash merge `e18d2335f44a93f055bb7d3c03f08012c91443f6` unblocked CHUNK-14. `CHUNK-14` resolved `IS-GAP-008` on tested product commit `9f82c73c0abe1ec07199583343e954e65fd6d358` in [#312](https://github.com/RkShanks/QueryCraft/pull/312): current source, canonical OpenAPI, and generated SDK each contain the same 63 operations; deterministic generation, all-operation Schemathesis, focused real-ASGI/Chromium checks, complete frontend gates, cleanup, and authoritative backend/frontend CI passed; see [evidence](evidence/chunk-14-openapi-parity.md). Squash merge remains the `CHUNK-15` dispatch gate.
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -165,7 +165,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-13 — liveness/readiness contract
 
-- **Progress:** Resolved on tested product commit `1c56b6305329cbc82fff5cc4066c995f2717873b` in [#311](https://github.com/RkShanks/QueryCraft/pull/311). Public constant liveness/readiness routes bypass session cookies; readiness concurrently checks current platform PostgreSQL, Redis and Alembic revision under one two-second deadline with application-managed clients and no mutation. Lifecycle state, Compose `service_healthy` gating, migration-before-backend and health-before-frontend dev-up ordering are locked. Isolated dependency/revision loss and restoration, excluded source/provider availability, local foundations and cleanup passed with zero backend restarts. Authoritative backend/frontend CI passed on `270ce0577c29f201f583a40c0f51a36b25984478`; squash merge remains required before CHUNK-14.
+- **Progress:** Resolved on tested product commit `1c56b6305329cbc82fff5cc4066c995f2717873b` in [#311](https://github.com/RkShanks/QueryCraft/pull/311). Public constant liveness/readiness routes bypass session cookies; readiness concurrently checks current platform PostgreSQL, Redis and Alembic revision under one two-second deadline with application-managed clients and no mutation. Lifecycle state, Compose `service_healthy` gating, migration-before-backend and health-before-frontend dev-up ordering are locked. Isolated dependency/revision loss and restoration, excluded source/provider availability, local foundations and cleanup passed with zero backend restarts. Authoritative backend/frontend CI passed on `270ce0577c29f201f583a40c0f51a36b25984478`; squash merge `e18d2335f44a93f055bb7d3c03f08012c91443f6` unblocked CHUNK-14.
 - **IDs / role / branch / context:** `IS-GAP-007`; Backend Implementer; `phase-6/wave-19.13-readiness`; 90–120k.
 - **Likely source:** `main.py`, settings/dependencies, `docker-compose.dev.yml`, `scripts/dev-up.sh`, operational tests/docs.
 - **TDD:** RED liveness/readiness states for startup, Redis/DB/migration drift, shutdown and recovery with constant bodies.
@@ -177,13 +177,14 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-14 — canonical OpenAPI and generated client
 
+- **Progress:** Resolved on tested product commit `9f82c73c0abe1ec07199583343e954e65fd6d358` in [#312](https://github.com/RkShanks/QueryCraft/pull/312). The historical snapshot's 60 operations grew to 63 through query limits plus liveness/readiness; current runtime, canonical artifact and generated SDK now match exactly at 63. Stable unique IDs, typed JSON/form bodies, success/error/redirect/download/204 contracts, query unions, public probes, pagination and quota synchronization are locked. Two-run canonical/client generation, 63-operation Schemathesis, focused API/Chromium proof, full frontend gates, guard review, cleanup, and authoritative backend/frontend CI passed. Squash merge remains required before CHUNK-15.
 - **IDs / role / branch / context:** `IS-GAP-008`; Backend Implementer then Frontend Implementer; `phase-6/wave-19.14-openapi-canonical`; 150–180k.
 - **Likely source:** FastAPI response/request models/routes, canonical OpenAPI artifact, contract tests, `generate-api-client.sh`, generated frontend API tree; remove/retire stale updater only if covered by scope.
 - **TDD:** RED runtime/canonical/client operation/status/schema/content-type parity; then type redirect/form/download/error bodies and regenerate deterministically.
 - **Focused gates:** contract/Schemathesis parity, generated-diff check, focused backend API tests; frontend API/hook tests, ESLint, typecheck/build only for generated-client integration; diff check.
 - **Regression subset:** Constitution XII, P1-FR-031, P5/P6 endpoint contracts, XP-018.
 - **Browser/live:** Focused query/auth/admin/download checks after generation; no broad visual sweep.
-- **Isolation/cleanup/evidence:** App factory with placeholder non-secret settings; temporary generated output comparison; `evidence/chunk-14-openapi-parity.json`, target 60=60=60.
+- **Isolation/cleanup/evidence:** App factory with placeholder non-secret settings; temporary generated output comparison; `evidence/chunk-14-openapi-parity.json`, current source-derived target 63=63=63 (historical snapshot 60 plus three later routes).
 - **Stop conditions:** Runtime behavior is still changing in an earlier chunk, generation produces nondeterministic diffs, or a status/body decision is undocumented.
 
 ## CHUNK-15 — role policy editor safety and preview
@@ -375,4 +376,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-12` are resolved and merged. `CHUNK-13 / IS-GAP-007` is resolved on tested product commit `1c56b6305329cbc82fff5cc4066c995f2717873b`; isolated proof and authoritative backend/frontend CI passed in [#311](https://github.com/RkShanks/QueryCraft/pull/311). `CHUNK-14` is next but remains blocked until CHUNK-13 is squash-merged. Do not start CHUNK-14 from branch-local proof.
+`CHUNK-01` through `CHUNK-13` are resolved and merged. `CHUNK-14 / IS-GAP-008` is resolved on tested product commit `9f82c73c0abe1ec07199583343e954e65fd6d358` in [#312](https://github.com/RkShanks/QueryCraft/pull/312); local contract, generation, API, browser, frontend, cleanup and authoritative backend/frontend CI passed. Require squash merge before dispatching `CHUNK-15`.

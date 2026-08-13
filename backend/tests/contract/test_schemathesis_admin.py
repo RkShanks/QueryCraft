@@ -1,6 +1,6 @@
 """T-126: Schemathesis contract test for /admin/refresh-schema.
 
-Loads the static OpenAPI 3.1 contract. Uses session cookie for admin auth.
+Loads the canonical OpenAPI 3.1 contract. Uses session cookie for admin auth.
 
 The property-based sweep runs on demand to keep the default gate bounded.
 """
@@ -22,20 +22,14 @@ if not os.environ.get("SCHEMATHESIS_RUN"):
         allow_module_level=True,
     )
 
-_schema_path = (
-    pathlib.Path(__file__).resolve().parent.parent.parent.parent
-    / "specs"
-    / "001-core-text-to-sql"
-    / "contracts"
-    / "openapi.yaml"
-)
+_schema_path = pathlib.Path(__file__).resolve().parents[2] / "openapi.json"
 schema = schemathesis.openapi.from_path(
     str(_schema_path),
     app=create_app(),
 )
 
 
-@schema.parametrize(endpoint="/admin/refresh-schema")
+@schema.parametrize(endpoint="/api/v1/admin/refresh-schema")
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_admin_contract(case, contract_session_cookie):
     """Property-based contract test for Admin endpoints."""

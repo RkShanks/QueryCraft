@@ -149,7 +149,7 @@ describe('permission-gated feature hooks', () => {
         }
         featureRequestCount += 1;
         if (path === '/api/v1/admin/connections') {
-          return HttpResponse.json({ connections: [] });
+          return HttpResponse.json([]);
         }
         if (path === '/api/v1/admin/roles') {
           return HttpResponse.json({ roles: [] });
@@ -227,7 +227,7 @@ describe('permission-gated feature hooks', () => {
           }
           featurePaths.add(path);
           if (path === '/api/v1/admin/connections') {
-            return HttpResponse.json({ connections: [] });
+            return HttpResponse.json([]);
           }
           if (path === '/api/v1/admin/roles') {
             return HttpResponse.json({ roles: [] });

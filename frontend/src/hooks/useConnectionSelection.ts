@@ -43,10 +43,10 @@ export const useConnectionSelection = ({
       if (!sessionId) return Promise.resolve(null);
       requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
       return updateSessionConnection({
-            path: { sessionId },
-            body: { connection_id: connectionId },
-            throwOnError: true,
-          }).then((res) => res.data);
+        path: { session_id: sessionId },
+        body: { connection_id: connectionId },
+        throwOnError: true,
+      }).then((res) => res.data);
     },
     onSuccess: () => {
       if (sessionId) {

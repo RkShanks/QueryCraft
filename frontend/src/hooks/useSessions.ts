@@ -89,7 +89,7 @@ export const useSessionDetail = (sessionId: string) => {
       const deletionVersion = getSessionDeletionVersion(sessionId);
       if (isSessionUnavailable(sessionId)) throw new SessionDeletionError();
       const response = await getSession({
-        path: { sessionId },
+        path: { session_id: sessionId },
         query: { attempt_cursor: pageParam, attempt_limit: 50 },
         signal,
         throwOnError: true,
@@ -126,7 +126,7 @@ export const useDeleteSession = () => {
   return useMutation({
     mutationFn: (sessionId: string) => {
       requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);
-      return deleteSession({ path: { sessionId }, throwOnError: true }).then(
+      return deleteSession({ path: { session_id: sessionId }, throwOnError: true }).then(
         (res) => res.data
       );
     },

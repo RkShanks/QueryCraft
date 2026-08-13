@@ -1,26 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { client } from '../api/generated/client.gen';
+import { getAdminConnectionSchema } from '../api/generated/sdk.gen';
+import type {
+  ConnectionSchemaColumn,
+  ConnectionSchemaResponse,
+  ConnectionSchemaTable,
+} from '../api/generated/types.gen';
 import { PERMISSIONS } from '../auth/permissions';
 import { useAnyPermission } from './usePermission';
 
-export interface ColumnSchema {
-  column_name: string;
-  data_type: string;
-  is_primary_key: boolean;
-  foreign_key: { table: string; column: string } | null;
-}
-
-export interface TableSchema {
-  table_name: string;
-  column_count: number;
-  columns: ColumnSchema[];
-}
-
-export interface ConnectionSchema {
-  connection_id: string;
-  tables: TableSchema[];
-  introspected_at: string | null;
-}
+export type ColumnSchema = ConnectionSchemaColumn;
+export type TableSchema = ConnectionSchemaTable;
+export type ConnectionSchema = ConnectionSchemaResponse;
 
 export const useConnectionSchema = (connectionId: string | null) => {
   const canViewSchema = useAnyPermission([
@@ -31,11 +21,11 @@ export const useConnectionSchema = (connectionId: string | null) => {
     queryKey: ['connectionSchema', connectionId],
     queryFn: async () => {
       if (!connectionId) throw new Error('Connection ID is required');
-      const res = await client.get({
-        url: `/admin/connections/${connectionId}/schema`,
+      const response = await getAdminConnectionSchema({
+        path: { connection_id: connectionId },
         throwOnError: true,
       });
-      return res.data as ConnectionSchema;
+      return response.data;
     },
     enabled: !!connectionId && canViewSchema,
   });

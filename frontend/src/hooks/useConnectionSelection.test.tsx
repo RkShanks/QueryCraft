@@ -107,7 +107,7 @@ describe('useConnectionSelection', () => {
 
     expect(updateSessionConnection).toHaveBeenCalledWith(
       expect.objectContaining({
-        path: { sessionId: 'session-1' },
+        path: { session_id: 'session-1' },
         body: { connection_id: 'conn-a' },
       })
     );

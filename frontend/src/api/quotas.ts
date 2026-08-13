@@ -1,25 +1,47 @@
-import { client } from './generated/client.gen';
+import {
+  deleteQuota as deleteCanonicalQuota,
+  getQuotaStatus as getCanonicalQuotaStatus,
+  listQuotas as listCanonicalQuotas,
+  upsertQuota as upsertCanonicalQuota,
+} from './generated/sdk.gen';
+import type {
+  QuotaDimensionStatus,
+  QuotaStatusResponse,
+  QuotaSyncPendingErrorResponse,
+  RoleQuotaConfig as CanonicalRoleQuotaConfig,
+  RoleQuotaStatus,
+  RoleQuotaUpsert,
+} from './generated/types.gen';
 
-export interface RoleQuotaConfig {
-  role_id: string;
-  role_name: string;
-  daily_query_limit: number | null;
-  daily_execution_limit: number | null;
-  daily_export_limit: number | null;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface RoleQuotaUpsert {
-  daily_query_limit?: number | null;
-  daily_execution_limit?: number | null;
-  daily_export_limit?: number | null;
-}
-
-interface QuotaSynchronizationPending {
+export type RoleQuotaConfig = Omit<
+  CanonicalRoleQuotaConfig,
+  | 'created_at'
+  | 'daily_execution_limit'
+  | 'daily_export_limit'
+  | 'daily_query_limit'
+  | 'updated_at'
+> & {
+  created_at?: CanonicalRoleQuotaConfig['created_at'];
+  daily_execution_limit: NonNullable<CanonicalRoleQuotaConfig['daily_execution_limit']> | null;
+  daily_export_limit: NonNullable<CanonicalRoleQuotaConfig['daily_export_limit']> | null;
+  daily_query_limit: NonNullable<CanonicalRoleQuotaConfig['daily_query_limit']> | null;
+  updated_at?: CanonicalRoleQuotaConfig['updated_at'];
+};
+export type { QuotaDimensionStatus, RoleQuotaStatus, RoleQuotaUpsert };
+export type QuotaStatusPage = QuotaStatusResponse;
+type QuotaSynchronizationPending = QuotaSyncPendingErrorResponse & {
   error: 'quota_sync_pending';
   message_key: 'error.quota_sync_pending';
   mutation_applied: true;
+};
+
+function normalizeRoleQuota(quota: CanonicalRoleQuotaConfig): RoleQuotaConfig {
+  return {
+    ...quota,
+    daily_execution_limit: quota.daily_execution_limit ?? null,
+    daily_export_limit: quota.daily_export_limit ?? null,
+    daily_query_limit: quota.daily_query_limit ?? null,
+  };
 }
 
 export function isQuotaSynchronizationPending(
@@ -39,65 +61,38 @@ export function isQuotaSynchronizationPending(
   return false;
 }
 
-export interface QuotaDimensionStatus {
-  limit: number | null;
-  used: number;
-  remaining: number | null;
-}
-
-export interface RoleQuotaStatus {
-  role_id: string;
-  role_name: string;
-  dimensions: {
-    queries: QuotaDimensionStatus;
-    executions: QuotaDimensionStatus;
-    exports: QuotaDimensionStatus;
-  };
-  reset_at: string;
-}
-
-export interface QuotaStatusPage {
-  status: RoleQuotaStatus[];
-  total: number;
-  next_cursor: string | null;
-}
-
 export async function listQuotas(): Promise<{ quotas: RoleQuotaConfig[] }> {
-  const res = await client.get({
-    url: '/admin/quotas',
-    throwOnError: true,
-  });
-  return res.data as { quotas: RoleQuotaConfig[] };
+  const response = await listCanonicalQuotas({ throwOnError: true });
+  return { quotas: response.data.quotas.map(normalizeRoleQuota) };
 }
 
 export async function getQuotaStatus(
   cursor?: string,
   signal?: AbortSignal
 ): Promise<QuotaStatusPage> {
-  const res = await client.get({
-    url: '/admin/quotas/status',
+  const response = await getCanonicalQuotaStatus({
     query: { cursor, limit: 50 },
     signal,
     throwOnError: true,
   });
-  return res.data as QuotaStatusPage;
+  return response.data;
 }
 
 export async function upsertQuota(
   roleId: string,
   data: RoleQuotaUpsert
 ): Promise<RoleQuotaConfig> {
-  const res = await client.put({
-    url: `/admin/quotas/${roleId}`,
+  const response = await upsertCanonicalQuota({
+    path: { role_id: roleId },
     body: data,
     throwOnError: true,
   });
-  return res.data as RoleQuotaConfig;
+  return normalizeRoleQuota(response.data);
 }
 
 export async function deleteQuota(roleId: string): Promise<void> {
-  await client.delete({
-    url: `/admin/quotas/${roleId}`,
+  await deleteCanonicalQuota({
+    path: { role_id: roleId },
     throwOnError: true,
   });
 }

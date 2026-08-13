@@ -20,3 +20,11 @@ class AuditStatusResponse(BaseModel):
 
     total_entries: int
     last_verification: dict | None = None
+
+
+class AuditRetentionResponse(BaseModel):
+    """Current audit retention and last purge summary."""
+
+    retention_months: int
+    last_purge_at: str | None = None
+    purged_count: int | None = None
