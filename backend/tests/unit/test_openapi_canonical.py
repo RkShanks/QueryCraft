@@ -161,7 +161,7 @@ def test_draft_policy_preview_reuses_the_safe_preview_response_contract():
     operation = _schema_operations(_canonical_schema())[("POST", "/api/v1/admin/roles/test-policy")]
 
     assert _json_schema(operation, "200") == {"$ref": "#/components/schemas/PolicyTestResponse"}
-    assert set(operation["responses"]) == {"200", "400", "401", "403", "404", "422", "500"}
+    assert set(operation["responses"]) == {"200", "400", "401", "403", "422", "500"}
 
 
 @pytest.mark.parametrize(

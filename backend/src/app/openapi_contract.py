@@ -48,7 +48,7 @@ from app.schemas.query import (
     SubmitQuestionRequest,
 )
 from app.schemas.quota import QuotaListResponse, QuotaStatusResponse, RoleQuotaConfig, RoleQuotaUpsert
-from app.schemas.roles import PolicyTestResponse, RoleDetailResponse, RoleListResponse
+from app.schemas.roles import DraftPolicyTestRequest, PolicyTestResponse, RoleDetailResponse, RoleListResponse
 from app.schemas.session import (
     CreateSessionResponse,
     SessionConnectionResponse,
@@ -107,6 +107,7 @@ OPERATION_IDS: dict[OperationKey, str] = {
     ("GET", "/api/v1/admin/roles/{role_id}"): "getRole",
     ("PUT", "/api/v1/admin/roles/{role_id}"): "updateRole",
     ("DELETE", "/api/v1/admin/roles/{role_id}"): "deleteRole",
+    ("POST", "/api/v1/admin/roles/test-policy"): "testDraftRolePolicy",
     ("POST", "/api/v1/admin/roles/{role_id}/test-policy"): "testRolePolicy",
     ("POST", "/api/v1/admin/audit/verify"): "verifyAuditChain",
     ("GET", "/api/v1/admin/audit/status"): "getAuditStatus",
@@ -134,6 +135,7 @@ REQUEST_MODELS: dict[OperationKey, ModelType] = {
     ("POST", "/api/v1/query/regenerate"): RegenerateQueryRequest,
     ("PUT", "/api/v1/admin/quotas/{role_id}"): RoleQuotaUpsert,
     ("POST", "/api/v1/admin/audit/export"): AuditExportRequest,
+    ("POST", "/api/v1/admin/roles/test-policy"): DraftPolicyTestRequest,
 }
 
 SUCCESS_MODELS: dict[OperationKey, tuple[int, ResponseModels]] = {
@@ -174,6 +176,7 @@ SUCCESS_MODELS: dict[OperationKey, tuple[int, ResponseModels]] = {
     ("POST", "/api/v1/admin/roles"): (201, RoleDetailResponse),
     ("GET", "/api/v1/admin/roles/{role_id}"): (200, RoleDetailResponse),
     ("PUT", "/api/v1/admin/roles/{role_id}"): (200, RoleDetailResponse),
+    ("POST", "/api/v1/admin/roles/test-policy"): (200, PolicyTestResponse),
     ("POST", "/api/v1/admin/roles/{role_id}/test-policy"): (200, PolicyTestResponse),
     ("POST", "/api/v1/admin/audit/verify"): (200, AuditVerifyResponse),
     ("GET", "/api/v1/admin/audit/status"): (200, AuditStatusResponse),
@@ -352,6 +355,7 @@ for _operation_key, _statuses in {
     ("GET", "/api/v1/admin/roles/{role_id}"): (404, 500),
     ("PUT", "/api/v1/admin/roles/{role_id}"): (404, 409, 422, 500),
     ("DELETE", "/api/v1/admin/roles/{role_id}"): (404, 422, 500),
+    ("POST", "/api/v1/admin/roles/test-policy"): (400, 422, 500),
     ("POST", "/api/v1/admin/roles/{role_id}/test-policy"): (400, 404, 422, 500),
     ("POST", "/api/v1/admin/audit/verify"): (500,),
     ("GET", "/api/v1/admin/audit/entries"): (422, 500),

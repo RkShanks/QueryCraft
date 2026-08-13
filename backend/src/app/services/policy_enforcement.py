@@ -174,8 +174,8 @@ _NON_FUNCTION_OPS: frozenset[str] = frozenset(
 )
 
 
-def _contains_comment_outside_string(sql: str) -> bool:
-    """Return True if ``--`` or ``/*`` appears outside a string literal."""
+def _contains_comment_outside_string(sql: str, dialect: str) -> bool:
+    """Return whether the dialect's comment syntax occurs outside a literal."""
     i = 0
     n = len(sql)
     in_single = False
@@ -199,6 +199,8 @@ def _contains_comment_outside_string(sql: str) -> bool:
         if c == "-" and i + 1 < n and sql[i + 1] == "-":
             return True
         if c == "/" and i + 1 < n and sql[i + 1] == "*":
+            return True
+        if dialect.lower() == "mysql" and c == "#":
             return True
         i += 1
     return False
@@ -300,7 +302,7 @@ class PolicyEnforcementService:
 
         # 2. Comments are rejected up-front. sqlglot strips comments by
         #    default, so the AST alone cannot detect them.
-        if _contains_comment_outside_string(filter_sql):
+        if _contains_comment_outside_string(filter_sql, dialect):
             raise ValueError("filter_validation_failed")
 
         # 3. Target table must exist in the schema (fail-closed).
