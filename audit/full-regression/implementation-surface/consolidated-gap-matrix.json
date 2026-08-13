@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 26, "Resolved": 18, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 23, "Resolved": 20, "Resolved on tested branch": 1, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -144,11 +144,19 @@
     },
     "CHUNK-14": {
       "gap_id": "IS-GAP-008",
-      "status": "Resolved on tested branch",
+      "status": "Resolved and merged",
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/312",
       "tested_product_commit": "9f82c73c0abe1ec07199583343e954e65fd6d358",
+      "merge_commit": "0cc010a59b128423169bd252aa63df2acfeb2130",
       "authoritative_ci": {"head_commit": "257fbdeaa2fbba7aef2d31e8dc30ed219777b8e7", "run_id": 31730146799, "backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-14-openapi-parity.json"
+    },
+    "CHUNK-15": {
+      "gap_ids": ["IS-GAP-024", "IS-GAP-026", "IS-GAP-035"],
+      "status": "Resolved on tested branch; PR and CI pending",
+      "tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc",
+      "authoritative_ci": {"head_commit": null, "backend_test": "pending", "frontend_test": "pending"},
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -564,8 +572,9 @@
       "required_evidence": "EN/AR browser preview against disposable role/connection/schema, with no production identifiers.",
       "isolation": "Disposable role and connection schema; preview must not call LLM/source execution.",
       "regression_rows": ["P5-FR-136"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-15", "status": "Pending",
-      "source_refs": ["backend/src/app/api/v1/admin_roles.py::test_role_policy", "backend/src/app/schemas/roles.py::PolicyTestRequest", "backend/src/app/schemas/roles.py::PolicyTestResponse", "backend/tests/unit/test_policy_test_endpoint.py", "frontend/src/pages/AdminRolesPage.tsx::AdminRolesPage", "frontend/src/hooks/useAdminRoles.ts"]
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-15", "status": "Resolved",
+      "resolution": {"tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json"},
+      "source_refs": ["backend/src/app/api/v1/admin_roles.py::test_draft_role_policy", "backend/src/app/api/v1/admin_roles.py::_evaluate_policy_preview", "backend/src/app/schemas/roles.py::DraftPolicyTestRequest", "backend/src/app/schemas/roles.py::PolicyTestResponse", "backend/tests/unit/test_policy_test_endpoint.py", "frontend/src/components/admin/RolePolicyPreview.tsx::RolePolicyPreview", "frontend/src/pages/AdminRolesPage.tsx::AdminRolesPage", "frontend/src/hooks/useAdminRoles.ts::useDraftRolePolicyPreview"]
     },
     {
       "id": "IS-GAP-025", "severity": "High", "disposition": "Confirmed Product Gap",
@@ -597,7 +606,8 @@
       "required_evidence": "Browser/API delayed/failed detail and immediate-save checks on a role with non-empty policies.",
       "isolation": "Disposable role/policy and controllable response delay.",
       "regression_rows": ["P5-FR-123", "P5-FR-128", "P5-FR-131", "P5-FR-132"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-15", "status": "Pending",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-15", "status": "Resolved",
+      "resolution": {"tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json"},
       "source_refs": ["frontend/src/pages/AdminRolesPage.tsx::AdminRolesPage", "frontend/src/pages/AdminRolesPage.tsx::detailQuery", "frontend/src/pages/AdminRolesPage.tsx::lastAppliedDetailIdRef", "frontend/src/pages/AdminRolesPage.tsx::handleSave", "frontend/src/hooks/useAdminRoles.ts::useAdminRole", "frontend/src/hooks/useAdminRoles.ts::updateMutation", "frontend/src/pages/AdminRolesPage.test.tsx"]
     },
     {
@@ -741,8 +751,9 @@
       "required_evidence": "EN/AR browser save/test of representative safe expressions.",
       "isolation": "Synthetic schema and identity placeholders.",
       "regression_rows": ["P5-FR-131", "P5-FR-136"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-15", "status": "Pending",
-      "source_refs": ["frontend/src/components/admin/PolicyEditor.tsx::getValidationErrors", "frontend/src/components/admin/PolicyEditor.test.tsx", "backend/src/app/services/policy_enforcement.py::PolicyEnforcementService.validate_row_filter", "backend/tests/unit/test_row_filter_validation.py"]
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-15", "status": "Resolved",
+      "resolution": {"tested_product_commit": "750c21fa4f70bf1f1b106396852b9be846b931dc", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-15-role-policy-editor.json"},
+      "source_refs": ["contracts/row-filter-validation-corpus.json", "frontend/src/components/admin/PolicyEditor.tsx::getValidationErrors", "frontend/src/components/admin/PolicyEditor.preview.test.tsx", "backend/src/app/services/policy_enforcement.py::PolicyEnforcementService.validate_row_filter", "backend/tests/unit/test_row_filter_contract_corpus.py"]
     },
     {
       "id": "IS-GAP-036", "severity": "Mid", "disposition": "Confirmed Product Gap",

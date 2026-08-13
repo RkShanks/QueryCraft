@@ -1,6 +1,6 @@
 # Remediation execution order
 
-Status: `CHUNK-01` through `CHUNK-13` are resolved and merged; CHUNK-13 squash merge `e18d2335f44a93f055bb7d3c03f08012c91443f6` unblocked CHUNK-14. `CHUNK-14` resolved `IS-GAP-008` on tested product commit `9f82c73c0abe1ec07199583343e954e65fd6d358` in [#312](https://github.com/RkShanks/QueryCraft/pull/312): current source, canonical OpenAPI, and generated SDK each contain the same 63 operations; deterministic generation, all-operation Schemathesis, focused real-ASGI/Chromium checks, complete frontend gates, cleanup, and authoritative backend/frontend CI passed; see [evidence](evidence/chunk-14-openapi-parity.md). Squash merge remains the `CHUNK-15` dispatch gate.
+Status: `CHUNK-01` through `CHUNK-14` are resolved and merged. CHUNK-14 squash merge `0cc010a59b128423169bd252aa63df2acfeb2130` unblocked CHUNK-15 after proving then-current 63-operation runtime/canonical/generated parity. `CHUNK-15` resolves `IS-GAP-024`, `IS-GAP-026` and `IS-GAP-035` on tested product commit `750c21fa4f70bf1f1b106396852b9be846b931dc`: the bounded draft-preview route moves parity to 64 operations, existing-role hydration is authoritative, and the shared 21-case corpus leaves SQL grammar to the backend. Local API/browser/foundation gates passed; PR, authoritative backend/frontend CI and squash merge remain the `CHUNK-16` dispatch gate. See [evidence](evidence/chunk-15-role-policy-editor.md).
 
 The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
@@ -177,7 +177,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-14 — canonical OpenAPI and generated client
 
-- **Progress:** Resolved on tested product commit `9f82c73c0abe1ec07199583343e954e65fd6d358` in [#312](https://github.com/RkShanks/QueryCraft/pull/312). The historical snapshot's 60 operations grew to 63 through query limits plus liveness/readiness; current runtime, canonical artifact and generated SDK now match exactly at 63. Stable unique IDs, typed JSON/form bodies, success/error/redirect/download/204 contracts, query unions, public probes, pagination and quota synchronization are locked. Two-run canonical/client generation, 63-operation Schemathesis, focused API/Chromium proof, full frontend gates, guard review, cleanup, and authoritative backend/frontend CI passed. Squash merge remains required before CHUNK-15.
+- **Progress:** Resolved on tested product commit `9f82c73c0abe1ec07199583343e954e65fd6d358` in [#312](https://github.com/RkShanks/QueryCraft/pull/312), then squash-merged as `0cc010a59b128423169bd252aa63df2acfeb2130`. The historical snapshot's 60 operations grew to 63 through query limits plus liveness/readiness; runtime, canonical artifact and generated SDK matched exactly at 63. Stable IDs, typed bodies/responses, deterministic generation, 63-operation Schemathesis, focused API/Chromium proof, full gates, cleanup and authoritative CI passed. CHUNK-15 is now the only legitimate successor operation change.
 - **IDs / role / branch / context:** `IS-GAP-008`; Backend Implementer then Frontend Implementer; `phase-6/wave-19.14-openapi-canonical`; 150–180k.
 - **Likely source:** FastAPI response/request models/routes, canonical OpenAPI artifact, contract tests, `generate-api-client.sh`, generated frontend API tree; remove/retire stale updater only if covered by scope.
 - **TDD:** RED runtime/canonical/client operation/status/schema/content-type parity; then type redirect/form/download/error bodies and regenerate deterministically.
@@ -189,6 +189,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-15 — role policy editor safety and preview
 
+- **Progress:** Resolved on tested product commit `750c21fa4f70bf1f1b106396852b9be846b931dc`; PR and authoritative CI pending. Added `testDraftRolePolicy`, producing deterministic 64-operation runtime/canonical/generated parity; shared evaluation proves no persistence, LLM or source execution. Matching full role detail gates Save and resists failed/late/background responses. The frontend uses structural filter checks only and the backend owns a 21-case shared corpus. Focused/full foundations, real local ASGI, and EN/AR 1440/768/375 Chromium verification passed; see [evidence](evidence/chunk-15-role-policy-editor.md).
 - **IDs / role / branch / context:** `IS-GAP-035`, `IS-GAP-026`, `IS-GAP-024`; Frontend Implementer; `phase-6/wave-19.15-role-policy-editor`; 145–180k.
 - **Likely source:** `PolicyEditor.tsx`, `AdminRolesPage.tsx`, `useAdminRoles.ts`, generated policy-test client/types, locale keys and focused tests.
 - **TDD:** RED shared filter corpus; RED delayed/failed/stale detail immediate-save; RED allowed/blocked/invalid/sanitized policy preview states.
@@ -376,4 +377,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-13` are resolved and merged. `CHUNK-14 / IS-GAP-008` is resolved on tested product commit `9f82c73c0abe1ec07199583343e954e65fd6d358` in [#312](https://github.com/RkShanks/QueryCraft/pull/312); local contract, generation, API, browser, frontend, cleanup and authoritative backend/frontend CI passed. Require squash merge before dispatching `CHUNK-15`.
+`CHUNK-01` through `CHUNK-14` are resolved and merged. `CHUNK-15 / IS-GAP-024 / IS-GAP-026 / IS-GAP-035` is resolved on tested product commit `750c21fa4f70bf1f1b106396852b9be846b931dc`; local contract, generation, API, browser, frontend, cleanup and foundation gates passed. Require authoritative backend/frontend CI and squash merge before dispatching `CHUNK-16`.
