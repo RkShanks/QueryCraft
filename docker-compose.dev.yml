@@ -74,10 +74,18 @@ services:
     depends_on:
       postgres-platform:
         condition: service_healthy
-      postgres-source:
-        condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import json, urllib.request; response = urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=2.5); raise SystemExit(0 if response.status == 200 and json.load(response) == {'status': 'ready'} else 1)"
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
     networks:
       - querycraft
 
@@ -88,7 +96,8 @@ services:
     ports:
       - "${FRONTEND_PORT:-5173}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - querycraft
 
