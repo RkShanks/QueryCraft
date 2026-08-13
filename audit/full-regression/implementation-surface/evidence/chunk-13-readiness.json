@@ -1,8 +1,9 @@
 {
   "chunk": "CHUNK-13",
   "gap_id": "IS-GAP-007",
-  "status": "implementation_and_isolated_proof_passed_ci_pending",
+  "status": "implementation_and_ci_passed_merge_pending",
   "branch": "phase-6/wave-19.13-readiness",
+  "pull_request": 311,
   "tested_product_commit": "1c56b6305329cbc82fff5cc4066c995f2717873b",
   "endpoint_contract": {
     "health_status": 200,
@@ -119,8 +120,8 @@
     "docs_guard": true,
     "json_validation": true,
     "git_diff_check": true,
-    "github_backend_test": false,
-    "github_frontend_test": false
+    "github_backend_test": true,
+    "github_frontend_test": true
   },
   "cleanup": {
     "disposable_containers": 0,
@@ -138,8 +139,9 @@
     "sensitive_values_retained": false
   },
   "ci": {
-    "backend_test": "pending",
-    "frontend_test": "pending"
+    "head_commit": "270ce0577c29f201f583a40c0f51a36b25984478",
+    "backend_test": "passed",
+    "frontend_test": "passed"
   },
   "static_openapi_regenerated": false,
   "generated_client_regenerated": false,

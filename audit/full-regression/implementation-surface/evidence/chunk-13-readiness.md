@@ -1,6 +1,6 @@
 # CHUNK-13 / IS-GAP-007 — liveness, readiness, and Compose gating
 
-Status: implementation and isolated production-like proof passed on branch `phase-6/wave-19.13-readiness`; authoritative GitHub backend/frontend CI is pending.
+Status: implementation, isolated production-like proof, and authoritative GitHub backend/frontend CI passed on branch `phase-6/wave-19.13-readiness` in [#311](https://github.com/RkShanks/QueryCraft/pull/311); squash merge is pending.
 
 Tested product commit: `1c56b6305329cbc82fff5cc4066c995f2717873b`.
 
@@ -81,8 +81,8 @@ Every degraded and restored readiness/Compose transition was observed within the
 | Docs Guard | passed with runtime/config/script assertions source-verified |
 | JSON validation | passed for evidence and consolidated matrix |
 | `git diff --check` | passed |
-| GitHub backend-test | pending |
-| GitHub frontend-test | pending |
+| GitHub backend-test | passed on `270ce0577c29f201f583a40c0f51a36b25984478` |
+| GitHub frontend-test | passed on `270ce0577c29f201f583a40c0f51a36b25984478` |
 
 ## Cleanup and protected baseline
 
@@ -91,5 +91,5 @@ Every degraded and restored readiness/Compose transition was observed within the
 - Temporary CHUNK-13 probe and evidence-output files remaining: 0.
 - Unrelated running projects changed or removed: 0.
 - The protected baseline remains exactly 14 modified tracked PNGs, seven untracked historical screenshots, and two untracked trace archives; none was edited, staged, regenerated, deleted, or reverted by CHUNK-13.
-- Static OpenAPI and generated clients were not broadly regenerated. CHUNK-14 remains blocked until authoritative CI and the CHUNK-13 squash merge complete.
+- Static OpenAPI and generated clients were not broadly regenerated. CHUNK-14 remains blocked until the CHUNK-13 squash merge completes.
 - Evidence retains statuses, counts, booleans, bounded timings, restart counts, endpoint constants, and commit IDs only. It retains no environment values, dependency addresses, revision values, credentials, cookies, provider payloads, source rows, SQL, raw errors, logs, screenshots, videos, or traces.

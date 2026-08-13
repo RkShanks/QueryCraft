@@ -127,7 +127,7 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` is a dead mainten
 
 `IS-GAP-019` is resolved on tested product commit `80652b47b6a53687bbe67f849c070b8ffb9f82d0` in [#310](https://github.com/RkShanks/QueryCraft/pull/310); authoritative backend/frontend CI passed and squash merge `58098c05dfc92b7fd22b1096d38229e5c8a66f52` unblocked CHUNK-13. Its [CHUNK-12 evidence](evidence/chunk-12-collection-bounds.md) records opaque value-safe keysets, exact ownership-scoped totals, 10,000-session and 10,000-attempt traversal, one-query attempt metadata, bounded 120-role/3,000-user PostgreSQL/Redis aggregation, fail-closed counter faults, cancellable infinite queries, localized responsive browser proof and cleanup.
 
-`IS-GAP-007` is resolved on tested product commit `1c56b6305329cbc82fff5cc4066c995f2717873b`; authoritative backend/frontend CI and squash merge are pending. Its [CHUNK-13 evidence](evidence/chunk-13-readiness.md) records exact public probe bodies, cookie independence, bounded concurrent platform PostgreSQL/Redis/revision checks, startup/shutdown transitions, runtime outage/recovery with zero backend restarts, Compose health gating, disposable dev-up ordering and cleanup.
+`IS-GAP-007` is resolved on tested product commit `1c56b6305329cbc82fff5cc4066c995f2717873b` in [#311](https://github.com/RkShanks/QueryCraft/pull/311); authoritative backend/frontend CI passed on `270ce0577c29f201f583a40c0f51a36b25984478` and squash merge is pending. Its [CHUNK-13 evidence](evidence/chunk-13-readiness.md) records exact public probe bodies, cookie independence, bounded concurrent platform PostgreSQL/Redis/revision checks, startup/shutdown transitions, runtime outage/recovery with zero backend restarts, Compose health gating, disposable dev-up ordering and cleanup.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
@@ -140,7 +140,7 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-12` is merged. `CHUNK-13 / IS-GAP-007` is resolved on tested product commit `1c56b6305329cbc82fff5cc4066c995f2717873b`; isolated proof and local gates passed. Authoritative backend/frontend CI and squash merge remain the `CHUNK-14` dispatch gates. No CHUNK-14 work has started.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-12` is merged. `CHUNK-13 / IS-GAP-007` is resolved on tested product commit `1c56b6305329cbc82fff5cc4066c995f2717873b`; isolated proof and authoritative backend/frontend CI passed in [#311](https://github.com/RkShanks/QueryCraft/pull/311). Squash merge remains the `CHUNK-14` dispatch gate. No CHUNK-14 work has started.
 
 ## Validation scope
 

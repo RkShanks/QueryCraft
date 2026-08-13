@@ -136,8 +136,9 @@
     "CHUNK-13": {
       "gap_id": "IS-GAP-007",
       "status": "Resolved on tested branch",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/311",
       "tested_product_commit": "1c56b6305329cbc82fff5cc4066c995f2717873b",
-      "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"},
+      "authoritative_ci": {"head_commit": "270ce0577c29f201f583a40c0f51a36b25984478", "backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-13-readiness.json"
     }
   },
@@ -270,7 +271,7 @@
       "isolation": "Disposable Compose project and dependency fault injection; remove containers/networks/volumes.",
       "regression_rows": ["XP-013", "XP-018"],
       "owner": "Backend Implementer; Kimi/GLM", "chunk": "CHUNK-13", "status": "Resolved",
-      "resolution": {"tested_commit": "1c56b6305329cbc82fff5cc4066c995f2717873b", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-13-readiness.json", "authoritative_ci": "pending"},
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/311", "tested_commit": "1c56b6305329cbc82fff5cc4066c995f2717873b", "ci_validated_commit": "270ce0577c29f201f583a40c0f51a36b25984478", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-13-readiness.json", "authoritative_ci": "passed"},
       "source_refs": ["backend/src/app/main.py::create_app", "backend/src/app/main.py::lifespan", "docker-compose.dev.yml::backend", "scripts/dev-up.sh::wait_healthy"]
     },
     {
