@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.enums import AuditActionType
 from app.services.audit_service import AuditService
@@ -602,6 +603,54 @@ async def test_mapping_audit_failure_rolls_back_complete_create(
         assert response.status_code == 500
         assert response.json() == {"error": "internal", "message_key": "error.internal"}
         assert group_value not in response.text
+        async with async_engine_fixture.connect() as connection:
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM roles WHERE name = :name"),
+                    {"name": role_name},
+                )
+                == 0
+            )
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM sso_group_mappings WHERE sso_group_value = :group_value"),
+                    {"group_value": group_value},
+                )
+                == 0
+            )
+        assert await _role_mutation_audit_count(async_engine_fixture) == audit_count_before
+    finally:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(text("DELETE FROM roles WHERE name = :name"), {"name": role_name})
+
+
+@pytest.mark.integration
+async def test_response_preparation_failure_rolls_back_complete_create(
+    authenticated_client,
+    async_engine_fixture,
+) -> None:
+    case_token = uuid4().hex
+    role_name = f"chunk16-response-fault-{case_token}"
+    group_value = f"chunk16-response-fault-group-{case_token}"
+    role_priority = 1_425_000_000 + int(case_token[:7], 16)
+
+    try:
+        audit_count_before = await _role_mutation_audit_count(async_engine_fixture)
+        with patch.object(AsyncSession, "refresh", side_effect=RuntimeError("injected refresh failure")):
+            response = await authenticated_client.post(
+                "/api/v1/admin/roles",
+                json={
+                    "name": role_name,
+                    "priority": role_priority,
+                    "permissions": [],
+                    "group_mappings": [group_value],
+                    "connection_policies": [],
+                },
+            )
+
+        assert response.status_code == 500
+        assert response.json() == {"error": "internal", "message_key": "error.internal"}
+        assert "refresh" not in response.text.lower()
         async with async_engine_fixture.connect() as connection:
             assert (
                 await connection.scalar(
