@@ -54,6 +54,10 @@
   "query.result.sqlHeading": "SQL المُنشأ",
   "query.result.tableHeading": "النتائج",
   "query.result.empty": "لم يُعثر على نتائج لاستعلامك",
+  "query.result.pagination.label": "صفحات النتائج",
+  "query.result.pagination.previous": "الصفحة السابقة",
+  "query.result.pagination.next": "الصفحة التالية",
+  "query.result.pagination.status": "الصفحة {{page}} من {{pageCount}} · الصفوف {{start}}–{{end}} من {{total}}",
 
   "query.accept.success.title": "تم بنجاح",
   "query.accept.success.message": "تم قبول الاستعلام وحفظه في السجل.",
