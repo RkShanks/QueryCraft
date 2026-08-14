@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSubmitQuestion, useAcceptQuery, useQuerySubmit } from './useQuerySubmit';
 import { createWrapper } from '../test/utils';
@@ -13,6 +13,11 @@ import {
   beginSessionDeletion,
   resetSessionDeletionLifecycle,
 } from '../sessionDeletionLifecycle';
+import type {
+  AcceptedQuerySummary,
+  QueryResult,
+  RefinePrompt,
+} from '../api/generated/types.gen';
 
 describe('Query Hooks', () => {
   beforeEach(() => {
@@ -61,16 +66,17 @@ describe('Query Hooks', () => {
         kind: 'refine',
         message_key: 'query.refine.message',
         should_refine: true,
-      };
+      } satisfies RefinePrompt;
       server.use(
         http.post('/api/v1/query/accept', async ({ request }) => {
           requestBodies.push(await request.json() as Record<string, unknown>);
-          return HttpResponse.json({
+          const response = {
             id: 'f9e8d7c6-b5a4-4c3b-2a1d-0e9f8d7c6b5a',
             question_text: 'Question',
             generated_sql: 'SELECT 1',
             accepted_at: '2026-08-02T00:00:00Z',
-          });
+          } satisfies AcceptedQuerySummary;
+          return HttpResponse.json(response, { status: 201 });
         }),
         http.post('/api/v1/query/reject', async ({ request }) => {
           requestBodies.push(await request.json() as Record<string, unknown>);
@@ -83,9 +89,11 @@ describe('Query Hooks', () => {
       );
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
 
-      await result.current.acceptQuery('attempt-1', 'session-1');
-      await result.current.rejectQuery('attempt-2');
-      await result.current.regenerateQuery('attempt-3');
+      await act(async () => {
+        await result.current.acceptQuery('attempt-1', 'session-1');
+        await result.current.rejectQuery('attempt-2');
+        await result.current.regenerateQuery('attempt-3');
+      });
 
       expect(requestBodies).toEqual([
         { attempt_id: 'attempt-1', session_id: 'session-1' },
@@ -114,11 +122,28 @@ describe('Query Hooks', () => {
       server.use(
         http.post('/api/v1/query/submit', async ({ request }) => {
           requestBody = await request.json();
-          return HttpResponse.json({ kind: 'result', attempt_id: 'test-id' }, { status: 200 });
+          const response = {
+            kind: 'result',
+            attempt_id: '550e8400-e29b-41d4-a716-446655440011',
+            question: 'How many users?',
+            generated_sql: 'SELECT 1',
+            columns: [],
+            rows: [],
+            row_count: 0,
+            attempt_number: 1,
+            is_last_auto_retry: false,
+          } satisfies QueryResult;
+          return HttpResponse.json(response, { status: 200 });
         })
       );
       const { result } = renderHook(() => useQuerySubmit(), { wrapper: createWrapper() });
-      await result.current.submitQuestion('How many users?', null, '550e8400-e29b-41d4-a716-446655440001');
+      await act(async () => {
+        await result.current.submitQuestion(
+          'How many users?',
+          null,
+          '550e8400-e29b-41d4-a716-446655440001'
+        );
+      });
       expect(requestBody).toMatchObject({ connection_id: '550e8400-e29b-41d4-a716-446655440001' });
     });
 
