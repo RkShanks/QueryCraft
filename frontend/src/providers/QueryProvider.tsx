@@ -28,6 +28,7 @@ import {
 } from '../auth/AuthSessionContext';
 import { useUIStore } from '../stores/uiStore';
 import { resetSessionDeletionLifecycle } from '../sessionDeletionLifecycle';
+import { isClientContractError } from '../api/responseValidation';
 
 export const CURRENT_USER_QUERY_KEY = ['currentUser'] as const;
 const CURRENT_USER_QUERY_FILTER = {
@@ -40,6 +41,10 @@ function publishSessionExpiry(error: unknown, sourcePath?: string): boolean {
   notifySessionExpiry();
   handleSessionExpiry(error, sourcePath);
   return true;
+}
+
+export function featureQueryRetry(failureCount: number, error: unknown): boolean {
+  return !isClientContractError(error) && failureCount < 1;
 }
 
 function createFeatureQueryClient(): QueryClient {
@@ -58,7 +63,7 @@ function createFeatureQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         staleTime: 5 * 60 * 1000,
-        retry: 1,
+        retry: featureQueryRetry,
         refetchOnWindowFocus: false,
       },
       mutations: {
