@@ -4,7 +4,12 @@ import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/re
 import { useLayoutEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CURRENT_USER_QUERY_KEY, QueryProvider, queryClient } from './QueryProvider';
+import {
+  CURRENT_USER_QUERY_KEY,
+  QueryProvider,
+  featureQueryRetry,
+  queryClient,
+} from './QueryProvider';
 import { useCurrentUser, useSignIn, useSignOut } from '../hooks/useAuth';
 import { useUIStore } from '../stores/uiStore';
 import { http, HttpResponse } from 'msw';
@@ -12,6 +17,15 @@ import { server } from '../test/server';
 import { client as apiClient } from '../api/generated/client.gen';
 import { PermissionGuard } from '../components/auth/PermissionGuard';
 import { PERMISSIONS } from '../auth/permissions';
+import { ClientContractError } from '../api/responseValidation';
+
+describe('feature query retry policy', () => {
+  it('requires explicit retry for malformed responses but retries one ordinary failure', () => {
+    expect(featureQueryRetry(0, new ClientContractError())).toBe(false);
+    expect(featureQueryRetry(0, new Error('transient'))).toBe(true);
+    expect(featureQueryRetry(1, new Error('transient'))).toBe(false);
+  });
+});
 
 function ExpiredSessionProbe() {
   const query = useQuery({
