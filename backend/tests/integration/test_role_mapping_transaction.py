@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
+
+from app.db.models.enums import AuditActionType
+from app.services.audit_service import AuditService
 
 
 async def _role_mutation_audit_count(async_engine_fixture) -> int:
@@ -562,3 +567,199 @@ async def test_policy_only_change_emits_one_truthful_role_audit(
     finally:
         async with async_engine_fixture.begin() as connection:
             await connection.execute(text("DELETE FROM roles WHERE name = :name"), {"name": role_name})
+
+
+@pytest.mark.integration
+async def test_mapping_audit_failure_rolls_back_complete_create(
+    authenticated_client,
+    async_engine_fixture,
+) -> None:
+    case_token = uuid4().hex
+    role_name = f"chunk16-audit-fault-{case_token}"
+    group_value = f"chunk16-audit-fault-group-{case_token}"
+    role_priority = 1_400_000_000 + int(case_token[:7], 16)
+    original_log = AuditService.log
+
+    async def fail_mapping_audit(*args, **kwargs):
+        if kwargs.get("action") == AuditActionType.ROLE_MAPPING_CHANGE:
+            raise RuntimeError("injected audit failure")
+        return await original_log(*args, **kwargs)
+
+    try:
+        audit_count_before = await _role_mutation_audit_count(async_engine_fixture)
+        with patch.object(AuditService, "log", side_effect=fail_mapping_audit):
+            response = await authenticated_client.post(
+                "/api/v1/admin/roles",
+                json={
+                    "name": role_name,
+                    "priority": role_priority,
+                    "permissions": [],
+                    "group_mappings": [group_value],
+                    "connection_policies": [],
+                },
+            )
+
+        assert response.status_code == 500
+        assert response.json() == {"error": "internal", "message_key": "error.internal"}
+        assert group_value not in response.text
+        async with async_engine_fixture.connect() as connection:
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM roles WHERE name = :name"),
+                    {"name": role_name},
+                )
+                == 0
+            )
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM sso_group_mappings WHERE sso_group_value = :group_value"),
+                    {"group_value": group_value},
+                )
+                == 0
+            )
+        assert await _role_mutation_audit_count(async_engine_fixture) == audit_count_before
+    finally:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(text("DELETE FROM roles WHERE name = :name"), {"name": role_name})
+
+
+@pytest.mark.integration
+async def test_deferred_postgresql_commit_failure_rolls_back_complete_create(
+    authenticated_client,
+    async_engine_fixture,
+) -> None:
+    case_token = uuid4().hex
+    role_name = f"chunk16-commit-fault-{case_token}"
+    group_value = f"chunk16-commit-fault-group-{case_token}"
+    role_priority = 1_450_000_000 + int(case_token[:7], 16)
+    function_name = f"chunk16_fail_commit_{case_token}"
+    trigger_name = f"chunk16_fail_commit_trigger_{case_token}"
+
+    try:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(
+                text(
+                    f"""
+                    CREATE FUNCTION {function_name}() RETURNS trigger
+                    LANGUAGE plpgsql AS $$
+                    BEGIN
+                        RAISE EXCEPTION 'injected deferred commit failure';
+                    END;
+                    $$
+                    """
+                )
+            )
+            await connection.execute(
+                text(
+                    f"""
+                    CREATE CONSTRAINT TRIGGER {trigger_name}
+                    AFTER INSERT ON roles
+                    DEFERRABLE INITIALLY DEFERRED
+                    FOR EACH ROW
+                    WHEN (NEW.name LIKE 'chunk16-commit-fault-%')
+                    EXECUTE FUNCTION {function_name}()
+                    """
+                )
+            )
+
+        audit_count_before = await _role_mutation_audit_count(async_engine_fixture)
+        response = await authenticated_client.post(
+            "/api/v1/admin/roles",
+            json={
+                "name": role_name,
+                "priority": role_priority,
+                "permissions": [],
+                "group_mappings": [group_value],
+                "connection_policies": [],
+            },
+        )
+
+        assert response.status_code == 500
+        assert response.json() == {"error": "internal", "message_key": "error.internal"}
+        assert "commit" not in response.text.lower()
+        async with async_engine_fixture.connect() as connection:
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM roles WHERE name = :name"),
+                    {"name": role_name},
+                )
+                == 0
+            )
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM sso_group_mappings WHERE sso_group_value = :group_value"),
+                    {"group_value": group_value},
+                )
+                == 0
+            )
+        assert await _role_mutation_audit_count(async_engine_fixture) == audit_count_before
+    finally:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(text(f"DROP TRIGGER IF EXISTS {trigger_name} ON roles"))
+            await connection.execute(text(f"DROP FUNCTION IF EXISTS {function_name}()"))
+            await connection.execute(text("DELETE FROM roles WHERE name = :name"), {"name": role_name})
+
+
+@pytest.mark.integration
+async def test_concurrent_same_group_claims_have_exactly_one_winner(
+    authenticated_client,
+    async_engine_fixture,
+) -> None:
+    case_token = uuid4().hex
+    role_names = [f"chunk16-race-a-{case_token}", f"chunk16-race-b-{case_token}"]
+    group_value = f"chunk16-race-group-{case_token}"
+    base_priority = 1_250_000_000 + int(case_token[:7], 16)
+
+    async def claim_group(role_name: str, priority: int):
+        return await authenticated_client.post(
+            "/api/v1/admin/roles",
+            json={
+                "name": role_name,
+                "priority": priority,
+                "permissions": [],
+                "group_mappings": [group_value],
+                "connection_policies": [],
+            },
+        )
+
+    try:
+        role_creates_before = await _audit_action_count(async_engine_fixture, "role.create")
+        mapping_changes_before = await _audit_action_count(async_engine_fixture, "role.mapping.change")
+        responses = await asyncio.gather(
+            claim_group(role_names[0], base_priority),
+            claim_group(role_names[1], base_priority + 1),
+        )
+
+        assert sorted(response.status_code for response in responses) == [201, 409]
+        winner = next(response for response in responses if response.status_code == 201)
+        loser = next(response for response in responses if response.status_code == 409)
+        assert [mapping["sso_group_value"] for mapping in winner.json()["group_mappings"]] == [group_value]
+        assert loser.json() == {
+            "error": "conflict",
+            "message_key": "error.conflict.duplicateGroupMapping",
+        }
+        assert group_value not in loser.text
+
+        async with async_engine_fixture.connect() as connection:
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM roles WHERE name = ANY(:names)"),
+                    {"names": role_names},
+                )
+                == 1
+            )
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM sso_group_mappings WHERE sso_group_value = :group_value"),
+                    {"group_value": group_value},
+                )
+                == 1
+            )
+        assert await _audit_action_count(async_engine_fixture, "role.create") == role_creates_before + 1
+        assert await _audit_action_count(async_engine_fixture, "role.mapping.change") == mapping_changes_before + 1
+    finally:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(
+                text("DELETE FROM roles WHERE name = ANY(:names)"),
+                {"names": role_names},
+            )
