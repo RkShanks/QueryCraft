@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   createGroupMapping,
   createRole,
@@ -214,6 +214,20 @@ async function fetchAuthoritativeRoles(): Promise<Role[] | undefined> {
   }
 }
 
+function publishAuthoritativeRole(queryClient: QueryClient, role: Role): void {
+  queryClient.setQueryData(['adminRole', role.id], role);
+  queryClient.setQueryData<{ roles: Role[] }>(['adminRoles'], (current) => {
+    if (!current) {
+      return current;
+    }
+    return {
+      roles: current.roles.map((listedRole) =>
+        listedRole.id === role.id ? role : listedRole
+      ),
+    };
+  });
+}
+
 export interface UseAdminRolesOptions {
   onCreateSuccess?: (data: unknown) => void;
   onCreateError?: (error: unknown) => void;
@@ -322,6 +336,9 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
         return normalizeRole(response.data);
       } catch (error) {
         const authoritativeRole = await fetchAuthoritativeRole(id);
+        if (authoritativeRole) {
+          publishAuthoritativeRole(queryClient, authoritativeRole);
+        }
         if (
           isAmbiguousNetworkFailure(error) &&
           authoritativeRole &&
