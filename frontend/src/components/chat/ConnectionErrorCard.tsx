@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, Database, WifiOff, FileX, Ban, RefreshCw } from 'lucide-react';
 
@@ -14,8 +14,6 @@ interface ErrorConfig {
   icon: React.ReactNode;
   titleKey: string;
   bodyKey: string;
-  actionKey?: string;
-  actionIcon?: React.ReactNode;
   severity: 'error' | 'warning' | 'info';
 }
 
@@ -24,44 +22,36 @@ const configMap: Record<ConnectionErrorKind, ErrorConfig> = {
     icon: <Database className="w-5 h-5" aria-hidden="true" />,
     titleKey: 'error.noConnections.title',
     bodyKey: 'error.noConnections.body',
-    actionKey: 'error.noConnections.action',
-    actionIcon: <Database className="w-4 h-4" aria-hidden="true" />,
     severity: 'warning',
   },
   disabled: {
     icon: <Ban className="w-5 h-5" aria-hidden="true" />,
     titleKey: 'error.disabled.title',
     bodyKey: 'error.disabled.body',
-    actionKey: 'error.disabled.action',
     severity: 'error',
   },
   unhealthy: {
     icon: <WifiOff className="w-5 h-5" aria-hidden="true" />,
     titleKey: 'error.unhealthy.title',
     bodyKey: 'error.unhealthy.body',
-    actionKey: 'error.unhealthy.action',
     severity: 'error',
   },
   noSchema: {
     icon: <FileX className="w-5 h-5" aria-hidden="true" />,
     titleKey: 'error.noSchema.title',
     bodyKey: 'error.noSchema.body',
-    actionKey: 'error.noSchema.action',
-    actionIcon: <RefreshCw className="w-4 h-4" aria-hidden="true" />,
     severity: 'warning',
   },
   queryExecutionFailed: {
     icon: <AlertCircle className="w-5 h-5" aria-hidden="true" />,
     titleKey: 'error.queryExecutionFailed.title',
     bodyKey: 'error.queryExecutionFailed.body',
-    actionKey: 'error.queryExecutionFailed.action',
     severity: 'error',
   },
   timeout: {
     icon: <WifiOff className="w-5 h-5" aria-hidden="true" />,
     titleKey: 'query.timeout.heading',
     bodyKey: 'query.timeout.body',
-    actionKey: 'error.queryExecutionFailed.action',
     severity: 'error',
   },
 };
@@ -86,24 +76,56 @@ const actionStyles: Record<ErrorConfig['severity'], string> = {
 
 export interface ConnectionErrorCardProps {
   kind: ConnectionErrorKind;
-  onAction?: () => void;
+  onManageConnections?: () => void;
+  onRetry?: () => void;
+  isRetrying?: boolean;
 }
 
 export const ConnectionErrorCard: React.FC<ConnectionErrorCardProps> = ({
   kind,
-  onAction,
+  onManageConnections,
+  onRetry,
+  isRetrying = false,
 }) => {
   const { t } = useTranslation();
+  const titleId = useId();
+  const bodyId = useId();
   const cfg = configMap[kind] ?? ({
     icon: <AlertCircle className="w-5 h-5" aria-hidden="true" />,
     titleKey: 'error.unknown.title',
     bodyKey: 'error.unknown.message',
     severity: 'error',
   } as ErrorConfig);
+  const managesConnections =
+    kind === 'noConnections' ||
+    kind === 'disabled' ||
+    kind === 'unhealthy' ||
+    kind === 'noSchema';
+  const retriesQuery = kind === 'queryExecutionFailed' || kind === 'timeout';
+  const actionHandler = managesConnections
+    ? onManageConnections
+    : retriesQuery
+      ? onRetry
+      : undefined;
+  const actionKey = managesConnections
+    ? 'error.connectionRecovery.manageConnections'
+    : 'common.retry';
+  const actionIcon = managesConnections ? (
+    <Database className="w-4 h-4" aria-hidden="true" />
+  ) : (
+    <RefreshCw className="w-4 h-4" aria-hidden="true" />
+  );
+  const guidanceKey = managesConnections
+    ? 'error.connectionRecovery.adminGuidance'
+    : retriesQuery
+      ? 'error.connectionRecovery.retryUnavailable'
+      : undefined;
 
   return (
     <div
       role="alert"
+      aria-labelledby={titleId}
+      aria-describedby={bodyId}
       className={`rounded-lg border p-4 flex flex-col gap-3 ${severityStyles[cfg.severity]}`}
       data-testid="connection-error-card"
     >
@@ -112,25 +134,35 @@ export const ConnectionErrorCard: React.FC<ConnectionErrorCardProps> = ({
           {cfg.icon}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold">
+          <h3 id={titleId} className="text-sm font-semibold">
             {t(cfg.titleKey)}
           </h3>
-          <p className="text-sm mt-1 opacity-90">
+          <p id={bodyId} className="text-sm mt-1 opacity-90">
             {t(cfg.bodyKey)}
           </p>
+          {!actionHandler && guidanceKey && (
+            <p className="text-sm mt-2 font-medium">{t(guidanceKey)}</p>
+          )}
         </div>
       </div>
-      {cfg.actionKey && (
+      {actionHandler && (
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={onAction}
+            onClick={actionHandler}
+            disabled={retriesQuery && isRetrying}
+            aria-label={t(actionKey)}
             className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${actionStyles[cfg.severity]}`}
           >
-            {cfg.actionIcon}
-            {t(cfg.actionKey)}
+            {actionIcon}
+            {t(actionKey)}
           </button>
         </div>
+      )}
+      {retriesQuery && isRetrying && (
+        <p role="status" aria-live="polite" className="text-sm font-medium">
+          {t('error.connectionRecovery.retrying')}
+        </p>
       )}
     </div>
   );

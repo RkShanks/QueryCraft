@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUIStore } from '../stores/uiStore';
 import { useSessionDetail } from '../hooks/useSessions';
@@ -59,6 +59,7 @@ interface ConversationTurn {
   sourceSessionId?: string | null;
   immutableConnectionId?: string;
   isRegenerating?: boolean;
+  isConnectionRetrying?: boolean;
   recovery?: TurnRecoveryState;
 }
 
@@ -92,6 +93,16 @@ function isCurrentSessionContext(sessionId: string | null, deletionVersion: numb
   if (useUIStore.getState().activeSessionId !== sessionId) return false;
   return !sessionId ||
     (!isSessionUnavailable(sessionId) && !didSessionDeletionStart(sessionId, deletionVersion));
+}
+
+function isCurrentRetryContext(
+  sessionId: string | null,
+  deletionVersion: number,
+  resultSessionId?: string
+): boolean {
+  if (sessionId) return isCurrentSessionContext(sessionId, deletionVersion);
+  const currentSessionId = useUIStore.getState().activeSessionId;
+  return resultSessionId ? currentSessionId === resultSessionId : currentSessionId === null;
 }
 
 const recoveryMessageKeys: Record<TurnRecoveryKind, string> = {
@@ -221,6 +232,7 @@ function mapEvaluatorRejection(
 
 export const WorkspacePage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const activeSessionId = useUIStore((state) => state.activeSessionId);
   const sessionDetailQuery = useSessionDetail(activeSessionId ?? '');
@@ -242,6 +254,7 @@ export const WorkspacePage: React.FC = () => {
     refetch: refetchQueryLimits,
   } = queryLimitsQuery;
   const canViewHistory = usePermission(PERMISSIONS.QUERY_HISTORY_VIEW);
+  const canManageConnections = usePermission(PERMISSIONS.ADMIN_CONNECTIONS_MANAGE);
 
   const retryQueryLimits = useCallback(() => {
     void refetchQueryLimits();
@@ -320,6 +333,7 @@ export const WorkspacePage: React.FC = () => {
   const pendingSubmitRef = useRef(false);
   const pendingDeleteIdsRef = useRef(new Set<string>());
   const pendingRegenerateIdsRef = useRef(new Set<string>());
+  const pendingConnectionRetryIdsRef = useRef(new Set<string>());
   const conversationRef = useRef<HTMLDivElement>(null);
   const pendingScrollRestoreRef = useRef<{
     sessionId: string;
@@ -621,6 +635,108 @@ export const WorkspacePage: React.FC = () => {
     ]
   );
 
+  const handleManageConnections = useCallback(() => {
+    navigate('/admin/connections');
+  }, [navigate]);
+
+  const handleConnectionRetry = useCallback(
+    async (turnId: string) => {
+      if (pendingConnectionRetryIdsRef.current.has(turnId)) return;
+      const originalTurn = allTurns.find((turn) => turn.id === turnId);
+      if (!originalTurn?.immutableConnectionId || !originalTurn.question) return;
+
+      const sessionId = originalTurn.sourceSessionId ?? null;
+      const deletionVersion = sessionId ? getSessionDeletionVersion(sessionId) : 0;
+      if (!isCurrentRetryContext(sessionId, deletionVersion)) return;
+
+      pendingConnectionRetryIdsRef.current.add(turnId);
+      if (sessionId === null) pendingSubmitRef.current = true;
+      updateTurn(turnId, { isConnectionRetrying: true });
+
+      try {
+        const data = await querySubmit.submitQuestion(
+          originalTurn.question,
+          sessionId,
+          originalTurn.immutableConnectionId
+        );
+        if (!data || typeof data !== 'object' || !('kind' in data)) {
+          if (isCurrentRetryContext(sessionId, deletionVersion)) {
+            updateTurn(turnId, { isConnectionRetrying: false });
+          }
+          return;
+        }
+
+        if (data.kind === 'result') {
+          const result = data as QueryResult;
+          if (!isCurrentRetryContext(sessionId, deletionVersion, result.session_id)) return;
+          updateTurn(turnId, {
+            isConnectionRetrying: false,
+            connectionError: undefined,
+            result,
+            sql: result.generated_sql,
+            attemptId: result.attempt_id,
+            savedQueryId: result.accepted_query_id ?? undefined,
+            refinePrompt: undefined,
+            evaluatorRejection: undefined,
+            sourceSessionId: result.session_id ?? sessionId,
+          });
+          invalidateWorkspaceHistory(result.session_id ?? sessionId);
+        } else if (data.kind === 'refine') {
+          if (!isCurrentRetryContext(sessionId, deletionVersion)) return;
+          updateTurn(turnId, {
+            isConnectionRetrying: false,
+            connectionError: undefined,
+            refinePrompt: data as RefinePrompt,
+          });
+        }
+      } catch (error: unknown) {
+        if (!isCurrentRetryContext(sessionId, deletionVersion)) return;
+        const apiError = error && typeof error === 'object'
+          ? error as Record<string, unknown>
+          : {};
+        const code = getApiErrorCode(error);
+        const messageKey = (apiError.message_key as string | undefined) ??
+          (apiError.detail && typeof apiError.detail === 'object'
+            ? (apiError.detail as Record<string, unknown>).message_key as string | undefined
+            : undefined);
+
+        if (code === 'quota_exceeded' || messageKey === 'error.quota_exceeded') {
+          const detail = apiError.detail && typeof apiError.detail === 'object'
+            ? apiError.detail as Record<string, unknown>
+            : {};
+          updateTurn(turnId, {
+            isConnectionRetrying: false,
+            connectionError: undefined,
+            quotaExceeded: {
+              resetAt: (apiError.reset_at as string | undefined) ??
+                (detail.reset_at as string | undefined),
+            },
+          });
+          return;
+        }
+
+        if (code === 'hostile_input_blocked' || messageKey === 'error.hostile_input_blocked') {
+          updateTurn(turnId, {
+            question: '',
+            isConnectionRetrying: false,
+            connectionError: undefined,
+            hostileInputBlocked: true,
+          });
+          return;
+        }
+
+        const connectionError = mapApiErrorToConnectionErrorKind(apiError);
+        updateTurn(turnId, {
+          isConnectionRetrying: false,
+          connectionError: connectionError ?? originalTurn.connectionError,
+        });
+      } finally {
+        pendingConnectionRetryIdsRef.current.delete(turnId);
+      }
+    },
+    [allTurns, invalidateWorkspaceHistory, querySubmit, updateTurn]
+  );
+
   const handleSubmit = useCallback(
     async (question: string) => {
       if (!selectedConnectionId) {
@@ -833,7 +949,22 @@ export const WorkspacePage: React.FC = () => {
                     <span>{t('query.status.processing')}</span>
                   </div>
                 ) : turn.connectionError ? (
-                  <ConnectionErrorCard kind={turn.connectionError} />
+                  <ConnectionErrorCard
+                    kind={turn.connectionError}
+                    onManageConnections={
+                      canManageConnections ? handleManageConnections : undefined
+                    }
+                    onRetry={
+                      turn.sourceSessionId !== undefined &&
+                      turn.sourceSessionId === activeSessionId &&
+                      (!turn.sourceSessionId || !isSessionUnavailable(turn.sourceSessionId)) &&
+                      turn.immutableConnectionId &&
+                      turn.question
+                        ? () => void handleConnectionRetry(turn.id)
+                        : undefined
+                    }
+                    isRetrying={turn.isConnectionRetrying}
+                  />
                 ) : turn.evaluatorRejection ? (
                   <div className="workspace-rejection-banner w-full" data-testid="rejection-banner">
                     <EvaluatorRejectionBanner {...mapEvaluatorRejection(turn.evaluatorRejection)} />

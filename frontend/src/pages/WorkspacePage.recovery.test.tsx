@@ -428,6 +428,15 @@ describe('Workspace connection recovery', () => {
 
   it('shows guidance instead of a dead action without management permission', async () => {
     server.use(
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json({
+          id: 'd290f1ee-6c54-4b01-90e6-d701748f0851',
+          username: 'analyst',
+          display_name: 'Analyst User',
+          role: 'analyst',
+          permissions: [PERMISSIONS.QUERY_SUBMIT],
+        })
+      ),
       http.post('/api/v1/query/submit', () =>
         HttpResponse.json(errorResponse('connection_no_schema'), { status: 400 })
       )
