@@ -342,7 +342,12 @@ describe('AdminRolesPage', () => {
       target: { value: '25' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
-    act(() => hookOptions.onCreateError({ recovery: 'uncertain' }));
+    act(() =>
+      hookOptions.onCreateError({
+        recovery: 'uncertain',
+        authoritativeStateRefreshed: true,
+      })
+    );
 
     expect(screen.getByRole('alert')).toHaveTextContent('admin.roles.saveUncertain');
     expect(nameInput).toHaveValue('Uncertain Role');
@@ -350,6 +355,33 @@ describe('AdminRolesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.retry' }));
     act(() => hookOptions.onCreateSuccess());
     expect(screen.getByRole('status')).toHaveTextContent('admin.roles.addSuccess');
+  });
+
+  it('does not claim authoritative refresh when reconciliation fails', () => {
+    let hookOptions: any;
+    vi.mocked(useAdminRoles).mockImplementation((options) => {
+      hookOptions = options;
+      return mockEmptyRoles as any;
+    });
+    render(<AdminRolesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'admin.roles.addRole' }));
+    fireEvent.change(screen.getByLabelText('admin.roles.form.name'), {
+      target: { value: 'Unreachable Role' },
+    });
+    fireEvent.change(screen.getByLabelText('admin.roles.form.priority'), {
+      target: { value: '25' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
+    act(() =>
+      hookOptions.onCreateError({
+        recovery: 'uncertain',
+        authoritativeStateRefreshed: false,
+      })
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('admin.roles.saveUncertainNoRefresh');
+    expect(screen.getByRole('alert').textContent).toBe('admin.roles.saveUncertainNoRefresh');
   });
 
   it('allows updating a custom role and calls update mutation', async () => {

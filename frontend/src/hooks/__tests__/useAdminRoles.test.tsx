@@ -235,10 +235,30 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     await waitFor(() => expect(result.current.updateMutation.isError).toBe(true));
     expect(result.current.updateMutation.error).toMatchObject({
       recovery: 'uncertain',
+      authoritativeStateRefreshed: true,
       authoritativeRole: {
         name: 'Original Analyst',
         group_mappings: [{ sso_group_value: 'sso-old' }],
       },
+    });
+  });
+
+  it('does not claim refresh when reconciliation also loses its response', async () => {
+    server.use(
+      http.put('*/admin/roles/:id', () => HttpResponse.error()),
+      http.get('*/admin/roles/:id', () => HttpResponse.error())
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    result.current.updateMutation.mutate({
+      id: 'role-unreachable-id',
+      data: roleDraft({ name: 'Unknown Analyst', groupMappings: ['sso-unknown'] }),
+    });
+
+    await waitFor(() => expect(result.current.updateMutation.isError).toBe(true));
+    expect(result.current.updateMutation.error).toMatchObject({
+      recovery: 'uncertain',
+      authoritativeStateRefreshed: false,
     });
   });
 
