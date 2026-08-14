@@ -323,6 +323,30 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     expect(roleReads).toBeGreaterThanOrEqual(2);
     expect(result.current.createMutation.error).toMatchObject({ recovery: 'uncertain' });
   });
+
+  it('does not mistake an older role missing from stale cache for a committed create', async () => {
+    let listReads = 0;
+    const existingRole = roleDetail({ name: 'Existing Analyst', groupMappings: ['sso-existing'] });
+    server.use(
+      http.get('*/admin/roles', () => {
+        listReads += 1;
+        return HttpResponse.json({ roles: listReads === 1 ? [] : [existingRole] });
+      }),
+      http.get('*/admin/sso/group-mappings', () => HttpResponse.json({ mappings: [] })),
+      http.post('*/admin/roles', () => HttpResponse.error()),
+      http.get('*/admin/roles/:id', () => HttpResponse.json(existingRole))
+    );
+
+    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    await waitFor(() => expect(result.current.listQuery.isSuccess).toBe(true));
+    result.current.createMutation.mutate(
+      roleDraft({ name: existingRole.name, groupMappings: ['sso-existing'] })
+    );
+
+    await waitFor(() => expect(result.current.createMutation.isError).toBe(true));
+    expect(listReads).toBeGreaterThanOrEqual(3);
+    expect(result.current.createMutation.error).toMatchObject({ recovery: 'uncertain' });
+  });
 });
 
 function roleDraft({ name, groupMappings }: { name: string; groupMappings: string[] }) {
