@@ -1,0 +1,183 @@
+{
+  "chunk": "CHUNK-17",
+  "gap_ids": ["IS-GAP-042", "IS-GAP-033"],
+  "status": "implementation_and_local_verification_passed_pr_and_ci_pending",
+  "branch": "phase-6/wave-19.17-client-contract-harness",
+  "starting_main": "f41e8c721450adb8fd50201de6218381289f531f",
+  "tested_product_commit": "30621830633e5131960d41e0e6e46c05b1f8e1e4",
+  "pull_request": null,
+  "authoritative_ci": null,
+  "api_contract": {
+    "new_product_endpoint": false,
+    "runtime_operations": 64,
+    "canonical_operations": 64,
+    "generated_operations": 64,
+    "paths": 48,
+    "canonical_generation_check": true,
+    "generated_client_check": true
+  },
+  "operation_manifest": {
+    "total": 64,
+    "consumed_json": 41,
+    "no_body": 8,
+    "browser_redirect": 4,
+    "blob_download": 1,
+    "generated_intentionally_unused": 10
+  },
+  "validation": {
+    "source": "canonical_openapi_generated_schemas",
+    "ajv_version": "8.17.1",
+    "ajv_formats_version": "3.0.1",
+    "constant_error_code": "client_contract_invalid_response",
+    "unknown_fields_stripped": true,
+    "malformed_payload_attached_to_error": false,
+    "ordinary_errors_sanitized": true,
+    "before_query_or_component_state": true,
+    "families": [
+      "query",
+      "sessions",
+      "history",
+      "user_connections",
+      "admin_connections_and_schema",
+      "authentication",
+      "sso_and_group_mappings",
+      "roles_and_policies",
+      "audit",
+      "quotas",
+      "detection",
+      "settings",
+      "query_limits"
+    ],
+    "semantic_refinements": [
+      "timestamps",
+      "enums",
+      "nonnegative_counters",
+      "row_column_dimensions",
+      "pagination_metadata",
+      "nonempty_optional_cursors",
+      "query_response_unions",
+      "detection_threshold_order",
+      "audit_retention"
+    ]
+  },
+  "state_fault_matrix": {
+    "initial_loading_no_prior_data": "covered",
+    "valid_empty": "covered",
+    "valid_partial_paginated": "covered",
+    "background_refresh_with_prior_data": "covered",
+    "malformed_initial_localized_retry": "covered_en_ar",
+    "malformed_background_preserves_prior_data": "covered",
+    "ordinary_sanitized_api_error": "covered",
+    "explicit_accessible_retry": "covered",
+    "late_response_suppression": "covered",
+    "malformed_absent_from_dom_accessibility_cache_storage_console": "covered"
+  },
+  "harness": {
+    "classified_specs": 28,
+    "classification_counts": {
+      "mocked": 24,
+      "live": 1,
+      "deterministic_provider": 1,
+      "setup_dependent": 2,
+      "deferred_placeholder": 0
+    },
+    "classified_mock_helpers": 1,
+    "intentional_skips": 2,
+    "skip_reasons_and_superseding_evidence_complete": true,
+    "tracked_browser_output_guard": true,
+    "stale_permission_guard": true,
+    "unclassified_mock_skip_guard": true,
+    "function_existence_assertion_guard": true,
+    "generated_typed_msw_fixtures": true,
+    "i18n_named_state_before_reload": true
+  },
+  "browser": {
+    "mocked_chromium": {
+      "passed": 3,
+      "failed": 0,
+      "seconds": 4.5,
+      "locales": ["en", "ar"],
+      "states": [
+        "malformed_initial_and_retry",
+        "valid_then_malformed_background",
+        "valid_empty",
+        "valid_partial_paginated",
+        "background_refresh",
+        "stale_response_suppression",
+        "payload_leakage_inspection"
+      ]
+    },
+    "live_chromium": {
+      "passed": 1,
+      "failed": 0,
+      "seconds": 2.3,
+      "endpoint": "GET /api/v1/auth/sso/providers",
+      "real_api": true
+    },
+    "broad_visual_sweep": false,
+    "source_query_or_paid_llm": false
+  },
+  "tdd": {
+    "red_commits": [
+      "d7f84ad25d68016ea4a317f4bf2e8fcbd37b65a7",
+      "bde094ce5000337545c9a23a8e6c52e74ef4a8de",
+      "de5dc54a907a533241ff557bd91d4584b781043a",
+      "6102791bc39f7f65360fdab7b97ae0d3e6abb600",
+      "bce7dc567472ba334229b4310f94e27d9f877546",
+      "93b2debfdf5a1e6b951e751bcb2462734d75330a",
+      "b8ed08833123920891a827556740624c79d086e8",
+      "d98870bcfd44a0ee65a1f74e5c85a03056221fa1"
+    ],
+    "green_commits": [
+      "fce50ef1a7ac89e510b692c71866d84f38b8ef3c",
+      "858c01049197e1786e9d78c84faafb569c3e4e56",
+      "d931083e61b847d71e52bf7915fbd7bca62e15e4",
+      "69cc253fe5bb35ac6c75f3ec1b9428320b72a5a8",
+      "241ce9568912954e057312ed9c6b4fb526310626",
+      "2bade7e1ea3916389840aa5c8ccb39a7b741d4b8"
+    ],
+    "gate_corrections": [
+      "1a3415a09277a40d5c3b335ab79839d0b71c1a92",
+      "30621830633e5131960d41e0e6e46c05b1f8e1e4"
+    ],
+    "refactor_commit": null,
+    "refactor_warranted": false
+  },
+  "gates": {
+    "canonical_openapi_tests": {"passed": 21, "failed": 0, "seconds": 2.78},
+    "focused_frontend_after_build_corrections": {"passed": 52, "failed": 0},
+    "full_vitest": {"files": 76, "passed": 1086, "failed": 0, "seconds": 12.75},
+    "eslint": true,
+    "typecheck": true,
+    "production_build": true,
+    "css_lint": true,
+    "canonical_generation_check": true,
+    "frontend_generation_check": true,
+    "harness_guard": true,
+    "git_diff_check": true,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "vercel_react_best_practices": true,
+    "docs_guard": true
+  },
+  "cleanup": {
+    "temporary_api_stopped": true,
+    "temporary_browser_outputs_removed": true,
+    "protected_baseline": {
+      "modified_tracked_pngs": 14,
+      "historical_untracked_screenshots": 7,
+      "untracked_trace_archives": 2,
+      "unchanged": true,
+      "staged": false
+    }
+  },
+  "ledger_status_totals_after_chunk": {
+    "total": 47,
+    "resolved": 21,
+    "resolved_on_tested_branch": 3,
+    "pending": 20,
+    "needs_decision": 3
+  },
+  "chunk_18_unblocked": false,
+  "chunk_18_gate": "CHUNK-17 squash merge, branch deletion, and synchronized main"
+}
