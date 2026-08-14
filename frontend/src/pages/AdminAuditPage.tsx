@@ -569,7 +569,7 @@ export const AdminAuditPage: React.FC = () => {
                   isPartial={Boolean(
                     searchData &&
                       searchData.pagination.page * searchData.pagination.page_size <
-                        searchData.pagination.total
+                        searchData.pagination.total_entries
                   )}
                 />
               </div>
