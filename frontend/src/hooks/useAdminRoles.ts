@@ -173,10 +173,39 @@ function roleMatchesUpdate(role: Role, data: RoleUpdateData): boolean {
   return true;
 }
 
+function roleCouldBeCreatedCandidate(role: Role, data: RoleCreateData): boolean {
+  return (
+    role.name === data.name &&
+    role.description === (data.description ?? null) &&
+    role.priority === data.priority &&
+    sameValue(role.permissions, data.permissions) &&
+    sameValue(
+      role.group_mappings.map((mapping) => mapping.sso_group_value),
+      data.group_mappings
+    )
+  );
+}
+
+function roleMatchesCreate(role: Role, data: RoleCreateData): boolean {
+  return roleMatchesUpdate(role, {
+    ...data,
+    connection_policies: data.connection_policies ?? [],
+  });
+}
+
 async function fetchAuthoritativeRole(roleId: string): Promise<Role | undefined> {
   try {
     const response = await getRole({ path: { role_id: roleId }, throwOnError: true });
     return normalizeRole(response.data);
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchAuthoritativeRoles(): Promise<Role[] | undefined> {
+  try {
+    const response = await listRoles({ throwOnError: true });
+    return response.data.roles.map(normalizeRole);
   } catch {
     return undefined;
   }
@@ -208,20 +237,51 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   const createMutation = useMutation({
     mutationFn: async (data: RoleCreateData) => {
       requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
-      const response = await createRole({
-        body: {
-          name: data.name,
-          description: data.description,
-          priority: data.priority,
-          permissions: data.permissions,
-          group_mappings: data.group_mappings,
-          connection_policies: data.connection_policies || [],
-        },
-        throwOnError: true,
-      });
-      return normalizeRole(response.data);
+      const cachedRoles = queryClient.getQueryData<{ roles: Role[] }>(['adminRoles']);
+      const priorRoleIds = cachedRoles
+        ? new Set(cachedRoles.roles.map((role) => role.id))
+        : undefined;
+      try {
+        const response = await createRole({
+          body: {
+            name: data.name,
+            description: data.description,
+            priority: data.priority,
+            permissions: data.permissions,
+            group_mappings: data.group_mappings,
+            connection_policies: data.connection_policies || [],
+          },
+          throwOnError: true,
+        });
+        return normalizeRole(response.data);
+      } catch (error) {
+        const authoritativeRoles = await fetchAuthoritativeRoles();
+        if (authoritativeRoles) {
+          queryClient.setQueryData(['adminRoles'], { roles: authoritativeRoles });
+        }
+        if (isAmbiguousNetworkFailure(error) && authoritativeRoles && priorRoleIds) {
+          const candidates = authoritativeRoles.filter(
+            (role) =>
+              !priorRoleIds.has(role.id) && roleCouldBeCreatedCandidate(role, data)
+          );
+          const candidateDetails = await Promise.all(
+            candidates.map((role) => fetchAuthoritativeRole(role.id))
+          );
+          const committedRoles = candidateDetails.filter(
+            (role): role is Role => !!role && roleMatchesCreate(role, data)
+          );
+          if (committedRoles.length === 1) {
+            return committedRoles[0];
+          }
+        }
+        throw new RoleSaveError(
+          isAmbiguousNetworkFailure(error) ? 'uncertain' : 'rejected',
+          error
+        );
+      }
     },
     onSuccess: (data) => {
+      queryClient.setQueryData(['adminRole', data.id], data);
       queryClient.invalidateQueries({ queryKey: ['adminRoles'] });
       queryClient.invalidateQueries({ queryKey: ['adminGroupMappings'] });
       options?.onCreateSuccess?.(data);
