@@ -1,6 +1,6 @@
 # CHUNK-16 / IS-GAP-036 — atomic role and mapping recovery
 
-Status: implementation and local verification passed on `phase-6/wave-19.16-role-mapping-transaction`; [PR #314](https://github.com/RkShanks/QueryCraft/pull/314) is open, and authoritative CI plus squash merge are pending. Tested product commit: `bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2`. Starting main: `c92255de4e0be0fde59b3f0bf3045b7115de7354`, the squash merge of [PR #313](https://github.com/RkShanks/QueryCraft/pull/313).
+Status: implementation, local verification, and authoritative CI passed on `phase-6/wave-19.16-role-mapping-transaction`; [PR #314](https://github.com/RkShanks/QueryCraft/pull/314) is open and squash merge is pending. Tested product commit: `bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2`. Authoritative backend/frontend CI passed on `d14831e1016441d07d6736a3132e9309f78716d2` in run `31766725883`. Starting main: `c92255de4e0be0fde59b3f0bf3045b7115de7354`, the squash merge of [PR #313](https://github.com/RkShanks/QueryCraft/pull/313).
 
 ## Outcome
 
@@ -97,6 +97,7 @@ Across eight logical Save attempts, Chromium observed exactly eight role writes:
 | Full Vitest | 1,074 passed across 74 files in 12.07s |
 | ESLint / typecheck / production build / CSS lint | Passed |
 | Isolated Chromium | 3 passed in 12.2s |
+| Authoritative GitHub CI | `backend-test` and `frontend-test` passed in run `31766725883` on `d14831e1016441d07d6736a3132e9309f78716d2` |
 | `git diff --check` | Passed |
 | Test Guard / Clean Code Guard / Vercel React guidance / Docs Guard | Passed |
 
@@ -106,4 +107,4 @@ The production build emitted only the repository's existing large-chunk warning.
 
 Disposable PostgreSQL roles, mappings, policies, audit rows, trigger and function were removed in test `finally` blocks. `/tmp` Playwright reports, videos and screenshots were removed. The protected baseline remains exactly 14 modified tracked PNGs, seven historical untracked screenshots and two trace archives; none was staged, regenerated, reverted or deleted.
 
-CHUNK-17 remains blocked until this focused PR passes authoritative `backend-test` and `frontend-test`, is squash-merged, its branch is deleted and local main is synchronized.
+CHUNK-17 remains blocked until this focused PR is squash-merged, its branch is deleted and local main is synchronized.
