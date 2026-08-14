@@ -141,6 +141,21 @@ describe('Workspace result deletion recovery', () => {
     expect(screen.queryByRole('alert', { name: /delete/i })).not.toBeInTheDocument();
   });
 
+  it('treats a structured not-found delete response as an already committed delete', async () => {
+    mockStoredSession();
+    server.use(
+      http.delete('/api/v1/history/:queryId', () =>
+        HttpResponse.json(errorResponse('not_found'), { status: 404 })
+      )
+    );
+    renderWithClient(<WorkspacePage />);
+
+    fireEvent.click(await screen.findByTestId('action-delete-result'));
+
+    await waitFor(() => expect(screen.queryByText('Stored question')).not.toBeInTheDocument());
+    expect(screen.queryByRole('alert', { name: /delete/i })).not.toBeInTheDocument();
+  });
+
   it('restores an ambiguously uncommitted delete from authoritative presence', async () => {
     mockStoredSession();
     server.use(
@@ -286,6 +301,7 @@ describe('Workspace regenerate recovery', () => {
     const regenerateButton = screen.getByTestId('action-regenerate');
 
     fireEvent.click(regenerateButton);
+    expect(regenerateButton).toBeDisabled();
     fireEvent.click(regenerateButton);
 
     expect(screen.getByTestId('assistant-response-card')).toHaveTextContent('SELECT 7 AS original_value');

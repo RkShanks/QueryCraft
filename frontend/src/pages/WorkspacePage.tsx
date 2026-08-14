@@ -128,7 +128,7 @@ const TurnRecoveryNotice: React.FC<{
     >
       <span>{message}</span>
       {onRetry && (
-        <button type="button" onClick={onRetry}>
+        <button className="workspace-recovery-button" type="button" onClick={onRetry}>
           {t('common.retry')}
         </button>
       )}
@@ -369,8 +369,14 @@ export const WorkspacePage: React.FC = () => {
       ),
     [localTurns, deletedSavedIds]
   );
-  const historyAttempts = (sessionDetail?.attempts ?? []).filter(
-    (a) => !deletedSavedIds.has(a.id) && !localSavedIdsWithActiveAttempt.has(a.id)
+  const historyAttempts = React.useMemo(
+    () =>
+      (sessionDetail?.attempts ?? []).filter(
+        (attempt) =>
+          !deletedSavedIds.has(attempt.id) &&
+          !localSavedIdsWithActiveAttempt.has(attempt.id)
+      ),
+    [deletedSavedIds, localSavedIdsWithActiveAttempt, sessionDetail?.attempts]
   );
   const historyAttemptIds = React.useMemo(() => new Set(historyAttempts.map((a) => a.id)), [historyAttempts]);
   const dedupedLocalTurns = React.useMemo(
@@ -383,15 +389,21 @@ export const WorkspacePage: React.FC = () => {
     [localTurns, historyAttemptIds, deletedSavedIds]
   );
 
-  const allTurns: ConversationTurn[] = [
-    ...[...historyAttempts].reverse().map((a) => buildHistoryTurn(a, availableConnections)),
-    ...dedupedLocalTurns,
-  ].map((turn) => {
-    const recovery = turn.savedQueryId
-      ? savedTurnRecoveries[turn.savedQueryId]
-      : undefined;
-    return recovery ? { ...turn, recovery } : turn;
-  });
+  const allTurns = React.useMemo<ConversationTurn[]>(
+    () =>
+      [
+        ...[...historyAttempts]
+          .reverse()
+          .map((attempt) => buildHistoryTurn(attempt, availableConnections)),
+        ...dedupedLocalTurns,
+      ].map((turn) => {
+        const recovery = turn.savedQueryId
+          ? savedTurnRecoveries[turn.savedQueryId]
+          : undefined;
+        return recovery ? { ...turn, recovery } : turn;
+      }),
+    [availableConnections, dedupedLocalTurns, historyAttempts, savedTurnRecoveries]
+  );
 
   const showEmptyState = activeSessionId === null && allTurns.length === 0;
   const showLoading = isLoading && allTurns.length === 0 && !querySubmit.isSubmitting;
@@ -522,6 +534,10 @@ export const WorkspacePage: React.FC = () => {
         invalidateWorkspaceHistory(sessionId);
       } catch (error: unknown) {
         if (!isCurrentSessionContext(sessionId, deletionVersion)) return;
+        if (getApiErrorCode(error) === 'not_found') {
+          invalidateWorkspaceHistory(sessionId);
+          return;
+        }
         if (isDefiniteServerFailure(error)) {
           restoreDeletedTurn(snapshot, 'deleteFailed');
           return;
@@ -668,7 +684,9 @@ export const WorkspacePage: React.FC = () => {
 
         if (data.kind === 'result') {
           const result = data as QueryResult;
-          if (!isCurrentRetryContext(sessionId, deletionVersion, result.session_id)) return;
+          if (!isCurrentRetryContext(sessionId, deletionVersion, result.session_id ?? undefined)) {
+            return;
+          }
           updateTurn(turnId, {
             isConnectionRetrying: false,
             connectionError: undefined,
@@ -990,6 +1008,7 @@ export const WorkspacePage: React.FC = () => {
                     connectionName={turn.connectionName}
                     databaseType={turn.databaseType}
                     onRegenerate={turn.attemptId ? handleRegenerate : undefined}
+                    isRegenerating={turn.isRegenerating}
                     onDelete={turn.savedQueryId && canViewHistory ? handleDelete : undefined}
                   />
                 )}

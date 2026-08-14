@@ -19,7 +19,17 @@
   transition: background-color 0.15s, color 0.15s;
 }
 
-.action-btn:hover {
+.action-btn:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid var(--color-neon-cyan);
+  outline-offset: 2px;
+}
+
+.action-btn:hover:not(:disabled) {
   background-color: var(--color-obsidian-700);
   color: var(--color-obsidian-200);
 }

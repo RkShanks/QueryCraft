@@ -153,29 +153,29 @@
   border: 1px solid var(--color-error-800, #991b1b);
 }
 
-.workspace-recovery-notice button {
+.workspace-recovery-button {
   flex: none;
   min-height: 2.5rem;
   padding-inline: 1rem;
   color: inherit;
   background: transparent;
-  border: 1px solid currentColor;
+  border: 1px solid currentcolor;
   border-radius: 0.5rem;
   cursor: pointer;
 }
 
-.workspace-recovery-notice button:focus-visible {
+.workspace-recovery-button:focus-visible {
   outline: 2px solid var(--color-neon-cyan);
   outline-offset: 2px;
 }
 
-@media (max-width: 30rem) {
+@media (width <= 30rem) {
   .workspace-recovery-notice {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .workspace-recovery-notice button {
+  .workspace-recovery-button {
     width: 100%;
   }
 }

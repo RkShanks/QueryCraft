@@ -76,11 +76,6 @@
   transition: border-color 150ms ease, background-color 150ms ease;
 }
 
-.result-table-pagination-button:hover:not(:disabled) {
-  border-color: var(--color-violet-500);
-  background: var(--color-obsidian-700);
-}
-
 .result-table-pagination-button:focus-visible {
   outline: 2px solid var(--color-violet-400);
   outline-offset: 2px;
@@ -89,6 +84,11 @@
 .result-table-pagination-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.result-table-pagination-button:hover:not(:disabled) {
+  border-color: var(--color-violet-500);
+  background: var(--color-obsidian-700);
 }
 
 .result-table-pagination-icon {
@@ -100,7 +100,7 @@
   transform: rotate(180deg);
 }
 
-@media (max-width: 30rem) {
+@media (width <= 30rem) {
   .result-table-pagination {
     align-items: flex-start;
     flex-direction: column;
