@@ -7,8 +7,11 @@ import { server } from '../../test/server';
 import { http, HttpResponse } from 'msw';
 import { seedAuthenticatedUser } from '../../test/utils';
 
+let activeQueryClient: QueryClient;
+
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  activeQueryClient = qc;
   seedAuthenticatedUser(qc);
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
@@ -186,6 +189,9 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     );
 
     const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    activeQueryClient.setQueryData(['adminRoles'], {
+      roles: [{ ...authoritativeRole, name: 'Stale list role' }],
+    });
     result.current.updateMutation.mutate({
       id: authoritativeRole.id,
       data: roleDraft({ name: 'Rejected Analyst', groupMappings: ['sso-new'] }),
@@ -196,6 +202,12 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     expect(result.current.updateMutation.error).toMatchObject({
       recovery: 'rejected',
       authoritativeRole: { name: 'Original Analyst' },
+    });
+    expect(activeQueryClient.getQueryData(['adminRole', authoritativeRole.id])).toMatchObject({
+      name: 'Original Analyst',
+    });
+    expect(activeQueryClient.getQueryData<{ roles: any[] }>(['adminRoles'])?.roles[0]).toMatchObject({
+      name: 'Original Analyst',
     });
   });
 
