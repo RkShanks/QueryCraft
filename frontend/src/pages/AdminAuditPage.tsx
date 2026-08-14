@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminAudit } from '../hooks/useAdminAudit';
 import { Shield, CheckCircle2, XCircle, AlertTriangle, X, RefreshCw, Download } from 'lucide-react';
@@ -169,7 +169,11 @@ export const AdminAuditPage: React.FC = () => {
     queryFn: ({ signal }) => getAuditRetention(signal),
     enabled: canVerifyAudit,
   });
-  const searchData = searchQuery.data;
+  const lastValidSearchData = useRef(searchQuery.data);
+  if (!searchQuery.isError && searchQuery.data !== undefined) {
+    lastValidSearchData.current = searchQuery.data;
+  }
+  const searchData = searchQuery.data ?? lastValidSearchData.current;
   const retentionData = retentionQuery.data;
 
   const handleVerify = () => {
@@ -566,6 +570,7 @@ export const AdminAuditPage: React.FC = () => {
                 <ClientQueryState
                   query={searchQuery}
                   fallbackErrorKey="admin.audit.loadError"
+                  hasData={searchData !== undefined}
                   isPartial={Boolean(
                     searchData &&
                       searchData.pagination.page * searchData.pagination.page_size <
