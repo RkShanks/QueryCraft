@@ -8,8 +8,8 @@ import { server } from '../../test/server';
 import { useUIStore } from '../../stores/uiStore';
 import type {
   QueryResult,
+  SessionConnectionResponse,
   SessionDetail,
-  SessionSummary,
   UserConnectionListResponse,
 } from '../../api/generated/types.gen';
 
@@ -118,7 +118,7 @@ describe('WorkspacePage mid-session DB switch (T-464)', () => {
           preview_text: 'Session detail',
           created_at: new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
-        } satisfies SessionSummary);
+        } satisfies SessionConnectionResponse);
       }),
       http.post('/api/v1/query/submit', async () => {
         await delay(10);

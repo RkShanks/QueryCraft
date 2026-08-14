@@ -174,6 +174,7 @@ export const AdminAuditPage: React.FC = () => {
     enabled: canVerifyAudit,
   });
   const searchData = searchQuery.data ?? retainedSearchData;
+  const searchPagination = searchData?.pagination;
   const retentionData = retentionQuery.data;
 
   const handleVerify = () => {
@@ -670,12 +671,12 @@ export const AdminAuditPage: React.FC = () => {
               </table>}
 
               {/* Pagination Controls */}
-              {searchData.pagination.total_pages > 1 && (
+              {searchPagination && searchPagination.total_pages > 1 && (
                 <div className="flex flex-col gap-3 px-4 py-3 border-t border-gray-800 bg-gray-900/20 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-gray-400 text-xs">
                     {t('audit.search.page_info', {
-                      page: searchData.pagination.page,
-                      totalPages: searchData.pagination.total_pages,
+                      page: searchPagination.page,
+                      totalPages: searchPagination.total_pages,
                     })}
                   </div>
                   <div className="flex gap-2">
@@ -693,10 +694,10 @@ export const AdminAuditPage: React.FC = () => {
                       onClick={() => {
                         setRetainedSearchData(searchData);
                         setPage((prev) =>
-                          Math.min(searchData.pagination.total_pages, prev + 1)
+                          Math.min(searchPagination.total_pages, prev + 1)
                         );
                       }}
-                      disabled={page === searchData.pagination.total_pages}
+                      disabled={page === searchPagination.total_pages}
                       className="px-3 py-1.5 border border-gray-800 text-gray-300 rounded hover:bg-gray-800 transition-colors text-xs font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('audit.search.next_page')}

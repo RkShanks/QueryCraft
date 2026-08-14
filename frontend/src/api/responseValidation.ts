@@ -39,7 +39,7 @@ export function isClientContractError(error: unknown): error is ClientContractEr
 type ManifestOperation = (typeof responseOperationManifest)[number];
 type JsonRecord = Record<string, unknown>;
 
-const manifestById = new Map(
+const manifestById: ReadonlyMap<string, ManifestOperation> = new Map(
   responseOperationManifest.map((operation) => [operation.operationId, operation])
 );
 const compiledValidators = new Map<string, ValidateFunction>();
