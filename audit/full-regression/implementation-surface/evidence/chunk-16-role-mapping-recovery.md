@@ -1,6 +1,6 @@
 # CHUNK-16 / IS-GAP-036 — atomic role and mapping recovery
 
-Status: implementation and local verification passed on `phase-6/wave-19.16-role-mapping-transaction`; focused PR, authoritative CI and squash merge are pending. Tested product commit: `bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2`. Starting main: `c92255de4e0be0fde59b3f0bf3045b7115de7354`, the squash merge of [PR #313](https://github.com/RkShanks/QueryCraft/pull/313).
+Status: implementation and local verification passed on `phase-6/wave-19.16-role-mapping-transaction`; [PR #314](https://github.com/RkShanks/QueryCraft/pull/314) is open, and authoritative CI plus squash merge are pending. Tested product commit: `bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2`. Starting main: `c92255de4e0be0fde59b3f0bf3045b7115de7354`, the squash merge of [PR #313](https://github.com/RkShanks/QueryCraft/pull/313).
 
 ## Outcome
 

@@ -162,7 +162,8 @@
     },
     "CHUNK-16": {
       "gap_id": "IS-GAP-036",
-      "status": "Resolved on tested branch; local verification passed; PR and CI pending",
+      "status": "Resolved on tested branch; local verification passed; CI and merge pending",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/314",
       "tested_product_commit": "bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2",
       "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-16-role-mapping-recovery.json"
@@ -778,7 +779,7 @@
       "isolation": "Disposable role, mappings and user.",
       "regression_rows": ["P5-FR-123", "P5-FR-125", "P5-FR-140"],
       "owner": "Frontend Implementer, with Backend Implementer if atomic API chosen; Gemini/Kimi", "chunk": "CHUNK-16", "status": "Resolved on tested branch",
-      "resolution": {"tested_product_commit": "bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-16-role-mapping-recovery.json", "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"}},
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/314", "tested_product_commit": "bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-16-role-mapping-recovery.json", "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"}},
       "source_refs": ["backend/src/app/api/v1/admin_roles.py::create_role", "backend/src/app/api/v1/admin_roles.py::update_role", "backend/src/app/repositories/role_repository.py::RoleRepository", "backend/tests/integration/test_role_mapping_transaction.py", "frontend/src/hooks/useAdminRoles.ts::createMutation", "frontend/src/hooks/useAdminRoles.ts::updateMutation", "frontend/src/pages/AdminRolesPage.tsx::handleSave", "frontend/src/hooks/__tests__/useAdminRoles.test.tsx", "frontend/tests/e2e/chunk_16_role_mapping_transaction.spec.ts"]
     },
     {

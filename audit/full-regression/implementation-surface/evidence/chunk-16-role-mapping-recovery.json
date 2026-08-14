@@ -5,7 +5,7 @@
   "branch": "phase-6/wave-19.16-role-mapping-transaction",
   "starting_main": "c92255de4e0be0fde59b3f0bf3045b7115de7354",
   "tested_product_commit": "bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2",
-  "pull_request": null,
+  "pull_request": "https://github.com/RkShanks/QueryCraft/pull/314",
   "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"},
   "api_contract": {
     "new_endpoint": false,
