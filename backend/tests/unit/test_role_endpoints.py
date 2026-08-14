@@ -197,6 +197,18 @@ class TestRoleSchemaValidation:
         with pytest.raises(ValueError):
             RoleUpdate(name="\x00")
 
+    @pytest.mark.parametrize(
+        "request_body",
+        [
+            lambda: RoleCreate(name="Analyst", priority=10, group_mappings=["same", "same"]),
+            lambda: RoleUpdate(group_mappings=["same", "same"]),
+        ],
+        ids=["create", "update"],
+    )
+    def test_duplicate_group_mappings_in_one_request_rejected(self, request_body):
+        with pytest.raises(ValueError):
+            request_body()
+
 
 # ── GET /admin/roles ───────────────────────────────────────────────────────
 

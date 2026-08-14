@@ -245,3 +245,47 @@ async def test_mapping_conflict_rolls_back_complete_role_update(
                 text("DELETE FROM roles WHERE name IN (:target_name, :conflict_name)"),
                 {"target_name": target_name, "conflict_name": conflict_name},
             )
+
+
+@pytest.mark.integration
+async def test_duplicate_groups_return_sanitized_422_without_mutation(
+    authenticated_client,
+    async_engine_fixture,
+) -> None:
+    case_token = uuid4().hex
+    requested_name = f"chunk16-duplicate-{case_token}"
+    duplicate_group = f"chunk16-duplicate-group-{case_token}"
+    requested_priority = 1_500_000_000 + int(case_token[:7], 16)
+
+    try:
+        audit_count_before = await _role_mutation_audit_count(async_engine_fixture)
+        response = await authenticated_client.post(
+            "/api/v1/admin/roles",
+            json={
+                "name": requested_name,
+                "priority": requested_priority,
+                "permissions": [],
+                "group_mappings": [duplicate_group, duplicate_group],
+                "connection_policies": [],
+            },
+        )
+
+        assert response.status_code == 422
+        assert response.json()["error"] == "validation"
+        assert response.json()["message_key"] == "error.validation.generic"
+        assert duplicate_group not in response.text
+        async with async_engine_fixture.connect() as connection:
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM roles WHERE name = :name"),
+                    {"name": requested_name},
+                )
+                == 0
+            )
+        assert await _role_mutation_audit_count(async_engine_fixture) == audit_count_before
+    finally:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(
+                text("DELETE FROM roles WHERE name = :name"),
+                {"name": requested_name},
+            )
