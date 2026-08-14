@@ -541,6 +541,7 @@ describe('AdminAuditPage', () => {
       render(<AdminAuditPage />, { wrapper: createWrapper() });
 
       await screen.findByText('Page 1 of 3');
+      expect(screen.getByRole('status')).toHaveTextContent('More results are available.');
 
       const prevBtn = screen.getByRole('button', { name: 'Previous' });
       const nextBtn = screen.getByRole('button', { name: 'Next' });
