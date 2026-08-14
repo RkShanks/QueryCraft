@@ -8,9 +8,11 @@ import {
   exportAuditEntries,
   getAuditRetention,
   type AuditExportRequest,
+  type AuditSearchResponse,
 } from '../api/audit';
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from '../hooks/usePermission';
+import { ClientQueryState } from '../components/common/ClientQueryState';
 
 interface Toast {
   id: string;
@@ -53,6 +55,7 @@ export const AdminAuditPage: React.FC = () => {
   const [outcome, setOutcome] = useState('all');
   const [resourceType, setResourceType] = useState('');
   const [page, setPage] = useState(1);
+  const [retainedSearchData, setRetainedSearchData] = useState<AuditSearchResponse>();
 
   const [filters, setFilters] = useState({
     start_date: '',
@@ -87,11 +90,13 @@ export const AdminAuditPage: React.FC = () => {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setRetainedSearchData(searchQuery.data ?? retainedSearchData);
     setPage(1);
     setFilters(buildFiltersFromInputs());
   };
 
   const handleReset = () => {
+    setRetainedSearchData(searchQuery.data ?? retainedSearchData);
     setStartDate('');
     setEndDate('');
     setActionType('');
@@ -156,18 +161,21 @@ export const AdminAuditPage: React.FC = () => {
   if (filters.outcome) searchParams.outcome = filters.outcome;
   if (filters.resource_type) searchParams.resource_type = filters.resource_type;
 
-  const { data: searchData, isLoading: isSearchLoading, isError: isSearchError } = useQuery({
+  const searchQuery = useQuery({
     queryKey: ['adminAuditEntries', searchParams],
-    queryFn: () => searchAuditEntries(searchParams),
+    queryFn: ({ signal }) => searchAuditEntries(searchParams, signal),
     placeholderData: (previousData) => previousData,
     enabled: canVerifyAudit,
   });
 
-  const { data: retentionData, isLoading: isRetentionLoading, isError: isRetentionError } = useQuery({
+  const retentionQuery = useQuery({
     queryKey: ['adminAuditRetention'],
-    queryFn: getAuditRetention,
+    queryFn: ({ signal }) => getAuditRetention(signal),
     enabled: canVerifyAudit,
   });
+  const searchData = searchQuery.data ?? retainedSearchData;
+  const searchPagination = searchData?.pagination;
+  const retentionData = retentionQuery.data;
 
   const handleVerify = () => {
     verifyMutation.mutate(undefined, {
@@ -193,21 +201,9 @@ export const AdminAuditPage: React.FC = () => {
       );
     }
 
-    if (statusQuery.isError) {
+    if (statusQuery.isError && statusQuery.data === undefined) {
       return (
-        <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 flex items-start gap-3">
-          <AlertTriangle className="w-6 h-6 shrink-0 mt-0.5" />
-          <div className="space-y-2">
-            <h3 className="font-semibold text-white">{t('admin.audit.loadError')}</h3>
-            <button
-              onClick={() => statusQuery.refetch()}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gray-800 text-white rounded-md hover:bg-gray-700 transition-colors text-sm font-medium cursor-pointer"
-            >
-              <RefreshCw className="w-4 h-4" />
-              {t('query.timeout.cta')}
-            </button>
-          </div>
-        </div>
+        <ClientQueryState query={statusQuery} fallbackErrorKey="admin.audit.loadError" />
       );
     }
 
@@ -218,6 +214,7 @@ export const AdminAuditPage: React.FC = () => {
 
     return (
       <div className="space-y-6">
+        <ClientQueryState query={statusQuery} fallbackErrorKey="admin.audit.loadError" />
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Total Log Entries Card */}
@@ -285,7 +282,7 @@ export const AdminAuditPage: React.FC = () => {
           {/* Retention Status Card */}
           <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl space-y-2">
             <div className="text-gray-400 text-sm font-medium">{t('audit.retention.title')}</div>
-            {isRetentionLoading ? (
+            {retentionQuery.isLoading ? (
               <div
                 className="flex justify-center py-2"
                 role="status"
@@ -293,10 +290,17 @@ export const AdminAuditPage: React.FC = () => {
               >
                 <RefreshCw className="w-5 h-5 text-neon-cyan animate-spin" />
               </div>
-            ) : isRetentionError ? (
-              <div className="text-sm text-red-400">{t('admin.audit.loadError')}</div>
+            ) : retentionQuery.isError && retentionData === undefined ? (
+              <ClientQueryState
+                query={retentionQuery}
+                fallbackErrorKey="admin.audit.loadError"
+              />
             ) : retentionData ? (
-              <div className="text-xs text-gray-400 space-y-1">
+              <div className="space-y-2 text-xs text-gray-400">
+                <ClientQueryState
+                  query={retentionQuery}
+                  fallbackErrorKey="admin.audit.loadError"
+                />
                 <div>
                   {t('audit.retention.period')}:{' '}
                   <span dir="ltr" className="text-white font-semibold font-mono">
@@ -555,17 +559,29 @@ export const AdminAuditPage: React.FC = () => {
 
         {/* Results Table */}
         <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-950">
-          {isSearchLoading ? (
+          {searchQuery.isLoading ? (
             <div className="flex justify-center items-center py-12">
               <RefreshCw className="w-8 h-8 text-neon-cyan animate-spin" />
             </div>
-          ) : isSearchError ? (
-            <div className="p-6 text-center text-red-400">{t('admin.audit.loadError')}</div>
-          ) : !searchData || searchData.entries.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">{t('admin.audit.emptyState')}</div>
+          ) : searchQuery.isError && searchData === undefined ? (
+            <ClientQueryState query={searchQuery} fallbackErrorKey="admin.audit.loadError" />
           ) : (
             <div>
-              <table
+              <div className="p-4">
+                <ClientQueryState
+                  query={searchQuery}
+                  fallbackErrorKey="admin.audit.loadError"
+                  hasData={searchData !== undefined}
+                  isPartial={Boolean(
+                    searchData &&
+                      searchData.pagination.page * searchData.pagination.page_size <
+                        searchData.pagination.total_entries
+                  )}
+                />
+              </div>
+              {!searchData || searchData.entries.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">{t('admin.audit.emptyState')}</div>
+              ) : <table
                 className="block w-full text-sm text-start lg:table"
                 aria-label={t('audit.search.results')}
               >
@@ -652,28 +668,36 @@ export const AdminAuditPage: React.FC = () => {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table>}
 
               {/* Pagination Controls */}
-              {searchData.pagination.total_pages > 1 && (
+              {searchPagination && searchPagination.total_pages > 1 && (
                 <div className="flex flex-col gap-3 px-4 py-3 border-t border-gray-800 bg-gray-900/20 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-gray-400 text-xs">
                     {t('audit.search.page_info', {
-                      page: searchData.pagination.page,
-                      totalPages: searchData.pagination.total_pages,
+                      page: searchPagination.page,
+                      totalPages: searchPagination.total_pages,
                     })}
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                      onClick={() => {
+                        setRetainedSearchData(searchData);
+                        setPage((prev) => Math.max(1, prev - 1));
+                      }}
                       disabled={page === 1}
                       className="px-3 py-1.5 border border-gray-800 text-gray-300 rounded hover:bg-gray-800 transition-colors text-xs font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('audit.search.prev_page')}
                     </button>
                     <button
-                      onClick={() => setPage((prev) => Math.min(searchData.pagination.total_pages, prev + 1))}
-                      disabled={page === searchData.pagination.total_pages}
+                      onClick={() => {
+                        setRetainedSearchData(searchData);
+                        setPage((prev) =>
+                          Math.min(searchPagination.total_pages, prev + 1)
+                        );
+                      }}
+                      disabled={page === searchPagination.total_pages}
                       className="px-3 py-1.5 border border-gray-800 text-gray-300 rounded hover:bg-gray-800 transition-colors text-xs font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('audit.search.next_page')}

@@ -1,16 +1,6 @@
 import { test, expect } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
-
-const EVIDENCE_DIR = path.resolve(process.cwd(), '../audit/wave-18');
 
 test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
-  test.beforeAll(() => {
-    if (!fs.existsSync(EVIDENCE_DIR)) {
-      fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
-    }
-  });
-
   test.beforeEach(async ({ page }) => {
     // 1. Mock Auth
     await page.route('**/api/v1/auth/me', async (route) => {
@@ -196,7 +186,7 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
     });
   });
 
-  test('T-896: Arabic/RTL desktop browser smoke for /admin/quotas (UC-11)', async ({ page }) => {
+  test('T-896: Arabic/RTL desktop browser smoke for /admin/quotas (UC-11)', async ({ page }, testInfo) => {
     await page.goto('/admin/quotas?lng=ar');
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
@@ -215,10 +205,10 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
     ).toBeVisible();
 
     // Verify list element layout alignment
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'desktop-admin-quotas-ar.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('desktop-admin-quotas-ar.png'), fullPage: true });
   });
 
-  test('T-897: Arabic/RTL query flow smoke for UC-12, UC-13, UC-14', async ({ page }) => {
+  test('T-897: Arabic/RTL query flow smoke for UC-12, UC-13, UC-14', async ({ page }, testInfo) => {
     // Go to query submit page (main workspace page) in Arabic
     await page.goto('/?lng=ar');
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
@@ -247,7 +237,7 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
     // Wait for the banner
     await expect(page.locator('[data-testid="quota-exceeded-banner"]').first()).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('تم الوصول إلى الحد اليومي للاستعلامات. يرجى المحاولة مرة أخرى غداً.')).toBeVisible();
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'desktop-query-flow-quota-exceeded-ar.png') });
+    await page.screenshot({ path: testInfo.outputPath('desktop-query-flow-quota-exceeded-ar.png') });
 
     // Subtest: Hostile Input Blocked (UC-13)
     // Setup temporary route interceptor for 400 hostile
@@ -272,7 +262,7 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
     // Verify no input echo in code block (SQL is not shown in SqlDisplay/ResultTable)
     await expect(page.locator('.sql-display')).not.toBeVisible();
     await expect(page.locator('.result-table')).not.toBeVisible();
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'desktop-query-flow-hostile-blocked-ar.png') });
+    await page.screenshot({ path: testInfo.outputPath('desktop-query-flow-hostile-blocked-ar.png') });
 
     // Subtest: Detection Config (UC-14)
     await page.goto('/admin/detection?lng=ar');
@@ -280,10 +270,10 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
     await expect(page.locator('h1')).toContainText('كشف المدخلات المعادية');
     await expect(page.getByText('حد الحظر (0.0 - 1.0)')).toBeVisible();
     await expect(page.getByText('حد الإبلاغ (0.0 - 1.0)')).toBeVisible();
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'desktop-admin-detection-ar.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('desktop-admin-detection-ar.png'), fullPage: true });
   });
 
-  test('T-898: Arabic/RTL audit surfaces smoke (UC-15, UC-16, UC-17, UC-18)', async ({ page }) => {
+  test('T-898: Arabic/RTL audit surfaces smoke (UC-15, UC-16, UC-17, UC-18)', async ({ page }, testInfo) => {
     await page.goto('/admin/audit?lng=ar');
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 
@@ -327,10 +317,10 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
     await expect(page.getByText('عدد الإدخالات المطهّرة')).toBeVisible();
 
     // Save screenshots for audit page
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'desktop-audit-search-ar.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('desktop-audit-search-ar.png'), fullPage: true });
   });
 
-  test('T-899: Mobile viewport responsiveness at 375px and 768px', async ({ page }) => {
+  test('T-899: Mobile viewport responsiveness at 375px and 768px', async ({ page }, testInfo) => {
     const viewports = [
       { name: '375px', width: 375, height: 812 },
       { name: '768px', width: 768, height: 1024 }
@@ -342,17 +332,17 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
       // 1. AdminQuotasPage (UC-11)
       await page.goto('/admin/quotas?lng=en');
       await expect(page.locator('h1')).toContainText('Role Quotas');
-      await page.screenshot({ path: path.join(EVIDENCE_DIR, `mobile-${vp.name}-admin-quotas.png`), fullPage: true });
+      await page.screenshot({ path: testInfo.outputPath(`mobile-${vp.name}-admin-quotas.png`), fullPage: true });
 
       // 2. AdminDetectionPage (UC-14)
       await page.goto('/admin/detection?lng=en');
       await expect(page.locator('h1')).toContainText('Hostile Input Detection');
-      await page.screenshot({ path: path.join(EVIDENCE_DIR, `mobile-${vp.name}-admin-detection.png`), fullPage: true });
+      await page.screenshot({ path: testInfo.outputPath(`mobile-${vp.name}-admin-detection.png`), fullPage: true });
 
       // 3. AdminAuditPage (UC-15, UC-17, UC-18)
       await page.goto('/admin/audit?lng=en');
       await expect(page.locator('h1')).toContainText('Audit Log');
-      await page.screenshot({ path: path.join(EVIDENCE_DIR, `mobile-${vp.name}-admin-audit.png`), fullPage: true });
+      await page.screenshot({ path: testInfo.outputPath(`mobile-${vp.name}-admin-audit.png`), fullPage: true });
     }
   });
 });

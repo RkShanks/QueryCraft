@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 22, "Resolved": 20, "Resolved on tested branch": 2, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 20, "Resolved": 21, "Resolved on tested branch": 3, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -162,11 +162,21 @@
     },
     "CHUNK-16": {
       "gap_id": "IS-GAP-036",
-      "status": "Resolved on tested branch; CI passed; merge pending",
+      "status": "Resolved and merged",
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/314",
       "tested_product_commit": "bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2",
+      "merge_commit": "f41e8c721450adb8fd50201de6218381289f531f",
       "authoritative_ci": {"head_commit": "d14831e1016441d07d6736a3132e9309f78716d2", "run_id": 31766725883, "backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-16-role-mapping-recovery.json"
+    },
+    "CHUNK-17": {
+      "gap_ids": ["IS-GAP-042", "IS-GAP-033"],
+      "status": "Resolved on tested branch; CI passed; merge pending",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/315",
+      "tested_product_commit": "30621830633e5131960d41e0e6e46c05b1f8e1e4",
+      "authoritative_ci": {"head_commit": "1b6e53d2f18594f93822bcbd36445c94ff38b163", "run_id": 31803892021, "backend_test": "passed", "frontend_test": "passed"},
+      "operation_parity": {"runtime": 64, "canonical": 64, "generated": 64, "consumed_json_validated": 41},
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-17-client-harness.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -729,7 +739,7 @@
       "required_evidence": "Focused browser malformed/partial/stale recovery, not a full surface rerun.",
       "isolation": "MSW fixtures derived from the canonical runtime schema.",
       "regression_rows": ["P3-FR-060", "P5-FR-137", "P6-FR-177", "XP-018"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-17", "status": "Pending",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-17", "status": "Resolved on tested branch",
       "source_refs": ["frontend/src/hooks/useAdminRoles.ts::useAdminRoles", "frontend/src/hooks/useAdminRoles.ts::useAdminRole", "frontend/src/hooks/useConnections.ts", "frontend/src/hooks/useAdminAudit.ts", "frontend/src/hooks/useAdminQuotas.ts::useAdminQuotas", "frontend/src/hooks/useAdminDetection.ts", "frontend/src/pages/AdminAuditPage.tsx::AdminAuditPage", "frontend/src/pages/AdminQuotasPage.tsx::AdminQuotasPage"]
     },
     {
@@ -778,7 +788,7 @@
       "required_evidence": "Browser/API partial-failure recovery on disposable role/mappings.",
       "isolation": "Disposable role, mappings and user.",
       "regression_rows": ["P5-FR-123", "P5-FR-125", "P5-FR-140"],
-      "owner": "Frontend Implementer, with Backend Implementer if atomic API chosen; Gemini/Kimi", "chunk": "CHUNK-16", "status": "Resolved on tested branch",
+      "owner": "Frontend Implementer, with Backend Implementer if atomic API chosen; Gemini/Kimi", "chunk": "CHUNK-16", "status": "Resolved",
       "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/314", "tested_product_commit": "bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-16-role-mapping-recovery.json", "authoritative_ci": {"head_commit": "d14831e1016441d07d6736a3132e9309f78716d2", "run_id": 31766725883, "backend_test": "passed", "frontend_test": "passed"}},
       "source_refs": ["backend/src/app/api/v1/admin_roles.py::create_role", "backend/src/app/api/v1/admin_roles.py::update_role", "backend/src/app/repositories/role_repository.py::RoleRepository", "backend/tests/integration/test_role_mapping_transaction.py", "frontend/src/hooks/useAdminRoles.ts::createMutation", "frontend/src/hooks/useAdminRoles.ts::updateMutation", "frontend/src/pages/AdminRolesPage.tsx::handleSave", "frontend/src/hooks/__tests__/useAdminRoles.test.tsx", "frontend/tests/e2e/chunk_16_role_mapping_transaction.spec.ts"]
     },
@@ -875,7 +885,7 @@
       "required_evidence": "Temporary-output browser runs with explicit mock/live classification.",
       "isolation": "mktemp output only; never write tracked screenshots/traces.",
       "regression_rows": ["XP-008", "XP-009", "XP-017", "XP-018"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-17", "status": "Pending",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-17", "status": "Resolved on tested branch",
       "source_refs": ["frontend/playwright.config.ts", "frontend/src/test/setup.ts", "frontend/tests/e2e/i18n-audit.spec.ts", "frontend/tests/e2e/provider-switch.spec.ts", "frontend/tests/e2e/wave_17_3o_smoke.spec.ts", "frontend/src/hooks/__tests__"]
     },
     {

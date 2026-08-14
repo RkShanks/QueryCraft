@@ -15,45 +15,14 @@ export type AuditSearchParams = NonNullable<SearchAuditEntriesData['query']>;
 export type AuditEntry = AuditEntryRead;
 export type { AuditExportRequest, AuditRetentionResponse, AuditSearchResponse };
 
-function isNonNegativeInteger(value: unknown): value is number {
-  return Number.isInteger(value) && typeof value === 'number' && value >= 0;
-}
-
-function isTimezoneAwareTimestamp(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    /(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
-    !Number.isNaN(Date.parse(value))
-  );
-}
-
-function parseAuditRetentionResponse(value: unknown): AuditRetentionResponse {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Invalid audit retention response');
-  }
-
-  const candidate = value as Record<string, unknown>;
-  const lastPurgeAt = candidate.last_purge_at;
-  const purgedCount = candidate.purged_count;
-  if (
-    !isNonNegativeInteger(candidate.retention_months) ||
-    (lastPurgeAt !== null && !isTimezoneAwareTimestamp(lastPurgeAt)) ||
-    (purgedCount !== null && !isNonNegativeInteger(purgedCount))
-  ) {
-    throw new Error('Invalid audit retention response');
-  }
-
-  return {
-    retention_months: candidate.retention_months,
-    last_purge_at: lastPurgeAt,
-    purged_count: purgedCount,
-  };
-}
-
-export async function searchAuditEntries(params: AuditSearchParams): Promise<AuditSearchResponse> {
+export async function searchAuditEntries(
+  params: AuditSearchParams,
+  signal?: AbortSignal
+): Promise<AuditSearchResponse> {
   const response = await searchCanonicalAuditEntries({
     query: params as Record<string, unknown>,
     throwOnError: true,
+    signal,
   });
   return response.data;
 }
@@ -67,7 +36,7 @@ export async function exportAuditEntries(request: AuditExportRequest): Promise<B
   return response.data;
 }
 
-export async function getAuditRetention(): Promise<AuditRetentionResponse> {
-  const response = await getCanonicalAuditRetention({ throwOnError: true });
-  return parseAuditRetentionResponse(response.data);
+export async function getAuditRetention(signal?: AbortSignal): Promise<AuditRetentionResponse> {
+  const response = await getCanonicalAuditRetention({ throwOnError: true, signal });
+  return response.data;
 }

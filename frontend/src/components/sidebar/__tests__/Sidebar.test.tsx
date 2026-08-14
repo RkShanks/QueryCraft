@@ -6,6 +6,7 @@ import { useUIStore } from '../../../stores/uiStore';
 import { createWrapper } from '../../../test/utils';
 import i18n from '../../../i18n';
 import { PERMISSIONS, type Permission } from '../../../auth/permissions';
+import { ClientContractError } from '../../../api/responseValidation';
 
 const mockSessions: Array<{
   id: string;
@@ -73,6 +74,7 @@ function setup(
     data: { items: sessions, total: sessions.length },
     isLoading,
     isError: false,
+    isFetching: false,
     hasNextPage: false,
     isFetchingNextPage: false,
     fetchNextPage: vi.fn(),
@@ -169,6 +171,41 @@ describe('Sidebar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves sessions and announces a malformed background response', () => {
+    setup(mockSessions, false, {
+      isError: true,
+      isFetching: false,
+      error: new ClientContractError(),
+    });
+
+    expect(screen.getByText('Today session')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The latest refresh was invalid. Showing the last valid data.'
+    );
+  });
+
+  it('announces refreshing and partial session states without hiding valid data', () => {
+    const { rerender } = setup(mockSessions, false, { isFetching: true });
+
+    expect(screen.getByText('Today session')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Refreshing data…');
+
+    (useSessionsList as ReturnType<typeof vi.fn>).mockReturnValue({
+      data: { items: mockSessions, total: mockSessions.length, next_cursor: 'page-2' },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      hasNextPage: true,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      refetch: vi.fn(),
+    });
+    rerender(<Sidebar />);
+
+    expect(screen.getByText('Today session')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('More results are available.');
   });
 
   it('clicking New Chat resets activeSessionId to null', () => {

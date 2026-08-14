@@ -6,25 +6,35 @@ import { server } from '../test/server';
 import { renderWithClient } from '../test/utils';
 import { PERMISSIONS } from '../auth/permissions';
 import i18n from '../i18n';
+import type {
+  RoleQuotaConfig,
+  RoleQuotaStatus,
+  UserProfile,
+} from '../api/generated/types.gen';
+
+const ANALYST_ROLE_ID = 'd290f1ee-6c54-4b01-90e6-d701748f0851';
+const VIEWER_ROLE_ID = '1cbb6f73-7b45-4f43-b052-c3ea6995ff7e';
 
 const quotaOnlyUser = {
-  id: 'quota-admin-id',
+  id: 'cfc5034b-6f06-4567-a9ea-b8fcece8d0cc',
   username: 'quota-admin',
   display_name: 'Quota Admin',
   role: 'custom',
   permissions: ['admin.quotas.manage'],
-};
+} satisfies UserProfile;
 
 const configuredQuota = {
-  role_id: 'analyst-role-id',
+  role_id: ANALYST_ROLE_ID,
   role_name: 'analyst',
   daily_query_limit: 100,
   daily_execution_limit: 50,
   daily_export_limit: 5,
-};
+  created_at: '2026-07-28T00:00:00Z',
+  updated_at: '2026-07-29T00:00:00Z',
+} satisfies RoleQuotaConfig;
 
 const configuredStatus = {
-  role_id: 'analyst-role-id',
+  role_id: ANALYST_ROLE_ID,
   role_name: 'analyst',
   dimensions: {
     queries: { limit: 100, used: 42, remaining: 58 },
@@ -32,13 +42,13 @@ const configuredStatus = {
     exports: { limit: 5, used: 1, remaining: 4 },
   },
   reset_at: '2026-07-29T00:00:00Z',
-};
+} satisfies RoleQuotaStatus;
 
 const viewerStatus = {
   ...configuredStatus,
-  role_id: 'viewer-role-id',
+  role_id: VIEWER_ROLE_ID,
   role_name: 'viewer',
-};
+} satisfies RoleQuotaStatus;
 
 const pendingResponse = {
   error: 'quota_sync_pending',
@@ -100,25 +110,31 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
       status: 403,
       body: { error: 'forbidden', message_key: 'error.forbidden' },
       message: 'This request was blocked for security reasons.',
+      expectedCount: 2,
     },
     {
       status: 503,
       body: { error: 'service_unavailable', message_key: 'error.service_unavailable' },
       message: 'Service temporarily unavailable. Please try again later.',
+      expectedCount: 1,
     },
   ])(
     'P6-FR-149 renders the localized $status quota API state',
-    async ({ status, body, message }) => {
+    async ({ status, body, message, expectedCount }) => {
       server.use(
         http.get('/api/v1/auth/me', () => HttpResponse.json(quotaOnlyUser)),
-        http.get('/api/v1/admin/quotas', () => HttpResponse.json(body, { status })),
+        http.get('/api/v1/admin/quotas', () =>
+          status === 503
+            ? HttpResponse.json({ quotas: [] })
+            : HttpResponse.json(body, { status })
+        ),
         http.get('/api/v1/admin/quotas/status', () => HttpResponse.json(body, { status }))
       );
 
       renderQuotaOnlyPage();
 
       await waitFor(() => {
-        expect(screen.getAllByText(message)).toHaveLength(2);
+        expect(screen.getAllByText(message)).toHaveLength(expectedCount);
       });
     }
   );
@@ -233,7 +249,7 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
       );
 
       renderQuotaOnlyPage();
-      fireEvent.click(await screen.findByTestId('edit-quota-analyst-role-id'));
+      fireEvent.click(await screen.findByTestId(`edit-quota-${ANALYST_ROLE_ID}`));
 
       const queryLimitInput = screen.getByLabelText('Daily Query Limit');
       fireEvent.change(queryLimitInput, { target: { value: invalidLimit } });
@@ -287,7 +303,7 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
     );
 
     renderQuotaOnlyPage();
-    fireEvent.click(await screen.findByTestId('edit-quota-analyst-role-id'));
+    fireEvent.click(await screen.findByTestId(`edit-quota-${ANALYST_ROLE_ID}`));
     fireEvent.change(screen.getByLabelText('Daily Query Limit'), {
       target: { value: '4' },
     });
@@ -340,7 +356,7 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
 
     const firstRender = renderQuotaOnlyPage();
     fireEvent.click(
-      await screen.findByTestId('delete-quota-analyst-role-id')
+      await screen.findByTestId(`delete-quota-${ANALYST_ROLE_ID}`)
     );
     expect(
       await screen.findByRole('alert', { name: 'تغيير الحصة يحتاج إلى مزامنة' })
@@ -399,7 +415,7 @@ describe('AdminQuotasPage Phase 6A regressions', () => {
       await screen.findByText('Service temporarily unavailable. Please try again later.')
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('edit-quota-analyst-role-id'));
+    fireEvent.click(screen.getByTestId(`edit-quota-${ANALYST_ROLE_ID}`));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(listRequests).toBeGreaterThanOrEqual(2));

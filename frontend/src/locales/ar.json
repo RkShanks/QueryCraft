@@ -2,6 +2,11 @@
   "common.close": "إغلاق",
   "common.or": "أو",
   "common.retry": "إعادة المحاولة",
+  "clientContract.invalidInitial": "أعاد الخادم استجابة غير صالحة. يُرجى المحاولة مرة أخرى.",
+  "clientContract.invalidRefresh": "كانت استجابة التحديث الأخيرة غير صالحة. يتم عرض آخر بيانات صالحة.",
+  "clientContract.refreshError": "فشل التحديث الأخير. يتم عرض آخر بيانات صالحة.",
+  "clientContract.refreshing": "جارٍ تحديث البيانات…",
+  "clientContract.partial": "تتوفر نتائج إضافية.",
 
   "app.title": "QueryCraft",
   "app.subtitle": "منصة تحليلات النص إلى SQL",

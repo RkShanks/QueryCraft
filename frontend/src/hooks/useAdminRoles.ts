@@ -244,8 +244,8 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
 
   const listQuery = useQuery<{ roles: Role[] }>({
     queryKey: ['adminRoles'],
-    queryFn: () =>
-      listRoles({ throwOnError: true }).then((response) => ({
+    queryFn: ({ signal }) =>
+      listRoles({ throwOnError: true, signal }).then((response) => ({
         roles: response.data.roles.map(normalizeRole),
       })),
     enabled: canManageRoles && options?.enabled !== false,
@@ -384,7 +384,8 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   // Standalone group mapping queries and mutations
   const groupMappingsQuery = useQuery<{ mappings: GroupMapping[] }>({
     queryKey: ['adminGroupMappings'],
-    queryFn: () => listGroupMappings({ throwOnError: true }).then((response) => response.data),
+    queryFn: ({ signal }) =>
+      listGroupMappings({ throwOnError: true, signal }).then((response) => response.data),
     enabled: canManageRoles && options?.enabled !== false,
   });
 
@@ -434,13 +435,14 @@ export const useAdminRole = (roleId: string | null | undefined) => {
   const canManageRoles = usePermission(PERMISSIONS.ADMIN_ROLES_MANAGE);
   return useQuery<Role>({
     queryKey: ['adminRole', roleId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!roleId) {
         throw new Error('Role id is required');
       }
       const response = await getRole({
         path: { role_id: roleId },
         throwOnError: true,
+        signal,
       });
       return normalizeRole(response.data);
     },

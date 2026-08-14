@@ -4,6 +4,10 @@ import { AdminAuditPage } from './AdminAuditPage';
 import { createWrapper, renderWithClient } from '../test/utils';
 import { server } from '../test/server';
 import { http, HttpResponse, delay } from 'msw';
+import type {
+  ErrorResponse,
+  QuotaExceededErrorResponse,
+} from '../api/generated/types.gen';
 
 const mockLanguageState = { language: 'en' };
 
@@ -29,6 +33,12 @@ vi.mock('react-i18next', () => ({
           'admin.audit.verifyFailed': 'Audit chain verification failed',
           'admin.audit.securityWarningTitle': 'Security Warning:',
           'admin.audit.securityWarning': 'No auto-repair utility is provided to preserve evidence. Contact your system administrator to recover the database chain.',
+          'clientContract.invalidInitial': 'The server returned an invalid response. Please try again.',
+          'clientContract.invalidRefresh': 'The latest refresh was invalid. Showing the last valid data.',
+          'clientContract.refreshError': 'The latest refresh failed. Showing the last valid data.',
+          'clientContract.refreshing': 'Refreshing data…',
+          'clientContract.partial': 'More results are available.',
+          'common.retry': 'Retry',
           
           'audit.search.title': 'Search Audit Logs',
           'audit.search.results': 'Audit search results',
@@ -78,6 +88,12 @@ vi.mock('react-i18next', () => ({
           'admin.audit.verifyFailed': 'فشل التحقق من سلسلة سجل التدقيق',
           'admin.audit.securityWarningTitle': 'تنبيه أمني:',
           'admin.audit.securityWarning': 'لا تتوفر أداة إصلاح تلقائي للحفاظ على الأدلة. يرجى الاتصال بمسؤول النظام لاستعادة سلسلة قاعدة البيانات.',
+          'clientContract.invalidInitial': 'أعاد الخادم استجابة غير صالحة. يُرجى المحاولة مرة أخرى.',
+          'clientContract.invalidRefresh': 'كانت استجابة التحديث الأخيرة غير صالحة. يتم عرض آخر بيانات صالحة.',
+          'clientContract.refreshError': 'فشل التحديث الأخير. يتم عرض آخر بيانات صالحة.',
+          'clientContract.refreshing': 'جارٍ تحديث البيانات…',
+          'clientContract.partial': 'تتوفر نتائج إضافية.',
+          'common.retry': 'إعادة المحاولة',
           
           'audit.search.title': 'البحث في سجلات التدقيق',
           'audit.search.results': 'نتائج البحث في سجلات التدقيق',
@@ -525,6 +541,7 @@ describe('AdminAuditPage', () => {
       render(<AdminAuditPage />, { wrapper: createWrapper() });
 
       await screen.findByText('Page 1 of 3');
+      expect(screen.getByRole('status')).toHaveTextContent('More results are available.');
 
       const prevBtn = screen.getByRole('button', { name: 'Previous' });
       const nextBtn = screen.getByRole('button', { name: 'Next' });
@@ -748,7 +765,10 @@ describe('AdminAuditPage', () => {
       server.use(
         http.post('/api/v1/admin/audit/export', () => {
           return HttpResponse.json(
-            { detail: { message_key: 'error.export_limit_exceeded' } },
+            {
+              error: 'export_limit_exceeded',
+              message_key: 'error.export_limit_exceeded',
+            } satisfies ErrorResponse,
             { status: 422 }
           );
         })
@@ -766,7 +786,11 @@ describe('AdminAuditPage', () => {
       server.use(
         http.post('/api/v1/admin/audit/export', () => {
           return HttpResponse.json(
-            { detail: { message_key: 'error.quota_exceeded' } },
+            {
+              error: 'quota_exceeded',
+              message_key: 'error.quota_exceeded',
+              reset_at: '2026-08-15T00:00:00Z',
+            } satisfies QuotaExceededErrorResponse,
             { status: 429 }
           );
         })
@@ -816,7 +840,11 @@ describe('AdminAuditPage', () => {
     });
 
     it.each([
-      ['an empty body', () => new HttpResponse(null, { status: 200 })],
+      [
+        'an empty body',
+        () => new HttpResponse(null, { status: 200 }),
+        'The server returned an invalid response. Please try again.',
+      ],
       [
         'a malformed body',
         () =>
@@ -825,16 +853,30 @@ describe('AdminAuditPage', () => {
             last_purge_at: 'not-a-date',
             purged_count: 'unknown',
           }),
+        'The server returned an invalid response. Please try again.',
       ],
       [
         'an unavailable response',
-        () => HttpResponse.json({ detail: { message_key: 'error.service_unavailable' } }, { status: 503 }),
+        () =>
+          HttpResponse.json(
+            {
+              error: 'service_unavailable',
+              message_key: 'error.service_unavailable',
+            } satisfies ErrorResponse,
+            { status: 503 }
+          ),
+        'The server returned an invalid response. Please try again.',
       ],
       [
         'a forbidden response',
-        () => HttpResponse.json({ detail: { message_key: 'error.forbidden' } }, { status: 403 }),
+        () =>
+          HttpResponse.json(
+            { error: 'forbidden', message_key: 'error.forbidden' } satisfies ErrorResponse,
+            { status: 403 }
+          ),
+        'Failed to load audit status.',
       ],
-    ])('renders the localized unavailable state for %s', async (_caseName, responseFactory) => {
+    ])('renders the intended safe state for %s', async (_caseName, responseFactory, expectedMessage) => {
       server.use(
         http.get('/api/v1/admin/audit/status', () => {
           return HttpResponse.json({
@@ -847,7 +889,7 @@ describe('AdminAuditPage', () => {
 
       render(<AdminAuditPage />, { wrapper: createWrapper() });
 
-      expect(await screen.findByText('Failed to load audit status.')).toBeInTheDocument();
+      expect(await screen.findByText(expectedMessage)).toBeInTheDocument();
       expect(screen.queryByText('retention_months')).not.toBeInTheDocument();
       expect(screen.queryByText('last_purge_at')).not.toBeInTheDocument();
       expect(screen.queryByText('purged_count')).not.toBeInTheDocument();

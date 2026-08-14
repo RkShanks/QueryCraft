@@ -11,6 +11,11 @@ import {
   beginSessionDeletion,
   resetSessionDeletionLifecycle,
 } from '../../sessionDeletionLifecycle';
+import type {
+  ErrorResponse,
+  QueryResult,
+  UserConnectionListResponse,
+} from '../../api/generated/types.gen';
 
 beforeEach(() => {
   resetSessionDeletionLifecycle();
@@ -430,7 +435,10 @@ describe('WorkspacePage submit scenarios', () => {
     server.use(
       http.post('/api/v1/query/submit', () =>
         HttpResponse.json(
-          { message_key: 'error.hostile_input_blocked' },
+          {
+            error: 'hostile_input_blocked',
+            message_key: 'error.hostile_input_blocked',
+          } satisfies ErrorResponse,
           { status: 400 }
         )
       )
@@ -477,43 +485,39 @@ describe('WorkspacePage multi-connection selection (T-460)', () => {
     server.use(
       http.get('/api/v1/connections', async () => {
         await delay(10);
-        return HttpResponse.json(
-          {
-            connections: [
-              {
-                id: 'conn-pg-001',
-                display_name: 'PostgreSQL DB',
-                database_type: 'postgresql',
-              },
-              {
-                id: 'conn-mysql-002',
-                display_name: 'MySQL DB',
-                database_type: 'mysql',
-              },
-            ],
-          },
-          { status: 200 }
-        );
+        const response = {
+          connections: [
+            {
+              id: '550e8400-e29b-41d4-a716-446655440011',
+              display_name: 'PostgreSQL DB',
+              database_type: 'postgresql',
+            },
+            {
+              id: '550e8400-e29b-41d4-a716-446655440012',
+              display_name: 'MySQL DB',
+              database_type: 'mysql',
+            },
+          ],
+        } satisfies UserConnectionListResponse;
+        return HttpResponse.json(response, { status: 200 });
       }),
       http.post('/api/v1/query/submit', async ({ request }) => {
         await delay(10);
         capturedBody = (await request.json()) as Record<string, unknown>;
-        return HttpResponse.json(
-          {
-            kind: 'result',
-            attempt_id: 'attempt-460-001',
-            session_id: '550e8400-e29b-41d4-a716-446655440003',
-            question: 'Show me users',
-            generated_sql: 'SELECT * FROM users;',
-            columns: [{ name: 'id', type: 'bigint' }],
-            rows: [[1]],
-            row_count: 1,
-            attempt_number: 1,
-            is_last_auto_retry: false,
-            accepted_query_id: 'accepted-460-001',
-          },
-          { status: 200 }
-        );
+        const response = {
+          kind: 'result',
+          attempt_id: '550e8400-e29b-41d4-a716-446655440013',
+          session_id: '550e8400-e29b-41d4-a716-446655440003',
+          question: 'Show me users',
+          generated_sql: 'SELECT * FROM users;',
+          columns: [{ name: 'id', type: 'bigint' }],
+          rows: [[1]],
+          row_count: 1,
+          attempt_number: 1,
+          is_last_auto_retry: false,
+          accepted_query_id: '550e8400-e29b-41d4-a716-446655440014',
+        } satisfies QueryResult;
+        return HttpResponse.json(response, { status: 200 });
       })
     );
 
@@ -531,9 +535,9 @@ describe('WorkspacePage multi-connection selection (T-460)', () => {
     // Open selector and select MySQL connection
     fireEvent.click(screen.getByTestId('database-selector-trigger'));
     await waitFor(() => {
-      expect(screen.getByTestId('database-selector-option-conn-mysql-002')).toBeInTheDocument();
+      expect(screen.getByTestId('database-selector-option-550e8400-e29b-41d4-a716-446655440012')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByTestId('database-selector-option-conn-mysql-002'));
+    fireEvent.click(screen.getByTestId('database-selector-option-550e8400-e29b-41d4-a716-446655440012'));
 
     // Prompt should now be enabled
     await waitFor(() => {
@@ -550,6 +554,6 @@ describe('WorkspacePage multi-connection selection (T-460)', () => {
 
     // Assert captured POST body includes selected connection_id
     expect(capturedBody).toBeDefined();
-    expect(capturedBody!.connection_id).toBe('conn-mysql-002');
+    expect(capturedBody!.connection_id).toBe('550e8400-e29b-41d4-a716-446655440012');
   }, 15000);
 });

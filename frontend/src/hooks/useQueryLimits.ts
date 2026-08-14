@@ -9,7 +9,7 @@ export function useQueryLimits() {
   const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
   return useQuery({
     queryKey: QUERY_LIMITS_QUERY_KEY,
-    queryFn: getQueryLimits,
+    queryFn: ({ signal }) => getQueryLimits(signal),
     enabled: canSubmitQuery,
   });
 }

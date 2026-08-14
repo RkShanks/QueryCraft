@@ -13,6 +13,7 @@
     "gen:api": "./scripts/generate-api-client.sh",
     "gen:api:check": "node scripts/generate-api-client.mjs --check",
     "test": "vitest --passWithNoTests",
+    "test:harness": "node --test scripts/check-test-harness.node.mjs && node scripts/check-test-harness.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "postinstall": "playwright install chromium"
@@ -22,6 +23,8 @@
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@tanstack/react-query": "^5.100.9",
     "@tanstack/react-table": "^8.21.3",
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1",
     "i18next": "^26.0.8",
     "i18next-browser-languagedetector": "^8.2.1",
     "lucide-react": "^1.14.0",

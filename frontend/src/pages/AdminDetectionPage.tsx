@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminDetection } from '../hooks/useAdminDetection';
 import { Shield, RefreshCw, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
+import { ClientQueryState } from '../components/common/ClientQueryState';
 
 interface Toast {
   id: string;
@@ -109,9 +110,19 @@ export const AdminDetectionPage: React.FC = () => {
     );
   }
 
-  if (configQuery.isError) {
+  if (configQuery.isError && configQuery.data === undefined) {
     const err = configQuery.error;
     const isForbidden = extractErrorKey(err) === 'error.forbidden' || (err as { status?: number })?.status === 403;
+    if (!isForbidden) {
+      return (
+        <div className="mx-auto flex min-h-64 max-w-xl items-center justify-center p-6">
+          <ClientQueryState
+            query={configQuery}
+            fallbackErrorKey="error.unknown.message"
+          />
+        </div>
+      );
+    }
     return (
       <div className="p-6 max-w-xl mx-auto mt-12 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-start gap-3">
         <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
@@ -126,6 +137,7 @@ export const AdminDetectionPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+      <ClientQueryState query={configQuery} fallbackErrorKey="error.unknown.message" />
       {/* Global Toast Container */}
       <div className="fixed top-6 end-6 z-50 flex flex-col gap-3 max-w-sm w-full select-none pointer-events-none">
         {toasts.map((t) => (

@@ -4,12 +4,15 @@ import { useHistory, useHistoryDetail } from '../hooks/useHistory';
 import { HistoryList } from '../components/history/HistoryList';
 import { HistoryDetail } from '../components/history/HistoryDetail';
 import { Sparkles } from 'lucide-react';
+import { ClientQueryState } from '../components/common/ClientQueryState';
 
 export default function HistoryPage() {
   const { t } = useTranslation();
-  const { items, isLoading, error, hasNextPage, fetchNextPage } = useHistory();
+  const historyQuery = useHistory();
+  const { items, isLoading, hasNextPage, fetchNextPage } = historyQuery;
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { item: selectedItem, isLoading: detailLoading, error: detailError } = useHistoryDetail(selectedId);
+  const detailQuery = useHistoryDetail(selectedId);
+  const { item: selectedItem, isLoading: detailLoading, error: detailError } = detailQuery;
 
   return (
     <div id="history-page" className="min-h-screen bg-obsidian-950 text-text-primary flex flex-col">
@@ -26,6 +29,11 @@ export default function HistoryPage() {
         <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[calc(100vh-140px)]">
           {/* Left panel: Query history list */}
           <div className="flex-1 lg:max-w-md w-full bg-obsidian-900/50 border border-obsidian-800/80 rounded-2xl p-4 flex flex-col gap-4 shadow-xl backdrop-blur-sm">
+            <ClientQueryState
+              query={historyQuery}
+              fallbackErrorKey="history.error"
+              isPartial={hasNextPage}
+            />
             <HistoryList
               items={items}
               isLoading={isLoading}
@@ -38,11 +46,8 @@ export default function HistoryPage() {
 
           {/* Right panel: Query detail inspector */}
           <div className="flex-1 bg-obsidian-900/50 border border-obsidian-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-sm relative min-h-[400px]">
-            {error ? (
-              <div className="p-6 text-red-400 bg-red-500/5 border border-red-500/10 rounded-xl text-center select-none">
-                {t('history.error')}
-              </div>
-            ) : (
+            <ClientQueryState query={detailQuery} fallbackErrorKey="history.detail.error" />
+            {!detailError && (
               <HistoryDetail
                 item={selectedItem}
                 isLoading={detailLoading}

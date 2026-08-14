@@ -15,6 +15,7 @@ import { deleteHistoryEntry } from '../api/generated/sdk.gen';
 import type { QueryResult, RefinePrompt, EvaluatorRejection, AttemptSummary, UserConnectionResponse } from '../api/generated/types.gen';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useUserConnections } from '../hooks/useUserConnections';
+import { ClientQueryState } from '../components/common/ClientQueryState';
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from '../hooks/usePermission';
 import { ConnectionErrorCard } from '../components/chat/ConnectionErrorCard';
@@ -139,6 +140,7 @@ export const WorkspacePage: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const activeSessionId = useUIStore((state) => state.activeSessionId);
+  const sessionDetailQuery = useSessionDetail(activeSessionId ?? '');
   const {
     data: sessionDetail,
     isLoading,
@@ -147,15 +149,15 @@ export const WorkspacePage: React.FC = () => {
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-    refetch: refetchSessionDetail,
-  } = useSessionDetail(activeSessionId ?? '');
+  } = sessionDetailQuery;
   const querySubmit = useQuerySubmit();
+  const queryLimitsQuery = useQueryLimits();
   const {
     data: queryLimits,
     isError: queryLimitsFailed,
     isFetching: queryLimitsFetching,
     refetch: refetchQueryLimits,
-  } = useQueryLimits();
+  } = queryLimitsQuery;
   const canViewHistory = usePermission(PERMISSIONS.QUERY_HISTORY_VIEW);
 
   const retryQueryLimits = useCallback(() => {
@@ -190,7 +192,8 @@ export const WorkspacePage: React.FC = () => {
   }, []);
 
   // Fetch available connections for T-460
-  const { data: userConnectionsResponse } = useUserConnections();
+  const userConnectionsQuery = useUserConnections();
+  const { data: userConnectionsResponse } = userConnectionsQuery;
   const availableConnections = React.useMemo(
     () => userConnectionsResponse?.connections ?? [],
     [userConnectionsResponse]
@@ -544,6 +547,17 @@ export const WorkspacePage: React.FC = () => {
   return (
     <div className="workspace-page" data-testid="workspace-page">
       <div className="workspace-conversation" ref={conversationRef}>
+        <ClientQueryState
+          query={userConnectionsQuery}
+          fallbackErrorKey="admin.connections.loadError"
+        />
+        {activeSessionId && sessionDetail && (
+          <ClientQueryState
+            query={sessionDetailQuery}
+            fallbackErrorKey="workspace.historyLoadError"
+            isPartial={hasNextPage}
+          />
+        )}
         {showEmptyState ? (
           <div className="workspace-empty-state">
             <MessageSquare className="w-12 h-12 workspace-empty-icon" />
@@ -556,16 +570,10 @@ export const WorkspacePage: React.FC = () => {
             <p>{t('history.loading')}</p>
           </div>
         ) : showHistoryError ? (
-          <div
-            className="workspace-history-error"
-            role="alert"
-            aria-label={t('workspace.historyLoadError')}
-          >
-            <p>{t('workspace.historyLoadError')}</p>
-            <button type="button" onClick={() => void refetchSessionDetail()}>
-              {t('common.retry')}
-            </button>
-          </div>
+          <ClientQueryState
+            query={sessionDetailQuery}
+            fallbackErrorKey="workspace.historyLoadError"
+          />
         ) : (
           <>
             {(hasNextPage || isFetchNextPageError) && (

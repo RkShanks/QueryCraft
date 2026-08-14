@@ -6,6 +6,17 @@ import { WorkspacePage } from '../WorkspacePage';
 import { renderWithClient } from '../../test/utils';
 import { server } from '../../test/server';
 import { useUIStore } from '../../stores/uiStore';
+import type {
+  QueryResult,
+  SessionConnectionResponse,
+  SessionDetail,
+  UserConnectionListResponse,
+} from '../../api/generated/types.gen';
+
+const POSTGRES_CONNECTION_ID = '550e8400-e29b-41d4-a716-446655440021';
+const MYSQL_CONNECTION_ID = '550e8400-e29b-41d4-a716-446655440022';
+const SESSION_ID = '550e8400-e29b-41d4-a716-446655440003';
+const NO_METADATA_SESSION_ID = '550e8400-e29b-41d4-a716-446655440023';
 
 beforeEach(() => {
   useUIStore.setState({
@@ -32,16 +43,16 @@ describe('WorkspacePage mid-session DB switch (T-464)', () => {
         await delay(10);
         return HttpResponse.json({
           connections: [
-            { id: 'conn-pg-001', display_name: 'PostgreSQL DB', database_type: 'postgresql' },
+            { id: POSTGRES_CONNECTION_ID, display_name: 'PostgreSQL DB', database_type: 'postgresql' },
           ],
-        });
+        } satisfies UserConnectionListResponse);
       }),
       http.post('/api/v1/query/submit', async () => {
         await delay(10);
         return HttpResponse.json({
           kind: 'result',
-          attempt_id: 'attempt-464-001',
-          session_id: '550e8400-e29b-41d4-a716-446655440003',
+          attempt_id: '550e8400-e29b-41d4-a716-446655440024',
+          session_id: SESSION_ID,
           question: 'Show me users',
           generated_sql: 'SELECT * FROM users;',
           columns: [{ name: 'id', type: 'bigint' }],
@@ -49,8 +60,8 @@ describe('WorkspacePage mid-session DB switch (T-464)', () => {
           row_count: 1,
           attempt_number: 1,
           is_last_auto_retry: false,
-          accepted_query_id: 'accepted-464-001',
-        });
+          accepted_query_id: '550e8400-e29b-41d4-a716-446655440025',
+        } satisfies QueryResult);
       })
     );
 
@@ -81,39 +92,43 @@ describe('WorkspacePage mid-session DB switch (T-464)', () => {
         await delay(10);
         return HttpResponse.json({
           connections: [
-            { id: 'conn-pg-001', display_name: 'PostgreSQL DB', database_type: 'postgresql' },
-            { id: 'conn-mysql-002', display_name: 'MySQL DB', database_type: 'mysql' },
+            { id: POSTGRES_CONNECTION_ID, display_name: 'PostgreSQL DB', database_type: 'postgresql' },
+            { id: MYSQL_CONNECTION_ID, display_name: 'MySQL DB', database_type: 'mysql' },
           ],
-        });
+        } satisfies UserConnectionListResponse);
       }),
       http.get('/api/v1/sessions/:sessionId', async ({ params }) => {
         await delay(10);
         return HttpResponse.json({
           id: params.sessionId as string,
-          connection_id: submitCount >= 1 ? 'conn-mysql-002' : 'conn-pg-001',
+          connection_id: submitCount >= 1 ? MYSQL_CONNECTION_ID : POSTGRES_CONNECTION_ID,
           preview_text: 'Session detail',
           created_at: new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
           attempts: [],
-        });
+          attempts_total: 0,
+          attempts_next_cursor: null,
+        } satisfies SessionDetail);
       }),
       http.patch('/api/v1/sessions/:sessionId/connection', async ({ params }) => {
         await delay(10);
         return HttpResponse.json({
           id: params.sessionId as string,
-          connection_id: 'conn-mysql-002',
+          connection_id: MYSQL_CONNECTION_ID,
           preview_text: 'Session detail',
           created_at: new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
-        });
+        } satisfies SessionConnectionResponse);
       }),
       http.post('/api/v1/query/submit', async () => {
         await delay(10);
         submitCount++;
         return HttpResponse.json({
           kind: 'result',
-          attempt_id: `attempt-464-00${submitCount}`,
-          session_id: '550e8400-e29b-41d4-a716-446655440003',
+          attempt_id: submitCount === 1
+            ? '550e8400-e29b-41d4-a716-446655440026'
+            : '550e8400-e29b-41d4-a716-446655440027',
+          session_id: SESSION_ID,
           question: submitCount === 1 ? 'First query' : 'Second query',
           generated_sql: 'SELECT 1;',
           columns: [{ name: 'id', type: 'bigint' }],
@@ -121,8 +136,10 @@ describe('WorkspacePage mid-session DB switch (T-464)', () => {
           row_count: 1,
           attempt_number: 1,
           is_last_auto_retry: false,
-          accepted_query_id: `accepted-464-00${submitCount}`,
-        });
+          accepted_query_id: submitCount === 1
+            ? '550e8400-e29b-41d4-a716-446655440028'
+            : '550e8400-e29b-41d4-a716-446655440029',
+        } satisfies QueryResult);
       })
     );
 
@@ -136,9 +153,9 @@ describe('WorkspacePage mid-session DB switch (T-464)', () => {
     // Select PostgreSQL first (need explicit select with 2 connections)
     fireEvent.click(screen.getByTestId('database-selector-trigger'));
     await waitFor(() => {
-      expect(screen.getByTestId('database-selector-option-conn-pg-001')).toBeInTheDocument();
+      expect(screen.getByTestId(`database-selector-option-${POSTGRES_CONNECTION_ID}`)).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByTestId('database-selector-option-conn-pg-001'));
+    fireEvent.click(screen.getByTestId(`database-selector-option-${POSTGRES_CONNECTION_ID}`));
 
     await waitFor(() => {
       expect(screen.getByText('PostgreSQL DB')).toBeInTheDocument();
@@ -154,9 +171,9 @@ describe('WorkspacePage mid-session DB switch (T-464)', () => {
     // Switch to MySQL
     fireEvent.click(screen.getByTestId('database-selector-trigger'));
     await waitFor(() => {
-      expect(screen.getByTestId('database-selector-option-conn-mysql-002')).toBeInTheDocument();
+      expect(screen.getByTestId(`database-selector-option-${MYSQL_CONNECTION_ID}`)).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByTestId('database-selector-option-conn-mysql-002'));
+    fireEvent.click(screen.getByTestId(`database-selector-option-${MYSQL_CONNECTION_ID}`));
 
     await waitFor(() => {
       expect(screen.getByText('MySQL DB')).toBeInTheDocument();
@@ -185,20 +202,20 @@ describe('WorkspacePage mid-session DB switch (T-464)', () => {
     // This test verifies that when a turn has no connection metadata
     // (e.g., from history before T-465 backend changes), the card still renders
     // We simulate this by loading a session with attempts that have no connection metadata
-    useUIStore.setState({ activeSessionId: 'session-no-meta' });
+    useUIStore.setState({ activeSessionId: NO_METADATA_SESSION_ID });
 
     server.use(
       http.get('/api/v1/sessions/:sessionId', async ({ params }) => {
-        if (params.sessionId === 'session-no-meta') {
+        if (params.sessionId === NO_METADATA_SESSION_ID) {
           return HttpResponse.json({
-            id: 'session-no-meta',
+            id: NO_METADATA_SESSION_ID,
             connection_id: null,
             preview_text: 'Session without meta',
             created_at: new Date().toISOString(),
             last_activity_at: new Date().toISOString(),
             attempts: [
               {
-                id: 'attempt-no-meta-1',
+                id: '550e8400-e29b-41d4-a716-446655440030',
                 question_text: 'Old query',
                 generated_sql: 'SELECT 1;',
                 accepted_at: new Date().toISOString(),
@@ -208,15 +225,20 @@ describe('WorkspacePage mid-session DB switch (T-464)', () => {
                 result_row_count: 1,
               },
             ],
-          });
+            attempts_total: 1,
+            attempts_next_cursor: null,
+          } satisfies SessionDetail);
         }
         return HttpResponse.json({
           id: params.sessionId as string,
+          connection_id: null,
           preview_text: 'Session',
           created_at: new Date().toISOString(),
           last_activity_at: new Date().toISOString(),
           attempts: [],
-        });
+          attempts_total: 0,
+          attempts_next_cursor: null,
+        } satisfies SessionDetail);
       })
     );
 

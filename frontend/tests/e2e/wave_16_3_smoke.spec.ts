@@ -1,11 +1,8 @@
 import { test, expect } from '@playwright/test';
-import * as path from 'path';
 import { signInLocalUser } from './helpers/auth';
 
-const EVIDENCE_DIR = path.resolve('../specs/004-arabic-rtl-verification-polish/evidence/wave-16.3');
-
 test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
-  test('Execute Arabic prompts against PostgreSQL, MySQL, and MSSQL real databases', async ({ page }) => {
+  test('Execute Arabic prompts against PostgreSQL, MySQL, and MSSQL real databases', async ({ page }, testInfo) => {
     // Increase timeout to 3 minutes to accommodate rate-limit spacing
     test.setTimeout(180_000);
 
@@ -45,7 +42,7 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
     expect(pgSql?.toLowerCase()).toContain('actor');
 
     // Take screenshot
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'pg-arabic-smoke.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('pg-arabic-smoke.png'), fullPage: true });
     console.log('PostgreSQL smoke test completed successfully.');
 
     // Add a 25-second delay to prevent rate limits
@@ -85,7 +82,7 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
     expect(mysqlSql?.toLowerCase()).toContain('actor');
 
     // Take screenshot
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'mysql-arabic-smoke.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('mysql-arabic-smoke.png'), fullPage: true });
     console.log('MySQL smoke test completed successfully.');
 
     // Add a 25-second delay to prevent rate limits
@@ -125,7 +122,7 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
     expect(mssqlSql?.toLowerCase()).toContain('customer');
 
     // Take screenshot
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'mssql-arabic-smoke.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('mssql-arabic-smoke.png'), fullPage: true });
     console.log('MSSQL smoke test completed successfully.');
 
     // --- History Metadata Smoke Test ---
@@ -140,7 +137,7 @@ test.describe('Wave 16.3 — Cross-Language DB Smoke Testing', () => {
     await expect(page.getByText('MSSQL AdventureWorks').first()).toBeVisible({ timeout: 10_000 });
 
     // Take screenshot
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'history-metadata-smoke.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('history-metadata-smoke.png'), fullPage: true });
     console.log('History metadata smoke test completed successfully.');
   });
 });

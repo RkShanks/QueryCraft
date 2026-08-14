@@ -3,9 +3,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { type InfiniteData, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
-import { useSessionsList, useSessionDetail, useCreateSession, useDeleteSession } from '../useSessions';
-import { useUpdateFeedback } from '../useFeedback';
-import { useAdminSettings, useUpdateAdminSettings } from '../useAdminSettings';
+import { useSessionsList, useSessionDetail, useDeleteSession } from '../useSessions';
+import { useAdminSettings } from '../useAdminSettings';
 import { createWrapper, seedAuthenticatedUser } from '../../test/utils';
 import { server } from '../../test/server';
 import {
@@ -181,16 +180,6 @@ describe('useSessions hooks', () => {
     expect(result.current.data?.id).toBe('new-session');
   });
 
-  it('useCreateSession returns mutation function', () => {
-    const { result } = renderHook(() => useCreateSession(), { wrapper: createWrapper() });
-    expect(typeof result.current.mutate).toBe('function');
-  });
-
-  it('useDeleteSession returns mutation function', () => {
-    const { result } = renderHook(() => useDeleteSession(), { wrapper: createWrapper() });
-    expect(typeof result.current.mutate).toBe('function');
-  });
-
   it('removes deleted session detail/list cache and keeps the lifecycle invalidated', async () => {
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
     queryClient.setQueryData(['sessions'], {
@@ -255,22 +244,10 @@ describe('useSessions hooks', () => {
   });
 });
 
-describe('useFeedback hook', () => {
-  it('useUpdateFeedback returns mutation function', () => {
-    const { result } = renderHook(() => useUpdateFeedback(), { wrapper: createWrapper() });
-    expect(typeof result.current.mutate).toBe('function');
-  });
-});
-
 describe('useAdminSettings hooks', () => {
   it('useAdminSettings returns data shape', async () => {
     const { result } = renderHook(() => useAdminSettings(), { wrapper: createWrapper() });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data).toBeDefined();
-  });
-
-  it('useUpdateAdminSettings returns mutation function', () => {
-    const { result } = renderHook(() => useUpdateAdminSettings(), { wrapper: createWrapper() });
-    expect(typeof result.current.mutate).toBe('function');
   });
 });

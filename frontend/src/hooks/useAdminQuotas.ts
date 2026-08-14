@@ -51,7 +51,7 @@ export const useAdminQuotas = (options?: UseAdminQuotasOptions) => {
 
   const listQuery = useQuery<{ quotas: RoleQuotaConfig[] }>({
     queryKey: ['adminQuotas'],
-    queryFn: listQuotas,
+    queryFn: ({ signal }) => listQuotas(signal),
     enabled: canManageQuotas,
   });
 

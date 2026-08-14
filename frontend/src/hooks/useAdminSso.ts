@@ -27,7 +27,8 @@ export const useAdminSso = (options?: UseAdminSsoOptions) => {
 
   const listQuery = useQuery({
     queryKey: ['adminSsoProviders'],
-    queryFn: () => listAdminSsoProviders({ throwOnError: true }).then((res) => res.data),
+    queryFn: ({ signal }) =>
+      listAdminSsoProviders({ throwOnError: true, signal }).then((res) => res.data),
     enabled: canManageSso,
   });
 
