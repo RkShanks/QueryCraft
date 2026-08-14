@@ -310,7 +310,7 @@ def _validate_preview_row_filters(
 async def _sync_role_connection_policies(
     db: AsyncSession,
     role_id: uuid.UUID,
-    policies,
+    policies: list[ConnectionPolicyItem],
 ) -> tuple[list[dict], bool]:
     """Apply an empty/unchanged/added/updated/removed policy set without committing."""
     parsed_conn_ids = _parse_policy_connection_ids(policies)
@@ -366,7 +366,9 @@ def _apply_requested_connection_policies(
     return changed
 
 
-def _connection_policy_values(policy) -> _ConnectionPolicyValues:
+def _connection_policy_values(
+    policy: ConnectionPolicyItem | RoleConnectionPolicy,
+) -> _ConnectionPolicyValues:
     return _ConnectionPolicyValues(
         allowed_tables=policy.allowed_tables or [],
         row_filters=policy.row_filters or [],

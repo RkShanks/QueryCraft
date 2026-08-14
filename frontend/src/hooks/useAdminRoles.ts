@@ -320,7 +320,6 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
     }: {
       id: string;
       data: RoleUpdateData;
-      existingMappings?: Array<{ id: string; sso_group_value: string }>;
     }) => {
       requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
       try {

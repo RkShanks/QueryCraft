@@ -130,10 +130,6 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
         permissions: ['query.submit', 'query.history.view'],
         group_mappings: ['sso-ops', 'sso-manager'],
       },
-      existingMappings: [
-        { id: 'map-1', sso_group_value: 'sso-analyst' },
-        { id: 'map-2', sso_group_value: 'sso-ops' },
-      ],
     });
 
     await waitFor(() => expect(result.current.updateMutation.isSuccess).toBe(true));
