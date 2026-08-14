@@ -241,6 +241,56 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
       },
     });
   });
+
+  it('recovers a committed create after its response is lost', async () => {
+    let committed = false;
+    const createdRole = roleDetail({ name: 'Created Analyst', groupMappings: ['sso-created'] });
+    server.use(
+      http.get('*/admin/roles', () =>
+        HttpResponse.json({ roles: committed ? [createdRole] : [] })
+      ),
+      http.get('*/admin/sso/group-mappings', () => HttpResponse.json({ mappings: [] })),
+      http.post('*/admin/roles', () => {
+        committed = true;
+        return HttpResponse.error();
+      }),
+      http.get('*/admin/roles/:id', () => HttpResponse.json(createdRole))
+    );
+
+    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    await waitFor(() => expect(result.current.listQuery.isSuccess).toBe(true));
+    result.current.createMutation.mutate(
+      roleDraft({ name: createdRole.name, groupMappings: ['sso-created'] })
+    );
+
+    await waitFor(() => expect(result.current.createMutation.isSuccess).toBe(true));
+    expect(result.current.createMutation.data).toMatchObject({
+      id: createdRole.id,
+      group_mappings: [{ sso_group_value: 'sso-created' }],
+    });
+  });
+
+  it('reports uncertainty when a lost create response did not commit', async () => {
+    let roleReads = 0;
+    server.use(
+      http.get('*/admin/roles', () => {
+        roleReads += 1;
+        return HttpResponse.json({ roles: [] });
+      }),
+      http.get('*/admin/sso/group-mappings', () => HttpResponse.json({ mappings: [] })),
+      http.post('*/admin/roles', () => HttpResponse.error())
+    );
+
+    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    await waitFor(() => expect(result.current.listQuery.isSuccess).toBe(true));
+    result.current.createMutation.mutate(
+      roleDraft({ name: 'Uncommitted Analyst', groupMappings: ['sso-missing'] })
+    );
+
+    await waitFor(() => expect(result.current.createMutation.isError).toBe(true));
+    expect(roleReads).toBeGreaterThanOrEqual(2);
+    expect(result.current.createMutation.error).toMatchObject({ recovery: 'uncertain' });
+  });
 });
 
 function roleDraft({ name, groupMappings }: { name: string; groupMappings: string[] }) {
