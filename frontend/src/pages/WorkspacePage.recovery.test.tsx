@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { useLocation } from 'react-router-dom';
 import type {
   AcceptedQueryDetail,
   ErrorResponse,
@@ -13,6 +14,7 @@ import { server } from '../test/server';
 import { renderWithClient } from '../test/utils';
 import { useUIStore } from '../stores/uiStore';
 import { WorkspacePage } from './WorkspacePage';
+import { PERMISSIONS } from '../auth/permissions';
 
 const SESSION_A = '550e8400-e29b-41d4-a716-446655440101';
 const SESSION_B = '550e8400-e29b-41d4-a716-446655440102';
@@ -77,6 +79,10 @@ async function submitLocalTurn(): Promise<void> {
   fireEvent.change(input, { target: { value: 'Original retry question' } });
   fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
   await screen.findByTestId('assistant-response-card');
+}
+
+function LocationProbe() {
+  return <output data-testid="location-path">{useLocation().pathname}</output>;
 }
 
 beforeEach(async () => {
@@ -393,5 +399,109 @@ describe('Workspace regenerate recovery', () => {
     await waitFor(() => expect(screen.getByText('Session B remains active')).toBeInTheDocument());
     expect(document.body).not.toHaveTextContent('stale_value');
     expect(screen.queryByRole('alert', { name: /regeneration/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('Workspace connection recovery', () => {
+  it('navigates authorized users to connection management', async () => {
+    server.use(
+      http.post('/api/v1/query/submit', () =>
+        HttpResponse.json(errorResponse('connection_disabled'), { status: 400 })
+      )
+    );
+    renderWithClient(
+      <>
+        <WorkspacePage />
+        <LocationProbe />
+      </>,
+      [PERMISSIONS.QUERY_SUBMIT, PERMISSIONS.ADMIN_CONNECTIONS_MANAGE]
+    );
+
+    const input = screen.getByRole('textbox');
+    await waitFor(() => expect(input).not.toBeDisabled());
+    fireEvent.change(input, { target: { value: 'Connection status question' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Manage connections' }));
+
+    expect(screen.getByTestId('location-path')).toHaveTextContent('/admin/connections');
+  });
+
+  it('shows guidance instead of a dead action without management permission', async () => {
+    server.use(
+      http.post('/api/v1/query/submit', () =>
+        HttpResponse.json(errorResponse('connection_no_schema'), { status: 400 })
+      )
+    );
+    renderWithClient(<WorkspacePage />, [PERMISSIONS.QUERY_SUBMIT]);
+
+    const input = screen.getByRole('textbox');
+    await waitFor(() => expect(input).not.toBeDisabled());
+    fireEvent.change(input, { target: { value: 'Schema status question' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    expect(
+      await screen.findByText('Ask a connection administrator to review this connection.')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Manage connections' })).not.toBeInTheDocument();
+  });
+
+  it('retries with the original question, session, and immutable connection', async () => {
+    const requestBodies: Array<Record<string, unknown>> = [];
+    let releaseRetry: (() => void) | undefined;
+    const retryGate = new Promise<void>((resolve) => {
+      releaseRetry = resolve;
+    });
+    mockStoredSession();
+    server.use(
+      http.post('/api/v1/query/submit', async ({ request }) => {
+        requestBodies.push((await request.json()) as Record<string, unknown>);
+        if (requestBodies.length === 1) {
+          return HttpResponse.json(errorResponse('query_execution_failed'), { status: 400 });
+        }
+        await retryGate;
+        return HttpResponse.json({
+          kind: 'result',
+          attempt_id: '550e8400-e29b-41d4-a716-446655440115',
+          session_id: SESSION_A,
+          question: 'Immutable connection question',
+          generated_sql: 'SELECT 9 AS recovered_value',
+          columns: [{ name: 'recovered_value', type: 'integer' }],
+          rows: [[9]],
+          row_count: 1,
+          attempt_number: 1,
+          is_last_auto_retry: false,
+          accepted_query_id: '550e8400-e29b-41d4-a716-446655440116',
+        } satisfies QueryResult);
+      })
+    );
+    renderWithClient(<WorkspacePage />);
+
+    const input = screen.getByRole('textbox');
+    await waitFor(() => expect(input).not.toBeDisabled());
+    fireEvent.change(input, { target: { value: 'Immutable connection question' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    retry.focus();
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+
+    expect(retry).toHaveFocus();
+    expect(retry).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('Retrying the original question…');
+    await waitFor(() => expect(requestBodies).toHaveLength(2));
+    expect(requestBodies).toEqual([
+      {
+        question: 'Immutable connection question',
+        session_id: SESSION_A,
+        connection_id: CONNECTION_ID,
+      },
+      {
+        question: 'Immutable connection question',
+        session_id: SESSION_A,
+        connection_id: CONNECTION_ID,
+      },
+    ]);
+    releaseRetry?.();
+    expect(await screen.findByRole('cell', { name: '9' })).toBeInTheDocument();
   });
 });
