@@ -13,6 +13,11 @@ import type {
   AdminSettingsResponse,
   UpdateAdminSettingsResponse,
   UserConnectionListResponse,
+  QueryLimitsResponse,
+  CreateSessionResponse,
+  SessionConnectionResponse,
+  AuditSearchResponse,
+  AuditRetentionResponse,
 } from '../api/generated/types.gen';
 
 const DEFAULT_CONNECTION_ID = '550e8400-e29b-41d4-a716-446655440004';
@@ -138,7 +143,8 @@ export const handlers = [
 
   // ─────────────────────────── Query ───────────────────────────
   http.get('/api/v1/query/limits', () => {
-    return HttpResponse.json({ max_question_length: 2000 });
+    const response = { max_question_length: 2000 } satisfies QueryLimitsResponse;
+    return HttpResponse.json(response);
   }),
 
   http.post('/api/v1/query/submit', async ({ request }) => {
@@ -287,16 +293,14 @@ export const handlers = [
   // ─────────────────────────── Session Connection ───────────────────────────
   http.patch('/api/v1/sessions/:sessionId/connection', async ({ params }) => {
     await delay(10);
-    return HttpResponse.json(
-      {
-        id: params.sessionId as string,
-        connection_id: DEFAULT_CONNECTION_ID,
-        preview_text: 'Session detail',
-        created_at: new Date().toISOString(),
-        last_activity_at: new Date().toISOString(),
-      },
-      { status: 200 }
-    );
+    const response = {
+      id: params.sessionId as string,
+      connection_id: DEFAULT_CONNECTION_ID,
+      preview_text: 'Session detail',
+      created_at: new Date().toISOString(),
+      last_activity_at: new Date().toISOString(),
+    } satisfies SessionConnectionResponse;
+    return HttpResponse.json(response, { status: 200 });
   }),
 
   // ─────────────────────────── Sessions ───────────────────────────
@@ -306,7 +310,7 @@ export const handlers = [
       id: '550e8400-e29b-41d4-a716-446655440001',
       preview_text: 'New session',
       created_at: new Date().toISOString(),
-    };
+    } satisfies CreateSessionResponse;
     return HttpResponse.json(session, { status: 201 });
   }),
 
@@ -397,18 +401,20 @@ export const handlers = [
 
   // ─────────────────────────── Audit Search ───────────────────────────
   http.get('/api/v1/admin/audit/entries', () => {
-    return HttpResponse.json({
+    const response = {
       entries: [],
       pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 1 },
-    });
+    } satisfies AuditSearchResponse;
+    return HttpResponse.json(response);
   }),
 
   // ─────────────────────────── Audit Retention ───────────────────────────
   http.get('/api/v1/admin/audit/retention', () => {
-    return HttpResponse.json({
+    const response = {
       retention_months: 24,
       last_purge_at: null,
       purged_count: null,
-    });
+    } satisfies AuditRetentionResponse;
+    return HttpResponse.json(response);
   }),
 ];

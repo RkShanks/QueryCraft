@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminAudit } from '../hooks/useAdminAudit';
 import { Shield, CheckCircle2, XCircle, AlertTriangle, X, RefreshCw, Download } from 'lucide-react';
@@ -8,6 +8,7 @@ import {
   exportAuditEntries,
   getAuditRetention,
   type AuditExportRequest,
+  type AuditSearchResponse,
 } from '../api/audit';
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from '../hooks/usePermission';
@@ -54,6 +55,7 @@ export const AdminAuditPage: React.FC = () => {
   const [outcome, setOutcome] = useState('all');
   const [resourceType, setResourceType] = useState('');
   const [page, setPage] = useState(1);
+  const [retainedSearchData, setRetainedSearchData] = useState<AuditSearchResponse>();
 
   const [filters, setFilters] = useState({
     start_date: '',
@@ -88,11 +90,13 @@ export const AdminAuditPage: React.FC = () => {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setRetainedSearchData(searchQuery.data ?? retainedSearchData);
     setPage(1);
     setFilters(buildFiltersFromInputs());
   };
 
   const handleReset = () => {
+    setRetainedSearchData(searchQuery.data ?? retainedSearchData);
     setStartDate('');
     setEndDate('');
     setActionType('');
@@ -169,11 +173,7 @@ export const AdminAuditPage: React.FC = () => {
     queryFn: ({ signal }) => getAuditRetention(signal),
     enabled: canVerifyAudit,
   });
-  const lastValidSearchData = useRef(searchQuery.data);
-  if (!searchQuery.isError && searchQuery.data !== undefined) {
-    lastValidSearchData.current = searchQuery.data;
-  }
-  const searchData = searchQuery.data ?? lastValidSearchData.current;
+  const searchData = searchQuery.data ?? retainedSearchData;
   const retentionData = retentionQuery.data;
 
   const handleVerify = () => {
@@ -680,14 +680,22 @@ export const AdminAuditPage: React.FC = () => {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                      onClick={() => {
+                        setRetainedSearchData(searchData);
+                        setPage((prev) => Math.max(1, prev - 1));
+                      }}
                       disabled={page === 1}
                       className="px-3 py-1.5 border border-gray-800 text-gray-300 rounded hover:bg-gray-800 transition-colors text-xs font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('audit.search.prev_page')}
                     </button>
                     <button
-                      onClick={() => setPage((prev) => Math.min(searchData.pagination.total_pages, prev + 1))}
+                      onClick={() => {
+                        setRetainedSearchData(searchData);
+                        setPage((prev) =>
+                          Math.min(searchData.pagination.total_pages, prev + 1)
+                        );
+                      }}
                       disabled={page === searchData.pagination.total_pages}
                       className="px-3 py-1.5 border border-gray-800 text-gray-300 rounded hover:bg-gray-800 transition-colors text-xs font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >

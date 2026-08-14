@@ -154,7 +154,7 @@ test.describe('F-010: error/modal/empty states have no key leaks', () => {
     await page.fill('textarea', 'unsafe query');
     await page.getByTestId('prompt-send').click();
     await page.waitForSelector('[role="alert"]', { timeout: 5_000 });
-    await assertNoMissingKeys(page, '/');
+    await assertNoMissingKeys(page);
   });
 
   test('timeout /query/submit shows no raw keys', async ({ page }) => {
@@ -164,7 +164,7 @@ test.describe('F-010: error/modal/empty states have no key leaks', () => {
     await page.fill('textarea', 'slow query');
     await page.getByTestId('prompt-send').click();
     await page.waitForSelector('[role="alert"]', { timeout: 5_000 });
-    await assertNoMissingKeys(page, '/');
+    await assertNoMissingKeys(page);
   });
 
   test('empty /history shows no raw keys', async ({ page }) => {
@@ -172,7 +172,8 @@ test.describe('F-010: error/modal/empty states have no key leaks', () => {
     await mockHistoryEmpty(page);
     await page.goto('/history');
     await page.waitForLoadState('networkidle');
-    await assertNoMissingKeys(page, '/history');
+    await expect(page.getByText(/no history yet/i)).toBeVisible();
+    await assertNoMissingKeys(page);
   });
 });
 

@@ -1,16 +1,6 @@
 import { test, expect } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
-
-const EVIDENCE_DIR = path.resolve('../specs/005-sso-rbac-row-column-security/evidence');
 
 test.describe('Wave 17.4e — Audit Verification Page E2E', () => {
-  test.beforeAll(() => {
-    if (!fs.existsSync(EVIDENCE_DIR)) {
-      fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
-    }
-  });
-
   test.beforeEach(async ({ page }) => {
     // Intercept/mock admin role & me calls to ensure admin permissions for navigation
     await page.route('**/api/v1/auth/me', async (route) => {
@@ -35,7 +25,7 @@ test.describe('Wave 17.4e — Audit Verification Page E2E', () => {
     });
   });
 
-  test('Verify audit page initial status and successful verification (EN & AR)', async ({ page }) => {
+  test('Verify audit page initial status and successful verification (EN & AR)', async ({ page }, testInfo) => {
     // 1. Initial status mock
     let verifyCallCount = 0;
     await page.route('**/api/v1/admin/audit/status', async (route) => {
@@ -76,7 +66,7 @@ test.describe('Wave 17.4e — Audit Verification Page E2E', () => {
     await expect(page.getByText(/never verified/i)).toBeVisible();
 
     // Take screenshot of initial state
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'audit-verify-initial-en.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('audit-verify-initial-en.png'), fullPage: true });
 
     // Click "Verify Integrity"
     await page.getByRole('button', { name: /verify integrity/i }).click();
@@ -86,7 +76,7 @@ test.describe('Wave 17.4e — Audit Verification Page E2E', () => {
     await expect(page.getByText(/verified intact/i)).toBeVisible();
 
     // Take screenshot of verified state
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'audit-verify-success-en.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('audit-verify-success-en.png'), fullPage: true });
 
     // 3. Arabic and RTL Verification
     await page.goto('/admin/audit?lng=ar');
@@ -97,10 +87,10 @@ test.describe('Wave 17.4e — Audit Verification Page E2E', () => {
     await expect(page.getByText(/سليم وغير متلاعب به/i)).toBeVisible();
 
     // Take Arabic screenshot (Verify RTL mirroring)
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'audit-verify-success-ar.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('audit-verify-success-ar.png'), fullPage: true });
   });
 
-  test('Verify audit page broken chain behavior', async ({ page }) => {
+  test('Verify audit page broken chain behavior', async ({ page }, testInfo) => {
     // 1. Initial status mock
     let statusCallCount = 0;
     await page.route('**/api/v1/admin/audit/status', async (route) => {
@@ -146,6 +136,6 @@ test.describe('Wave 17.4e — Audit Verification Page E2E', () => {
     await expect(page.getByText(/first break at sequence number/i)).toBeVisible();
 
     // Take screenshot of failed verification state
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'audit-verify-failed-en.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('audit-verify-failed-en.png'), fullPage: true });
   });
 });

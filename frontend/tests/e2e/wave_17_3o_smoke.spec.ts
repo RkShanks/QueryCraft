@@ -1,12 +1,9 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
 import { signInLocalUser } from './helpers/auth';
 
 const USERNAME = process.env.E2E_ADMIN_USERNAME || 'admin';
 const PASSWORD = process.env.E2E_ADMIN_PASSWORD;
-const EVIDENCE_DIR = path.resolve('../specs/005-sso-rbac-row-column-security/evidence');
 
 async function signIn(page: Page) {
   if (!PASSWORD) {
@@ -16,12 +13,6 @@ async function signIn(page: Page) {
 }
 
 test.describe('Wave 17.3o — Policy Editor and Masked Column Indicator', () => {
-  test.beforeAll(() => {
-    if (!fs.existsSync(EVIDENCE_DIR)) {
-      fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
-    }
-  });
-
   test.beforeEach(async ({ page }) => {
     test.skip(!PASSWORD, 'Skipping E2E tests because E2E_ADMIN_PASSWORD is not provided.');
 
@@ -92,7 +83,7 @@ test.describe('Wave 17.3o — Policy Editor and Masked Column Indicator', () => 
     });
   });
 
-  test('Verify Masked Column Indicator renders in Result Table (EN & AR)', async ({ page }) => {
+  test('Verify Masked Column Indicator renders in Result Table (EN & AR)', async ({ page }, testInfo) => {
     // Mock result execution with masked columns
     await page.route('**/query/submit', async (route) => {
       await route.fulfill({
@@ -127,7 +118,7 @@ test.describe('Wave 17.3o — Policy Editor and Masked Column Indicator', () => 
     
     // Wait for masked indicator
     await expect(page.getByText('Masked')).toBeVisible({ timeout: 15_000 });
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'masked-indicator-en.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('masked-indicator-en.png'), fullPage: true });
 
     // 2. Arabic Verification
     await page.goto('/?lng=ar');
@@ -137,10 +128,10 @@ test.describe('Wave 17.3o — Policy Editor and Masked Column Indicator', () => 
     
     // Wait for Arabic masked indicator "محجوب"
     await expect(page.getByText('محجوب')).toBeVisible({ timeout: 15_000 });
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'masked-indicator-ar.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('masked-indicator-ar.png'), fullPage: true });
   });
 
-  test('Verify Policy Editor renders correctly (EN & AR)', async ({ page }) => {
+  test('Verify Policy Editor renders correctly (EN & AR)', async ({ page }, testInfo) => {
     await signIn(page);
 
     // 1. English Policy Editor
@@ -179,7 +170,7 @@ test.describe('Wave 17.3o — Policy Editor and Masked Column Indicator', () => 
     await page.locator('[data-testid="mask-column-select-customer"]').selectOption('email');
 
     // Take English Policy Editor Screenshot
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'policy-editor-en.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('policy-editor-en.png'), fullPage: true });
 
     // Click Save Connection Policy
     await page.getByRole('button', { name: /save/i }).first().click();
@@ -216,6 +207,6 @@ test.describe('Wave 17.3o — Policy Editor and Masked Column Indicator', () => 
     await page.locator('[data-testid="mask-column-select-customer"]').selectOption('email');
 
     // Take Arabic Policy Editor Screenshot (Verify RTL alignment)
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, 'policy-editor-ar.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('policy-editor-ar.png'), fullPage: true });
   });
 });
