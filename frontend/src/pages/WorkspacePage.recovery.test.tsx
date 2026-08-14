@@ -271,6 +271,12 @@ describe('Workspace regenerate recovery', () => {
     );
     renderWithClient(<WorkspacePage />);
     await submitLocalTurn();
+    fireEvent.click(screen.getByTestId('sql-toggle-btn'));
+    await waitFor(() =>
+      expect(screen.getByTestId('assistant-response-card')).toHaveTextContent(
+        'SELECT 7 AS original_value'
+      )
+    );
     const regenerateButton = screen.getByTestId('action-regenerate');
 
     fireEvent.click(regenerateButton);

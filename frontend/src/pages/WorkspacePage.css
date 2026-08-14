@@ -129,6 +129,57 @@
   font-size: 0.875rem;
 }
 
+.workspace-regenerating,
+.workspace-recovery-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+}
+
+.workspace-regenerating {
+  color: var(--color-obsidian-300);
+  background: var(--color-obsidian-900);
+  border: 1px solid var(--color-obsidian-700);
+}
+
+.workspace-recovery-notice {
+  justify-content: space-between;
+  color: var(--color-error-200, #fecaca);
+  background: var(--color-error-950, #450a0a);
+  border: 1px solid var(--color-error-800, #991b1b);
+}
+
+.workspace-recovery-notice button {
+  flex: none;
+  min-height: 2.5rem;
+  padding-inline: 1rem;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.workspace-recovery-notice button:focus-visible {
+  outline: 2px solid var(--color-neon-cyan);
+  outline-offset: 2px;
+}
+
+@media (max-width: 30rem) {
+  .workspace-recovery-notice {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-recovery-notice button {
+    width: 100%;
+  }
+}
+
 .workspace-spinner-small {
   width: 1rem;
   height: 1rem;

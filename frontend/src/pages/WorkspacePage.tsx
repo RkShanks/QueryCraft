@@ -6,12 +6,17 @@ import { useUIStore } from '../stores/uiStore';
 import { useSessionDetail } from '../hooks/useSessions';
 import { useQuerySubmit } from '../hooks/useQuerySubmit';
 import { useQueryLimits } from '../hooks/useQueryLimits';
-import { isSessionDeletionError } from '../sessionDeletionLifecycle';
+import {
+  didSessionDeletionStart,
+  getSessionDeletionVersion,
+  isSessionDeletionError,
+  isSessionUnavailable,
+} from '../sessionDeletionLifecycle';
 import { UserBubble } from '../components/chat/UserBubble';
 import { AssistantResponseCard } from '../components/chat/AssistantResponseCard';
 import { PromptInput, type QuestionLimitState } from '../components/chat/PromptInput';
 import { MessageSquare } from '../components/icons';
-import { deleteHistoryEntry } from '../api/generated/sdk.gen';
+import { deleteHistoryEntry, getHistoryEntry } from '../api/generated/sdk.gen';
 import type { QueryResult, RefinePrompt, EvaluatorRejection, AttemptSummary, UserConnectionResponse } from '../api/generated/types.gen';
 import { useConnectionSelection } from '../hooks/useConnectionSelection';
 import { useUserConnections } from '../hooks/useUserConnections';
@@ -23,7 +28,18 @@ import type { ConnectionErrorKind } from '../components/chat/ConnectionErrorCard
 import { EvaluatorRejectionBanner } from '../components/query/EvaluatorRejectionBanner';
 import { QuotaExceededBanner } from '../components/query/QuotaExceededBanner';
 import { HostileInputBlockedBanner } from '../components/query/HostileInputBlockedBanner';
+import { isClientContractError } from '../api/responseValidation';
 import './WorkspacePage.css';
+
+type TurnRecoveryKind =
+  | 'deleteFailed'
+  | 'deleteUncertain'
+  | 'regenerateFailed'
+  | 'regenerateTerminal';
+
+interface TurnRecoveryState {
+  kind: TurnRecoveryKind;
+}
 
 interface ConversationTurn {
   id: string;
@@ -40,7 +56,74 @@ interface ConversationTurn {
   connectionError?: ConnectionErrorKind;
   quotaExceeded?: { resetAt?: string };
   hostileInputBlocked?: boolean;
+  sourceSessionId?: string | null;
+  immutableConnectionId?: string;
+  isRegenerating?: boolean;
+  recovery?: TurnRecoveryState;
 }
+
+interface DeleteSnapshot {
+  turn: ConversationTurn;
+  localIndex: number;
+  wasDeleted: boolean;
+  sessionId: string | null;
+}
+
+function getApiErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const record = error as Record<string, unknown>;
+  const detail = record.detail;
+  return (record.error as string | undefined) ??
+    (detail && typeof detail === 'object'
+      ? (detail as Record<string, unknown>).error as string | undefined
+      : undefined);
+}
+
+function isDefiniteServerFailure(error: unknown): boolean {
+  return !isClientContractError(error) && getApiErrorCode(error) !== undefined;
+}
+
+function isTerminalAttemptError(error: unknown): boolean {
+  const code = getApiErrorCode(error);
+  return code === 'attempt_invalid' || code === 'attempt_expired';
+}
+
+function isCurrentSessionContext(sessionId: string | null, deletionVersion: number): boolean {
+  if (useUIStore.getState().activeSessionId !== sessionId) return false;
+  return !sessionId ||
+    (!isSessionUnavailable(sessionId) && !didSessionDeletionStart(sessionId, deletionVersion));
+}
+
+const recoveryMessageKeys: Record<TurnRecoveryKind, string> = {
+  deleteFailed: 'workspace.recovery.deleteFailed',
+  deleteUncertain: 'workspace.recovery.deleteUncertain',
+  regenerateFailed: 'workspace.recovery.regenerateFailed',
+  regenerateTerminal: 'workspace.recovery.regenerateTerminal',
+};
+
+const TurnRecoveryNotice: React.FC<{
+  recovery: TurnRecoveryState;
+  onRetry?: () => void;
+}> = ({ recovery, onRetry }) => {
+  const { t } = useTranslation();
+  const message = t(recoveryMessageKeys[recovery.kind]);
+
+  return (
+    <div
+      className="workspace-recovery-notice"
+      role="alert"
+      aria-label={message}
+      aria-live="assertive"
+    >
+      <span>{message}</span>
+      {onRetry && (
+        <button type="button" onClick={onRetry}>
+          {t('common.retry')}
+        </button>
+      )}
+    </div>
+  );
+};
 
 function buildHistoryTurn(a: AttemptSummary, connections: UserConnectionResponse[]): ConversationTurn {
   const turn: ConversationTurn = {
@@ -229,9 +312,14 @@ export const WorkspacePage: React.FC = () => {
 
   const [localTurns, setLocalTurns] = useState<ConversationTurn[]>([]);
   const [deletedSavedIds, setDeletedSavedIds] = useState<Set<string>>(new Set());
+  const [savedTurnRecoveries, setSavedTurnRecoveries] = useState<
+    Record<string, TurnRecoveryState>
+  >({});
   const [renderedSessionId, setRenderedSessionId] = useState(activeSessionId);
   const prevSessionIdRef = useRef(activeSessionId);
   const pendingSubmitRef = useRef(false);
+  const pendingDeleteIdsRef = useRef(new Set<string>());
+  const pendingRegenerateIdsRef = useRef(new Set<string>());
   const conversationRef = useRef<HTMLDivElement>(null);
   const pendingScrollRestoreRef = useRef<{
     sessionId: string;
@@ -254,6 +342,7 @@ export const WorkspacePage: React.FC = () => {
       setRenderedSessionId(activeSessionId);
       setLocalTurns([]);
       setDeletedSavedIds(new Set());
+      setSavedTurnRecoveries({});
     }
   }, [activeSessionId, renderedSessionId]);
 
@@ -283,7 +372,12 @@ export const WorkspacePage: React.FC = () => {
   const allTurns: ConversationTurn[] = [
     ...[...historyAttempts].reverse().map((a) => buildHistoryTurn(a, availableConnections)),
     ...dedupedLocalTurns,
-  ];
+  ].map((turn) => {
+    const recovery = turn.savedQueryId
+      ? savedTurnRecoveries[turn.savedQueryId]
+      : undefined;
+    return recovery ? { ...turn, recovery } : turn;
+  });
 
   const showEmptyState = activeSessionId === null && allTurns.length === 0;
   const showLoading = isLoading && allTurns.length === 0 && !querySubmit.isSubmitting;
@@ -344,49 +438,144 @@ export const WorkspacePage: React.FC = () => {
     []
   );
 
+  const invalidateWorkspaceHistory = useCallback(
+    (sessionId: string | null) => {
+      void queryClient.invalidateQueries({ queryKey: ['history'] });
+      if (sessionId) {
+        void queryClient.invalidateQueries({ queryKey: ['sessions', sessionId] });
+      }
+    },
+    [queryClient]
+  );
+
+  const restoreDeletedTurn = useCallback(
+    (snapshot: DeleteSnapshot, kind: TurnRecoveryKind) => {
+      setDeletedSavedIds((previous) => {
+        if (snapshot.wasDeleted) return previous;
+        const restored = new Set(previous);
+        restored.delete(snapshot.turn.savedQueryId as string);
+        return restored;
+      });
+      setLocalTurns((previous) => {
+        if (
+          snapshot.localIndex < 0 ||
+          previous.some((turn) => turn.savedQueryId === snapshot.turn.savedQueryId)
+        ) {
+          return previous;
+        }
+        const restored = [...previous];
+        restored.splice(Math.min(snapshot.localIndex, restored.length), 0, snapshot.turn);
+        return restored;
+      });
+      setSavedTurnRecoveries((previous) => ({
+        ...previous,
+        [snapshot.turn.savedQueryId as string]: { kind },
+      }));
+    },
+    []
+  );
+
   const handleDelete = useCallback(
     async (savedQueryId: string) => {
       requirePermission(canViewHistory, PERMISSIONS.QUERY_HISTORY_VIEW);
-      // Optimistically remove from both history and local turns
+      if (pendingDeleteIdsRef.current.has(savedQueryId)) return;
+
+      const turn = allTurns.find((candidate) => candidate.savedQueryId === savedQueryId);
+      if (!turn) return;
+      const sessionId = activeSessionId;
+      const deletionVersion = sessionId ? getSessionDeletionVersion(sessionId) : 0;
+      const snapshot: DeleteSnapshot = {
+        turn,
+        localIndex: localTurns.findIndex((candidate) => candidate.savedQueryId === savedQueryId),
+        wasDeleted: deletedSavedIds.has(savedQueryId),
+        sessionId,
+      };
+
+      pendingDeleteIdsRef.current.add(savedQueryId);
+      setSavedTurnRecoveries((previous) => {
+        const next = { ...previous };
+        delete next[savedQueryId];
+        return next;
+      });
       setDeletedSavedIds((prev) => new Set(prev).add(savedQueryId));
-      setLocalTurns((prev) => prev.filter((t) => t.savedQueryId !== savedQueryId));
+
       try {
-        await deleteHistoryEntry({ path: { query_id: savedQueryId } });
-        queryClient.invalidateQueries({ queryKey: ['history'] });
-        if (activeSessionId) {
-          queryClient.invalidateQueries({ queryKey: ['sessions', activeSessionId] });
+        await deleteHistoryEntry({
+          path: { query_id: savedQueryId },
+          throwOnError: true,
+        });
+        if (!isCurrentSessionContext(sessionId, deletionVersion)) return;
+        invalidateWorkspaceHistory(sessionId);
+      } catch (error: unknown) {
+        if (!isCurrentSessionContext(sessionId, deletionVersion)) return;
+        if (isDefiniteServerFailure(error)) {
+          restoreDeletedTurn(snapshot, 'deleteFailed');
+          return;
         }
-      } catch {
-        // Silently ignore — turn is already removed from UI
+
+        try {
+          await getHistoryEntry({
+            path: { query_id: savedQueryId },
+            throwOnError: true,
+          });
+          if (!isCurrentSessionContext(sessionId, deletionVersion)) return;
+          restoreDeletedTurn(snapshot, 'deleteFailed');
+        } catch (reconciliationError: unknown) {
+          if (!isCurrentSessionContext(sessionId, deletionVersion)) return;
+          if (getApiErrorCode(reconciliationError) === 'not_found') {
+            invalidateWorkspaceHistory(sessionId);
+          } else {
+            restoreDeletedTurn(snapshot, 'deleteUncertain');
+          }
+        }
+      } finally {
+        pendingDeleteIdsRef.current.delete(savedQueryId);
       }
     },
-    [activeSessionId, canViewHistory, queryClient]
+    [
+      activeSessionId,
+      allTurns,
+      canViewHistory,
+      deletedSavedIds,
+      invalidateWorkspaceHistory,
+      localTurns,
+      restoreDeletedTurn,
+    ]
   );
 
   const handleRegenerate = useCallback(
     async (attemptId: string) => {
-      updateTurn(attemptId, { isLoading: true });
+      if (pendingRegenerateIdsRef.current.has(attemptId)) return;
+      const originalTurn = allTurns.find((turn) => turn.attemptId === attemptId);
+      if (!originalTurn) return;
+
+      const sessionId = originalTurn.sourceSessionId ?? activeSessionId;
+      const deletionVersion = sessionId ? getSessionDeletionVersion(sessionId) : 0;
+      pendingRegenerateIdsRef.current.add(attemptId);
+      updateTurn(attemptId, { isRegenerating: true, recovery: undefined });
 
       try {
         const data = await querySubmit.regenerateQuery(attemptId);
+        if (!isCurrentSessionContext(sessionId, deletionVersion)) return;
         if (data && typeof data === 'object' && 'kind' in data) {
           if (data.kind === 'result') {
             const result = data as QueryResult;
             updateTurn(attemptId, {
-              isLoading: false,
+              isRegenerating: false,
+              recovery: undefined,
               result,
               sql: result.generated_sql,
               attemptId: result.attempt_id,
               savedQueryId: result.accepted_query_id ?? undefined,
               refinePrompt: undefined,
               evaluatorRejection: undefined,
+              sourceSessionId: result.session_id ?? sessionId,
             });
-            if (activeSessionId) {
-              queryClient.invalidateQueries({ queryKey: ['sessions', activeSessionId] });
-            }
+            invalidateWorkspaceHistory(sessionId);
           } else if (data.kind === 'refine') {
             updateTurn(attemptId, {
-              isLoading: false,
+              isRegenerating: false,
+              recovery: undefined,
               refinePrompt: data as RefinePrompt,
               result: undefined,
               sql: '',
@@ -394,11 +583,42 @@ export const WorkspacePage: React.FC = () => {
             });
           }
         }
-      } catch {
-        updateTurn(attemptId, { isLoading: false });
+      } catch (error: unknown) {
+        if (!isCurrentSessionContext(sessionId, deletionVersion)) return;
+        if (isTerminalAttemptError(error)) {
+          if (sessionId) {
+            try {
+              await queryClient.refetchQueries({
+                queryKey: ['sessions', sessionId],
+                exact: true,
+              });
+            } catch {
+              // The terminal state remains safe: no invalid retry is exposed.
+            }
+          }
+          if (!isCurrentSessionContext(sessionId, deletionVersion)) return;
+          updateTurn(attemptId, {
+            isRegenerating: false,
+            recovery: { kind: 'regenerateTerminal' },
+          });
+        } else {
+          updateTurn(attemptId, {
+            isRegenerating: false,
+            recovery: { kind: 'regenerateFailed' },
+          });
+        }
+      } finally {
+        pendingRegenerateIdsRef.current.delete(attemptId);
       }
     },
-    [querySubmit, updateTurn, queryClient, activeSessionId]
+    [
+      activeSessionId,
+      allTurns,
+      invalidateWorkspaceHistory,
+      queryClient,
+      querySubmit,
+      updateTurn,
+    ]
   );
 
   const handleSubmit = useCallback(
@@ -438,6 +658,8 @@ export const WorkspacePage: React.FC = () => {
           isLoading: true,
           connectionName: meta.name,
           databaseType: meta.type,
+          sourceSessionId: activeSessionId,
+          immutableConnectionId: selectedConnectionId,
         },
       ]);
 
@@ -459,6 +681,7 @@ export const WorkspacePage: React.FC = () => {
                     sql: result.generated_sql,
                     attemptId: result.attempt_id,
                     savedQueryId: result.accepted_query_id ?? undefined,
+                    sourceSessionId: result.session_id ?? activeSessionId,
                   }
                 : t
             )
@@ -637,6 +860,31 @@ export const WorkspacePage: React.FC = () => {
                     databaseType={turn.databaseType}
                     onRegenerate={turn.attemptId ? handleRegenerate : undefined}
                     onDelete={turn.savedQueryId && canViewHistory ? handleDelete : undefined}
+                  />
+                )}
+                {turn.isRegenerating && (
+                  <div
+                    className="workspace-regenerating"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <div className="workspace-spinner-small" aria-hidden="true" />
+                    <span>{t('workspace.recovery.regenerating')}</span>
+                  </div>
+                )}
+                {turn.recovery && (
+                  <TurnRecoveryNotice
+                    recovery={turn.recovery}
+                    onRetry={
+                      turn.recovery.kind === 'deleteFailed' ||
+                      turn.recovery.kind === 'deleteUncertain'
+                        ? turn.savedQueryId
+                          ? () => void handleDelete(turn.savedQueryId as string)
+                          : undefined
+                        : turn.recovery.kind === 'regenerateFailed' && turn.attemptId
+                          ? () => void handleRegenerate(turn.attemptId as string)
+                          : undefined
+                    }
                   />
                 )}
               </div>
