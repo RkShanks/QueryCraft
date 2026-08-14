@@ -24,6 +24,17 @@ async def _role_mutation_audit_count(async_engine_fixture) -> int:
         )
 
 
+async def _audit_action_count(async_engine_fixture, action_type: str) -> int:
+    async with async_engine_fixture.connect() as connection:
+        return int(
+            await connection.scalar(
+                text("SELECT COUNT(*) FROM audit_log_entries WHERE action_type = :action_type"),
+                {"action_type": action_type},
+            )
+            or 0
+        )
+
+
 @pytest.mark.integration
 async def test_conflicting_group_rejects_complete_role_create(
     authenticated_client,
@@ -289,3 +300,108 @@ async def test_duplicate_groups_return_sanitized_422_without_mutation(
                 text("DELETE FROM roles WHERE name = :name"),
                 {"name": requested_name},
             )
+
+
+@pytest.mark.integration
+async def test_noop_mapping_update_preserves_identity_without_audit(
+    authenticated_client,
+    async_engine_fixture,
+) -> None:
+    case_token = uuid4().hex
+    role_name = f"chunk16-noop-{case_token}"
+    group_values = [f"chunk16-noop-a-{case_token}", f"chunk16-noop-b-{case_token}"]
+    role_priority = 1_700_000_000 + int(case_token[:7], 16)
+
+    try:
+        async with async_engine_fixture.begin() as connection:
+            role_id = await connection.scalar(
+                text(
+                    """
+                    INSERT INTO roles (name, priority, permissions)
+                    VALUES (:name, :priority, '[]'::jsonb)
+                    RETURNING id
+                    """
+                ),
+                {"name": role_name, "priority": role_priority},
+            )
+            original_ids = []
+            for group_value in group_values:
+                original_ids.append(
+                    await connection.scalar(
+                        text(
+                            """
+                            INSERT INTO sso_group_mappings (sso_group_value, role_id)
+                            VALUES (:group_value, :role_id)
+                            RETURNING id
+                            """
+                        ),
+                        {"group_value": group_value, "role_id": role_id},
+                    )
+                )
+
+        role_updates_before = await _audit_action_count(async_engine_fixture, "role.update")
+        mapping_updates_before = await _audit_action_count(async_engine_fixture, "role.mapping.change")
+        response = await authenticated_client.put(
+            f"/api/v1/admin/roles/{role_id}",
+            json={"group_mappings": group_values},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["group_mappings"] == [
+            {"id": str(mapping_id), "sso_group_value": group_value}
+            for mapping_id, group_value in zip(original_ids, group_values, strict=True)
+        ]
+        assert await _audit_action_count(async_engine_fixture, "role.update") == role_updates_before
+        assert await _audit_action_count(async_engine_fixture, "role.mapping.change") == mapping_updates_before
+    finally:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(text("DELETE FROM roles WHERE name = :name"), {"name": role_name})
+
+
+@pytest.mark.integration
+async def test_empty_mapping_update_clears_with_exact_delete_audits(
+    authenticated_client,
+    async_engine_fixture,
+) -> None:
+    case_token = uuid4().hex
+    role_name = f"chunk16-clear-{case_token}"
+    group_values = [f"chunk16-clear-a-{case_token}", f"chunk16-clear-b-{case_token}"]
+    role_priority = 1_800_000_000 + int(case_token[:7], 16)
+
+    try:
+        async with async_engine_fixture.begin() as connection:
+            role_id = await connection.scalar(
+                text(
+                    """
+                    INSERT INTO roles (name, priority, permissions)
+                    VALUES (:name, :priority, '[]'::jsonb)
+                    RETURNING id
+                    """
+                ),
+                {"name": role_name, "priority": role_priority},
+            )
+            for group_value in group_values:
+                await connection.execute(
+                    text(
+                        """
+                        INSERT INTO sso_group_mappings (sso_group_value, role_id)
+                        VALUES (:group_value, :role_id)
+                        """
+                    ),
+                    {"group_value": group_value, "role_id": role_id},
+                )
+
+        role_updates_before = await _audit_action_count(async_engine_fixture, "role.update")
+        mapping_updates_before = await _audit_action_count(async_engine_fixture, "role.mapping.change")
+        response = await authenticated_client.put(
+            f"/api/v1/admin/roles/{role_id}",
+            json={"group_mappings": []},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["group_mappings"] == []
+        assert await _audit_action_count(async_engine_fixture, "role.update") == role_updates_before
+        assert await _audit_action_count(async_engine_fixture, "role.mapping.change") == mapping_updates_before + 2
+    finally:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(text("DELETE FROM roles WHERE name = :name"), {"name": role_name})
