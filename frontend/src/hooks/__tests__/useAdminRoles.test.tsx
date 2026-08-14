@@ -171,7 +171,107 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     expect(rolesFetched).toBe(false);
     expect(mappingsFetched).toBe(false);
   });
+
+  it('refetches authoritative detail after a definite server rejection', async () => {
+    let detailReads = 0;
+    const authoritativeRole = roleDetail({ name: 'Original Analyst', groupMappings: ['sso-old'] });
+    server.use(
+      http.put('*/admin/roles/:id', () =>
+        HttpResponse.json({ detail: { code: 'group_mapping_conflict' } }, { status: 409 })
+      ),
+      http.get('*/admin/roles/:id', () => {
+        detailReads += 1;
+        return HttpResponse.json(authoritativeRole);
+      })
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    result.current.updateMutation.mutate({
+      id: authoritativeRole.id,
+      data: roleDraft({ name: 'Rejected Analyst', groupMappings: ['sso-new'] }),
+    });
+
+    await waitFor(() => expect(result.current.updateMutation.isError).toBe(true));
+    expect(detailReads).toBe(1);
+    expect(result.current.updateMutation.error).toMatchObject({
+      recovery: 'rejected',
+      authoritativeRole: { name: 'Original Analyst' },
+    });
+  });
+
+  it('recovers a committed update after its response is lost', async () => {
+    const committedRole = roleDetail({ name: 'Committed Analyst', groupMappings: ['sso-new'] });
+    server.use(
+      http.put('*/admin/roles/:id', () => HttpResponse.error()),
+      http.get('*/admin/roles/:id', () => HttpResponse.json(committedRole))
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    result.current.updateMutation.mutate({
+      id: committedRole.id,
+      data: roleDraft({ name: committedRole.name, groupMappings: ['sso-new'] }),
+    });
+
+    await waitFor(() => expect(result.current.updateMutation.isSuccess).toBe(true));
+    expect(result.current.updateMutation.data).toMatchObject({
+      name: 'Committed Analyst',
+      group_mappings: [{ sso_group_value: 'sso-new' }],
+    });
+  });
+
+  it('reports uncertainty when a lost update response did not commit', async () => {
+    const authoritativeRole = roleDetail({ name: 'Original Analyst', groupMappings: ['sso-old'] });
+    server.use(
+      http.put('*/admin/roles/:id', () => HttpResponse.error()),
+      http.get('*/admin/roles/:id', () => HttpResponse.json(authoritativeRole))
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    result.current.updateMutation.mutate({
+      id: authoritativeRole.id,
+      data: roleDraft({ name: 'Possibly Saved Analyst', groupMappings: ['sso-new'] }),
+    });
+
+    await waitFor(() => expect(result.current.updateMutation.isError).toBe(true));
+    expect(result.current.updateMutation.error).toMatchObject({
+      recovery: 'uncertain',
+      authoritativeRole: {
+        name: 'Original Analyst',
+        group_mappings: [{ sso_group_value: 'sso-old' }],
+      },
+    });
+  });
 });
+
+function roleDraft({ name, groupMappings }: { name: string; groupMappings: string[] }) {
+  return {
+    name,
+    description: 'Analyst description',
+    priority: 15,
+    permissions: ['query.submit'],
+    group_mappings: groupMappings,
+    connection_policies: [],
+  };
+}
+
+function roleDetail({ name, groupMappings }: { name: string; groupMappings: string[] }) {
+  return {
+    id: 'role-recovery-id',
+    name,
+    description: 'Analyst description',
+    priority: 15,
+    permissions: ['query.submit'],
+    is_builtin: false,
+    group_mappings: groupMappings.map((sso_group_value, index) => ({
+      id: `mapping-recovery-${index}`,
+      sso_group_value,
+    })),
+    connection_policy_count: 0,
+    connection_policies: [],
+    created_at: '2026-06-05T00:00:00Z',
+    updated_at: '2026-06-05T00:00:00Z',
+  };
+}
 
 describe('useDraftRolePolicyPreview', () => {
   it('posts the complete unsaved policy to the canonical draft endpoint', async () => {
