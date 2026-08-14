@@ -332,7 +332,7 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
             priority: data.priority,
             permissions: data.permissions,
             group_mappings: data.group_mappings,
-            connection_policies: data.connection_policies || [],
+            connection_policies: data.connection_policies,
           },
           throwOnError: true,
         });

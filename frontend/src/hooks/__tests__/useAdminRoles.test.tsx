@@ -26,6 +26,7 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     let standaloneMappingWrites = 0;
 
     server.use(
+      http.get('*/admin/roles', () => HttpResponse.json({ roles: [] })),
       http.post('*/admin/roles', async ({ request }) => {
         const body = (await request.json()) as any;
         rolesCreated.push(body);
@@ -54,7 +55,7 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
       })
     );
 
-    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
 
     result.current.createMutation.mutate({
       name: 'Custom Analyst',
@@ -116,7 +117,7 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
       })
     );
 
-    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
 
     // Existing mappings are: map-1 (sso-analyst), map-2 (sso-ops)
     // New requested mappings are: sso-ops (stays), sso-manager (added), sso-analyst (deleted)
@@ -145,7 +146,6 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
       priority: 20,
       permissions: ['query.submit', 'query.history.view'],
       group_mappings: ['sso-ops', 'sso-manager'],
-      connection_policies: [],
     });
     expect(standaloneMappingWrites).toBe(0);
     expect(result.current.updateMutation.data?.group_mappings).toHaveLength(2);
