@@ -116,23 +116,12 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
           description: data.description,
           priority: data.priority,
           permissions: data.permissions,
+          group_mappings: data.group_mappings,
           connection_policies: data.connection_policies || [],
         },
         throwOnError: true,
       });
-      const createdRole = normalizeRole(response.data);
-
-      if (data.group_mappings && data.group_mappings.length > 0) {
-        await Promise.all(
-          data.group_mappings.map((group) =>
-            createGroupMapping({
-              body: { sso_group_value: group, role_id: createdRole.id },
-              throwOnError: true,
-            })
-          )
-        );
-      }
-      return createdRole;
+      return normalizeRole(response.data);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminRoles'] });
@@ -148,7 +137,6 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
     mutationFn: async ({
       id,
       data,
-      existingMappings = [],
     }: {
       id: string;
       data: RoleUpdateData;
@@ -162,37 +150,12 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
           description: data.description,
           priority: data.priority,
           permissions: data.permissions,
+          group_mappings: data.group_mappings,
           connection_policies: data.connection_policies || [],
         },
         throwOnError: true,
       });
-      const updatedRole = normalizeRole(response.data);
-
-      if (data.group_mappings) {
-        const newGroups = data.group_mappings;
-        const existingGroupNames = existingMappings.map((em) => em.sso_group_value);
-
-        const groupsToAdd = newGroups.filter((g) => !existingGroupNames.includes(g));
-        const mappingsToDelete = existingMappings.filter(
-          (em) => !newGroups.includes(em.sso_group_value)
-        );
-
-        await Promise.all([
-          ...groupsToAdd.map((group) =>
-            createGroupMapping({
-              body: { sso_group_value: group, role_id: id },
-              throwOnError: true,
-            })
-          ),
-          ...mappingsToDelete.map((mapping) =>
-            deleteGroupMapping({
-              path: { mapping_id: mapping.id },
-              throwOnError: true,
-            })
-          ),
-        ]);
-      }
-      return updatedRole;
+      return normalizeRole(response.data);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['adminRoles'] });
