@@ -16,13 +16,14 @@ from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
 from app.core.dependencies import get_db
 from app.core.exceptions import BuiltinProtectedError
 from app.db.models.database_connection import SourceDatabaseConnection
-from app.db.models.enums import HealthStatus, LifecycleState, Permission, SchemaIntrospectionStatus
+from app.db.models.enums import AuditActionType, HealthStatus, LifecycleState, Permission, SchemaIntrospectionStatus
 from app.db.models.role import Role
 from app.db.models.role_connection_policy import RoleConnectionPolicy
 from app.db.models.sso_group_mapping import SsoGroupMapping
@@ -32,6 +33,7 @@ from app.evaluator.schema_context import Column, SchemaContext, Table
 from app.repositories.connection_repository import ConnectionRepository
 from app.repositories.role_repository import RoleRepository
 from app.schemas.roles import DraftPolicyTestRequest, PolicyTestRequest, PolicyTestResponse, RoleCreate, RoleUpdate
+from app.services.audit_service import AuditService
 from app.services.policy_enforcement import PolicyEnforcementService
 from app.services.role_service import RoleService
 
@@ -73,6 +75,63 @@ def _role_to_detail_response(role: Role, group_mappings: list, connection_polici
         "created_at": role.created_at.isoformat() if role.created_at else None,
         "updated_at": role.updated_at.isoformat() if role.updated_at else None,
     }
+
+
+def _group_mapping_summary(mapping_id: uuid.UUID, group_value: str) -> dict[str, str]:
+    return {"id": str(mapping_id), "sso_group_value": group_value}
+
+
+def _duplicate_group_mapping_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "error": "conflict",
+            "message_key": "error.conflict.duplicateGroupMapping",
+        },
+    )
+
+
+async def _create_role_group_mappings(
+    db: AsyncSession,
+    role_id: uuid.UUID,
+    group_values: list[str],
+    actor_identity: str | None,
+) -> list[dict[str, str]]:
+    """Claim requested groups and audit each claim in the caller's transaction."""
+    mappings: list[dict[str, str]] = []
+    for group_value in group_values:
+        mapping_id = await _claim_group_mapping(db, role_id, group_value)
+        await _audit_group_mapping_create(db, mapping_id, actor_identity)
+        mappings.append(_group_mapping_summary(mapping_id, group_value))
+    return mappings
+
+
+async def _claim_group_mapping(db: AsyncSession, role_id: uuid.UUID, group_value: str) -> uuid.UUID:
+    mapping_id = await db.scalar(
+        pg_insert(SsoGroupMapping)
+        .values(sso_group_value=group_value, role_id=role_id)
+        .on_conflict_do_nothing(index_elements=[SsoGroupMapping.sso_group_value])
+        .returning(SsoGroupMapping.id)
+    )
+    if mapping_id is None:
+        raise _duplicate_group_mapping_error()
+    return mapping_id
+
+
+async def _audit_group_mapping_create(
+    db: AsyncSession,
+    mapping_id: uuid.UUID,
+    actor_identity: str | None,
+) -> None:
+    await AuditService.log(
+        db,
+        action=AuditActionType.ROLE_MAPPING_CHANGE,
+        actor_identity=actor_identity,
+        resource_type="sso_group_mapping",
+        resource_id=str(mapping_id),
+        outcome="success",
+        context={"action": "create"},
+    )
 
 
 def _validate_permissions(permissions: list[str] | None) -> None:
@@ -358,11 +417,17 @@ async def create_role(
         # conn-existence, delete-existing, select-persisted, refresh).
         # role.id is set by repo.create's internal flush.
         persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies or [])
+        persisted_mappings = await _create_role_group_mappings(
+            db,
+            role.id,
+            body.group_mappings,
+            session.get("username"),
+        )
 
         await db.commit()
         await db.refresh(role)
 
-        return _role_to_detail_response(role, [], persisted_policies)
+        return _role_to_detail_response(role, persisted_mappings, persisted_policies)
     except BuiltinProtectedError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
