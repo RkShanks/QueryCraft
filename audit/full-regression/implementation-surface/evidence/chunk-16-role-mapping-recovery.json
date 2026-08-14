@@ -1,0 +1,133 @@
+{
+  "chunk": "CHUNK-16",
+  "gap_ids": ["IS-GAP-036"],
+  "status": "implementation_and_local_verification_passed_pr_pending",
+  "branch": "phase-6/wave-19.16-role-mapping-transaction",
+  "starting_main": "c92255de4e0be0fde59b3f0bf3045b7115de7354",
+  "tested_product_commit": "bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2",
+  "pull_request": null,
+  "authoritative_ci": {"backend_test": "pending", "frontend_test": "pending"},
+  "api_contract": {
+    "new_endpoint": false,
+    "create": "POST /api/v1/admin/roles",
+    "update": "PUT /api/v1/admin/roles/{role_id}",
+    "required_permission": "admin.roles.manage",
+    "standalone_mapping_endpoints_retained": true,
+    "runtime_operations": 64,
+    "canonical_operations": 64,
+    "generated_operations": 64,
+    "paths": 48,
+    "canonical_generation_check": true,
+    "generated_client_check": true
+  },
+  "transaction": {
+    "platform_postgresql_transactions_per_save": 1,
+    "role_fields_atomic": true,
+    "connection_policies_atomic": true,
+    "group_mapping_diff_atomic": true,
+    "success_audits_atomic": true,
+    "audit_failure_fails_closed": true,
+    "response_prepared_before_commit": true,
+    "duplicate_request_values": {"status": 422, "sanitized": true},
+    "cross_role_group_conflict": {"status": 409, "sanitized": true},
+    "concurrent_claims": {"winners": 1, "losers": 1, "statuses": [201, 409]},
+    "omitted_group_mappings": "preserve",
+    "empty_group_mappings": "clear",
+    "unchanged_mapping_identity_preserved": true
+  },
+  "audit_counts": [
+    {"case": "create_two_mappings", "role_create": 1, "role_update": 0, "role_mapping_change": 2},
+    {"case": "remove_one_add_one", "role_create": 0, "role_update": 0, "role_mapping_change": 2},
+    {"case": "mapping_noop", "role_create": 0, "role_update": 0, "role_mapping_change": 0},
+    {"case": "clear_two", "role_create": 0, "role_update": 0, "role_mapping_change": 2},
+    {"case": "policy_only", "role_create": 0, "role_update": 1, "role_mapping_change": 0},
+    {"case": "declared_failure", "role_create_net": 0, "role_update_net": 0, "role_mapping_change_net": 0},
+    {"case": "concurrent_pair", "role_create_net": 1, "role_update_net": 0, "role_mapping_change_net": 1}
+  ],
+  "fault_matrix": [
+    {"fault": "duplicate mapping values", "result": "sanitized_422_complete_rollback"},
+    {"fault": "cross-role mapping conflict", "result": "sanitized_409_complete_rollback"},
+    {"fault": "mapping audit failure", "result": "sanitized_500_complete_rollback"},
+    {"fault": "response preparation refresh failure", "result": "sanitized_500_complete_rollback"},
+    {"fault": "deferred PostgreSQL commit failure", "result": "sanitized_500_complete_rollback"},
+    {"fault": "concurrent same-group claims", "result": "exactly_one_complete_winner"}
+  ],
+  "frontend_recovery": {
+    "role_writes_per_save": 1,
+    "standalone_mapping_writes_per_save": 0,
+    "duplicate_submission_suppressed": true,
+    "draft_preserved_after_failure": true,
+    "cancel_restores_authoritative_state": true,
+    "lost_response_committed": "authoritative_match_returns_success",
+    "lost_response_uncommitted": "localized_uncertain_with_preserved_draft",
+    "reconciliation_read_failure": "localized_uncertain_without_refresh_claim",
+    "create_preflight_authoritative_snapshot": true,
+    "locales": ["en", "ar"],
+    "live_regions": true,
+    "logical_rtl": true
+  },
+  "browser": {
+    "classification": "isolated_playwright_chromium_with_disposable_mock_http_state",
+    "passed": 3,
+    "failed": 0,
+    "seconds": 12.2,
+    "viewports": [
+      {"width": 1440, "locale": "en", "direction": "ltr", "result": "passed"},
+      {"width": 768, "locale": "ar", "direction": "rtl", "result": "passed"},
+      {"width": 375, "locale": "en", "direction": "ltr", "result": "passed"}
+    ],
+    "logical_save_attempts": 8,
+    "role_post_requests": 2,
+    "role_put_requests": 6,
+    "standalone_mapping_post_delete_requests": 0,
+    "expected_aborted_request_failures": 2,
+    "unexpected_api_requests": 0,
+    "llm_or_source_query_requests": 0
+  },
+  "tdd": {
+    "refactor_commit": "aa1c79591fc606b93b0647ef66f0234a50ea00e4",
+    "browser_commit": "024dc4c632f7ae452cb9900ea4dee86bf491e6dd",
+    "typed_browser_control_commit": "bbb7d3421a07eb04c0866acc47a87fa6c6e9f1a2"
+  },
+  "gates": {
+    "focused_backend": {"passed": 168, "failed": 0, "seconds": 6.67},
+    "postgresql_transaction_file": {"passed": 11, "failed": 0, "seconds": 4.22},
+    "backend_unit_foundation": {"passed": 2541, "deselected": 44, "failed": 0, "seconds": 65.75, "preexisting_warnings": 3},
+    "canonical_openapi_tests": {"passed": 21, "failed": 0},
+    "focused_frontend": {"files": 3, "passed": 70, "failed": 0},
+    "full_vitest": {"files": 74, "passed": 1074, "failed": 0, "seconds": 12.07},
+    "ruff_check": true,
+    "ruff_format_files": 453,
+    "eslint": true,
+    "typecheck": true,
+    "production_build": true,
+    "css_lint": true,
+    "canonical_generation_check": true,
+    "frontend_generation_check": true,
+    "git_diff_check": true,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "vercel_react_best_practices": true,
+    "docs_guard": true
+  },
+  "cleanup": {
+    "temporary_browser_outputs_removed": true,
+    "disposable_database_rows_removed": true,
+    "protected_baseline": {
+      "modified_tracked_pngs": 14,
+      "historical_untracked_screenshots": 7,
+      "untracked_trace_archives": 2,
+      "unchanged": true,
+      "staged": false
+    }
+  },
+  "ledger_status_totals_after_chunk": {
+    "total": 47,
+    "resolved": 20,
+    "resolved_on_tested_branch": 2,
+    "pending": 22,
+    "needs_decision": 3
+  },
+  "chunk_17_unblocked": false,
+  "chunk_17_gate": "authoritative backend/frontend CI and CHUNK-16 squash merge"
+}
