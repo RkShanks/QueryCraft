@@ -10,8 +10,8 @@ import type {
 export type DetectionConfig = DetectionThresholdRead;
 export type DetectionConfigUpdate = DetectionThresholdUpdate;
 
-export async function getDetectionConfig(): Promise<DetectionConfig> {
-  const response = await getCanonicalDetectionConfig({ throwOnError: true });
+export async function getDetectionConfig(signal?: AbortSignal): Promise<DetectionConfig> {
+  const response = await getCanonicalDetectionConfig({ throwOnError: true, signal });
   return response.data;
 }
 

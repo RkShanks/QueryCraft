@@ -182,7 +182,7 @@ describe('Sidebar', () => {
 
     expect(screen.getByText('Today session')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'New data could not be verified. Showing the last valid result.'
+      'The latest refresh was invalid. Showing the last valid data.'
     );
   });
 
@@ -190,7 +190,7 @@ describe('Sidebar', () => {
     const { rerender } = setup(mockSessions, false, { isFetching: true });
 
     expect(screen.getByText('Today session')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Refreshing…');
+    expect(screen.getByRole('status')).toHaveTextContent('Refreshing data…');
 
     (useSessionsList as ReturnType<typeof vi.fn>).mockReturnValue({
       data: { items: mockSessions, total: mockSessions.length, next_cursor: 'page-2' },
@@ -205,7 +205,7 @@ describe('Sidebar', () => {
     rerender(<Sidebar />);
 
     expect(screen.getByText('Today session')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Additional results are available.');
+    expect(screen.getByRole('status')).toHaveTextContent('More results are available.');
   });
 
   it('clicking New Chat resets activeSessionId to null', () => {

@@ -19,7 +19,7 @@ export const useAdminDetection = (options?: UseAdminDetectionOptions) => {
 
   const configQuery = useQuery<DetectionConfig>({
     queryKey: ['adminDetectionConfig'],
-    queryFn: getDetectionConfig,
+    queryFn: ({ signal }) => getDetectionConfig(signal),
     enabled: canManageSecurity,
   });
 

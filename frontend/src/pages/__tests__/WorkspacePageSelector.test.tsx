@@ -5,6 +5,16 @@ import { WorkspacePage } from '../WorkspacePage';
 import { renderWithClient } from '../../test/utils';
 import { server } from '../../test/server';
 import { useUIStore } from '../../stores/uiStore';
+import type { UserConnectionListResponse } from '../../api/generated/types.gen';
+
+const POSTGRES_CONNECTION_ID = '550e8400-e29b-41d4-a716-446655440021';
+const MYSQL_CONNECTION_ID = '550e8400-e29b-41d4-a716-446655440022';
+
+function connectionList(
+  connections: UserConnectionListResponse['connections']
+): UserConnectionListResponse {
+  return { connections };
+}
 
 // We want to test T-460 behavior specifically
 describe('WorkspacePage Selector Integration (T-460)', () => {
@@ -21,12 +31,10 @@ describe('WorkspacePage Selector Integration (T-460)', () => {
   it('renders DatabaseSelector when connections are available', async () => {
     server.use(
       http.get('/api/v1/connections', () => {
-        return HttpResponse.json({
-          connections: [
-            { id: 'conn-1', display_name: 'Postgres DB', database_type: 'postgresql' },
-            { id: 'conn-2', display_name: 'MySQL DB', database_type: 'mysql' },
-          ],
-        });
+        return HttpResponse.json(connectionList([
+          { id: POSTGRES_CONNECTION_ID, display_name: 'Postgres DB', database_type: 'postgresql' },
+          { id: MYSQL_CONNECTION_ID, display_name: 'MySQL DB', database_type: 'mysql' },
+        ]));
       })
     );
 
@@ -43,12 +51,10 @@ describe('WorkspacePage Selector Integration (T-460)', () => {
   it('disables prompt textarea and send button when multiple connections exist and none selected', async () => {
     server.use(
       http.get('/api/v1/connections', () => {
-        return HttpResponse.json({
-          connections: [
-            { id: 'conn-1', display_name: 'Postgres DB', database_type: 'postgresql' },
-            { id: 'conn-2', display_name: 'MySQL DB', database_type: 'mysql' },
-          ],
-        });
+        return HttpResponse.json(connectionList([
+          { id: POSTGRES_CONNECTION_ID, display_name: 'Postgres DB', database_type: 'postgresql' },
+          { id: MYSQL_CONNECTION_ID, display_name: 'MySQL DB', database_type: 'mysql' },
+        ]));
       })
     );
 
@@ -72,11 +78,9 @@ describe('WorkspacePage Selector Integration (T-460)', () => {
   it('auto-selects single available connection and enables the prompt', async () => {
     server.use(
       http.get('/api/v1/connections', () => {
-        return HttpResponse.json({
-          connections: [
-            { id: 'conn-1', display_name: 'Postgres DB', database_type: 'postgresql' },
-          ],
-        });
+        return HttpResponse.json(connectionList([
+          { id: POSTGRES_CONNECTION_ID, display_name: 'Postgres DB', database_type: 'postgresql' },
+        ]));
       })
     );
 
@@ -97,9 +101,7 @@ describe('WorkspacePage Selector Integration (T-460)', () => {
   it('empty connections state prevents submission and shows localized guidance', async () => {
     server.use(
       http.get('/api/v1/connections', () => {
-        return HttpResponse.json({
-          connections: [],
-        });
+        return HttpResponse.json(connectionList([]));
       })
     );
 

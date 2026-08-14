@@ -9,7 +9,8 @@ export const useAdminAudit = () => {
 
   const statusQuery = useQuery({
     queryKey: ['adminAuditStatus'],
-    queryFn: () => getAuditStatus({ throwOnError: true }).then((res) => res.data),
+    queryFn: ({ signal }) =>
+      getAuditStatus({ throwOnError: true, signal }).then((res) => res.data),
     enabled: canVerifyAudit,
   });
 

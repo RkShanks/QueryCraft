@@ -16,6 +16,7 @@ import type {
 } from '../api/quotas';
 import { hasPermission, PERMISSIONS } from '../auth/permissions';
 import { Shield, RefreshCw, Trash2, Edit2, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
+import { ClientQueryState } from '../components/common/ClientQueryState';
 
 interface Toast {
   id: string;
@@ -567,12 +568,10 @@ export const AdminQuotasPage: React.FC = () => {
       )}
 
       {hasRolesPermission && rolesQuery.isError && (
-        <div
-          className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm"
-          role="alert"
-        >
-          {getErrorMessage(rolesQuery.error, 'error.service_unavailable')}
-        </div>
+        <ClientQueryState
+          query={rolesQuery}
+          fallbackErrorKey="error.service_unavailable"
+        />
       )}
 
       {editingQuota && (
@@ -686,15 +685,24 @@ export const AdminQuotasPage: React.FC = () => {
       )}
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
-        {listQuery.isError ? (
-          <PanelState
-            message={getErrorMessage(listQuery.error, 'error.service_unavailable')}
-            variant="error"
+        {listQuery.isError && listQuery.data === undefined ? (
+          <ClientQueryState
+            query={listQuery}
+            fallbackErrorKey="error.service_unavailable"
+            getOrdinaryErrorMessage={(error) =>
+              getErrorMessage(error, 'error.service_unavailable')
+            }
           />
         ) : mergedQuotas.length === 0 ? (
           <PanelState message={t('quota.empty')} variant="empty" />
         ) : (
           <>
+            <div className="p-4">
+              <ClientQueryState
+                query={listQuery}
+                fallbackErrorKey="error.service_unavailable"
+              />
+            </div>
             <div className="lg:hidden divide-y divide-gray-800/50">
               {mergedQuotas.map((quota) => (
                 <QuotaConfigCard
@@ -789,15 +797,24 @@ export const AdminQuotasPage: React.FC = () => {
         </h2>
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
           {statusQuery.isError && quotaStatuses.length === 0 ? (
-            <PanelState
-              message={getErrorMessage(statusQuery.error, 'error.service_unavailable')}
-              variant="error"
-              retry={() => void statusQuery.refetch()}
+            <ClientQueryState
+              query={statusQuery}
+              fallbackErrorKey="error.service_unavailable"
+              getOrdinaryErrorMessage={(error) =>
+                getErrorMessage(error, 'error.service_unavailable')
+              }
             />
           ) : quotaStatuses.length === 0 ? (
             <PanelState message={t('quota.status_empty')} variant="empty" />
           ) : (
             <>
+              <div className="p-4">
+                <ClientQueryState
+                  query={statusQuery}
+                  fallbackErrorKey="error.service_unavailable"
+                  isPartial={statusQuery.data?.next_cursor != null}
+                />
+              </div>
               <div className="lg:hidden divide-y divide-gray-800/50">
                 {quotaStatuses.map((quotaStatus) => (
                   <QuotaStatusCard

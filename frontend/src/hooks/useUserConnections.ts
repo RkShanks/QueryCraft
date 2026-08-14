@@ -7,7 +7,8 @@ export function useUserConnections() {
   const canSubmitQuery = usePermission(PERMISSIONS.QUERY_SUBMIT);
   return useQuery({
     queryKey: ['userConnections'],
-    queryFn: () => listUserConnections({ throwOnError: true }).then((res) => res.data),
+    queryFn: ({ signal }) =>
+      listUserConnections({ throwOnError: true, signal }).then((res) => res.data),
     enabled: canSubmitQuery,
   });
 }

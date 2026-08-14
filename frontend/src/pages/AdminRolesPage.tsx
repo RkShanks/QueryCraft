@@ -10,6 +10,7 @@ import {
   PERMISSION_CATALOG,
   type Permission,
 } from '../auth/permissions';
+import { ClientQueryState } from '../components/common/ClientQueryState';
 
 interface Toast {
   id: string;
@@ -304,10 +305,10 @@ export const AdminRolesPage: React.FC = () => {
     );
   }
 
-  if (listQuery.isError) {
+  if (listQuery.isError && listQuery.data === undefined) {
     return (
-      <div className="flex justify-center items-center h-64 text-red-500 font-medium">
-        {t('admin.roles.loadError')}
+      <div className="mx-auto flex min-h-64 max-w-xl items-center justify-center p-6">
+        <ClientQueryState query={listQuery} fallbackErrorKey="admin.roles.loadError" />
       </div>
     );
   }
@@ -535,6 +536,7 @@ export const AdminRolesPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+      <ClientQueryState query={listQuery} fallbackErrorKey="admin.roles.loadError" />
       {/* Global Toast Container */}
       <div className="fixed top-6 end-6 z-50 flex flex-col gap-3 max-w-sm w-full select-none pointer-events-none">
         {toasts.map((toast) => (

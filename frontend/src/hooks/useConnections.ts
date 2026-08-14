@@ -62,8 +62,8 @@ export const useConnections = () => {
 
   const listQuery = useQuery({
     queryKey: ['adminConnections'],
-    queryFn: () =>
-      listAdminConnections({ throwOnError: true, cache: 'no-store' }).then((response) =>
+    queryFn: ({ signal }) =>
+      listAdminConnections({ throwOnError: true, cache: 'no-store', signal }).then((response) =>
         normalizeConnectionList(response.data)
       ),
     enabled: canManageConnections,

@@ -12,7 +12,10 @@ import type {
   FeedbackResponse,
   AdminSettingsResponse,
   UpdateAdminSettingsResponse,
+  UserConnectionListResponse,
 } from '../api/generated/types.gen';
+
+const DEFAULT_CONNECTION_ID = '550e8400-e29b-41d4-a716-446655440004';
 
 /** Scenario for /query/submit responses. */
 export type QuerySubmitScenario =
@@ -269,18 +272,16 @@ export const handlers = [
   // ─────────────────────────── Connections ───────────────────────────
   http.get('/api/v1/connections', async () => {
     await delay(10);
-    return HttpResponse.json(
-      {
-        connections: [
-          {
-            id: 'default-pg-connection',
-            display_name: 'PostgreSQL DB',
-            database_type: 'postgresql',
-          },
-        ],
-      },
-      { status: 200 }
-    );
+    const response = {
+      connections: [
+        {
+          id: DEFAULT_CONNECTION_ID,
+          display_name: 'PostgreSQL DB',
+          database_type: 'postgresql',
+        },
+      ],
+    } satisfies UserConnectionListResponse;
+    return HttpResponse.json(response, { status: 200 });
   }),
 
   // ─────────────────────────── Session Connection ───────────────────────────
@@ -289,7 +290,7 @@ export const handlers = [
     return HttpResponse.json(
       {
         id: params.sessionId as string,
-        connection_id: 'default-pg-connection',
+        connection_id: DEFAULT_CONNECTION_ID,
         preview_text: 'Session detail',
         created_at: new Date().toISOString(),
         last_activity_at: new Date().toISOString(),

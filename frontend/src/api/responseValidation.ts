@@ -5,6 +5,7 @@ import * as generatedSchemas from './generated/schemas.gen';
 import type {
   AcceptedQueryDetail,
   AcceptedQuerySummary,
+  AuditRetentionResponse,
   AuditSearchResponse,
   DetectionThresholdRead,
   HistoryListResponse,
@@ -24,6 +25,15 @@ export class ClientContractError extends Error {
     super(CLIENT_CONTRACT_ERROR_CODE);
     this.name = 'ClientContractError';
   }
+}
+
+export function isClientContractError(error: unknown): error is ClientContractError {
+  return (
+    error instanceof ClientContractError ||
+    (typeof error === 'object' &&
+      error !== null &&
+      (error as { code?: unknown }).code === CLIENT_CONTRACT_ERROR_CODE)
+  );
 }
 
 type ManifestOperation = (typeof responseOperationManifest)[number];
@@ -137,6 +147,14 @@ function validateAuditPagination(response: AuditSearchResponse): void {
   }
 }
 
+function validateAuditRetention(response: AuditRetentionResponse): void {
+  if (response.retention_months < 0) failContract();
+  if (response.last_purge_at && !isValidTimestamp(response.last_purge_at)) failContract();
+  if (response.purged_count !== null && response.purged_count !== undefined && response.purged_count < 0) {
+    failContract();
+  }
+}
+
 function validateDetectionThresholds(response: DetectionThresholdRead): void {
   const { block_confidence: block, flag_confidence: flag } = response;
   if (!Number.isFinite(block) || !Number.isFinite(flag)) failContract();
@@ -170,6 +188,9 @@ function validateSemanticContract(operationId: string, status: number, response:
   validateQueryOperation(operationId, response);
   if (operationId === 'getQuotaStatus') validateQuotaStatus(response as QuotaStatusResponse);
   if (operationId === 'searchAuditEntries') validateAuditPagination(response as AuditSearchResponse);
+  if (operationId === 'getAuditRetention') {
+    validateAuditRetention(response as AuditRetentionResponse);
+  }
   if (['getDetectionConfig', 'updateDetectionConfig'].includes(operationId)) {
     validateDetectionThresholds(response as DetectionThresholdRead);
   }
@@ -202,9 +223,20 @@ function resolvedSchema(schema: JsonRecord): JsonRecord {
 function matchingUnionSchema(schema: JsonRecord, responseBody: unknown): JsonRecord | undefined {
   const alternatives = schema.anyOf ?? schema.oneOf;
   if (!Array.isArray(alternatives)) return undefined;
-  return alternatives.find((alternative) =>
-    schemaValidator.validate(alternative as AnySchema, responseBody)
-  ) as JsonRecord | undefined;
+  const responseKeys = new Set(
+    responseBody && typeof responseBody === 'object' && !Array.isArray(responseBody)
+      ? Object.keys(responseBody)
+      : []
+  );
+  return (alternatives as JsonRecord[])
+    .filter((alternative) => schemaValidator.validate(alternative as AnySchema, responseBody))
+    .sort((left, right) => {
+      const matchingProperties = (alternative: JsonRecord) =>
+        Object.keys(resolvedSchema(alternative).properties ?? {}).filter((key) =>
+          responseKeys.has(key)
+        ).length;
+      return matchingProperties(right) - matchingProperties(left);
+    })[0];
 }
 
 function sanitizeArray(schema: JsonRecord, responseBody: unknown[]): unknown[] {
@@ -278,9 +310,15 @@ function pathMatches(template: string, pathname: string): boolean {
 
 function requestOperation(request: Request): ManifestOperation | undefined {
   const pathname = new URL(request.url).pathname;
-  return responseOperationManifest.find(
-    (operation) => operation.method === request.method && pathMatches(operation.path, pathname)
-  );
+  return responseOperationManifest
+    .filter(
+      (operation) => operation.method === request.method && pathMatches(operation.path, pathname)
+    )
+    .sort((left, right) => {
+      const leftParameters = left.path.split('/').filter((segment) => segment.startsWith('{')).length;
+      const rightParameters = right.path.split('/').filter((segment) => segment.startsWith('{')).length;
+      return leftParameters - rightParameters;
+    })[0];
 }
 
 function shouldValidateResponse(operation: ManifestOperation, response: Response): boolean {

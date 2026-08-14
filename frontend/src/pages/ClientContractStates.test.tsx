@@ -71,7 +71,13 @@ describe('client contract response states', () => {
 
       fireEvent.click(retry);
 
-      expect(await screen.findByText('No database connections configured.')).toBeInTheDocument();
+      expect(
+        await screen.findByText(
+          language === 'ar'
+            ? 'لا توجد اتصالات قواعد بيانات مكونة.'
+            : 'No database connections configured.'
+        )
+      ).toBeInTheDocument();
       expect(responseCount).toBe(2);
       consoleError.mockRestore();
       consoleWarn.mockRestore();

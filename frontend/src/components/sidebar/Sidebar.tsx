@@ -7,6 +7,7 @@ import { useSignOut, useCurrentUser } from '../../hooks/useAuth';
 import { hasPermission, NAVIGATION_CATALOG, PERMISSIONS } from '../../auth/permissions';
 import { SessionItem } from './SessionItem';
 import { UndoToast, type UndoToastItem } from './UndoToast';
+import { ClientQueryState } from '../common/ClientQueryState';
 import { Shield } from 'lucide-react';
 import {
   Plus,
@@ -83,6 +84,7 @@ export const Sidebar: React.FC = () => {
       route.navigation.id !== 'new-chat' && hasPermission(user, route.permission)
   );
 
+  const sessionsQuery = useSessionsList({ enabled: canSubmitQuery });
   const {
     data,
     isLoading,
@@ -91,8 +93,7 @@ export const Sidebar: React.FC = () => {
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-    refetch,
-  } = useSessionsList({ enabled: canSubmitQuery });
+  } = sessionsQuery;
   const deletingSessionIds = React.useMemo(() => new Set(toasts.map((t) => t.sessionId)), [toasts]);
   const sessions = React.useMemo(() => {
     return (data?.items ?? []).filter((s) => !deletingSessionIds.has(s.id));
@@ -214,20 +215,21 @@ export const Sidebar: React.FC = () => {
         {isLoading ? (
           <div className="sidebar-loading">{t('history.loading')}</div>
         ) : isError && sessions.length === 0 ? (
-          <div
-            className="sidebar-collection-error"
-            role="alert"
-            aria-label={t('sidebar.loadError')}
-          >
-            {!sidebarCollapsed && <span>{t('sidebar.loadError')}</span>}
-            <button type="button" onClick={() => void refetch()}>
-              {t('common.retry')}
-            </button>
-          </div>
+          <ClientQueryState
+            query={sessionsQuery}
+            fallbackErrorKey="sidebar.loadError"
+            hasData={false}
+          />
         ) : sessions.length === 0 ? (
           !sidebarCollapsed && <div className="sidebar-empty">{t('sidebar.empty')}</div>
         ) : (
           <>
+            <ClientQueryState
+              query={sessionsQuery}
+              fallbackErrorKey="sidebar.loadError"
+              hasData={sessions.length > 0}
+              isPartial={hasNextPage}
+            />
             {sidebarCollapsed ? sessions.map((session) => (
               <SessionItem
                 key={session.id}

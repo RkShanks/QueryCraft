@@ -180,4 +180,28 @@ describe('canonical JSON response validation', () => {
       should_refine: true,
     });
   });
+
+  it('preserves a canonical sanitized error response for ordinary API handling', () => {
+    expect(
+      validateOperationResponse('getQuotaStatus', 503, {
+        error: 'service_unavailable',
+        message_key: 'error.service_unavailable',
+        response_canary: 'must-not-enter-error-state',
+      })
+    ).toEqual({
+      error: 'service_unavailable',
+      message_key: 'error.service_unavailable',
+    });
+    expect(
+      validateOperationResponse('upsertQuota', 503, {
+        error: 'quota_sync_pending',
+        message_key: 'error.quota_sync_pending',
+        mutation_applied: true,
+      })
+    ).toEqual({
+      error: 'quota_sync_pending',
+      message_key: 'error.quota_sync_pending',
+      mutation_applied: true,
+    });
+  });
 });

@@ -61,8 +61,8 @@ export function isQuotaSynchronizationPending(
   return false;
 }
 
-export async function listQuotas(): Promise<{ quotas: RoleQuotaConfig[] }> {
-  const response = await listCanonicalQuotas({ throwOnError: true });
+export async function listQuotas(signal?: AbortSignal): Promise<{ quotas: RoleQuotaConfig[] }> {
+  const response = await listCanonicalQuotas({ throwOnError: true, signal });
   return { quotas: response.data.quotas.map(normalizeRoleQuota) };
 }
 
