@@ -463,9 +463,7 @@ async def test_omitted_mappings_and_policies_preserve_authoritative_detail(
         )
 
         assert response.status_code == 200
-        assert response.json()["group_mappings"] == [
-            {"id": str(mapping_id), "sso_group_value": group_value}
-        ]
+        assert response.json()["group_mappings"] == [{"id": str(mapping_id), "sso_group_value": group_value}]
         assert response.json()["connection_policies"] == [
             {
                 "id": str(policy_id),

@@ -341,9 +341,8 @@ class TestCreateRole:
             side_effect=[
                 FakeResult([]),  # duplicate name check
                 FakeResult([]),  # duplicate priority check
-                FakeResult(None),  # DELETE existing policies (empty input)
-                FakeResult([]),  # select persisted policies (empty)
-                FakeResult([MagicMock()]),  # db.refresh(role)
+                FakeResult([]),  # current connection policies
+                FakeResult([]),  # persisted connection policies
             ]
         )
         mock_db.commit = AsyncMock()
@@ -971,16 +970,15 @@ class TestRoleConnectionPolicyPersistence:
         persisted.column_masks = []
 
         # Order: name-check, priority-check, connection-existence,
-        # delete-existing, select-persisted, db.refresh
+        # current policies, persisted policies
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(
             side_effect=[
                 FakeResult([]),  # duplicate name
                 FakeResult([]),  # duplicate priority
                 FakeResult([conn_id]),  # connection existence check
-                FakeResult(None),  # DELETE existing (return not used)
+                FakeResult([]),  # current policies
                 FakeResult([persisted]),  # select persisted policies
-                FakeResult([MagicMock()]),  # db.refresh(role)
             ]
         )
         mock_db.commit = AsyncMock()
@@ -1029,7 +1027,7 @@ class TestRoleConnectionPolicyPersistence:
 
         # Order: service.get_by_id, duplicate-name, duplicate-priority,
         # repo.update internal get_by_id, connection-existence,
-        # delete-existing, select-persisted, db.refresh
+        # current policies, persisted policies, group mappings
         role = _make_role(name="Analyst", priority=10, role_id=role_id)
         mock_db = AsyncMock()
         mock_db.execute = AsyncMock(
@@ -1039,9 +1037,9 @@ class TestRoleConnectionPolicyPersistence:
                 FakeResult([]),  # duplicate priority
                 FakeResult(role),  # repo.update internal get_by_id
                 FakeResult([new_conn_id]),  # connection existence
-                FakeResult(None),  # delete existing
+                FakeResult([]),  # current policies
                 FakeResult([new_persisted]),  # select persisted
-                FakeResult([MagicMock()]),  # db.refresh
+                FakeResult([]),  # unchanged group mappings
             ]
         )
         mock_db.commit = AsyncMock()
