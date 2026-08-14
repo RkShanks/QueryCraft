@@ -1,6 +1,6 @@
 # CHUNK-17 / IS-GAP-042 + IS-GAP-033 — client response contracts and harness fidelity
 
-Status: implementation and local verification passed on product commit `30621830633e5131960d41e0e6e46c05b1f8e1e4`; pull request and authoritative CI are pending.
+Status: implementation and local verification passed on product commit `30621830633e5131960d41e0e6e46c05b1f8e1e4`; [#315](https://github.com/RkShanks/QueryCraft/pull/315) is open and authoritative CI is pending.
 
 Starting main was `f41e8c721450adb8fd50201de6218381289f531f`, the squash merge of [#314](https://github.com/RkShanks/QueryCraft/pull/314). No product endpoint or backend behavior changed.
 

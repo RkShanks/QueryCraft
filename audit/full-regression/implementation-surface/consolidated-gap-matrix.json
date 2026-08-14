@@ -171,7 +171,8 @@
     },
     "CHUNK-17": {
       "gap_ids": ["IS-GAP-042", "IS-GAP-033"],
-      "status": "Resolved on tested branch; PR and CI pending",
+      "status": "Resolved on tested branch; PR open; CI pending",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/315",
       "tested_product_commit": "30621830633e5131960d41e0e6e46c05b1f8e1e4",
       "operation_parity": {"runtime": 64, "canonical": 64, "generated": 64, "consumed_json_validated": 41},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-17-client-harness.json"
