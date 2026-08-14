@@ -546,7 +546,7 @@ class TestUpdateRole:
                 FakeResult(role),  # repo.update internal get_by_id
                 FakeResult(None),  # DELETE existing policies (empty input)
                 FakeResult([]),  # select persisted policies (empty)
-                FakeResult([MagicMock()]),  # db.refresh
+                FakeResult([]),  # unchanged group mappings
             ]
         )
         mock_db.commit = AsyncMock()
@@ -655,7 +655,7 @@ class TestUpdateRole:
                 FakeResult(role),  # repo.update internal get_by_id
                 FakeResult(None),  # DELETE existing policies (empty input)
                 FakeResult([]),  # select persisted policies (empty)
-                FakeResult([MagicMock()]),  # db.refresh(role)
+                FakeResult([]),  # unchanged group mappings
             ]
         )
         mock_db.commit = AsyncMock()

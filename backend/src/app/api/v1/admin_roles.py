@@ -101,7 +101,7 @@ async def _create_role_group_mappings(
     mappings: list[dict[str, str]] = []
     for group_value in group_values:
         mapping_id = await _claim_group_mapping(db, role_id, group_value)
-        await _audit_group_mapping_create(db, mapping_id, actor_identity)
+        await _audit_group_mapping_change(db, mapping_id, actor_identity, "create")
         mappings.append(_group_mapping_summary(mapping_id, group_value))
     return mappings
 
@@ -118,10 +118,11 @@ async def _claim_group_mapping(db: AsyncSession, role_id: uuid.UUID, group_value
     return mapping_id
 
 
-async def _audit_group_mapping_create(
+async def _audit_group_mapping_change(
     db: AsyncSession,
     mapping_id: uuid.UUID,
     actor_identity: str | None,
+    action: str,
 ) -> None:
     await AuditService.log(
         db,
@@ -130,8 +131,42 @@ async def _audit_group_mapping_create(
         resource_type="sso_group_mapping",
         resource_id=str(mapping_id),
         outcome="success",
-        context={"action": "create"},
+        context={"action": action},
     )
+
+
+async def _role_group_mapping_rows(db: AsyncSession, role_id: uuid.UUID) -> list[SsoGroupMapping]:
+    result = await db.execute(
+        select(SsoGroupMapping)
+        .where(SsoGroupMapping.role_id == role_id)
+        .order_by(SsoGroupMapping.created_at, SsoGroupMapping.id)
+    )
+    return list(result.scalars().all())
+
+
+async def _sync_role_group_mappings(
+    db: AsyncSession,
+    role_id: uuid.UUID,
+    requested_values: list[str],
+    actor_identity: str | None,
+) -> list[dict[str, str]]:
+    current_rows = await _role_group_mapping_rows(db, role_id)
+    current_by_value = {row.sso_group_value: row for row in current_rows}
+    requested_set = set(requested_values)
+
+    for mapping in current_rows:
+        if mapping.sso_group_value not in requested_set:
+            await db.delete(mapping)
+            await _audit_group_mapping_change(db, mapping.id, actor_identity, "delete")
+
+    persisted_ids = {group_value: mapping.id for group_value, mapping in current_by_value.items()}
+    for group_value in requested_values:
+        if group_value not in persisted_ids:
+            mapping_id = await _claim_group_mapping(db, role_id, group_value)
+            await _audit_group_mapping_change(db, mapping_id, actor_identity, "create")
+            persisted_ids[group_value] = mapping_id
+
+    return [_group_mapping_summary(persisted_ids[value], value) for value in requested_values]
 
 
 def _validate_permissions(permissions: list[str] | None) -> None:
@@ -565,11 +600,23 @@ async def update_role(
         # repo.update internal get_by_id, conn-existence, delete-existing,
         # select-persisted, refresh). role.id is stable across flushes.
         persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies or [])
+        if body.group_mappings is None:
+            mapping_rows = await _role_group_mapping_rows(db, role.id)
+            persisted_mappings = [
+                _group_mapping_summary(mapping.id, mapping.sso_group_value) for mapping in mapping_rows
+            ]
+        else:
+            persisted_mappings = await _sync_role_group_mappings(
+                db,
+                role.id,
+                body.group_mappings,
+                session.get("username"),
+            )
 
         await db.commit()
         await db.refresh(role)
 
-        return _role_to_detail_response(role, [], persisted_policies)
+        return _role_to_detail_response(role, persisted_mappings, persisted_policies)
     except BuiltinProtectedError as exc:
         # Commit the audit log (access.denied was written inside service)
         # before returning 403. If AuditService.log had raised, we would not
