@@ -1,0 +1,154 @@
+{
+  "chunk": "CHUNK-18",
+  "gap_ids": ["IS-GAP-041", "IS-GAP-027", "IS-GAP-028"],
+  "status": "implementation_and_non_browser_verification_passed_browser_live_pr_blocked",
+  "branch": "phase-6/wave-19.18-workspace-recovery",
+  "starting_main": "f29cec51cc673f2ae84ad0d60c3c62246b939c45",
+  "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff",
+  "branch_pushed": true,
+  "pull_request": null,
+  "merge_commit": null,
+  "api_contract": {
+    "backend_source_changed": false,
+    "new_product_endpoint": false,
+    "canonical_openapi_changed": false,
+    "generated_contract_changed": false,
+    "frontend_generation_check": true
+  },
+  "result_table": {
+    "zero_rows_success": true,
+    "semantic_empty_cell": true,
+    "response_card_actions_preserved": true,
+    "client_page_size": 50,
+    "maximum_rendered_data_rows": 50,
+    "bounds_network_or_response_memory": false,
+    "complete_unique_101_row_traversal": true,
+    "reset_on_result_change": true,
+    "clamp_on_result_shrink": true,
+    "masked_badges_every_page": true,
+    "column_headers_and_scroll_preserved": true,
+    "localized_accessible_controls": true,
+    "locales": ["en", "ar"]
+  },
+  "delete_recovery": {
+    "exact_turn_and_deletion_snapshot": true,
+    "definite_failure_restore_and_retry": true,
+    "ambiguous_present_restores": true,
+    "ambiguous_absent_commits": true,
+    "reconciliation_failure_uncertain_restore": true,
+    "direct_not_found_commits": true,
+    "duplicate_suppression": true,
+    "session_switch_stale_suppression": true,
+    "session_deletion_stale_suppression": true,
+    "raw_backend_error_rendered": false
+  },
+  "regenerate_recovery": {
+    "prior_card_visible_while_pending": true,
+    "exact_sql_result_and_action_ids_preserved_on_failure": true,
+    "retry_uses_original_active_attempt": true,
+    "immutable_source_context_preserved": true,
+    "chunk_05_quota_audit_path_preserved": true,
+    "terminal_attempt_refetch": true,
+    "terminal_attempt_retry_offered": false,
+    "duplicate_suppression": true,
+    "stale_response_suppression": true
+  },
+  "connection_error_card": {
+    "kinds": [
+      "noConnections",
+      "disabled",
+      "unhealthy",
+      "noSchema",
+      "queryExecutionFailed",
+      "timeout"
+    ],
+    "button_without_handler": false,
+    "management_navigation_permission": "admin.connections.manage",
+    "management_destination": "/admin/connections",
+    "non_admin_guidance": true,
+    "query_retry_requires_original_question_session_connection": true,
+    "missing_context_guidance_without_button": true,
+    "invented_schema_refresh_or_test": false,
+    "accessible_names_focus_and_live_status": true
+  },
+  "tdd": {
+    "red_commits": [
+      "cfa58f726c4968a74b991b37ab303d27edd4d279",
+      "65d67bdfc4fcac9260a2ad31c732135b2d27cf44",
+      "b4fdec231edc0d6bcf01cf0fc8abda4c1f4c4f33",
+      "5f27c205618955ac3c86f8ddf19b9e5f9367aa46"
+    ],
+    "green_commits": [
+      "5ddbb279230bd8a0f3149417ffdf5477bbcf13b0",
+      "cc5523976c161eadb243d836809efcc23a91f7a3",
+      "b539d3257aaa6cfcabb2beebd410ec4540e5fd52"
+    ],
+    "refactor_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff"
+  },
+  "browser": {
+    "classification": "mocked",
+    "discovered_chromium_tests": 3,
+    "executed_chromium_tests": 0,
+    "viewports": [1440, 768, 375],
+    "locales": ["en", "ar"],
+    "blocked": true,
+    "blocker": "managed sandbox rejects localhost listener with listen EPERM",
+    "screenshots_claimed_as_evidence": false,
+    "paid_llm_call": false
+  },
+  "fastapi": {
+    "compatibility_tests": {"passed": 80, "failed": 0, "seconds": 7.72},
+    "real_asgi_application": true,
+    "live_network_flow_executed": false,
+    "live_network_blocker": "managed sandbox rejects localhost listener"
+  },
+  "gates": {
+    "focused_frontend": {"passed": 415, "failed": 0},
+    "full_vitest": {"files": 78, "passed": 1140, "failed": 0, "seconds": 15.36},
+    "eslint": true,
+    "typecheck": true,
+    "production_build": true,
+    "css_lint": true,
+    "frontend_generation_check": true,
+    "harness_guard": {"passed": true, "classified_specs": 29},
+    "playwright_list": {"passed": true, "tests": 3},
+    "playwright_chromium": false,
+    "live_fastapi_network": false,
+    "git_diff_check_before_evidence": true,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "vercel_react_best_practices": true,
+    "docs_guard": true,
+    "authoritative_ci": null
+  },
+  "external_actions": {
+    "branch_push": "passed",
+    "pull_request_creation": "blocked_by_external_action_approval_quota",
+    "merge_attempted": false
+  },
+  "cleanup": {
+    "temporary_browser_outputs_removed": false,
+    "production_build_output_removed": false,
+    "cleanup_blocker": "managed approval service rejected explicit scoped deletion",
+    "remaining": {
+      "/tmp/querycraft-chunk18-browser": "8 KiB",
+      "/tmp/querycraft-chunk18-report": "516 KiB",
+      "frontend/dist": "12 MiB"
+    },
+    "protected_baseline": {
+      "modified_tracked_pngs": 14,
+      "historical_untracked_screenshots": 7,
+      "existing_trace_archives_unchanged": true,
+      "staged": false
+    }
+  },
+  "ledger_status_totals_after_chunk": {
+    "total": 47,
+    "resolved": 23,
+    "resolved_on_tested_branch": 1,
+    "pending": 20,
+    "needs_decision": 3
+  },
+  "chunk_19_unblocked": false,
+  "chunk_19_gate": "CHUNK-18 Chromium and live-network proof, cleanup, PR CI, squash merge, branch deletion, and synchronized main"
+}

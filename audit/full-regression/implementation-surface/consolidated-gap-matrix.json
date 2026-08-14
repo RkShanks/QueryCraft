@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 20, "Resolved": 21, "Resolved on tested branch": 3, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 20, "Resolved": 23, "Resolved on tested branch": 1, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -171,12 +171,23 @@
     },
     "CHUNK-17": {
       "gap_ids": ["IS-GAP-042", "IS-GAP-033"],
-      "status": "Resolved on tested branch; CI passed; merge pending",
+      "status": "Resolved and merged",
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/315",
       "tested_product_commit": "30621830633e5131960d41e0e6e46c05b1f8e1e4",
+      "merge_commit": "f29cec51cc673f2ae84ad0d60c3c62246b939c45",
       "authoritative_ci": {"head_commit": "1b6e53d2f18594f93822bcbd36445c94ff38b163", "run_id": 31803892021, "backend_test": "passed", "frontend_test": "passed"},
       "operation_parity": {"runtime": 64, "canonical": 64, "generated": 64, "consumed_json_validated": 41},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-17-client-harness.json"
+    },
+    "CHUNK-18": {
+      "gap_ids": ["IS-GAP-041", "IS-GAP-027", "IS-GAP-028"],
+      "status": "Pending required Chromium, live-network, cleanup and PR gates",
+      "branch": "phase-6/wave-19.18-workspace-recovery",
+      "branch_pushed": true,
+      "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff",
+      "pull_request": null,
+      "authoritative_ci": null,
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -644,6 +655,7 @@
       "isolation": "Synthetic accepted results and disposable sessions.",
       "regression_rows": ["P2-FR-057", "P2-FR-058"],
       "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Pending",
+      "verification": {"tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "non_browser_gates": "passed", "chromium_live_pr_gates": "blocked", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/pages/WorkspacePage.tsx::handleDelete", "frontend/src/pages/WorkspacePage.tsx::handleRegenerate", "frontend/src/pages/__tests__/WorkspacePageDuplicate.test.tsx"]
     },
     {
@@ -660,6 +672,7 @@
       "isolation": "Synthetic safe error categories.",
       "regression_rows": ["P3-FR-068", "P3-FR-093"],
       "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Pending",
+      "verification": {"tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "non_browser_gates": "passed", "chromium_live_pr_gates": "blocked", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/components/chat/ConnectionErrorCard.tsx::ConnectionErrorCard", "frontend/src/pages/WorkspacePage.tsx::WorkspacePage", "frontend/src/components/chat/ConnectionErrorCard.test.tsx"]
     },
     {
@@ -739,7 +752,8 @@
       "required_evidence": "Focused browser malformed/partial/stale recovery, not a full surface rerun.",
       "isolation": "MSW fixtures derived from the canonical runtime schema.",
       "regression_rows": ["P3-FR-060", "P5-FR-137", "P6-FR-177", "XP-018"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-17", "status": "Resolved on tested branch",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-17", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/315", "tested_product_commit": "30621830633e5131960d41e0e6e46c05b1f8e1e4", "merge_commit": "f29cec51cc673f2ae84ad0d60c3c62246b939c45", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-17-client-harness.json", "authoritative_ci": {"head_commit": "1b6e53d2f18594f93822bcbd36445c94ff38b163", "run_id": 31803892021, "backend_test": "passed", "frontend_test": "passed"}},
       "source_refs": ["frontend/src/hooks/useAdminRoles.ts::useAdminRoles", "frontend/src/hooks/useAdminRoles.ts::useAdminRole", "frontend/src/hooks/useConnections.ts", "frontend/src/hooks/useAdminAudit.ts", "frontend/src/hooks/useAdminQuotas.ts::useAdminQuotas", "frontend/src/hooks/useAdminDetection.ts", "frontend/src/pages/AdminAuditPage.tsx::AdminAuditPage", "frontend/src/pages/AdminQuotasPage.tsx::AdminQuotasPage"]
     },
     {
@@ -870,6 +884,7 @@
       "isolation": "Synthetic bounded rows.",
       "regression_rows": ["P1-FR-014", "P1-FR-029", "XP-009"],
       "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Pending",
+      "verification": {"tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "non_browser_gates": "passed", "chromium_live_pr_gates": "blocked", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/components/chat/ResultTable.tsx::ResultTable", "frontend/src/components/query/ResultTable.tsx::ResultTable", "frontend/src/components/chat/AssistantResponseCard.tsx", "frontend/src/components/query/ResultTable.test.tsx"]
     },
     {
@@ -885,7 +900,8 @@
       "required_evidence": "Temporary-output browser runs with explicit mock/live classification.",
       "isolation": "mktemp output only; never write tracked screenshots/traces.",
       "regression_rows": ["XP-008", "XP-009", "XP-017", "XP-018"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-17", "status": "Resolved on tested branch",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-17", "status": "Resolved",
+      "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/315", "tested_product_commit": "30621830633e5131960d41e0e6e46c05b1f8e1e4", "merge_commit": "f29cec51cc673f2ae84ad0d60c3c62246b939c45", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-17-client-harness.json", "authoritative_ci": {"head_commit": "1b6e53d2f18594f93822bcbd36445c94ff38b163", "run_id": 31803892021, "backend_test": "passed", "frontend_test": "passed"}},
       "source_refs": ["frontend/playwright.config.ts", "frontend/src/test/setup.ts", "frontend/tests/e2e/i18n-audit.spec.ts", "frontend/tests/e2e/provider-switch.spec.ts", "frontend/tests/e2e/wave_17_3o_smoke.spec.ts", "frontend/src/hooks/__tests__"]
     },
     {
