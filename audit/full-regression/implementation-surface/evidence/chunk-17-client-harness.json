@@ -1,12 +1,17 @@
 {
   "chunk": "CHUNK-17",
   "gap_ids": ["IS-GAP-042", "IS-GAP-033"],
-  "status": "implementation_and_local_verification_passed_pr_open_ci_pending",
+  "status": "implementation_local_verification_and_ci_passed_merge_pending",
   "branch": "phase-6/wave-19.17-client-contract-harness",
   "starting_main": "f41e8c721450adb8fd50201de6218381289f531f",
   "tested_product_commit": "30621830633e5131960d41e0e6e46c05b1f8e1e4",
   "pull_request": "https://github.com/RkShanks/QueryCraft/pull/315",
-  "authoritative_ci": null,
+  "authoritative_ci": {
+    "head_commit": "1b6e53d2f18594f93822bcbd36445c94ff38b163",
+    "run_id": 31803892021,
+    "backend_test": "passed",
+    "frontend_test": "passed"
+  },
   "api_contract": {
     "new_product_endpoint": false,
     "runtime_operations": 64,

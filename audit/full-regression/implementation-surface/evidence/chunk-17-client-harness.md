@@ -1,6 +1,6 @@
 # CHUNK-17 / IS-GAP-042 + IS-GAP-033 — client response contracts and harness fidelity
 
-Status: implementation and local verification passed on product commit `30621830633e5131960d41e0e6e46c05b1f8e1e4`; [#315](https://github.com/RkShanks/QueryCraft/pull/315) is open and authoritative CI is pending.
+Status: implementation and local verification passed on product commit `30621830633e5131960d41e0e6e46c05b1f8e1e4`; authoritative `backend-test` and `frontend-test` passed in run `31803892021` on PR head `1b6e53d2f18594f93822bcbd36445c94ff38b163`; squash merge is pending in [#315](https://github.com/RkShanks/QueryCraft/pull/315).
 
 Starting main was `f41e8c721450adb8fd50201de6218381289f531f`, the squash merge of [#314](https://github.com/RkShanks/QueryCraft/pull/314). No product endpoint or backend behavior changed.
 
@@ -125,7 +125,7 @@ The live spec passed one test in 2.3 seconds against the real FastAPI `GET /api/
 | Test Guard / Clean Code Guard / Vercel React guidance | Passed |
 | Docs Guard | Passed; source, artifact, count, commit and command claims reconciled |
 | `git diff --check` | Passed |
-| Authoritative GitHub CI | Pending |
+| Authoritative GitHub CI | `backend-test` and `frontend-test` passed in run `31803892021` on `1b6e53d2f18594f93822bcbd36445c94ff38b163` |
 
 ## Cleanup and next gate
 
