@@ -4,6 +4,10 @@ import { AdminAuditPage } from './AdminAuditPage';
 import { createWrapper, renderWithClient } from '../test/utils';
 import { server } from '../test/server';
 import { http, HttpResponse, delay } from 'msw';
+import type {
+  ErrorResponse,
+  QuotaExceededErrorResponse,
+} from '../api/generated/types.gen';
 
 const mockLanguageState = { language: 'en' };
 
@@ -748,7 +752,10 @@ describe('AdminAuditPage', () => {
       server.use(
         http.post('/api/v1/admin/audit/export', () => {
           return HttpResponse.json(
-            { detail: { message_key: 'error.export_limit_exceeded' } },
+            {
+              error: 'export_limit_exceeded',
+              message_key: 'error.export_limit_exceeded',
+            } satisfies ErrorResponse,
             { status: 422 }
           );
         })
@@ -766,7 +773,11 @@ describe('AdminAuditPage', () => {
       server.use(
         http.post('/api/v1/admin/audit/export', () => {
           return HttpResponse.json(
-            { detail: { message_key: 'error.quota_exceeded' } },
+            {
+              error: 'quota_exceeded',
+              message_key: 'error.quota_exceeded',
+              reset_at: '2026-08-15T00:00:00Z',
+            } satisfies QuotaExceededErrorResponse,
             { status: 429 }
           );
         })

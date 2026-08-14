@@ -15,7 +15,7 @@ import {
 const validUserConnections = {
   connections: [
     {
-      id: 'connection-1',
+      id: '550e8400-e29b-41d4-a716-446655440001',
       display_name: 'Analytics',
       database_type: 'postgresql',
     },
@@ -162,5 +162,22 @@ describe('canonical JSON response validation', () => {
 
     expect(validated).toEqual(validUserConnections);
     expect(JSON.stringify(validated)).not.toContain('canary');
+  });
+
+  it('preserves the valid refine branch of the generated query response union', () => {
+    expect(
+      validateOperationResponse('regenerateQuery', 200, {
+        kind: 'refine',
+        message_key: 'query.refine',
+        message_params: null,
+        should_refine: true,
+        response_canary: 'must-not-enter-state',
+      })
+    ).toEqual({
+      kind: 'refine',
+      message_key: 'query.refine',
+      message_params: null,
+      should_refine: true,
+    });
   });
 });

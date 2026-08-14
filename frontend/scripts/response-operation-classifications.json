@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "classifications": {
+    "consumed_json": [
+      "acceptQuery",
+      "createAdminConnection",
+      "createRole",
+      "createSsoProvider",
+      "disableAdminConnection",
+      "enableAdminConnection",
+      "getAdminConnectionSchema",
+      "getAdminSettings",
+      "getAuditRetention",
+      "getAuditStatus",
+      "getDetectionConfig",
+      "getHistoryEntry",
+      "getMe",
+      "getQueryLimits",
+      "getQuotaStatus",
+      "getRole",
+      "getSession",
+      "getSessions",
+      "listAdminConnections",
+      "listAdminSsoProviders",
+      "listHistory",
+      "listQuotas",
+      "listRoles",
+      "listSsoProviders",
+      "listUserConnections",
+      "refreshAdminConnectionSchema",
+      "regenerateQuery",
+      "rejectQuery",
+      "searchAuditEntries",
+      "signIn",
+      "submitQuestion",
+      "testAdminConnection",
+      "testDraftRolePolicy",
+      "updateAdminConnection",
+      "updateAdminSettings",
+      "updateDetectionConfig",
+      "updateRole",
+      "updateSessionConnection",
+      "updateSsoProvider",
+      "upsertQuota",
+      "verifyAuditChain"
+    ],
+    "no_body": [
+      "deleteAdminConnection",
+      "deleteGroupMapping",
+      "deleteHistoryEntry",
+      "deleteQuota",
+      "deleteRole",
+      "deleteSession",
+      "deleteSsoProvider",
+      "signOut"
+    ],
+    "browser_redirect": [
+      "oidcCallback",
+      "oidcLogin",
+      "samlCallback",
+      "samlLogin"
+    ],
+    "blob_download": [
+      "exportAuditEntries"
+    ],
+    "unused": [
+      "createGroupMapping",
+      "createSession",
+      "getAdminConnection",
+      "getHealth",
+      "getQuota",
+      "getReadiness",
+      "listGroupMappings",
+      "refreshSchema",
+      "testRolePolicy",
+      "updateFeedback"
+    ]
+  },
+  "unused_reasons": {
+    "createGroupMapping": "Composite role saves own mapping changes; the standalone generated operation remains for API compatibility.",
+    "createSession": "The first query submission creates the current workspace session.",
+    "getAdminConnection": "Safe list rows provide the editable non-secret connection fields.",
+    "getHealth": "Deployment probes call the public liveness route outside the React application.",
+    "getQuota": "The quota page consumes the bounded list and status operations.",
+    "getReadiness": "Deployment probes call readiness outside the React application.",
+    "listGroupMappings": "Authoritative role detail embeds the mappings used by the role editor.",
+    "refreshSchema": "The UI uses the per-connection schema refresh operation.",
+    "testRolePolicy": "The editor validates unsaved policy drafts with testDraftRolePolicy.",
+    "updateFeedback": "The current auto-save workspace does not render the legacy feedback control."
+  }
+}
