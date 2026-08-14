@@ -15,14 +15,15 @@ import uuid
 from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
 from app.core.dependencies import get_db
 from app.core.exceptions import BuiltinProtectedError
 from app.db.models.database_connection import SourceDatabaseConnection
-from app.db.models.enums import HealthStatus, LifecycleState, Permission, SchemaIntrospectionStatus
+from app.db.models.enums import AuditActionType, HealthStatus, LifecycleState, Permission, SchemaIntrospectionStatus
 from app.db.models.role import Role
 from app.db.models.role_connection_policy import RoleConnectionPolicy
 from app.db.models.sso_group_mapping import SsoGroupMapping
@@ -31,7 +32,15 @@ from app.evaluator.rules.role_authorization import RoleAuthorizationRule
 from app.evaluator.schema_context import Column, SchemaContext, Table
 from app.repositories.connection_repository import ConnectionRepository
 from app.repositories.role_repository import RoleRepository
-from app.schemas.roles import DraftPolicyTestRequest, PolicyTestRequest, PolicyTestResponse, RoleCreate, RoleUpdate
+from app.schemas.roles import (
+    ConnectionPolicyItem,
+    DraftPolicyTestRequest,
+    PolicyTestRequest,
+    PolicyTestResponse,
+    RoleCreate,
+    RoleUpdate,
+)
+from app.services.audit_service import AuditService
 from app.services.policy_enforcement import PolicyEnforcementService
 from app.services.role_service import RoleService
 
@@ -40,6 +49,13 @@ router = APIRouter(prefix="/admin/roles", tags=["Admin Roles"])
 
 @dataclass(frozen=True)
 class _PreviewPolicy:
+    allowed_tables: list[dict]
+    row_filters: list[dict]
+    column_masks: list[dict]
+
+
+@dataclass(frozen=True)
+class _ConnectionPolicyValues:
     allowed_tables: list[dict]
     row_filters: list[dict]
     column_masks: list[dict]
@@ -73,6 +89,98 @@ def _role_to_detail_response(role: Role, group_mappings: list, connection_polici
         "created_at": role.created_at.isoformat() if role.created_at else None,
         "updated_at": role.updated_at.isoformat() if role.updated_at else None,
     }
+
+
+def _group_mapping_summary(mapping_id: uuid.UUID, group_value: str) -> dict[str, str]:
+    return {"id": str(mapping_id), "sso_group_value": group_value}
+
+
+def _duplicate_group_mapping_error() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "error": "conflict",
+            "message_key": "error.conflict.duplicateGroupMapping",
+        },
+    )
+
+
+async def _create_role_group_mappings(
+    db: AsyncSession,
+    role_id: uuid.UUID,
+    group_values: list[str],
+    actor_identity: str | None,
+) -> list[dict[str, str]]:
+    """Claim requested groups and audit each claim in the caller's transaction."""
+    mappings: list[dict[str, str]] = []
+    for group_value in group_values:
+        mapping_id = await _claim_group_mapping(db, role_id, group_value)
+        await _audit_group_mapping_change(db, mapping_id, actor_identity, "create")
+        mappings.append(_group_mapping_summary(mapping_id, group_value))
+    return mappings
+
+
+async def _claim_group_mapping(db: AsyncSession, role_id: uuid.UUID, group_value: str) -> uuid.UUID:
+    mapping_id = await db.scalar(
+        pg_insert(SsoGroupMapping)
+        .values(sso_group_value=group_value, role_id=role_id)
+        .on_conflict_do_nothing(index_elements=[SsoGroupMapping.sso_group_value])
+        .returning(SsoGroupMapping.id)
+    )
+    if mapping_id is None:
+        raise _duplicate_group_mapping_error()
+    return mapping_id
+
+
+async def _audit_group_mapping_change(
+    db: AsyncSession,
+    mapping_id: uuid.UUID,
+    actor_identity: str | None,
+    action: str,
+) -> None:
+    await AuditService.log(
+        db,
+        action=AuditActionType.ROLE_MAPPING_CHANGE,
+        actor_identity=actor_identity,
+        resource_type="sso_group_mapping",
+        resource_id=str(mapping_id),
+        outcome="success",
+        context={"action": action},
+    )
+
+
+async def _role_group_mapping_rows(db: AsyncSession, role_id: uuid.UUID) -> list[SsoGroupMapping]:
+    result = await db.execute(
+        select(SsoGroupMapping)
+        .where(SsoGroupMapping.role_id == role_id)
+        .order_by(SsoGroupMapping.created_at, SsoGroupMapping.id)
+    )
+    return list(result.scalars().all())
+
+
+async def _sync_role_group_mappings(
+    db: AsyncSession,
+    role_id: uuid.UUID,
+    requested_values: list[str],
+    actor_identity: str | None,
+) -> list[dict[str, str]]:
+    current_rows = await _role_group_mapping_rows(db, role_id)
+    current_by_value = {row.sso_group_value: row for row in current_rows}
+    requested_set = set(requested_values)
+
+    for mapping in current_rows:
+        if mapping.sso_group_value not in requested_set:
+            await db.delete(mapping)
+            await _audit_group_mapping_change(db, mapping.id, actor_identity, "delete")
+
+    persisted_ids = {group_value: mapping.id for group_value, mapping in current_by_value.items()}
+    for group_value in requested_values:
+        if group_value not in persisted_ids:
+            mapping_id = await _claim_group_mapping(db, role_id, group_value)
+            await _audit_group_mapping_change(db, mapping_id, actor_identity, "create")
+            persisted_ids[group_value] = mapping_id
+
+    return [_group_mapping_summary(persisted_ids[value], value) for value in requested_values]
 
 
 def _validate_permissions(permissions: list[str] | None) -> None:
@@ -199,37 +307,122 @@ def _validate_preview_row_filters(
             raise _row_filter_validation_error() from None
 
 
-async def _replace_role_connection_policies(db: AsyncSession, role_id: uuid.UUID, policies) -> list[dict]:
-    """Replace all `role_connection_policies` rows for a role.
-
-    Validates input (UUIDs, duplicates, connection existence) before any
-    DELETE/INSERT. On failure, raises a sanitized HTTPException that does
-    not echo the bad input. On success, deletes all existing rows for the
-    role, inserts the new rows, flushes, and returns the persisted rows
-    mapped to the detail-response shape (id, connection_id,
-    allowed_tables, row_filters, column_masks). Does not commit; the
-    caller is responsible for committing the transaction.
-    """
+async def _sync_role_connection_policies(
+    db: AsyncSession,
+    role_id: uuid.UUID,
+    policies: list[ConnectionPolicyItem],
+) -> tuple[list[dict], bool]:
+    """Apply an empty/unchanged/added/updated/removed policy set without committing."""
     parsed_conn_ids = _parse_policy_connection_ids(policies)
     await _validate_policy_input(db, parsed_conn_ids)
     await _validate_policy_row_filters(db, policies, parsed_conn_ids)
 
-    await db.execute(delete(RoleConnectionPolicy).where(RoleConnectionPolicy.role_id == role_id))
+    current_rows = await _role_connection_policy_rows(db, role_id)
+    current_by_connection = {row.connection_id: row for row in current_rows}
+    requested_connections = set(parsed_conn_ids)
+    removed = await _remove_obsolete_connection_policies(db, current_rows, requested_connections)
+    updated = _apply_requested_connection_policies(
+        db,
+        role_id,
+        current_by_connection,
+        list(zip(policies, parsed_conn_ids, strict=True)),
+    )
+    changed = removed or updated
 
-    for policy in policies:
-        db.add(
-            RoleConnectionPolicy(
-                role_id=role_id,
-                connection_id=uuid.UUID(policy.connection_id),
-                allowed_tables=policy.allowed_tables or [],
-                row_filters=policy.row_filters or [],
-                column_masks=policy.column_masks or [],
-            )
-        )
-    await db.flush()
+    if changed:
+        await db.flush()
+    return await _role_connection_policy_responses(db, role_id), changed
 
-    result = await db.execute(select(RoleConnectionPolicy).where(RoleConnectionPolicy.role_id == role_id))
-    rows = result.scalars().all()
+
+async def _remove_obsolete_connection_policies(
+    db: AsyncSession,
+    current_rows: list[RoleConnectionPolicy],
+    requested_connections: set[uuid.UUID],
+) -> bool:
+    removed = False
+    for current_row in current_rows:
+        if current_row.connection_id not in requested_connections:
+            await db.delete(current_row)
+            removed = True
+    return removed
+
+
+def _apply_requested_connection_policies(
+    db: AsyncSession,
+    role_id: uuid.UUID,
+    current_by_connection: dict[uuid.UUID, RoleConnectionPolicy],
+    requested_policies: list[tuple[ConnectionPolicyItem, uuid.UUID]],
+) -> bool:
+    changed = False
+    for policy, connection_id in requested_policies:
+        values = _connection_policy_values(policy)
+        current_row = current_by_connection.get(connection_id)
+        if current_row is None:
+            db.add(_new_connection_policy(role_id, connection_id, values))
+            changed = True
+        elif _connection_policy_values_changed(current_row, values):
+            _apply_connection_policy_values(current_row, values)
+            changed = True
+    return changed
+
+
+def _connection_policy_values(
+    policy: ConnectionPolicyItem | RoleConnectionPolicy,
+) -> _ConnectionPolicyValues:
+    return _ConnectionPolicyValues(
+        allowed_tables=policy.allowed_tables or [],
+        row_filters=policy.row_filters or [],
+        column_masks=policy.column_masks or [],
+    )
+
+
+def _new_connection_policy(
+    role_id: uuid.UUID,
+    connection_id: uuid.UUID,
+    values: _ConnectionPolicyValues,
+) -> RoleConnectionPolicy:
+    return RoleConnectionPolicy(
+        role_id=role_id,
+        connection_id=connection_id,
+        allowed_tables=values.allowed_tables,
+        row_filters=values.row_filters,
+        column_masks=values.column_masks,
+    )
+
+
+def _connection_policy_values_changed(
+    current: RoleConnectionPolicy,
+    requested: _ConnectionPolicyValues,
+) -> bool:
+    return (
+        current.allowed_tables != requested.allowed_tables
+        or current.row_filters != requested.row_filters
+        or current.column_masks != requested.column_masks
+    )
+
+
+def _apply_connection_policy_values(
+    current: RoleConnectionPolicy,
+    requested: _ConnectionPolicyValues,
+) -> None:
+    current.allowed_tables = requested.allowed_tables
+    current.row_filters = requested.row_filters
+    current.column_masks = requested.column_masks
+
+
+async def _role_connection_policy_rows(db: AsyncSession, role_id: uuid.UUID) -> list[RoleConnectionPolicy]:
+    result = await db.execute(
+        select(RoleConnectionPolicy)
+        .where(RoleConnectionPolicy.role_id == role_id)
+        .order_by(RoleConnectionPolicy.created_at, RoleConnectionPolicy.id)
+    )
+    return list(result.scalars().all())
+
+
+async def _role_connection_policy_responses(db: AsyncSession, role_id: uuid.UUID) -> list[dict]:
+    """Return authoritative persisted policies for one role."""
+
+    rows = await _role_connection_policy_rows(db, role_id)
     return [
         {
             "id": str(cp.id),
@@ -240,6 +433,23 @@ async def _replace_role_connection_policies(db: AsyncSession, role_id: uuid.UUID
         }
         for cp in rows
     ]
+
+
+async def _audit_role_update(
+    db: AsyncSession,
+    role_id: uuid.UUID,
+    actor_identity: str | None,
+    updated_fields: list[str],
+) -> None:
+    await AuditService.log(
+        db,
+        action=AuditActionType.ROLE_UPDATE,
+        actor_identity=actor_identity,
+        resource_type="role",
+        resource_id=str(role_id),
+        outcome="success",
+        context={"updated_fields": updated_fields},
+    )
 
 
 @router.get("")
@@ -353,16 +563,27 @@ async def create_role(
             db_session=db,
         )
 
-        # Validate + persist connection policies before commit so the
-        # SQL execute ordering is: (name check, priority check,
-        # conn-existence, delete-existing, select-persisted, refresh).
-        # role.id is set by repo.create's internal flush.
-        persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies or [])
+        # role.id is set by repo.create's internal flush. All response
+        # preparation remains inside the transaction so a flush/refresh fault
+        # cannot produce a declared 500 after the mutation has committed.
+        persisted_policies, _policy_changed = await _sync_role_connection_policies(
+            db,
+            role.id,
+            body.connection_policies,
+        )
+        persisted_mappings = await _create_role_group_mappings(
+            db,
+            role.id,
+            body.group_mappings,
+            session.get("username"),
+        )
 
-        await db.commit()
+        await db.flush()
         await db.refresh(role)
+        response_body = _role_to_detail_response(role, persisted_mappings, persisted_policies)
+        await db.commit()
 
-        return _role_to_detail_response(role, [], persisted_policies)
+        return response_body
     except BuiltinProtectedError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -488,28 +709,66 @@ async def update_role(
         service = RoleService(repo)
 
         session = getattr(request.state, "session", {}) or {}
-        role = await service.update_role(
+        update_outcome = await service.update_role(
             role_id=role_uuid,
             fields=fields,
             actor_identity=session.get("username"),
-            db_session=db,
+            db_session=None,
         )
+        role = update_outcome.role
+        changed_role_fields = list(update_outcome.updated_fields)
 
-        # Validate + persist connection policies before commit so the
-        # SQL execute ordering is: (get_by_id, name check, priority check,
-        # repo.update internal get_by_id, conn-existence, delete-existing,
-        # select-persisted, refresh). role.id is stable across flushes.
-        persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies or [])
+        if body.connection_policies is None:
+            persisted_policies = await _role_connection_policy_responses(db, role.id)
+            policy_changed = False
+        else:
+            persisted_policies, policy_changed = await _sync_role_connection_policies(
+                db,
+                role.id,
+                body.connection_policies,
+            )
+        updated_fields = [*changed_role_fields]
+        if policy_changed:
+            updated_fields.append("connection_policies")
+        if updated_fields:
+            await _audit_role_update(db, role.id, session.get("username"), updated_fields)
 
-        await db.commit()
+        if body.group_mappings is None:
+            mapping_rows = await _role_group_mapping_rows(db, role.id)
+            persisted_mappings = [
+                _group_mapping_summary(mapping.id, mapping.sso_group_value) for mapping in mapping_rows
+            ]
+        else:
+            persisted_mappings = await _sync_role_group_mappings(
+                db,
+                role.id,
+                body.group_mappings,
+                session.get("username"),
+            )
+
+        await db.flush()
         await db.refresh(role)
-
-        return _role_to_detail_response(role, [], persisted_policies)
-    except BuiltinProtectedError as exc:
-        # Commit the audit log (access.denied was written inside service)
-        # before returning 403. If AuditService.log had raised, we would not
-        # reach this block; the outer Exception handler returns 500.
+        response_body = _role_to_detail_response(role, persisted_mappings, persisted_policies)
         await db.commit()
+
+        return response_body
+    except BuiltinProtectedError as exc:
+        try:
+            await AuditService.log(
+                db,
+                action=AuditActionType.ACCESS_DENIED,
+                actor_identity=session.get("username"),
+                resource_type="role",
+                resource_id=role_id,
+                outcome="denied",
+                context={"reason": "builtin_protected"},
+            )
+            await db.commit()
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"error": "internal", "message_key": "error.internal"},
+            ) from None
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"error": "forbidden", "message_key": exc.message_key},

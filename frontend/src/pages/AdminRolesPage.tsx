@@ -17,6 +17,11 @@ interface Toast {
   message: string;
 }
 
+type SaveFeedback =
+  | { kind: 'pending' }
+  | { kind: 'failed'; message: string }
+  | { kind: 'uncertain'; authoritativeStateRefreshed: boolean };
+
 const ALLOWED_ERROR_KEYS = new Set([
   'error.validation.roleRequiredFields',
   'error.conflict.duplicateRoleName',
@@ -51,7 +56,26 @@ function extractErrorKey(err: unknown): string | null {
     if (key) return key;
   }
 
+  if (obj.serverError) {
+    const key = extractErrorKey(obj.serverError);
+    if (key) return key;
+  }
+
   return null;
+}
+
+function isUncertainSave(error: unknown): boolean {
+  return Boolean(
+    error && typeof error === 'object' && (error as Record<string, unknown>).recovery === 'uncertain'
+  );
+}
+
+function wasAuthoritativeStateRefreshed(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      (error as Record<string, unknown>).authoritativeStateRefreshed === true
+  );
 }
 
 export const AdminRolesPage: React.FC = () => {
@@ -68,8 +92,10 @@ export const AdminRolesPage: React.FC = () => {
   const [mappedGroups, setMappedGroups] = useState<string[]>([]);
   const [connectionPolicies, setConnectionPolicies] = useState<ConnectionPolicyItem[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null);
   const [loadedDetail, setLoadedDetail] = useState<Role | null>(null);
   const nextToastIdRef = useRef(0);
+  const saveInFlightRef = useRef(false);
 
   const addToast = (type: 'success' | 'error', message: string) => {
     nextToastIdRef.current += 1;
@@ -88,20 +114,45 @@ export const AdminRolesPage: React.FC = () => {
     return t(fallbackKey);
   };
 
+  const handleSaveError = (error: unknown, fallbackKey: string) => {
+    saveInFlightRef.current = false;
+    const uncertain = isUncertainSave(error);
+    const authoritativeStateRefreshed = wasAuthoritativeStateRefreshed(error);
+    const message = uncertain
+      ? t(
+          authoritativeStateRefreshed
+            ? 'admin.roles.saveUncertain'
+            : 'admin.roles.saveUncertainNoRefresh'
+        )
+      : getErrorMessage(error, fallbackKey);
+    setSaveFeedback(
+      uncertain
+        ? { kind: 'uncertain', authoritativeStateRefreshed }
+        : { kind: 'failed', message }
+    );
+    if (!isAdding && !editingRole) {
+      addToast('error', message);
+    }
+  };
+
   const { listQuery, createMutation, updateMutation, deleteMutation } = useAdminRoles({
     onCreateSuccess: () => {
+      saveInFlightRef.current = false;
+      setSaveFeedback(null);
       addToast('success', t('admin.roles.addSuccess') || 'Role created successfully');
       handleCancel();
     },
     onCreateError: (err: unknown) => {
-      addToast('error', getErrorMessage(err, 'admin.roles.addError'));
+      handleSaveError(err, 'admin.roles.addError');
     },
     onUpdateSuccess: () => {
+      saveInFlightRef.current = false;
+      setSaveFeedback(null);
       addToast('success', t('admin.roles.updateSuccess') || 'Role updated successfully');
       handleCancel();
     },
     onUpdateError: (err: unknown) => {
-      addToast('error', getErrorMessage(err, 'admin.roles.updateError'));
+      handleSaveError(err, 'admin.roles.updateError');
     },
     onDeleteSuccess: () => {
       addToast('success', t('admin.roles.deleteSuccess') || 'Role deleted successfully');
@@ -139,6 +190,8 @@ export const AdminRolesPage: React.FC = () => {
 
   const handleEdit = (role: Role) => {
     resetForm();
+    setSaveFeedback(null);
+    saveInFlightRef.current = false;
     lastAppliedDetailIdRef.current = null;
     setLoadedDetail(null);
     setEditingRole(role);
@@ -146,6 +199,8 @@ export const AdminRolesPage: React.FC = () => {
 
   const handleAdd = () => {
     resetForm();
+    setSaveFeedback(null);
+    saveInFlightRef.current = false;
     lastAppliedDetailIdRef.current = null;
     setLoadedDetail(null);
     setEditingRole(undefined);
@@ -156,6 +211,8 @@ export const AdminRolesPage: React.FC = () => {
     setIsAdding(false);
     setEditingRole(undefined);
     setValidationError(null);
+    setSaveFeedback(null);
+    saveInFlightRef.current = false;
     lastAppliedDetailIdRef.current = null;
     setLoadedDetail(null);
     resetForm();
@@ -172,6 +229,9 @@ export const AdminRolesPage: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (saveInFlightRef.current) {
+      return;
+    }
     setValidationError(null);
 
     if (editingRole && lastAppliedDetailIdRef.current !== editingRole.id) {
@@ -189,6 +249,9 @@ export const AdminRolesPage: React.FC = () => {
       return;
     }
 
+    saveInFlightRef.current = true;
+    setSaveFeedback({ kind: 'pending' });
+
     if (editingRole) {
       const updateData: RoleUpdateData = {
         name,
@@ -201,7 +264,6 @@ export const AdminRolesPage: React.FC = () => {
       updateMutation.mutate({
         id: editingRole.id,
         data: updateData,
-        existingMappings: loadedDetail?.group_mappings ?? [],
       });
     } else {
       const createData: RoleCreateData = {
@@ -258,6 +320,8 @@ export const AdminRolesPage: React.FC = () => {
     const isDetailFailed = Boolean(editingRole && detailQuery.isError && !isDetailReady);
     const isDetailLoading = Boolean(editingRole && !isDetailReady && !isDetailFailed);
     const activeRole = editingRole ? loadedDetail : undefined;
+    const isSaving =
+      saveFeedback?.kind === 'pending' || createMutation.isPending || updateMutation.isPending;
 
     return (
       <div className="p-6 max-w-4xl mx-auto bg-gray-900 border border-gray-800 rounded-xl space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -268,8 +332,9 @@ export const AdminRolesPage: React.FC = () => {
           </h2>
           <button
             onClick={handleCancel}
+            disabled={isSaving}
             aria-label={t('admin.roles.closeEditor')}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -406,20 +471,61 @@ export const AdminRolesPage: React.FC = () => {
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
+          {saveFeedback && (
+            <div
+              role={saveFeedback.kind === 'pending' ? 'status' : 'alert'}
+              aria-live={saveFeedback.kind === 'pending' ? 'polite' : 'assertive'}
+              className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${
+                saveFeedback.kind === 'pending'
+                  ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-200'
+                  : saveFeedback.kind === 'uncertain'
+                    ? 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+                    : 'border-red-500/20 bg-red-500/10 text-red-300'
+              }`}
+            >
+              {saveFeedback.kind === 'pending' ? (
+                <RefreshCw className="h-4 w-4 shrink-0 animate-spin" />
+              ) : (
+                <ShieldAlert className="h-4 w-4 shrink-0" />
+              )}
+              <div>
+                <p className="font-medium">
+                  {saveFeedback.kind === 'pending'
+                    ? t('admin.roles.savePending')
+                    : saveFeedback.kind === 'uncertain'
+                      ? t(
+                          saveFeedback.authoritativeStateRefreshed
+                            ? 'admin.roles.saveUncertain'
+                            : 'admin.roles.saveUncertainNoRefresh'
+                        )
+                      : t('admin.roles.saveFailed')}
+                </p>
+                {saveFeedback.kind === 'failed' && (
+                  <p className="mt-1">{saveFeedback.message}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-800">
             <button
               type="button"
               onClick={handleCancel}
-              className="px-4 py-2 border border-gray-800 rounded-lg text-gray-400 hover:text-white transition-colors"
+              disabled={isSaving}
+              className="px-4 py-2 border border-gray-800 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
-              disabled={!isDetailReady || createMutation.isPending || updateMutation.isPending}
+              disabled={!isDetailReady || isSaving}
               className="px-4 py-2 bg-neon-cyan text-gray-900 font-semibold rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50"
             >
-              {t('common.save')}
+              {saveFeedback?.kind === 'pending'
+                ? t('admin.roles.savePending')
+                : saveFeedback?.kind === 'failed' || saveFeedback?.kind === 'uncertain'
+                  ? t('common.retry')
+                  : t('common.save')}
             </button>
           </div>
         </form>
@@ -431,25 +537,28 @@ export const AdminRolesPage: React.FC = () => {
     <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       {/* Global Toast Container */}
       <div className="fixed top-6 end-6 z-50 flex flex-col gap-3 max-w-sm w-full select-none pointer-events-none">
-        {toasts.map((t) => (
+        {toasts.map((toast) => (
           <div
-            key={t.id}
+            key={toast.id}
+            role={toast.type === 'success' ? 'status' : 'alert'}
+            aria-live={toast.type === 'success' ? 'polite' : 'assertive'}
             className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-2xl backdrop-blur-md animate-fade-in transition-all ${
-              t.type === 'success'
+              toast.type === 'success'
                 ? 'bg-green-500/10 border-green-500/20 text-green-400'
                 : 'bg-red-500/10 border-red-500/20 text-red-400'
             }`}
           >
             <div className="shrink-0 mt-0.5">
-              {t.type === 'success' ? (
+              {toast.type === 'success' ? (
                 <CheckCircle2 className="w-5 h-5 text-green-500" />
               ) : (
                 <XCircle className="w-5 h-5 text-red-500" />
               )}
             </div>
-            <div className="flex-1 text-sm font-medium leading-relaxed">{t.message}</div>
+            <div className="flex-1 text-sm font-medium leading-relaxed">{toast.message}</div>
             <button
-              onClick={() => setToasts((prev) => prev.filter((item) => item.id !== t.id))}
+              onClick={() => setToasts((prev) => prev.filter((item) => item.id !== toast.id))}
+              aria-label={t('common.close')}
               className="shrink-0 text-gray-400 hover:text-white p-0.5 rounded transition-colors"
             >
               <X className="w-4 h-4" />

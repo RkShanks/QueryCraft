@@ -7,8 +7,11 @@ import { server } from '../../test/server';
 import { http, HttpResponse } from 'msw';
 import { seedAuthenticatedUser } from '../../test/utils';
 
+let activeQueryClient: QueryClient;
+
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  activeQueryClient = qc;
   seedAuthenticatedUser(qc);
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
 }
@@ -18,11 +21,12 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     vi.clearAllMocks();
   });
 
-  it('performs role creation and then POSTs each group mapping individually', async () => {
+  it('creates a role and its mappings with one composite request', async () => {
     const rolesCreated: any[] = [];
-    const mappingsCreated: any[] = [];
+    let standaloneMappingWrites = 0;
 
     server.use(
+      http.get('*/admin/roles', () => HttpResponse.json({ roles: [] })),
       http.post('*/admin/roles', async ({ request }) => {
         const body = (await request.json()) as any;
         rolesCreated.push(body);
@@ -34,7 +38,10 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
             priority: body.priority,
             permissions: body.permissions,
             is_builtin: false,
-            group_mappings: [],
+            group_mappings: body.group_mappings.map((sso_group_value: string, index: number) => ({
+              id: `mapping-id-${index}`,
+              sso_group_value,
+            })),
             connection_policy_count: 0,
             created_at: '2026-06-05T00:00:00Z',
             updated_at: '2026-06-05T00:00:00Z',
@@ -42,23 +49,13 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
           { status: 201 }
         );
       }),
-      http.post('*/admin/sso/group-mappings', async ({ request }) => {
-        const body = (await request.json()) as any;
-        mappingsCreated.push(body);
-        return HttpResponse.json(
-          {
-            id: `mapping-id-${body.sso_group_value}`,
-            sso_group_value: body.sso_group_value,
-            role_id: body.role_id,
-            role_name: 'Custom Role',
-            created_at: '2026-06-05T00:00:00Z',
-          },
-          { status: 201 }
-        );
+      http.post('*/admin/sso/group-mappings', () => {
+        standaloneMappingWrites += 1;
+        return HttpResponse.json({}, { status: 500 });
       })
     );
 
-    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
 
     result.current.createMutation.mutate({
       name: 'Custom Analyst',
@@ -70,32 +67,22 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
 
     await waitFor(() => expect(result.current.createMutation.isSuccess).toBe(true));
 
-    // Verify role creation payload (should not have group_mappings directly in body to roles endpoint)
     expect(rolesCreated).toHaveLength(1);
     expect(rolesCreated[0]).toEqual({
       name: 'Custom Analyst',
       description: 'Analyst description',
       priority: 15,
       permissions: ['query.submit'],
+      group_mappings: ['sso-analyst-group', 'sso-ops-group'],
       connection_policies: [],
     });
-
-    // Verify separate group mapping requests
-    expect(mappingsCreated).toHaveLength(2);
-    expect(mappingsCreated[0]).toEqual({
-      sso_group_value: 'sso-analyst-group',
-      role_id: 'generated-role-id-123',
-    });
-    expect(mappingsCreated[1]).toEqual({
-      sso_group_value: 'sso-ops-group',
-      role_id: 'generated-role-id-123',
-    });
+    expect(standaloneMappingWrites).toBe(0);
+    expect(result.current.createMutation.data?.group_mappings).toHaveLength(2);
   });
 
-  it('performs role update and computes correct mapping delta (adds/deletes)', async () => {
+  it('updates a role and its mapping diff with one composite request', async () => {
     const rolesUpdated: any[] = [];
-    const mappingsCreated: any[] = [];
-    const mappingsDeleted: string[] = [];
+    let standaloneMappingWrites = 0;
 
     server.use(
       http.put('*/admin/roles/:id', async ({ request, params }) => {
@@ -109,7 +96,10 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
             priority: body.priority,
             permissions: body.permissions,
             is_builtin: false,
-            group_mappings: [],
+            group_mappings: body.group_mappings.map((sso_group_value: string, index: number) => ({
+              id: `mapping-id-${index}`,
+              sso_group_value,
+            })),
             connection_policy_count: 0,
             created_at: '2026-06-05T00:00:00Z',
             updated_at: '2026-06-05T00:00:00Z',
@@ -117,18 +107,17 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
           { status: 200 }
         );
       }),
-      http.post('*/admin/sso/group-mappings', async ({ request }) => {
-        const body = (await request.json()) as any;
-        mappingsCreated.push(body);
-        return HttpResponse.json({}, { status: 201 });
+      http.post('*/admin/sso/group-mappings', () => {
+        standaloneMappingWrites += 1;
+        return HttpResponse.json({}, { status: 500 });
       }),
-      http.delete('*/admin/sso/group-mappings/:mappingId', async ({ params }) => {
-        mappingsDeleted.push(params.mappingId as string);
-        return new HttpResponse(null, { status: 204 });
+      http.delete('*/admin/sso/group-mappings/:mappingId', () => {
+        standaloneMappingWrites += 1;
+        return HttpResponse.json({}, { status: 500 });
       })
     );
 
-    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
 
     // Existing mappings are: map-1 (sso-analyst), map-2 (sso-ops)
     // New requested mappings are: sso-ops (stays), sso-manager (added), sso-analyst (deleted)
@@ -141,15 +130,10 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
         permissions: ['query.submit', 'query.history.view'],
         group_mappings: ['sso-ops', 'sso-manager'],
       },
-      existingMappings: [
-        { id: 'map-1', sso_group_value: 'sso-analyst' },
-        { id: 'map-2', sso_group_value: 'sso-ops' },
-      ],
     });
 
     await waitFor(() => expect(result.current.updateMutation.isSuccess).toBe(true));
 
-    // Verify base PUT request
     expect(rolesUpdated).toHaveLength(1);
     expect(rolesUpdated[0]).toEqual({
       id: 'role-uuid-999',
@@ -157,19 +141,31 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
       description: 'New Description',
       priority: 20,
       permissions: ['query.submit', 'query.history.view'],
-      connection_policies: [],
+      group_mappings: ['sso-ops', 'sso-manager'],
+    });
+    expect(standaloneMappingWrites).toBe(0);
+    expect(result.current.updateMutation.data?.group_mappings).toHaveLength(2);
+  });
+
+  it('omits composite collections from partial updates instead of clearing them', async () => {
+    let updateBody: Record<string, unknown> | undefined;
+    const authoritativeRole = roleDetail({ name: 'Renamed Analyst', groupMappings: ['sso-kept'] });
+    server.use(
+      http.put('*/admin/roles/:id', async ({ request }) => {
+        updateBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(authoritativeRole);
+      })
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    result.current.updateMutation.mutate({
+      id: authoritativeRole.id,
+      data: { name: authoritativeRole.name },
     });
 
-    // Verify additions (sso-manager)
-    expect(mappingsCreated).toHaveLength(1);
-    expect(mappingsCreated[0]).toEqual({
-      sso_group_value: 'sso-manager',
-      role_id: 'role-uuid-999',
-    });
-
-    // Verify deletions (map-1 / sso-analyst)
-    expect(mappingsDeleted).toHaveLength(1);
-    expect(mappingsDeleted[0]).toBe('map-1');
+    await waitFor(() => expect(result.current.updateMutation.isSuccess).toBe(true));
+    expect(updateBody).not.toHaveProperty('group_mappings');
+    expect(updateBody).not.toHaveProperty('connection_policies');
   });
 
   it('does not fetch roles or group mappings when enabled is false', async () => {
@@ -195,7 +191,210 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     expect(rolesFetched).toBe(false);
     expect(mappingsFetched).toBe(false);
   });
+
+  it('refetches authoritative detail after a definite server rejection', async () => {
+    let detailReads = 0;
+    const authoritativeRole = roleDetail({ name: 'Original Analyst', groupMappings: ['sso-old'] });
+    server.use(
+      http.put('*/admin/roles/:id', () =>
+        HttpResponse.json({ detail: { code: 'group_mapping_conflict' } }, { status: 409 })
+      ),
+      http.get('*/admin/roles/:id', () => {
+        detailReads += 1;
+        return HttpResponse.json(authoritativeRole);
+      })
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    activeQueryClient.setQueryData(['adminRoles'], {
+      roles: [{ ...authoritativeRole, name: 'Stale list role' }],
+    });
+    result.current.updateMutation.mutate({
+      id: authoritativeRole.id,
+      data: roleDraft({ name: 'Rejected Analyst', groupMappings: ['sso-new'] }),
+    });
+
+    await waitFor(() => expect(result.current.updateMutation.isError).toBe(true));
+    expect(detailReads).toBe(1);
+    expect(result.current.updateMutation.error).toMatchObject({
+      recovery: 'rejected',
+      authoritativeRole: { name: 'Original Analyst' },
+    });
+    expect(activeQueryClient.getQueryData(['adminRole', authoritativeRole.id])).toMatchObject({
+      name: 'Original Analyst',
+    });
+    expect(activeQueryClient.getQueryData<{ roles: any[] }>(['adminRoles'])?.roles[0]).toMatchObject({
+      name: 'Original Analyst',
+    });
+  });
+
+  it('recovers a committed update after its response is lost', async () => {
+    const committedRole = roleDetail({ name: 'Committed Analyst', groupMappings: ['sso-new'] });
+    server.use(
+      http.put('*/admin/roles/:id', () => HttpResponse.error()),
+      http.get('*/admin/roles/:id', () => HttpResponse.json(committedRole))
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    result.current.updateMutation.mutate({
+      id: committedRole.id,
+      data: roleDraft({ name: committedRole.name, groupMappings: ['sso-new'] }),
+    });
+
+    await waitFor(() => expect(result.current.updateMutation.isSuccess).toBe(true));
+    expect(result.current.updateMutation.data).toMatchObject({
+      name: 'Committed Analyst',
+      group_mappings: [{ sso_group_value: 'sso-new' }],
+    });
+  });
+
+  it('reports uncertainty when a lost update response did not commit', async () => {
+    const authoritativeRole = roleDetail({ name: 'Original Analyst', groupMappings: ['sso-old'] });
+    server.use(
+      http.put('*/admin/roles/:id', () => HttpResponse.error()),
+      http.get('*/admin/roles/:id', () => HttpResponse.json(authoritativeRole))
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    result.current.updateMutation.mutate({
+      id: authoritativeRole.id,
+      data: roleDraft({ name: 'Possibly Saved Analyst', groupMappings: ['sso-new'] }),
+    });
+
+    await waitFor(() => expect(result.current.updateMutation.isError).toBe(true));
+    expect(result.current.updateMutation.error).toMatchObject({
+      recovery: 'uncertain',
+      authoritativeStateRefreshed: true,
+      authoritativeRole: {
+        name: 'Original Analyst',
+        group_mappings: [{ sso_group_value: 'sso-old' }],
+      },
+    });
+  });
+
+  it('does not claim refresh when reconciliation also loses its response', async () => {
+    server.use(
+      http.put('*/admin/roles/:id', () => HttpResponse.error()),
+      http.get('*/admin/roles/:id', () => HttpResponse.error())
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    result.current.updateMutation.mutate({
+      id: 'role-unreachable-id',
+      data: roleDraft({ name: 'Unknown Analyst', groupMappings: ['sso-unknown'] }),
+    });
+
+    await waitFor(() => expect(result.current.updateMutation.isError).toBe(true));
+    expect(result.current.updateMutation.error).toMatchObject({
+      recovery: 'uncertain',
+      authoritativeStateRefreshed: false,
+    });
+  });
+
+  it('recovers a committed create after its response is lost', async () => {
+    let committed = false;
+    const createdRole = roleDetail({ name: 'Created Analyst', groupMappings: ['sso-created'] });
+    server.use(
+      http.get('*/admin/roles', () =>
+        HttpResponse.json({ roles: committed ? [createdRole] : [] })
+      ),
+      http.get('*/admin/sso/group-mappings', () => HttpResponse.json({ mappings: [] })),
+      http.post('*/admin/roles', () => {
+        committed = true;
+        return HttpResponse.error();
+      }),
+      http.get('*/admin/roles/:id', () => HttpResponse.json(createdRole))
+    );
+
+    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    await waitFor(() => expect(result.current.listQuery.isSuccess).toBe(true));
+    result.current.createMutation.mutate(
+      roleDraft({ name: createdRole.name, groupMappings: ['sso-created'] })
+    );
+
+    await waitFor(() => expect(result.current.createMutation.isSuccess).toBe(true));
+    expect(result.current.createMutation.data).toMatchObject({
+      id: createdRole.id,
+      group_mappings: [{ sso_group_value: 'sso-created' }],
+    });
+  });
+
+  it('reports uncertainty when a lost create response did not commit', async () => {
+    let roleReads = 0;
+    server.use(
+      http.get('*/admin/roles', () => {
+        roleReads += 1;
+        return HttpResponse.json({ roles: [] });
+      }),
+      http.get('*/admin/sso/group-mappings', () => HttpResponse.json({ mappings: [] })),
+      http.post('*/admin/roles', () => HttpResponse.error())
+    );
+
+    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    await waitFor(() => expect(result.current.listQuery.isSuccess).toBe(true));
+    result.current.createMutation.mutate(
+      roleDraft({ name: 'Uncommitted Analyst', groupMappings: ['sso-missing'] })
+    );
+
+    await waitFor(() => expect(result.current.createMutation.isError).toBe(true));
+    expect(roleReads).toBeGreaterThanOrEqual(2);
+    expect(result.current.createMutation.error).toMatchObject({ recovery: 'uncertain' });
+  });
+
+  it('does not mistake an older role missing from stale cache for a committed create', async () => {
+    let listReads = 0;
+    const existingRole = roleDetail({ name: 'Existing Analyst', groupMappings: ['sso-existing'] });
+    server.use(
+      http.get('*/admin/roles', () => {
+        listReads += 1;
+        return HttpResponse.json({ roles: listReads === 1 ? [] : [existingRole] });
+      }),
+      http.get('*/admin/sso/group-mappings', () => HttpResponse.json({ mappings: [] })),
+      http.post('*/admin/roles', () => HttpResponse.error()),
+      http.get('*/admin/roles/:id', () => HttpResponse.json(existingRole))
+    );
+
+    const { result } = renderHook(() => useAdminRoles(), { wrapper });
+    await waitFor(() => expect(result.current.listQuery.isSuccess).toBe(true));
+    result.current.createMutation.mutate(
+      roleDraft({ name: existingRole.name, groupMappings: ['sso-existing'] })
+    );
+
+    await waitFor(() => expect(result.current.createMutation.isError).toBe(true));
+    expect(listReads).toBeGreaterThanOrEqual(3);
+    expect(result.current.createMutation.error).toMatchObject({ recovery: 'uncertain' });
+  });
 });
+
+function roleDraft({ name, groupMappings }: { name: string; groupMappings: string[] }) {
+  return {
+    name,
+    description: 'Analyst description',
+    priority: 15,
+    permissions: ['query.submit'],
+    group_mappings: groupMappings,
+    connection_policies: [],
+  };
+}
+
+function roleDetail({ name, groupMappings }: { name: string; groupMappings: string[] }) {
+  return {
+    id: 'role-recovery-id',
+    name,
+    description: 'Analyst description',
+    priority: 15,
+    permissions: ['query.submit'],
+    is_builtin: false,
+    group_mappings: groupMappings.map((sso_group_value, index) => ({
+      id: `mapping-recovery-${index}`,
+      sso_group_value,
+    })),
+    connection_policy_count: 0,
+    connection_policies: [],
+    created_at: '2026-06-05T00:00:00Z',
+    updated_at: '2026-06-05T00:00:00Z',
+  };
+}
 
 describe('useDraftRolePolicyPreview', () => {
   it('posts the complete unsaved policy to the canonical draft endpoint', async () => {

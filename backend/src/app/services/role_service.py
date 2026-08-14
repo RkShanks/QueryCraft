@@ -6,6 +6,7 @@ T-673: Role CRUD with validation, built-in role guard, and audit logging.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 
 from app.core.exceptions import BuiltinProtectedError
 from app.db.models.enums import AuditActionType, Permission
@@ -14,6 +15,14 @@ from app.repositories.role_repository import RoleRepository
 from app.services.audit_service import AuditService
 
 _ALLOWED_PERMISSIONS: set[str] = {p.value for p in Permission}
+
+
+@dataclass(frozen=True)
+class RoleUpdateOutcome:
+    """Updated role plus the role fields whose persisted values changed."""
+
+    role: Role
+    updated_fields: tuple[str, ...]
 
 
 def validate_permissions(permissions: list[str] | None) -> None:
@@ -89,7 +98,7 @@ class RoleService:
         fields: dict,
         actor_identity: str | None = None,
         db_session=None,
-    ) -> Role:
+    ) -> RoleUpdateOutcome:
         """Update a role with validation and built-in protection.
 
         Raises:
@@ -130,7 +139,15 @@ class RoleService:
         if "permissions" in fields:
             validate_permissions(fields["permissions"])
 
-        role = await self._repo.update(role_id, fields)
+        changed_fields = {
+            field_name: field_value
+            for field_name, field_value in fields.items()
+            if getattr(existing, field_name) != field_value
+        }
+        if not changed_fields:
+            return RoleUpdateOutcome(role=existing, updated_fields=())
+
+        role = await self._repo.update(role_id, changed_fields)
         if role is None:
             raise ValueError("not_found")
 
@@ -142,10 +159,10 @@ class RoleService:
                 resource_type="role",
                 resource_id=str(role.id),
                 outcome="success",
-                context={"updated_fields": list(fields.keys())},
+                context={"updated_fields": list(changed_fields.keys())},
             )
 
-        return role
+        return RoleUpdateOutcome(role=role, updated_fields=tuple(changed_fields))
 
     async def delete_role(
         self,

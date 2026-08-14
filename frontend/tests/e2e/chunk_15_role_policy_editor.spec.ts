@@ -51,7 +51,7 @@ interface BrowserState {
 }
 
 function deferred(): Deferred {
-  let resolve = () => undefined;
+  let resolve: () => void = () => undefined;
   const promise = new Promise<void>((done) => {
     resolve = done;
   });

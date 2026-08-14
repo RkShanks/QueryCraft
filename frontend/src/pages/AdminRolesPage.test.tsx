@@ -274,6 +274,116 @@ describe('AdminRolesPage', () => {
     expect(mockMutations.createMutation.mutate).not.toHaveBeenCalled();
   });
 
+  it('suppresses duplicate click and Enter submissions synchronously', () => {
+    vi.mocked(useAdminRoles).mockReturnValue(mockEmptyRoles as any);
+    render(<AdminRolesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'admin.roles.addRole' }));
+    fireEvent.change(screen.getByLabelText('admin.roles.form.name'), {
+      target: { value: 'One Request Role' },
+    });
+    fireEvent.change(screen.getByLabelText('admin.roles.form.priority'), {
+      target: { value: '25' },
+    });
+    const saveButton = screen.getByRole('button', { name: 'common.save' });
+    const form = saveButton.closest('form')!;
+
+    fireEvent.click(saveButton);
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+
+    expect(mockMutations.createMutation.mutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves the draft after rejection and allows a corrected retry', () => {
+    let hookOptions: any;
+    vi.mocked(useAdminRoles).mockImplementation((options) => {
+      hookOptions = options;
+      return mockEmptyRoles as any;
+    });
+    render(<AdminRolesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'admin.roles.addRole' }));
+    const nameInput = screen.getByLabelText('admin.roles.form.name');
+    fireEvent.change(nameInput, { target: { value: 'Conflicting Role' } });
+    fireEvent.change(screen.getByLabelText('admin.roles.form.priority'), {
+      target: { value: '25' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('admin.roles.savePending');
+    act(() => {
+      hookOptions.onCreateError({
+        recovery: 'rejected',
+        serverError: { detail: 'error.conflict.duplicateGroupMapping' },
+      });
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('admin.roles.saveFailed');
+    expect(screen.getByRole('alert')).toHaveTextContent('error.conflict.duplicateGroupMapping');
+    expect(nameInput).toHaveValue('Conflicting Role');
+    fireEvent.change(nameInput, { target: { value: 'Corrected Role' } });
+    fireEvent.click(screen.getByRole('button', { name: 'common.retry' }));
+    expect(mockMutations.createMutation.mutate).toHaveBeenCalledTimes(2);
+  });
+
+  it('distinguishes an unresolved network outcome and announces confirmed success', () => {
+    let hookOptions: any;
+    vi.mocked(useAdminRoles).mockImplementation((options) => {
+      hookOptions = options;
+      return mockEmptyRoles as any;
+    });
+    render(<AdminRolesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'admin.roles.addRole' }));
+    const nameInput = screen.getByLabelText('admin.roles.form.name');
+    fireEvent.change(nameInput, { target: { value: 'Uncertain Role' } });
+    fireEvent.change(screen.getByLabelText('admin.roles.form.priority'), {
+      target: { value: '25' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
+    act(() =>
+      hookOptions.onCreateError({
+        recovery: 'uncertain',
+        authoritativeStateRefreshed: true,
+      })
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('admin.roles.saveUncertain');
+    expect(nameInput).toHaveValue('Uncertain Role');
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.retry' }));
+    act(() => hookOptions.onCreateSuccess());
+    expect(screen.getByRole('status')).toHaveTextContent('admin.roles.addSuccess');
+  });
+
+  it('does not claim authoritative refresh when reconciliation fails', () => {
+    let hookOptions: any;
+    vi.mocked(useAdminRoles).mockImplementation((options) => {
+      hookOptions = options;
+      return mockEmptyRoles as any;
+    });
+    render(<AdminRolesPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'admin.roles.addRole' }));
+    fireEvent.change(screen.getByLabelText('admin.roles.form.name'), {
+      target: { value: 'Unreachable Role' },
+    });
+    fireEvent.change(screen.getByLabelText('admin.roles.form.priority'), {
+      target: { value: '25' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
+    act(() =>
+      hookOptions.onCreateError({
+        recovery: 'uncertain',
+        authoritativeStateRefreshed: false,
+      })
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('admin.roles.saveUncertainNoRefresh');
+    expect(screen.getByRole('alert').textContent).toBe('admin.roles.saveUncertainNoRefresh');
+  });
+
   it('allows updating a custom role and calls update mutation', async () => {
     vi.mocked(useAdminRoles).mockReturnValue(mockPopulatedRoles as any);
     render(<AdminRolesPage />);

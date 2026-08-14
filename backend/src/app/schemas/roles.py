@@ -15,6 +15,13 @@ def _reject_control_chars(value: str) -> str:
     return value
 
 
+def _validate_group_mapping_values(values: list[str]) -> list[str]:
+    validated = [_reject_control_chars(group_value) for group_value in values]
+    if len(set(validated)) != len(validated):
+        raise ValueError("duplicate group mappings are not allowed")
+    return validated
+
+
 class ConnectionPolicyItem(BaseModel):
     """Single connection policy within a role."""
 
@@ -116,7 +123,7 @@ class RoleCreate(BaseModel):
     @field_validator("group_mappings")
     @classmethod
     def _validate_group_mappings(cls, value: list[str]) -> list[str]:
-        return [_reject_control_chars(item) for item in value]
+        return _validate_group_mapping_values(value)
 
 
 class RoleUpdate(BaseModel):
@@ -141,7 +148,7 @@ class RoleUpdate(BaseModel):
     def _validate_group_mappings(cls, value: list[str] | None) -> list[str] | None:
         if value is None:
             return None
-        return [_reject_control_chars(item) for item in value]
+        return _validate_group_mapping_values(value)
 
 
 class PolicyTestRequest(BaseModel):
