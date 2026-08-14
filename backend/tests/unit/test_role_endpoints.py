@@ -556,8 +556,7 @@ class TestUpdateRole:
                 FakeResult(role),  # service.get_by_id
                 FakeResult([]),  # no duplicate name
                 FakeResult(role),  # repo.update internal get_by_id
-                FakeResult(None),  # DELETE existing policies (empty input)
-                FakeResult([]),  # select persisted policies (empty)
+                FakeResult([]),  # unchanged connection policies
                 FakeResult([]),  # unchanged group mappings
             ]
         )
@@ -665,8 +664,7 @@ class TestUpdateRole:
             side_effect=[
                 FakeResult(role),  # service.get_by_id
                 FakeResult(role),  # repo.update internal get_by_id
-                FakeResult(None),  # DELETE existing policies (empty input)
-                FakeResult([]),  # select persisted policies (empty)
+                FakeResult([]),  # unchanged connection policies
                 FakeResult([]),  # unchanged group mappings
             ]
         )

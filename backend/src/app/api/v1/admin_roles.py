@@ -322,6 +322,12 @@ async def _replace_role_connection_policies(db: AsyncSession, role_id: uuid.UUID
         )
     await db.flush()
 
+    return await _role_connection_policy_responses(db, role_id)
+
+
+async def _role_connection_policy_responses(db: AsyncSession, role_id: uuid.UUID) -> list[dict]:
+    """Return authoritative persisted policies for one role."""
+
     result = await db.execute(select(RoleConnectionPolicy).where(RoleConnectionPolicy.role_id == role_id))
     rows = result.scalars().all()
     return [
@@ -451,7 +457,7 @@ async def create_role(
         # SQL execute ordering is: (name check, priority check,
         # conn-existence, delete-existing, select-persisted, refresh).
         # role.id is set by repo.create's internal flush.
-        persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies or [])
+        persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies)
         persisted_mappings = await _create_role_group_mappings(
             db,
             role.id,
@@ -599,7 +605,10 @@ async def update_role(
         # SQL execute ordering is: (get_by_id, name check, priority check,
         # repo.update internal get_by_id, conn-existence, delete-existing,
         # select-persisted, refresh). role.id is stable across flushes.
-        persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies or [])
+        if body.connection_policies is None:
+            persisted_policies = await _role_connection_policy_responses(db, role.id)
+        else:
+            persisted_policies = await _replace_role_connection_policies(db, role.id, body.connection_policies)
         if body.group_mappings is None:
             mapping_rows = await _role_group_mapping_rows(db, role.id)
             persisted_mappings = [
