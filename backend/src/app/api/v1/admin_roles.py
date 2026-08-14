@@ -561,10 +561,9 @@ async def create_role(
             db_session=db,
         )
 
-        # Validate + persist connection policies before commit so the
-        # SQL execute ordering is: (name check, priority check,
-        # conn-existence, delete-existing, select-persisted, refresh).
-        # role.id is set by repo.create's internal flush.
+        # role.id is set by repo.create's internal flush. All response
+        # preparation remains inside the transaction so a flush/refresh fault
+        # cannot produce a declared 500 after the mutation has committed.
         persisted_policies, _policy_changed = await _sync_role_connection_policies(
             db,
             role.id,
@@ -577,10 +576,12 @@ async def create_role(
             session.get("username"),
         )
 
-        await db.commit()
+        await db.flush()
         await db.refresh(role)
+        response_body = _role_to_detail_response(role, persisted_mappings, persisted_policies)
+        await db.commit()
 
-        return _role_to_detail_response(role, persisted_mappings, persisted_policies)
+        return response_body
     except BuiltinProtectedError as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -743,10 +744,12 @@ async def update_role(
                 session.get("username"),
             )
 
-        await db.commit()
+        await db.flush()
         await db.refresh(role)
+        response_body = _role_to_detail_response(role, persisted_mappings, persisted_policies)
+        await db.commit()
 
-        return _role_to_detail_response(role, persisted_mappings, persisted_policies)
+        return response_body
     except BuiltinProtectedError as exc:
         try:
             await AuditService.log(
