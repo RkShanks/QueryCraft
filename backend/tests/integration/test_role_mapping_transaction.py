@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import text
 
 
-async def _role_audit_count(async_engine_fixture) -> int:
+async def _role_mutation_audit_count(async_engine_fixture) -> int:
     async with async_engine_fixture.connect() as connection:
         return int(
             await connection.scalar(
@@ -16,7 +16,7 @@ async def _role_audit_count(async_engine_fixture) -> int:
                     """
                     SELECT COUNT(*)
                     FROM audit_log_entries
-                    WHERE action_type IN ('role.create', 'role.mapping.change')
+                    WHERE action_type IN ('role.create', 'role.update', 'role.mapping.change')
                     """
                 )
             )
@@ -59,7 +59,7 @@ async def test_conflicting_group_rejects_complete_role_create(
                 {"group_value": group_value, "role_id": existing_role_id},
             )
 
-        audit_count_before = await _role_audit_count(async_engine_fixture)
+        audit_count_before = await _role_mutation_audit_count(async_engine_fixture)
         response = await authenticated_client.post(
             "/api/v1/admin/roles",
             json={
@@ -99,7 +99,7 @@ async def test_conflicting_group_rejects_complete_role_create(
                 )
                 == 1
             )
-        assert await _role_audit_count(async_engine_fixture) == audit_count_before
+        assert await _role_mutation_audit_count(async_engine_fixture) == audit_count_before
     finally:
         async with async_engine_fixture.begin() as connection:
             await connection.execute(
@@ -108,4 +108,140 @@ async def test_conflicting_group_rejects_complete_role_create(
                     "existing_name": existing_name,
                     "requested_name": requested_name,
                 },
+            )
+
+
+@pytest.mark.integration
+async def test_mapping_conflict_rolls_back_complete_role_update(
+    authenticated_client,
+    async_engine_fixture,
+) -> None:
+    """IS-GAP-036: failed mapping diff preserves every previous role value."""
+    case_token = uuid4().hex
+    target_name = f"chunk16-target-{case_token}"
+    conflict_name = f"chunk16-conflict-{case_token}"
+    kept_group = f"chunk16-kept-{case_token}"
+    removed_group = f"chunk16-removed-{case_token}"
+    conflicting_group = f"chunk16-conflicting-{case_token}"
+    target_priority = 1_300_000_000 + int(case_token[:7], 16)
+    conflict_priority = target_priority + 1
+
+    try:
+        async with async_engine_fixture.begin() as connection:
+            target_role_id = await connection.scalar(
+                text(
+                    """
+                    INSERT INTO roles (name, description, priority, permissions)
+                    VALUES (:name, 'authoritative-before', :priority, '[]'::jsonb)
+                    RETURNING id
+                    """
+                ),
+                {"name": target_name, "priority": target_priority},
+            )
+            conflict_role_id = await connection.scalar(
+                text(
+                    """
+                    INSERT INTO roles (name, priority, permissions)
+                    VALUES (:name, :priority, '[]'::jsonb)
+                    RETURNING id
+                    """
+                ),
+                {"name": conflict_name, "priority": conflict_priority},
+            )
+            for group_value, role_id in (
+                (kept_group, target_role_id),
+                (removed_group, target_role_id),
+                (conflicting_group, conflict_role_id),
+            ):
+                await connection.execute(
+                    text(
+                        """
+                        INSERT INTO sso_group_mappings (sso_group_value, role_id)
+                        VALUES (:group_value, :role_id)
+                        """
+                    ),
+                    {"group_value": group_value, "role_id": role_id},
+                )
+            connection_id = await connection.scalar(
+                text("SELECT id FROM source_database_connections ORDER BY created_at LIMIT 1")
+            )
+            await connection.execute(
+                text(
+                    """
+                    INSERT INTO role_connection_policies (
+                        role_id, connection_id, allowed_tables, row_filters, column_masks
+                    )
+                    VALUES (:role_id, :connection_id, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb)
+                    """
+                ),
+                {"role_id": target_role_id, "connection_id": connection_id},
+            )
+
+        async with async_engine_fixture.connect() as connection:
+            original_mapping_rows = (
+                await connection.execute(
+                    text(
+                        """
+                        SELECT id, sso_group_value
+                        FROM sso_group_mappings
+                        WHERE role_id = :role_id
+                        ORDER BY sso_group_value
+                        """
+                    ),
+                    {"role_id": target_role_id},
+                )
+            ).all()
+        audit_count_before = await _role_mutation_audit_count(async_engine_fixture)
+
+        response = await authenticated_client.put(
+            f"/api/v1/admin/roles/{target_role_id}",
+            json={
+                "description": "attempted-after",
+                "group_mappings": [kept_group, conflicting_group],
+                "connection_policies": [],
+            },
+        )
+
+        assert response.status_code == 409
+        assert response.json() == {
+            "error": "conflict",
+            "message_key": "error.conflict.duplicateGroupMapping",
+        }
+        assert conflicting_group not in response.text
+
+        async with async_engine_fixture.connect() as connection:
+            assert (
+                await connection.scalar(
+                    text("SELECT description FROM roles WHERE id = :role_id"),
+                    {"role_id": target_role_id},
+                )
+                == "authoritative-before"
+            )
+            persisted_mapping_rows = (
+                await connection.execute(
+                    text(
+                        """
+                        SELECT id, sso_group_value
+                        FROM sso_group_mappings
+                        WHERE role_id = :role_id
+                        ORDER BY sso_group_value
+                        """
+                    ),
+                    {"role_id": target_role_id},
+                )
+            ).all()
+            assert persisted_mapping_rows == original_mapping_rows
+            assert (
+                await connection.scalar(
+                    text("SELECT COUNT(*) FROM role_connection_policies WHERE role_id = :role_id"),
+                    {"role_id": target_role_id},
+                )
+                == 1
+            )
+        assert await _role_mutation_audit_count(async_engine_fixture) == audit_count_before
+    finally:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(
+                text("DELETE FROM roles WHERE name IN (:target_name, :conflict_name)"),
+                {"target_name": target_name, "conflict_name": conflict_name},
             )
