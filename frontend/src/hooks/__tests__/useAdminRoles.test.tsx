@@ -18,9 +18,9 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     vi.clearAllMocks();
   });
 
-  it('performs role creation and then POSTs each group mapping individually', async () => {
+  it('creates a role and its mappings with one composite request', async () => {
     const rolesCreated: any[] = [];
-    const mappingsCreated: any[] = [];
+    let standaloneMappingWrites = 0;
 
     server.use(
       http.post('*/admin/roles', async ({ request }) => {
@@ -34,7 +34,10 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
             priority: body.priority,
             permissions: body.permissions,
             is_builtin: false,
-            group_mappings: [],
+            group_mappings: body.group_mappings.map((sso_group_value: string, index: number) => ({
+              id: `mapping-id-${index}`,
+              sso_group_value,
+            })),
             connection_policy_count: 0,
             created_at: '2026-06-05T00:00:00Z',
             updated_at: '2026-06-05T00:00:00Z',
@@ -42,19 +45,9 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
           { status: 201 }
         );
       }),
-      http.post('*/admin/sso/group-mappings', async ({ request }) => {
-        const body = (await request.json()) as any;
-        mappingsCreated.push(body);
-        return HttpResponse.json(
-          {
-            id: `mapping-id-${body.sso_group_value}`,
-            sso_group_value: body.sso_group_value,
-            role_id: body.role_id,
-            role_name: 'Custom Role',
-            created_at: '2026-06-05T00:00:00Z',
-          },
-          { status: 201 }
-        );
+      http.post('*/admin/sso/group-mappings', () => {
+        standaloneMappingWrites += 1;
+        return HttpResponse.json({}, { status: 500 });
       })
     );
 
@@ -70,32 +63,22 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
 
     await waitFor(() => expect(result.current.createMutation.isSuccess).toBe(true));
 
-    // Verify role creation payload (should not have group_mappings directly in body to roles endpoint)
     expect(rolesCreated).toHaveLength(1);
     expect(rolesCreated[0]).toEqual({
       name: 'Custom Analyst',
       description: 'Analyst description',
       priority: 15,
       permissions: ['query.submit'],
+      group_mappings: ['sso-analyst-group', 'sso-ops-group'],
       connection_policies: [],
     });
-
-    // Verify separate group mapping requests
-    expect(mappingsCreated).toHaveLength(2);
-    expect(mappingsCreated[0]).toEqual({
-      sso_group_value: 'sso-analyst-group',
-      role_id: 'generated-role-id-123',
-    });
-    expect(mappingsCreated[1]).toEqual({
-      sso_group_value: 'sso-ops-group',
-      role_id: 'generated-role-id-123',
-    });
+    expect(standaloneMappingWrites).toBe(0);
+    expect(result.current.createMutation.data?.group_mappings).toHaveLength(2);
   });
 
-  it('performs role update and computes correct mapping delta (adds/deletes)', async () => {
+  it('updates a role and its mapping diff with one composite request', async () => {
     const rolesUpdated: any[] = [];
-    const mappingsCreated: any[] = [];
-    const mappingsDeleted: string[] = [];
+    let standaloneMappingWrites = 0;
 
     server.use(
       http.put('*/admin/roles/:id', async ({ request, params }) => {
@@ -109,7 +92,10 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
             priority: body.priority,
             permissions: body.permissions,
             is_builtin: false,
-            group_mappings: [],
+            group_mappings: body.group_mappings.map((sso_group_value: string, index: number) => ({
+              id: `mapping-id-${index}`,
+              sso_group_value,
+            })),
             connection_policy_count: 0,
             created_at: '2026-06-05T00:00:00Z',
             updated_at: '2026-06-05T00:00:00Z',
@@ -117,14 +103,13 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
           { status: 200 }
         );
       }),
-      http.post('*/admin/sso/group-mappings', async ({ request }) => {
-        const body = (await request.json()) as any;
-        mappingsCreated.push(body);
-        return HttpResponse.json({}, { status: 201 });
+      http.post('*/admin/sso/group-mappings', () => {
+        standaloneMappingWrites += 1;
+        return HttpResponse.json({}, { status: 500 });
       }),
-      http.delete('*/admin/sso/group-mappings/:mappingId', async ({ params }) => {
-        mappingsDeleted.push(params.mappingId as string);
-        return new HttpResponse(null, { status: 204 });
+      http.delete('*/admin/sso/group-mappings/:mappingId', () => {
+        standaloneMappingWrites += 1;
+        return HttpResponse.json({}, { status: 500 });
       })
     );
 
@@ -149,7 +134,6 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
 
     await waitFor(() => expect(result.current.updateMutation.isSuccess).toBe(true));
 
-    // Verify base PUT request
     expect(rolesUpdated).toHaveLength(1);
     expect(rolesUpdated[0]).toEqual({
       id: 'role-uuid-999',
@@ -157,19 +141,11 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
       description: 'New Description',
       priority: 20,
       permissions: ['query.submit', 'query.history.view'],
+      group_mappings: ['sso-ops', 'sso-manager'],
       connection_policies: [],
     });
-
-    // Verify additions (sso-manager)
-    expect(mappingsCreated).toHaveLength(1);
-    expect(mappingsCreated[0]).toEqual({
-      sso_group_value: 'sso-manager',
-      role_id: 'role-uuid-999',
-    });
-
-    // Verify deletions (map-1 / sso-analyst)
-    expect(mappingsDeleted).toHaveLength(1);
-    expect(mappingsDeleted[0]).toBe('map-1');
+    expect(standaloneMappingWrites).toBe(0);
+    expect(result.current.updateMutation.data?.group_mappings).toHaveLength(2);
   });
 
   it('does not fetch roles or group mappings when enabled is false', async () => {
