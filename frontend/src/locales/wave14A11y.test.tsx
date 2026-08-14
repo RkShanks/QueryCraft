@@ -6,9 +6,9 @@ import { PromptInput } from '../components/chat/PromptInput';
 describe('Wave 14 i18n / RTL / a11y sweep', () => {
   describe('ConnectionErrorCard a11y', () => {
     it('action button has accessible name matching translated text', () => {
-      render(<ConnectionErrorCard kind="noConnections" />);
+      render(<ConnectionErrorCard kind="noConnections" onManageConnections={() => {}} />);
       const btn = screen.getByRole('button');
-      expect(btn).toHaveAccessibleName(/add connection/i);
+      expect(btn).toHaveAccessibleName(/manage connections/i);
     });
 
     it('renders all known error kinds with localized text', () => {
