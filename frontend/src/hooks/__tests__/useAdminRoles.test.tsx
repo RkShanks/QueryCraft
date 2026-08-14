@@ -151,6 +151,27 @@ describe('useAdminRoles hook - Group Mapping Persistence', () => {
     expect(result.current.updateMutation.data?.group_mappings).toHaveLength(2);
   });
 
+  it('omits composite collections from partial updates instead of clearing them', async () => {
+    let updateBody: Record<string, unknown> | undefined;
+    const authoritativeRole = roleDetail({ name: 'Renamed Analyst', groupMappings: ['sso-kept'] });
+    server.use(
+      http.put('*/admin/roles/:id', async ({ request }) => {
+        updateBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(authoritativeRole);
+      })
+    );
+
+    const { result } = renderHook(() => useAdminRoles({ enabled: false }), { wrapper });
+    result.current.updateMutation.mutate({
+      id: authoritativeRole.id,
+      data: { name: authoritativeRole.name },
+    });
+
+    await waitFor(() => expect(result.current.updateMutation.isSuccess).toBe(true));
+    expect(updateBody).not.toHaveProperty('group_mappings');
+    expect(updateBody).not.toHaveProperty('connection_policies');
+  });
+
   it('does not fetch roles or group mappings when enabled is false', async () => {
     let rolesFetched = false;
     let mappingsFetched = false;
