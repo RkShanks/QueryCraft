@@ -254,9 +254,12 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
   const createMutation = useMutation({
     mutationFn: async (data: RoleCreateData) => {
       requirePermission(canManageRoles, PERMISSIONS.ADMIN_ROLES_MANAGE);
-      const cachedRoles = queryClient.getQueryData<{ roles: Role[] }>(['adminRoles']);
-      const priorRoleIds = cachedRoles
-        ? new Set(cachedRoles.roles.map((role) => role.id))
+      const rolesBeforeSave = await fetchAuthoritativeRoles();
+      if (rolesBeforeSave) {
+        queryClient.setQueryData(['adminRoles'], { roles: rolesBeforeSave });
+      }
+      const priorRoleIds = rolesBeforeSave
+        ? new Set(rolesBeforeSave.map((role) => role.id))
         : undefined;
       try {
         const response = await createRole({
