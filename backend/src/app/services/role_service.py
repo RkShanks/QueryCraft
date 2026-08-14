@@ -130,7 +130,15 @@ class RoleService:
         if "permissions" in fields:
             validate_permissions(fields["permissions"])
 
-        role = await self._repo.update(role_id, fields)
+        changed_fields = {
+            field_name: field_value
+            for field_name, field_value in fields.items()
+            if getattr(existing, field_name) != field_value
+        }
+        if not changed_fields:
+            return existing
+
+        role = await self._repo.update(role_id, changed_fields)
         if role is None:
             raise ValueError("not_found")
 
@@ -142,7 +150,7 @@ class RoleService:
                 resource_type="role",
                 resource_id=str(role.id),
                 outcome="success",
-                context={"updated_fields": list(fields.keys())},
+                context={"updated_fields": list(changed_fields.keys())},
             )
 
         return role
