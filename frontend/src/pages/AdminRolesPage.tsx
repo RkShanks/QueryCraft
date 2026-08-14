@@ -20,6 +20,7 @@ interface Toast {
 interface SaveFeedback {
   kind: 'pending' | 'failed' | 'uncertain';
   message?: string;
+  authoritativeStateRefreshed?: boolean;
 }
 
 const ALLOWED_ERROR_KEYS = new Set([
@@ -70,6 +71,14 @@ function isUncertainSave(error: unknown): boolean {
   );
 }
 
+function wasAuthoritativeStateRefreshed(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      (error as Record<string, unknown>).authoritativeStateRefreshed === true
+  );
+}
+
 export const AdminRolesPage: React.FC = () => {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -116,11 +125,18 @@ export const AdminRolesPage: React.FC = () => {
     onCreateError: (err: unknown) => {
       saveInFlightRef.current = false;
       const uncertain = isUncertainSave(err);
+      const authoritativeStateRefreshed = wasAuthoritativeStateRefreshed(err);
       const message = uncertain
-        ? t('admin.roles.saveUncertain')
+        ? t(
+            authoritativeStateRefreshed
+              ? 'admin.roles.saveUncertain'
+              : 'admin.roles.saveUncertainNoRefresh'
+          )
         : getErrorMessage(err, 'admin.roles.addError');
       setSaveFeedback(
-        uncertain ? { kind: 'uncertain' } : { kind: 'failed', message }
+        uncertain
+          ? { kind: 'uncertain', authoritativeStateRefreshed }
+          : { kind: 'failed', message }
       );
       if (!isAdding && !editingRole) {
         addToast('error', message);
@@ -135,11 +151,18 @@ export const AdminRolesPage: React.FC = () => {
     onUpdateError: (err: unknown) => {
       saveInFlightRef.current = false;
       const uncertain = isUncertainSave(err);
+      const authoritativeStateRefreshed = wasAuthoritativeStateRefreshed(err);
       const message = uncertain
-        ? t('admin.roles.saveUncertain')
+        ? t(
+            authoritativeStateRefreshed
+              ? 'admin.roles.saveUncertain'
+              : 'admin.roles.saveUncertainNoRefresh'
+          )
         : getErrorMessage(err, 'admin.roles.updateError');
       setSaveFeedback(
-        uncertain ? { kind: 'uncertain' } : { kind: 'failed', message }
+        uncertain
+          ? { kind: 'uncertain', authoritativeStateRefreshed }
+          : { kind: 'failed', message }
       );
       if (!isAdding && !editingRole) {
         addToast('error', message);
@@ -484,7 +507,11 @@ export const AdminRolesPage: React.FC = () => {
                   {saveFeedback.kind === 'pending'
                     ? t('admin.roles.savePending')
                     : saveFeedback.kind === 'uncertain'
-                      ? t('admin.roles.saveUncertain')
+                      ? t(
+                          saveFeedback.authoritativeStateRefreshed
+                            ? 'admin.roles.saveUncertain'
+                            : 'admin.roles.saveUncertainNoRefresh'
+                        )
                       : t('admin.roles.saveFailed')}
                 </p>
                 {saveFeedback.message && <p className="mt-1">{saveFeedback.message}</p>}

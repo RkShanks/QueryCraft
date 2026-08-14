@@ -355,6 +355,7 @@
   "admin.roles.savePending": "Saving role and SSO mappings...",
   "admin.roles.saveFailed": "The server rejected the save. Your draft is preserved.",
   "admin.roles.saveUncertain": "The save outcome could not be confirmed. Authoritative state was refreshed; review the current role and your preserved draft before retrying.",
+  "admin.roles.saveUncertainNoRefresh": "The save outcome could not be confirmed, and authoritative state could not be refreshed. Your draft is preserved; retry reconciliation before making further changes.",
   "admin.roles.deleteSuccess": "Role deleted successfully",
   "admin.roles.deleteError": "Failed to delete role",
   "admin.roles.deleteConfirm": "Are you sure you want to delete this role?",

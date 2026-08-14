@@ -369,6 +369,7 @@
   "admin.roles.savePending": "جارٍ حفظ الدور ومطابقات SSO...",
   "admin.roles.saveFailed": "رفض الخادم عملية الحفظ. تم الاحتفاظ بالمسودة.",
   "admin.roles.saveUncertain": "تعذر تأكيد نتيجة الحفظ. تم تحديث الحالة الموثوقة؛ راجع الدور الحالي والمسودة المحفوظة قبل إعادة المحاولة.",
+  "admin.roles.saveUncertainNoRefresh": "تعذر تأكيد نتيجة الحفظ وتعذر تحديث الحالة الموثوقة. تم الاحتفاظ بالمسودة؛ أعد محاولة التحقق قبل إجراء تغييرات أخرى.",
   "admin.roles.deleteSuccess": "تم حذف الدور بنجاح",
   "admin.roles.deleteError": "فشل حذف الدور",
   "admin.roles.deleteConfirm": "هل أنت متأكد من رغبتك في حذف هذا الدور؟",

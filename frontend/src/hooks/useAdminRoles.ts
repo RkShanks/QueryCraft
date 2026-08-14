@@ -65,19 +65,22 @@ export type RoleSaveRecovery = 'rejected' | 'uncertain';
 
 export class RoleSaveError extends Error {
   readonly authoritativeRole?: Role;
+  readonly authoritativeStateRefreshed: boolean;
   readonly recovery: RoleSaveRecovery;
   readonly serverError: unknown;
 
   constructor(
     recovery: RoleSaveRecovery,
     serverError: unknown,
-    authoritativeRole?: Role
+    authoritativeRole?: Role,
+    authoritativeStateRefreshed = false
   ) {
     super(`role_save_${recovery}`);
     this.name = 'RoleSaveError';
     this.recovery = recovery;
     this.serverError = serverError;
     this.authoritativeRole = authoritativeRole;
+    this.authoritativeStateRefreshed = authoritativeStateRefreshed;
   }
 }
 
@@ -276,7 +279,9 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
         }
         throw new RoleSaveError(
           isAmbiguousNetworkFailure(error) ? 'uncertain' : 'rejected',
-          error
+          error,
+          undefined,
+          authoritativeRoles !== undefined
         );
       }
     },
@@ -327,7 +332,8 @@ export const useAdminRoles = (options?: UseAdminRolesOptions) => {
         throw new RoleSaveError(
           isAmbiguousNetworkFailure(error) ? 'uncertain' : 'rejected',
           error,
-          authoritativeRole
+          authoritativeRole,
+          authoritativeRole !== undefined
         );
       }
     },
