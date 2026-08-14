@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { searchAuditEntries, exportAuditEntries, getAuditRetention } from './audit';
 import { server } from '../test/server';
 import { http, HttpResponse } from 'msw';
+import { ClientContractError } from './responseValidation';
 
 describe('audit API client', () => {
   it('should search audit entries with params', async () => {
@@ -70,6 +71,6 @@ describe('audit API client', () => {
       })
     );
 
-    await expect(getAuditRetention()).rejects.toThrow('Invalid audit retention response');
+    await expect(getAuditRetention()).rejects.toBeInstanceOf(ClientContractError);
   });
 });
