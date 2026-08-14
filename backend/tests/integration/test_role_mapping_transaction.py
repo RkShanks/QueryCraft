@@ -480,3 +480,87 @@ async def test_omitted_mappings_and_policies_preserve_authoritative_detail(
     finally:
         async with async_engine_fixture.begin() as connection:
             await connection.execute(text("DELETE FROM roles WHERE name = :name"), {"name": role_name})
+
+
+@pytest.mark.integration
+async def test_policy_only_change_emits_one_truthful_role_audit(
+    authenticated_client,
+    async_engine_fixture,
+) -> None:
+    case_token = uuid4().hex
+    role_name = f"chunk16-policy-{case_token}"
+    group_value = f"chunk16-policy-group-{case_token}"
+    role_priority = 1_550_000_000 + int(case_token[:7], 16)
+
+    try:
+        async with async_engine_fixture.begin() as connection:
+            role_id = await connection.scalar(
+                text(
+                    """
+                    INSERT INTO roles (name, priority, permissions)
+                    VALUES (:name, :priority, '[]'::jsonb)
+                    RETURNING id
+                    """
+                ),
+                {"name": role_name, "priority": role_priority},
+            )
+            await connection.execute(
+                text(
+                    """
+                    INSERT INTO sso_group_mappings (sso_group_value, role_id)
+                    VALUES (:group_value, :role_id)
+                    """
+                ),
+                {"group_value": group_value, "role_id": role_id},
+            )
+            connection_id = await connection.scalar(
+                text("SELECT id FROM source_database_connections ORDER BY created_at LIMIT 1")
+            )
+            await connection.execute(
+                text(
+                    """
+                    INSERT INTO role_connection_policies (
+                        role_id, connection_id, allowed_tables, row_filters, column_masks
+                    )
+                    VALUES (:role_id, :connection_id, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb)
+                    """
+                ),
+                {"role_id": role_id, "connection_id": connection_id},
+            )
+
+        role_updates_before = await _audit_action_count(async_engine_fixture, "role.update")
+        mapping_updates_before = await _audit_action_count(async_engine_fixture, "role.mapping.change")
+        response = await authenticated_client.put(
+            f"/api/v1/admin/roles/{role_id}",
+            json={
+                "connection_policies": [
+                    {
+                        "connection_id": str(connection_id),
+                        "allowed_tables": [{"table": "customer", "columns": ["customer_id"]}],
+                        "row_filters": [],
+                        "column_masks": [],
+                    }
+                ]
+            },
+        )
+
+        assert response.status_code == 200
+        assert await _audit_action_count(async_engine_fixture, "role.update") == role_updates_before + 1
+        assert await _audit_action_count(async_engine_fixture, "role.mapping.change") == mapping_updates_before
+        async with async_engine_fixture.connect() as connection:
+            audit_context = await connection.scalar(
+                text(
+                    """
+                    SELECT context
+                    FROM audit_log_entries
+                    WHERE action_type = 'role.update' AND resource_id = :resource_id
+                    ORDER BY sequence_number DESC
+                    LIMIT 1
+                    """
+                ),
+                {"resource_id": str(role_id)},
+            )
+        assert audit_context == {"updated_fields": ["connection_policies"]}
+    finally:
+        async with async_engine_fixture.begin() as connection:
+            await connection.execute(text("DELETE FROM roles WHERE name = :name"), {"name": role_name})
