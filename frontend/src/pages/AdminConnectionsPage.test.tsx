@@ -232,6 +232,9 @@ describe('AdminConnectionsPage', () => {
     render(<AdminConnectionsPage />);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0]);
+    fireEvent.change(screen.getByLabelText('admin.connections.form.databaseName'), {
+      target: { value: 'app' },
+    });
     fireEvent.click(
       screen.getByRole('button', { name: 'admin.connections.form.submit.edit' })
     );
