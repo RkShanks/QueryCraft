@@ -1,11 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { signInLocalUser } from './helpers/auth';
-import {
-  mockConnections,
-  mockHistoryDetail,
-  mockHistoryList,
-  mockLocalAuth,
-} from './helpers/mock-backend';
+import { mockConnections, mockLocalAuth } from './helpers/mock-backend';
 
 /**
  * CHUNK-20 / IS-GAP-032 + IS-GAP-038 — deterministic Chromium matrix.
