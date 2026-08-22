@@ -181,13 +181,13 @@
     },
     "CHUNK-18": {
       "gap_ids": ["IS-GAP-041", "IS-GAP-027", "IS-GAP-028"],
-      "status": "Resolved on tested branch; PR CI and merge pending",
+      "status": "Resolved on tested branch; CI passed, merge pending",
       "branch": "phase-6/wave-19.18-workspace-recovery",
       "branch_pushed": true,
       "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff",
       "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f",
       "pull_request": "https://github.com/RkShanks/QueryCraft/pull/316",
-      "authoritative_ci": null,
+      "authoritative_ci": {"head_commit": "6ff6ee5c2721437814963d3cce3527d3a8bcb44c", "run_id": 32582534493, "backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"
     }
   },
@@ -656,7 +656,7 @@
       "isolation": "Synthetic accepted results and disposable sessions.",
       "regression_rows": ["P2-FR-057", "P2-FR-058"],
       "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved on tested branch",
-      "verification": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/316", "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "pr_ci_merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
+      "verification": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/316", "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "authoritative_ci": "passed", "merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/pages/WorkspacePage.tsx::handleDelete", "frontend/src/pages/WorkspacePage.tsx::handleRegenerate", "frontend/src/pages/__tests__/WorkspacePageDuplicate.test.tsx"]
     },
     {
@@ -673,7 +673,7 @@
       "isolation": "Synthetic safe error categories.",
       "regression_rows": ["P3-FR-068", "P3-FR-093"],
       "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved on tested branch",
-      "verification": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/316", "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "pr_ci_merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
+      "verification": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/316", "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "authoritative_ci": "passed", "merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/components/chat/ConnectionErrorCard.tsx::ConnectionErrorCard", "frontend/src/pages/WorkspacePage.tsx::WorkspacePage", "frontend/src/components/chat/ConnectionErrorCard.test.tsx"]
     },
     {
@@ -885,7 +885,7 @@
       "isolation": "Synthetic bounded rows.",
       "regression_rows": ["P1-FR-014", "P1-FR-029", "XP-009"],
       "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved on tested branch",
-      "verification": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/316", "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "pr_ci_merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
+      "verification": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/316", "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "authoritative_ci": "passed", "merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/components/chat/ResultTable.tsx::ResultTable", "frontend/src/components/query/ResultTable.tsx::ResultTable", "frontend/src/components/chat/AssistantResponseCard.tsx", "frontend/src/components/query/ResultTable.test.tsx"]
     },
     {

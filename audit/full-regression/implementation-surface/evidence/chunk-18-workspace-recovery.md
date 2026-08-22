@@ -1,6 +1,6 @@
 # CHUNK-18 / IS-GAP-041 + IS-GAP-027 + IS-GAP-028 — workspace result and recovery behavior
 
-Status: resolved on tested branch `phase-6/wave-19.18-workspace-recovery` in [#316](https://github.com/RkShanks/QueryCraft/pull/316). Product behavior is at `bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff`; the final local verification head is `85145026c15c1e8fca47706d5fa4d31abc645f7f`. Responsive Chromium, a real-network FastAPI flow, focused/full gates and cleanup passed. PR CI and squash merge remain the only CHUNK-19 dispatch gates.
+Status: resolved on tested branch `phase-6/wave-19.18-workspace-recovery` in [#316](https://github.com/RkShanks/QueryCraft/pull/316). Product behavior is at `bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff`; the final local verification head is `85145026c15c1e8fca47706d5fa4d31abc645f7f`. Responsive Chromium, a real-network FastAPI flow, focused/full gates, cleanup and authoritative CI passed. Squash merge, branch deletion and synchronized main remain the only CHUNK-19 dispatch gates.
 
 Starting synchronized main was `f29cec51cc673f2ae84ad0d60c3c62246b939c45`, the squash merge of [#315](https://github.com/RkShanks/QueryCraft/pull/315). No backend source, endpoint, canonical OpenAPI document, generated API contract or runtime validation rule changed.
 
@@ -75,4 +75,4 @@ Test Guard retained public-contract validation, behavior-level recovery assertio
 
 The disposable Compose project, containers, network and volumes were removed. `/tmp/querycraft-chunk18-browser`, `/tmp/querycraft-chunk18-report`, all additional CHUNK-18 reports/JSON, `frontend/test-results`, `frontend/playwright-report` and ignored `frontend/dist` were removed. The protected baseline remains exactly 14 modified tracked PNGs, seven historical untracked screenshots and existing trace archives; none was staged, regenerated, restored or deleted.
 
-The three gaps are Resolved on tested branch in [#316](https://github.com/RkShanks/QueryCraft/pull/316). Ledger totals are now 23 Resolved, 4 Resolved on tested branch, 17 Pending and 3 Needs Decision out of 47. CHUNK-19 becomes unblocked only after the focused PR has passing `backend-test` and `frontend-test`, is squash-merged, its branch is deleted and local main is synchronized.
+The three gaps are Resolved on tested branch in [#316](https://github.com/RkShanks/QueryCraft/pull/316). Authoritative `backend-test` and `frontend-test` passed on head `6ff6ee5c2721437814963d3cce3527d3a8bcb44c` in run `32582534493`. Ledger totals are now 23 Resolved, 4 Resolved on tested branch, 17 Pending and 3 Needs Decision out of 47. CHUNK-19 becomes unblocked only after squash merge, branch deletion and synchronized main.

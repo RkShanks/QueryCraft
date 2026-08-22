@@ -138,7 +138,7 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 
 `IS-GAP-042` and `IS-GAP-033` are resolved and merged as `f29cec51cc673f2ae84ad0d60c3c62246b939c45` in [#315](https://github.com/RkShanks/QueryCraft/pull/315); authoritative backend/frontend CI passed in run `31803892021` on `1b6e53d2f18594f93822bcbd36445c94ff38b163`. Their [CHUNK-17 evidence](evidence/chunk-17-client-harness.md) records the complete 64-operation classification, generated-schema runtime validation for all 41 production-consumed JSON responses, constant payload-free contract errors, explicit EN/AR initial/background/empty/partial/retry/stale states, 28 classified Playwright specs, static harness failures for stale fixtures/tracked output, full frontend gates, and focused mocked plus real-API Chromium proof.
 
-`IS-GAP-041`, `IS-GAP-027`, and `IS-GAP-028` are resolved on tested product commit `bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff` in [#316](https://github.com/RkShanks/QueryCraft/pull/316), with final local verification through `85145026c15c1e8fca47706d5fa4d31abc645f7f`. Their [CHUNK-18 evidence](evidence/chunk-18-workspace-recovery.md) records semantic zero-row and 50-row client rendering, complete unique pagination, authoritative delete reconciliation, exact regenerate restoration, permission/context-aware connection recovery, the generated-contract fixture RED/GREEN, 1,141 frontend tests, 80 FastAPI compatibility tests, responsive Chromium, an unmocked authenticated FastAPI/source flow and cleanup. Focused PR CI and squash merge remain.
+`IS-GAP-041`, `IS-GAP-027`, and `IS-GAP-028` are resolved on tested product commit `bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff` in [#316](https://github.com/RkShanks/QueryCraft/pull/316), with final local verification through `85145026c15c1e8fca47706d5fa4d31abc645f7f`. Their [CHUNK-18 evidence](evidence/chunk-18-workspace-recovery.md) records semantic zero-row and 50-row client rendering, complete unique pagination, authoritative delete reconciliation, exact regenerate restoration, permission/context-aware connection recovery, the generated-contract fixture RED/GREEN, 1,141 frontend tests, 80 FastAPI compatibility tests, responsive Chromium, an unmocked authenticated FastAPI/source flow and cleanup. Authoritative backend/frontend CI passed on `6ff6ee5c2721437814963d3cce3527d3a8bcb44c` in run `32582534493`; squash merge remains.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
@@ -151,7 +151,7 @@ Existing evidence narrows the remaining work but does not close another unique c
 - `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
 - `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-17 / IS-GAP-042 / IS-GAP-033` is merged as `f29cec51cc673f2ae84ad0d60c3c62246b939c45`. CHUNK-18 is resolved on tested branch after responsive Chromium, live-network and cleanup proof; focused PR CI, squash merge, branch deletion and synchronized main remain the `CHUNK-19` dispatch gate.
+These decisions block only `CHUNK-30` and `CHUNK-31`. `CHUNK-17 / IS-GAP-042 / IS-GAP-033` is merged as `f29cec51cc673f2ae84ad0d60c3c62246b939c45`. CHUNK-18 is resolved on tested branch after responsive Chromium, live-network, cleanup and authoritative CI proof; squash merge, branch deletion and synchronized main remain the `CHUNK-19` dispatch gate.
 
 ## Validation scope
 

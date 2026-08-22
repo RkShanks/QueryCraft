@@ -1,7 +1,7 @@
 {
   "chunk": "CHUNK-18",
   "gap_ids": ["IS-GAP-041", "IS-GAP-027", "IS-GAP-028"],
-  "status": "resolved_on_tested_branch_pr_ci_merge_pending",
+  "status": "resolved_on_tested_branch_ci_passed_merge_pending",
   "branch": "phase-6/wave-19.18-workspace-recovery",
   "starting_main": "f29cec51cc673f2ae84ad0d60c3c62246b939c45",
   "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff",
@@ -148,7 +148,7 @@
     "clean_code_guard": true,
     "vercel_react_best_practices": true,
     "docs_guard": true,
-    "authoritative_ci": null
+    "authoritative_ci": {"head_commit": "6ff6ee5c2721437814963d3cce3527d3a8bcb44c", "run_id": 32582534493, "backend_test": "passed", "frontend_test": "passed"}
   },
   "cleanup": {
     "compose_project_removed": true,
@@ -172,5 +172,5 @@
     "needs_decision": 3
   },
   "chunk_19_unblocked": false,
-  "chunk_19_gate": "focused PR with passing backend-test/frontend-test, squash merge, branch deletion and synchronized main"
+  "chunk_19_gate": "squash merge, branch deletion and synchronized main"
 }
