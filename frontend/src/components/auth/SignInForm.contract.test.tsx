@@ -94,7 +94,7 @@ describe('SignInForm form contract (IS-GAP-039)', () => {
   });
 
   it('suppresses duplicate click and Enter submission while pending', async () => {
-    let resolveSignIn: ((user: Record<string, unknown>) => void) | undefined;
+    let resolveSignIn: (() => void) | undefined;
     const signInCalls = vi.fn();
     server.use(
       http.post('/api/v1/auth/sign-in', async () => {
