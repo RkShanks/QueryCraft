@@ -1,0 +1,197 @@
+{
+  "chunk": "CHUNK-20",
+  "gap_ids": ["IS-GAP-032", "IS-GAP-038"],
+  "status": "resolved_on_tested_branch_ci_pending_merge",
+  "branch": "phase-6/wave-19.20-history-locale",
+  "starting_main": "841905cd182140b60ee1594a07baa9bbdc7012b6",
+  "api_contract": {
+    "backend_source_changed": true,
+    "new_product_endpoint": false,
+    "extended_endpoint": "GET /api/v1/history",
+    "canonical_openapi_changed": true,
+    "generated_contract_changed": true,
+    "runtime_validation_weakened": false,
+    "production_fallback_added": false,
+    "operation_parity": {
+      "runtime": 64,
+      "canonical": 64,
+      "generated": 64
+    }
+  },
+  "search_contract": {
+    "parameter": "search",
+    "trimmed_before_cap": true,
+    "max_code_points": 200,
+    "whitespace_only_means_unfiltered": true,
+    "over_long_returns_sanitized_422_without_raw_echo": true,
+    "case_insensitive_literal_substring": true,
+    "wildcards_escaped_percent_underscore_backslash": true,
+    "bound_sqlalchemy_parameters": true,
+    "user_scoping_preserved": true,
+    "reverse_chronological_keyset_order_preserved": true,
+    "explicit_limits_preserved": true,
+    "filtered_first_page_total": true,
+    "filtered_next_cursor": true,
+    "cursor_namespace_bound_to_search_hash": true,
+    "cursor_namespace_unfiltered": "accepted_query_history",
+    "raw_search_text_never_in_cursor_or_audit": true,
+    "legacy_unfiltered_cursors_still_accepted": true,
+    "cross_filter_cursor_replay_rejected_invalid_cursor": true,
+    "audit_context_filtered_flag_only": {"operation": "list", "searched": true}
+  },
+  "frontend_history": {
+    "debounced_server_search": true,
+    "query_key_includes_normalized_search": true,
+    "stale_response_isolation_proven": true,
+    "load_more_explicit_and_bounded_no_auto_full_load": true,
+    "filtered_total_from_server_rendered": true,
+    "selection_derived_reconciliation_on_filter_exclusion": true,
+    "list_errors_in_list_panel_detail_errors_in_detail_panel": true,
+    "valid_data_preserved_through_background_refresh_failures": true,
+    "localized_states": ["initial", "empty", "no-match", "loading-more", "partial", "error", "retry"],
+    "semantic_list_of_independent_buttons": true,
+    "aria_pressed_single_selection": true,
+    "no_focusable_divs_or_fake_columnheaders": true,
+    "sql_ltr_inside_rtl_chrome": true
+  },
+  "locale_contract": {
+    "supported_active_locales": ["en", "ar"],
+    "variant_normalization": {"ar-EG": "ar", "ar-SA": "ar", "en-US": "en", "en_GB": "en"},
+    "unsupported_values_ignored_safely": true,
+    "precedence": ["explicit ?lng=", "persisted device preference", "navigator", "html lang", "en"],
+    "query_choice_persisted_on_arrival": true,
+    "manual_change_authoritative_over_stale_query_param": true,
+    "stale_lng_param_rewritten_on_manual_change": true,
+    "document_lang_dir_central_update": true,
+    "single_normalization_helper_replaced_exact_ar_checks": ["src/App.tsx", "src/components/shell/AppShell.tsx", "src/pages/SignInPage.tsx"],
+    "accessible_language_toggle_in_both_shells": true,
+    "device_level_preference_not_identity_cache": true,
+    "localStorage_unavailable_falls_back_to_memory": true,
+    "formatting_routed_through_active_locale": [
+      "history list/detail timestamps",
+      "admin audit verification/purge/entry times",
+      "connections schema refresh time",
+      "detection updated-at",
+      "quotas reset times and counters",
+      "quota exceeded banner"
+    ],
+    "ltr_sql_code_ids_and_user_content_direction_preserved": true
+  },
+  "merge_bookkeeping_reconciliation": {
+    "chunk_19_is_gap_029_030_039": {
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/317",
+      "main_merge_commit": "841905cd182140b60ee1594a07baa9bbdc7012b6",
+      "tested_branch_rows_became_resolved": true,
+      "historical_test_evidence_unchanged": true
+    }
+  },
+  "tdd": {
+    "red_commits": [
+      "56020c69353a9a1b3719917f1348982dabdaa089",
+      "6d40c14201e2ce3e8e360b5067f445c5282ee4fe",
+      "2082350f9c30b84bff6bd18700778c4284f6fa97"
+    ],
+    "green_commits": [
+      "34c81cb8791c5bd4807d4ea6fd90b3d4eabe7d71",
+      "e5b8d0c0732577435820021f783776eb7eda6176",
+      "341ea033353191be318427451e693a71bebe9aa5"
+    ],
+    "supporting_commits": [
+      "002c3b7191dcc900b53b815cf02598ed403cdd16",
+      "caa2547b3cd55481eede4a1773c9c8c19a5d00bc"
+    ],
+    "backend_red": {"mode": "collection_error_absent_symbols", "new_unit_tests": 20, "new_integration_tests": 8},
+    "frontend_history_red": {"failed": 9, "passed": 1},
+    "locale_red": {"mode": "module_import_error_all_three_files"}
+  },
+  "browser": [
+    {
+      "spec": "tests/e2e/chunk_20_history_locale.spec.ts",
+      "classification": "mocked",
+      "executed_chromium_tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "seconds": 13.8,
+      "cases": [
+        {"viewport": 1440, "surface": "semantic list, keyboard activation, aria-pressed selection, server-side search narrowing"},
+        {"viewport": 768, "locale": "ar", "surface": "fixed-clock Arabic formatting with LTR SQL isolation inside RTL chrome"},
+        {"viewport": 375, "locale": "ar", "surface": "detail errors confined to the detail panel"},
+        {"viewport": 1440, "locale": "ar-EG/en", "surface": "variant resolution, persistence, manual-change authority, stale param rewrite, reload/back-forward"}
+      ]
+    },
+    {
+      "spec": "tests/e2e/chunk_20_live_history.spec.ts",
+      "classification": "live",
+      "executed_chromium_tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "seconds": 4.3,
+      "base_url": "http://localhost:5173",
+      "route_mocking": false,
+      "real_fastapi_http": true,
+      "disposable_seeded_users_and_rows": true,
+      "llm_call": false,
+      "source_query": false,
+      "secrets_in_output": false,
+      "proofs": {
+        "history_requests_initial": 1,
+        "history_requests_after_debounced_search": 2,
+        "history_requests_after_one_load_more": 3,
+        "exact_filtered_total": 25,
+        "second_user_rows_never_rendered": true,
+        "literal_wildcard_matches": 4,
+        "cursor_replay_under_other_filter_rejected": true
+      }
+    }
+  ],
+  "gates": {
+    "backend_full_unit": {"passed": 2561, "failed": 0},
+    "backend_integration_history_and_cursor": {"passed": 13, "failed": 0, "stack": "qc20 disposable PostgreSQL/Redis"},
+    "schemathesis_history_openapi_contracts": {"passed": true, "subtests": 64},
+    "ruff_check": true,
+    "ruff_format": true,
+    "canonical_openapi_regenerated_deterministically": true,
+    "focused_frontend_history": {"passed": 52, "failed": 0},
+    "focused_frontend_locale_formatting_toggle": {"passed": 36, "failed": 0},
+    "full_vitest": {"files": 87, "passed": 1232, "failed": 0},
+    "eslint": true,
+    "typecheck": true,
+    "production_build": true,
+    "css_lint": true,
+    "generated_client_parity_gen_api_check": true,
+    "harness_guard": {"passed": true, "classified_specs": 34},
+    "playwright_mocked_matrix": {"passed": 6, "failed": 0},
+    "playwright_live": {"passed": 2, "failed": 0},
+    "git_diff_check": true,
+    "out_of_scope_note": "On-demand Schemathesis admin refresh-schema case fails against the shared seeded stack independent of this diff (reproduced after removing seeded rows); CI does not run SCHEMATHESIS suites."
+  },
+  "environment_quirks": [
+    "Playwright regex routes test the full URL: /api/v1/history(?:\\?.*)?$ never intercepts /api/v1/history/{id}; register distinct detail patterns.",
+    "Locator-scoped getByPlaceholderText does not exist; use role-based locators with the localized aria-label.",
+    "jsdom ICU renders Arabic dates in Arabic script but Western digits; assert script, not digit shape.",
+    "Unmocked workspace fetches leak through the Vite dev proxy to a real backend and one 401 triggers global session-expiry redirect; mocked-shell specs must mock every mounted endpoint including query limits.",
+    "tsc -b production build compiles test sources and caught generated-SDK params nullability after tsc --noEmit ordering (CHUNK-19 quirk class).",
+    "Schemathesis admin refresh-schema case is environment-dependent on shared seeded stacks and out of CI scope."
+  ],
+  "cleanup": {
+    "compose_project": "qc20 (platform PostgreSQL 5433 + Redis 6379 + backend 8000 + frontend 5173)",
+    "seeded_disposable_rows_removed": true,
+    "temporary_browser_outputs_removed": true,
+    "test_results_removed": true,
+    "protected_baseline": {
+      "modified_tracked_pngs": 14,
+      "historical_untracked_screenshots": 7,
+      "existing_trace_archives_unchanged": true,
+      "staged": false,
+      "git_add_A_used": false
+    }
+  },
+  "ledger_status_totals_after_chunk": {
+    "total": 47,
+    "resolved": 30,
+    "resolved_on_tested_branch": 0,
+    "pending": 14,
+    "needs_decision": 3
+  },
+  "chunk_21_blocked_until_merge_of_this_pr": true
+}
