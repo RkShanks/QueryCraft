@@ -1,6 +1,7 @@
 import type { Page, Route } from '@playwright/test';
 import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse, UserProfile } from '../../../src/api/generated/types.gen';
 import { PERMISSIONS } from '../../../src/auth/permissions';
+import { E2E_USER_CONNECTIONS_RESPONSE } from '../../../src/test/fixtures/userConnections';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Playwright page.route() factories for US-2 frontend E2E isolation.
@@ -267,14 +268,6 @@ export const mockConnections = (page: Page) =>
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        connections: [
-          {
-            id: 'conn-1',
-            display_name: 'Local Pagila',
-            database_type: 'postgresql',
-          },
-        ],
-      }),
+      body: JSON.stringify(E2E_USER_CONNECTIONS_RESPONSE),
     });
   });

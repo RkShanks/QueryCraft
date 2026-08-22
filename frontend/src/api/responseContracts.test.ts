@@ -3,7 +3,6 @@ import type {
   HistoryListResponse,
   QueryResult,
   SessionDetail,
-  UserConnectionListResponse,
 } from './generated/types.gen';
 import { responseOperationManifest } from './generated/responseManifest.gen';
 import {
@@ -11,16 +10,7 @@ import {
   ClientContractError,
   validateOperationResponse,
 } from './responseValidation';
-
-const validUserConnections = {
-  connections: [
-    {
-      id: '550e8400-e29b-41d4-a716-446655440001',
-      display_name: 'Analytics',
-      database_type: 'postgresql',
-    },
-  ],
-} satisfies UserConnectionListResponse;
+import { E2E_USER_CONNECTIONS_RESPONSE } from '../test/fixtures/userConnections';
 
 const validSessionDetail = {
   id: 'session-1',
@@ -91,10 +81,18 @@ describe('generated response contract manifest', () => {
 });
 
 describe('canonical JSON response validation', () => {
+  it('accepts the shared Playwright connection fixture for listUserConnections', () => {
+    expect(
+      validateOperationResponse('listUserConnections', 200, E2E_USER_CONNECTIONS_RESPONSE)
+    ).toEqual(E2E_USER_CONNECTIONS_RESPONSE);
+  });
+
   it.each([
     ['authentication', 'getMe', {}],
     ['user connections enum', 'listUserConnections', {
-      connections: [{ ...validUserConnections.connections[0], database_type: 'oracle' }],
+      connections: [
+        { ...E2E_USER_CONNECTIONS_RESPONSE.connections[0], database_type: 'oracle' },
+      ],
     }],
     ['admin connections nested array', 'listAdminConnections', [{ id: 'connection-1' }]],
     ['SSO provider list', 'listAdminSsoProviders', { providers: [{}] }],
@@ -149,18 +147,21 @@ describe('canonical JSON response validation', () => {
   });
 
   it('strips unknown fields before returning a valid response', () => {
+    const validConnection = {
+      ...E2E_USER_CONNECTIONS_RESPONSE.connections[0],
+      id: '550e8400-e29b-41d4-a716-446655440001',
+    };
     const validated = validateOperationResponse('listUserConnections', 200, {
-      ...validUserConnections,
       response_canary: 'must-not-enter-state',
       connections: [
         {
-          ...validUserConnections.connections[0],
+          ...validConnection,
           nested_canary: 'must-not-enter-state',
         },
       ],
     });
 
-    expect(validated).toEqual(validUserConnections);
+    expect(validated).toEqual({ connections: [validConnection] });
     expect(JSON.stringify(validated)).not.toContain('canary');
   });
 
