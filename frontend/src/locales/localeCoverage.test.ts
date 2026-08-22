@@ -56,6 +56,9 @@ describe('Wave 14 i18n key coverage', () => {
     'query.actions.deleteResult',
     'common.send',
     'common.close',
+    // CHUNK-19 interaction and form accessibility
+    'auth.signIn.error.passwordEmpty',
+    'auth.signIn.status.success',
     // Result headings
     'query.result.sqlHeading',
     'query.result.tableHeading',

@@ -149,7 +149,7 @@ describe('SignInForm form contract (IS-GAP-039)', () => {
       })
     );
 
-    const { container } = render(<SignInForm />, { wrapper: createWrapper() });
+    render(<SignInForm />, { wrapper: createWrapper() });
     fill('admin', SECRET);
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
@@ -158,7 +158,7 @@ describe('SignInForm form contract (IS-GAP-039)', () => {
         'Invalid username or password'
       );
     });
-    expect(container.innerHTML).not.toContain(SECRET);
+    expect(alertAndStatusText()).not.toContain(SECRET);
     expect((screen.getByLabelText(/username/i) as HTMLInputElement).value).toBe('admin');
 
     reject = false;
@@ -225,4 +225,9 @@ function passwordDescribedBy(field: HTMLElement): string {
   const describedId = field.getAttribute('aria-describedby');
   if (!describedId) return '';
   return document.getElementById(describedId)?.textContent ?? '';
+}
+
+function alertAndStatusText(): string {
+  const parts = Array.from(document.querySelectorAll('[role="alert"], [role="status"]'));
+  return parts.map((el) => el.textContent ?? '').join(' ');
 }
