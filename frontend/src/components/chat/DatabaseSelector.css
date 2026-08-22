@@ -73,6 +73,15 @@
   background-color: var(--color-obsidian-800);
 }
 
+.database-selector-item-focused {
+  background-color: var(--color-obsidian-800);
+}
+
+.database-selector-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-neon-cyan);
+}
+
 .database-selector-item-badge {
   font-size: 0.625rem;
   text-transform: uppercase;
