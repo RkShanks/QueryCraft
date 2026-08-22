@@ -21,11 +21,10 @@ type ConnectionSchema = {
 const originHeaders = { Origin: 'http://localhost:3000' };
 
 async function expectJsonOk(response: APIResponse) {
-  const request = response.request();
   const endpoint = new URL(response.url()).pathname;
   expect(
     response.ok(),
-    `${request.method()} ${endpoint} returned HTTP ${response.status()}`
+    `${endpoint} returned HTTP ${response.status()}`
   ).toBe(true);
   expect(response.headers()['content-type']).toContain('application/json');
 }
