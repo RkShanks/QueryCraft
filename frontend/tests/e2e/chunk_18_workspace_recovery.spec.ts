@@ -60,12 +60,17 @@ function result(rows: QueryResult['rows'], overrides: Partial<QueryResult> = {})
 }
 
 async function expectInsideViewport(page: Page, selector: string) {
-  const box = await page.locator(selector).boundingBox();
-  expect(box).not.toBeNull();
+  const elements = page.locator(selector);
+  const elementCount = await elements.count();
+  expect(elementCount).toBeGreaterThan(0);
   const viewport = page.viewportSize();
   expect(viewport).not.toBeNull();
-  expect(box?.x).toBeGreaterThanOrEqual(0);
-  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(viewport?.width ?? 0);
+  for (let index = 0; index < elementCount; index += 1) {
+    const box = await elements.nth(index).boundingBox();
+    expect(box).not.toBeNull();
+    expect(box?.x).toBeGreaterThanOrEqual(0);
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(viewport?.width ?? 0);
+  }
 }
 
 test.describe('CHUNK-18 workspace result and recovery behavior', () => {

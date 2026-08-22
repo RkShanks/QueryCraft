@@ -7,6 +7,7 @@
     "tests/e2e/chunk_16_role_mapping_transaction.spec.ts": { "category": "mocked", "reason": "Deterministic role-mapping transaction states." },
     "tests/e2e/chunk_17_client_contract.spec.ts": { "category": "mocked", "reason": "Deterministic malformed, refresh, pagination, empty, and stale response states." },
     "tests/e2e/chunk_17_live_contract.spec.ts": { "category": "live", "reason": "Validates one public response through the running real API without browser mocks." },
+    "tests/e2e/chunk_18_live_workspace.spec.ts": { "category": "live", "reason": "Validates authenticated source health, schema, policy, query execution, and ResultTable rendering through the real API without browser mocks." },
     "tests/e2e/chunk_18_workspace_recovery.spec.ts": { "category": "mocked", "reason": "Deterministic large/zero result and workspace mutation/action recovery states." },
     "tests/e2e/evaluator-blocks-unsafe-sql.spec.ts": { "category": "mocked", "reason": "Deterministic evaluator rejection families." },
     "tests/e2e/history-list-detail.spec.ts": { "category": "mocked", "reason": "Deterministic history list and detail states." },
@@ -34,6 +35,12 @@
     { "path": "tests/e2e/helpers/mock-backend.ts", "reason": "Shared deterministic Playwright response builders." }
   ],
   "skips": [
+    {
+      "spec": "tests/e2e/chunk_18_live_workspace.spec.ts",
+      "title": "CHUNK-18 disposable live credentials are required.",
+      "reason": "The live workspace flow requires explicitly provisioned credentials for an isolated FastAPI and source-database runtime.",
+      "supersededBy": "The same spec runs in CHUNK-18 evidence with disposable runtime credentials."
+    },
     {
       "spec": "tests/e2e/provider-switch.spec.ts",
       "title": "full-stack provider switch with real docker",
