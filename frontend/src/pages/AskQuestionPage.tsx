@@ -8,6 +8,7 @@ import { TimeoutBanner } from '../components/query/TimeoutBanner';
 import { QuotaExceededBanner } from '../components/query/QuotaExceededBanner';
 import { HostileInputBlockedBanner } from '../components/query/HostileInputBlockedBanner';
 import { useQuerySubmit } from '../hooks/useQuerySubmit';
+import { isRequestAbortedError } from '../api/requestScope';
 import type { EvaluatorRejection } from '../api/generated/types.gen';
 import { History, Database, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -107,7 +108,9 @@ export const AskQuestionPage: React.FC = () => {
         t('query.accept.success.message'),
         'success'
       );
-    } catch {
+    } catch (err: unknown) {
+      // Intentional browser cancellation never surfaces as a user-facing outcome.
+      if (isRequestAbortedError(err)) return;
       showAlert(
         t('query.error.accept.title'),
         t('query.error.accept.message'),

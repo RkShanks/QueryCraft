@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { signIn, getMe, signOut, listSsoProviders } from '../api/generated/sdk.gen';
 import type { SignInData } from '../api/generated/types.gen';
+import { withRequestDeadline } from '../api/requestScope';
 import { handleSessionExpiry } from '../auth/sessionExpiry';
 import { useAuthSessionContext } from '../auth/AuthSessionContext';
 import { CURRENT_USER_QUERY_KEY } from '../providers/QueryProvider';
@@ -21,10 +22,13 @@ export const useCurrentUser = () => {
   const authSession = useAuthSessionContext();
   const fallbackQuery = useQuery({
     queryKey: CURRENT_USER_QUERY_KEY,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const sourcePath = window.location.pathname;
       try {
-        return await getMe({ throwOnError: true });
+        return await withRequestDeadline(
+          (requestSignal) => getMe({ throwOnError: true, signal: requestSignal }),
+          { signal },
+        );
       } catch (error) {
         handleSessionExpiry(error, sourcePath);
         throw error;
@@ -51,10 +55,11 @@ export const useSignOut = () => {
 export const useSsoProviders = () => {
   return useQuery({
     queryKey: ['ssoProviders'],
-    queryFn: async () => {
-      const response = await listSsoProviders({ throwOnError: true });
-      return response.data?.providers ?? [];
-    },
+    queryFn: ({ signal }) =>
+      withRequestDeadline(
+        (requestSignal) => listSsoProviders({ throwOnError: true, signal: requestSignal }),
+        { signal },
+      ).then((response) => response.data?.providers ?? []),
     retry: false,
   });
 };

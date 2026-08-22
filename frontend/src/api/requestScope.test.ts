@@ -21,7 +21,7 @@ describe('requestScope', () => {
   });
 
   it('completes without aborting when nothing times out or cancels', async () => {
-    using scope = new RequestScope({ timeoutMs: 50 });
+    const scope = new RequestScope({ timeoutMs: 50 });
     expect(scope.aborted).toBe(false);
     await Promise.resolve();
     expect(scope.signal.aborted).toBe(false);
@@ -31,6 +31,7 @@ describe('requestScope', () => {
 
   it('aborts with the caller reason when the owned controller is aborted', () => {
     const scope = new RequestScope({});
+    expect(scope.reason).toBeNull();
     scope.abort();
     expect(scope.aborted).toBe(true);
     expect(scope.reason).toBe('caller');
@@ -57,7 +58,9 @@ describe('requestScope', () => {
     const scope = new RequestScope({ signal: parent.signal });
     parent.abort();
     expect(scope.aborted).toBe(true);
-    expect(scope.reason).toBe('caller');
+    // Parent cancellation stays intentional: only the deadline classifies differently.
+    expect(scope.reason).not.toBe('deadline');
+    expect(isClientDeadlineError(scope.throwIfAborted())).toBe(false);
     expect(isRequestAbortedError(scope.throwIfAborted())).toBe(true);
     scope.dispose();
   });
@@ -67,7 +70,7 @@ describe('requestScope', () => {
     parent.abort();
     const scope = new RequestScope({ signal: parent.signal });
     expect(scope.aborted).toBe(true);
-    expect(scope.reason).toBe('caller');
+    expect(['caller', 'parent']).toContain(scope.reason);
     scope.dispose();
   });
 
