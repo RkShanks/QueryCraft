@@ -1,66 +1,105 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import i18n from '../../i18n';
 import { ConnectionErrorCard } from './ConnectionErrorCard';
 import type { ConnectionErrorKind } from './ConnectionErrorCard';
 
-describe('ConnectionErrorCard', () => {
-  it('renders no-connections error with title, body, and action', () => {
-    render(<ConnectionErrorCard kind="noConnections" />);
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText(/no database connections/i)).toBeInTheDocument();
-    expect(screen.getByText(/add a database connection/i)).toBeInTheDocument();
+const connectionManagementKinds = [
+  'noConnections',
+  'disabled',
+  'unhealthy',
+  'noSchema',
+] as const;
+
+const retryKinds = ['queryExecutionFailed', 'timeout'] as const;
+
+afterEach(async () => {
+  await i18n.changeLanguage('en');
+});
+
+describe('ConnectionErrorCard recovery actions', () => {
+  it.each(connectionManagementKinds)(
+    'renders localized non-interactive guidance for %s without management permission',
+    (kind) => {
+      render(<ConnectionErrorCard kind={kind} />);
+
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      expect(screen.getByText('Ask a connection administrator to review this connection.')).toBeInTheDocument();
+    }
+  );
+
+  it.each(connectionManagementKinds)(
+    'wires %s to the supplied connections-management navigation',
+    (kind) => {
+      const onManageConnections = vi.fn();
+      render(
+        <ConnectionErrorCard
+          kind={kind}
+          onManageConnections={onManageConnections}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Manage connections' }));
+      expect(onManageConnections).toHaveBeenCalledOnce();
+    }
+  );
+
+  it.each(retryKinds)(
+    'renders immutable-context guidance for %s when retry is unavailable',
+    (kind) => {
+      render(<ConnectionErrorCard kind={kind} />);
+
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Retry is unavailable because the original query context is no longer active.'
+        )
+      ).toBeInTheDocument();
+    }
+  );
+
+  it.each(retryKinds)('wires %s to the supplied immutable-context retry', (kind) => {
+    const onRetry = vi.fn();
+    render(<ConnectionErrorCard kind={kind} onRetry={onRetry} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it('renders disabled error with title and select-another action', () => {
-    render(<ConnectionErrorCard kind="disabled" />);
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /connection is disabled/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /select another/i })).toBeInTheDocument();
-  });
-
-  it('renders unhealthy error with title and contact-admin action', () => {
-    render(<ConnectionErrorCard kind="unhealthy" />);
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /connection is unavailable/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /try another/i })).toBeInTheDocument();
-  });
-
-  it('renders no-schema error with title and refresh action', () => {
-    render(<ConnectionErrorCard kind="noSchema" />);
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /schema not ready/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /refresh schema/i })).toBeInTheDocument();
-  });
-
-  it('renders query-execution-failure error with safe generic message', () => {
-    render(<ConnectionErrorCard kind="queryExecutionFailed" />);
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText(/query failed/i)).toBeInTheDocument();
-    expect(screen.getByText(/try rephrasing/i)).toBeInTheDocument();
-  });
-
-  it('falls back to generic message for unknown error kind', () => {
-    render(<ConnectionErrorCard kind={'unknown_kind' as ConnectionErrorKind} />);
-    expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Error')).toBeInTheDocument();
-  });
-
-  it('does not render raw backend error strings or credentials', () => {
-    const { container } = render(<ConnectionErrorCard kind="unhealthy" />);
-    const text = container.textContent || '';
-    expect(text).not.toMatch(/127\.0\.0\.1/);
-    expect(text).not.toMatch(/password/i);
-    expect(text).not.toMatch(/host:/i);
-    expect(text).not.toMatch(/port:/i);
-  });
-
-  it('mirrors correctly under RTL without breaking layout', () => {
-    const { container } = render(
-      <div dir="rtl">
-        <ConnectionErrorCard kind="noConnections" />
-      </div>
+  it('announces pending retry feedback and suppresses another click', () => {
+    const onRetry = vi.fn();
+    render(
+      <ConnectionErrorCard
+        kind="timeout"
+        onRetry={onRetry}
+        isRetrying
+      />
     );
-    expect(container.querySelector('[dir="rtl"]')).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toBeInTheDocument();
+
+    expect(screen.getByRole('status')).toHaveTextContent('Retrying the original question…');
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeDisabled();
+  });
+
+  it('localizes guidance and action names in Arabic RTL', async () => {
+    await i18n.changeLanguage('ar');
+    const { rerender } = render(<ConnectionErrorCard kind="disabled" />);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByText('اطلب من مسؤول الاتصالات مراجعة هذا الاتصال.')).toBeInTheDocument();
+
+    rerender(<ConnectionErrorCard kind="timeout" onRetry={() => {}} />);
+    expect(screen.getByRole('button', { name: 'إعادة المحاولة' })).toBeInTheDocument();
+  });
+
+  it('falls back to a generic sanitized message for an unknown kind', () => {
+    render(<ConnectionErrorCard kind={'unknown_kind' as ConnectionErrorKind} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Error');
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('never renders raw backend details', () => {
+    const { container } = render(<ConnectionErrorCard kind="unhealthy" />);
+    expect(container).not.toHaveTextContent(/127\.0\.0\.1|password|host:|port:/i);
   });
 });

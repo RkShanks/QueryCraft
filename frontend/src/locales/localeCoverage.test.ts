@@ -28,6 +28,10 @@ describe('Wave 14 i18n key coverage', () => {
     'error.queryExecutionFailed.title',
     'error.queryExecutionFailed.body',
     'error.queryExecutionFailed.action',
+    'error.connectionRecovery.manageConnections',
+    'error.connectionRecovery.adminGuidance',
+    'error.connectionRecovery.retryUnavailable',
+    'error.connectionRecovery.retrying',
     'error.sourceDbExecutionFailed',
     // AssistantResponseCard database type labels
     'query.result.databaseType.postgresql',
@@ -39,6 +43,11 @@ describe('Wave 14 i18n key coverage', () => {
     // Workspace empty state
     'workspace.emptyState',
     'workspace.placeholder',
+    'workspace.recovery.deleteFailed',
+    'workspace.recovery.deleteUncertain',
+    'workspace.recovery.regenerateFailed',
+    'workspace.recovery.regenerateTerminal',
+    'workspace.recovery.regenerating',
     // Query status
     'query.status.processing',
     'query.evaluator.rejected',
@@ -50,6 +59,11 @@ describe('Wave 14 i18n key coverage', () => {
     // Result headings
     'query.result.sqlHeading',
     'query.result.tableHeading',
+    'query.result.empty',
+    'query.result.pagination.label',
+    'query.result.pagination.previous',
+    'query.result.pagination.next',
+    'query.result.pagination.status',
     // Error fallback
     'error.unknown.title',
     'error.unknown.message',

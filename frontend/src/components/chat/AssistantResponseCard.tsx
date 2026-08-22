@@ -14,6 +14,7 @@ interface AssistantResponseCardProps {
   connectionName?: string;
   databaseType?: string;
   onRegenerate?: (attemptId: string) => void;
+  isRegenerating?: boolean;
   onDelete?: (savedQueryId: string) => void;
 }
 
@@ -25,6 +26,7 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
   connectionName,
   databaseType,
   onRegenerate,
+  isRegenerating = false,
   onDelete,
 }) => {
   const { t } = useTranslation();
@@ -59,6 +61,7 @@ export const AssistantResponseCard: React.FC<AssistantResponseCardProps> = ({
               sql={sql}
               attemptId={attemptId}
               onRegenerate={onRegenerate}
+              isRegenerating={isRegenerating}
             />
           )}
 

@@ -1,0 +1,176 @@
+{
+  "chunk": "CHUNK-18",
+  "gap_ids": ["IS-GAP-041", "IS-GAP-027", "IS-GAP-028"],
+  "status": "resolved_on_tested_branch_ci_passed_merge_pending",
+  "branch": "phase-6/wave-19.18-workspace-recovery",
+  "starting_main": "f29cec51cc673f2ae84ad0d60c3c62246b939c45",
+  "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff",
+  "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f",
+  "branch_pushed": true,
+  "pull_request": "https://github.com/RkShanks/QueryCraft/pull/316",
+  "merge_commit": null,
+  "api_contract": {
+    "backend_source_changed": false,
+    "new_product_endpoint": false,
+    "canonical_openapi_changed": false,
+    "generated_contract_changed": false,
+    "runtime_validation_weakened": false,
+    "production_fallback_added": false,
+    "frontend_generation_check": true
+  },
+  "result_table": {
+    "zero_rows_success": true,
+    "semantic_empty_cell": true,
+    "response_card_actions_preserved": true,
+    "client_page_size": 50,
+    "maximum_rendered_data_rows": 50,
+    "bounds_network_or_response_memory": false,
+    "complete_unique_101_row_traversal": true,
+    "reset_on_result_change": true,
+    "clamp_on_result_shrink": true,
+    "masked_badges_every_page": true,
+    "column_headers_and_scroll_preserved": true,
+    "localized_accessible_controls": true,
+    "locales": ["en", "ar"]
+  },
+  "delete_recovery": {
+    "exact_turn_and_deletion_snapshot": true,
+    "definite_failure_restore_and_retry": true,
+    "ambiguous_present_restores": true,
+    "ambiguous_absent_commits": true,
+    "reconciliation_failure_uncertain_restore": true,
+    "direct_not_found_commits": true,
+    "duplicate_suppression": true,
+    "session_switch_stale_suppression": true,
+    "session_deletion_stale_suppression": true,
+    "raw_backend_error_rendered": false
+  },
+  "regenerate_recovery": {
+    "prior_card_visible_while_pending": true,
+    "exact_sql_result_and_action_ids_preserved_on_failure": true,
+    "retry_uses_original_active_attempt": true,
+    "immutable_source_context_preserved": true,
+    "chunk_05_quota_audit_path_preserved": true,
+    "terminal_attempt_refetch": true,
+    "terminal_attempt_retry_offered": false,
+    "duplicate_suppression": true,
+    "stale_response_suppression": true
+  },
+  "connection_error_card": {
+    "kinds": ["noConnections", "disabled", "unhealthy", "noSchema", "queryExecutionFailed", "timeout"],
+    "button_without_handler": false,
+    "management_navigation_permission": "admin.connections.manage",
+    "management_destination": "/admin/connections",
+    "non_admin_guidance": true,
+    "query_retry_requires_original_question_session_connection": true,
+    "missing_context_guidance_without_button": true,
+    "invented_schema_refresh_or_test": false,
+    "accessible_names_focus_and_live_status": true
+  },
+  "tdd": {
+    "red_commits": [
+      "cfa58f726c4968a74b991b37ab303d27edd4d279",
+      "65d67bdfc4fcac9260a2ad31c732135b2d27cf44",
+      "b4fdec231edc0d6bcf01cf0fc8abda4c1f4c4f33",
+      "5f27c205618955ac3c86f8ddf19b9e5f9367aa46",
+      "73ab8f386020e3dbc068910b1da0b8b34cfb7e2b"
+    ],
+    "green_commits": [
+      "5ddbb279230bd8a0f3149417ffdf5477bbcf13b0",
+      "cc5523976c161eadb243d836809efcc23a91f7a3",
+      "b539d3257aaa6cfcabb2beebd410ec4540e5fd52",
+      "8ed15ea719e3cd05344a77959213721ca115e12c"
+    ],
+    "refactor_and_verification_commits": [
+      "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff",
+      "4372bc5c323507dfebea96ea3bb6be5ff345bcc7",
+      "f5bee151a75ddebf00fafa8d04dbb4b1920177a0",
+      "85145026c15c1e8fca47706d5fa4d31abc645f7f"
+    ],
+    "shared_fixture_red": {"failed": 1, "passed": 21, "reason": "generated UUID schema rejected conn-1"},
+    "shared_fixture_green": {"failed": 0, "passed": 22, "fixture_id": "550e8400-e29b-41d4-a716-446655440010"}
+  },
+  "browser": {
+    "classification": "mocked",
+    "executed_chromium_tests": 3,
+    "passed": 3,
+    "failed": 0,
+    "seconds": 7.0,
+    "viewports": [1440, 768, 375],
+    "locales": ["en", "ar"],
+    "rows_in_large_case": 101,
+    "maximum_rendered_rows": 50,
+    "raw_canary_rendered": false,
+    "blocked": false,
+    "paid_llm_call": false
+  },
+  "shared_mock_consumer_sweep": {
+    "specs": 16,
+    "tests": 67,
+    "workers": 1,
+    "passed": 32,
+    "skipped": 1,
+    "failed": 34,
+    "chunk_18_tests_passed": 3,
+    "remaining_failures": "pre-existing isolation drift in older specs with unmocked query-limit/session/admin dependencies and one ambiguous Retry locator"
+  },
+  "fastapi": {
+    "compatibility_tests": {"passed": 80, "failed": 0, "seconds": 9.06},
+    "live_network_flow": {
+      "executed": true,
+      "browser_tests_passed": 1,
+      "seconds": 5.4,
+      "route_mocking": false,
+      "real_sign_in": true,
+      "real_connection_health": true,
+      "real_schema_refresh": true,
+      "real_policy_write": true,
+      "real_query_submit": true,
+      "deterministic_provider": true,
+      "result_header": "id",
+      "result_value": 1,
+      "raw_error_or_secret_found": false
+    }
+  },
+  "gates": {
+    "focused_frontend": {"files": 7, "passed": 456, "failed": 0, "seconds": 3.38},
+    "full_vitest": {"files": 78, "passed": 1141, "failed": 0, "seconds": 19.22},
+    "eslint": true,
+    "typecheck": true,
+    "production_build": true,
+    "css_lint": true,
+    "frontend_generation_check": true,
+    "harness_guard": {"passed": true, "classified_specs": 30},
+    "playwright_chromium": true,
+    "live_fastapi_network": true,
+    "git_diff_check": true,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "vercel_react_best_practices": true,
+    "docs_guard": true,
+    "authoritative_ci": {"head_commit": "6ff6ee5c2721437814963d3cce3527d3a8bcb44c", "run_id": 32582534493, "backend_test": "passed", "frontend_test": "passed"}
+  },
+  "cleanup": {
+    "compose_project_removed": true,
+    "containers_removed": true,
+    "network_removed": true,
+    "volumes_removed": true,
+    "temporary_browser_outputs_removed": true,
+    "production_build_output_removed": true,
+    "protected_baseline": {
+      "modified_tracked_pngs": 14,
+      "historical_untracked_screenshots": 7,
+      "existing_trace_archives_unchanged": true,
+      "staged": false
+    }
+  },
+  "ledger_status_totals_after_chunk": {
+    "total": 47,
+    "resolved": 23,
+    "resolved_on_tested_branch": 4,
+    "pending": 17,
+    "needs_decision": 3
+  },
+  "chunk_19_unblocked": false,
+  "chunk_19_gate": "squash merge, branch deletion and synchronized main"
+}
