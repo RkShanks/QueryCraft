@@ -1,0 +1,177 @@
+{
+  "chunk": "CHUNK-19",
+  "gap_ids": ["IS-GAP-029", "IS-GAP-030", "IS-GAP-039"],
+  "status": "resolved_on_tested_branch_ci_pending_merge",
+  "branch": "phase-6/wave-19.19-interaction-accessibility",
+  "starting_main": "abd51680690714f9ae5b759271056c4873f6743f",
+  "pull_request": null,
+  "api_contract": {
+    "backend_source_changed": false,
+    "new_product_endpoint": false,
+    "canonical_openapi_changed": false,
+    "generated_contract_changed": false,
+    "runtime_validation_weakened": false,
+    "production_fallback_added": false,
+    "frontend_generation_check": true
+  },
+  "merge_bookkeeping_reconciliation": {
+    "chunk_12_is_gap_019": {
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/310",
+      "main_merge_commit": "58098c05dfc92b7fd22b1096d38229e5c8a66f52",
+      "obsolete_merge_pending_claims_removed": true,
+      "historical_test_evidence_unchanged": true
+    },
+    "chunk_18_is_gap_041_027_028": {
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/316",
+      "main_merge_commit": "abd51680690714f9ae5b759271056c4873f6743f",
+      "obsolete_merge_pending_claims_removed": true,
+      "historical_test_evidence_unchanged": true
+    }
+  },
+  "database_selector": {
+    "single_trigger_listbox_model": true,
+    "aria_haspopup_expanded_controls": true,
+    "options_are_li_role_option_without_nested_interactive": true,
+    "open_focus_selected_else_first": true,
+    "arrow_home_end_navigation_with_clamp": true,
+    "enter_space_select_restore_trigger_focus": true,
+    "escape_close_restore_focus": true,
+    "tab_close_natural_continuation_no_programmatic_refocus": true,
+    "locale_aware_typeahead_with_buffer_reset_and_single_char_fallback": true,
+    "active_focus_class_distinct_from_aria_selected": true,
+    "list_change_while_open_clamps_without_stale_state": true,
+    "auto_select_once_per_unique_id_without_focus_theft": true,
+    "chunk_01_immutable_selection_contract_preserved": true
+  },
+  "dialog_session_toast_timer": {
+    "connection_delete_overlay_is_modal_dialog": true,
+    "labelled_and_described": true,
+    "focus_enters_at_least_destructive_control": true,
+    "tab_cycle_trapped_inside": true,
+    "escape_cancels_and_restores_trigger_focus": true,
+    "pending_disables_controls_holds_escape_single_request": true,
+    "session_activation_delete_sibling_buttons_no_nesting": true,
+    "delete_stop_propagation_never_activates": true,
+    "collapsed_mode_one_localized_control": true,
+    "toasts_status_alert_roles": true,
+    "toast_dismissal_localized_accessible_name": true,
+    "undo_toast_polite_status_region": true,
+    "undo_pause_on_hover_and_focus_resume_from_remainder": true,
+    "expiry_fires_exactly_one_delete": true,
+    "undo_cancels_permanently": true,
+    "timers_clean_on_unmount": true,
+    "chunk_03_lifecycle_preserved": true,
+    "chunk_18_recovery_suites_pass_untouched": true
+  },
+  "sign_in_form_contract": {
+    "authoritative_blank_initial_values": true,
+    "client_boundaries_before_any_request": true,
+    "first_invalid_focus": true,
+    "aria_invalid_describedby_association_single_alert": true,
+    "field_edit_clears_error": true,
+    "pending_disables_duplicate_click_enter_collapsed": true,
+    "safe_server_rejection_localized_message": true,
+    "retry_after_rejection_succeeds": true,
+    "localized_polite_success_status": true,
+    "unmount_suppresses_stale_settlement": true,
+    "secret_outside_password_control_absent_dom_console_a11y": true,
+    "write_only_secret_edit_behavior_untouched": true
+  },
+  "tdd": {
+    "red_commits": [
+      "146fe50d2a2a1e4678ba8b8e6a4a2a4b0f9dd0ee",
+      "9e2a51673d49802c875c30e6d41ee5714d6466de",
+      "1341454dbdf9f39dda8629c08b4674bec20ecef8"
+    ],
+    "green_commits": [
+      "138d7af1253976c1baf12283fa94d0e7969a9fe8",
+      "16b00e62026f1a3ddfe434fb0d873376f1403649",
+      "b3944b12c9330d43cfdc25e830a450e0cbc27e97"
+    ],
+    "refactor_and_verification_commits": [
+      "948eb2950fc92115f14c44d30e53bde60f7858c0",
+      "a9208714b652f87cd064c7edb67ee58bd841d986",
+      "32e8c0de02f1ab105286214afd9dd93fd00fd651",
+      "21a2fcacc92edd3d37104e406068bb3b1cbf1b40"
+    ],
+    "selector_red": {"failed": 12, "passed": 1},
+    "interaction_red": {"failed": 13, "passed": 1},
+    "form_red": {"failed": 4, "passed": 4}
+  },
+  "browser": [
+    {
+      "spec": "tests/e2e/chunk_19_interaction_a11y.spec.ts",
+      "classification": "mocked",
+      "executed_chromium_tests": 4,
+      "passed": 4,
+      "failed": 0,
+      "seconds": 9.7,
+      "cases": [
+        {"viewport": 1440, "locale": "en", "surface": "selector keyboard/typeahead matrix"},
+        {"viewport": 1440, "locale": "en", "surface": "sign-in invalid/rejected/retry/success with secret hygiene"},
+        {"viewport": 768, "locale": "ar", "surface": "delete dialog trap/Escape/restore/destructive pending"},
+        {"viewport": 375, "locale": "ar", "surface": "session independence plus undo pause/resume/expiry"}
+      ]
+    },
+    {
+      "spec": "tests/e2e/chunk_19_live_signin.spec.ts",
+      "classification": "live",
+      "executed_chromium_tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "seconds": 2.1,
+      "base_url": "http://localhost:5173",
+      "route_mocking": false,
+      "real_fastapi_http": true,
+      "disposable_admin_credentials": true,
+      "llm_call": false,
+      "source_query": false,
+      "secrets_in_output": false
+    }
+  ],
+  "gates": {
+    "focused_frontend": {"passed": 471, "failed": 0},
+    "full_vitest": {"files": 81, "passed": 1181, "failed": 0},
+    "eslint": true,
+    "typecheck": true,
+    "production_build": true,
+    "css_lint": true,
+    "frontend_generation_check": true,
+    "harness_guard": {"passed": true, "classified_specs": 32},
+    "playwright_chromium": true,
+    "live_fastapi_network": true,
+    "git_diff_check": true,
+    "backend_compatibility_subset_required": false,
+    "test_guard": true,
+    "clean_code_guard": true,
+    "vercel_react_best_practices": true,
+    "docs_guard": true
+  },
+  "environment_quirks": [
+    "Production Docker build compiles test sources via tsc -b and caught a test-only callback signature the local tsc --noEmit gate missed.",
+    "At viewports <=768px AppShell auto-collapses the rail on mount and in-rail interactions near identity transitions can leave it collapsed; suite expands explicitly and uses keyboard activation for hover-revealed controls; responsive assertions remain CHUNK-27 scope.",
+    "Networked sign-in attempts intentionally unmount children through the provider auth transition (CHUNK-07), so component tests own the full SignInForm settlement matrix while browser proof covers boundaries, safe rejection and success navigation.",
+    "Admin connections list responds with a bare ConnectionResponse array unlike wrapped user-facing lists."
+  ],
+  "cleanup": {
+    "compose_project_removed": "qc19",
+    "containers_network_volumes_removed": true,
+    "temporary_browser_outputs_removed": true,
+    "test_results_removed": true,
+    "protected_baseline": {
+      "modified_tracked_pngs": 14,
+      "historical_untracked_screenshots": 7,
+      "existing_trace_archives_unchanged": true,
+      "staged": false,
+      "git_add_A_used": false
+    }
+  },
+  "ledger_status_totals_after_chunk": {
+    "total": 47,
+    "resolved": 27,
+    "resolved_on_tested_branch": 3,
+    "pending": 14,
+    "needs_decision": 3
+  },
+  "chunk_20_unblocked_after_merge_of_this_pr": true
+}

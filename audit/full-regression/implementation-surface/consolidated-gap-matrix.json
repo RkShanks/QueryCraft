@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 17, "Resolved": 23, "Resolved on tested branch": 4, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 14, "Resolved": 27, "Resolved on tested branch": 3, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -181,7 +181,8 @@
     },
     "CHUNK-18": {
       "gap_ids": ["IS-GAP-041", "IS-GAP-027", "IS-GAP-028"],
-      "status": "Resolved on tested branch; CI passed, merge pending",
+      "status": "Resolved and merged",
+      "merge_commit": "abd51680690714f9ae5b759271056c4873f6743f",
       "branch": "phase-6/wave-19.18-workspace-recovery",
       "branch_pushed": true,
       "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff",
@@ -189,6 +190,15 @@
       "pull_request": "https://github.com/RkShanks/QueryCraft/pull/316",
       "authoritative_ci": {"head_commit": "6ff6ee5c2721437814963d3cce3527d3a8bcb44c", "run_id": 32582534493, "backend_test": "passed", "frontend_test": "passed"},
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"
+    },
+    "CHUNK-19": {
+      "gap_ids": ["IS-GAP-029", "IS-GAP-030", "IS-GAP-039"],
+      "status": "Resolved on tested branch",
+      "branch": "phase-6/wave-19.19-interaction-accessibility",
+      "branch_pushed": true,
+      "starting_main": "abd51680690714f9ae5b759271056c4873f6743f",
+      "pull_request": null,
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-19-interaction-a11y.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -520,7 +530,7 @@
       "required_evidence": "Synthetic high-cardinality API/browser latency and payload-size thresholds.",
       "isolation": "Synthetic platform DB/Redis data; remove all seeded rows and caches.",
       "regression_rows": ["P2-FR-045", "P6-FR-149", "XP-013"],
-      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-12", "status": "Resolved on tested branch",
+      "owner": "Backend Implementer then Frontend Implementer; Kimi/GLM then Gemini", "chunk": "CHUNK-12", "status": "Resolved",
       "resolution": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/310", "tested_product_commit": "80652b47b6a53687bbe67f849c070b8ffb9f82d0", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-12-collection-bounds.json", "authoritative_ci": {"head_commit": "80652b47b6a53687bbe67f849c070b8ffb9f82d0", "backend_test": "passed", "frontend_test": "passed"}},
       "source_refs": ["backend/src/app/api/v1/sessions.py::list_sessions", "backend/src/app/api/v1/sessions.py::get_session", "backend/src/app/api/v1/admin_quotas.py::get_quota_status", "backend/src/app/repositories/session_repository.py::SessionRepository.page_by_user", "backend/src/app/repositories/accepted_query_repository.py::AcceptedQueryRepository.page_by_session", "backend/src/app/services/quota_status_service.py::QuotaStatusAggregator", "frontend/src/hooks/useSessions.ts::useSessionsList", "frontend/src/hooks/useSessions.ts::useSessionDetail", "frontend/src/hooks/useAdminQuotas.ts::useAdminQuotas", "backend/tests/integration/test_session_collection_pagination.py", "backend/tests/integration/test_session_attempt_pagination.py", "backend/tests/integration/test_quota_status_pagination.py", "frontend/src/hooks/__tests__/useSessionsHooks.test.tsx"]
     },
@@ -655,7 +665,7 @@
       "required_evidence": "Focused browser delete/regenerate failure recovery and announcement.",
       "isolation": "Synthetic accepted results and disposable sessions.",
       "regression_rows": ["P2-FR-057", "P2-FR-058"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved on tested branch",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved",
       "verification": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/316", "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "authoritative_ci": "passed", "merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/pages/WorkspacePage.tsx::handleDelete", "frontend/src/pages/WorkspacePage.tsx::handleRegenerate", "frontend/src/pages/__tests__/WorkspacePageDuplicate.test.tsx"]
     },
@@ -672,7 +682,7 @@
       "required_evidence": "Browser action/focus checks for reachable connection errors.",
       "isolation": "Synthetic safe error categories.",
       "regression_rows": ["P3-FR-068", "P3-FR-093"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved on tested branch",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved",
       "verification": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/316", "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "authoritative_ci": "passed", "merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/components/chat/ConnectionErrorCard.tsx::ConnectionErrorCard", "frontend/src/pages/WorkspacePage.tsx::WorkspacePage", "frontend/src/components/chat/ConnectionErrorCard.test.tsx"]
     },
@@ -689,7 +699,7 @@
       "required_evidence": "Real-browser keyboard checks at desktop/768/375 in EN/AR.",
       "isolation": "Synthetic connection list.",
       "regression_rows": ["P4-FR-107", "P4-FR-109", "XP-008"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-19", "status": "Pending",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-19", "status": "Resolved on tested branch",
       "source_refs": ["frontend/src/components/chat/DatabaseSelector.tsx::DatabaseSelector", "frontend/src/components/chat/DatabaseSelector.test.tsx"]
     },
     {
@@ -705,7 +715,7 @@
       "required_evidence": "Browser keyboard/accessibility-tree checks across affected admin/session flows.",
       "isolation": "Synthetic admin/session data and fake timers in unit tests.",
       "regression_rows": ["P4-FR-107", "P4-FR-109", "XP-008", "XP-009"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-19", "status": "Pending",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-19", "status": "Resolved on tested branch",
       "source_refs": ["frontend/src/components/sidebar/SessionItem.tsx::SessionItem", "frontend/src/components/sidebar/UndoToast.tsx::UndoToast", "frontend/src/components/admin/ConnectionActions.tsx::ConnectionActions", "frontend/src/pages/AdminRolesPage.tsx::toasts", "frontend/src/pages/AdminAuditPage.tsx::toasts"]
     },
     {
@@ -852,7 +862,7 @@
       "required_evidence": "Keyboard/focus/error announcement checks for representative forms, not every cosmetic variant.",
       "isolation": "Synthetic values; never retain secrets.",
       "regression_rows": ["P3-FR-060", "P5-FR-115", "P5-FR-122", "P6-FR-148", "P6-FR-159", "XP-008"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-19", "status": "Pending",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-19", "status": "Resolved on tested branch",
       "source_refs": ["frontend/src/components/admin/ConnectionForm.tsx::handleValidation", "frontend/src/components/admin/ConnectionForm.tsx::handleSubmit", "frontend/src/pages/AdminSsoPage.tsx::handleSave", "frontend/src/pages/AdminRolesPage.tsx::handleSave", "frontend/src/pages/AdminQuotasPage.tsx::saveQuota", "frontend/src/pages/AdminDetectionPage.tsx::handleSave", "frontend/src/pages/SettingsPage.tsx::SettingsPage"]
     },
     {
@@ -884,7 +894,7 @@
       "required_evidence": "Browser desktop/768/375 large and zero-row checks.",
       "isolation": "Synthetic bounded rows.",
       "regression_rows": ["P1-FR-014", "P1-FR-029", "XP-009"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved on tested branch",
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved",
       "verification": {"fix_pr": "https://github.com/RkShanks/QueryCraft/pull/316", "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "authoritative_ci": "passed", "merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/components/chat/ResultTable.tsx::ResultTable", "frontend/src/components/query/ResultTable.tsx::ResultTable", "frontend/src/components/chat/AssistantResponseCard.tsx", "frontend/src/components/query/ResultTable.test.tsx"]
     },
