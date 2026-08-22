@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { useSignIn } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { User, Lock, Loader2, AlertCircle } from 'lucide-react';
@@ -7,30 +7,97 @@ export const SignInForm: React.FC = () => {
   const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [invalidField, setInvalidField] = useState<'username' | 'password' | null>(null);
+  const [succeeded, setSucceeded] = useState(false);
+  const mountedRef = useRef(true);
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const signInMutation = useSignIn();
+  const statusId = useId();
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(e.target.value);
+    if (e.target.value.trim()) {
+      if (invalidField === 'username') {
+        setInvalidField(null);
+        setErrorMessage('');
+      }
+    }
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    if (e.target.value && invalidField === 'password') {
+      setInvalidField(null);
+      setErrorMessage('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username) {
-      setError(t('auth.signIn.error.usernameEmpty'));
+    if (signInMutation.isPending || succeeded) return;
+
+    if (!username.trim()) {
+      setErrorMessage(t('auth.signIn.error.usernameEmpty'));
+      setInvalidField('username');
+      usernameRef.current?.focus();
       return;
     }
-    setError('');
+    if (!password) {
+      setErrorMessage(t('auth.signIn.error.passwordEmpty'));
+      setInvalidField('password');
+      passwordRef.current?.focus();
+      return;
+    }
+
+    setErrorMessage('');
+    setInvalidField(null);
 
     try {
       await signInMutation.mutateAsync({ username, password });
+      if (mountedRef.current) {
+        setSucceeded(true);
+      }
     } catch {
-      setError(t('auth.signIn.error.invalidCredentials'));
+      if (mountedRef.current) {
+        setErrorMessage(t('auth.signIn.error.invalidCredentials'));
+      }
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="sign-in-form flex flex-col gap-5">
+    <form onSubmit={handleSubmit} className="sign-in-form flex flex-col gap-5" noValidate>
+      {errorMessage && (
+        <div
+          id={statusId}
+          role="alert"
+          className="flex items-center gap-2 text-sm text-red-400 bg-red-950/30 border border-red-900/50 px-3.5 py-2.5 rounded-lg"
+        >
+          <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+      {succeeded && (
+        <div
+          role="status"
+          data-testid="sign-in-status"
+          className="flex items-center gap-2 text-sm text-green-400 bg-green-950/30 border border-green-900/50 px-3.5 py-2.5 rounded-lg"
+        >
+          <span>{t('auth.signIn.status.success')}</span>
+        </div>
+      )}
+
       {/* Username Input Field */}
       <div className="flex flex-col gap-1.5">
-        <label 
-          htmlFor="username" 
+        <label
+          htmlFor="username"
           className="text-xs font-semibold text-obsidian-300 uppercase tracking-wider ps-1"
         >
           {t('auth.signIn.username.label')}
@@ -41,9 +108,13 @@ export const SignInForm: React.FC = () => {
           </div>
           <input
             id="username"
+            ref={usernameRef}
             type="text"
+            autoComplete="username"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={handleUsernameChange}
+            aria-invalid={invalidField === 'username' ? true : undefined}
+            aria-describedby={errorMessage ? statusId : undefined}
             className="w-full bg-obsidian-950/80 border border-obsidian-800 rounded-lg py-2.5 ps-10 pe-4 text-obsidian-200 placeholder-obsidian-600 focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan/35 transition-all duration-200"
             placeholder={t('auth.signIn.username.placeholder')}
           />
@@ -52,8 +123,8 @@ export const SignInForm: React.FC = () => {
 
       {/* Password Input Field */}
       <div className="flex flex-col gap-1.5">
-        <label 
-          htmlFor="password" 
+        <label
+          htmlFor="password"
           className="text-xs font-semibold text-obsidian-300 uppercase tracking-wider ps-1"
         >
           {t('auth.signIn.password.label')}
@@ -64,26 +135,22 @@ export const SignInForm: React.FC = () => {
           </div>
           <input
             id="password"
+            ref={passwordRef}
             type="password"
+            autoComplete="current-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={handlePasswordChange}
+            aria-invalid={invalidField === 'password' ? true : undefined}
+            aria-describedby={errorMessage ? statusId : undefined}
             className="w-full bg-obsidian-950/80 border border-obsidian-800 rounded-lg py-2.5 ps-10 pe-4 text-obsidian-200 placeholder-obsidian-600 focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan/35 transition-all duration-200"
             placeholder={t('auth.signIn.password.placeholder')}
           />
         </div>
       </div>
 
-      {/* Validation Error Message */}
-      {error && (
-        <div className="error flex items-center gap-2 text-sm text-red-400 bg-red-950/30 border border-red-900/50 px-3.5 py-2.5 rounded-lg">
-          <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-          <span>{error}</span>
-        </div>
-      )}
-
       {/* Submit Button */}
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         disabled={signInMutation.isPending}
         className="w-full mt-2 relative overflow-hidden group rounded-lg py-2.5 px-4 bg-gradient-to-r from-neon-cyan to-neon-purple text-white font-medium hover:brightness-110 active:brightness-95 disabled:opacity-50 disabled:pointer-events-none transition-all duration-200 shadow-lg shadow-neon-cyan-glow flex items-center justify-center gap-2 cursor-pointer"
       >

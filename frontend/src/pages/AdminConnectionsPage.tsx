@@ -111,27 +111,31 @@ export const AdminConnectionsPage: React.FC = () => {
       />
       {/* Stacked global toast container */}
       <div className="fixed top-6 end-6 z-50 flex flex-col gap-3 max-w-sm w-full select-none pointer-events-none">
-        {toasts.map((t) => (
+        {toasts.map((toast) => (
           <div
-            key={t.id}
+            key={toast.id}
+            role={toast.type === 'success' ? 'status' : 'alert'}
+            data-testid={`connection-toast-${toast.id}`}
             className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-2xl backdrop-blur-md animate-fade-in transition-all ${
-              t.type === 'success'
+              toast.type === 'success'
                 ? 'bg-green-500/10 border-green-500/20 text-green-400'
                 : 'bg-red-500/10 border-red-500/20 text-red-400'
             }`}
           >
             <div className="shrink-0 mt-0.5">
-              {t.type === 'success' ? (
+              {toast.type === 'success' ? (
                 <CheckCircle2 className="w-5 h-5 text-green-500" />
               ) : (
                 <XCircle className="w-5 h-5 text-red-500" />
               )}
             </div>
             <div className="flex-1 text-sm font-medium leading-relaxed">
-              {t.message}
+              {toast.message}
             </div>
             <button
-              onClick={() => setToasts((prev) => prev.filter((item) => item.id !== t.id))}
+              type="button"
+              onClick={() => setToasts((prev) => prev.filter((item) => item.id !== toast.id))}
+              aria-label={t('common.close')}
               className="shrink-0 text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
             >
               <X className="w-4 h-4 text-text-muted hover:text-text-primary" />

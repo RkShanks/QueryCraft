@@ -27,6 +27,8 @@
   "auth.signIn.signingIn": "Signing in...",
   "auth.signIn.sso.button": "Sign in with {{provider}}",
   "auth.signIn.error.usernameEmpty": "Username cannot be empty.",
+  "auth.signIn.error.passwordEmpty": "Password cannot be empty.",
+  "auth.signIn.status.success": "Signed in successfully.",
   "auth.signIn.error.invalidCredentials": "Invalid username or password",
   "auth.signIn.error.network": "Network error. Please try again.",
   "auth.signOut.label": "Sign Out",

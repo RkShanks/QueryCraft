@@ -32,29 +32,35 @@ export const SessionItem: React.FC<SessionItemProps> = ({
       : session.preview_text
     : t('session.previewFallback');
 
+  const handleActivationKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
       className={`session-item ${isActive ? 'session-item-active' : ''} ${collapsed ? 'session-item-collapsed' : ''}`}
-      onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      role="button"
-      tabIndex={0}
-      aria-label={collapsed ? preview : undefined}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
       data-testid={`session-item-${session.id}`}
     >
       {!collapsed && (
         <>
-          <span className="session-item-preview" title={preview}>
-            {preview}
-          </span>
           <button
+            type="button"
+            className="session-item-main"
+            onClick={onClick}
+            onKeyDown={handleActivationKeyDown}
+            data-testid={`session-item-main-${session.id}`}
+          >
+            <span className="session-item-preview" title={preview}>
+              {preview}
+            </span>
+          </button>
+          <button
+            type="button"
             className={`session-item-delete ${isHovered ? 'session-item-delete-visible' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
@@ -68,7 +74,17 @@ export const SessionItem: React.FC<SessionItemProps> = ({
         </>
       )}
       {collapsed && (
-        <div className="session-item-collapsed-dot" title={preview} />
+        <button
+          type="button"
+          className="session-item-collapsed-control"
+          onClick={onClick}
+          onKeyDown={handleActivationKeyDown}
+          aria-label={preview}
+          title={preview}
+          data-testid={`session-item-main-${session.id}`}
+        >
+          <span className="session-item-collapsed-dot" />
+        </button>
       )}
     </div>
   );
