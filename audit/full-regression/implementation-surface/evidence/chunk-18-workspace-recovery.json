@@ -6,8 +6,8 @@
   "starting_main": "f29cec51cc673f2ae84ad0d60c3c62246b939c45",
   "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff",
   "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f",
-  "branch_pushed": false,
-  "pull_request": null,
+  "branch_pushed": true,
+  "pull_request": "https://github.com/RkShanks/QueryCraft/pull/316",
   "merge_commit": null,
   "api_contract": {
     "backend_source_changed": false,
