@@ -147,7 +147,7 @@ def _make_mock_repo(
     repo.user_b_count = user_b_count if user_b_count is not None else len(repo.user_b_items)
     repo.user_a_cursor_items = user_a_cursor_items or {}
 
-    async def _list_by_user(user_id, cursor=None, limit=100):
+    async def _list_by_user(user_id, cursor=None, limit=100, search=None):
         key = str(user_id)
         if key == USER_A_ID:
             if cursor is not None and cursor in repo.user_a_cursor_items:
@@ -159,7 +159,7 @@ def _make_mock_repo(
             return items, None
         return [], None
 
-    async def _count_by_user(user_id):
+    async def _count_by_user(user_id, search=None):
         key = str(user_id)
         if key == USER_A_ID:
             return repo.user_a_count

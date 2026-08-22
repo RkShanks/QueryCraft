@@ -1,6 +1,8 @@
 """AcceptedQueryRepository — data access for accepted_queries table."""
 
+import hashlib
 import uuid
+from datetime import datetime
 
 from sqlalchemy import and_, desc, func, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +12,27 @@ from app.core.pagination import decode_datetime_cursor, encode_cursor
 from app.db.models.accepted_query import AcceptedQuery
 
 _ATTEMPT_CURSOR_NAMESPACE = "session_attempts"
+HISTORY_CURSOR_NAMESPACE = "accepted_query_history"
+
+
+def search_cursor_namespace(search: str | None) -> str:
+    """Bind the history cursor namespace to a value-safe hash of the search.
+
+    The input is trimmed first so equivalent normalized searches share one
+    namespace. The raw search text never enters the namespace: only its
+    SHA-256 hex digest prefix does, so a cursor minted under one filter
+    cannot be decoded under another and no user text leaks into cursors.
+    """
+    if not search or not search.strip():
+        return HISTORY_CURSOR_NAMESPACE
+    normalized = search.strip()
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:32]
+    return f"{HISTORY_CURSOR_NAMESPACE}:{digest}"
+
+
+def _escape_like(value: str) -> str:
+    """Escape SQL LIKE wildcards so the search matches literally."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 class AcceptedQueryRepository:
@@ -54,28 +77,47 @@ class AcceptedQueryRepository:
         return query
 
     async def list_by_user(
-        self, user_id: uuid.UUID, cursor: str | None = None, limit: int = 100
+        self,
+        user_id: uuid.UUID,
+        cursor: str | None = None,
+        limit: int = 100,
+        search: str | None = None,
     ) -> tuple[list[AcceptedQuery], str | None]:
-        """Return accepted queries for a user, reverse-chronological, with cursor pagination."""
-        stmt = (
-            select(AcceptedQuery)
-            .where(AcceptedQuery.user_id == user_id)
-            .order_by(desc(AcceptedQuery.accepted_at), desc(AcceptedQuery.id))
-            .limit(limit + 1)
-        )
-        if cursor:
-            # Decode composite cursor as "accepted_at|id"
-            from datetime import datetime
+        """Return accepted queries for a user, reverse-chronological, with cursor pagination.
 
+        When ``search`` is provided, only rows whose ``question_text`` or
+        ``generated_sql`` contain the (case-insensitive, literal) substring
+        are returned; cursors are bound to the filter via its namespace.
+        """
+        stmt = select(AcceptedQuery).where(AcceptedQuery.user_id == user_id)
+        if search:
+            pattern = f"%{_escape_like(search)}%"
+            stmt = stmt.where(
+                or_(
+                    AcceptedQuery.question_text.ilike(pattern, escape="\\"),
+                    AcceptedQuery.generated_sql.ilike(pattern, escape="\\"),
+                )
+            )
+        stmt = stmt.order_by(desc(AcceptedQuery.accepted_at), desc(AcceptedQuery.id)).limit(limit + 1)
+
+        if cursor:
+            namespace = search_cursor_namespace(search)
             try:
-                parts = cursor.split("|")
-                if len(parts) != 2:
-                    raise ValueError("Invalid cursor format")
-                cursor_dt = datetime.fromisoformat(parts[0])
-                cursor_id = uuid.UUID(parts[1])
-                stmt = stmt.where(tuple_(AcceptedQuery.accepted_at, AcceptedQuery.id) < tuple_(cursor_dt, cursor_id))
-            except ValueError:
-                raise InvalidCursorError() from None
+                cursor_dt, cursor_id = decode_datetime_cursor(cursor, namespace)
+            except InvalidCursorError:
+                # Legacy pre-opaque "accepted_at|id" cursors remain valid for
+                # the unfiltered listing only — they carry no filter binding.
+                if search or "|" not in cursor:
+                    raise
+                try:
+                    parts = cursor.split("|")
+                    if len(parts) != 2:
+                        raise ValueError("Invalid cursor format")
+                    cursor_dt = datetime.fromisoformat(parts[0])
+                    cursor_id = uuid.UUID(parts[1])
+                except ValueError:
+                    raise InvalidCursorError() from None
+            stmt = stmt.where(tuple_(AcceptedQuery.accepted_at, AcceptedQuery.id) < tuple_(cursor_dt, cursor_id))
 
         result = await self._session.execute(stmt)
         items = list(result.scalars().all())
@@ -83,15 +125,23 @@ class AcceptedQueryRepository:
         next_cursor = None
         if len(items) > limit:
             items = items[:limit]
-            next_cursor = f"{items[-1].accepted_at.isoformat()}|{items[-1].id}"
+            last = items[-1]
+            next_cursor = encode_cursor(search_cursor_namespace(search), last.accepted_at.isoformat(), last.id)
 
         return items, next_cursor
 
-    async def count_by_user(self, user_id: uuid.UUID) -> int:
-        """Return total number of accepted queries for a user."""
-        result = await self._session.execute(
-            select(func.count()).select_from(AcceptedQuery).where(AcceptedQuery.user_id == user_id)
-        )
+    async def count_by_user(self, user_id: uuid.UUID, search: str | None = None) -> int:
+        """Return total accepted queries for a user, optionally search-filtered."""
+        stmt = select(func.count()).select_from(AcceptedQuery).where(AcceptedQuery.user_id == user_id)
+        if search:
+            pattern = f"%{_escape_like(search)}%"
+            stmt = stmt.where(
+                or_(
+                    AcceptedQuery.question_text.ilike(pattern, escape="\\"),
+                    AcceptedQuery.generated_sql.ilike(pattern, escape="\\"),
+                )
+            )
+        result = await self._session.execute(stmt)
         return result.scalar_one() or 0
 
     async def get_by_id(self, query_id: uuid.UUID, user_id: uuid.UUID) -> AcceptedQuery | None:

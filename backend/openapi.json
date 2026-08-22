@@ -7645,7 +7645,7 @@
     },
     "/api/v1/history": {
       "get": {
-        "description": "GET /history — list accepted queries for the caller.\n\nRequires ``query.history.view`` permission. Filters by\n``user_id = current_user.id`` (FR-134 / SC-053).",
+        "description": "GET /history — list accepted queries for the caller.\n\nRequires ``query.history.view`` permission. Filters by\n``user_id = current_user.id`` (FR-134 / SC-053). The optional\n``search`` parameter performs a case-insensitive literal substring\nmatch over the caller's own question text and generated SQL; cursors\nare bound to the active filter.",
         "operationId": "listHistory",
         "parameters": [
           {
@@ -7674,6 +7674,23 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
             }
           }
         ],

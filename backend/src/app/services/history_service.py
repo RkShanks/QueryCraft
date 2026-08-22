@@ -8,11 +8,43 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidCursorError
 from app.db.models.enums import AuditActionType
-from app.repositories.accepted_query_repository import AcceptedQueryRepository
+from app.repositories.accepted_query_repository import (
+    AcceptedQueryRepository,
+    search_cursor_namespace,
+)
 from app.repositories.connection_repository import ConnectionRepository
 from app.schemas.history import AcceptedQueryDetail, HistoryListResponse
 from app.schemas.query import AcceptedQuerySummary
 from app.services.audit_service import AuditService
+
+HISTORY_SEARCH_MAX_CODE_POINTS = 200
+
+
+def normalize_history_search(raw: str | None) -> str | None:
+    """Return the trimmed bounded history search, or None when unfiltered.
+
+    Whitespace-only input means unfiltered history. The trimmed value must
+    not exceed ``HISTORY_SEARCH_MAX_CODE_POINTS`` Unicode code points.
+    """
+    if raw is None:
+        return None
+    normalized = raw.strip()
+    if not normalized:
+        return None
+    if len(normalized) > HISTORY_SEARCH_MAX_CODE_POINTS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": "invalid_search", "message_key": "error.invalidSearch"},
+        )
+    return normalized
+
+
+__all__ = [
+    "HISTORY_SEARCH_MAX_CODE_POINTS",
+    "HistoryService",
+    "normalize_history_search",
+    "search_cursor_namespace",
+]
 
 
 class HistoryService:
@@ -46,12 +78,17 @@ class HistoryService:
         cursor: str | None = None,
         limit: int = 100,
         actor_identity: str | None = None,
+        search: str | None = None,
     ) -> HistoryListResponse:
-        """Return paginated accepted queries."""
+        """Return paginated accepted queries, optionally search-filtered."""
         from uuid import UUID
 
+        normalized_search = normalize_history_search(search)
+
         try:
-            items, next_cursor = await self._repo.list_by_user(UUID(user_id), cursor=cursor, limit=limit)
+            items, next_cursor = await self._repo.list_by_user(
+                UUID(user_id), cursor=cursor, limit=limit, search=normalized_search
+            )
         except InvalidCursorError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -73,8 +110,12 @@ class HistoryService:
             )
         total = None
         if cursor is None:
-            total = await self._repo.count_by_user(UUID(user_id))
+            total = await self._repo.count_by_user(UUID(user_id), search=normalized_search)
         if self._db_session is not None:
+            context: dict[str, Any] = {"operation": "list"}
+            # Record only that filtering happened — never the raw search text.
+            if normalized_search is not None:
+                context["searched"] = True
             await AuditService.log(
                 self._db_session,
                 action=AuditActionType.QUERY_HISTORY_VIEW,
@@ -83,7 +124,7 @@ class HistoryService:
                 resource_type="accepted_query_history",
                 resource_id=None,
                 outcome="success",
-                context={"operation": "list"},
+                context=context,
             )
         return HistoryListResponse(items=summaries, total=total, next_cursor=next_cursor)
 
