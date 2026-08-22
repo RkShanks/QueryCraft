@@ -275,6 +275,14 @@ export const WorkspacePage: React.FC = () => {
     description: string;
     variant: 'default' | 'destructive' | 'success';
   } | null>(null);
+  const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      // Navigation/unmount cleanup: no alert timer may fire after the route dies.
+      if (alertTimerRef.current !== null) clearTimeout(alertTimerRef.current);
+    };
+  }, []);
 
   const showAlert = useCallback((
     title: string,
@@ -282,8 +290,10 @@ export const WorkspacePage: React.FC = () => {
     variant: 'default' | 'destructive' | 'success' = 'default'
   ) => {
     const id = Math.random().toString(36).substring(2, 9);
+    if (alertTimerRef.current !== null) clearTimeout(alertTimerRef.current);
     setAlert({ id, title, description, variant });
-    setTimeout(() => {
+    alertTimerRef.current = setTimeout(() => {
+      alertTimerRef.current = null;
       setAlert((prev) => (prev?.id === id ? null : prev));
     }, 5000);
   }, []);

@@ -7,6 +7,9 @@
   "clientContract.refreshError": "فشل التحديث الأخير. يتم عرض آخر بيانات صالحة.",
   "clientContract.refreshing": "جارٍ تحديث البيانات…",
   "clientContract.partial": "تتوفر نتائج إضافية.",
+  "routeError.title": "حدث خطأ أثناء عرض هذه الصفحة.",
+  "routeError.home": "الانتقال إلى مساحة العمل",
+  "query.sql.highlightUnavailable": "تلوين SQL غير متاح حاليًا. يبقى الأمر مقروءًا أدناه.",
 
   "app.title": "QueryCraft",
   "app.subtitle": "منصة تحليلات النص إلى SQL",
