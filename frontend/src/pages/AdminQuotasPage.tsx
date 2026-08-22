@@ -8,6 +8,8 @@ import {
   type QuotaMutationRecovery,
 } from '../hooks/useQuotaMutationRecovery';
 import { isQuotaSynchronizationPending } from '../api/quotas';
+import { formatDateTime, formatNumber } from '../i18n/format';
+import { normalizeAppLanguage } from '../i18n/locale';
 import type {
   QuotaDimensionStatus,
   RoleQuotaConfig,
@@ -112,19 +114,22 @@ function renderQuotaDimension(
   uncappedLabel: string,
   remainingLabel: string
 ) {
+  const used = formatNumber(dimension.used);
+  const limit = formatNumber(dimension.limit);
+  const remaining = formatNumber(dimension.remaining);
   if (dimension.limit === null) {
     return (
       <span>
-        <bdi dir="ltr">{dimension.used}</bdi> /{' '}
+        <bdi dir="ltr">{used}</bdi> /{' '}
         <span className="text-gray-500 italic">{uncappedLabel}</span>
       </span>
     );
   }
   return (
     <span>
-      <bdi dir="ltr">{dimension.used}</bdi> / <bdi dir="ltr">{dimension.limit}</bdi> (
+      <bdi dir="ltr">{used}</bdi> / <bdi dir="ltr">{limit}</bdi> (
       <span className="text-xs text-gray-400">
-        {remainingLabel}: <bdi dir="ltr">{dimension.remaining}</bdi>
+        {remainingLabel}: <bdi dir="ltr">{remaining}</bdi>
       </span>
       )
     </span>
@@ -132,10 +137,7 @@ function renderQuotaDimension(
 }
 
 function formatResetTime(resetAt: string, language: string): string {
-  return new Intl.DateTimeFormat(language, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(resetAt));
+  return formatDateTime(resetAt, { language: normalizeAppLanguage(language) ?? 'en' });
 }
 
 interface QuotaLimitValueProps {

@@ -134,6 +134,7 @@
   "history.column.acceptedAt": "تم القبول",
   "history.loadMore": "تحميل المزيد",
   "history.noMatch": "لا توجد نتائج تطابق بحثك.",
+  "locale.switcher.label": "اللغة",
   "history.loadingMore": "جارٍ تحميل المزيد...",
 
   "error.unauthorized": "انتهت صلاحية جلستك أو لم تقم بتسجيل الدخول. يرجى تسجيل الدخول مرة أخرى.",

@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AdminAuditPage } from './AdminAuditPage';
+import { formatDateTime } from '../i18n/format';
 import { createWrapper, renderWithClient } from '../test/utils';
 import { server } from '../test/server';
 import { http, HttpResponse, delay } from 'msw';
@@ -292,9 +293,9 @@ describe('AdminAuditPage', () => {
       expect(await screen.findByText(technicalValue)).toHaveAttribute('dir', 'ltr');
     }
     for (const timestamp of [
-      new Date('2026-06-07T12:00:00Z').toLocaleString(),
-      new Date('2026-06-01T11:00:00Z').toLocaleString(),
-      new Date('2026-07-01T10:00:00Z').toLocaleString(),
+      formatDateTime('2026-06-07T12:00:00Z'),
+      formatDateTime('2026-06-01T11:00:00Z'),
+      formatDateTime('2026-07-01T10:00:00Z'),
     ]) {
       expect(screen.getByText(timestamp)).toHaveAttribute('dir', 'ltr');
     }
@@ -918,7 +919,7 @@ describe('AdminAuditPage', () => {
       expect(screen.getByText(/Retention Period/)).toBeInTheDocument();
       expect(screen.getByText('24 months')).toBeInTheDocument();
       expect(screen.getByText(/Last Purge/)).toBeInTheDocument();
-      expect(screen.getByText(/(2026-06-01|6\/1\/2026|01\/06\/2026|1\/6\/2026|6\/1\/26)/)).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(formatDateTime('2026-06-01T12:00:00Z')))).toBeInTheDocument();
       expect(screen.getByText(/Purged Count/)).toBeInTheDocument();
       expect(screen.getByText('500')).toBeInTheDocument();
     });

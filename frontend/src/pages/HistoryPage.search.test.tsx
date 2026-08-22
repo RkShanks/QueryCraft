@@ -18,9 +18,11 @@ describe('HistoryPage server-side search behavior (IS-GAP-032)', () => {
 
   it('sends the debounced search to the server and never auto-loads every page', async () => {
     const listCalls: Array<{ search?: string; cursor?: string }> = [];
-    vi.mocked(historyApi.listHistory).mockImplementation(async (params) => {
-      listCalls.push({ search: params.search, cursor: params.cursor });
-      if (!params.search && !params.cursor) {
+    vi.mocked(historyApi.listHistory).mockImplementation(async (params?) => {
+      const search = params?.search;
+      const cursor = params?.cursor;
+      listCalls.push({ search, cursor });
+      if (!search && !cursor) {
         return {
           items: [
             { id: '1', question_text: 'Customer count page one', generated_sql: 'SELECT 1', accepted_at: '2026-05-11T00:00:00Z' },
@@ -29,8 +31,8 @@ describe('HistoryPage server-side search behavior (IS-GAP-032)', () => {
           next_cursor: 'cursor-2',
         };
       }
-      if (params.search === 'needle') {
-        if (params.cursor) {
+      if (search === 'needle') {
+        if (cursor) {
           return {
             items: [
               { id: '9', question_text: 'needle on a later page', generated_sql: 'SELECT 9', accepted_at: '2026-05-01T00:00:00Z' },
@@ -75,8 +77,8 @@ describe('HistoryPage server-side search behavior (IS-GAP-032)', () => {
   });
 
   it('clears the selected detail when the active filter excludes it', async () => {
-    vi.mocked(historyApi.listHistory).mockImplementation(async (params) => {
-      if (params.search === 'excluded') {
+    vi.mocked(historyApi.listHistory).mockImplementation(async (params?) => {
+      if (params?.search === 'excluded') {
         return {
           items: [{ id: 'other', question_text: 'Other match', generated_sql: 'SELECT O', accepted_at: '2026-05-02T00:00:00Z' }],
           total: 1,

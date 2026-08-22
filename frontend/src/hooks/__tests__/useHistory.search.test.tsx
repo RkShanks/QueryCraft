@@ -48,11 +48,11 @@ describe('useHistory server-side search (IS-GAP-032)', () => {
   });
 
   it('keeps results for different search terms in separate cache entries', async () => {
-    vi.mocked(historyApi.listHistory).mockImplementation(async (params) => ({
+    vi.mocked(historyApi.listHistory).mockImplementation(async (params?) => ({
       items: [
         {
-          id: params.search === 'revenue' ? 'rev-1' : 'all-1',
-          question_text: params.search ?? 'all',
+          id: params?.search === 'revenue' ? 'rev-1' : 'all-1',
+          question_text: params?.search ?? 'all',
           generated_sql: 'SELECT 1',
           accepted_at: '2026-05-11T00:00:00Z',
         },
@@ -77,8 +77,8 @@ describe('useHistory server-side search (IS-GAP-032)', () => {
 
   it('does not let a stale unfiltered response override an active search', async () => {
     let resolveAll: (value: unknown) => void = () => {};
-    vi.mocked(historyApi.listHistory).mockImplementation(async (params) => {
-      if (!params.search) {
+    vi.mocked(historyApi.listHistory).mockImplementation(async (params?) => {
+      if (!params?.search) {
         await new Promise((resolve) => {
           resolveAll = resolve;
         });

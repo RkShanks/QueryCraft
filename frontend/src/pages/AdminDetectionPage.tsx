@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAdminDetection } from '../hooks/useAdminDetection';
 import { Shield, RefreshCw, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
 import { ClientQueryState } from '../components/common/ClientQueryState';
+import { formatDateTime } from '../i18n/format';
 
 interface Toast {
   id: string;
@@ -43,7 +44,7 @@ function extractErrorKey(err: unknown): string | null {
 }
 
 export const AdminDetectionPage: React.FC = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
   
   const [blockVal, setBlockVal] = useState<string>('0.8');
@@ -176,9 +177,7 @@ export const AdminDetectionPage: React.FC = () => {
           <span data-testid="detection-updated-at" className="text-xs text-gray-500">
             {t('detection.updated_at')}:{' '}
             <bdi data-testid="detection-updated-at-value" dir="ltr">
-              {new Date(configQuery.data.updated_at).toLocaleString(
-                i18n.resolvedLanguage || i18n.language
-              )}
+              {formatDateTime(configQuery.data.updated_at)}
             </bdi>
           </span>
         )}

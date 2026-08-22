@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '../../i18n/format';
 import { useConnections } from '../../hooks/useConnections';
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { getSafeConnectionErrorKey } from './connectionErrorMessages';
@@ -19,7 +20,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
   onSuccess,
   onError,
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { refreshSchemaMutation } = useConnections();
 
   const handleRefresh = (e: React.MouseEvent) => {
@@ -59,17 +60,7 @@ export const RefreshSchemaButton: React.FC<RefreshSchemaButtonProps> = ({
     }
   }, [refreshSchemaMutation]);
 
-  const formatRefreshedAt = (isoString: string) => {
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleString(i18n.language || 'en', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      });
-    } catch {
-      return isoString;
-    }
-  };
+  const formatRefreshedAt = (isoString: string) => formatDateTime(isoString);
 
   const isSuccessState = refreshSchemaMutation.isSuccess;
   const isErrorState = refreshSchemaMutation.isError;

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { HistoryList, type HistoryItem } from './HistoryList';
+import { formatDateTime } from '../../i18n/format';
 
 function setup(items: HistoryItem[], extraProps: Partial<React.ComponentProps<typeof HistoryList>> = {}) {
   return render(
@@ -120,7 +121,7 @@ describe('HistoryList', () => {
     for (const item of sampleWithConnection) {
       expect(screen.getByText(item.generated_sql)).toHaveAttribute('dir', 'ltr');
       expect(
-        screen.getByText(new Date(item.accepted_at).toLocaleString())
+        screen.getByText(formatDateTime(item.accepted_at))
       ).toHaveAttribute('dir', 'ltr');
       expect(screen.getByText(item.database_connection_name)).toHaveAttribute('dir', 'auto');
     }

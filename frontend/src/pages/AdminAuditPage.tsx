@@ -13,6 +13,7 @@ import {
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from '../hooks/usePermission';
 import { ClientQueryState } from '../components/common/ClientQueryState';
+import { formatDateTime } from '../i18n/format';
 
 interface Toast {
   id: string;
@@ -245,7 +246,7 @@ export const AdminAuditPage: React.FC = () => {
                     <div>
                       {t('admin.audit.verifiedAt')}:{' '}
                       <span dir="ltr" className="text-white">
-                        {new Date(lastVerification.verified_at).toLocaleString()}
+                        {formatDateTime(lastVerification.verified_at)}
                       </span>
                     </div>
                   </div>
@@ -270,7 +271,7 @@ export const AdminAuditPage: React.FC = () => {
                     <div>
                       {t('admin.audit.verifiedAt')}:{' '}
                       <span dir="ltr" className="text-white">
-                        {new Date(lastVerification.verified_at).toLocaleString()}
+                        {formatDateTime(lastVerification.verified_at)}
                       </span>
                     </div>
                   </div>
@@ -311,7 +312,7 @@ export const AdminAuditPage: React.FC = () => {
                   {t('audit.retention.last_purge')}:{' '}
                   {retentionData.last_purge_at ? (
                     <span dir="ltr" className="text-white">
-                      {new Date(retentionData.last_purge_at).toLocaleString()}
+                      {formatDateTime(retentionData.last_purge_at)}
                     </span>
                   ) : (
                     <span className="text-white">{t('audit.retention.never')}</span>
@@ -617,7 +618,7 @@ export const AdminAuditPage: React.FC = () => {
                           dir="ltr"
                           className="min-w-0 break-words text-end text-gray-300 font-mono text-xs lg:text-start lg:whitespace-nowrap"
                         >
-                          {new Date(entry.timestamp).toLocaleString()}
+                          {formatDateTime(entry.timestamp)}
                         </span>
                       </td>
                       <td

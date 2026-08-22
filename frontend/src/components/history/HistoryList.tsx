@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AcceptedQuerySummary } from '../../api/generated/types.gen';
 import { Database, Search } from 'lucide-react';
+import { formatDateTime } from '../../i18n/format';
 
 export type HistoryItem = AcceptedQuerySummary;
 
@@ -97,7 +98,7 @@ export const HistoryList: React.FC<HistoryListProps> = ({
                     {item.question_text}
                   </span>
                   <span dir="ltr" className="shrink-0 text-[10px]">
-                    {item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '-'}
+                    {item.accepted_at ? formatDateTime(item.accepted_at) : '-'}
                   </span>
                 </div>
 

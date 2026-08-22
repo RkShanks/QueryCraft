@@ -54,9 +54,10 @@ describe("HistoryPage (FR-021,FR-022,FR-023,SC-009)", () => {
 
   it("sends the debounced filter to the server (IS-GAP-032)", async () => {
     const calls: Array<{ search?: string }> = [];
-    vi.mocked(historyApi.listHistory).mockImplementation(async (params) => {
-      calls.push({ search: params.search });
-      if (params.search === "revenue") {
+    vi.mocked(historyApi.listHistory).mockImplementation(async (params?) => {
+      calls.push({ search: params?.search });
+      const searchParam = params?.search;
+      if (searchParam === "revenue") {
         return {
           items: [
             { id: "2", question_text: "Revenue top", generated_sql: "SELECT ... FROM payment", accepted_at: "2026-05-10T00:00:00Z" },
