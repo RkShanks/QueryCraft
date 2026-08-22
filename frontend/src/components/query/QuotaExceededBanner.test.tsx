@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { QuotaExceededBanner } from './QuotaExceededBanner';
+import { formatDateTime } from '../../i18n/format';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -23,7 +24,7 @@ describe('QuotaExceededBanner', () => {
   it('renders reset_at timestamp correctly formatted when provided', () => {
     const mockResetAt = '2026-06-22T00:00:00Z';
     render(<QuotaExceededBanner resetAt={mockResetAt} />);
-    const expectedTime = new Date(mockResetAt).toLocaleString();
+    const expectedTime = formatDateTime(mockResetAt);
     expect(screen.getByText(`Resets at: ${expectedTime}`)).toBeInTheDocument();
   });
 

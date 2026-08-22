@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useCurrentUser, useSsoProviders } from '../hooks/useAuth';
 import { Database, Sparkles, AlertTriangle, XCircle, Shield } from 'lucide-react';
 import { firstPermittedRoute } from '../auth/permissions';
+import { LanguageToggle } from '../components/common/LanguageToggle';
+import { directionFor, normalizeAppLanguage } from '../i18n/locale';
 
 export const SignInPage: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -24,7 +26,7 @@ export const SignInPage: React.FC = () => {
     return <Navigate to={firstPermittedRoute(user.data) ?? '/access-denied'} replace />;
   }
 
-  const dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+  const dir = directionFor(normalizeAppLanguage(i18n.resolvedLanguage ?? i18n.language) ?? 'en');
   const errorParam = searchParams.get('error');
 
   const getSanitizedErrorMessage = (code: string | null) => {
@@ -43,10 +45,15 @@ export const SignInPage: React.FC = () => {
   const sanitizedError = getSanitizedErrorMessage(errorParam);
 
   return (
-    <div 
+    <div
       dir={dir}
       className="sign-in-page min-h-screen flex items-center justify-center bg-obsidian-950 p-4 relative overflow-hidden"
     >
+      {/* Language selector — unauthenticated shell */}
+      <div className="absolute top-4 end-4 z-20" data-testid="sign-in-language">
+        <LanguageToggle />
+      </div>
+
       {/* Background Neon Accent Glows */}
       <div className="absolute top-1/4 start-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-neon-cyan-glow/20 blur-[120px] rounded-full pointer-events-none animate-glow-pulse" />
       <div className="absolute bottom-1/4 start-1/3 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-neon-purple-glow/20 blur-[100px] rounded-full pointer-events-none" />

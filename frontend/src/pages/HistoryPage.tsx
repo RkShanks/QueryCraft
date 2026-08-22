@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useHistoryDetail } from '../hooks/useHistory';
+import { useHistory, useHistoryDetail, normalizeHistorySearchTerm } from '../hooks/useHistory';
+import { useDebounce, FILTER_DEBOUNCE_MS } from '../hooks/useDebounce';
 import { HistoryList } from '../components/history/HistoryList';
 import { HistoryDetail } from '../components/history/HistoryDetail';
 import { Sparkles } from 'lucide-react';
@@ -8,10 +9,32 @@ import { ClientQueryState } from '../components/common/ClientQueryState';
 
 export default function HistoryPage() {
   const { t } = useTranslation();
-  const historyQuery = useHistory();
-  const { items, isLoading, hasNextPage, fetchNextPage } = historyQuery;
+  const [rawSearch, setRawSearch] = useState('');
+  const debouncedSearch = useDebounce(rawSearch, FILTER_DEBOUNCE_MS);
+  const normalizedSearch = normalizeHistorySearchTerm(debouncedSearch);
+  const historyQuery = useHistory({ search: normalizedSearch });
+  const {
+    items,
+    isLoading,
+    isFetching,
+    hasNextPage,
+    fetchNextPage,
+    error: listError,
+  } = historyQuery;
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const detailQuery = useHistoryDetail(selectedId);
+
+  // Reconcile the selection against the active server-side filter by
+  // derivation (no effect-state sync): an active settled search that no
+  // longer returns the selected entry suppresses it until it matches again.
+  const isSelectionExcluded =
+    !!selectedId &&
+    !!normalizedSearch &&
+    !isLoading &&
+    !listError &&
+    !items.some((item) => item.id === selectedId);
+  const activeSelection = isSelectionExcluded ? null : selectedId;
+
+  const detailQuery = useHistoryDetail(activeSelection);
   const { item: selectedItem, isLoading: detailLoading, error: detailError } = detailQuery;
 
   return (
@@ -27,25 +50,36 @@ export default function HistoryPage() {
 
       <main className="max-w-7xl mx-auto p-6 w-full flex-1 flex flex-col">
         <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-[calc(100vh-140px)]">
-          {/* Left panel: Query history list */}
-          <div className="flex-1 lg:max-w-md w-full bg-obsidian-900/50 border border-obsidian-800/80 rounded-2xl p-4 flex flex-col gap-4 shadow-xl backdrop-blur-sm">
+          {/* Left panel: Query history list — list/search errors belong here */}
+          <div
+            data-testid="history-list-panel"
+            className="flex-1 lg:max-w-md w-full bg-obsidian-900/50 border border-obsidian-800/80 rounded-2xl p-4 flex flex-col gap-4 shadow-xl backdrop-blur-sm"
+          >
             <ClientQueryState
               query={historyQuery}
               fallbackErrorKey="history.error"
               isPartial={hasNextPage}
             />
-            <HistoryList
-              items={items}
-              isLoading={isLoading}
-              hasMore={hasNextPage}
-              onLoadMore={fetchNextPage}
-              onSelect={setSelectedId}
-              selectedId={selectedId}
-            />
+            {!listError && (
+              <HistoryList
+                items={items}
+                isLoading={isLoading}
+                hasMore={hasNextPage}
+                isLoadingMore={isFetching && !isLoading}
+                onLoadMore={() => void fetchNextPage()}
+                onSelect={setSelectedId}
+                selectedId={activeSelection}
+                search={rawSearch}
+                onSearchChange={setRawSearch}
+              />
+            )}
           </div>
 
-          {/* Right panel: Query detail inspector */}
-          <div className="flex-1 bg-obsidian-900/50 border border-obsidian-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-sm relative min-h-[400px]">
+          {/* Right panel: Query detail inspector — detail errors belong here */}
+          <div
+            data-testid="history-detail-panel"
+            className="flex-1 bg-obsidian-900/50 border border-obsidian-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-sm relative min-h-[400px]"
+          >
             <ClientQueryState query={detailQuery} fallbackErrorKey="history.detail.error" />
             {!detailError && (
               <HistoryDetail

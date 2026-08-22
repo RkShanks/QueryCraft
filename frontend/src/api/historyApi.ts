@@ -4,6 +4,7 @@ import type { HistoryListResponse } from './generated/types.gen';
 export interface ListHistoryParams {
   cursor?: string;
   page_size?: number;
+  search?: string;
 }
 
 export async function listHistory(
@@ -14,6 +15,7 @@ export async function listHistory(
     query: {
       cursor: params.cursor,
       limit: params.page_size ?? 20,
+      search: params.search,
     },
     throwOnError: true,
     signal,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '../../i18n/format';
 import { AlertCircle } from 'lucide-react';
 
 export interface QuotaExceededBannerProps {
@@ -9,14 +10,10 @@ export interface QuotaExceededBannerProps {
 export const QuotaExceededBanner: React.FC<QuotaExceededBannerProps> = ({ resetAt }) => {
   const { t } = useTranslation();
 
-  const formattedTime = React.useMemo(() => {
-    if (!resetAt) return '';
-    try {
-      return new Date(resetAt).toLocaleString();
-    } catch {
-      return resetAt;
-    }
-  }, [resetAt]);
+  const formattedTime = React.useMemo(
+    () => (resetAt ? formatDateTime(resetAt) : ''),
+    [resetAt]
+  );
 
   return (
     <div

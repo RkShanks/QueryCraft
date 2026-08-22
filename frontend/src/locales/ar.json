@@ -133,6 +133,8 @@
   "history.column.connection": "الاتصال",
   "history.column.acceptedAt": "تم القبول",
   "history.loadMore": "تحميل المزيد",
+  "history.noMatch": "لا توجد نتائج تطابق بحثك.",
+  "locale.switcher.label": "اللغة",
   "history.loadingMore": "جارٍ تحميل المزيد...",
 
   "error.unauthorized": "انتهت صلاحية جلستك أو لم تقم بتسجيل الدخول. يرجى تسجيل الدخول مرة أخرى.",
@@ -150,6 +152,7 @@
   "error.sourceDbConnectionFailed": "تعذر الاتصال بقاعدة البيانات. يرجى التحقق من إعدادات الاتصال والمحاولة مرة أخرى.",
   "error.sourceDbExecutionFailed": "تعذر على قاعدة البيانات تنفيذ هذا الاستعلام. يرجى تعديل سؤالك والمحاولة مرة أخرى.",
   "error.invalidCursor": "مؤشر ترقيم الصفحات غير صالح.",
+  "error.invalidSearch": "نص البحث غير صالح.",
   "error.invalid_date": "تنسيق التاريخ غير صالح. يرجى استخدام ISO 8601.",
   "error.schemaTokenLimit": "مخطط قاعدة البيانات كبير جداً ({{tokens}} رمز، الحد {{limit}}). يرجى الاتصال بالمسؤول.",
   "error.acceptConflict": "هذا الاستعلام قيد القبول بالفعل.",

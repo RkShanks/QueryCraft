@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useConnections, type ConnectionView } from '../hooks/useConnections';
 import { Database, Plus, RefreshCw, Server, Power, PowerOff, CheckCircle2, XCircle, HelpCircle, X } from 'lucide-react';
 import { ConnectionForm } from '../components/admin/ConnectionForm';
+import { formatDateTime } from '../i18n/format';
 import { ConnectionTestButton } from '../components/admin/ConnectionTestButton';
 import { RefreshSchemaButton } from '../components/admin/RefreshSchemaButton';
 import { ConnectionActions } from '../components/admin/ConnectionActions';
@@ -230,7 +231,7 @@ export const AdminConnectionsPage: React.FC = () => {
                       </span>
                       {conn.schema_last_refreshed_at ? (
                         <span className="text-text-muted">
-                          {t('admin.connections.schema.refreshed', { time: new Date(conn.schema_last_refreshed_at).toLocaleDateString() })}
+                          {t('admin.connections.schema.refreshed', { time: formatDateTime(conn.schema_last_refreshed_at) })}
                         </span>
                       ) : (
                         <span className="text-text-muted">

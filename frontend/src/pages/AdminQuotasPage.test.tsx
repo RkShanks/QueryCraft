@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithClient } from '../test/utils';
 import { AdminQuotasPage } from './AdminQuotasPage';
+import { formatDateTime } from '../i18n/format';
 import { useCurrentUser } from '../hooks/useAuth';
 import { useAdminRoles } from '../hooks/useAdminRoles';
 import { useAdminQuotas } from '../hooks/useAdminQuotas';
@@ -245,10 +246,7 @@ describe('AdminQuotasPage', () => {
         expect(technicalValue).toHaveAttribute('dir', 'ltr');
       });
     }
-    const formattedReset = new Intl.DateTimeFormat('en', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date('2026-06-22T00:00:00Z'));
+    const formattedReset = formatDateTime('2026-06-22T00:00:00Z', { language: 'en' });
     screen.getAllByText(formattedReset).forEach((timestamp) => {
       expect(timestamp).toHaveAttribute('dir', 'ltr');
     });

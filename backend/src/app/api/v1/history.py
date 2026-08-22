@@ -21,8 +21,10 @@ without having to walk the dependency chain.
 """
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import StringConstraints
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.permissions import require_permission
@@ -34,6 +36,13 @@ from app.schemas.history import HistoryListResponse
 from app.services.history_service import HistoryService
 
 router = APIRouter(prefix="/history", tags=["History"])
+
+# Trimmed, bounded search: whitespace is stripped before the 200-code-point
+# cap applies, so padded input up to the cap stays valid.
+HistorySearchParam = Annotated[
+    str | None,
+    StringConstraints(strip_whitespace=True, max_length=200),
+]
 
 
 def _get_history_service(db: AsyncSession = Depends(get_db)) -> HistoryService:  # noqa: B008
@@ -48,6 +57,7 @@ def _get_history_service(db: AsyncSession = Depends(get_db)) -> HistoryService: 
 async def list_history(
     cursor: str | None = None,
     limit: int = Query(default=100, ge=1, le=1000),
+    search: HistorySearchParam = None,  # noqa: RUF013
     _session: dict = Depends(require_permission(Permission.QUERY_HISTORY_VIEW)),  # noqa: B008
     current_user_id: str = Depends(require_active_user),  # noqa: B008
     service: HistoryService = Depends(_get_history_service),  # noqa: B008
@@ -55,12 +65,16 @@ async def list_history(
     """GET /history — list accepted queries for the caller.
 
     Requires ``query.history.view`` permission. Filters by
-    ``user_id = current_user.id`` (FR-134 / SC-053).
+    ``user_id = current_user.id`` (FR-134 / SC-053). The optional
+    ``search`` parameter performs a case-insensitive literal substring
+    match over the caller's own question text and generated SQL; cursors
+    are bound to the active filter.
     """
     return await service.list_history(
         user_id=current_user_id,
         cursor=cursor,
         limit=limit,
+        search=search,
         actor_identity=(_session or {}).get("username"),
     )
 

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ResultTable } from '../chat/ResultTable';
 import type { AcceptedQueryDetail, QueryResult } from '../../api/generated/types.gen';
 import { Copy, Check, Sparkles, Database, Calendar, Terminal } from 'lucide-react';
+import { formatDateTime } from '../../i18n/format';
 
 export interface HistoryDetailProps {
   item: AcceptedQueryDetail | null;
@@ -180,7 +181,7 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
         <div className="flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5 text-text-muted" />
           <span className="font-semibold">{t('history.detail.acceptedAt')}:</span>
-          <span dir="ltr">{item.accepted_at ? new Date(item.accepted_at).toLocaleString() : '—'}</span>
+          <span dir="ltr">{item.accepted_at ? formatDateTime(item.accepted_at) : '—'}</span>
         </div>
       </section>
     </article>

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from 'react-router-dom';
 import { HistoryDetail } from "./HistoryDetail";
+import { formatDateTime } from "../../i18n/format";
 
 const sample = {
   id: "abc-123",
@@ -109,7 +110,7 @@ describe("HistoryDetail (FR-023, SC-009, T-465)", () => {
     expect(screen.getByText("PostgreSQL")).toHaveAttribute("dir", "ltr");
     expect(screen.getByText("Production PG")).toHaveAttribute("dir", "auto");
     expect(
-      screen.getByText(new Date(sample.accepted_at).toLocaleString())
+      screen.getByText(formatDateTime(sample.accepted_at))
     ).toHaveAttribute("dir", "ltr");
     expect(screen.getByText(sample.generated_sql)).toHaveAttribute("dir", "ltr");
     expect(container.firstChild).toHaveAttribute("dir", direction);

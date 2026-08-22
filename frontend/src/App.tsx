@@ -22,6 +22,7 @@ import { AppShell } from './components/shell/AppShell';
 import { sessionAwareSignInPath } from './auth/sessionExpiry';
 
 import { PermissionGuard } from './components/auth/PermissionGuard';
+import { applyDocumentLanguage, normalizeAppLanguage } from './i18n/locale';
 import {
   firstPermittedRoute,
   PROTECTED_ROUTE_CATALOG,
@@ -122,10 +123,9 @@ function App() {
   const { i18n } = useTranslation();
 
   useEffect(() => {
-    const dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.dir = dir;
-    document.documentElement.lang = i18n.language;
-  }, [i18n.language]);
+    // One central lang/dir sync point; variants normalize via the helper.
+    applyDocumentLanguage(normalizeAppLanguage(i18n.resolvedLanguage ?? i18n.language) ?? 'en');
+  }, [i18n.language, i18n.resolvedLanguage]);
 
   return (
     <BrowserRouter>
