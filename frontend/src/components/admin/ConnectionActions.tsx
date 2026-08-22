@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useConnections } from '../../hooks/useConnections';
 import { AlertCircle, Loader2, Power, Trash2 } from 'lucide-react';
@@ -22,6 +22,13 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
   const { t } = useTranslation();
   const { disableMutation, enableMutation, deleteMutation } = useConnections();
   const [showConfirm, setShowConfirm] = useState(false);
+  const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const dialogWasOpenRef = useRef(false);
+  const titleId = useId();
+  const descriptionId = useId();
 
   React.useEffect(() => {
     const active = disableMutation.isError || enableMutation.isError || deleteMutation.isError;
@@ -44,6 +51,21 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
 
   // Auto-show confirmation dialog if delete is currently pending
   const displayConfirm = showConfirm || deleteMutation.isPending;
+
+  // Move focus into the dialog on open and restore it to the trigger on close.
+  useEffect(() => {
+    if (displayConfirm && !dialogWasOpenRef.current) {
+      const current = document.activeElement as HTMLElement | null;
+      restoreFocusRef.current =
+        current && current !== document.body ? current : deleteTriggerRef.current;
+      cancelButtonRef.current?.focus();
+    }
+    if (!displayConfirm && dialogWasOpenRef.current) {
+      restoreFocusRef.current?.focus();
+      restoreFocusRef.current = null;
+    }
+    dialogWasOpenRef.current = displayConfirm;
+  }, [displayConfirm]);
 
   const handleDisable = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -79,8 +101,7 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
     setShowConfirm(true);
   };
 
-  const handleCancelDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleCancelDelete = () => {
     setShowConfirm(false);
   };
 
@@ -97,6 +118,25 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
         if (onError) onError(t(getSafeConnectionErrorKey(err)));
       },
     });
+  };
+
+  const handleDialogKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (!isActionDisabled) setShowConfirm(false);
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const focusables = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? []
+    );
+    if (focusables.length === 0) return;
+    e.preventDefault();
+    const index = focusables.indexOf(document.activeElement as HTMLElement);
+    const nextIndex = e.shiftKey
+      ? (index - 1 + focusables.length) % focusables.length
+      : (index + 1) % focusables.length;
+    focusables[nextIndex].focus();
   };
 
   // Error UX: allowlist-based safe error mapping across all mutations
@@ -152,6 +192,7 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
 
         <button
           type="button"
+          ref={deleteTriggerRef}
           onClick={handleDeleteClick}
           disabled={isActionDisabled || displayConfirm}
           className="inline-flex items-center justify-center px-3 py-1.5 border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500/10 rounded-md text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed select-none"
@@ -169,16 +210,25 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
 
       {displayConfirm && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-bg-card border border-border rounded-xl shadow-2xl max-w-sm w-full p-5 space-y-4 select-none animate-scale-in text-start">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
+            onKeyDown={handleDialogKeyDown}
+            data-testid="connection-delete-dialog"
+            className="bg-bg-card border border-border rounded-xl shadow-2xl max-w-sm w-full p-5 space-y-4 select-none animate-scale-in text-start"
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
                 <Trash2 className="w-5 h-5 text-red-500" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-text-primary">
+                <h3 id={titleId} className="text-sm font-semibold text-text-primary">
                   {t('admin.connections.delete') || 'Delete Connection'}
                 </h3>
-                <p className="text-xs text-text-muted mt-0.5">
+                <p id={descriptionId} className="text-xs text-text-muted mt-0.5">
                   {t('admin.connections.deleteConfirm')}
                 </p>
               </div>
@@ -186,6 +236,7 @@ export const ConnectionActions: React.FC<ConnectionActionsProps> = ({
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
               <button
                 type="button"
+                ref={cancelButtonRef}
                 onClick={handleCancelDelete}
                 disabled={isActionDisabled}
                 className="inline-flex items-center justify-center px-3.5 py-1.8 border border-border bg-transparent text-text-primary hover:bg-bg-elevated rounded-md text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-neon-cyan/20 disabled:opacity-50 disabled:cursor-not-allowed select-none"

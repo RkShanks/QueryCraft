@@ -183,7 +183,7 @@ describe('Sidebar Integration', () => {
     expect(useUIStore.getState().activeSessionId).toBeNull();
 
     // Click session
-    fireEvent.click(screen.getByTestId('session-item-sess-2'));
+    fireEvent.click(screen.getByTestId('session-item-main-sess-2'));
     expect(useUIStore.getState().activeSessionId).toBe('sess-2');
   });
 });

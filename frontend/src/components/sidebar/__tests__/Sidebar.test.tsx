@@ -220,7 +220,7 @@ describe('Sidebar', () => {
 
   it('clicking session item sets active session', () => {
     setup();
-    fireEvent.click(screen.getByTestId('session-item-sess-today-1'));
+    fireEvent.click(screen.getByTestId('session-item-main-sess-today-1'));
     expect(useUIStore.getState().activeSessionId).toBe('sess-today-1');
   });
 
@@ -360,10 +360,10 @@ describe('Sidebar', () => {
         ]);
 
         expect(screen.getByTestId('sidebar-new-chat')).toHaveAccessibleName(newChatName);
-        expect(screen.getByTestId('session-item-sess-today-1')).toHaveAccessibleName(
+        expect(screen.getByTestId('session-item-main-sess-today-1')).toHaveAccessibleName(
           'Today session'
         );
-        expect(screen.getByTestId('session-item-sess-3days')).toHaveAccessibleName(
+        expect(screen.getByTestId('session-item-main-sess-3days')).toHaveAccessibleName(
           fallbackSessionName
         );
       } finally {
@@ -433,7 +433,7 @@ describe('Sidebar', () => {
   it.each(['Enter', ' '])('collapsed session remains keyboard-activatable with %s', (key) => {
     useUIStore.getState().toggleSidebar();
     setup([mockSessions[0]]);
-    const session = screen.getByTestId('session-item-sess-today-1');
+    const session = screen.getByTestId('session-item-main-sess-today-1');
 
     session.focus();
     expect(session).toHaveFocus();
