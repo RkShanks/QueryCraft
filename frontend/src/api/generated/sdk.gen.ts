@@ -998,7 +998,10 @@ export const updateFeedback = <ThrowOnError extends boolean = false>(options: Op
  * GET /history — list accepted queries for the caller.
  *
  * Requires ``query.history.view`` permission. Filters by
- * ``user_id = current_user.id`` (FR-134 / SC-053).
+ * ``user_id = current_user.id`` (FR-134 / SC-053). The optional
+ * ``search`` parameter performs a case-insensitive literal substring
+ * match over the caller's own question text and generated SQL; cursors
+ * are bound to the active filter.
  */
 export const listHistory = <ThrowOnError extends boolean = false>(options?: Options<ListHistoryData, ThrowOnError>) => (options?.client ?? client).get<ListHistoryResponses, ListHistoryErrors, ThrowOnError>({
     security: [{

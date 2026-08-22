@@ -4260,6 +4260,10 @@ export type ListHistoryData = {
          * Limit
          */
         limit?: number;
+        /**
+         * Search
+         */
+        search?: string | null;
     };
     url: '/api/v1/history';
 };
