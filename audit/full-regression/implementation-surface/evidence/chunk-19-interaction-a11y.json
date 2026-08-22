@@ -4,7 +4,7 @@
   "status": "resolved_on_tested_branch_ci_pending_merge",
   "branch": "phase-6/wave-19.19-interaction-accessibility",
   "starting_main": "abd51680690714f9ae5b759271056c4873f6743f",
-  "pull_request": null,
+  "pull_request": "https://github.com/RkShanks/QueryCraft/pull/317",
   "api_contract": {
     "backend_source_changed": false,
     "new_product_endpoint": false,
