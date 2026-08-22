@@ -1,40 +1,147 @@
 {
   "specs": {
-    "tests/e2e/chunk_07_identity_permissions.spec.ts": { "category": "mocked", "reason": "Deterministic identity and permission response matrix." },
-    "tests/e2e/chunk_08_prompt_length.spec.ts": { "category": "mocked", "reason": "Deterministic prompt-limit boundary states." },
-    "tests/e2e/chunk_09_quota_partial_success.spec.ts": { "category": "mocked", "reason": "Deterministic quota partial-success recovery states." },
-    "tests/e2e/chunk_15_role_policy_editor.spec.ts": { "category": "mocked", "reason": "Deterministic role-policy editor state transitions." },
-    "tests/e2e/chunk_16_role_mapping_transaction.spec.ts": { "category": "mocked", "reason": "Deterministic role-mapping transaction states." },
-    "tests/e2e/chunk_17_client_contract.spec.ts": { "category": "mocked", "reason": "Deterministic malformed, refresh, pagination, empty, and stale response states." },
-    "tests/e2e/chunk_17_live_contract.spec.ts": { "category": "live", "reason": "Validates one public response through the running real API without browser mocks." },
-    "tests/e2e/chunk_18_live_workspace.spec.ts": { "category": "live", "reason": "Validates authenticated source health, schema, policy, query execution, and ResultTable rendering through the real API without browser mocks." },
-    "tests/e2e/chunk_18_workspace_recovery.spec.ts": { "category": "mocked", "reason": "Deterministic large/zero result and workspace mutation/action recovery states." },
-    "tests/e2e/chunk_19_interaction_a11y.spec.ts": { "category": "mocked", "reason": "Deterministic keyboard, focus, dialog, toast, timer and form-contract states." },
-    "tests/e2e/chunk_19_live_signin.spec.ts": { "category": "live", "reason": "Validates rejected and accepted sign-in through the real API without browser mocks." },
-    "tests/e2e/evaluator-blocks-unsafe-sql.spec.ts": { "category": "mocked", "reason": "Deterministic evaluator rejection families." },
-    "tests/e2e/history-list-detail.spec.ts": { "category": "mocked", "reason": "Deterministic history list and detail states." },
-    "tests/e2e/i18n-audit.spec.ts": { "category": "mocked", "reason": "Deterministic localized response and error states." },
-    "tests/e2e/mobile-shell-reachability.spec.ts": { "category": "mocked", "reason": "Deterministic session data for mobile shell geometry." },
-    "tests/e2e/phase6d_quota_mobile_regression.spec.ts": { "category": "mocked", "reason": "Deterministic quota mobile layout state." },
-    "tests/e2e/provider-switch.spec.ts": { "category": "deterministic-provider", "reason": "Provider switch behavior uses deterministic provider responses." },
-    "tests/e2e/query-timeout.spec.ts": { "category": "mocked", "reason": "Deterministic timeout and empty-history response states." },
-    "tests/e2e/rtl-snapshots.spec.ts": { "category": "mocked", "reason": "Deterministic content for LTR and RTL component layout." },
-    "tests/e2e/us1-sign-in-to-accept.spec.ts": { "category": "mocked", "reason": "Deterministic sign-in, query, and history happy path." },
-    "tests/e2e/us2-double-reject-refine.spec.ts": { "category": "mocked", "reason": "Deterministic double-rejection state machine." },
-    "tests/e2e/us2-error-rendering.spec.ts": { "category": "mocked", "reason": "Deterministic error rendering states." },
-    "tests/e2e/us2-reject-autoretry.spec.ts": { "category": "mocked", "reason": "Deterministic reject and automatic-retry flow." },
-    "tests/e2e/wave_16_3_smoke.spec.ts": { "category": "setup-dependent", "reason": "Requires the historical three-database smoke environment." },
-    "tests/e2e/wave_17_3o_smoke.spec.ts": { "category": "setup-dependent", "reason": "Requires an E2E administrator credential and historical phase-five setup." },
-    "tests/e2e/wave_17_4e_audit_smoke.spec.ts": { "category": "mocked", "reason": "Deterministic audit verification browser states." },
-    "tests/e2e/wave_18_4b_smoke.spec.ts": { "category": "mocked", "reason": "Deterministic phase-six smoke response states." },
-    "tests/e2e/xp008_connection_form_direction.spec.ts": { "category": "mocked", "reason": "Deterministic connection form direction state." },
-    "tests/e2e/xp008_detection_numeric_direction.spec.ts": { "category": "mocked", "reason": "Deterministic detection threshold direction state." },
-    "tests/e2e/xp008_history_detail_locale.spec.ts": { "category": "mocked", "reason": "Deterministic history locale state." },
-    "tests/e2e/xp008_settings_numeric_direction.spec.ts": { "category": "mocked", "reason": "Deterministic settings direction state." },
-    "tests/e2e/xp009_role_actions_mobile.spec.ts": { "category": "mocked", "reason": "Deterministic mobile role action state." }
+    "tests/e2e/chunk_07_identity_permissions.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic identity and permission response matrix."
+    },
+    "tests/e2e/chunk_08_prompt_length.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic prompt-limit boundary states."
+    },
+    "tests/e2e/chunk_09_quota_partial_success.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic quota partial-success recovery states."
+    },
+    "tests/e2e/chunk_15_role_policy_editor.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic role-policy editor state transitions."
+    },
+    "tests/e2e/chunk_16_role_mapping_transaction.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic role-mapping transaction states."
+    },
+    "tests/e2e/chunk_17_client_contract.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic malformed, refresh, pagination, empty, and stale response states."
+    },
+    "tests/e2e/chunk_17_live_contract.spec.ts": {
+      "category": "live",
+      "reason": "Validates one public response through the running real API without browser mocks."
+    },
+    "tests/e2e/chunk_18_live_workspace.spec.ts": {
+      "category": "live",
+      "reason": "Validates authenticated source health, schema, policy, query execution, and ResultTable rendering through the real API without browser mocks."
+    },
+    "tests/e2e/chunk_18_workspace_recovery.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic large/zero result and workspace mutation/action recovery states."
+    },
+    "tests/e2e/chunk_19_interaction_a11y.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic keyboard, focus, dialog, toast, timer and form-contract states."
+    },
+    "tests/e2e/chunk_19_live_signin.spec.ts": {
+      "category": "live",
+      "reason": "Validates rejected and accepted sign-in through the real API without browser mocks."
+    },
+    "tests/e2e/evaluator-blocks-unsafe-sql.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic evaluator rejection families."
+    },
+    "tests/e2e/history-list-detail.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic history list and detail states."
+    },
+    "tests/e2e/i18n-audit.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic localized response and error states."
+    },
+    "tests/e2e/mobile-shell-reachability.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic session data for mobile shell geometry."
+    },
+    "tests/e2e/phase6d_quota_mobile_regression.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic quota mobile layout state."
+    },
+    "tests/e2e/provider-switch.spec.ts": {
+      "category": "deterministic-provider",
+      "reason": "Provider switch behavior uses deterministic provider responses."
+    },
+    "tests/e2e/query-timeout.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic timeout and empty-history response states."
+    },
+    "tests/e2e/rtl-snapshots.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic content for LTR and RTL component layout."
+    },
+    "tests/e2e/us1-sign-in-to-accept.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic sign-in, query, and history happy path."
+    },
+    "tests/e2e/us2-double-reject-refine.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic double-rejection state machine."
+    },
+    "tests/e2e/us2-error-rendering.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic error rendering states."
+    },
+    "tests/e2e/us2-reject-autoretry.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic reject and automatic-retry flow."
+    },
+    "tests/e2e/wave_16_3_smoke.spec.ts": {
+      "category": "setup-dependent",
+      "reason": "Requires the historical three-database smoke environment."
+    },
+    "tests/e2e/wave_17_3o_smoke.spec.ts": {
+      "category": "setup-dependent",
+      "reason": "Requires an E2E administrator credential and historical phase-five setup."
+    },
+    "tests/e2e/wave_17_4e_audit_smoke.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic audit verification browser states."
+    },
+    "tests/e2e/wave_18_4b_smoke.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic phase-six smoke response states."
+    },
+    "tests/e2e/xp008_connection_form_direction.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic connection form direction state."
+    },
+    "tests/e2e/xp008_detection_numeric_direction.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic detection threshold direction state."
+    },
+    "tests/e2e/xp008_history_detail_locale.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic history locale state."
+    },
+    "tests/e2e/xp008_settings_numeric_direction.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic settings direction state."
+    },
+    "tests/e2e/xp009_role_actions_mobile.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic mobile role action state."
+    },
+    "tests/e2e/chunk_20_history_locale.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic history semantics, locale precedence and fixed-clock formatting states."
+    },
+    "tests/e2e/chunk_20_live_history.spec.ts": {
+      "category": "live",
+      "reason": "Validates server-side paginated history search, cursor binding and selection reconciliation through the running real API with disposable seeded records."
+    }
   },
   "mockHelpers": [
-    { "path": "tests/e2e/helpers/mock-backend.ts", "reason": "Shared deterministic Playwright response builders." }
+    {
+      "path": "tests/e2e/helpers/mock-backend.ts",
+      "reason": "Shared deterministic Playwright response builders."
+    }
   ],
   "skips": [
     {
@@ -60,6 +167,12 @@
       "title": "Skipping E2E tests because E2E_ADMIN_PASSWORD is not provided.",
       "reason": "The historical smoke requires an explicitly provisioned administrator credential.",
       "supersededBy": "chunk_15_role_policy_editor.spec.ts and the phase-five archived browser evidence"
+    },
+    {
+      "spec": "tests/e2e/chunk_20_live_history.spec.ts",
+      "title": "CHUNK-20 disposable live credentials are required.",
+      "reason": "The live paginated history search requires explicitly provisioned disposable records in an isolated FastAPI runtime.",
+      "supersededBy": "The same spec runs in CHUNK-20 evidence with disposable runtime credentials."
     }
   ]
 }

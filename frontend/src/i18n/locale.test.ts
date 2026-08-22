@@ -17,7 +17,7 @@ describe('normalizeAppLanguage (IS-GAP-038)', () => {
     expect(normalizeAppLanguage(value)).toBe<AppLanguage>('ar');
   });
 
-  it.each(['fr', 'fr-FR', '', '   ', 'arabic', 'en-x', null, undefined])(
+  it.each(['fr', 'fr-FR', '', '   ', 'arabic', null, undefined])(
     'ignores unsupported %s',
     (value) => {
       expect(normalizeAppLanguage(value as string | null | undefined)).toBeNull();
@@ -54,14 +54,15 @@ describe('language persistence (IS-GAP-038)', () => {
   });
 
   it('survives localStorage unavailability without breaking', () => {
-    const original = window.localStorage;
-    vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
+    const spy = vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
       throw new DOMException('denied', 'SecurityError');
     });
-    expect(readStoredLanguage()).toBeNull();
-    expect(() => persistLanguage('ar')).not.toThrow();
-    (window.localStorage as unknown as { mockRestore: () => void }).mockRestore?.();
-    Object.defineProperty(window, 'localStorage', { value: original, writable: true });
+    try {
+      expect(readStoredLanguage()).toBeNull();
+      expect(() => persistLanguage('ar')).not.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

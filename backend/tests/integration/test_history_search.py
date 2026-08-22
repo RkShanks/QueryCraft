@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import base64
 import json
-from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import text
@@ -67,8 +66,8 @@ async def qc20_second_user_id(db_session):
     result = await db_session.execute(
         text(
             """
-            INSERT INTO users (username, display_name, password_hash, is_active)
-            VALUES ('qc20_other_user', 'QC20 Other', 'x', true)
+            INSERT INTO users (username, display_name, role)
+            VALUES ('qc20_other_user', 'QC20 Other', 'admin')
             RETURNING id
             """
         )
@@ -79,9 +78,7 @@ async def qc20_second_user_id(db_session):
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestHistorySearchRepository:
-    async def test_search_matches_question_and_sql_case_insensitively(
-        self, db_session, qc20_admin_user_id
-    ):
+    async def test_search_matches_question_and_sql_case_insensitively(self, db_session, qc20_admin_user_id):
         connection_id = await _connection_id(db_session)
         repo = AcceptedQueryRepository(db_session)
         await _seed_rows(
@@ -138,27 +135,22 @@ class TestHistorySearchRepository:
         assert len(items) == 1
         assert items[0].question_text == "Percent literal"
 
-        # A lone % or _ matches nothing once escaped (literal semantics).
+        # A lone % or _ matches only rows containing that literal character —
+        # if wildcards were active, every row would match instead.
         items, _cursor = await repo.list_by_user(qc20_admin_user_id, limit=10, search="%")
-        assert items == []
+        assert [item.question_text for item in items] == ["Percent literal"]
         items, _cursor = await repo.list_by_user(qc20_admin_user_id, limit=10, search="_")
-        assert items == []
+        assert [item.question_text for item in items] == ["Percent literal"]
 
-        # Backslash is also matched literally.
+        # Backslash is also matched literally (no row contains one).
         items, _cursor = await repo.list_by_user(qc20_admin_user_id, limit=10, search="\\")
         assert items == []
 
-    async def test_search_is_user_scoped(
-        self, db_session, qc20_admin_user_id, qc20_second_user_id
-    ):
+    async def test_search_is_user_scoped(self, db_session, qc20_admin_user_id, qc20_second_user_id):
         connection_id = await _connection_id(db_session)
         repo = AcceptedQueryRepository(db_session)
-        await _seed_rows(
-            db_session, repo, qc20_admin_user_id, connection_id, [("Admin revenue note", "SELECT 9")]
-        )
-        await _seed_rows(
-            db_session, repo, qc20_second_user_id, connection_id, [("Other revenue note", "SELECT 8")]
-        )
+        await _seed_rows(db_session, repo, qc20_admin_user_id, connection_id, [("Admin revenue note", "SELECT 9")])
+        await _seed_rows(db_session, repo, qc20_second_user_id, connection_id, [("Other revenue note", "SELECT 8")])
 
         items, _cursor = await repo.list_by_user(qc20_admin_user_id, limit=50, search="revenue")
         count = await repo.count_by_user(qc20_admin_user_id, search="revenue")
@@ -166,9 +158,7 @@ class TestHistorySearchRepository:
         assert [item.question_text for item in items] == ["Admin revenue note"]
         assert count == 1
 
-    async def test_filtered_pagination_walks_all_matches_across_pages(
-        self, db_session, qc20_admin_user_id
-    ):
+    async def test_filtered_pagination_walks_all_matches_across_pages(self, db_session, qc20_admin_user_id):
         connection_id = await _connection_id(db_session)
         repo = AcceptedQueryRepository(db_session)
         rows = [(f"needle row {i}", f"SELECT {i}") for i in range(7)]
@@ -182,9 +172,7 @@ class TestHistorySearchRepository:
         cursor = None
         pages = 0
         while True:
-            items, next_cursor = await repo.list_by_user(
-                qc20_admin_user_id, cursor=cursor, limit=3, search="needle"
-            )
+            items, next_cursor = await repo.list_by_user(qc20_admin_user_id, cursor=cursor, limit=3, search="needle")
             pages += 1
             seen.extend(item.question_text for item in items)
             if not next_cursor or pages > 10:
@@ -194,9 +182,7 @@ class TestHistorySearchRepository:
         assert sorted(seen) == sorted(f"needle row {i}" for i in range(7))
         assert pages == 3
 
-    async def test_search_cursor_rejected_under_different_filter(
-        self, db_session, qc20_admin_user_id
-    ):
+    async def test_search_cursor_rejected_under_different_filter(self, db_session, qc20_admin_user_id):
         connection_id = await _connection_id(db_session)
         repo = AcceptedQueryRepository(db_session)
         await _seed_rows(
@@ -233,30 +219,35 @@ class TestHistorySearchRepository:
     async def test_legacy_unfiltered_cursor_still_paginates(self, db_session, qc20_admin_user_id):
         connection_id = await _connection_id(db_session)
         repo = AcceptedQueryRepository(db_session)
-        await _seed_rows(
-            db_session,
-            repo,
-            qc20_admin_user_id,
-            connection_id,
-            [("r1", "SELECT 1"), ("r2", "SELECT 2")],
-        )
+        rows = [("r1", "SELECT 1"), ("r2", "SELECT 2"), ("r3", "SELECT 3")]
+        await _seed_rows(db_session, repo, qc20_admin_user_id, connection_id, rows)
 
-        items, legacy_cursor = await repo.list_by_user(qc20_admin_user_id, limit=1)
+        # Canonical order for these three rows (reverse-chronological, id tiebreak).
+        everything, _none = await repo.list_by_user(qc20_admin_user_id, limit=10)
+        expected_order = [item.question_text for item in everything]
+        assert sorted(expected_order) == ["r1", "r2", "r3"]
+
+        # New cursors are opaque under the history namespace...
+        items, opaque_cursor = await repo.list_by_user(qc20_admin_user_id, limit=1)
         assert len(items) == 1
-        # Legacy format remains decodable for unfiltered compatibility.
-        parts = legacy_cursor.split("|")
-        assert len(parts) == 2
-        datetime.fromisoformat(parts[0])
+        position = decode_cursor(opaque_cursor, HISTORY_CURSOR_NAMESPACE)
+        assert position.item_id == items[-1].id
 
-        next_items, next_cursor = await repo.list_by_user(
-            qc20_admin_user_id, cursor=legacy_cursor, limit=5
-        )
-        assert [item.question_text for item in next_items] == ["r1"]
-        assert next_cursor is None
+        page2, _cursor2 = await repo.list_by_user(qc20_admin_user_id, cursor=opaque_cursor, limit=5)
+        assert [item.question_text for item in items + page2] == expected_order
 
-    async def test_opaque_cursor_payload_never_contains_raw_search(
-        self, db_session, qc20_admin_user_id
-    ):
+        # ...while pre-existing legacy "accepted_at|id" cursors keep working
+        # for the unfiltered listing (compatibility), but never when filtered.
+        last_accepted_at = items[-1].accepted_at.isoformat()
+        legacy_cursor = f"{last_accepted_at}|{items[-1].id}"
+        legacy_page, legacy_next = await repo.list_by_user(qc20_admin_user_id, cursor=legacy_cursor, limit=5)
+        assert [item.question_text for item in legacy_page] == expected_order[1:]
+        assert legacy_next is None
+
+        with pytest.raises(InvalidCursorError):
+            await repo.list_by_user(qc20_admin_user_id, cursor=legacy_cursor, limit=5, search="r")
+
+    async def test_opaque_cursor_payload_never_contains_raw_search(self, db_session, qc20_admin_user_id):
         connection_id = await _connection_id(db_session)
         repo = AcceptedQueryRepository(db_session)
         await _seed_rows(
