@@ -1,10 +1,10 @@
 # CHUNK-18 / IS-GAP-041 + IS-GAP-027 + IS-GAP-028 — workspace result and recovery behavior
 
-Status: implementation and non-browser verification passed on product commit `bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff`; required Chromium and live-network FastAPI proof are blocked because the managed sandbox rejects localhost listeners with `listen EPERM`. The focused branch is pushed, but pull-request creation was rejected by the external-action reviewer after the account approval quota was exhausted. The three gaps remain Pending and merge is prohibited until those gates pass.
+Status: resolved on tested branch `phase-6/wave-19.18-workspace-recovery`. Product behavior is at `bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff`; the final local verification head is `85145026c15c1e8fca47706d5fa4d31abc645f7f`. Responsive Chromium, a real-network FastAPI flow, focused/full gates and cleanup passed. PR CI and squash merge remain the only CHUNK-19 dispatch gates.
 
-Starting synchronized main was `f29cec51cc673f2ae84ad0d60c3c62246b939c45`, the squash merge of [#315](https://github.com/RkShanks/QueryCraft/pull/315). No backend source, endpoint, canonical OpenAPI document or generated API contract changed.
+Starting synchronized main was `f29cec51cc673f2ae84ad0d60c3c62246b939c45`, the squash merge of [#315](https://github.com/RkShanks/QueryCraft/pull/315). No backend source, endpoint, canonical OpenAPI document, generated API contract or runtime validation rule changed.
 
-The machine-readable [JSON evidence](chunk-18-workspace-recovery.json) records the behavior matrix, TDD commits, unit/API gates, blocked browser/live proof, protected baseline and remaining dispatch gate.
+The machine-readable [JSON evidence](chunk-18-workspace-recovery.json) records the same behavior, commits, browser/API results, cleanup and ledger counts.
 
 ## Behavior matrix
 
@@ -35,32 +35,44 @@ The machine-readable [JSON evidence](chunk-18-workspace-recovery.json) records t
 | RED connection-card handler matrix | `b4fdec231edc0d6bcf01cf0fc8abda4c1f4c4f33` |
 | RED workspace connection wiring | `5f27c205618955ac3c86f8ddf19b9e5f9367aa46` |
 | GREEN safe connection actions | `b539d3257aaa6cfcabb2beebd410ec4540e5fd52` |
-| REFACTOR recovery hardening, build correction and classified browser matrix | `bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff` |
+| REFACTOR recovery hardening and browser matrix | `bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff` |
+| RED shared Playwright connection contract | `73ab8f386020e3dbc068910b1da0b8b34cfb7e2b` |
+| GREEN valid typed connection fixture | `8ed15ea719e3cd05344a77959213721ca115e12c` |
+| Browser/live verification tests | `4372bc5c323507dfebea96ea3bb6be5ff345bcc7`, `f5bee151a75ddebf00fafa8d04dbb4b1920177a0`, `85145026c15c1e8fca47706d5fa4d31abc645f7f` |
 
-## Automated test evidence
+The new RED command was `cd frontend && npx vitest run src/api/responseContracts.test.ts --reporter=verbose`: the new shared-fixture assertion failed while the other 21 tests passed because `conn-1` violated the generated UUID schema. The same command at GREEN passed all 22 tests after the typed fixture moved to deterministic UUID `550e8400-e29b-41d4-a716-446655440010`. Runtime validation and production fallback behavior were unchanged.
 
-The final focused run passed 415 tests across ResultTable pagination, the full ConnectionErrorCard kind/handler matrix, Workspace recovery, and locale coverage. Earlier focused runs explicitly covered the 101-row traversal/reset/clamp/table semantics, delete rollback/commit/uncertain/retry/duplicate/stale cases, regenerate restoration/retry/terminal/duplicate/stale cases, connection permission/context combinations, and EN/AR behavior.
+## Browser and live-network evidence
 
-The complete frontend suite passed 1,140 tests across 78 files. The production build, TypeScript no-emit check, ESLint, CSS lint, generated-client parity check and static browser-harness guard passed. The harness classifies 29 Playwright specs and discovers all three CHUNK-18 Chromium cases.
+The exact requested command passed:
 
-Relevant compatibility tests exercised the real FastAPI application through its ASGI integration boundary: 80 backend tests passed in 7.72 seconds across history, regenerate, query, accept-only persistence, retry quota and audit logging. This does not substitute for the requested live network flow.
+`cd frontend && PLAYWRIGHT_HTML_OUTPUT_DIR=/tmp/querycraft-chunk18-report PLAYWRIGHT_OUTPUT_DIR=/tmp/querycraft-chunk18-browser rtk npm run test:e2e -- chunk_18_workspace_recovery.spec.ts`
 
-## Browser and live-network hold
+- 1440px EN: 101 unique values traversed across three pages, no more than 50 rendered body rows, masking/table semantics and viewport bounds — passed in 1.6s.
+- 768px EN: prior result remained visible, regenerate failure/retry recovered, delete rollback/retry recovered, and the raw canary stayed out of the UI — passed in 2.2s.
+- 375px AR/RTL: semantic zero-row success, no unnecessary pagination, localized timeout retry using immutable context and viewport bounds — passed in 1.5s.
+- Result: 3 passed in 7.0s. The dev proxy logged connection refusal for an intentionally unmocked post-assertion session-detail refresh; it did not reach the UI or affect any CHUNK-18 assertion. No listener restriction remained.
 
-The classified Chromium matrix is ready to assert:
+Every spec importing `mockConnections` was rerun in one isolated Chromium worker. Result: 32 passed, 1 classified skip and 34 pre-existing failures in older specs that do not mock newly required query-limit/session/admin dependencies (plus one older ambiguous Retry locator). All three CHUNK-18 cases passed in that sweep. A diagnostic run while the real API was intentionally active was discarded because mocked identities received correct 401s from unrelated unmocked calls; it was not used as product evidence.
 
-- 1440px EN: 101 unique values over three pages, at most 50 rendered rows, masking and viewport bounds;
-- 768px EN: result preservation, regenerate failure/retry, delete rollback/retry, raw-canary absence and viewport bounds;
-- 375px AR/RTL: semantic zero-row success, no unnecessary pagination, immutable-context timeout retry, localization and viewport bounds.
+The final live command passed one test in 5.4s:
 
-`playwright test` could not start Vite, and a direct Vite start failed with `listen EPERM`; the managed sandbox denied permission to bind localhost. No Chromium test executed, no screenshot is presented as proof, and no live network FastAPI flow was claimed. The Playwright list gate did pass with three discovered tests.
+`cd frontend && CHUNK18_LIVE_USERNAME=<disposable> CHUNK18_LIVE_PASSWORD=<disposable> CHUNK18_LIVE_SOURCE_PASSWORD=<disposable> PLAYWRIGHT_HTML_OUTPUT_DIR=/tmp/querycraft-chunk18-live-report rtk npm run test:e2e -- chunk_18_live_workspace.spec.ts`
 
-## Quality guards
+The isolated runtime used real FastAPI HTTP, PostgreSQL platform/source containers, Redis, migrations and the deterministic provider. Chromium signed in through the real API, tested and introspected the disposable healthy source, applied an Admin connection policy through the real API, submitted “Return one deterministic row”, received `SELECT 1 AS id`, and rendered header `id` plus cell `1` through `ResultTable`. No `page.route` mocking was used. The API response, rendered body, console and page-error streams were checked for the disposable credentials, traceback/stack text and password assignments; none appeared. No paid LLM call was made.
 
-Test Guard review retained behavior-level assertions, deterministic route-boundary fault injection, unique traversal checks, duplicate/stale settlement cases and temporary Playwright output paths. Clean Code Guard review kept recovery state typed, isolated snapshot/reconciliation helpers, sanitized error classification and required sequential reconciliation. Vercel React guidance led to memoized derived history/turn collections and stable callbacks without adding client fetch waterfalls beyond the required ambiguous-delete lookup. Docs Guard reconciled the behavior, commands, counts, commits and blocked claims here against source and test output.
+## Automated gates
 
-## Cleanup and next gate
+- Focused frontend: 7 files, 456 tests passed in 3.38s, including response contracts, both ResultTables, ConnectionErrorCard, Workspace recovery and locale/a11y coverage.
+- Full frontend: 78 files, 1,141 tests passed in 19.22s.
+- Backend compatibility: 80 tests passed in 9.06s across history, regenerate, query, accept-only persistence, retry quota and query audit logging.
+- `npm run typecheck`, `npm run lint`, `npm run lint:css`, `npm run build`, `npm run gen:api:check`, `npm run test:harness` and `git diff --check` passed. The harness classifies 30 Playwright specs.
+- The first final build correctly caught a test-only browser/API response-type mismatch; `85145026c15c1e8fca47706d5fa4d31abc645f7f` narrowed the helper to the shared interface and the repeated build passed.
 
-The protected baseline remains exactly 14 modified tracked PNGs, seven historical untracked screenshots and the pre-existing trace archives; none was staged, regenerated, reverted or deleted. The rejected browser start left `/tmp/querycraft-chunk18-browser` (8 KiB), `/tmp/querycraft-chunk18-report` (516 KiB) and ignored `frontend/dist` (12 MiB). Their explicit cleanup was also rejected by the managed approval service, so this evidence does not claim cleanup completion.
+## Quality guards and cleanup
 
-CHUNK-19 is blocked. To unblock it: run the three Chromium tests and one live valid FastAPI flow, remove the temporary outputs, create the focused PR, obtain passing `backend-test` and `frontend-test`, squash-merge, delete the branch and synchronize main.
+Test Guard retained public-contract validation, behavior-level recovery assertions, unique traversal, duplicate/stale settlement cases, an unmocked live flow and classified skip metadata. Clean Code Guard found no new production-code concern; the continuation changed only typed fixtures and verification code. Vercel React guidance required no production adjustment because the existing memoized pagination/recovery implementation was unchanged. Docs Guard reconciled commands, counts, commits, contract statements and the consumer-sweep limitation against source and output.
+
+The disposable Compose project, containers, network and volumes were removed. `/tmp/querycraft-chunk18-browser`, `/tmp/querycraft-chunk18-report`, all additional CHUNK-18 reports/JSON, `frontend/test-results`, `frontend/playwright-report` and ignored `frontend/dist` were removed. The protected baseline remains exactly 14 modified tracked PNGs, seven historical untracked screenshots and existing trace archives; none was staged, regenerated, restored or deleted.
+
+The three gaps are Resolved on tested branch. Ledger totals are now 23 Resolved, 4 Resolved on tested branch, 17 Pending and 3 Needs Decision out of 47. CHUNK-19 becomes unblocked only after the focused PR has passing `backend-test` and `frontend-test`, is squash-merged, its branch is deleted and local main is synchronized.

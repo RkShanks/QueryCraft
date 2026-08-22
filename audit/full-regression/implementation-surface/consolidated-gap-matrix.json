@@ -27,7 +27,7 @@
       "Not a Current Requirement": 0,
       "Needs Decision": 1
     },
-    "status": {"Pending": 20, "Resolved": 23, "Resolved on tested branch": 1, "Closed by Existing Evidence": 0, "Needs Decision": 3}
+    "status": {"Pending": 17, "Resolved": 23, "Resolved on tested branch": 4, "Closed by Existing Evidence": 0, "Needs Decision": 3}
   },
   "remediation_progress": {
     "CHUNK-01": {
@@ -181,10 +181,11 @@
     },
     "CHUNK-18": {
       "gap_ids": ["IS-GAP-041", "IS-GAP-027", "IS-GAP-028"],
-      "status": "Pending required Chromium, live-network, cleanup and PR gates",
+      "status": "Resolved on tested branch; PR CI and merge pending",
       "branch": "phase-6/wave-19.18-workspace-recovery",
-      "branch_pushed": true,
+      "branch_pushed": false,
       "tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff",
+      "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f",
       "pull_request": null,
       "authoritative_ci": null,
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"
@@ -654,8 +655,8 @@
       "required_evidence": "Focused browser delete/regenerate failure recovery and announcement.",
       "isolation": "Synthetic accepted results and disposable sessions.",
       "regression_rows": ["P2-FR-057", "P2-FR-058"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Pending",
-      "verification": {"tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "non_browser_gates": "passed", "chromium_live_pr_gates": "blocked", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved on tested branch",
+      "verification": {"tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "pr_ci_merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/pages/WorkspacePage.tsx::handleDelete", "frontend/src/pages/WorkspacePage.tsx::handleRegenerate", "frontend/src/pages/__tests__/WorkspacePageDuplicate.test.tsx"]
     },
     {
@@ -671,8 +672,8 @@
       "required_evidence": "Browser action/focus checks for reachable connection errors.",
       "isolation": "Synthetic safe error categories.",
       "regression_rows": ["P3-FR-068", "P3-FR-093"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Pending",
-      "verification": {"tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "non_browser_gates": "passed", "chromium_live_pr_gates": "blocked", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved on tested branch",
+      "verification": {"tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "pr_ci_merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/components/chat/ConnectionErrorCard.tsx::ConnectionErrorCard", "frontend/src/pages/WorkspacePage.tsx::WorkspacePage", "frontend/src/components/chat/ConnectionErrorCard.test.tsx"]
     },
     {
@@ -883,8 +884,8 @@
       "required_evidence": "Browser desktop/768/375 large and zero-row checks.",
       "isolation": "Synthetic bounded rows.",
       "regression_rows": ["P1-FR-014", "P1-FR-029", "XP-009"],
-      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Pending",
-      "verification": {"tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "non_browser_gates": "passed", "chromium_live_pr_gates": "blocked", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
+      "owner": "Frontend Implementer; Gemini", "chunk": "CHUNK-18", "status": "Resolved on tested branch",
+      "verification": {"tested_product_commit": "bbc9ef5bc6bb0b8bc2627fb36a8cbace636e6aff", "verification_commit": "85145026c15c1e8fca47706d5fa4d31abc645f7f", "local_gates": "passed", "responsive_chromium": "passed", "live_fastapi_network": "passed", "cleanup": "passed", "pr_ci_merge": "pending", "evidence": "audit/full-regression/implementation-surface/evidence/chunk-18-workspace-recovery.json"},
       "source_refs": ["frontend/src/components/chat/ResultTable.tsx::ResultTable", "frontend/src/components/query/ResultTable.tsx::ResultTable", "frontend/src/components/chat/AssistantResponseCard.tsx", "frontend/src/components/query/ResultTable.test.tsx"]
     },
     {
