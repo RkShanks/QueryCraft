@@ -1,4 +1,4 @@
-import { expect, test, type APIResponse } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { signInLocalUser } from './helpers/auth';
 
 type AdminConnection = {
@@ -20,7 +20,14 @@ type ConnectionSchema = {
 
 const originHeaders = { Origin: 'http://localhost:3000' };
 
-async function expectJsonOk(response: APIResponse) {
+type JsonResponse = {
+  headers(): Record<string, string>;
+  ok(): boolean;
+  status(): number;
+  url(): string;
+};
+
+async function expectJsonOk(response: JsonResponse) {
   const endpoint = new URL(response.url()).pathname;
   expect(
     response.ok(),
