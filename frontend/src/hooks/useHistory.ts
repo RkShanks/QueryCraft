@@ -5,17 +5,27 @@ import { usePermission } from './usePermission';
 
 export interface UseHistoryOptions {
   pageSize?: number;
+  /** Trimmed, server-side search over question text and generated SQL. */
+  search?: string;
+}
+
+export function normalizeHistorySearchTerm(raw: string | undefined | null): string | undefined {
+  const trimmed = raw?.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 export function useHistory(opts: UseHistoryOptions = {}) {
   const canViewHistory = usePermission(PERMISSIONS.QUERY_HISTORY_VIEW);
+  const pageSize = opts.pageSize ?? 20;
+  const search = normalizeHistorySearchTerm(opts.search);
   const query = useInfiniteQuery({
-    queryKey: ['history', opts.pageSize ?? 20],
+    queryKey: ['history', pageSize, search ?? null],
     queryFn: ({ pageParam, signal }) =>
       listHistory(
         {
           cursor: pageParam as string | undefined,
-          page_size: opts.pageSize ?? 20,
+          page_size: pageSize,
+          search,
         },
         signal
       ),

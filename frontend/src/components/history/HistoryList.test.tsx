@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { HistoryList, type HistoryItem } from './HistoryList';
 
 function setup(items: HistoryItem[], extraProps: Partial<React.ComponentProps<typeof HistoryList>> = {}) {
@@ -43,15 +43,17 @@ describe('HistoryList', () => {
     expect(rows[0]).toHaveTextContent('Total customers?');
   });
 
-  it('filters by question text (FR-022 client-side filtering)', () => {
-    vi.useFakeTimers();
-    setup(sample);
+  it('renders a controlled search box without client-side dataset filtering (IS-GAP-032)', () => {
+    const onSearchChange = vi.fn();
+    setup(sample, { search: 'revenue', onSearchChange });
     const filterInput = screen.getByPlaceholderText(/filter/i);
-    fireEvent.change(filterInput, { target: { value: 'revenue' } });
-    act(() => { vi.advanceTimersByTime(300); });
-    expect(screen.queryByText('Total customers?')).not.toBeInTheDocument();
-    expect(screen.getByText('Top revenue')).toBeInTheDocument();
-    vi.useRealTimers();
+    expect(filterInput).toHaveValue('revenue');
+    // Filtering is server-side now: the component shows whatever the page
+    // feeds it and forwards keystrokes upward.
+    fireEvent.change(filterInput, { target: { value: 'needle' } });
+    expect(onSearchChange).toHaveBeenCalledWith('needle');
+    // Unfiltered rows stay visible until the page supplies filtered results.
+    expect(screen.getByText('Total customers?')).toBeInTheDocument();
   });
 
   it('does not render phantom schema column (G-007/O-009)', () => {
@@ -128,43 +130,29 @@ describe('HistoryList', () => {
     expect(container.firstChild).toHaveAttribute('dir', direction);
   });
 
-  it('row is keyboard accessible (tabIndex + Enter/Space)', () => {
+  it('row is a real button with native keyboard activation (IS-GAP-032)', () => {
     const onSelect = vi.fn();
     setup(sample, { onSelect });
     const row = screen.getAllByTestId('history-row')[0];
-    expect(row).toHaveAttribute('tabIndex', '0');
-    fireEvent.keyDown(row, { key: 'Enter' });
+    expect(row.tagName).toBe('BUTTON');
+    expect(row).not.toHaveAttribute('tabindex');
+    fireEvent.click(row);
     expect(onSelect).toHaveBeenCalledWith(sample[0].id);
-    onSelect.mockClear();
-    fireEvent.keyDown(row, { key: ' ' });
-    expect(onSelect).toHaveBeenCalledWith(sample[0].id);
+    // Native button semantics handle Enter/Space; no custom keydown handlers.
   });
 
-  it('uses logical text-start instead of text-left (O-006)', () => {
+  it('renders a semantic list without table imitation (IS-GAP-032)', () => {
     setup(sample);
-    const headers = screen.getAllByRole('columnheader');
-    headers.forEach((th) => {
-      expect(th.className).toContain('text-start');
-      expect(th.className).not.toContain('text-left');
-    });
+    expect(screen.getByRole('list')).toBeInTheDocument();
+    expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
   });
 
-  it('debounces filter input by 300ms (T-247)', () => {
-    vi.useFakeTimers();
-    setup(sample);
+  it('debounce ownership moved upstream: keystrokes propagate immediately (IS-GAP-032)', () => {
+    const onSearchChange = vi.fn();
+    setup(sample, { search: '', onSearchChange });
     const filterInput = screen.getByPlaceholderText(/filter/i);
-
-    // Type "revenue" — filtering should not happen immediately
-    fireEvent.change(filterInput, { target: { value: 'revenue' } });
-    expect(screen.queryByText('Total customers?')).toBeInTheDocument();
-    expect(screen.getByText('Top revenue')).toBeInTheDocument();
-
-    // Advance timers by 300ms — debounce fires
-    act(() => { vi.advanceTimersByTime(300); });
-    expect(screen.queryByText('Total customers?')).not.toBeInTheDocument();
-    expect(screen.getByText('Top revenue')).toBeInTheDocument();
-
-    vi.useRealTimers();
+    fireEvent.change(filterInput, { target: { value: 'n' } });
+    expect(onSearchChange).toHaveBeenCalledWith('n');
   });
 
   it('renders display name and database type badge when metadata is present (T-465)', () => {

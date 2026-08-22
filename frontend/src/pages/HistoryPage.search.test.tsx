@@ -62,6 +62,9 @@ describe('HistoryPage server-side search behavior (IS-GAP-032)', () => {
     expect(searchCalls).toHaveLength(1);
     expect(screen.queryByText('needle on a later page')).not.toBeInTheDocument();
 
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument()
+    );
     fireEvent.click(screen.getByRole('button', { name: /load more/i }));
     await waitFor(() => expect(screen.getByText('needle on a later page')).toBeInTheDocument());
     expect(searchCalls).toHaveLength(1);
@@ -121,6 +124,9 @@ describe('HistoryPage server-side search behavior (IS-GAP-032)', () => {
   it('shows a localized no-match state for searches without results', async () => {
     vi.mocked(historyApi.listHistory).mockResolvedValue({ items: [], total: 0, next_cursor: null });
     renderPage();
+    await waitFor(() =>
+      expect(screen.queryByText(/loading history/i)).not.toBeInTheDocument()
+    );
     fireEvent.change(screen.getByPlaceholderText(/filter/i), { target: { value: 'zzz-no-match' } });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 350));

@@ -52,22 +52,34 @@ describe("HistoryPage (FR-021,FR-022,FR-023,SC-009)", () => {
     await waitFor(() => expect(screen.getByText(/no history yet/i)).toBeInTheDocument());
   });
 
-  it("filter input narrows the visible rows (FR-022)", async () => {
-    vi.mocked(historyApi.listHistory).mockResolvedValueOnce({
-      items: [
-        { id: "1", question_text: "Customer count", generated_sql: "SELECT COUNT(*) FROM customer", accepted_at: "2026-05-11T00:00:00Z" },
-        { id: "2", question_text: "Revenue top", generated_sql: "SELECT ... FROM payment", accepted_at: "2026-05-10T00:00:00Z" },
-      ],
-      total: 2,
-      next_cursor: null,
+  it("sends the debounced filter to the server (IS-GAP-032)", async () => {
+    const calls: Array<{ search?: string }> = [];
+    vi.mocked(historyApi.listHistory).mockImplementation(async (params) => {
+      calls.push({ search: params.search });
+      if (params.search === "revenue") {
+        return {
+          items: [
+            { id: "2", question_text: "Revenue top", generated_sql: "SELECT ... FROM payment", accepted_at: "2026-05-10T00:00:00Z" },
+          ],
+          total: 1,
+          next_cursor: null,
+        };
+      }
+      return {
+        items: [
+          { id: "1", question_text: "Customer count", generated_sql: "SELECT COUNT(*) FROM customer", accepted_at: "2026-05-11T00:00:00Z" },
+        ],
+        total: 1,
+        next_cursor: null,
+      };
     });
     renderPage();
     await waitFor(() => screen.getByText("Customer count"));
     fireEvent.change(screen.getByPlaceholderText(/filter/i), { target: { value: "revenue" } });
     // Debounce delay is 300ms; wait for it with real timers
     await new Promise((resolve) => setTimeout(resolve, 350));
-    expect(screen.queryByText("Customer count")).not.toBeInTheDocument();
-    expect(screen.getByText("Revenue top")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Revenue top")).toBeInTheDocument());
+    expect(calls.some((call) => call.search === "revenue")).toBe(true);
   });
 
   it("wires pagination props to HistoryList (O-016)", async () => {

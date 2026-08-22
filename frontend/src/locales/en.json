@@ -118,6 +118,7 @@
   "history.column.connection": "Connection",
   "history.column.acceptedAt": "Accepted",
   "history.loadMore": "Load more",
+  "history.noMatch": "No results match your search.",
   "history.loadingMore": "Loading more...",
   "error.unauthorized": "Your session has expired or you are not signed in. Please sign in again.",
   "error.network": "Network error. Please check your connection and try again.",
