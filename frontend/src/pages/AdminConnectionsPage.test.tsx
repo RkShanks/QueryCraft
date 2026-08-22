@@ -225,4 +225,38 @@ describe('AdminConnectionsPage', () => {
     expect(tableContainer?.className).toContain('overflow-x-auto');
     expect(tableContainer?.className).not.toContain('overflow-visible');
   });
+
+  it('announces timed toasts and gives dismissal controls localized accessible names', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(useConnections).mockReturnValue(mockPopulatedUseConnections as any);
+    render(<AdminConnectionsPage />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0]);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.connections.form.submit.edit' })
+    );
+    const callbacks = mockMutations.updateMutation.mutate.mock.calls[0][1] as {
+      onSuccess?: () => void;
+      onError?: (error: unknown) => void;
+    };
+    act(() => {
+      callbacks.onSuccess?.();
+      callbacks.onError?.({ message_key: 'error.unknown' });
+    });
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'admin.connections.updateSuccess'
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('error.unknown.message');
+
+    const dismissals = screen.getAllByRole('button', { name: 'common.close' });
+    expect(dismissals).toHaveLength(2);
+
+    act(() => {
+      fireEvent.click(dismissals[0]);
+      fireEvent.click(dismissals[1]);
+    });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });

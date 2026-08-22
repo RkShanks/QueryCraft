@@ -234,12 +234,105 @@ describe('ConnectionActions', () => {
     render(<ConnectionActions connectionId="conn-1" lifecycleState="active" />);
 
     expect(mockDisableReset).not.toHaveBeenCalled();
-    
+
     vi.advanceTimersByTime(5000);
-    
+
     expect(mockDisableReset).toHaveBeenCalledTimes(1);
     expect(mockEnableReset).toHaveBeenCalledTimes(1);
     expect(mockDeleteReset).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
+  });
+});
+
+describe('ConnectionActions delete dialog accessibility (IS-GAP-030)', () => {
+  const mockDisableMutate = vi.fn();
+  const mockEnableMutate = vi.fn();
+  const mockDeleteMutate = vi.fn();
+
+  const defaultMutationState = {
+    mutate: vi.fn(),
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+    data: null,
+    error: null,
+    reset: vi.fn(),
+  };
+
+  const setup = (
+    overrides: Partial<{ deleteIsPending: boolean }> = {}
+  ) => {
+    vi.clearAllMocks();
+    vi.mocked(useConnections).mockReturnValue({
+      disableMutation: { ...defaultMutationState, mutate: mockDisableMutate },
+      enableMutation: { ...defaultMutationState, mutate: mockEnableMutate },
+      deleteMutation: {
+        ...defaultMutationState,
+        mutate: mockDeleteMutate,
+        isPending: overrides.deleteIsPending ?? false,
+      },
+    } as unknown as ReturnType<typeof useConnections>);
+
+    render(<ConnectionActions connectionId="conn-1" lifecycleState="active" />);
+    fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
+    return screen.getByRole('dialog');
+  };
+
+  it('renders a modal dialog labelled by its title and described by the warning', () => {
+    const dialog = setup();
+
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName(/Delete/i);
+    expect(dialog).toHaveAccessibleDescription(/Are you sure you want to delete this connection/i);
+  });
+
+  it('moves focus into the dialog on open, starting at the least destructive control', () => {
+    setup();
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Cancel/i }));
+  });
+
+  it('Escape cancels the dialog without mutating', () => {
+    setup();
+
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(mockDeleteMutate).not.toHaveBeenCalled();
+  });
+
+  it('restores focus to the Delete trigger after closing', () => {
+    setup();
+
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Delete/i }));
+  });
+
+  it('keeps Tab cycling inside the dialog', () => {
+    setup();
+
+    const cancel = screen.getByRole('button', { name: /Cancel/i });
+    const confirm = screen.getByTestId('confirm-delete-btn');
+    confirm.focus();
+
+    fireEvent.keyDown(confirm, { key: 'Tab' });
+    expect(document.activeElement).toBe(cancel);
+
+    fireEvent.keyDown(cancel, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(confirm);
+  });
+
+  it('holds a destructive pending state open with controls disabled and Escape ignored', () => {
+    setup({ deleteIsPending: true });
+
+    const confirm = screen.getByTestId('confirm-delete-btn');
+    const cancel = screen.getByRole('button', { name: /Cancel/i });
+    expect(confirm).toBeDisabled();
+    expect(cancel).toBeDisabled();
+
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(mockDeleteMutate).not.toHaveBeenCalledTimes(2);
   });
 });

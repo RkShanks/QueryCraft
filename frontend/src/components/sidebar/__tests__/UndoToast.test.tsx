@@ -118,3 +118,96 @@ describe('UndoToast', () => {
     expect(mockMutate).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('UndoToast timed-status behavior (IS-GAP-030)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSessionDeletionLifecycle();
+    (useDeleteSession as ReturnType<typeof vi.fn>).mockReturnValue({
+      mutate: mockMutate,
+    });
+    mockMutate.mockClear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('exposes a polite live region announcing the pending deletion', () => {
+    setup();
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('Delete session?');
+    expect(status).toContainElement(screen.getByText('Undo'));
+  });
+
+  it('pauses the destructive countdown while hovered and resumes from the remainder', () => {
+    const onUndo = vi.fn();
+    render(
+      <UndoToast
+        item={{ id: 'toast-1', sessionId: 'sess-123', message: 'Delete session?' }}
+        onUndo={onUndo}
+        onDeleteStarted={vi.fn(() => true)}
+        onDeleteFailed={vi.fn()}
+        onExpired={vi.fn()}
+      />
+    );
+    const toast = screen.getByTestId('undo-toast-toast-1');
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    fireEvent.mouseEnter(toast);
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+    expect(mockMutate).not.toHaveBeenCalled();
+
+    fireEvent.mouseLeave(toast);
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    expect(mockMutate).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('pauses while keyboard focus is inside and resumes on blur', () => {
+    setup();
+    const toast = screen.getByTestId('undo-toast-toast-1');
+    const undoButton = screen.getByText('Undo');
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    undoButton.focus();
+    fireEvent.focus(toast);
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+    expect(mockMutate).not.toHaveBeenCalled();
+
+    fireEvent.blur(toast);
+    act(() => {
+      vi.advanceTimersByTime(2100);
+    });
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('cleans up all timers on unmount so DELETE never fires', () => {
+    const { unmount } = setup();
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    unmount();
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+});
