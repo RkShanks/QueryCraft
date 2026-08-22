@@ -2,6 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DatabaseSelector, type UserConnection } from './DatabaseSelector';
 
+const AFTER_SELECTOR_LABEL = 'after selector';
+const OTHER_CONTROL_LABEL = 'other';
+
 const connections: UserConnection[] = [
   { id: 'conn-1', display_name: 'Analytics MySQL', database_type: 'mysql' },
   { id: 'conn-2', display_name: 'Production PG', database_type: 'postgresql' },
@@ -119,7 +122,7 @@ describe('DatabaseSelector keyboard model (IS-GAP-029)', () => {
     render(
       <div>
         <DatabaseSelector connections={connections} selectedId="conn-1" onSelect={vi.fn()} />
-        <button type="button">after selector</button>
+        <button type="button">{AFTER_SELECTOR_LABEL}</button>
       </div>
     );
     openListbox();
@@ -188,7 +191,7 @@ describe('DatabaseSelector keyboard model (IS-GAP-029)', () => {
     const { rerender } = render(
       <div>
         <DatabaseSelector connections={[connections[0]]} selectedId={null} onSelect={onSelect} />
-        <button type="button" data-testid="other">other</button>
+        <button type="button" data-testid="other">{OTHER_CONTROL_LABEL}</button>
       </div>
     );
     const other = screen.getByTestId('other');
@@ -198,7 +201,7 @@ describe('DatabaseSelector keyboard model (IS-GAP-029)', () => {
     rerender(
       <div>
         <DatabaseSelector connections={[{ ...connections[0] }]} selectedId={null} onSelect={onSelect} />
-        <button type="button" data-testid="other">other</button>
+        <button type="button" data-testid="other">{OTHER_CONTROL_LABEL}</button>
       </div>
     );
 

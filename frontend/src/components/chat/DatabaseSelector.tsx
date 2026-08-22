@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useId, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Database, ChevronDown } from 'lucide-react';
 import './DatabaseSelector.css';
@@ -24,7 +24,7 @@ export const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [requestedFocusedId, setRequestedFocusedId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -34,6 +34,17 @@ export const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
 
   const locale = i18n.language || 'en';
   const selected = connections.find((c) => c.id === selectedId);
+
+  // The active option is derived so connection-list changes never leave stale
+  // focus or selection state behind while the popup is open.
+  const activeId = useMemo(() => {
+    if (requestedFocusedId && connections.some((c) => c.id === requestedFocusedId)) {
+      return requestedFocusedId;
+    }
+    return (
+      connections.find((c) => c.id === selectedId)?.id ?? connections[0]?.id ?? null
+    );
+  }, [requestedFocusedId, connections, selectedId]);
 
   // Auto-select single connection without stealing focus or duplicating callbacks.
   useEffect(() => {
@@ -49,28 +60,17 @@ export const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
     element?.focus();
   }, []);
 
-  // Move DOM focus whenever the active option changes while open.
+  // Keep DOM focus on the derived active option whenever it changes while open.
   useEffect(() => {
-    if (open) focusOption(focusedId);
-  }, [open, focusedId, focusOption]);
+    if (open) focusOption(activeId);
+  }, [open, activeId, focusOption]);
 
   const openListbox = useCallback(() => {
-    const target =
-      connections.find((c) => c.id === selectedId)?.id ?? connections[0]?.id ?? null;
-    setFocusedId(target);
+    setRequestedFocusedId(
+      connections.find((c) => c.id === selectedId)?.id ?? connections[0]?.id ?? null
+    );
     setOpen(true);
   }, [connections, selectedId]);
-
-  // Keep active focus coherent when the connection list changes while open.
-  useEffect(() => {
-    if (!open) return;
-    setFocusedId((current) => {
-      if (current && connections.some((c) => c.id === current)) return current;
-      return (
-        connections.find((c) => c.id === selectedId)?.id ?? connections[0]?.id ?? null
-      );
-    });
-  }, [open, connections, selectedId]);
 
   // Close on outside click.
   useEffect(() => {
@@ -103,7 +103,7 @@ export const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
     (nextIndex: number) => {
       if (connections.length === 0) return;
       const clamped = Math.min(Math.max(nextIndex, 0), connections.length - 1);
-      setFocusedId(connections[clamped].id);
+      setRequestedFocusedId(connections[clamped].id);
     },
     [connections]
   );
@@ -120,7 +120,7 @@ export const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
 
       const query = buffer.toLocaleLowerCase(locale);
       const currentIndex = Math.max(
-        connections.findIndex((c) => c.id === focusedId),
+        connections.findIndex((c) => c.id === activeId),
         -1
       );
       const queries = query === key.toLocaleLowerCase(locale)
@@ -132,18 +132,18 @@ export const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
           if (
             connections[index].display_name.toLocaleLowerCase(locale).startsWith(candidate)
           ) {
-            setFocusedId(connections[index].id);
+            setRequestedFocusedId(connections[index].id);
             return;
           }
         }
       }
     },
-    [connections, focusedId, locale]
+    [connections, activeId, locale]
   );
 
   const handleListKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLUListElement>) => {
-      const currentIndex = connections.findIndex((c) => c.id === focusedId);
+      const currentIndex = connections.findIndex((c) => c.id === activeId);
       switch (event.key) {
         case 'ArrowDown':
           event.preventDefault();
@@ -164,7 +164,7 @@ export const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
         case 'Enter':
         case ' ':
           event.preventDefault();
-          if (focusedId) handleSelect(focusedId);
+          if (activeId) handleSelect(activeId);
           break;
         case 'Escape':
           event.preventDefault();
@@ -182,7 +182,7 @@ export const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
     },
     [
       connections,
-      focusedId,
+      activeId,
       moveActive,
       handleSelect,
       closeListbox,
@@ -265,7 +265,7 @@ export const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
               aria-selected={conn.id === selectedId}
               className={`database-selector-item ${
                 conn.id === selectedId ? 'database-selector-item-active' : ''
-              } ${conn.id === focusedId ? 'database-selector-item-focused' : ''}`}
+              } ${conn.id === activeId ? 'database-selector-item-focused' : ''}`}
               onClick={() => handleSelect(conn.id)}
               data-testid={`database-selector-option-${conn.id}`}
             >
