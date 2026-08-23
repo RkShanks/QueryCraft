@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAdminSettings, updateAdminSettings } from '../api/generated/sdk.gen';
 import type { UpdateAdminSettingsData } from '../api/generated/types.gen';
+import { withRequestDeadline } from '../api/requestScope';
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from './usePermission';
 
@@ -8,8 +9,11 @@ export const useAdminSettings = () => {
   const canManageConnections = usePermission(PERMISSIONS.ADMIN_CONNECTIONS_MANAGE);
   return useQuery({
     queryKey: ['adminSettings'],
-    queryFn: () =>
-      getAdminSettings({ throwOnError: true }).then((res) => res.data),
+    queryFn: ({ signal }) =>
+      withRequestDeadline(
+        (requestSignal) => getAdminSettings({ throwOnError: true, signal: requestSignal }),
+        { signal },
+      ).then((res) => res.data),
     enabled: canManageConnections,
   });
 };

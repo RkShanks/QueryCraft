@@ -19,10 +19,22 @@ const querycraftTheme = {
   ],
 };
 
-const highlighterPromise = createHighlighter({
-  themes: [querycraftTheme],
-  langs: ['sql'],
-});
+// One shared construction attempt; a rejection is remembered so no mount can
+// turn it into an unhandled rejection.
+let highlighterReady: Promise<Awaited<ReturnType<typeof createHighlighter>>> | null = null;
+
+function getHighlighter() {
+  if (!highlighterReady) {
+    highlighterReady = createHighlighter({
+      themes: [querycraftTheme],
+      langs: ['sql'],
+    });
+    highlighterReady.catch(() => {
+      // Handled per-mount below; this guard only prevents global rejections.
+    });
+  }
+  return highlighterReady;
+}
 
 interface ShikiHighlighterProps {
   code: string;
@@ -30,21 +42,33 @@ interface ShikiHighlighterProps {
 
 export function ShikiHighlighter({ code }: ShikiHighlighterProps) {
   const [html, setHtml] = useState('');
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    highlighterPromise.then((highlighter) => {
-      if (cancelled) return;
-      const h = highlighter.codeToHtml(code, {
-        lang: 'sql',
-        theme: 'querycraft',
+    getHighlighter()
+      .then((highlighter) => {
+        if (cancelled) return;
+        setHtml(highlighter.codeToHtml(code, { lang: 'sql', theme: 'querycraft' }));
+      })
+      .catch(() => {
+        // Local recovery: readable plain text instead of an empty island.
+        if (!cancelled) setFailed(true);
       });
-      setHtml(h);
-    });
     return () => {
       cancelled = true;
     };
   }, [code]);
+
+  if (failed) {
+    return (
+      <div className="shiki-fallback" data-testid="shiki-fallback" dir="ltr">
+        <pre className="bg-obsidian-950 p-4 rounded-xl border border-obsidian-800 overflow-x-auto text-obsidian-200">
+          <code className="text-xs font-mono leading-relaxed font-light" dir="ltr">{code}</code>
+        </pre>
+      </div>
+    );
+  }
 
   return (
     <div

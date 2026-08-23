@@ -5,6 +5,7 @@ import type {
   ConnectionSchemaResponse,
   ConnectionSchemaTable,
 } from '../api/generated/types.gen';
+import { withRequestDeadline } from '../api/requestScope';
 import { PERMISSIONS } from '../auth/permissions';
 import { useAnyPermission } from './usePermission';
 
@@ -19,13 +20,17 @@ export const useConnectionSchema = (connectionId: string | null) => {
   ]);
   return useQuery<ConnectionSchema>({
     queryKey: ['connectionSchema', connectionId],
-    queryFn: async () => {
+    queryFn: ({ signal }) => {
       if (!connectionId) throw new Error('Connection ID is required');
-      const response = await getAdminConnectionSchema({
-        path: { connection_id: connectionId },
-        throwOnError: true,
-      });
-      return response.data;
+      return withRequestDeadline(
+        (requestSignal) =>
+          getAdminConnectionSchema({
+            path: { connection_id: connectionId },
+            throwOnError: true,
+            signal: requestSignal,
+          }).then((response) => response.data),
+        { signal },
+      );
     },
     enabled: !!connectionId && canViewSchema,
   });

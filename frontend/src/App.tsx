@@ -22,6 +22,7 @@ import { AppShell } from './components/shell/AppShell';
 import { sessionAwareSignInPath } from './auth/sessionExpiry';
 
 import { PermissionGuard } from './components/auth/PermissionGuard';
+import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 import { applyDocumentLanguage, normalizeAppLanguage } from './i18n/locale';
 import {
   firstPermittedRoute,
@@ -77,13 +78,18 @@ function RootRedirect() {
 function ProtectedLayout({
   children,
   permission,
+  locationKey,
 }: {
   children: React.ReactNode;
   permission: Permission;
+  locationKey?: string;
 }) {
   return (
     <PermissionGuard permission={permission}>
-      <AppShell>{children}</AppShell>
+      <AppShell>
+        {/* Keyed by the route entry so deliberate navigation replaces a failed boundary. */}
+        <RouteErrorBoundary key={locationKey}>{children}</RouteErrorBoundary>
+      </AppShell>
     </PermissionGuard>
   );
 }
@@ -99,7 +105,7 @@ function ApplicationRoutes() {
               key={path}
               path={path}
               element={
-                <ProtectedLayout permission={permission}>
+                <ProtectedLayout permission={permission} locationKey={location.key}>
                   {protectedPageByPath[path]}
                 </ProtectedLayout>
               }

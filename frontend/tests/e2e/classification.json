@@ -135,6 +135,14 @@
     "tests/e2e/chunk_20_live_history.spec.ts": {
       "category": "live",
       "reason": "Validates server-side paginated history search, cursor binding and selection reconciliation through the running real API with disposable seeded records."
+    },
+    "tests/e2e/chunk_21_browser_async.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic navigation-abort, export-cancel, clipboard-denial, Shiki-rejection and route-recovery states."
+    },
+    "tests/e2e/chunk_21_live_async.spec.ts": {
+      "category": "live",
+      "reason": "Validates real-API session redirect, reload/back-forward coherence and late-settlement suppression through the running backend without browser mocks."
     }
   },
   "mockHelpers": [
@@ -173,6 +181,12 @@
       "title": "CHUNK-20 disposable live credentials are required.",
       "reason": "The live paginated history search requires explicitly provisioned disposable records in an isolated FastAPI runtime.",
       "supersededBy": "The same spec runs in CHUNK-20 evidence with disposable runtime credentials."
+    },
+    {
+      "spec": "tests/e2e/chunk_21_live_async.spec.ts",
+      "title": "CHUNK-21 disposable live credentials are required.",
+      "reason": "The live async boundary requires an isolated running FastAPI stack with disposable credentials.",
+      "supersededBy": "The same spec runs in CHUNK-21 evidence against the disposable Compose stack."
     }
   ]
 }

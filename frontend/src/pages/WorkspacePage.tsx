@@ -29,6 +29,7 @@ import { EvaluatorRejectionBanner } from '../components/query/EvaluatorRejection
 import { QuotaExceededBanner } from '../components/query/QuotaExceededBanner';
 import { HostileInputBlockedBanner } from '../components/query/HostileInputBlockedBanner';
 import { isClientContractError } from '../api/responseValidation';
+import { isRequestAbortedError } from '../api/requestScope';
 import './WorkspacePage.css';
 
 type TurnRecoveryKind =
@@ -274,6 +275,14 @@ export const WorkspacePage: React.FC = () => {
     description: string;
     variant: 'default' | 'destructive' | 'success';
   } | null>(null);
+  const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      // Navigation/unmount cleanup: no alert timer may fire after the route dies.
+      if (alertTimerRef.current !== null) clearTimeout(alertTimerRef.current);
+    };
+  }, []);
 
   const showAlert = useCallback((
     title: string,
@@ -281,8 +290,10 @@ export const WorkspacePage: React.FC = () => {
     variant: 'default' | 'destructive' | 'success' = 'default'
   ) => {
     const id = Math.random().toString(36).substring(2, 9);
+    if (alertTimerRef.current !== null) clearTimeout(alertTimerRef.current);
     setAlert({ id, title, description, variant });
-    setTimeout(() => {
+    alertTimerRef.current = setTimeout(() => {
+      alertTimerRef.current = null;
       setAlert((prev) => (prev?.id === id ? null : prev));
     }, 5000);
   }, []);
@@ -830,7 +841,7 @@ export const WorkspacePage: React.FC = () => {
           setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, isLoading: false } : t)));
         }
       } catch (err: unknown) {
-        if (isSessionDeletionError(err)) {
+        if (isSessionDeletionError(err) || isRequestAbortedError(err)) {
           setLocalTurns((prev) => prev.filter((turn) => turn.id !== turnId));
           return;
         }

@@ -63,9 +63,9 @@
       "Needs Decision": 1
     },
     "status": {
-      "Pending": 14,
-      "Resolved": 27,
-      "Resolved on tested branch": 3,
+      "Pending": 9,
+      "Resolved": 35,
+      "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 3
     }
@@ -331,11 +331,29 @@
         "IS-GAP-032",
         "IS-GAP-038"
       ],
-      "status": "Resolved on tested branch",
+      "status": "Resolved and merged",
       "branch": "phase-6/wave-19.20-history-locale",
       "starting_main": "841905cd182140b60ee1594a07baa9bbdc7012b6",
       "pull_request": "https://github.com/RkShanks/QueryCraft/pull/318",
-      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-20-history-locale.json"
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-20-history-locale.json",
+      "merge_commit": "48f775834a9c2c1fa3f4c2ea95132c1ff287d119",
+      "authoritative_ci": {
+        "head_commit": "21a2fcacc92edd3d37104e406068bb3b1cbf1b40",
+        "backend_test": "passed",
+        "frontend_test": "passed"
+      }
+    },
+    "CHUNK-21": {
+      "gap_ids": [
+        "IS-GAP-043",
+        "IS-GAP-037",
+        "IS-GAP-031"
+      ],
+      "status": "Resolved on tested branch",
+      "branch": "phase-6/wave-19.21-browser-async",
+      "starting_main": "48f775834a9c2c1fa3f4c2ea95132c1ff287d119",
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/319",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-21-browser-async.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -1847,11 +1865,12 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-19",
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
       "source_refs": [
         "frontend/src/components/chat/DatabaseSelector.tsx::DatabaseSelector",
         "frontend/src/components/chat/DatabaseSelector.test.tsx"
-      ]
+      ],
+      "resolution": "Resolved at product commit 21a2fcacc92edd3d37104e406068bb3b1cbf1b40 via https://github.com/RkShanks/QueryCraft/pull/317; authoritative CI passed and the squash merge completed as 841905cd182140b60ee1594a07baa9bbdc7012b6."
     },
     {
       "id": "IS-GAP-030",
@@ -1900,14 +1919,15 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-19",
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
       "source_refs": [
         "frontend/src/components/sidebar/SessionItem.tsx::SessionItem",
         "frontend/src/components/sidebar/UndoToast.tsx::UndoToast",
         "frontend/src/components/admin/ConnectionActions.tsx::ConnectionActions",
         "frontend/src/pages/AdminRolesPage.tsx::toasts",
         "frontend/src/pages/AdminAuditPage.tsx::toasts"
-      ]
+      ],
+      "resolution": "Resolved at product commit 21a2fcacc92edd3d37104e406068bb3b1cbf1b40 via https://github.com/RkShanks/QueryCraft/pull/317; authoritative CI passed and the squash merge completed as 841905cd182140b60ee1594a07baa9bbdc7012b6."
     },
     {
       "id": "IS-GAP-031",
@@ -1944,13 +1964,14 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-21",
-      "status": "Pending",
+      "status": "Resolved",
       "source_refs": [
         "frontend/src/components/chat/CodeBlockActionBar.tsx::handleCopy",
         "frontend/src/components/history/HistoryDetail.tsx::handleCopy",
         "frontend/src/components/chat/SqlCodeBlock.tsx::ShikiHighlighter",
         "frontend/src/App.tsx::Routes"
-      ]
+      ],
+      "resolution": "Resolved at product commits 8eb812d44200cc991c5f818d2976b8f926305e08 and b749260cefd2faa812d1b6d61dacb5fbafa773f3 in https://github.com/RkShanks/QueryCraft/pull/319. One bounded useCopyToClipboard contract shared by CodeBlockActionBar and HistoryDetail handles unavailable API, denied and rejected writes with localized announced states, safe retry and exactly-once timer cleanup without logging values or raw errors. SqlCodeBlock catches rejected lazy Shiki chunks locally keeping readable plain-text LTR SQL with a polite localized notice; ShikiHighlighter contains its own construction failure without unhandled rejections."
     },
     {
       "id": "IS-GAP-032",
@@ -1997,7 +2018,7 @@
         "frontend/src/components/history/HistoryList.tsx::HistoryList",
         "frontend/src/components/history/HistoryList.test.tsx"
       ],
-      "resolution": "Resolved at product commit caa2547b3cd55481eede4a1773c9c8c19a5d00bc via https://github.com/RkShanks/QueryCraft/pull/318; authoritative CI passed and the squash merge completed. GET /api/v1/history gained a trimmed bounded literal-substring search with hash-bound opaque cursors and filtered totals; the frontend searches server-side with filter-bound query keys, derived selection reconciliation, panel-scoped errors and a semantic list of independent aria-pressed buttons."
+      "resolution": "Resolved and merged as 48f775834a9c2c1fa3f4c2ea95132c1ff287d119 via https://github.com/RkShanks/QueryCraft/pull/318; authoritative CI passed and the squash merge completed. GET /api/v1/history gained a trimmed bounded literal-substring search with hash-bound opaque cursors and filtered totals; the frontend searches server-side with filter-bound query keys, derived selection reconciliation, panel-scoped errors and a semantic list of independent aria-pressed buttons."
     },
     {
       "id": "IS-GAP-033",
@@ -2297,14 +2318,15 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-21",
-      "status": "Pending",
+      "status": "Resolved",
       "source_refs": [
         "frontend/src/App.tsx::App",
         "frontend/src/App.tsx::RootRedirect",
         "frontend/src/pages/WorkspacePage.tsx::WorkspacePage",
         "frontend/src/components/chat/SqlCodeBlock.tsx::ShikiHighlighter",
         "frontend/tests/e2e"
-      ]
+      ],
+      "resolution": "Resolved at product commit e796ff7b2ed476fd008948a21938d98e8d981060 in https://github.com/RkShanks/QueryCraft/pull/319. A localized sanitized RouteErrorBoundary wraps every protected route inside the authenticated shell, keyed by location entry so retry or navigation replaces a failed boundary; Retry re-renders in place and safe navigation is permission-aware via firstPermittedRoute; raw stack/error text never reaches browser channels. Workspace alerts and audit toast timers are cleared on navigation/unmount exactly once."
     },
     {
       "id": "IS-GAP-038",
@@ -2348,7 +2370,7 @@
         "frontend/src/components/history/HistoryList.tsx::HistoryList",
         "frontend/src/pages/AdminAuditPage.tsx::AdminAuditPage"
       ],
-      "resolution": "Resolved at product commit caa2547b3cd55481eede4a1773c9c8c19a5d00bc via https://github.com/RkShanks/QueryCraft/pull/318; authoritative CI passed and the squash merge completed. One normalization helper locks en/ar variant resolution, precedence (?lng= → persisted → navigator → html lang → en), authoritative manual changes with stale-param rewrite and central lang/dir sync; an accessible EN/Arabic toggle ships in both shells and all date/number rendering routes through active-locale formatters."
+      "resolution": "Resolved and merged as 48f775834a9c2c1fa3f4c2ea95132c1ff287d119 via https://github.com/RkShanks/QueryCraft/pull/318; authoritative CI passed and the squash merge completed. One normalization helper locks en/ar variant resolution, precedence (?lng= \u2192 persisted \u2192 navigator \u2192 html lang \u2192 en), authoritative manual changes with stale-param rewrite and central lang/dir sync; an accessible EN/Arabic toggle ships in both shells and all date/number rendering routes through active-locale formatters."
     },
     {
       "id": "IS-GAP-039",
@@ -2406,7 +2428,7 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-19",
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
       "source_refs": [
         "frontend/src/components/admin/ConnectionForm.tsx::handleValidation",
         "frontend/src/components/admin/ConnectionForm.tsx::handleSubmit",
@@ -2415,7 +2437,8 @@
         "frontend/src/pages/AdminQuotasPage.tsx::saveQuota",
         "frontend/src/pages/AdminDetectionPage.tsx::handleSave",
         "frontend/src/pages/SettingsPage.tsx::SettingsPage"
-      ]
+      ],
+      "resolution": "Resolved at product commit 21a2fcacc92edd3d37104e406068bb3b1cbf1b40 via https://github.com/RkShanks/QueryCraft/pull/317; authoritative CI passed and the squash merge completed as 841905cd182140b60ee1594a07baa9bbdc7012b6."
     },
     {
       "id": "IS-GAP-040",
@@ -2609,7 +2632,7 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-21",
-      "status": "Pending",
+      "status": "Resolved",
       "source_refs": [
         "frontend/src/api/generated/client/client.gen.ts",
         "frontend/src/api/audit.ts::searchAuditEntries",
@@ -2617,7 +2640,8 @@
         "frontend/src/hooks/useQuerySubmit.ts::submittingRef",
         "frontend/src/pages/WorkspacePage.tsx::WorkspacePage",
         "frontend/src/pages/AdminAuditPage.tsx::handleExport"
-      ]
+      ],
+      "resolution": "Resolved at product commit b2d14e3e026b9c38971c358eb005c361f7ffbd79 in https://github.com/RkShanks/QueryCraft/pull/319, starting from synchronized main 48f775834a9c2c1fa3f4c2ea95132c1ff287d119. One request-scope utility now gives submit/accept/reject/regenerate owned controllers whose signals reach the generated SDK; unmount, route/session/user replacement and CHUNK-03 deletion abort in-flight requests while late settlement is suppressed without error/toast/stale state; query operations keep CHUNK-04's authoritative backend deadline with no client deadline; ordinary reads share one documented bounded deadline through the four previously signal-dropping queries; audit export gains a longer documented deadline, explicit Cancel, zero pre-Blob resources and exactly-once cleanup. Wire-level, component and mocked/live Chromium proof recorded in evidence."
     },
     {
       "id": "IS-GAP-044",

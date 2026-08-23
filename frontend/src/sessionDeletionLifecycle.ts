@@ -1,5 +1,6 @@
 const deletionVersions = new Map<string, number>();
 const unavailableSessions = new Set<string>();
+const deletionListeners = new Set<(sessionId: string) => void>();
 
 export class SessionDeletionError extends Error {
   constructor() {
@@ -8,10 +9,24 @@ export class SessionDeletionError extends Error {
   }
 }
 
+export type SessionDeletionListener = (sessionId: string) => void;
+
+export function subscribeToSessionDeletion(listener: SessionDeletionListener): () => void {
+  deletionListeners.add(listener);
+  return () => {
+    deletionListeners.delete(listener);
+  };
+}
+
 export function beginSessionDeletion(sessionId: string): void {
-  if (unavailableSessions.has(sessionId)) return;
+  if (unavailableSessions.has(sessionId)) {
+    return;
+  }
   deletionVersions.set(sessionId, (deletionVersions.get(sessionId) ?? 0) + 1);
   unavailableSessions.add(sessionId);
+  for (const listener of [...deletionListeners]) {
+    listener(sessionId);
+  }
 }
 
 export function rollbackSessionDeletion(sessionId: string): void {
@@ -37,4 +52,5 @@ export function isSessionDeletionError(error: unknown): error is SessionDeletion
 export function resetSessionDeletionLifecycle(): void {
   deletionVersions.clear();
   unavailableSessions.clear();
+  deletionListeners.clear();
 }

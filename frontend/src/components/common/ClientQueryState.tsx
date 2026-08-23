@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { isClientContractError } from '../../api/responseValidation';
+import { isClientDeadlineError } from '../../api/requestScope';
 
 interface QueryStateSource {
   data?: unknown;
@@ -30,15 +31,18 @@ export function ClientQueryState({
 
   if (query.isError) {
     const isContractError = isClientContractError(query.error);
+    const isDeadline = isClientDeadlineError(query.error);
     const messageKey = isContractError
       ? hasData
         ? 'clientContract.invalidRefresh'
         : 'clientContract.invalidInitial'
-      : hasData
-        ? 'clientContract.refreshError'
-        : fallbackErrorKey;
+      : isDeadline
+        ? 'clientContract.requestTimeout'
+        : hasData
+          ? 'clientContract.refreshError'
+          : fallbackErrorKey;
     const message =
-      !isContractError && !hasData && getOrdinaryErrorMessage
+      !isContractError && !isDeadline && !hasData && getOrdinaryErrorMessage
         ? getOrdinaryErrorMessage(query.error)
         : t(messageKey);
 
