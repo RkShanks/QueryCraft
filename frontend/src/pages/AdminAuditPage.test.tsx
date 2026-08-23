@@ -685,7 +685,7 @@ describe('AdminAuditPage', () => {
       setAttributeSpy.mockRestore();
     });
 
-    it('uses current form values for export even before Search is submitted', async () => {
+    it('excludes unsent form values from export until Search applies them', async () => {
       let exportBody: unknown = null;
       server.use(
         http.post('/api/v1/admin/audit/export', async ({ request }) => {
@@ -710,7 +710,6 @@ describe('AdminAuditPage', () => {
       await waitFor(() => {
         expect(exportBody).toEqual({
           format: 'csv',
-          actor_identity: 'draft-filter@example.com',
         });
       });
 
