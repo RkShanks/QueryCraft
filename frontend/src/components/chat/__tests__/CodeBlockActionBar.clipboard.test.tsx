@@ -55,8 +55,10 @@ describe('CodeBlockActionBar copy contract (CHUNK-21 / IS-GAP-031)', () => {
     render(<CodeBlockActionBar sql="SELECT 1;" />);
 
     const button = screen.getByTestId('action-copy');
+    button.focus();
     fireEvent.click(button);
     await waitFor(() => expect(mockWriteText).toHaveBeenCalled());
+    // The status swap must not replace the control or steal focus.
     expect(document.activeElement).toBe(button);
   });
 

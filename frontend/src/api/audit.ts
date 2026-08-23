@@ -27,11 +27,15 @@ export async function searchAuditEntries(
   return response.data;
 }
 
-export async function exportAuditEntries(request: AuditExportRequest): Promise<Blob> {
+export async function exportAuditEntries(
+  request: AuditExportRequest,
+  signal?: AbortSignal
+): Promise<Blob> {
   const response = await exportCanonicalAuditEntries({
     body: request,
     throwOnError: true,
     parseAs: 'blob',
+    signal,
   });
   return response.data;
 }

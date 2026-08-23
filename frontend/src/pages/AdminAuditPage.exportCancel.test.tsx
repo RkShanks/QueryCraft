@@ -4,6 +4,7 @@ import { AdminAuditPage } from './AdminAuditPage';
 import { createWrapper } from '../test/utils';
 import { server } from '../test/server';
 import { http, HttpResponse } from 'msw';
+import { RequestDeadlineError } from '../api/requestScope';
 
 type ExportFn = typeof import('../api/audit').exportAuditEntries;
 const exportOverride: { impl?: ExportFn } = {};
@@ -167,7 +168,7 @@ describe('AdminAuditPage export cancellation (CHUNK-21 / IS-GAP-043)', () => {
     exportOverride.impl = async () => {
       exportOverrideCalls += 1;
       await new Promise((r) => setTimeout(r, 10));
-      throw new RequestDeadlineErrorForTest();
+      throw new RequestDeadlineError();
     };
 
     render(<AdminAuditPage />, { wrapper: createWrapper() });
@@ -185,10 +186,3 @@ describe('AdminAuditPage export cancellation (CHUNK-21 / IS-GAP-043)', () => {
 });
 
 let exportOverrideCalls = 0;
-
-class RequestDeadlineErrorForTest extends Error {
-  constructor() {
-    super('request_deadline_exceeded');
-    this.name = 'RequestDeadlineError';
-  }
-}

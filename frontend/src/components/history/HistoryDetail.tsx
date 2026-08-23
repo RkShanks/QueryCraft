@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ResultTable } from '../chat/ResultTable';
 import type { AcceptedQueryDetail, QueryResult } from '../../api/generated/types.gen';
-import { Copy, Check, Sparkles, Database, Calendar, Terminal } from 'lucide-react';
+import { Copy, Check, XCircle, Sparkles, Database, Calendar, Terminal } from 'lucide-react';
 import { formatDateTime } from '../../i18n/format';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
 export interface HistoryDetailProps {
   item: AcceptedQueryDetail | null;
@@ -15,7 +16,7 @@ export interface HistoryDetailProps {
 export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, error }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [copied, setCopied] = useState(false);
+  const { status: copyStatus, copy } = useCopyToClipboard();
 
   const getDatabaseTypeLabel = (databaseType?: string | null) => {
     if (!databaseType) return null;
@@ -24,15 +25,9 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
     return translated === key ? databaseType : translated;
   };
 
-  const handleCopy = async () => {
+  const handleCopy = () => {
     if (!item?.generated_sql) return;
-    try {
-      await navigator.clipboard.writeText(item.generated_sql);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
+    void copy(item.generated_sql);
   };
 
   const handleLoadInWorkspace = () => {
@@ -135,12 +130,25 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
           <button
             type="button"
             onClick={handleCopy}
+            data-copy-status={copyStatus}
+            aria-label={
+              copyStatus === 'copied'
+                ? t('common.copied')
+                : copyStatus === 'failed'
+                  ? t('common.copyFailed')
+                  : t('history.detail.copySql')
+            }
             className="flex items-center gap-1 text-[11px] font-semibold text-text-muted hover:text-neon-cyan transition-colors px-2 py-1 bg-obsidian-950 border border-obsidian-800 rounded-lg cursor-pointer"
           >
-            {copied ? (
+            {copyStatus === 'copied' ? (
               <>
                 <Check className="w-3 h-3 text-green-400" />
                 <span className="text-green-400">{t('common.copied')}</span>
+              </>
+            ) : copyStatus === 'failed' ? (
+              <>
+                <XCircle className="w-3 h-3 text-red-400" />
+                <span className="text-red-400">{t('common.copyFailed')}</span>
               </>
             ) : (
               <>
@@ -149,6 +157,13 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
               </>
             )}
           </button>
+          <span role="status" className="sr-only">
+            {copyStatus === 'copied'
+              ? t('common.copied')
+              : copyStatus === 'failed'
+                ? t('common.copyFailed')
+                : ''}
+          </span>
         </div>
         <pre
           className="mt-1 bg-obsidian-950 p-4 rounded-xl border border-obsidian-800 overflow-x-auto text-obsidian-200 shadow-inner max-h-[300px]"

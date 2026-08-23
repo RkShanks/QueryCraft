@@ -44,3 +44,13 @@
   color: var(--color-neon-cyan);
   white-space: nowrap;
 }
+
+.action-btn-failed {
+  color: #f87171;
+}
+
+.copy-status-failed {
+  font-size: 0.7rem;
+  color: #f87171;
+  white-space: nowrap;
+}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminAudit } from '../hooks/useAdminAudit';
 import { Shield, CheckCircle2, XCircle, AlertTriangle, X, RefreshCw, Download } from 'lucide-react';
@@ -10,6 +10,12 @@ import {
   type AuditExportRequest,
   type AuditSearchResponse,
 } from '../api/audit';
+import {
+  AUDIT_EXPORT_TIMEOUT_MS,
+  RequestScope,
+  isAbortFailure,
+  isClientDeadlineError,
+} from '../api/requestScope';
 import { PERMISSIONS } from '../auth/permissions';
 import { requirePermission, usePermission } from '../hooks/usePermission';
 import { ClientQueryState } from '../components/common/ClientQueryState';
@@ -34,13 +40,35 @@ const RESPONSIVE_AUDIT_CELL_CLASS =
 export const AdminAuditPage: React.FC = () => {
   const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const exportScopeRef = useRef<RequestScope | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    const timers = toastTimersRef.current;
+    mountedRef.current = true;
+    return () => {
+      // Navigation/unmount cleanup: abort an in-flight export and clear all
+      // pending toast timers exactly once.
+      mountedRef.current = false;
+      exportScopeRef.current?.abort();
+      exportScopeRef.current?.dispose();
+      exportScopeRef.current = null;
+      for (const timer of timers) clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
 
   const addToast = (type: 'success' | 'error', message: string) => {
     const id = `${Date.now()}-${Math.random()}`;
     setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
+    const timer = setTimeout(() => {
+      toastTimersRef.current.delete(timer);
+      if (mountedRef.current) {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }
     }, 5000);
+    toastTimersRef.current.add(timer);
   };
 
   const { statusQuery, verifyMutation } = useAdminAudit();
@@ -115,22 +143,47 @@ export const AdminAuditPage: React.FC = () => {
     });
   };
 
+  const cancelExport = () => {
+    exportScopeRef.current?.abort();
+  };
+
   const handleExport = async (format: 'csv' | 'json') => {
     requirePermission(canVerifyAudit, PERMISSIONS.ADMIN_AUDIT_VERIFY);
+    if (exportScopeRef.current) return;
     setIsExporting(format);
+    // One owned scope per export with the documented longer audit deadline.
+    const scope = new RequestScope({ timeoutMs: AUDIT_EXPORT_TIMEOUT_MS });
+    exportScopeRef.current = scope;
     try {
-      const blob = await exportAuditEntries(buildExportRequest(format));
+      const blob = await exportAuditEntries(buildExportRequest(format), scope.signal);
+      if (scope.aborted || !mountedRef.current) return;
 
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      link.setAttribute('download', `audit_export_${timestamp}.${format}`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      let url: string | null = null;
+      let link: HTMLAnchorElement | null = null;
+      try {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        url = window.URL.createObjectURL(blob);
+        link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `audit_export_${timestamp}.${format}`);
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        if (link && link.parentNode) {
+          link.parentNode.removeChild(link);
+        }
+        if (url !== null) {
+          window.URL.revokeObjectURL(url);
+        }
+      }
     } catch (err: unknown) {
+      if (!mountedRef.current || isAbortFailure(err)) {
+        if (mountedRef.current) {
+          const timedOut = isClientDeadlineError(err) || scope.reason === 'deadline';
+          addToast('error', timedOut ? t('audit.export.timeout') : t('audit.export.canceled'));
+        }
+        return;
+      }
       const errorObj = err as Record<string, unknown> | undefined;
       const messageKey = (errorObj?.message_key as string) || (errorObj?.detail as Record<string, unknown>)?.message_key as string;
       const isQuotaExceeded =
@@ -147,7 +200,13 @@ export const AdminAuditPage: React.FC = () => {
         addToast('error', t('error.unknown.message'));
       }
     } finally {
-      setIsExporting(null);
+      scope.dispose();
+      if (exportScopeRef.current === scope) {
+        exportScopeRef.current = null;
+      }
+      if (mountedRef.current) {
+        setIsExporting(null);
+      }
     }
   };
 
@@ -549,6 +608,20 @@ export const AdminAuditPage: React.FC = () => {
               )}
               {t('audit.export.json')}
             </button>
+            {isExporting !== null && (
+              <button
+                type="button"
+                onClick={cancelExport}
+                data-testid="audit-export-cancel"
+                aria-label={t('audit.export.cancel')}
+                className="min-w-0 px-3 py-2 border border-red-500/30 text-red-300 rounded-md hover:bg-red-500/10 transition-colors text-sm font-medium cursor-pointer sm:px-4"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <XCircle className="w-4 h-4" aria-hidden="true" />
+                  {t('audit.export.cancel')}
+                </span>
+              </button>
+            )}
             <button
               type="submit"
               className="min-w-0 px-3 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors text-sm font-medium cursor-pointer sm:px-4"
