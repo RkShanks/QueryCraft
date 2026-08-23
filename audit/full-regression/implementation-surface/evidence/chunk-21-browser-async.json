@@ -1,0 +1,136 @@
+{
+  "chunk": "CHUNK-21",
+  "gap_ids": ["IS-GAP-043", "IS-GAP-037", "IS-GAP-031"],
+  "branch": "phase-6/wave-19.21-browser-async",
+  "starting_main": "48f775834a9c2c1fa3f4c2ea95132c1ff287d119",
+  "status": "Resolved on tested branch",
+  "merge_bookkeeping": {
+    "CHUNK-20": {
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/318",
+      "merged_main": "48f775834a9c2c1fa3f4c2ea95132c1ff287d119"
+    }
+  },
+  "tdd_commits": [
+    {"stage": "RED request lifetime", "sha": "0f065771eb4f0d2cc816c7bd2a2d4461f4bda2a5"},
+    {"stage": "GREEN request-scope lifetime and signal propagation", "sha": "89eddf221a8c58be7b29801a9823da99b3a72fa6"},
+    {"stage": "GREEN route recovery boundaries and SQL fallback", "sha": "e796ff7b2ed476fd008948a21938d98e8d981060"},
+    {"stage": "RED clipboard denial and export cancel matrix", "sha": "69c855d9c972ac88e46305d63fcfde7f69534009"},
+    {"stage": "GREEN shared clipboard contract and audit export cancellation", "sha": "8eb812d44200cc991c5f818d2976b8f926305e08"},
+    {"stage": "Gate/lint/build corrections", "sha": "b749260cefd2faa812d1b6d61dacb5fbafa773f3"},
+    {"stage": "Browser mocked and live proof", "sha": "b2d14e3e026b9c38971c358eb005c361f7ffbd79"}
+  ],
+  "red_evidence": {
+    "request_scope_module_absent": true,
+    "query_submit_wire_signals_aborted_false_on_unmount": true,
+    "fallback_queries_signal_aborted_false_on_cancel": ["useCurrentUser", "useSsoProviders", "useAdminSettings", "useConnectionSchema"],
+    "clipboard_failure_console_logged_only": true,
+    "export_cancel_deadline_resource_paths_missing": true
+  },
+  "contract": {
+    "request_scope_utility": {
+      "path": "frontend/src/api/requestScope.ts",
+      "owned_controller": true,
+      "parent_signal_join": true,
+      "optional_deadline": true,
+      "abort_classification": ["caller", "parent", "deadline"],
+      "cleanup_exactly_once": true,
+      "ordinary_request_timeout_ms": 15000,
+      "audit_export_timeout_ms": 60000
+    },
+    "query_operations": {
+      "submit_accept_reject_regenerate_use_owned_scope": true,
+      "signal_propagated_to_generated_sdk": true,
+      "abort_on_unmount": true,
+      "abort_on_chunk03_deletion_start": true,
+      "aborted_settlement_suppressed_without_error_toast_or_stale_state": true,
+      "session_deleted_precedence_preserved": true,
+      "client_query_deadline_added": false,
+      "backend_timeout_504_distinct_from_client_deadline": true
+    },
+    "signal_propagation_completed_for": ["useCurrentUser fallback", "useSsoProviders", "useAdminSettings", "useConnectionSchema"],
+    "ordinary_read_deadline_localized_recoverable": "clientContract.requestTimeout (en/ar) via ClientQueryState",
+    "browser_abort_claims_server_cancellation": false,
+    "route_recovery": {
+      "localized_sanitized_boundary_inside_authenticated_shell": true,
+      "location_key_reset": true,
+      "retry_resets_in_place": true,
+      "permission_aware_safe_navigation": "firstPermittedRoute(user)",
+      "raw_stack_or_error_text_reachable": false,
+      "unknown_path_redirect_contract_retained": true
+    },
+    "timer_cleanup": ["WorkspacePage alerts", "AdminAuditPage toasts", "clipboard status timers (retry/unmount)"],
+    "lazy_sql_highlighting": {
+      "local_import_failure_caught": true,
+      "plain_text_ltr_sql_preserved": true,
+      "polite_localized_notice_without_chunk_detail": true,
+      "no_unhandled_rejection": true,
+      "highlighter_construction_failure_contained": true
+    },
+    "clipboard_contract_shared_by": ["CodeBlockActionBar", "HistoryDetail"],
+    "clipboard_states": ["idle", "copied", "failed"],
+    "clipboard_handles": ["unavailable_api", "permission_denial", "rejected_write"],
+    "clipboard_value_and_error_logging": false,
+    "audit_export": {
+      "signal_passed_through_exportAuditEntries": true,
+      "cancel_action_visible_while_exporting": true,
+      "abort_triggers": ["cancel_click", "unmount_navigation", "identity_rotation"],
+      "object_url_anchor_before_complete_blob": false,
+      "revoke_remove_even_when_click_fails": true,
+      "localized_states": ["canceled", "client_timeout", "server_failure_distinct"],
+      "filters_filename_content_contracts_touched": false
+    }
+  },
+  "gates": {
+    "full_vitest": {"files": 87, "tests": 1283, "passed": true, "tests_before_wave": 1232},
+    "eslint": "passed",
+    "typecheck_no_emit": "passed",
+    "production_build_test_inclusive": "passed",
+    "stylelint": "passed",
+    "generated_client_parity": "64 = 64 = 64 unchanged; no generated file modified",
+    "harness_guard": "passed; 36 classified specs including both new entries",
+    "git_diff_check": "clean",
+    "backend_compatibility_subset": {
+      "unit_tests": 37,
+      "passed": true,
+      "ruff_check": "passed",
+      "integration_subsets_skip_cleanly_without_live_services": true
+    }
+  },
+  "browser_proof": {
+    "mocked_spec": "tests/e2e/chunk_21_browser_async.spec.ts",
+    "mocked_results": {"passed": 6, "failed": 0},
+    "mocked_cases": [
+      "delayed submit aborted by navigation: zero stale UI, zero app console/page errors on return",
+      "export cancel: zero downloads, zero object URLs, localized canceled toast, controls re-enabled",
+      "clipboard denial then granted retry: failed to copied announced states",
+      "rejected Shiki chunk: readable plain-text SQL with polite notice, zero page errors",
+      "direct URL / reload / back-forward / unknown path / permission redirect coherent",
+      "AR RTL 375px rejected-highlighter fallback keeps SQL readable with Arabic notice"
+    ],
+    "live_spec": "tests/e2e/chunk_21_live_async.spec.ts",
+    "live_stack": {
+      "compose_project": "qc21",
+      "services": ["postgres-platform", "redis", "backend", "nginx frontend"],
+      "migrations_applied": "alembic upgrade head through 011",
+      "disposable_users_seeded": 1,
+      "llm_calls": 0,
+      "source_database_access": false
+    },
+    "live_results": {"passed": 2, "failed": 0},
+    "live_cases": [
+      "unauthenticated deep link redirects via real 401; reload/back-forward coherence; unknown path lands first permitted route",
+      "four real-network route crossings settle with zero assistant-loading residue and zero app-level console/page errors"
+    ]
+  },
+  "isolation_cleanup": {
+    "temporary_output_dirs": ["/tmp/opencode/chunk21-html", "/tmp/opencode/chunk21-output"],
+    "compose_project_destroyed_with_volumes": true,
+    "debug_files_removed": true,
+    "protected_baseline_preserved": true,
+    "protected_png_count": 14,
+    "historical_screenshots_count": 7,
+    "git_add_A_used": false
+  },
+  "stop_conditions_triggered": [],
+  "ledger_totals_after_merge": {"resolved": 35, "resolved_on_tested_branch": 0, "pending": 9, "needs_decision": 3, "total": 47}
+}
