@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { searchAuditEntries, exportAuditEntries, getAuditRetention } from './audit';
+import { AuditDownloadError } from './auditDownload';
 import { server } from '../test/server';
 import { http, HttpResponse } from 'msw';
 import { ClientContractError } from './responseValidation';
@@ -26,22 +27,73 @@ describe('audit API client', () => {
     expect(res.entries).toEqual([]);
   });
 
-  it('should export audit entries', async () => {
+  it('should export audit entries returning validated blob metadata', async () => {
     server.use(
       http.post('/api/v1/admin/audit/export', async ({ request }) => {
         const body = (await request.json()) as Record<string, unknown>;
         expect(body.format).toBe('csv');
         return new HttpResponse('csv,data', {
-          headers: { 'Content-Type': 'text/csv' },
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': 'attachment; filename="audit_export_20260823T120000Z.csv"',
+          },
         });
       })
     );
 
-    const blob = await exportAuditEntries({ format: 'csv' });
-    expect(blob).toBeDefined();
-    expect(blob.constructor.name).toBe('Blob');
-    const text = await blob.text();
-    expect(text).toBe('csv,data');
+    const download = await exportAuditEntries({ format: 'csv' });
+    expect(download.blob).toBeDefined();
+    expect(download.blob.constructor.name).toBe('Blob');
+    expect(await download.blob.text()).toBe('csv,data');
+    expect(download.filename).toBe('audit_export_20260823T120000Z.csv');
+    expect(download.mediaType).toBe('text/csv');
+  });
+
+  it('should fall back to a safe deterministic name when metadata is absent', async () => {
+    server.use(
+      http.post('/api/v1/admin/audit/export', () =>
+        new HttpResponse('{}', {
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        })
+      )
+    );
+
+    const download = await exportAuditEntries({ format: 'json' });
+    expect(download.filename).toMatch(/^audit_export_\d{8}T\d{6}Z\.json$/);
+    expect(download.mediaType).toBe('application/json');
+  });
+
+  it('should reject a successful response whose media type mismatches the request', async () => {
+    server.use(
+      http.post('/api/v1/admin/audit/export', () =>
+        new HttpResponse('<html>not csv</html>', {
+          headers: { 'Content-Type': 'text/html' },
+        })
+      )
+    );
+
+    await expect(exportAuditEntries({ format: 'csv' })).rejects.toBeInstanceOf(
+      AuditDownloadError
+    );
+  });
+
+  it('should pass the caller signal through to the generated client unchanged', async () => {
+    let captured: AbortSignal | undefined;
+    const controller = new AbortController();
+    server.use(
+      http.post('/api/v1/admin/audit/export', ({ request }) => {
+        captured = request.signal;
+        return new HttpResponse('csv,data', {
+          headers: {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': 'attachment; filename="audit_export_20260823T120000Z.csv"',
+          },
+        });
+      })
+    );
+
+    await exportAuditEntries({ format: 'csv' }, controller.signal);
+    expect(captured).toBe(controller.signal);
   });
 
   it('should get audit retention', async () => {
