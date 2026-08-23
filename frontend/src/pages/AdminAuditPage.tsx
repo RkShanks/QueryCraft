@@ -7,6 +7,7 @@ import {
   searchAuditEntries,
   exportAuditEntries,
   getAuditRetention,
+  AuditDownloadError,
   type AuditExportRequest,
   type AuditSearchResponse,
 } from '../api/audit';
@@ -191,7 +192,7 @@ export const AdminAuditPage: React.FC = () => {
     const scope = new RequestScope({ timeoutMs: AUDIT_EXPORT_TIMEOUT_MS });
     exportScopeRef.current = scope;
     try {
-      const blob = await exportAuditEntries(
+      const download = await exportAuditEntries(
         buildExportRequest(format, exportFilters),
         scope.signal
       );
@@ -200,11 +201,10 @@ export const AdminAuditPage: React.FC = () => {
       let url: string | null = null;
       let link: HTMLAnchorElement | null = null;
       try {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        url = window.URL.createObjectURL(blob);
+        url = window.URL.createObjectURL(download.blob);
         link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `audit_export_${timestamp}.${format}`);
+        link.setAttribute('download', download.filename);
         document.body.appendChild(link);
         link.click();
       } finally {
@@ -221,6 +221,13 @@ export const AdminAuditPage: React.FC = () => {
           const timedOut = isClientDeadlineError(err) || scope.reason === 'deadline';
           addToast('error', timedOut ? t('audit.export.timeout') : t('audit.export.canceled'));
         }
+        return;
+      }
+      if (
+        err instanceof AuditDownloadError ||
+        (err as Record<string, unknown> | undefined)?.name === 'AuditDownloadError'
+      ) {
+        addToast('error', t('audit.export.failed'));
         return;
       }
       const errorObj = err as Record<string, unknown> | undefined;
