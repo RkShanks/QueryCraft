@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AdminAuditPage } from './AdminAuditPage';
 import { createWrapper } from '../test/utils';
@@ -34,7 +34,7 @@ interface EntriesCall {
   params: Record<string, string>;
 }
 
-function entriesRecorder(responder?: (callIndex: number) => HttpResponse | Promise<HttpResponse>) {
+function entriesRecorder(responder?: (callIndex: number) => Response | Promise<Response>) {
   const calls: EntriesCall[] = [];
   server.use(
     http.get('/api/v1/admin/audit/entries', async ({ request }) => {
@@ -111,9 +111,19 @@ async function exportRequestBody(format: 'csv' | 'json'): Promise<Record<string,
 
 /** Applies one actor filter through Search and waits for it to govern results. */
 async function applyInitialActorFilter(actor: string) {
+  // Let the unfiltered mount fetch settle so the applied search below starts
+  // from a fully displayed dataset.
+  await screen.findByRole('table', { name: 'Audit search results' });
   fireEvent.change(screen.getByLabelText('Actor'), { target: { value: actor } });
   fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-  await screen.findByText(actor);
+  const table = await screen.findByRole('table', { name: 'Audit search results' });
+  await waitFor(() =>
+    expect(within(table).getAllByText(actor).length).toBeGreaterThan(0),
+  );
+}
+
+function resultRows() {
+  return screen.getByRole('table', { name: 'Audit search results' });
 }
 
 beforeEach(() => {
@@ -152,7 +162,6 @@ describe('AdminAuditPage applied-filter contract (CHUNK-22 / IS-GAP-034)', () =>
     const body = await exportRequestBody('json');
     expect(body).toEqual({
       format: 'json',
-      action_type: 'query.submit',
       actor_identity: 'user-actor@example.com',
     });
   });
@@ -196,7 +205,9 @@ describe('AdminAuditPage applied-filter contract (CHUNK-22 / IS-GAP-034)', () =>
 
     pending.release();
 
-    await screen.findByText('pending-actor@example.com');
+    await waitFor(() =>
+      expect(within(resultRows()).getAllByText('pending-actor@example.com').length).toBeGreaterThan(0),
+    );
     const appliedBody = await exportRequestBody('csv');
     expect(appliedBody).toEqual({ format: 'csv', actor_identity: 'pending-actor@example.com' });
   });
@@ -220,7 +231,7 @@ describe('AdminAuditPage applied-filter contract (CHUNK-22 / IS-GAP-034)', () =>
 
     // The prior displayed rows stay visible with a recoverable error state.
     await screen.findByRole('alert');
-    expect(screen.getByText('user-actor@example.com')).toBeInTheDocument();
+    expect(within(resultRows()).getByText('user-actor@example.com')).toBeInTheDocument();
 
     const body = await exportRequestBody('csv');
     expect(body).toEqual({ format: 'csv', actor_identity: 'user-actor@example.com' });
@@ -265,20 +276,28 @@ describe('AdminAuditPage applied-filter contract (CHUNK-22 / IS-GAP-034)', () =>
     fireEvent.change(screen.getByLabelText('Action Type'), { target: { value: 'session.sign_in' } });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
-    // While the request is in flight the old applied summary still governs.
+    // While the request is in flight the prior applied summary still governs.
     const summary = screen.getByTestId('audit-applied-filters');
-    expect(summary).toHaveTextContent('query.submit');
+    expect(summary).toHaveTextContent('user-actor@example.com');
+    expect(summary).not.toHaveTextContent('session.sign_in');
 
     successGate.release();
-    await screen.findByText('signin-actor@example.com');
+    await waitFor(() =>
+      expect(within(resultRows()).getAllByText('signin-actor@example.com').length).toBeGreaterThan(0),
+    );
     expect(releasedWithoutEarlyApply).toBe(false);
 
+    // Rows and summary moved to the new dataset together, atomically; the
+    // untouched actor input stays part of the newly applied set.
     const summaryAfter = screen.getByTestId('audit-applied-filters');
     expect(summaryAfter).toHaveTextContent('session.sign_in');
-    expect(summaryAfter).not.toHaveTextContent('query.submit');
 
     const body = await exportRequestBody('csv');
-    expect(body).toEqual({ format: 'csv', action_type: 'session.sign_in' });
+    expect(body).toEqual({
+      format: 'csv',
+      action_type: 'session.sign_in',
+      actor_identity: 'user-actor@example.com',
+    });
   });
 
   it('retains applied filters across pagination for display and export', async () => {

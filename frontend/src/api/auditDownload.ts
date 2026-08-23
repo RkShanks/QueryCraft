@@ -74,6 +74,7 @@ export function parseAuditExportFilename(
   format: AuditExportFormat
 ): string | null {
   if (!disposition) return null;
+  // eslint-disable-next-line no-control-regex -- CR/LF/NUL are rejected deliberately
   if (/[\r\n\u0000]/.test(disposition)) return null;
 
   const trimmed = disposition.trim();

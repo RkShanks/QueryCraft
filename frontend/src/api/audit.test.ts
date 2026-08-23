@@ -77,12 +77,17 @@ describe('audit API client', () => {
     );
   });
 
-  it('should pass the caller signal through to the generated client unchanged', async () => {
+  it('should propagate caller cancellation through to the wire request', async () => {
     let captured: AbortSignal | undefined;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const controller = new AbortController();
     server.use(
-      http.post('/api/v1/admin/audit/export', ({ request }) => {
+      http.post('/api/v1/admin/audit/export', async ({ request }) => {
         captured = request.signal;
+        await gate;
         return new HttpResponse('csv,data', {
           headers: {
             'Content-Type': 'text/csv',
@@ -92,8 +97,14 @@ describe('audit API client', () => {
       })
     );
 
-    await exportAuditEntries({ format: 'csv' }, controller.signal);
-    expect(captured).toBe(controller.signal);
+    const pending = exportAuditEntries({ format: 'csv' }, controller.signal);
+    for (let i = 0; i < 200 && !captured; i += 1) {
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    controller.abort();
+    release();
+    await expect(pending).rejects.toThrow();
+    expect(captured?.aborted).toBe(true);
   });
 
   it('should get audit retention', async () => {

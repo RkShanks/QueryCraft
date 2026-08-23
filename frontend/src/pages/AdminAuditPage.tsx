@@ -9,6 +9,7 @@ import {
   getAuditRetention,
   AuditDownloadError,
   type AuditExportRequest,
+  type AuditSearchParams,
   type AuditSearchResponse,
 } from '../api/audit';
 import {
