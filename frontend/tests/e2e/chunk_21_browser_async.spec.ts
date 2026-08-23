@@ -38,14 +38,10 @@ function resourceCounter(page: Page) {
       created.push(originalCreate(blob));
       return created[created.length - 1];
     };
-    let anchorCount = 0;
-    const originalAppend = Element.prototype.append;
     w.__qc21 = {
       objectUrlsCreated: created,
       anchorCount: () => document.querySelectorAll('a[download]').length,
     };
-    void originalAppend;
-    void anchorCount;
   });
 }
 
