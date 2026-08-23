@@ -76,7 +76,7 @@ export class RequestScope implements DisposableRequestScope {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private parentListener: (() => void) | null = null;
   private parentSignal: AbortSignal | null = null;
-  private reason: RequestAbortReason | null = null;
+  private _reason: RequestAbortReason | null = null;
   private notified = false;
   private disposed = false;
 
@@ -94,7 +94,7 @@ export class RequestScope implements DisposableRequestScope {
       }
     }
 
-    if (!this.reason && options.timeoutMs !== undefined && Number.isFinite(options.timeoutMs)) {
+    if (this.reason === null && !this.aborted && options.timeoutMs !== undefined && Number.isFinite(options.timeoutMs)) {
       if (options.timeoutMs >= 0) {
         this.timer = setTimeout(() => {
           this.timer = null;
@@ -109,7 +109,7 @@ export class RequestScope implements DisposableRequestScope {
   }
 
   get reason(): RequestAbortReason | null {
-    return this.reason;
+    return this._reason;
   }
 
   abort(): void {
@@ -137,8 +137,8 @@ export class RequestScope implements DisposableRequestScope {
   }
 
   private fireAbort(reason: RequestAbortReason): void {
-    if (this.reason !== null) return;
-    this.reason = reason;
+    if (this._reason !== null) return;
+    this._reason = reason;
     if (this.timer !== null) {
       clearTimeout(this.timer);
       this.timer = null;

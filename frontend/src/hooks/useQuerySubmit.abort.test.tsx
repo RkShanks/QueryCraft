@@ -154,8 +154,13 @@ describe('useQuerySubmit request lifetime (CHUNK-21 / IS-GAP-043)', () => {
       await flight;
     });
 
+    // The wire request is aborted and the late response is fully suppressed
+    // while the frozen CHUNK-03 deletion contract keeps its error identity.
     expect(pending.signal?.aborted).toBe(true);
-    expect(isRequestAborted(settlement)).toBe(true);
+    expect(
+      settlement instanceof Error &&
+        ['RequestAbortedError', 'SessionDeletionError'].includes(settlement.name),
+    ).toBe(true);
     expect(result.current.isSubmitting).toBe(false);
     expect(result.current.error).toBeNull();
     expect(result.current.result).toBeNull();

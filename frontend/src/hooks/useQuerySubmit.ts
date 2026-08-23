@@ -281,7 +281,7 @@ export const useQuerySubmit = (): UseQuerySubmitReturn => {
     } finally {
       endRequest();
     }
-  }, [beginRequest, canSubmitQuery, classifyFailure, clearStates, endRequest, setActiveSessionId, queryClient]);
+  }, [beginRequest, canSubmitQuery, classifyFailure, classifySuppression, clearStates, endRequest, setActiveSessionId, queryClient]);
 
   const rejectQueryFn = useCallback(async (attemptId: string) => {
     requirePermission(canSubmitQuery, PERMISSIONS.QUERY_SUBMIT);

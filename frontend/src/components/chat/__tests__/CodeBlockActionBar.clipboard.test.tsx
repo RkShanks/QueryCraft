@@ -32,7 +32,7 @@ describe('CodeBlockActionBar copy contract (CHUNK-21 / IS-GAP-031)', () => {
     fireEvent.click(screen.getByTestId('action-copy'));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(/copied/i),
+      expect(screen.getByTestId('copy-status')).toHaveTextContent(/copied/i),
     );
   });
 
@@ -44,7 +44,7 @@ describe('CodeBlockActionBar copy contract (CHUNK-21 / IS-GAP-031)', () => {
     fireEvent.click(screen.getByTestId('action-copy'));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(/copy failed/i),
+      expect(screen.getByTestId('copy-status')).toHaveTextContent(/copy failed/i),
     );
     expect(String(consoleError.mock.calls)).not.toContain('CANARY');
     consoleError.mockRestore();
@@ -73,7 +73,7 @@ describe('CodeBlockActionBar copy contract (CHUNK-21 / IS-GAP-031)', () => {
 
     // Retry flips the same control back to a copied confirmation.
     fireEvent.click(screen.getByTestId('action-copy'));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/copied/i));
+    await waitFor(() => expect(screen.getByTestId('copy-status')).toHaveTextContent(/copied/i));
     expect(mockWriteText).toHaveBeenCalledTimes(2);
   });
 });

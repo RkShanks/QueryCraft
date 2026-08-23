@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { HistoryDetail } from './HistoryDetail';
+import { HistoryDetail } from '../HistoryDetail';
 
 /**
  * CHUNK-21 / IS-GAP-031 — the history detail copy action shares one bounded
@@ -48,12 +48,10 @@ describe('HistoryDetail copy contract (CHUNK-21 / IS-GAP-031)', () => {
   let restoreClipboard: () => void;
 
   beforeEach(() => {
-    vi.useFakeTimers();
     restoreClipboard = installClipboard(vi.fn().mockResolvedValue(undefined));
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     restoreClipboard();
     vi.restoreAllMocks();
   });
@@ -63,15 +61,13 @@ describe('HistoryDetail copy contract (CHUNK-21 / IS-GAP-031)', () => {
     const button = screen.getByRole('button', { name: /copy sql/i });
     fireEvent.click(button);
 
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(screen.getByRole('button', { name: /copied/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /copied/i })).toBeInTheDocument();
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2_100);
-    });
-    expect(screen.getByRole('button', { name: /^copy sql$/i })).toBeInTheDocument();
+    // The confirmation returns to idle within its bounded window.
+    await waitFor(
+      () => expect(screen.getByRole('button', { name: /copy sql/i })).toBeInTheDocument(),
+      { timeout: 2_500 },
+    );
   });
 
   it('shows a localized failure on rejection without logging the SQL value', async () => {

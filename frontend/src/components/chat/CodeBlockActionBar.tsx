@@ -55,7 +55,7 @@ export const CodeBlockActionBar: React.FC<CodeBlockActionBarProps> = ({
           <Copy className="action-icon" />
         )}
       </button>
-      <span role="status" className="sr-only" data-testid="copy-status">
+      <span aria-live="polite" aria-atomic="true" className="sr-only" data-testid="copy-status">
         {status === 'copied'
           ? t('common.copied')
           : status === 'failed'

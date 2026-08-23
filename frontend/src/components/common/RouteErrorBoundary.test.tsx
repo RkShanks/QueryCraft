@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { MemoryRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { RouteErrorBoundary } from './RouteErrorBoundary';
@@ -12,7 +12,7 @@ function ThrowingChild({ shouldThrow }: { shouldThrow: boolean }): ReactNode {
   if (shouldThrow) {
     throw new Error('SECRET_INTERNAL_STACKTRACE_SENTINEL');
   }
-  return <div>page-content-ok</div>;
+  return <div data-testid="recovered-page" />;
 }
 
 function LocationProbe() {
@@ -97,7 +97,7 @@ describe('RouteErrorBoundary (CHUNK-21 / IS-GAP-037)', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
-    await waitFor(() => expect(screen.getByText('page-content-ok')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('recovered-page')).toBeInTheDocument());
     consoleError.mockRestore();
   });
 
@@ -155,7 +155,7 @@ describe('RouteErrorBoundary (CHUNK-21 / IS-GAP-037)', () => {
     rerender(tree('/two'));
 
     await waitFor(() => {
-      expect(screen.getByText('page-content-ok')).toBeInTheDocument();
+      expect(screen.getByTestId('recovered-page')).toBeInTheDocument();
     });
     // The boundary instance was replaced together with the route entry.
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();

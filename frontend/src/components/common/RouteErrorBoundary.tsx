@@ -1,5 +1,5 @@
 import { Component } from 'react';
-import type { ErrorInfo, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
@@ -31,7 +31,7 @@ class RouteErrorBoundaryInner extends Component<BoundaryInnerProps, BoundaryInne
     return { error };
   }
 
-  componentDidCatch(_error: Error, _info: ErrorInfo) {
+  componentDidCatch() {
     // Deliberately silent: stack/error text must not reach browser channels.
   }
 

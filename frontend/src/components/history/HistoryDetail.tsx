@@ -157,7 +157,7 @@ export const HistoryDetail: React.FC<HistoryDetailProps> = ({ item, isLoading, e
               </>
             )}
           </button>
-          <span role="status" className="sr-only">
+          <span aria-live="polite" aria-atomic="true" className="sr-only">
             {copyStatus === 'copied'
               ? t('common.copied')
               : copyStatus === 'failed'

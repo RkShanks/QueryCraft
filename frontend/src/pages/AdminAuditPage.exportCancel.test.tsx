@@ -55,12 +55,6 @@ function mockAuditReads() {
   );
 }
 
-interface GatedExport {
-  signal(): AbortSignal | undefined;
-  waitForArrival(): Promise<void>;
-  release(): void;
-}
-
 function gatedExportEndpoint() {
   let captured: AbortSignal | undefined;
   let release!: () => void;
