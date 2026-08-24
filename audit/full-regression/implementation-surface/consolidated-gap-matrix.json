@@ -398,7 +398,7 @@
     "CHUNK-24": {
       "gap_id": "IS-GAP-015",
       "status": "Partial",
-      "fix_pr": "PENDING",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/324",
       "tested_commits": {
         "red": "542bd34",
         "green": "81fc501"
