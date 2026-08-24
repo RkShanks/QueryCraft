@@ -35,6 +35,8 @@
   "auth.signIn.submit": "Sign In",
   "auth.signIn.signingIn": "Signing in...",
   "auth.signIn.sso.button": "Sign in with {{provider}}",
+  "auth.signIn.sso.loading": "Checking enterprise sign-in options…",
+  "auth.signIn.sso.loadError": "Enterprise sign-in is temporarily unavailable.",
   "auth.signIn.error.usernameEmpty": "Username cannot be empty.",
   "auth.signIn.error.passwordEmpty": "Password cannot be empty.",
   "auth.signIn.status.success": "Signed in successfully.",
