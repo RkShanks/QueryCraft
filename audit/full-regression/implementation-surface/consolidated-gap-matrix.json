@@ -64,8 +64,8 @@
     },
     "status": {
       "Pending": 8,
-      "Resolved": 35,
-      "Resolved on tested branch": 1,
+      "Resolved": 36,
+      "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 3
     }
@@ -349,23 +349,33 @@
         "IS-GAP-037",
         "IS-GAP-031"
       ],
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
       "branch": "phase-6/wave-19.21-browser-async",
       "starting_main": "48f775834a9c2c1fa3f4c2ea95132c1ff287d119",
       "pull_request": "https://github.com/RkShanks/QueryCraft/pull/319",
-      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-21-browser-async.json"
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-21-browser-async.json",
+      "merge_commit": "74aa30481377321c6178d0523ab593c697525725",
+      "authoritative_ci": {
+        "run_id": 32582713908,
+        "backend_test": "passed",
+        "frontend_test": "passed"
+      }
     },
     "CHUNK-22": {
       "gap_ids": [
         "IS-GAP-034"
       ],
-      "status": "Resolved on tested branch",
+      "status": "Resolved and merged",
       "branch": "phase-6/wave-19.22-audit-download",
       "tested_product_commit": "63cc50d",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-22-audit-download.json",
-      "pull_request": null,
-      "authoritative_ci": null,
-      "merge_commit": null
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/320",
+      "authoritative_ci": {
+        "run_id": 32738202877,
+        "backend_test": "passed",
+        "frontend_test": "passed"
+      },
+      "merge_commit": "e4c3ca5aac856b6c73c41c931331bf3a482a57a5"
     }
   },
   "raw_candidate_dispositions": {
@@ -2169,9 +2179,9 @@
       "resolution": {
         "tested_product_commit": "63cc50d",
         "evidence": "audit/full-regression/implementation-surface/evidence/chunk-22-audit-download.json",
-        "pull_request": null,
-        "authoritative_ci": null,
-        "merge_commit": null
+        "pull_request": "https://github.com/RkShanks/QueryCraft/pull/320",
+        "authoritative_ci": "32738202877",
+        "merge_commit": "e4c3ca5aac856b6c73c41c931331bf3a482a57a5"
       },
       "source_refs": [
         "frontend/src/pages/AdminAuditPage.tsx::handleExport",
