@@ -1,5 +1,7 @@
 """T-077 — AnthropicAdapter unit tests."""
 
+import asyncio
+
 import httpx
 import pytest
 import respx
@@ -66,3 +68,59 @@ async def test_generate_429_raises_llm_unavailable(adapter: AnthropicAdapter):
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")
+
+
+@respx.mock
+async def test_generate_401_raises_typed_llm_unavailable(adapter: AnthropicAdapter):
+    """HTTP 4xx auth failure raises typed LLMUnavailable with a sanitized constant message."""
+    respx.post("https://api.anthropic.com/v1/messages").mock(
+        return_value=Response(401, json={"type": "error", "error": {"type": "authentication_error", "message": "internal-detail"}})
+    )
+
+    with pytest.raises(LLMUnavailable) as excinfo:
+        await adapter.generate("prompt")
+    assert excinfo.value.provider == "anthropic"
+    assert "internal-detail" not in str(excinfo.value)
+
+
+@respx.mock
+async def test_generate_non_json_body_raises_typed_llm_unavailable(adapter: AnthropicAdapter):
+    """A 200 response whose body is not JSON raises typed LLMUnavailable, not JSONDecodeError."""
+    respx.post("https://api.anthropic.com/v1/messages").mock(return_value=Response(200, text="not-json"))
+
+    with pytest.raises(LLMUnavailable) as excinfo:
+        await adapter.generate("prompt")
+    assert excinfo.value.provider == "anthropic"
+
+
+@respx.mock
+async def test_generate_missing_content_field_raises_typed_llm_unavailable(adapter: AnthropicAdapter):
+    """A structured 200 response without the expected content field raises typed LLMUnavailable."""
+    respx.post("https://api.anthropic.com/v1/messages").mock(return_value=Response(200, json={"id": "msg_01"}))
+
+    with pytest.raises(LLMUnavailable):
+        await adapter.generate("prompt")
+
+
+@respx.mock
+async def test_generate_empty_content_list_raises_typed_llm_unavailable(adapter: AnthropicAdapter):
+    """A structured 200 response with an empty content list raises typed LLMUnavailable."""
+    respx.post("https://api.anthropic.com/v1/messages").mock(return_value=Response(200, json={"content": []}))
+
+    with pytest.raises(LLMUnavailable):
+        await adapter.generate("prompt")
+
+
+async def test_generate_cancellation_propagates(adapter: AnthropicAdapter):
+    """asyncio cancellation during the provider request propagates instead of being mapped."""
+
+    async def slow_post(*args, **kwargs):
+        await asyncio.sleep(60)
+
+    adapter._client.post = slow_post
+
+    task = asyncio.create_task(adapter.generate("prompt"))
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
