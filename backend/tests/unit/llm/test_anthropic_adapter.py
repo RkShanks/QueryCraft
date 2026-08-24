@@ -127,3 +127,28 @@ async def test_generate_cancellation_propagates(adapter: AnthropicAdapter):
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
+
+
+@pytest.mark.parametrize(
+    "raw_body",
+    [
+        "null",
+        "[1, 2]",
+        '"scalar-string"',
+        '{"content": null}',
+        '{"content": 3}',
+        '{"content": ["not-a-dict"]}',
+    ],
+)
+@respx.mock
+async def test_generate_malformed_container_shapes_raise_typed_llm_unavailable(adapter: AnthropicAdapter, raw_body: str):
+    """Malformed but valid-JSON response containers map to typed sanitized failure, never raw TypeError."""
+    respx.post("https://api.anthropic.com/v1/messages").mock(return_value=Response(200, text=raw_body))
+
+    with pytest.raises(LLMUnavailable) as excinfo:
+        await adapter.generate("prompt")
+    assert excinfo.value.provider == "anthropic"
+    assert excinfo.value.message_key == "error.llmUnavailable"
+    assert str(excinfo.value) == "Malformed response from provider"
+    assert "'NoneType'" not in str(excinfo.value)
+    assert raw_body not in str(excinfo.value)

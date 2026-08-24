@@ -135,3 +135,39 @@ async def test_generate_cancellation_propagates(adapter: OpenAIAdapter):
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
+
+
+@pytest.mark.parametrize(
+    "raw_body",
+    [
+        "null",
+        "[1, 2]",
+        '"scalar-string"',
+        '{"choices": null}',
+        '{"choices": 3}',
+        '{"choices": [{"message": "not-a-dict"}]}',
+    ],
+)
+@respx.mock
+async def test_generate_malformed_container_shapes_raise_typed_llm_unavailable(adapter: OpenAIAdapter, raw_body: str):
+    """Malformed but valid-JSON response containers map to typed sanitized failure, never raw TypeError."""
+    respx.post("https://api.openai.com/v1/chat/completions").mock(return_value=Response(200, text=raw_body))
+
+    with pytest.raises(LLMUnavailable) as excinfo:
+        await adapter.generate("prompt")
+    assert excinfo.value.provider == "openai"
+    assert excinfo.value.message_key == "error.llmUnavailable"
+    assert str(excinfo.value) == "Malformed response from provider"
+    assert "'NoneType'" not in str(excinfo.value)
+    assert raw_body not in str(excinfo.value)
+
+
+@respx.mock
+async def test_generate_non_string_content_raises_typed_llm_unavailable(adapter: OpenAIAdapter):
+    """A structured content container (non-string leaf) maps to typed sanitized failure."""
+    respx.post("https://api.openai.com/v1/chat/completions").mock(
+        return_value=Response(200, json={"choices": [{"message": {"role": "assistant", "content": {"sql": "x"}}}]})
+    )
+
+    with pytest.raises(LLMUnavailable):
+        await adapter.generate("prompt")

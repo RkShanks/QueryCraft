@@ -130,3 +130,27 @@ def test_host_trailing_slash_normalized():
     """A configured host with a trailing slash is normalized once."""
     adapter = OllamaAdapter(host="http://localhost:11434/", model="llama3.1", timeout_s=30)
     assert adapter._host == "http://localhost:11434"
+
+
+@pytest.mark.parametrize(
+    "raw_body",
+    [
+        "null",
+        "[1, 2]",
+        '"scalar-string"',
+        '{"response": {"nested": true}}',
+        '{"response": [1, 2]}',
+    ],
+)
+@respx.mock
+async def test_generate_malformed_container_shapes_raise_typed_llm_unavailable(adapter: OllamaAdapter, raw_body: str):
+    """Malformed but valid-JSON response containers map to typed sanitized failure, never raw TypeError."""
+    respx.post("http://localhost:11434/api/generate").mock(return_value=Response(200, text=raw_body))
+
+    with pytest.raises(LLMUnavailable) as excinfo:
+        await adapter.generate("prompt")
+    assert excinfo.value.provider == "ollama"
+    assert excinfo.value.message_key == "error.llmUnavailable"
+    assert str(excinfo.value) == "Malformed response from provider"
+    assert "'NoneType'" not in str(excinfo.value)
+    assert raw_body not in str(excinfo.value)
