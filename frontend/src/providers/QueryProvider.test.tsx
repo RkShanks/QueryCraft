@@ -16,6 +16,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../test/server';
 import { client as apiClient } from '../api/generated/client.gen';
 import { PermissionGuard } from '../components/auth/PermissionGuard';
+import { SignInForm } from '../components/auth/SignInForm';
 import { PERMISSIONS } from '../auth/permissions';
 import { ClientContractError } from '../api/responseValidation';
 
@@ -1198,5 +1199,41 @@ describe('QueryProvider session expiry handling', () => {
 
     expect(window.location.pathname).toBe('/sign-in');
     expect(window.location.search).toBe('?error=sso_validation_failed');
+  });
+});
+
+
+describe('sign-in rejection visibility across the identity transition (IS-GAP-044)', () => {
+  it('surfaces the sanitized rejection after the failed sign-in transition settles', async () => {
+    server.use(
+      http.post('*/api/v1/auth/sign-in', () =>
+        HttpResponse.json(
+          { error: 'unauthorized', message_key: 'error.unauthorized' },
+          { status: 401 },
+        ),
+      ),
+      http.get('*/api/v1/auth/me', () =>
+        HttpResponse.json({ error: 'unauthorized', message_key: 'error.unauthorized' }, { status: 401 }),
+      ),
+    );
+
+    render(
+      <QueryProvider>
+        <SignInForm />
+      </QueryProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'wrong-user' } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'wrong-pass' } });
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+    // The identity boundary may briefly replace children with the transition
+    // spinner; once the form returns the truthful rejection must be visible.
+    await waitFor(
+      () => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/invalid username or password/i);
+      },
+      { timeout: 5000 },
+    );
   });
 });
