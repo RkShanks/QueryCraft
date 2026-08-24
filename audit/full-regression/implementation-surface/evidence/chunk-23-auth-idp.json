@@ -1,0 +1,98 @@
+{
+  "chunk": "CHUNK-23",
+  "gaps": ["IS-GAP-044", "IS-GAP-016"],
+  "status": "Resolved on tested branch",
+  "branch": "phase-6/wave-19.23-auth-recovery-idp",
+  "starting_main": "12a2d04dee63ed24636ec12bf1a87aa8f970d043",
+  "tested_head": "76b7321",
+  "pull_request": "pending",
+  "authoritative_ci": "pending",
+  "openapi_operations_unchanged": true,
+  "frontend_is_gap_044": {
+    "provider_states": ["loading", "configured", "empty", "failure_with_retry"],
+    "provider_failure_sanitized_en_ar": true,
+    "provider_retry_exactly_once_per_click": true,
+    "empty_notice_localized_without_keys": true,
+    "sso_buttons_navigation_boundaries_only": true,
+    "invalid_callback_sanitized": true,
+    "local_blank_validation_before_network": true,
+    "local_double_submit_suppressed": true,
+    "password_secrecy_preserved": true,
+    "permission_aware_landing_preserved": true,
+    "rejected_sign_out_identity_preserved_with_retry": true,
+    "successful_sign_out_clears_identity_cache_dom_storage": true,
+    "session_expiry_distinct_surface": true,
+    "product_defect_found_and_fixed": {
+      "defect": "rejected sign-in feedback lost across identity-transition remount",
+      "live_probe_before_fix": { "alert_count_after_rejection": 0 },
+      "fix": "feedback and attempted credentials derived from persisted mutation state",
+      "chunk_07_semantics_unchanged": true
+    }
+  },
+  "isolated_idp_is_gap_016": {
+    "runtime": {
+      "location": "/tmp/opencode/chunk23-idp (destroyed)",
+      "disposable_postgres": true,
+      "disposable_redis": true,
+      "dedicated_backend_and_frontend": true,
+      "generated_ca_and_tls": true,
+      "normal_stack_untouched": true
+    },
+    "tls": {
+      "backend_verification_strict": true,
+      "untrusted_store_negative_rejected": true,
+      "browser_pinned_spki_only": true,
+      "blanket_cert_bypass_used": false
+    },
+    "oidc": {
+      "happy_path_real_browser_redirects": true,
+      "session_cookie_exactly_one_on_success": true,
+      "key_rotation_without_restart": true,
+      "retired_key_rejected_sanitized_no_cookie": true,
+      "wrong_audience_rejected": true,
+      "wrong_issuer_rejected": true,
+      "expired_rejected": true,
+      "wrong_nonce_rejected": true,
+      "state_replay_rejected_no_new_cookie": true,
+      "outage_browser_side_no_cookie": true,
+      "outage_during_exchange_no_set_cookie": true,
+      "recovery_after_outage_without_restart": true
+    },
+    "saml": {
+      "happy_path_signed_assertion_via_real_acs": true,
+      "certificate_rotation_without_restart": true,
+      "retired_certificate_rejected": true,
+      "expired_assertion_rejected": true,
+      "wrong_audience_rejected": true,
+      "assertion_replay_rejected_no_new_cookie": true
+    },
+    "failure_redirects_sanitized_localized": true,
+    "raw_material_in_dom_or_evidence": false,
+    "probe_records": 19
+  },
+  "tdd_commits": {
+    "red_provider_matrix": "9eeb142",
+    "green_provider_states": "5666173",
+    "red_signout_retry": "e452c6f",
+    "green_signout_retry": "22675f2",
+    "red_signin_rejection_visibility": "c1b5c02",
+    "green_signin_rejection_fix": "51c1e23",
+    "browser_matrix": "76b7321"
+  },
+  "gates": {
+    "full_vitest": "1336 passed",
+    "focused_frontend_suites": "all green",
+    "mocked_chromium_matrix": "7 passed",
+    "eslint": "clean",
+    "typecheck": "clean",
+    "production_build": "clean (existing chunk-size advisory)",
+    "css_lint": "clean",
+    "harness_guard": "38 specs classified",
+    "generated_client_parity": "64=64=64 clean",
+    "backend_sso_suites": "224 sso + 157 auth passed",
+    "ruff_check_and_format": "clean",
+    "git_diff_check": "clean"
+  },
+  "protected_baseline_preserved": true,
+  "ledger_totals_after_merge": { "resolved": 38, "resolved_on_tested_branch": 0, "pending": 6, "needs_decision": 3, "total": 47 }
+}

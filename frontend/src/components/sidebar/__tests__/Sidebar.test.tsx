@@ -298,6 +298,24 @@ describe('Sidebar', () => {
     }
   });
 
+  it.each([
+    ['en', 'Retry'],
+    ['ar', 'إعادة المحاولة'],
+  ])('exposes an explicit localized Retry action after failed sign-out in %s', async (language, retryLabel) => {
+    await i18n.changeLanguage(language);
+    try {
+      const mutate = setupSignOutMock({ isError: true });
+      setup();
+
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: retryLabel }));
+      expect(mutate).toHaveBeenCalledTimes(1);
+      expect(mutate.mock.calls[0][0]).toBeUndefined();
+    } finally {
+      await i18n.changeLanguage('en');
+    }
+  });
+
   it('collapsed sidebar still exposes sign-out button', () => {
     setup();
     act(() => useUIStore.getState().toggleSidebar());

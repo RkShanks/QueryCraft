@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, beforeAll, afterEach, afterAll, vi } from 'vitest';
 import { SignInPage } from './SignInPage';
 import { createWrapper } from '../test/utils';
@@ -24,7 +24,10 @@ vi.mock('react-i18next', () => ({
         else if (key === 'error.ssoNoRole') val = 'لا توجد أدوار مخصصة لمجموعات SSO الخاصة بك.';
         else if (key === 'error.ssoValidationFailed') val = 'فشل التحقق من صحة SSO.';
         else if (key === 'error.unauthorized') val = 'انتهت صلاحية جلستك أو لم تقم بتسجيل الدخول. يرجى تسجيل الدخول مرة أخرى.';
+        else if (key === 'auth.signIn.sso.loading') val = 'جارٍ التحقق من خيارات تسجيل الدخول المؤسسي…';
+        else if (key === 'auth.signIn.sso.loadError') val = 'تسجيل الدخول المؤسسي غير متوفر مؤقتاً.';
         else if (key === 'common.or') val = 'أو';
+        else if (key === 'common.retry') val = 'إعادة المحاولة';
         else val = key;
       } else {
         if (key === 'app.title') val = 'QueryCraft';
@@ -35,7 +38,10 @@ vi.mock('react-i18next', () => ({
         else if (key === 'error.ssoNoRole') val = "User SSO groups don't map to any role.";
         else if (key === 'error.ssoValidationFailed') val = 'SSO validation failed.';
         else if (key === 'error.unauthorized') val = 'Your session has expired or you are not signed in. Please sign in again.';
+        else if (key === 'auth.signIn.sso.loading') val = 'Checking enterprise sign-in options…';
+        else if (key === 'auth.signIn.sso.loadError') val = 'Enterprise sign-in is temporarily unavailable.';
         else if (key === 'common.or') val = 'Or';
+        else if (key === 'common.retry') val = 'Retry';
         else val = key;
       }
 
@@ -221,6 +227,105 @@ describe('SignInPage', () => {
 
       const warningText = await screen.findByText(/SSO is not configured/i);
       expect(warningText).toBeInTheDocument();
+    });
+
+    it('announces localized provider loading while the request is in flight (IS-GAP-044)', async () => {
+      let releaseProviders: (() => void) | undefined;
+      server.use(
+        http.get('*/api/v1/auth/sso/providers', async () => {
+          await new Promise<void>((resolve) => {
+            releaseProviders = resolve;
+          });
+          return HttpResponse.json({
+            providers: [
+              {
+                protocol: 'oidc',
+                display_name: 'Corporate OIDC',
+                login_url: '/api/v1/auth/sso/oidc/login',
+              },
+            ],
+          });
+        })
+      );
+
+      render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
+
+      const loading = await screen.findByRole('status', { name: /Checking enterprise sign-in options/i });
+      expect(loading).toBeInTheDocument();
+      expect(screen.queryByText(/SSO is not configured/i)).not.toBeInTheDocument();
+
+      await act(async () => {
+        releaseProviders?.();
+      });
+
+      expect(await screen.findByRole('button', { name: /Sign in with Corporate OIDC/i })).toBeInTheDocument();
+      expect(screen.queryByRole('status', { name: /Checking enterprise sign-in options/i })).not.toBeInTheDocument();
+    });
+
+    it('renders a distinct sanitized provider-fetch failure with Retry instead of the empty message (IS-GAP-044)', async () => {
+      server.use(
+        http.get('*/api/v1/auth/sso/providers', () => {
+          return HttpResponse.json(
+            { error: 'service_unavailable', message_key: 'error.service_unavailable' },
+            { status: 503 }
+          );
+        })
+      );
+
+      render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
+
+      const alert = await screen.findByRole('alert', { name: /Enterprise sign-in is temporarily unavailable/i });
+      expect(alert).toBeInTheDocument();
+      expect(screen.queryByText(/SSO is not configured/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Retry/i })).toBeInTheDocument();
+      // No raw transport or IdP detail may leak into the failure surface.
+      expect(alert.textContent).not.toMatch(/503|HTTP|fetch|localhost|api\/v1|service_unavailable/i);
+    });
+
+    it('retries the provider fetch once per click and recovers to configured buttons (IS-GAP-044)', async () => {
+      let providerRequests = 0;
+      server.use(
+        http.get('*/api/v1/auth/sso/providers', () => {
+          providerRequests += 1;
+          if (providerRequests === 1) {
+            return HttpResponse.json({ error: 'service_unavailable' }, { status: 503 });
+          }
+          return HttpResponse.json({
+            providers: [
+              {
+                protocol: 'oidc',
+                display_name: 'Corporate OIDC',
+                login_url: '/api/v1/auth/sso/oidc/login',
+              },
+            ],
+          });
+        })
+      );
+
+      render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
+
+      await screen.findByRole('alert', { name: /Enterprise sign-in is temporarily unavailable/i });
+      fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
+
+      expect(await screen.findByRole('button', { name: /Sign in with Corporate OIDC/i })).toBeInTheDocument();
+      expect(screen.queryByRole('alert', { name: /Enterprise sign-in is temporarily unavailable/i })).not.toBeInTheDocument();
+      expect(providerRequests).toBe(2);
+    });
+
+    it('renders the Arabic sanitized provider-fetch failure without raw keys (IS-GAP-044)', async () => {
+      mockLanguageState.language = 'ar';
+      server.use(
+        http.get('*/api/v1/auth/sso/providers', () => {
+          return HttpResponse.json({ error: 'service_unavailable' }, { status: 503 });
+        })
+      );
+
+      render(<SignInPage />, { wrapper: createWrapper({ authenticated: false }) });
+
+      const alert = await screen.findByRole('alert', { name: /تسجيل الدخول المؤسسي غير متوفر مؤقتاً/i });
+      expect(alert).toBeInTheDocument();
+      expect(screen.queryByText('auth.signIn.sso.loadError')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'إعادة المحاولة' })).toBeInTheDocument();
     });
 
     it('displays mapped error message from query parameter', async () => {

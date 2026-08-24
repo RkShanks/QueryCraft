@@ -3,7 +3,7 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import { SignInForm } from '../components/auth/SignInForm';
 import { useTranslation } from 'react-i18next';
 import { useCurrentUser, useSsoProviders } from '../hooks/useAuth';
-import { Database, Sparkles, AlertTriangle, XCircle, Shield } from 'lucide-react';
+import { Database, Sparkles, AlertTriangle, XCircle, Shield, Loader2 } from 'lucide-react';
 import { firstPermittedRoute } from '../auth/permissions';
 import { LanguageToggle } from '../components/common/LanguageToggle';
 import { directionFor, normalizeAppLanguage } from '../i18n/locale';
@@ -11,7 +11,12 @@ import { directionFor, normalizeAppLanguage } from '../i18n/locale';
 export const SignInPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { data: user, isLoading } = useCurrentUser();
-  const { data: providers = [], isLoading: isLoadingProviders } = useSsoProviders();
+  const {
+    data: providers = [],
+    isLoading: isLoadingProviders,
+    isError: isProvidersError,
+    refetch: refetchProviders,
+  } = useSsoProviders();
   const [searchParams] = useSearchParams();
 
   if (isLoading) {
@@ -95,10 +100,39 @@ export const SignInPage: React.FC = () => {
 
           <SignInForm />
 
-          {/* SSO Section */}
-          {!isLoadingProviders && (
+          {/* SSO Section: distinct accessible loading, failure, empty and configured states. */}
+          {isLoadingProviders ? (
+            <div
+              role="status"
+              aria-label={t('auth.signIn.sso.loading')}
+              data-testid="sso-providers-loading"
+              className="mt-6 p-3.5 rounded-xl border border-obsidian-800 bg-obsidian-900/40 text-xs text-obsidian-400 flex items-center gap-2.5 animate-fade-in"
+            >
+              <Loader2 className="w-4 h-4 shrink-0 animate-spin text-neon-cyan" />
+              <span className="flex-1">{t('auth.signIn.sso.loading')}</span>
+            </div>
+          ) : isProvidersError ? (
             <>
-              {providers.length > 0 ? (
+              <div
+                role="alert"
+                aria-label={t('auth.signIn.sso.loadError')}
+                data-testid="sso-providers-error"
+                className="mt-6 p-3.5 rounded-xl border border-rose-900/30 bg-rose-950/10 text-xs text-rose-400 flex items-start gap-2.5 animate-fade-in leading-relaxed"
+              >
+                <XCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                <span className="flex-1">{t('auth.signIn.sso.loadError')}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  void refetchProviders();
+                }}
+                className="mt-3 w-full py-2 px-4 rounded-xl border border-obsidian-750 bg-obsidian-800/40 text-sm font-semibold text-obsidian-100 hover:bg-obsidian-800/80 hover:border-obsidian-600 focus:outline-none focus:ring-2 focus:ring-neon-cyan focus:ring-offset-2 focus:ring-offset-obsidian-900 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              >
+                {t('common.retry')}
+              </button>
+            </>
+          ) : providers.length > 0 ? (
                 <>
                   {/* Elegant Or Divider */}
                   <div className="relative my-6">
@@ -144,8 +178,6 @@ export const SignInPage: React.FC = () => {
                   </div>
                 </>
               )}
-            </>
-          )}
         </div>
       </div>
     </div>

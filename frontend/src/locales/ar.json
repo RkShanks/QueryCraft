@@ -37,6 +37,8 @@
   "auth.signIn.submit": "تسجيل الدخول",
   "auth.signIn.signingIn": "جارٍ تسجيل الدخول...",
   "auth.signIn.sso.button": "تسجيل الدخول باستخدام {{provider}}",
+  "auth.signIn.sso.loading": "جارٍ التحقق من خيارات تسجيل الدخول المؤسسي…",
+  "auth.signIn.sso.loadError": "تسجيل الدخول المؤسسي غير متوفر مؤقتاً.",
   "auth.signIn.error.usernameEmpty": "اسم المستخدم لا يمكن أن يكون فارغاً.",
   "auth.signIn.error.passwordEmpty": "كلمة المرور لا يمكن أن تكون فارغة.",
   "auth.signIn.status.success": "تم تسجيل الدخول بنجاح.",

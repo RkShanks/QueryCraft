@@ -97,9 +97,9 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 
 | Status | Count |
 | --- | ---: |
-| Pending | 8 |
+| Pending | 6 |
 | Resolved | 36 |
-| Resolved on tested branch | 0 |
+| Resolved on tested branch | 2 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
 | **Total** | **47** |
@@ -146,6 +146,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 `IS-GAP-043`, `IS-GAP-037` and `IS-GAP-031` are resolved and merged at main `74aa30481377321c6178d0523ab593c697525725` via [#319](https://github.com/RkShanks/QueryCraft/pull/319). Their [CHUNK-21 evidence](evidence/chunk-21-browser-async.md) records one request-scope utility giving query submit/accept/reject/regenerate owned controllers with wire-level aborts on unmount, route/session/user replacement and CHUNK-03 deletion, late-settlement suppression without error/toast/stale state, the preserved `session_deleted` precedence, CHUNK-04's authoritative backend deadline with no client query deadline, one documented bounded ordinary deadline across the previously signal-dropping queries with a localized recoverable timeout, a longer documented export deadline with explicit Cancel and exactly-once resource cleanup, a location-keyed sanitized route boundary inside the authenticated shell with retry and permission-aware navigation, navigation-scoped timer cleanup for Workspace alerts and audit toasts, one shared bounded clipboard contract across CodeBlockActionBar and HistoryDetail and contained lazy-Shiki fallbacks keeping readable plain-text LTR SQL. Coverage is seven RED/GREEN/gate commits inside a 1,283-test full Vitest run (up from 1,232), ESLint/typecheck/build/CSS-lint/gen-parity/harness guards with 36 classified specs, 37 backend compatibility unit tests plus Ruff, a six-case mocked Chromium matrix and two live cases against a disposable FastAPI stack destroyed afterward.
 `IS-GAP-034` is resolved and merged at main `e4c3ca5aac856b6c73c41c931331bf3a482a57a5` via [#320](https://github.com/RkShanks/QueryCraft/pull/320). Its [CHUNK-22 evidence](evidence/chunk-22-audit-download.md) records applied-filter authority, safe server filename/media handling, cancellation/retry/no-partial-file behavior, 1,327 frontend tests, backend export/search/OpenAPI groups, complete local frontend gates, 4/4 mocked Chromium cases, two real CSV/JSON browser downloads with checksum/redaction inspection and disposable-stack cleanup. Authoritative CI run `32738202877` passed backend-test and frontend-test; merge and cleanup completed.
 These decisions block only `CHUNK-30` and `CHUNK-31`. All product chunks through `CHUNK-22` are now merged; `CHUNK-20` merged as `48f775834a9c2c1fa3f4c2ea95132c1ff287d119` via [#318](https://github.com/RkShanks/QueryCraft/pull/318).
+
+`IS-GAP-044` and `IS-GAP-016` are resolved on tested branch `phase-6/wave-19.23-auth-recovery-idp` at `76b7321`. Their [CHUNK-23 evidence](evidence/chunk-23-auth-idp.md) records the distinct accessible provider loading/configured/empty/failure+retry states, sanitized invalid-callback mapping, double-submit suppression, rejected sign-out retry and confirmed sign-out boundaries, a reproduced-and-fixed rejected-sign-in visibility defect, and the disposable isolated HTTPS OIDC/SAML IdP proof: real-browser redirect/callback flows, signing-key and certificate rotation without restart, retired-material rejection, claim/assertion negatives, replay, outage and recovery under strict TLS with zero auth material in any channel. PR and authoritative CI remain pending.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
