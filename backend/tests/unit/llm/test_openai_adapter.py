@@ -103,7 +103,9 @@ async def test_generate_non_json_body_raises_typed_llm_unavailable(adapter: Open
 @respx.mock
 async def test_generate_missing_choices_field_raises_typed_llm_unavailable(adapter: OpenAIAdapter):
     """A structured 200 response without the expected choices field raises typed LLMUnavailable."""
-    respx.post("https://api.openai.com/v1/chat/completions").mock(return_value=Response(200, json={"id": "chatcmpl-01"}))
+    respx.post("https://api.openai.com/v1/chat/completions").mock(
+        return_value=Response(200, json={"id": "chatcmpl-01"})
+    )
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")

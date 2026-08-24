@@ -74,7 +74,10 @@ async def test_generate_429_raises_llm_unavailable(adapter: AnthropicAdapter):
 async def test_generate_401_raises_typed_llm_unavailable(adapter: AnthropicAdapter):
     """HTTP 4xx auth failure raises typed LLMUnavailable with a sanitized constant message."""
     respx.post("https://api.anthropic.com/v1/messages").mock(
-        return_value=Response(401, json={"type": "error", "error": {"type": "authentication_error", "message": "internal-detail"}})
+        return_value=Response(
+            401,
+            json={"type": "error", "error": {"type": "authentication_error", "message": "internal-detail"}},
+        )
     )
 
     with pytest.raises(LLMUnavailable) as excinfo:

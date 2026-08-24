@@ -103,7 +103,9 @@ async def test_generate_missing_response_field_raises_typed_llm_unavailable(adap
 @respx.mock
 async def test_generate_null_response_field_raises_typed_llm_unavailable(adapter: OllamaAdapter):
     """A structured 200 response with a null response field raises typed LLMUnavailable."""
-    respx.post("http://localhost:11434/api/generate").mock(return_value=Response(200, json={"response": None, "done": True}))
+    respx.post("http://localhost:11434/api/generate").mock(
+        return_value=Response(200, json={"response": None, "done": True})
+    )
 
     with pytest.raises(LLMUnavailable):
         await adapter.generate("prompt")

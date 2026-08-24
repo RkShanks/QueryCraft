@@ -203,8 +203,12 @@ def test_cached_adapter_reused_per_config_and_isolated_across_keys():
     key_a1 = "sk-aaaaaaaaaaaaaaaaaa1"
     first = LLMProviderFactory.from_config(MatrixSettings(provider="openai", openai_key=key_a1, model="gpt-4o"))
     same = LLMProviderFactory.from_config(MatrixSettings(provider="openai", openai_key=key_a1, model="gpt-4o"))
-    other_model = LLMProviderFactory.from_config(MatrixSettings(provider="openai", openai_key=key_a1, model="gpt-4o-mini"))
-    other_key = LLMProviderFactory.from_config(MatrixSettings(provider="openai", openai_key="sk-bbbbbbbbbbbbbbbbbb2", model="gpt-4o"))
+    other_model = LLMProviderFactory.from_config(
+        MatrixSettings(provider="openai", openai_key=key_a1, model="gpt-4o-mini")
+    )
+    other_key = LLMProviderFactory.from_config(
+        MatrixSettings(provider="openai", openai_key="sk-bbbbbbbbbbbbbbbbbb2", model="gpt-4o")
+    )
     assert first is same
     assert first is not other_model
     assert first is not other_key
