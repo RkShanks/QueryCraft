@@ -6,11 +6,12 @@ import { User, Lock, Loader2, AlertCircle } from 'lucide-react';
 export const SignInForm: React.FC = () => {
   const { t } = useTranslation();
   const signInMutation = useSignIn();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   // The identity boundary unmounts this form while a sign-in mutation is in
-  // flight; derive feedback from the persisted mutation state so a rejection
-  // stays visible on the remounted form.
+  // flight; derive feedback and the attempted credentials from the persisted
+  // mutation state so a rejection stays visible and retryable on remount.
+  const priorAttempt = signInMutation.variables;
+  const [username, setUsername] = useState(priorAttempt?.username ?? '');
+  const [password, setPassword] = useState(priorAttempt?.password ?? '');
   const [errorMessage, setErrorMessage] = useState(() =>
     signInMutation.isError ? t('auth.signIn.error.invalidCredentials') : '',
   );
