@@ -1223,7 +1223,7 @@ describe('sign-in rejection visibility across the identity transition (IS-GAP-04
       </QueryProvider>,
     );
 
-    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'wrong-user' } });
+    fireEvent.change(await screen.findByLabelText(/username/i), { target: { value: 'wrong-user' } });
     fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'wrong-pass' } });
     fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
 
