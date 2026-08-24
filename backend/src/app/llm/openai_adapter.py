@@ -35,9 +35,18 @@ class OpenAIAdapter:
         if response.status_code >= 500 or response.status_code == 429:
             raise LLMUnavailable(provider="openai")
 
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
+        try:
+            response.raise_for_status()
+            data = response.json()
+            sql = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, ValueError) as exc:
+            raise LLMUnavailable(provider="openai", message="Malformed response from provider") from exc
+        except httpx.HTTPStatusError as exc:
+            raise LLMUnavailable(provider="openai") from exc
+
+        if not isinstance(sql, str):
+            raise LLMUnavailable(provider="openai", message="Malformed response from provider")
+        return sql
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client."""

@@ -97,11 +97,12 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 
 | Status | Count |
 | --- | ---: |
-| Pending | 6 |
+| Pending | 5 |
 | Resolved | 38 |
 | Resolved on tested branch | 0 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
+| Partial | 1 |
 | **Total** | **47** |
 
 `IS-GAP-001` is resolved on tested main `3522440f0bbf3c837aafe62edaf2e9d89d4717fb` via [#297](https://github.com/RkShanks/QueryCraft/pull/297). Its [CHUNK-01 evidence](evidence/chunk-01-source-continuity.md) records the three-dialect HTTP matrix, focused browser decision flow, fail-closed cases, gates, cleanup, and protected-baseline confirmation.
@@ -148,6 +149,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 These decisions block only `CHUNK-30` and `CHUNK-31`. All product chunks through `CHUNK-23` are now merged; `CHUNK-20` merged as `48f775834a9c2c1fa3f4c2ea95132c1ff287d119` via [#318](https://github.com/RkShanks/QueryCraft/pull/318), and CHUNK-23 merged as `2114f8a8ef2f20141c0a43d87cb81b1a3ff1c758` via [#322](https://github.com/RkShanks/QueryCraft/pull/322) with authoritative backend/frontend CI passing in run `32773267333`.
 
 `IS-GAP-044` and `IS-GAP-016` are resolved and merged at main `2114f8a8ef2f20141c0a43d87cb81b1a3ff1c758` via [#322](https://github.com/RkShanks/QueryCraft/pull/322). Their [CHUNK-23 evidence](evidence/chunk-23-auth-idp.md) records the distinct accessible provider loading/configured/empty/failure+retry states, sanitized invalid-callback mapping, double-submit suppression, rejected sign-out retry and confirmed sign-out boundaries, a reproduced-and-fixed rejected-sign-in visibility defect, and the disposable isolated HTTPS OIDC/SAML IdP proof: real-browser redirect/callback flows, signing-key and certificate rotation without restart, retired-material rejection, claim/assertion negatives, replay, outage and recovery under strict TLS with zero auth material in any channel. Authoritative CI run `32773267333` passed backend-test and frontend-test; branch deletion and synchronized main completed.
+
+`IS-GAP-015` is **Partial** via CHUNK-24 from synchronized main `1bfc245448e2ff4dd7b2111065ee7ce04bdff7e9` (RED `542bd34`, GREEN `81fc501`). Its [CHUNK-24 evidence](evidence/chunk-24-provider-matrix.md) records a 44-case deterministic matrix covering selection/normalization, factory routing, missing/malformed configuration, unsupported providers, invalid base URLs/models, timeout/cancellation propagation, HTTP/API failures, sanitized error mapping, no-unintended-fallback, no-secret-retention and cross-adapter query-composition compatibility (P1-FR-009, P1-FR-026, P2-FR-047, XP-014); one confirmed in-gap defect where the Anthropic/OpenAI/Ollama adapters leaked raw framework exceptions on malformed 200 bodies and 4xx responses was fixed by mirroring GeminiAdapter's typed sanitized constant-message mapping with no signature changes and Gemini untouched. Gates: focused suites 143 passed, full backend unit foundation 2240 passed/365 skipped, Ruff/format/diff-check clean. The required one-benign-live-request-per-provider evidence is Setup-dependent for all three providers — Anthropic has no credentials, Ollama is not installed locally, and the OpenAI credential's cost/invocation approval was declined by the owner — so the gap is Partial, not Resolved, with zero external spend and zero invocations.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 

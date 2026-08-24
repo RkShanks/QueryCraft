@@ -63,11 +63,12 @@
       "Needs Decision": 1
     },
     "status": {
-      "Pending": 6,
+      "Pending": 5,
       "Resolved": 38,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
-      "Needs Decision": 3
+      "Needs Decision": 3,
+      "Partial": 1
     }
   },
   "remediation_progress": {
@@ -393,6 +394,22 @@
         "frontend_test": "passed"
       },
       "merge_commit": "2114f8a8ef2f20141c0a43d87cb81b1a3ff1c758"
+    },
+    "CHUNK-24": {
+      "gap_id": "IS-GAP-015",
+      "status": "Partial",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/324",
+      "tested_commits": {
+        "red": "542bd34",
+        "green": "81fc501"
+      },
+      "deterministic_matrix": "Pass",
+      "live_smoke": {
+        "anthropic": "Setup-dependent",
+        "openai": "Setup-dependent",
+        "ollama": "Setup-dependent"
+      },
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-24-provider-matrix.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -1192,7 +1209,7 @@
       ],
       "owner": "Backend Implementer; Kimi/GLM",
       "chunk": "CHUNK-24",
-      "status": "Pending",
+      "status": "Partial",
       "source_refs": [
         "backend/src/app/llm/anthropic_adapter.py::AnthropicAdapter.generate",
         "backend/src/app/llm/openai_adapter.py::OpenAIAdapter.generate",
@@ -2426,7 +2443,7 @@
         "frontend/src/components/history/HistoryList.tsx::HistoryList",
         "frontend/src/pages/AdminAuditPage.tsx::AdminAuditPage"
       ],
-      "resolution": "Resolved and merged as 48f775834a9c2c1fa3f4c2ea95132c1ff287d119 via https://github.com/RkShanks/QueryCraft/pull/318; authoritative CI passed and the squash merge completed. One normalization helper locks en/ar variant resolution, precedence (?lng= → persisted → navigator → html lang → en), authoritative manual changes with stale-param rewrite and central lang/dir sync; an accessible EN/Arabic toggle ships in both shells and all date/number rendering routes through active-locale formatters."
+      "resolution": "Resolved and merged as 48f775834a9c2c1fa3f4c2ea95132c1ff287d119 via https://github.com/RkShanks/QueryCraft/pull/318; authoritative CI passed and the squash merge completed. One normalization helper locks en/ar variant resolution, precedence (?lng= \u2192 persisted \u2192 navigator \u2192 html lang \u2192 en), authoritative manual changes with stale-param rewrite and central lang/dir sync; an accessible EN/Arabic toggle ships in both shells and all date/number rendering routes through active-locale formatters."
     },
     {
       "id": "IS-GAP-039",

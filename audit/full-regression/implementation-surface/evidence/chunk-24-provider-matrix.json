@@ -1,0 +1,78 @@
+{
+  "chunk": "CHUNK-24",
+  "gap_id": "IS-GAP-015",
+  "branch": "phase-6/wave-19.24-provider-matrix",
+  "starting_main": "1bfc245448e2ff4dd7b2111065ee7ce04bdff7e9",
+  "tested_commits": {
+    "red": "542bd34",
+    "green": "81fc501",
+    "lint_wrap": "c729511"
+  },
+  "date": "2026-08-25",
+  "deterministic_matrix": {
+    "status": "Pass",
+    "new_tests": 44,
+    "categories": [
+      {"category": "provider_selection_and_normalization", "tests": 4, "result": "Pass"},
+      {"category": "factory_routing", "tests": 2, "result": "Pass"},
+      {"category": "missing_or_malformed_configuration", "tests": 5, "result": "Pass"},
+      {"category": "unsupported_provider_names", "tests": 4, "result": "Pass"},
+      {"category": "invalid_base_urls_models", "tests": 3, "result": "Pass"},
+      {"category": "timeout_and_cancellation", "new_tests": 3, "preexisting_reverified": true, "result": "Pass"},
+      {"category": "provider_http_api_failure", "new_tests": 3, "preexisting_reverified": true, "result": "Pass"},
+      {"category": "sanitized_error_mapping", "tests": 9, "result": "Pass"},
+      {"category": "no_unintended_fallback", "tests": 2, "result": "Pass"},
+      {"category": "no_secret_retention", "tests": 3, "result": "Pass"},
+      {"category": "query_composition_compatibility", "tests": 6, "result": "Pass"}
+    ],
+    "regression_rows_covered": ["P1-FR-009", "P1-FR-026", "P2-FR-047", "XP-014"]
+  },
+  "defect_found_within_gap": {
+    "detected": true,
+    "description_category": "raw_framework_exception_leak_on_malformed_or_4xx_provider_response",
+    "affected_adapters": ["anthropic", "openai", "ollama"],
+    "user_facing_disclosure": false,
+    "resolution": "typed_sanitized_mapping_matching_gemini_pattern",
+    "red_commit": "542bd34",
+    "green_commit": "81fc501"
+  },
+  "live_smoke": {
+    "anthropic": {"credential_present": false, "runtime_reachable": null, "invocations": 0, "classification": "Setup-dependent"},
+    "openai": {"credential_present": true, "runtime_reachable": true, "invocations": 0, "approval_declined": true, "classification": "Setup-dependent"},
+    "ollama": {"credential_present": null, "runtime_reachable": false, "invocations": 0, "classification": "Setup-dependent"},
+    "external_spend": 0,
+    "retries": 0
+  },
+  "gemini_unchanged": true,
+  "gates": {
+    "focused_provider_composition_regression": "143 passed",
+    "backend_unit_full": "2240 passed, 365 skipped, 44 deselected",
+    "ruff_check": "passed",
+    "ruff_format_check": "passed",
+    "git_diff_check": "clean",
+    "frontend_gates": "not_required_no_frontend_changes",
+    "generated_api_parity": "not_required_no_contract_changes"
+  },
+  "guard_reviews": {
+    "test_guard": "applied",
+    "clean_code_guard": "applied",
+    "docs_guard": "applied"
+  },
+  "isolation_cleanup": {
+    "dev_config_modified": false,
+    "disposable_resources_created": 0,
+    "protected_baseline_preserved": true,
+    "sensitive_material_in_evidence": false
+  },
+  "status_totals": {
+    "deterministic_matrix": "Pass",
+    "live_smoke_anthropic": "Setup-dependent",
+    "live_smoke_openai": "Setup-dependent",
+    "live_smoke_ollama": "Setup-dependent",
+    "overall_gap": "Partial"
+  },
+  "evidence_files": [
+    "audit/full-regression/implementation-surface/evidence/chunk-24-provider-matrix.md",
+    "audit/full-regression/implementation-surface/evidence/chunk-24-provider-matrix.json"
+  ]
+}

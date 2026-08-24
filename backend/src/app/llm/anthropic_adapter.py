@@ -36,9 +36,18 @@ class AnthropicAdapter:
         if response.status_code >= 500 or response.status_code == 429:
             raise LLMUnavailable(provider="anthropic")
 
-        response.raise_for_status()
-        data = response.json()
-        return data["content"][0]["text"]
+        try:
+            response.raise_for_status()
+            data = response.json()
+            sql = data["content"][0]["text"]
+        except (KeyError, IndexError, ValueError) as exc:
+            raise LLMUnavailable(provider="anthropic", message="Malformed response from provider") from exc
+        except httpx.HTTPStatusError as exc:
+            raise LLMUnavailable(provider="anthropic") from exc
+
+        if not isinstance(sql, str):
+            raise LLMUnavailable(provider="anthropic", message="Malformed response from provider")
+        return sql
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client."""
