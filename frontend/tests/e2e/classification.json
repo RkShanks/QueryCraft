@@ -143,6 +143,10 @@
     "tests/e2e/chunk_21_live_async.spec.ts": {
       "category": "live",
       "reason": "Validates real-API session redirect, reload/back-forward coherence and late-settlement suppression through the running backend without browser mocks."
+    },
+    "tests/e2e/chunk_22_audit_download.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic audit download matrix: applied-filter export scope, server filenames via real download events, failure/cancel zero-download paths and AR 375px keyboard flow."
     }
   },
   "mockHelpers": [

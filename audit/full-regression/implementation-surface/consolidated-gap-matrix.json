@@ -63,9 +63,9 @@
       "Needs Decision": 1
     },
     "status": {
-      "Pending": 9,
+      "Pending": 8,
       "Resolved": 35,
-      "Resolved on tested branch": 0,
+      "Resolved on tested branch": 1,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 3
     }
@@ -354,6 +354,18 @@
       "starting_main": "48f775834a9c2c1fa3f4c2ea95132c1ff287d119",
       "pull_request": "https://github.com/RkShanks/QueryCraft/pull/319",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-21-browser-async.json"
+    },
+    "CHUNK-22": {
+      "gap_ids": [
+        "IS-GAP-034"
+      ],
+      "status": "Resolved on tested branch",
+      "branch": "phase-6/wave-19.22-audit-download",
+      "tested_product_commit": "63cc50d",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-22-audit-download.json",
+      "pull_request": null,
+      "authoritative_ci": null,
+      "merge_commit": null
     }
   },
   "raw_candidate_dispositions": {
@@ -2153,12 +2165,24 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-22",
-      "status": "Pending",
+      "status": "Resolved on tested branch",
+      "resolution": {
+        "tested_product_commit": "63cc50d",
+        "evidence": "audit/full-regression/implementation-surface/evidence/chunk-22-audit-download.json",
+        "pull_request": null,
+        "authoritative_ci": null,
+        "merge_commit": null
+      },
       "source_refs": [
         "frontend/src/pages/AdminAuditPage.tsx::handleExport",
         "frontend/src/pages/AdminAuditPage.tsx::buildExportRequest",
         "frontend/src/api/audit.ts::exportAuditEntries",
-        "frontend/src/pages/AdminAuditPage.test.tsx"
+        "frontend/src/api/auditDownload.ts",
+        "frontend/src/api/auditDownload.test.ts",
+        "frontend/src/api/audit.test.ts",
+        "frontend/src/pages/AdminAuditPage.appliedFilters.test.tsx",
+        "frontend/src/pages/AdminAuditPage.downloadContract.test.tsx",
+        "frontend/tests/e2e/chunk_22_audit_download.spec.ts"
       ]
     },
     {

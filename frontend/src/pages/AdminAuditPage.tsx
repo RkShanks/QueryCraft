@@ -7,7 +7,9 @@ import {
   searchAuditEntries,
   exportAuditEntries,
   getAuditRetention,
+  AuditDownloadError,
   type AuditExportRequest,
+  type AuditSearchParams,
   type AuditSearchResponse,
 } from '../api/audit';
 import {
@@ -33,6 +35,74 @@ interface LastVerification {
   first_break_at?: number | null;
   verified_at: string;
 }
+
+/**
+ * CHUNK-22 / IS-GAP-034 — the filters that were successfully applied to a
+ * displayed result set. Draft form inputs and requested searches are separate
+ * states; only a settled response carries its own applied filters so results,
+ * the visible summary and every export request stay bound to one dataset.
+ */
+interface AppliedAuditFilters {
+  start_date: string;
+  end_date: string;
+  action_type: string;
+  actor_identity: string;
+  outcome: string;
+  resource_type: string;
+}
+
+const EMPTY_APPLIED_FILTERS: AppliedAuditFilters = {
+  start_date: '',
+  end_date: '',
+  action_type: '',
+  actor_identity: '',
+  outcome: '',
+  resource_type: '',
+};
+
+interface AuditSearchSnapshot {
+  filters: AppliedAuditFilters;
+  response: AuditSearchResponse;
+}
+
+function filtersToSearchParams(
+  filters: AppliedAuditFilters,
+  page: number
+): Record<string, unknown> {
+  const params: Record<string, unknown> = {
+    page,
+    page_size: 10,
+  };
+  if (filters.start_date) params.start_date = filters.start_date;
+  if (filters.end_date) params.end_date = filters.end_date;
+  if (filters.action_type) params.action_type = filters.action_type;
+  if (filters.actor_identity) params.actor_identity = filters.actor_identity;
+  if (filters.outcome) params.outcome = filters.outcome;
+  if (filters.resource_type) params.resource_type = filters.resource_type;
+  return params;
+}
+
+function areSameFilters(a: AppliedAuditFilters, b: AppliedAuditFilters): boolean {
+  return (
+    a.start_date === b.start_date &&
+    a.end_date === b.end_date &&
+    a.action_type === b.action_type &&
+    a.actor_identity === b.actor_identity &&
+    a.outcome === b.outcome &&
+    a.resource_type === b.resource_type
+  );
+}
+
+const APPLIED_FILTER_FIELD_LABELS: ReadonlyArray<
+  readonly [keyof AppliedAuditFilters, 'audit.search.date_from' | 'audit.search.date_to' | 'audit.search.action_type' | 'audit.search.actor' | 'audit.search.outcome' | 'audit.search.resource_type']
+> = [
+  ['start_date', 'audit.search.date_from'],
+  ['end_date', 'audit.search.date_to'],
+  ['action_type', 'audit.search.action_type'],
+  ['actor_identity', 'audit.search.actor'],
+  ['outcome', 'audit.search.outcome'],
+  ['resource_type', 'audit.search.resource_type'],
+];
 
 const RESPONSIVE_AUDIT_CELL_CLASS =
   'flex min-w-0 items-start justify-between gap-4 before:shrink-0 before:text-xs before:font-semibold before:uppercase before:tracking-wider before:text-gray-500 before:content-[attr(data-label)] lg:table-cell lg:px-4 lg:py-3 lg:before:hidden';
@@ -76,7 +146,7 @@ export const AdminAuditPage: React.FC = () => {
 
   const [isExporting, setIsExporting] = useState<'csv' | 'json' | null>(null);
 
-  // Search Filter Form States
+  // Search Filter Form States (draft inputs — never authoritative for export).
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [actionType, setActionType] = useState('');
@@ -84,18 +154,12 @@ export const AdminAuditPage: React.FC = () => {
   const [outcome, setOutcome] = useState('all');
   const [resourceType, setResourceType] = useState('');
   const [page, setPage] = useState(1);
-  const [retainedSearchData, setRetainedSearchData] = useState<AuditSearchResponse>();
+  const [requestedFilters, setRequestedFilters] = useState<AppliedAuditFilters>(EMPTY_APPLIED_FILTERS);
+  // Last displayed snapshot kept so failed searches keep showing the prior
+  // applied dataset instead of an empty table.
+  const [retainedSnapshot, setRetainedSnapshot] = useState<AuditSearchSnapshot>();
 
-  const [filters, setFilters] = useState({
-    start_date: '',
-    end_date: '',
-    action_type: '',
-    actor_identity: '',
-    outcome: '',
-    resource_type: '',
-  });
-
-  const buildFiltersFromInputs = () => ({
+  const buildFiltersFromInputs = (): AppliedAuditFilters => ({
     start_date: startDate ? `${startDate}T00:00:00Z` : '',
     end_date: endDate ? `${endDate}T23:59:59Z` : '',
     action_type: actionType,
@@ -104,48 +168,22 @@ export const AdminAuditPage: React.FC = () => {
     resource_type: resourceType,
   });
 
-  const buildExportRequest = (format: 'csv' | 'json'): AuditExportRequest => {
-    const currentFilters = buildFiltersFromInputs();
-    return {
-      format,
-      start_date: currentFilters.start_date || undefined,
-      end_date: currentFilters.end_date || undefined,
-      action_type: (currentFilters.action_type || undefined) as AuditExportRequest['action_type'],
-      actor_identity: currentFilters.actor_identity || undefined,
-      outcome: (currentFilters.outcome || undefined) as AuditExportRequest['outcome'],
-      resource_type: currentFilters.resource_type || undefined,
-    };
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setRetainedSearchData(searchQuery.data ?? retainedSearchData);
-    setPage(1);
-    setFilters(buildFiltersFromInputs());
-  };
-
-  const handleReset = () => {
-    setRetainedSearchData(searchQuery.data ?? retainedSearchData);
-    setStartDate('');
-    setEndDate('');
-    setActionType('');
-    setActorIdentity('');
-    setOutcome('all');
-    setResourceType('');
-    setPage(1);
-    setFilters({
-      start_date: '',
-      end_date: '',
-      action_type: '',
-      actor_identity: '',
-      outcome: '',
-      resource_type: '',
-    });
-  };
-
   const cancelExport = () => {
     exportScopeRef.current?.abort();
   };
+
+  const buildExportRequest = (
+    format: 'csv' | 'json',
+    appliedFilters: AppliedAuditFilters
+  ): AuditExportRequest => ({
+    format,
+    start_date: appliedFilters.start_date || undefined,
+    end_date: appliedFilters.end_date || undefined,
+    action_type: (appliedFilters.action_type || undefined) as AuditExportRequest['action_type'],
+    actor_identity: appliedFilters.actor_identity || undefined,
+    outcome: (appliedFilters.outcome || undefined) as AuditExportRequest['outcome'],
+    resource_type: appliedFilters.resource_type || undefined,
+  });
 
   const handleExport = async (format: 'csv' | 'json') => {
     requirePermission(canVerifyAudit, PERMISSIONS.ADMIN_AUDIT_VERIFY);
@@ -155,17 +193,19 @@ export const AdminAuditPage: React.FC = () => {
     const scope = new RequestScope({ timeoutMs: AUDIT_EXPORT_TIMEOUT_MS });
     exportScopeRef.current = scope;
     try {
-      const blob = await exportAuditEntries(buildExportRequest(format), scope.signal);
+      const download = await exportAuditEntries(
+        buildExportRequest(format, exportFilters),
+        scope.signal
+      );
       if (scope.aborted || !mountedRef.current) return;
 
       let url: string | null = null;
       let link: HTMLAnchorElement | null = null;
       try {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        url = window.URL.createObjectURL(blob);
+        url = window.URL.createObjectURL(download.blob);
         link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `audit_export_${timestamp}.${format}`);
+        link.setAttribute('download', download.filename);
         document.body.appendChild(link);
         link.click();
       } finally {
@@ -182,6 +222,13 @@ export const AdminAuditPage: React.FC = () => {
           const timedOut = isClientDeadlineError(err) || scope.reason === 'deadline';
           addToast('error', timedOut ? t('audit.export.timeout') : t('audit.export.canceled'));
         }
+        return;
+      }
+      if (
+        err instanceof AuditDownloadError ||
+        (err as Record<string, unknown> | undefined)?.name === 'AuditDownloadError'
+      ) {
+        addToast('error', t('audit.export.failed'));
         return;
       }
       const errorObj = err as Record<string, unknown> | undefined;
@@ -210,20 +257,17 @@ export const AdminAuditPage: React.FC = () => {
     }
   };
 
-  const searchParams: Record<string, unknown> = {
-    page,
-    page_size: 10,
-  };
-  if (filters.start_date) searchParams.start_date = filters.start_date;
-  if (filters.end_date) searchParams.end_date = filters.end_date;
-  if (filters.action_type) searchParams.action_type = filters.action_type;
-  if (filters.actor_identity) searchParams.actor_identity = filters.actor_identity;
-  if (filters.outcome) searchParams.outcome = filters.outcome;
-  if (filters.resource_type) searchParams.resource_type = filters.resource_type;
-
   const searchQuery = useQuery({
-    queryKey: ['adminAuditEntries', searchParams],
-    queryFn: ({ signal }) => searchAuditEntries(searchParams, signal),
+    queryKey: ['adminAuditEntries', requestedFilters, page],
+    queryFn: async ({ signal }): Promise<AuditSearchSnapshot> => {
+      const response = await searchAuditEntries(
+        filtersToSearchParams(requestedFilters, page) as AuditSearchParams,
+        signal
+      );
+      // The settled response carries the exact filters it was requested with;
+      // display and export derive from this snapshot atomically.
+      return { filters: requestedFilters, response };
+    },
     placeholderData: (previousData) => previousData,
     enabled: canVerifyAudit,
   });
@@ -233,9 +277,48 @@ export const AdminAuditPage: React.FC = () => {
     queryFn: ({ signal }) => getAuditRetention(signal),
     enabled: canVerifyAudit,
   });
-  const searchData = searchQuery.data ?? retainedSearchData;
+
+  // The displayed dataset: a settled or placeholder response for the current
+  // request, otherwise the retained prior dataset after a failed search.
+  const snapshot: AuditSearchSnapshot | undefined = searchQuery.data ?? retainedSnapshot;
+  const searchData = snapshot?.response;
   const searchPagination = searchData?.pagination;
   const retentionData = retentionQuery.data;
+
+  const retainDisplayedSnapshot = () => {
+    setRetainedSnapshot(searchQuery.data ?? retainedSnapshot);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    retainDisplayedSnapshot();
+    setPage(1);
+    setRequestedFilters(buildFiltersFromInputs());
+  };
+
+  const handleReset = () => {
+    retainDisplayedSnapshot();
+    setStartDate('');
+    setEndDate('');
+    setActionType('');
+    setActorIdentity('');
+    setOutcome('all');
+    setResourceType('');
+    setPage(1);
+    setRequestedFilters(EMPTY_APPLIED_FILTERS);
+  };
+
+  // Draft inputs versus the filters governing the displayed dataset.
+  const draftFilters = buildFiltersFromInputs();
+  const appliedFilters = snapshot?.filters ?? EMPTY_APPLIED_FILTERS;
+  const hasUnappliedChanges =
+    searchData !== undefined && !areSameFilters(draftFilters, appliedFilters);
+  // Before any dataset has been displayed, an export rides the requested
+  // filters of the in-flight initial search.
+  const exportFilters = snapshot?.filters ?? requestedFilters;
+  const appliedFilterEntries = APPLIED_FILTER_FIELD_LABELS
+    .map(([field, labelKey]) => [labelKey, appliedFilters[field]] as const)
+    .filter(([, value]) => value !== '');
 
   const handleVerify = () => {
     verifyMutation.mutate(undefined, {
@@ -631,6 +714,40 @@ export const AdminAuditPage: React.FC = () => {
           </div>
         </form>
 
+        {/* Applied filter summary — always describes the displayed dataset (CHUNK-22). */}
+        <div className="space-y-2">
+          <div
+            data-testid="audit-applied-filters"
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400"
+          >
+            <span className="font-semibold text-gray-300">{t('audit.search.applied_filters')}:</span>
+            {appliedFilterEntries.length === 0 ? (
+              <span>{t('audit.search.all_entries')}</span>
+            ) : (
+              appliedFilterEntries.map(([labelKey, value]) => (
+                <span
+                  key={labelKey}
+                  className="inline-flex min-w-0 max-w-full items-center gap-1 rounded border border-gray-800 bg-gray-950 px-2 py-0.5"
+                >
+                  <span className="shrink-0 text-gray-400">{t(labelKey)}:</span>
+                  <span dir="ltr" className="min-w-0 break-all font-mono text-gray-200">
+                    {value}
+                  </span>
+                </span>
+              ))
+            )}
+          </div>
+          {hasUnappliedChanges && (
+            <p
+              data-testid="audit-draft-filters-notice"
+              aria-live="polite"
+              className="text-xs leading-relaxed text-amber-300"
+            >
+              {t('audit.export.draft_notice')}
+            </p>
+          )}
+        </div>
+
         {/* Results Table */}
         <div className="border border-gray-800 rounded-xl overflow-hidden bg-gray-950">
           {searchQuery.isLoading ? (
@@ -756,7 +873,7 @@ export const AdminAuditPage: React.FC = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        setRetainedSearchData(searchData);
+                        retainDisplayedSnapshot();
                         setPage((prev) => Math.max(1, prev - 1));
                       }}
                       disabled={page === 1}
@@ -766,7 +883,7 @@ export const AdminAuditPage: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        setRetainedSearchData(searchData);
+                        retainDisplayedSnapshot();
                         setPage((prev) =>
                           Math.min(searchPagination.total_pages, prev + 1)
                         );
