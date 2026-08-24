@@ -20,9 +20,19 @@ export function AccessDeniedPage() {
           {t('accessDenied.description')}
         </p>
         {signOut.isError && (
-          <p className="mt-5 rounded-lg border border-red-900/50 bg-red-950/30 p-3 text-sm text-red-300" role="alert">
-            {t('accessDenied.signOutFailed')}
-          </p>
+          <>
+            <p className="mt-5 rounded-lg border border-red-900/50 bg-red-950/30 p-3 text-sm text-red-300" role="alert">
+              {t('accessDenied.signOutFailed')}
+            </p>
+            <button
+              type="button"
+              className="mt-3 inline-flex min-h-11 items-center justify-center rounded-lg border border-obsidian-700 px-5 py-2.5 font-semibold text-obsidian-100 focus:outline-none focus:ring-2 focus:ring-neon-cyan focus:ring-offset-2 focus:ring-offset-obsidian-950 disabled:opacity-50"
+              onClick={() => signOut.mutate()}
+              disabled={signOut.isPending}
+            >
+              {t('common.retry')}
+            </button>
+          </>
         )}
         <button
           type="button"

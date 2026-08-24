@@ -313,7 +313,15 @@ export const Sidebar: React.FC = () => {
       <div className="sidebar-footer">
         {signOutMutation.isError && (
           <div className="sidebar-sign-out-error" role="alert">
-            {t('accessDenied.signOutFailed')}
+            <span>{t('accessDenied.signOutFailed')}</span>
+            <button
+              type="button"
+              className="sidebar-sign-out-retry"
+              onClick={handleSignOut}
+              disabled={signOutMutation.isPending}
+            >
+              {t('common.retry')}
+            </button>
           </div>
         )}
         <button
