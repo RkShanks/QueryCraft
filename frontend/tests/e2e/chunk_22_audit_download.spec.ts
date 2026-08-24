@@ -231,7 +231,6 @@ test.describe('CHUNK-22 audit download', () => {
 
   test('401/403/422/429 failures and cancel produce zero partial downloads', async ({ page }) => {
     const consoleErrors: string[] = [];
-    let failureMatrixSignedIn = false;
     page.on('pageerror', (error) => consoleErrors.push(String(error)));
 
     await mockAuditShell(page);
