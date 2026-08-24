@@ -1,8 +1,8 @@
 # CHUNK-24 — non-Gemini provider evidence (IS-GAP-015)
 
-Branch: `phase-6/wave-19.24-provider-matrix`
+Branch: `phase-6/wave-19.24-provider-matrix` (follow-up: `phase-6/wave-19.24-provider-null-body-followup`)
 Starting synchronized main: `1bfc245448e2ff4dd7b2111065ee7ce04bdff7e9`
-Tested product commits: RED `542bd34`, GREEN `81fc501`, lint wrap `c729511` (branch head at evidence time)
+Tested product commits: RED `542bd34`, GREEN `81fc501`, lint wrap `c729511` (branch head at evidence time); follow-up RED `7f1d220`, GREEN `8406f13`
 Date: 2026-08-25
 Role: Backend Implementer / evidence runner
 
@@ -61,6 +61,34 @@ boundary (all four providers, including unchanged Gemini); they are sanitized by
 the service layer's generic provider-failure mapping. Changing that would have
 required touching Gemini, which this chunk forbids.
 
+## Post-merge follow-up: malformed JSON container shapes
+
+Reproduction against merged main (read-only probe, RED commit `7f1d220`,
+15 failing cases): valid-JSON responses whose container shapes are malformed —
+top-level null, top-level array, top-level scalar string, expected container set
+to null or a scalar, and non-dict list elements — raised an untyped
+interpreter-level subscript error across the Anthropic/OpenAI/Ollama boundaries
+because that error class was absent from the specific exception tuple.
+
+Fix (GREEN commit `8406f13`): `TypeError` joins the existing narrow
+`(KeyError, IndexError, TypeError, ValueError)` mapping in all three adapters,
+so every malformed response structure now produces `LLMUnavailable` with the
+correct provider classification and the constant sanitized message. No provider
+response body or raw framework exception text reaches any message; signatures,
+Gemini behavior, provider-fallback absence, cancellation propagation, timeout
+behavior and valid-response extraction are unchanged (no broad catch-all).
+
+New regression coverage: 18 data-driven cases across the three adapter suites —
+top-level null/array/scalar per adapter, null/scalar containers per adapter,
+non-dict list elements, plus non-string leaf containers; existing missing-field
+and null-leaf cases remain covered. Post-fix totals: 62 new deterministic cases
+overall for this gap (44 original + 18 follow-up), focused suites 161 passed,
+full backend unit foundation 2258 passed/365 skipped/44 deselected,
+Ruff check/format clean, `git diff --check` clean.
+
+IS-GAP-015 remains **Partial**: this follow-up changes deterministic coverage
+only; all three live-provider smokes stay Setup-dependent with zero invocations.
+
 ## Live-provider availability (no invocation run)
 
 | Provider | Credential present | Runtime reachable | Bounded smoke | Classification |
@@ -77,9 +105,9 @@ is required for it.
 ## Gates (verbatim counts)
 
 - Focused provider + query-composition + regression subset (`tests/unit/llm`,
-  retry-quota, exceptions): **143 passed**
+  retry-quota, exceptions): **161 passed** (143 original + 18 follow-up cases)
 - Full backend unit foundation (`pytest tests/unit -q -m "not integration"`):
-  **2240 passed, 365 skipped, 44 deselected**
+  **2258 passed, 365 skipped, 44 deselected**
 - `ruff check src tests`: All checks passed
 - `ruff format --check src tests`: 456 files already formatted
 - `git diff --check`: clean
