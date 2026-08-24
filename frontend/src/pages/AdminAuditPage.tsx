@@ -727,7 +727,7 @@ export const AdminAuditPage: React.FC = () => {
               appliedFilterEntries.map(([labelKey, value]) => (
                 <span
                   key={labelKey}
-                  className="inline-flex min-w-0 items-center gap-1 rounded border border-gray-800 bg-gray-950 px-2 py-0.5"
+                  className="inline-flex min-w-0 max-w-full items-center gap-1 rounded border border-gray-800 bg-gray-950 px-2 py-0.5"
                 >
                   <span className="shrink-0 text-gray-400">{t(labelKey)}:</span>
                   <span dir="ltr" className="min-w-0 break-all font-mono text-gray-200">
