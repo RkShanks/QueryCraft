@@ -35,9 +35,18 @@ class OllamaAdapter:
         if response.status_code >= 500 or response.status_code == 429:
             raise LLMUnavailable(provider="ollama")
 
-        response.raise_for_status()
-        data = response.json()
-        return data["response"]
+        try:
+            response.raise_for_status()
+            data = response.json()
+            sql = data["response"]
+        except (KeyError, IndexError, ValueError) as exc:
+            raise LLMUnavailable(provider="ollama", message="Malformed response from provider") from exc
+        except httpx.HTTPStatusError as exc:
+            raise LLMUnavailable(provider="ollama") from exc
+
+        if not isinstance(sql, str):
+            raise LLMUnavailable(provider="ollama", message="Malformed response from provider")
+        return sql
 
     async def aclose(self) -> None:
         """Close the underlying HTTP client."""
