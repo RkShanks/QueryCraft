@@ -1,0 +1,39 @@
+{
+  "chunk": "CHUNK-22",
+  "gap_ids": ["IS-GAP-034"],
+  "status": "Resolved on tested branch",
+  "branch": "phase-6/wave-19.22-audit-download",
+  "tested_product_commit": "63cc50d",
+  "automated": {
+    "backend_export_redaction_formula_permission": "97 passed",
+    "backend_search_redaction": "30 passed",
+    "backend_openapi": "21 passed",
+    "frontend_vitest": "1327 passed",
+    "frontend_lint_typecheck_build_css_gen_parity": "passed",
+    "harness_specs_classified": 37,
+    "chunk_22_chromium": "4 passed",
+    "mocked_failure_cancel_download_count": 0
+  },
+  "live_disposable": {
+    "real_fastapi_browser_downloads": 2,
+    "formats": ["csv", "json"],
+    "rows_per_format": 3,
+    "server_filename_contract": "passed",
+    "checksum_recomputation": "csv and json passed",
+    "applied_filter_metadata": "present",
+    "sensitive_canary_presence": false,
+    "formula_canary_presence": false,
+    "unexpected_console_or_page_errors": 0,
+    "chunk_21_live_boundary": "2 passed"
+  },
+  "cleanup": {
+    "disposable_compose": "removed",
+    "temporary_downloads": "removed",
+    "protected_baseline_staged": false
+  },
+  "merge_state": {
+    "pull_request": null,
+    "authoritative_ci": null,
+    "merge_commit": null
+  }
+}
