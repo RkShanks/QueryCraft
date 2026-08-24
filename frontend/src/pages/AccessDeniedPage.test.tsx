@@ -40,4 +40,30 @@ describe('AccessDeniedPage', () => {
     );
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sign Out' })).toBeEnabled());
   });
+
+  it.each([
+    ['en', 'Retry'],
+    ['ar', 'إعادة المحاولة'],
+  ])('exposes an explicit localized Retry action that re-attempts sign-out in %s', async (language, retryLabel) => {
+    let signOutRequests = 0;
+    server.use(
+      http.post('/api/v1/auth/sign-out', () => {
+        signOutRequests += 1;
+        if (signOutRequests === 1) {
+          return HttpResponse.json({ error: 'unavailable' }, { status: 503 });
+        }
+        return new HttpResponse(null, { status: 204 });
+      })
+    );
+    await appI18n.changeLanguage(language);
+    render(<AccessDeniedPage />, { wrapper: createWrapper() });
+
+    fireEvent.click(screen.getByRole('button', { name: language === 'ar' ? 'تسجيل الخروج' : 'Sign Out' }));
+    await screen.findByRole('alert');
+
+    fireEvent.click(screen.getByRole('button', { name: retryLabel }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(signOutRequests).toBe(2);
+  });
 });
