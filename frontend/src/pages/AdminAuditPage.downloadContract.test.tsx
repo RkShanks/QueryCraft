@@ -53,7 +53,6 @@ afterEach(() => {
 
 describe('AdminAuditPage download contract (CHUNK-22 / IS-GAP-034)', () => {
   it('names the download exactly after a valid server filename', async () => {
-    let anchorDownloadName = '';
     server.use(
       http.post('/api/v1/admin/audit/export', () =>
         HttpResponse.text('seq\n1\n', {
@@ -73,8 +72,6 @@ describe('AdminAuditPage download contract (CHUNK-22 / IS-GAP-034)', () => {
     await waitFor(() => expect(downloadSpies.createObjectURL).toHaveBeenCalledTimes(1));
     expect(setAttribute).toHaveBeenCalledWith('download', 'audit_export_20260823T101500Z.csv');
     expect(downloadSpies.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
-    anchorDownloadName = 'checked';
-    expect(anchorDownloadName).toBe('checked');
   });
 
   it('creates zero download resources when the media type violates the contract', async () => {
