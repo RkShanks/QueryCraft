@@ -63,8 +63,8 @@
       "Needs Decision": 1
     },
     "status": {
-      "Pending": 8,
-      "Resolved": 36,
+      "Pending": 6,
+      "Resolved": 38,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 3
@@ -382,13 +382,17 @@
         "IS-GAP-044",
         "IS-GAP-016"
       ],
-      "status": "Resolved on tested branch",
+      "status": "Resolved and merged",
       "branch": "phase-6/wave-19.23-auth-recovery-idp",
-      "tested_product_commit": "76b7321",
+      "tested_product_commit": "cc00c867c366e4ca7cd189e161adc31215a03046",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-23-auth-idp.json",
-      "pull_request": "pending",
-      "authoritative_ci": "pending",
-      "merge_commit": "pending"
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/322",
+      "authoritative_ci": {
+        "run_id": 32773267333,
+        "backend_test": "passed",
+        "frontend_test": "passed"
+      },
+      "merge_commit": "2114f8a8ef2f20141c0a43d87cb81b1a3ff1c758"
     }
   },
   "raw_candidate_dispositions": {
@@ -1226,7 +1230,7 @@
       ],
       "owner": "Backend Implementer; Kimi/GLM",
       "chunk": "CHUNK-23",
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
       "source_refs": [
         "backend/src/app/services/sso_service.py::SsoService",
         "backend/tests/unit/test_sso_oidc_flow.py",
@@ -1236,7 +1240,7 @@
         "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-current-head-report-2026-08-01.md::XP-001"
       ],
       "resolution": {
-        "tested_branch_commit": "76b7321",
+        "tested_branch_commit": "cc00c867c366e4ca7cd189e161adc31215a03046",
         "evidence": "audit/full-regression/implementation-surface/evidence/chunk-23-auth-idp.json",
         "notes": "Provider loading/configured/empty/failure+retry states, sanitized invalid-callback mapping, double-submit suppression, rejected sign-out retry and confirmed sign-out boundaries verified; a confirmed rejected-sign-in visibility defect was reproduced and fixed. Isolated disposable HTTPS OIDC/SAML IdP proved key/cert rotation without restart, claim/assertion negatives, replay, outage and recovery with strict TLS and zero auth material in any channel."
       }
@@ -2734,7 +2738,7 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-23",
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
       "source_refs": [
         "frontend/src/pages/SignInPage.tsx::SignInPage",
         "frontend/src/components/auth/SignInForm.tsx::SignInForm",
@@ -2744,7 +2748,7 @@
         "frontend/src/hooks/useAuth.test.tsx"
       ],
       "resolution": {
-        "tested_branch_commit": "76b7321",
+        "tested_branch_commit": "cc00c867c366e4ca7cd189e161adc31215a03046",
         "evidence": "audit/full-regression/implementation-surface/evidence/chunk-23-auth-idp.json",
         "notes": "Provider loading/configured/empty/failure+retry states, sanitized invalid-callback mapping, double-submit suppression, rejected sign-out retry and confirmed sign-out boundaries verified; a confirmed rejected-sign-in visibility defect was reproduced and fixed. Isolated disposable HTTPS OIDC/SAML IdP proved key/cert rotation without restart, claim/assertion negatives, replay, outage and recovery with strict TLS and zero auth material in any channel."
       }
