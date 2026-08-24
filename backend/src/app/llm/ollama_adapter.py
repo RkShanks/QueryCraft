@@ -39,7 +39,7 @@ class OllamaAdapter:
             response.raise_for_status()
             data = response.json()
             sql = data["response"]
-        except (KeyError, IndexError, ValueError) as exc:
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise LLMUnavailable(provider="ollama", message="Malformed response from provider") from exc
         except httpx.HTTPStatusError as exc:
             raise LLMUnavailable(provider="ollama") from exc

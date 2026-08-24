@@ -39,7 +39,7 @@ class OpenAIAdapter:
             response.raise_for_status()
             data = response.json()
             sql = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, ValueError) as exc:
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise LLMUnavailable(provider="openai", message="Malformed response from provider") from exc
         except httpx.HTTPStatusError as exc:
             raise LLMUnavailable(provider="openai") from exc

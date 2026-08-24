@@ -2,11 +2,14 @@
   "chunk": "CHUNK-24",
   "gap_id": "IS-GAP-015",
   "branch": "phase-6/wave-19.24-provider-matrix",
+  "follow_up_branch": "phase-6/wave-19.24-provider-null-body-followup",
   "starting_main": "1bfc245448e2ff4dd7b2111065ee7ce04bdff7e9",
   "tested_commits": {
     "red": "542bd34",
     "green": "81fc501",
-    "lint_wrap": "c729511"
+    "lint_wrap": "c729511",
+    "followup_red": "7f1d220",
+    "followup_green": "8406f13"
   },
   "date": "2026-08-25",
   "deterministic_matrix": {
@@ -27,6 +30,27 @@
     ],
     "regression_rows_covered": ["P1-FR-009", "P1-FR-026", "P2-FR-047", "XP-014"]
   },
+  "follow_up_malformed_containers": {
+    "reproduced_against_merged_main": true,
+    "defect_category": "raw_typeerror_on_malformed_json_container_shapes",
+    "affected_adapters": ["anthropic", "openai", "ollama"],
+    "shapes_covered": [
+      "top_level_null",
+      "top_level_array",
+      "top_level_scalar",
+      "container_null",
+      "container_scalar",
+      "non_dict_list_element",
+      "non_string_leaf"
+    ],
+    "new_tests": 18,
+    "user_facing_disclosure": false,
+    "resolution": "typeerror_joined_existing_specific_exception_tuple_constant_sanitized_message",
+    "red_commit": "7f1d220",
+    "green_commit": "8406f13",
+    "gemini_changed": false,
+    "signatures_changed": false
+  },
   "defect_found_within_gap": {
     "detected": true,
     "description_category": "raw_framework_exception_leak_on_malformed_or_4xx_provider_response",
@@ -45,8 +69,8 @@
   },
   "gemini_unchanged": true,
   "gates": {
-    "focused_provider_composition_regression": "143 passed",
-    "backend_unit_full": "2240 passed, 365 skipped, 44 deselected",
+    "focused_provider_composition_regression": "161 passed",
+    "backend_unit_full": "2258 passed, 365 skipped, 44 deselected",
     "ruff_check": "passed",
     "ruff_format_check": "passed",
     "git_diff_check": "clean",
@@ -66,6 +90,7 @@
   },
   "status_totals": {
     "deterministic_matrix": "Pass",
+    "deterministic_matrix_total_new_cases": 62,
     "live_smoke_anthropic": "Setup-dependent",
     "live_smoke_openai": "Setup-dependent",
     "live_smoke_ollama": "Setup-dependent",

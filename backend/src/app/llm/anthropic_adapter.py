@@ -40,7 +40,7 @@ class AnthropicAdapter:
             response.raise_for_status()
             data = response.json()
             sql = data["content"][0]["text"]
-        except (KeyError, IndexError, ValueError) as exc:
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise LLMUnavailable(provider="anthropic", message="Malformed response from provider") from exc
         except httpx.HTTPStatusError as exc:
             raise LLMUnavailable(provider="anthropic") from exc
