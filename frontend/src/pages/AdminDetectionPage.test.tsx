@@ -207,7 +207,7 @@ const VALID_CONFIG = {
 };
 
 function mockConfigGet(
-  body: unknown = VALID_CONFIG,
+  body: Record<string, unknown> = VALID_CONFIG,
   status = 200
 ) {
   return http.get('/api/v1/admin/detection/config', () =>
@@ -215,7 +215,7 @@ function mockConfigGet(
   );
 }
 
-function trackConfigPuts(respond: () => Promise<HttpResponse> | HttpResponse) {
+function trackConfigPuts(respond: () => Promise<Response> | Response) {
   let putCount = 0;
   return {
     get count() {
@@ -237,14 +237,16 @@ function setNativeValue(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-async function renderDetectionPage() {
+async function renderDetectionPage(
+  labels = { block: /block threshold/i, flag: /flag threshold/i }
+) {
   server.use(mockConfigGet());
   const rendered = renderWithClient(<AdminDetectionPage />);
   const blockInput = (await screen.findByRole('spinbutton', {
-    name: /block threshold/i,
+    name: labels.block,
   })) as HTMLInputElement;
   const flagInput = screen.getByRole('spinbutton', {
-    name: /flag threshold/i,
+    name: labels.flag,
   }) as HTMLInputElement;
   return { ...rendered, blockInput, flagInput };
 }
@@ -364,8 +366,8 @@ describe('detection form boundary (IS-GAP-040)', () => {
     expect(toast).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('client_contract_invalid_response');
 
-    expect(blockInput).toHaveValue('0.9');
-    expect(flagInput).toHaveValue('0.6');
+    expect(blockInput).toHaveValue(0.9);
+    expect(flagInput).toHaveValue(0.6);
 
     server.resetHandlers();
     server.use(mockConfigGet(), trackConfigPuts(() => HttpResponse.json(VALID_CONFIG)).handler);
@@ -407,8 +409,8 @@ describe('detection form boundary (IS-GAP-040)', () => {
     ).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('less_than_equal');
     expect(document.body.textContent).not.toContain('greater_than_equal');
-    expect(blockInput).toHaveValue('0.9');
-    expect(flagInput).toHaveValue('0.85');
+    expect(blockInput).toHaveValue(0.9);
+    expect(flagInput).toHaveValue(0.85);
     expect(blockInput).not.toHaveAttribute('aria-invalid');
 
     fireEvent.click(screen.getByRole('button', { name: /save configuration/i }));
@@ -426,8 +428,8 @@ describe('detection form boundary (IS-GAP-040)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /reset/i }));
 
-    expect(blockInput).toHaveValue('0.8');
-    expect(flagInput).toHaveValue('0.5');
+    expect(blockInput).toHaveValue(0.8);
+    expect(flagInput).toHaveValue(0.5);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(blockInput).not.toHaveAttribute('aria-invalid');
     expect(puts.count).toBe(0);
@@ -459,7 +461,10 @@ describe('detection form boundary (IS-GAP-040)', () => {
     server.use(puts.handler);
     await i18n.changeLanguage('ar');
     try {
-      const { blockInput } = await renderDetectionPage();
+      const { blockInput } = await renderDetectionPage({
+        block: /حد الحظر/,
+        flag: /حد الإبلاغ/,
+      });
       fireEvent.change(blockInput, { target: { value: '2' } });
       fireEvent.submit(blockInput.closest('form')!);
 

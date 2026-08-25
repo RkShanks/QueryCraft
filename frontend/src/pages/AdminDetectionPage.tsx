@@ -4,6 +4,7 @@ import { useAdminDetection } from '../hooks/useAdminDetection';
 import { Shield, RefreshCw, CheckCircle2, XCircle, X, ShieldAlert } from 'lucide-react';
 import { ClientQueryState } from '../components/common/ClientQueryState';
 import { formatDateTime } from '../i18n/format';
+import { validateThresholds, parseThresholdValue } from '../detectionThresholds';
 
 interface Toast {
   id: string;
@@ -73,7 +74,7 @@ export const AdminDetectionPage: React.FC = () => {
       setValidationError(null);
     },
     onUpdateError: (err) => {
-      addToast('error', getErrorMessage(err, 'admin.settings.error'));
+      addToast('error', getErrorMessage(err, 'detection.save_error'));
     },
   });
 
@@ -88,19 +89,39 @@ export const AdminDetectionPage: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const block = parseFloat(blockVal);
-    const flag = parseFloat(flagVal);
-
-    if (isNaN(block) || isNaN(flag) || block <= flag) {
-      setValidationError(t('detection.validation_error'));
+    if (updateMutation.isPending) return;
+    const result = validateThresholds(blockVal, flagVal);
+    if (!result.ok) {
+      setValidationError(
+        result.issue === 'order'
+          ? t('detection.validation_error')
+          : t('detection.validation_range')
+      );
       return;
     }
 
     setValidationError(null);
     updateMutation.mutate({
-      block_confidence: block,
-      flag_confidence: flag,
+      block_confidence: result.block,
+      flag_confidence: result.flag,
     });
+  };
+
+  const authoritative = configQuery.data;
+  const blockNumber = parseThresholdValue(blockVal);
+  const flagNumber = parseThresholdValue(flagVal);
+  const isDirty =
+    blockNumber === null ||
+    flagNumber === null ||
+    (authoritative !== undefined &&
+      (blockNumber !== authoritative.block_confidence ||
+        flagNumber !== authoritative.flag_confidence));
+
+  const handleReset = () => {
+    if (!authoritative || updateMutation.isPending) return;
+    setBlockVal(String(authoritative.block_confidence));
+    setFlagVal(String(authoritative.flag_confidence));
+    setValidationError(null);
   };
 
   if (configQuery.isLoading) {
@@ -144,6 +165,8 @@ export const AdminDetectionPage: React.FC = () => {
         {toasts.map((t) => (
           <div
             key={t.id}
+            role={t.type === 'success' ? 'status' : 'alert'}
+            aria-label={t.message}
             className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-2xl backdrop-blur-md animate-fade-in transition-all ${
               t.type === 'success'
                 ? 'bg-green-500/10 border-green-500/20 text-green-400'
@@ -152,9 +175,9 @@ export const AdminDetectionPage: React.FC = () => {
           >
             <div className="shrink-0 mt-0.5">
               {t.type === 'success' ? (
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <CheckCircle2 className="w-5 h-5 text-green-500" aria-hidden="true" />
               ) : (
-                <XCircle className="w-5 h-5 text-red-500" />
+                <XCircle className="w-5 h-5 text-red-500" aria-hidden="true" />
               )}
             </div>
             <div className="flex-1 text-sm font-medium leading-relaxed">{t.message}</div>
@@ -185,9 +208,11 @@ export const AdminDetectionPage: React.FC = () => {
 
       {validationError && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-start gap-3">
-          <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
+          <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
           <div>
-            <p className="font-semibold">{validationError}</p>
+            <p className="font-semibold" role="alert" id="detection-validation-error">
+              {validationError}
+            </p>
           </div>
         </div>
       )}
@@ -218,6 +243,8 @@ export const AdminDetectionPage: React.FC = () => {
                 step="0.01"
                 value={blockVal}
                 onChange={(e) => setBlockVal(e.target.value)}
+                aria-invalid={validationError ? true : undefined}
+                aria-describedby={validationError ? 'detection-validation-error' : undefined}
                 className="w-20 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-white text-center focus-visible:outline-none focus-visible:border-neon-cyan focus-visible:ring-2 focus-visible:ring-neon-cyan focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               />
             </div>
@@ -247,6 +274,8 @@ export const AdminDetectionPage: React.FC = () => {
                 step="0.01"
                 value={flagVal}
                 onChange={(e) => setFlagVal(e.target.value)}
+                aria-invalid={validationError ? true : undefined}
+                aria-describedby={validationError ? 'detection-validation-error' : undefined}
                 className="w-20 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-white text-center focus-visible:outline-none focus-visible:border-neon-purple focus-visible:ring-2 focus-visible:ring-neon-purple focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               />
             </div>
@@ -254,15 +283,28 @@ export const AdminDetectionPage: React.FC = () => {
         </div>
 
         <div className="flex justify-end gap-3 pt-6 border-t border-gray-800">
+          {authoritative !== undefined && isDirty && (
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={updateMutation.isPending}
+              className="px-6 py-2.5 border border-gray-700 text-gray-300 font-semibold rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {t('detection.reset')}
+            </button>
+          )}
           <button
             type="submit"
             disabled={updateMutation.isPending}
             className="px-6 py-2.5 bg-neon-cyan text-gray-900 font-semibold rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer"
           >
-            {updateMutation.isPending && <RefreshCw className="w-4 h-4 animate-spin" />}
+            {updateMutation.isPending && <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" />}
             {t('detection.save')}
           </button>
         </div>
+        <p role="status" aria-live="polite" className="sr-only">
+          {updateMutation.isPending ? t('detection.saving') : ''}
+        </p>
       </form>
     </div>
   );

@@ -578,5 +578,9 @@
   "audit.retention.months": "{{count}} months",
   "audit.retention.last_purge": "Last Purge",
   "audit.retention.never": "Never",
-  "audit.retention.purged_count": "Purged Count"
+  "audit.retention.purged_count": "Purged Count",
+  "detection.validation_range": "Both thresholds must be numbers between 0 and 1.",
+  "detection.reset": "Reset",
+  "detection.save_error": "Failed to save configuration.",
+  "detection.saving": "Saving…"
 }
