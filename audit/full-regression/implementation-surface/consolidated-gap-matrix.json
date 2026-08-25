@@ -436,12 +436,22 @@
         "docs": "c27b729"
       },
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-25-bootstrap.json",
-      "ci_validated_commit": "45157a1a65296ebf650df88f26a8e565e0480a2e",
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/327",
+      "ci_validated_commit": "107f734a260b59f80872653842a1fac57afbf6ce",
       "authoritative_ci": {
-        "head_commit": "45157a1a65296ebf650df88f26a8e565e0480a2e",
-        "run_id": 32905156993,
+        "head_commit": "107f734a260b59f80872653842a1fac57afbf6ce",
+        "run_id": 32905391474,
         "backend_test": "passed",
         "frontend_test": "passed"
+      },
+      "merge_commit": "e98f2d1eed92b95c473aab793aa620ca5ddab835",
+      "format_followup": {
+        "pull_request": "https://github.com/RkShanks/QueryCraft/pull/328",
+        "head_commit": "3e6473d5a0c7ba94af80ca1b5997b18d7c82db1d",
+        "run_id": 32905706341,
+        "backend_test": "passed",
+        "frontend_test": "passed",
+        "merge_commit": "3236ce02d9bda8924aa43db77b456a63e26b1088"
       }
     }
   },
