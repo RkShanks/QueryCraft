@@ -17,21 +17,24 @@ PASSWORD = os.environ.get("E2E_TEST_PASSWORD", "e2e_password_123")
 async def main() -> None:
     db_url = os.environ["DATABASE_URL"]                # platform DB
     engine = create_async_engine(db_url, echo=False)
-    Session = async_sessionmaker(engine, expire_on_commit=False)
-    async with Session() as s:
-        existing = await s.scalar(select(User).where(User.username == USERNAME))
-        if existing:
-            print(f"User {USERNAME} already exists (id={existing.id}); no-op.")
-            return
-        user = User(
-            username=USERNAME,
-            display_name=USERNAME,
-            password_hash=hash_password(PASSWORD),
-        )
-        s.add(user)
-        await s.commit()
-        await s.refresh(user)
-        print(f"Created user {USERNAME} (id={user.id}).")
+    try:
+        Session = async_sessionmaker(engine, expire_on_commit=False)
+        async with Session() as s:
+            existing = await s.scalar(select(User).where(User.username == USERNAME))
+            if existing:
+                print(f"User {USERNAME} already exists (id={existing.id}); no-op.")
+                return
+            user = User(
+                username=USERNAME,
+                display_name=USERNAME,
+                password_hash=hash_password(PASSWORD),
+            )
+            s.add(user)
+            await s.commit()
+            await s.refresh(user)
+            print(f"Created user {USERNAME} (id={user.id}).")
+    finally:
+        await engine.dispose()
 
 
 if __name__ == "__main__":

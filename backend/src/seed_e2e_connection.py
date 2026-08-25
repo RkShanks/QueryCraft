@@ -9,6 +9,7 @@ credentials.
 
 import asyncio
 import os
+import re
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
@@ -218,24 +219,34 @@ async def _ensure_mssql_adventureworks() -> None:
 
     import aioodbc
 
-    mssql_host = _env("MSSQL_HOST", "mssql-source")
+    mssql_host = _validated_mssql_host()
     mssql_port = _env_int("MSSQL_PORT", 1433)
+    _reject_unsafe_value("MSSQL_SA_PASSWORD", sa_password)
+    if ";" in sa_password:
+        raise RuntimeError("MSSQL_SA_PASSWORD contains unsupported characters for this operation.")
     mssql_user = _required_env("MSSQL_USER")
+    _reject_unsafe_value("MSSQL_USER", mssql_user)
     mssql_password = _required_env("MSSQL_PASSWORD")
+    _reject_unsafe_value("MSSQL_PASSWORD", mssql_password)
     login_name = _quote_mssql_identifier(mssql_user)
     login_literal = _quote_mssql_literal(mssql_user)
     password_literal = _quote_mssql_literal(mssql_password)
     restore_dsn = (
         f"DRIVER={{FreeTDS}};SERVER={mssql_host},{mssql_port};DATABASE=master;UID=sa;PWD={sa_password};TDS_Version=7.4;"
     )
-    conn = await aioodbc.connect(dsn=restore_dsn, autocommit=True)
+    try:
+        conn = await aioodbc.connect(dsn=restore_dsn, autocommit=True)
+    except Exception as exc:  # pragma: no cover - message content asserted in tests
+        raise RuntimeError(
+            "MSSQL AdventureWorksLT fixture connection failed; verify the disposable source container is running."
+        ) from exc
     try:
         async with conn.cursor() as cur:
             database_state = await _fetch_mssql_database_state(cur)
-            if database_state and database_state != "ONLINE":
+            restore_actions = _plan_mssql_restore_actions(database_state)
+            if "drop" in restore_actions:
                 await cur.execute("DROP DATABASE [AdventureWorksLT]")
-                database_state = None
-            if database_state is None:
+            if "restore" in restore_actions:
                 await cur.execute(
                     """
                     RESTORE DATABASE [AdventureWorksLT]
@@ -288,6 +299,15 @@ async def _fetch_mssql_database_state(cur) -> str | None:
     return row[0] if row else None
 
 
+def _plan_mssql_restore_actions(state: str | None) -> tuple[str, ...]:
+    """Map a database state to the restore actions required for a safe rerun."""
+    if state is None:
+        return ("restore",)
+    if state == "ONLINE":
+        return ()
+    return ("drop", "restore")
+
+
 async def _wait_for_mssql_database_online(cur) -> None:
     for _ in range(60):
         if await _fetch_mssql_database_state(cur) == "ONLINE":
@@ -320,6 +340,21 @@ def _required_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"{name} is required for local E2E source connection seeding.")
     return value
+
+
+_SAFE_HOST_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _validated_mssql_host() -> str:
+    host = _env("MSSQL_HOST", "mssql-source")
+    if not _SAFE_HOST_PATTERN.fullmatch(host):
+        raise RuntimeError("MSSQL_HOST contains unsupported characters for this operation.")
+    return host
+
+
+def _reject_unsafe_value(name: str, value: str) -> None:
+    if re.search(r"[\x00-\x1f\x7f]", value):
+        raise RuntimeError(f"{name} contains unsupported characters for this operation.")
 
 
 def _quote_mssql_identifier(value: str) -> str:
