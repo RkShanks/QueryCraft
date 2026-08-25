@@ -1,0 +1,113 @@
+{
+  "chunk": "CHUNK-25",
+  "gap_id": "IS-GAP-018",
+  "branch": "phase-6/wave-19.25-bootstrap-hardening",
+  "starting_main": "3f86ada49ec97cdf8eb91f32d29d296d5a1763f7",
+  "date": "2026-08-26",
+  "status_classification": "Partial",
+  "tdd_commits": {
+    "red_setup": "45c810e",
+    "green_setup": "43186d5",
+    "red_restore": "e09c17b",
+    "green_restore": "ec4f9d0",
+    "red_seed": "d9fdbd0",
+    "green_seed": "1dcb3cb",
+    "harness_tightening": "7c0e194",
+    "docs": "c27b729"
+  },
+  "deterministic_matrix": {
+    "status": "Pass",
+    "new_tests": 30,
+    "focused_total_including_preexisting_regression": 40,
+    "categories": [
+      {"category": "failed_download", "tests": 2, "result": "Pass", "exit_classification": "nonzero, sanitized, no artifacts"},
+      {"category": "corrupt_archive", "tests": 1, "result": "Pass", "exit_classification": "nonzero, temp cleaned, nothing installed"},
+      {"category": "checksum_mismatch_rejected_before_mutation", "tests": 1, "result": "Pass", "exit_classification": "nonzero pre-extraction/pre-install"},
+      {"category": "checksum_required_fail_closed", "tests": 2, "result": "Pass", "exit_classification": "nonzero before any network access"},
+      {"category": "interrupted_setup_cleanup", "tests": 1, "result": "Pass", "exit_classification": "nonzero on SIGTERM, zero temp leftovers"},
+      {"category": "rerun_after_partial_failure", "tests": 2, "result": "Pass", "exit_classification": "second run zero, all fixtures installed"},
+      {"category": "idempotent_rerun", "tests": 1, "result": "Pass", "exit_classification": "zero new downloads on rerun"},
+      {"category": "https_only_fail_aware_transport", "tests": 1, "result": "Pass", "exit_classification": "both invocations https with fail/retry/proto flags"},
+      {"category": "hostile_environment_values", "tests": 4, "result": "Pass", "exit_classification": "rejected before any container command or SQL"},
+      {"category": "password_literal_escaping", "tests": 1, "result": "Pass", "exit_classification": "doubled-quote literal, no execution break-out"},
+      {"category": "partial_mssql_restore_recovery", "tests": 1, "result": "Pass", "exit_classification": "drop then restore exactly once"},
+      {"category": "online_database_rerun_skips_restore", "tests": 1, "result": "Pass", "exit_classification": "zero restore/drop actions, role configured"},
+      {"category": "failed_restore_aborts_before_login_config", "tests": 1, "result": "Pass", "exit_classification": "nonzero, login batch never sent"},
+      {"category": "sanitized_diagnostics_no_secret_values", "tests": 3, "result": "Pass", "exit_classification": "canaries absent from stdout/stderr and raised messages"},
+      {"category": "dsn_metacharacter_and_control_character_rejection", "tests": 3, "result": "Pass", "exit_classification": "rejected before connect attempt"},
+      {"category": "raw_driver_error_sanitization", "tests": 1, "result": "Pass", "exit_classification": "typed sanitized error, DSN and secret absent"},
+      {"category": "restore_action_planning_matrix", "tests": 4, "result": "Pass", "exit_classification": "absent/online/partial mappings exact"},
+      {"category": "seed_engine_disposal", "tests": 2, "result": "Pass", "exit_classification": "dispose awaited on no-op and create paths"}
+    ],
+    "regression_rows_covered": ["P3-FR-059", "P3-FR-065", "XP-015", "XP-018"]
+  },
+  "defects_found_within_gap": [
+    {
+      "detected": true,
+      "location_category": "setup-source-dbs.sh fixture download path",
+      "description_category": "plaintext HTTP download, no checksum verification, direct-to-final-path MSSQL write, leaked temp files on failure/interrupt",
+      "resolution": "https-only fail-aware curl, mandatory sha256 gate before extraction/install, single trapped temp workspace"
+    },
+    {
+      "detected": true,
+      "location_category": "restore-mssql.sh SQL construction",
+      "description_category": "environment values interpolated unescaped into SQL identifiers and password literals",
+      "resolution": "identifier allowlist, control-character rejection, doubled-quote literals, validation before any exec"
+    },
+    {
+      "detected": true,
+      "location_category": "restore-mssql.sh restore branching",
+      "description_category": "non-online partial-restore state never recovered; failed restore continued into login configuration; wait loop miscounted final iteration",
+      "resolution": "state-category branching (ONLINE skip / RECOVERING drop+restore), abort before login config, corrected loop bound"
+    },
+    {
+      "detected": true,
+      "location_category": "seed_e2e_connection.py MSSQL restore DSN",
+      "description_category": "DSN attribute injection via host/SA-password metacharacters and raw driver exception leaking the connection string including the SA secret",
+      "resolution": "host allowlist, DSN-separator rejection, typed sanitized connection-failure error with cause chaining"
+    },
+    {
+      "detected": true,
+      "location_category": "seed_test_user.py lifecycle",
+      "description_category": "engine never disposed on early no-op exit",
+      "resolution": "try/finally dispose on every exit path"
+    }
+  ],
+  "checksum_provenance": {
+    "vendor_checksum_available": false,
+    "evidence_basis": "GitHub release API digest field is null for AdventureWorksLT2022.bak (2023 upload); MySQL publishes no checksum for doc downloads including sakila-db.tar.gz",
+    "repo_action": "no invented values checked in; operator-supplied scripts/fixtures.sha256 required by contract, template shipped as scripts/fixtures.sha256.example",
+    "classification": "Setup-dependent"
+  },
+  "live_source_smoke": {
+    "executed": false,
+    "reason": "authoritative upstream checksum unavailable; disposable-container live restore smoke not required to prove script-level failure/quoting/rerun/cleanup contracts",
+    "classification": "Setup-dependent"
+  },
+  "gates": {
+    "focused_script_and_seed_suites": "40 passed (11 setup + 10 restore + 11 seed_e2e incl. 8 preexisting + 2 seed_test_user)",
+    "dev_up_readiness_regression": "4 passed",
+    "compose_readiness_contract": "2 passed",
+    "backend_unit_full_foundation": "2289 passed, 365 skipped, integration deselected",
+    "ruff_check_changed_python": "passed",
+    "ruff_format_check": "passed",
+    "shell_syntax_checks": "bash -n clean for all three scripts",
+    "compose_config_validation": "docker compose config -q passed",
+    "git_diff_check": "clean",
+    "frontend_gates": "not_required_no_frontend_changes"
+  },
+  "cleanup_confirmation": {
+    "temporary_directories_removed": true,
+    "disposable_containers_created": 0,
+    "shared_development_state_reset": false,
+    "protected_dirty_baseline_untouched": true,
+    "secrets_or_env_values_in_evidence": false
+  },
+  "accounting_after_chunk": {
+    "resolved": 38,
+    "partial": 2,
+    "pending": 4,
+    "needs_decision": 3,
+    "total": 47
+  }
+}
