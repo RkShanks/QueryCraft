@@ -39,6 +39,8 @@ curl -L -o 02-data.sql https://raw.githubusercontent.com/devrimgunduz/pagila/mas
 cd ../..
 ```
 
+The setup script downloads only over HTTPS and verifies each fixture's SHA-256 checksum before extracting or installing anything. Upstream publishes no vendor checksums for these sample fixtures, so the expected digests are operator-supplied: create `scripts/fixtures.sha256` once (see `scripts/fixtures.sha256.example` for the derivation steps) or point `SOURCE_FIXTURE_CHECKSUMS` at your own file. Without it, the script fails closed before any download.
+
 ### 2. Start the database containers
 
 You can start specific source databases or all of them:
@@ -61,6 +63,8 @@ For MSSQL, you must run the restore helper script after the container starts:
 ```bash
 ./scripts/restore-mssql.sh
 ```
+
+The script is safe to rerun: an already-online AdventureWorksLT database skips the restore, while a database left non-online by a previously interrupted restore is dropped and restored again. `MSSQL_USER` must be a simple identifier (`[A-Za-z][A-Za-z0-9_]*`) because SQL Server identifiers cannot be passed as parameters; hostile values are rejected before any container command runs.
 
 See [dbTest/README.md](file:///home/avril/QueryCraft/dbTest/README.md) for detailed verification commands, connections parameters, and troubleshooting guides.
 

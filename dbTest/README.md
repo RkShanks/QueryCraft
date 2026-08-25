@@ -87,9 +87,11 @@ QueryCraft supports MySQL and Microsoft SQL Server (MSSQL) as source databases s
    ```
    This will:
    - Create the directories `dbTest/mysql/init` and `dbTest/mssql/backup`.
-   - Download the official MySQL Sakila database files and place them under `dbTest/mysql/init/`.
+   - Download the official MySQL Sakila database files over HTTPS and place them under `dbTest/mysql/init/`.
    - Generate `dbTest/mysql/init/03-grants.sql` to restrict application user privileges.
-   - Download Microsoft's official `AdventureWorksLT2022.bak` backup file under `dbTest/mssql/backup/`.
+   - Download Microsoft's official `AdventureWorksLT2022.bak` backup file over HTTPS under `dbTest/mssql/backup/`.
+
+   **Checksum prerequisite (one-time):** the script verifies each fixture's SHA-256 checksum before extracting or installing it, and fails closed without a checksum file. Upstream publishes no vendor checksums for these sample fixtures, so record the digests yourself from the official sources — copy `scripts/fixtures.sha256.example` to `scripts/fixtures.sha256` and follow its derivation steps (or point `SOURCE_FIXTURE_CHECKSUMS` at your own file). A mismatch aborts before any archive extraction or fixture installation.
 
 2. **Start the database containers:**
    Start the services:
@@ -187,6 +189,8 @@ When adding or editing connections in the Admin Connections dashboard (`/admin/c
 
 ### MSSQL Restore Issues
 - The SQL Server service must be healthy and running before the restore script can connect. Ensure you run `./scripts/restore-mssql.sh` after the service starts.
+- The script is idempotent: if AdventureWorksLT is already online, the restore is skipped; if a previous run was interrupted and left the database non-online, the script drops it and restores again before configuring the login.
+- `MSSQL_USER` must be a simple identifier (`[A-Za-z][A-Za-z0-9_]*`); values containing other characters are rejected before any container command runs.
 - If you need to force a restore or reset the MSSQL database:
   ```bash
   docker compose -f docker-compose.dev.yml down -v
