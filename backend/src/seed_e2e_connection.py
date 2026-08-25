@@ -236,7 +236,7 @@ async def _ensure_mssql_adventureworks() -> None:
     )
     try:
         conn = await aioodbc.connect(dsn=restore_dsn, autocommit=True)
-    except Exception as exc:  # pragma: no cover - message content asserted in tests
+    except Exception as exc:
         raise RuntimeError(
             "MSSQL AdventureWorksLT fixture connection failed; verify the disposable source container is running."
         ) from exc
