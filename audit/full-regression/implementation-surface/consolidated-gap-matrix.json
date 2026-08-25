@@ -424,7 +424,7 @@
       "gap_id": "IS-GAP-018",
       "status": "Partial",
       "branch": "phase-6/wave-19.25-bootstrap-hardening",
-      "starting_main": "3f86ada49ec97cdf8eb91f32d29d296d5a1763f7",
+      "starting_main": "3f86ada49ec97cdf8eb91f32d296d5a1763f7",
       "tested_commits": {
         "red_setup": "45c810e",
         "green_setup": "43186d5",
