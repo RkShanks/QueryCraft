@@ -25,6 +25,7 @@ fi
 # Everything else consumes a batch on stdin.
 input=$(cat)
 printf '%s\n' "$input" >> "$RESTORE_SQL_LOG"
+printf '\n===BATCH===\n' >> "$RESTORE_SQL_LOG"
 
 if [[ "$input" == *"THEN N'ABSENT'"* ]] || [[ "$input" == *"THEN N'ONLINE'"* ]]; then
   printf '%s\n' "${RESTORE_DB_STATE_RESPONSE:-ABSENT}"
@@ -97,7 +98,12 @@ class RestoreWorkspace:
     def sql_batches(self) -> list[str]:
         if not self.sql_log.exists():
             return []
-        return self.sql_log.read_text(encoding="utf-8").split("\n\n")
+        raw = self.sql_log.read_text(encoding="utf-8")
+        return [
+            batch.strip("\n")
+            for batch in raw.replace("===BATCH===", "\x00").split("\x00")
+            if batch.strip()
+        ]
 
     @property
     def actions(self) -> list[str]:

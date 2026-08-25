@@ -1,7 +1,6 @@
 """Tests for backend/scripts/seed_test_user.py lifecycle hygiene."""
 
 import importlib.util
-import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -91,4 +90,4 @@ async def test_create_user_path_disposes_engine(monkeypatch, seed_env, capsys):
     assert engine.dispose_calls == 1
     out = capsys.readouterr().out
     assert "Created user e2e_user" in out
-    assert os.environ.get("E2E_TEST_PASSWORD") not in out
+    assert "e2e_password_123" not in out

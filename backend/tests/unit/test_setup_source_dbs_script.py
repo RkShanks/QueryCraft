@@ -3,6 +3,7 @@
 import io
 import os
 import shutil
+import signal
 import subprocess
 import tarfile
 import time
@@ -128,6 +129,7 @@ class SetupWorkspace:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            start_new_session=True,
         )
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
@@ -136,8 +138,12 @@ class SetupWorkspace:
             if process.poll() is not None:
                 break
             time.sleep(0.05)
-        process.terminate()
-        stdout, stderr = process.communicate(timeout=20)
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        try:
+            stdout, stderr = process.communicate(timeout=20)
+        except subprocess.TimeoutExpired:
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            raise AssertionError("script did not exit within 20s of SIGTERM")
         return subprocess.CompletedProcess(
             [str(self.script)], process.returncode, stdout=stdout, stderr=stderr
         )
@@ -266,9 +272,12 @@ def test_checksum_mismatch_rejected_before_extraction_or_install(ws):
 
 
 def test_interrupted_run_leaves_no_installed_files_and_no_temp_leftovers(ws):
-    _, _ = _happy_fixtures(ws)
+    _happy_fixtures(ws)
 
-    completed = ws.run(sigterm_after="first-invocation")
+    completed = ws.run(
+        extra_env={"SETUP_CURL_SLEEP": "5"},
+        sigterm_after="first-invocation",
+    )
 
     assert completed.returncode != 0
     assert ws.installed_files() == set()
@@ -328,10 +337,11 @@ def test_downloads_are_https_only_with_fail_aware_curl_flags(ws):
     assert completed.returncode == 0, completed.stderr
     assert len(ws.commands) == 2
     for invocation in ws.commands:
-        assert "--proto" in invocation
-        assert "'=https'" in invocation or "\"=https\"" in invocation or "=https" in invocation
-        assert "-f" in invocation.split()
-        url = invocation.split()[-1]
+        parts = invocation.split()
+        assert "--proto" in parts
+        assert "=https" in parts
+        assert any(part.startswith("-f") for part in parts)
+        url = parts[-1]
         assert url.startswith("https://")
 
 
