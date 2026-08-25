@@ -22,6 +22,9 @@ dist/
 .env.local
 .env.*.local
 
+# Operator-local fixture checksums (see scripts/fixtures.sha256.example)
+scripts/fixtures.sha256
+
 # ─── IDE ───
 .idea/
 .vscode/

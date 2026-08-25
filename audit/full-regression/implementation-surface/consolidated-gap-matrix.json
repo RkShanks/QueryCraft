@@ -63,12 +63,12 @@
       "Needs Decision": 1
     },
     "status": {
-      "Pending": 5,
+      "Pending": 4,
       "Resolved": 38,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 3,
-      "Partial": 1
+      "Partial": 2
     }
   },
   "remediation_progress": {
@@ -419,6 +419,30 @@
         "ollama": "Setup-dependent"
       },
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-24-provider-matrix.json"
+    },
+    "CHUNK-25": {
+      "gap_id": "IS-GAP-018",
+      "status": "Partial",
+      "branch": "phase-6/wave-19.25-bootstrap-hardening",
+      "starting_main": "3f86ada49ec97cdf8eb91f32d29d296d5a1763f7",
+      "tested_commits": {
+        "red_setup": "45c810e",
+        "green_setup": "43186d5",
+        "red_restore": "e09c17b",
+        "green_restore": "ec4f9d0",
+        "red_seed": "d9fdbd0",
+        "green_seed": "1dcb3cb",
+        "harness_tightening": "7c0e194",
+        "docs": "c27b729"
+      },
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-25-bootstrap.json",
+      "ci_validated_commit": "45157a1a65296ebf650df88f26a8e565e0480a2e",
+      "authoritative_ci": {
+        "head_commit": "45157a1a65296ebf650df88f26a8e565e0480a2e",
+        "run_id": 32905156993,
+        "backend_test": "passed",
+        "frontend_test": "passed"
+      }
     }
   },
   "raw_candidate_dispositions": {
@@ -1353,7 +1377,7 @@
       ],
       "owner": "Backend Implementer; Kimi/GLM",
       "chunk": "CHUNK-25",
-      "status": "Pending",
+      "status": "Partial",
       "source_refs": [
         "scripts/setup-source-dbs.sh",
         "scripts/restore-mssql.sh",
@@ -2452,7 +2476,7 @@
         "frontend/src/components/history/HistoryList.tsx::HistoryList",
         "frontend/src/pages/AdminAuditPage.tsx::AdminAuditPage"
       ],
-      "resolution": "Resolved and merged as 48f775834a9c2c1fa3f4c2ea95132c1ff287d119 via https://github.com/RkShanks/QueryCraft/pull/318; authoritative CI passed and the squash merge completed. One normalization helper locks en/ar variant resolution, precedence (?lng= \u2192 persisted \u2192 navigator \u2192 html lang \u2192 en), authoritative manual changes with stale-param rewrite and central lang/dir sync; an accessible EN/Arabic toggle ships in both shells and all date/number rendering routes through active-locale formatters."
+      "resolution": "Resolved and merged as 48f775834a9c2c1fa3f4c2ea95132c1ff287d119 via https://github.com/RkShanks/QueryCraft/pull/318; authoritative CI passed and the squash merge completed. One normalization helper locks en/ar variant resolution, precedence (?lng= → persisted → navigator → html lang → en), authoritative manual changes with stale-param rewrite and central lang/dir sync; an accessible EN/Arabic toggle ships in both shells and all date/number rendering routes through active-locale formatters."
     },
     {
       "id": "IS-GAP-039",

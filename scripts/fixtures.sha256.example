@@ -1,0 +1,16 @@
+# Template for scripts/fixtures.sha256 — required by scripts/setup-source-dbs.sh.
+#
+# Upstream publishes NO vendor checksums for these sample fixtures, so this repository
+# deliberately ships none. Record the digests yourself from the official sources over
+# HTTPS, then keep this file out of version control (it is machine-specific provenance).
+#
+# One-time derivation (run inside the repository root):
+#   curl -fSL --proto '=https' -o /tmp/sakila-db.tar.gz \
+#     "https://downloads.mysql.com/docs/sakila-db.tar.gz"
+#   curl -fSL --proto '=https' -o /tmp/AdventureWorksLT2022.bak \
+#     "https://github.com/Microsoft/sql-server-samples/releases/download/adventureworks/AdventureWorksLT2022.bak"
+#   sha256sum /tmp/sakila-db.tar.gz /tmp/AdventureWorksLT2022.bak
+#
+# Copy the two `<digest>  <name>` lines below with the real values:
+# <64-hex sha256>  sakila-db.tar.gz
+# <64-hex sha256>  AdventureWorksLT2022.bak
