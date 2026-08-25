@@ -435,7 +435,14 @@
         "harness_tightening": "7c0e194",
         "docs": "c27b729"
       },
-      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-25-bootstrap.json"
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-25-bootstrap.json",
+      "ci_validated_commit": "45157a1a65296ebf650df88f26a8e565e0480a2e",
+      "authoritative_ci": {
+        "head_commit": "45157a1a65296ebf650df88f26a8e565e0480a2e",
+        "run_id": 32905156993,
+        "backend_test": "passed",
+        "frontend_test": "passed"
+      }
     }
   },
   "raw_candidate_dispositions": {

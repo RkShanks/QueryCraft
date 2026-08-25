@@ -13,33 +13,129 @@
     "red_seed": "d9fdbd0",
     "green_seed": "1dcb3cb",
     "harness_tightening": "7c0e194",
-    "docs": "c27b729"
+    "docs": "c27b729",
+    "ci_validated_commit": "45157a1a65296ebf650df88f26a8e565e0480a2e"
   },
   "deterministic_matrix": {
     "status": "Pass",
     "new_tests": 30,
     "focused_total_including_preexisting_regression": 40,
     "categories": [
-      {"category": "failed_download", "tests": 2, "result": "Pass", "exit_classification": "nonzero, sanitized, no artifacts"},
-      {"category": "corrupt_archive", "tests": 1, "result": "Pass", "exit_classification": "nonzero, temp cleaned, nothing installed"},
-      {"category": "checksum_mismatch_rejected_before_mutation", "tests": 1, "result": "Pass", "exit_classification": "nonzero pre-extraction/pre-install"},
-      {"category": "checksum_required_fail_closed", "tests": 2, "result": "Pass", "exit_classification": "nonzero before any network access"},
-      {"category": "interrupted_setup_cleanup", "tests": 1, "result": "Pass", "exit_classification": "nonzero on SIGTERM, zero temp leftovers"},
-      {"category": "rerun_after_partial_failure", "tests": 2, "result": "Pass", "exit_classification": "second run zero, all fixtures installed"},
-      {"category": "idempotent_rerun", "tests": 1, "result": "Pass", "exit_classification": "zero new downloads on rerun"},
-      {"category": "https_only_fail_aware_transport", "tests": 1, "result": "Pass", "exit_classification": "both invocations https with fail/retry/proto flags"},
-      {"category": "hostile_environment_values", "tests": 4, "result": "Pass", "exit_classification": "rejected before any container command or SQL"},
-      {"category": "password_literal_escaping", "tests": 1, "result": "Pass", "exit_classification": "doubled-quote literal, no execution break-out"},
-      {"category": "partial_mssql_restore_recovery", "tests": 1, "result": "Pass", "exit_classification": "drop then restore exactly once"},
-      {"category": "online_database_rerun_skips_restore", "tests": 1, "result": "Pass", "exit_classification": "zero restore/drop actions, role configured"},
-      {"category": "failed_restore_aborts_before_login_config", "tests": 1, "result": "Pass", "exit_classification": "nonzero, login batch never sent"},
-      {"category": "sanitized_diagnostics_no_secret_values", "tests": 3, "result": "Pass", "exit_classification": "canaries absent from stdout/stderr and raised messages"},
-      {"category": "dsn_metacharacter_and_control_character_rejection", "tests": 3, "result": "Pass", "exit_classification": "rejected before connect attempt"},
-      {"category": "raw_driver_error_sanitization", "tests": 1, "result": "Pass", "exit_classification": "typed sanitized error, DSN and secret absent"},
-      {"category": "restore_action_planning_matrix", "tests": 4, "result": "Pass", "exit_classification": "absent/online/partial mappings exact"},
-      {"category": "seed_engine_disposal", "tests": 2, "result": "Pass", "exit_classification": "dispose awaited on no-op and create paths"}
+      {
+        "category": "failed_download",
+        "tests": 2,
+        "result": "Pass",
+        "exit_classification": "nonzero, sanitized, no artifacts"
+      },
+      {
+        "category": "corrupt_archive",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "nonzero, temp cleaned, nothing installed"
+      },
+      {
+        "category": "checksum_mismatch_rejected_before_mutation",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "nonzero pre-extraction/pre-install"
+      },
+      {
+        "category": "checksum_required_fail_closed",
+        "tests": 2,
+        "result": "Pass",
+        "exit_classification": "nonzero before any network access"
+      },
+      {
+        "category": "interrupted_setup_cleanup",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "nonzero on SIGTERM, zero temp leftovers"
+      },
+      {
+        "category": "rerun_after_partial_failure",
+        "tests": 2,
+        "result": "Pass",
+        "exit_classification": "second run zero, all fixtures installed"
+      },
+      {
+        "category": "idempotent_rerun",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "zero new downloads on rerun"
+      },
+      {
+        "category": "https_only_fail_aware_transport",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "both invocations https with fail/retry/proto flags"
+      },
+      {
+        "category": "hostile_environment_values",
+        "tests": 4,
+        "result": "Pass",
+        "exit_classification": "rejected before any container command or SQL"
+      },
+      {
+        "category": "password_literal_escaping",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "doubled-quote literal, no execution break-out"
+      },
+      {
+        "category": "partial_mssql_restore_recovery",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "drop then restore exactly once"
+      },
+      {
+        "category": "online_database_rerun_skips_restore",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "zero restore/drop actions, role configured"
+      },
+      {
+        "category": "failed_restore_aborts_before_login_config",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "nonzero, login batch never sent"
+      },
+      {
+        "category": "sanitized_diagnostics_no_secret_values",
+        "tests": 3,
+        "result": "Pass",
+        "exit_classification": "canaries absent from stdout/stderr and raised messages"
+      },
+      {
+        "category": "dsn_metacharacter_and_control_character_rejection",
+        "tests": 3,
+        "result": "Pass",
+        "exit_classification": "rejected before connect attempt"
+      },
+      {
+        "category": "raw_driver_error_sanitization",
+        "tests": 1,
+        "result": "Pass",
+        "exit_classification": "typed sanitized error, DSN and secret absent"
+      },
+      {
+        "category": "restore_action_planning_matrix",
+        "tests": 4,
+        "result": "Pass",
+        "exit_classification": "absent/online/partial mappings exact"
+      },
+      {
+        "category": "seed_engine_disposal",
+        "tests": 2,
+        "result": "Pass",
+        "exit_classification": "dispose awaited on no-op and create paths"
+      }
     ],
-    "regression_rows_covered": ["P3-FR-059", "P3-FR-065", "XP-015", "XP-018"]
+    "regression_rows_covered": [
+      "P3-FR-059",
+      "P3-FR-065",
+      "XP-015",
+      "XP-018"
+    ]
   },
   "defects_found_within_gap": [
     {
@@ -109,5 +205,11 @@
     "pending": 4,
     "needs_decision": 3,
     "total": 47
+  },
+  "authoritative_ci": {
+    "head_commit": "45157a1a65296ebf650df88f26a8e565e0480a2e",
+    "run_id": 32905156993,
+    "backend_test": "passed",
+    "frontend_test": "passed"
   }
 }

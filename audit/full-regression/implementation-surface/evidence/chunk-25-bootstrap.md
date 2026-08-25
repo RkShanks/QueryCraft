@@ -47,6 +47,8 @@ New cases: 30 (focused suites total 40 including pre-existing regression coverag
 
 ## Gates
 
+Authoritative backend/frontend CI passed in run `32905156993` on `45157a1a65296ebf650df88f26a8e565e0480a2e`.
+
 - Focused script/seed suites: 40 passed (`test_setup_source_dbs_script.py` 11, `test_restore_mssql_script.py` 10, `test_seed_e2e_connection.py` 11, `test_seed_test_user_script.py` 2)
 - Required regressions: `test_dev_up_script.py` 4 passed (CHUNK-13 ordering/readiness intact), `test_compose_readiness.py` 2 passed
 - Full backend unit foundation: 2289 passed, 365 skipped (integration deselected)
