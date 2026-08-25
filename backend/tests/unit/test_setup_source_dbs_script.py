@@ -97,7 +97,9 @@ class SetupWorkspace:
         lines = [f"{digest}  {name}" for name, digest in sorted(entries.items())]
         self.checksums_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    def run(self, extra_env: dict[str, str] | None = None, sigterm_after: str | None = None) -> subprocess.CompletedProcess:
+    def run(
+        self, extra_env: dict[str, str] | None = None, sigterm_after: str | None = None
+    ) -> subprocess.CompletedProcess:
         environment = {
             **os.environ,
             "PATH": f"{self.fake_bin}:{os.environ['PATH']}",
@@ -141,12 +143,10 @@ class SetupWorkspace:
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
         try:
             stdout, stderr = process.communicate(timeout=20)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as exc:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            raise AssertionError("script did not exit within 20s of SIGTERM")
-        return subprocess.CompletedProcess(
-            [str(self.script)], process.returncode, stdout=stdout, stderr=stderr
-        )
+            raise AssertionError("script did not exit within 20s of SIGTERM") from exc
+        return subprocess.CompletedProcess([str(self.script)], process.returncode, stdout=stdout, stderr=stderr)
 
     @property
     def commands(self) -> list[str]:
@@ -161,11 +161,7 @@ class SetupWorkspace:
         db_test = self.workspace / "dbTest"
         if not db_test.exists():
             return set()
-        return {
-            str(path.relative_to(db_test))
-            for path in db_test.rglob("*")
-            if path.is_file()
-        }
+        return {str(path.relative_to(db_test)) for path in db_test.rglob("*") if path.is_file()}
 
 
 @pytest.fixture()
@@ -358,6 +354,8 @@ def test_success_output_is_sanitized_and_installs_expected_files(ws):
     assert payload_canary.decode() not in combined
     grants = (ws.workspace / "dbTest" / "mysql" / "init" / "03-grants.sql").read_text(encoding="utf-8")
     assert "GRANT SELECT ON sakila.*" in grants
-    assert (ws.workspace / "dbTest" / "mssql" / "backup" / "AdventureWorksLT2022.bak").read_bytes().startswith(
-        b"RESTORE-BACKUP-IMAGE"
+    assert (
+        (ws.workspace / "dbTest" / "mssql" / "backup" / "AdventureWorksLT2022.bak")
+        .read_bytes()
+        .startswith(b"RESTORE-BACKUP-IMAGE")
     )
