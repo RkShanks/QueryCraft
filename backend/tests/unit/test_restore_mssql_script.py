@@ -99,11 +99,7 @@ class RestoreWorkspace:
         if not self.sql_log.exists():
             return []
         raw = self.sql_log.read_text(encoding="utf-8")
-        return [
-            batch.strip("\n")
-            for batch in raw.replace("===BATCH===", "\x00").split("\x00")
-            if batch.strip()
-        ]
+        return [batch.strip("\n") for batch in raw.replace("===BATCH===", "\x00").split("\x00") if batch.strip()]
 
     @property
     def actions(self) -> list[str]:

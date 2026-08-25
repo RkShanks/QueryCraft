@@ -65,7 +65,7 @@ def _install_fakes(monkeypatch, existing_user):
         return engine
 
     session = FakeSession(existing_user)
-    fake_sessionmaker = lambda _engine, **_kwargs: (lambda: session)  # noqa: E731
+    fake_sessionmaker = lambda _engine, **_kwargs: lambda: session  # noqa: E731
 
     monkeypatch.setattr(module, "create_async_engine", fake_create_engine)
     monkeypatch.setattr(module, "async_sessionmaker", fake_sessionmaker)
