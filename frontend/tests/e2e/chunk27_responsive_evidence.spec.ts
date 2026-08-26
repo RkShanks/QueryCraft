@@ -192,8 +192,13 @@ for (const viewport of VIEWPORTS) {
       await installShellMocks(page);
 
       let submitCalls = 0;
+      let releaseSubmit: (() => void) | undefined;
+      const submitGate = new Promise<void>((resolve) => {
+        releaseSubmit = resolve;
+      });
       await page.route('**/api/v1/query/submit', async (route) => {
         submitCalls += 1;
+        await submitGate;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -246,6 +251,12 @@ for (const viewport of VIEWPORTS) {
       const askButton = page.getByRole('button', { name: message(locale, 'common.send') });
       await prompt.fill('How many actors?');
       await askButton.click();
+      const loadingStatus = page.getByTestId('assistant-loading');
+      await expect(loadingStatus).toHaveAttribute('role', 'status');
+      await expect(loadingStatus).toContainText(message(locale, 'query.status.processing'));
+      await expectReachableInViewport(page, loadingStatus);
+      await expectNoHorizontalOverflow(page);
+      releaseSubmit?.();
       const resultTable = page.getByTestId('result-table');
       await expect(resultTable).toBeVisible();
 
@@ -327,10 +338,13 @@ for (const viewport of VIEWPORTS) {
       await prompt.fill('How many actors?');
       await expect(askButton).toBeEnabled();
       await askButton.click();
-      await expect(page.getByTestId('rejection-banner')).toContainText(
+      const rejectionAlert = page
+        .getByRole('alert')
+        .filter({ hasText: message(locale, 'query.evaluatorRejection.heading') });
+      await expect(rejectionAlert).toContainText(
         message(locale, 'query.evaluatorRejection.heading')
       );
-      await expectReachableInViewport(page, page.getByTestId('rejection-banner'));
+      await expectReachableInViewport(page, rejectionAlert);
 
       await prompt.fill('How many actors again?');
       await askButton.click();
@@ -661,6 +675,20 @@ for (const viewport of VIEWPORTS) {
     }) => {
       await page.setViewportSize(viewport);
       const traffic = trackTraffic(page);
+      await page.addInitScript(() => {
+        const state = { created: 0, revoked: 0 };
+        (window as unknown as { __chunk27ObjectUrls: typeof state }).__chunk27ObjectUrls = state;
+        const originalCreate = window.URL.createObjectURL.bind(window.URL);
+        const originalRevoke = window.URL.revokeObjectURL.bind(window.URL);
+        window.URL.createObjectURL = (blob: Blob) => {
+          state.created += 1;
+          return originalCreate(blob);
+        };
+        window.URL.revokeObjectURL = (url: string) => {
+          state.revoked += 1;
+          originalRevoke(url);
+        };
+      });
       await installShellMocks(page);
 
       await page.route('**/api/v1/admin/audit/status', async (route) =>
@@ -727,10 +755,36 @@ for (const viewport of VIEWPORTS) {
       await expect(csvButton).toBeEnabled();
       await expectReachableInViewport(page, csvButton);
       await expectVisibleKeyboardFocus(page, csvButton);
-      await page.keyboard.press('Enter');
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              (window as unknown as {
+                __chunk27ObjectUrls?: { created: number; revoked: number };
+              }).__chunk27ObjectUrls
+          )
+        )
+        .toEqual({ created: 0, revoked: 0 });
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.keyboard.press('Enter'),
+      ]);
 
       await expect.poll(() => exportCalls).toBe(1);
       expect(exportMethod).toBe('POST');
+      expect(download.suggestedFilename()).toMatch(
+        /^audit_export_\d{8}T\d{6}Z\.csv$/
+      );
+      await expect
+        .poll(() =>
+          page.evaluate(() => ({
+            ...(window as unknown as {
+              __chunk27ObjectUrls: { created: number; revoked: number };
+            }).__chunk27ObjectUrls,
+            downloadAnchors: document.querySelectorAll('a[download]').length,
+          }))
+        )
+        .toEqual({ created: 1, revoked: 1, downloadAnchors: 0 });
 
       await expectNoHorizontalOverflow(page);
       await expectNoRawTranslationKeys(page);

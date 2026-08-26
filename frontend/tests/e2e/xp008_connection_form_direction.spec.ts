@@ -160,10 +160,10 @@ for (const viewport of [
       }
       await expectNoPageOverflow(page);
 
-      const updateRequest = page.waitForRequest(
-        (request) =>
-          request.method() === 'PUT' &&
-          new URL(request.url()).pathname.endsWith(`/${connection.id}`)
+      const updateResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PUT' &&
+          new URL(response.url()).pathname.endsWith(`/${connection.id}`)
       );
       const save = page.getByRole('button', {
         name: message(locale, 'admin.connections.form.submit.edit'),
@@ -171,7 +171,7 @@ for (const viewport of [
       await focusWithTab(page, save);
       await expectVisibleKeyboardFocus(save);
       await page.keyboard.press('Enter');
-      await updateRequest;
+      await updateResponse;
       expect(updateShape.writeOnlyKeysAbsent).toBe(true);
       await expectNoPageOverflow(page);
     });

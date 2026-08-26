@@ -278,6 +278,11 @@ export const mockConnections = (page: Page) =>
  */
 export const mockSessionsList = (page: Page, items: SessionListResponse['items'] = []) =>
   page.route(/\/api\/v1\/sessions(?:\?.*)?$/, async (route: Route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() !== 'GET' || url.searchParams.get('limit') !== '50') {
+      throw new Error(`Unexpected sessions list request: ${request.method()} ${url.pathname}${url.search}`);
+    }
     const body: SessionListResponse = {
       items,
       total: items.length,
