@@ -151,6 +151,10 @@
     "tests/e2e/chunk_23_auth_recovery.spec.ts": {
       "category": "mocked",
       "reason": "Deterministic authentication recovery matrix: SSO provider loading/empty/failure+retry, invalid callback sanitization, double-submit suppression, rejected sign-out retry, confirmed sign-out boundaries and session-expiry distinction."
+    },
+    "tests/e2e/chunk26_detection_boundary.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic detection threshold boundary, mutation-suppression and recovery states."
     }
   },
   "mockHelpers": [

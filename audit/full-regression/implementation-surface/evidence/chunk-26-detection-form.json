@@ -1,0 +1,73 @@
+{
+  "chunk": "CHUNK-26",
+  "gap_id": "IS-GAP-040",
+  "status": "Resolved",
+  "branch": "phase-6/wave-19.26-detection-form",
+  "starting_main": "2082f8d3ddc17ddc2c56080c051d9ca503ebc967",
+  "commits": {
+    "red": "18ec64e",
+    "green": "59b5be4",
+    "browser_proof": "06b00e3"
+  },
+  "boundary_matrix": {
+    "non_numeric_nan": { "component": "blocked", "mutation_requests": 0 },
+    "non_finite_positive": { "component": "blocked", "mutation_requests": 0 },
+    "non_finite_negative": { "component": "blocked", "mutation_requests": 0 },
+    "below_range": { "component": "blocked", "mutation_requests": 0 },
+    "above_range": { "component": "blocked", "mutation_requests": 0 },
+    "equal_thresholds": { "component": "blocked_order_error", "mutation_requests": 0 },
+    "inverted_thresholds": { "component": "blocked_order_error", "mutation_requests": 0 },
+    "direct_dom_bypass": { "component": "blocked", "mutation_requests": 0 },
+    "exact_valid_boundaries": { "component": "accepted", "mutation_requests": 1 },
+    "native_constraint_bypass": { "component": "native_blocked_pre_submit", "mutation_requests": 0 }
+  },
+  "browser_proof": {
+    "engine": "chromium",
+    "mode": "mocked",
+    "viewports_px": [1440, 768, 375],
+    "cases_passed": 12,
+    "cases_failed": 0,
+    "invalid_blocked_submissions": 12,
+    "invalid_mutation_requests": 0,
+    "valid_boundary_mutation_requests": 1,
+    "rejection_retry_mutation_requests": 2,
+    "reset_mutation_requests": 0,
+    "server_rejection_preserves_edits": true,
+    "malformed_response_fails_closed": true,
+    "duplicate_submit_mutation_requests": 1,
+    "temporary_output_removed": true,
+    "screenshot_baselines_updated": false
+  },
+  "accessibility_localization": {
+    "aria_invalid_describedby_association": "3_of_3_viewports_plus_ar",
+    "localized_range_error_en_ar": true,
+    "localized_order_error_en_ar": true,
+    "success_status_announcement": 2,
+    "sanitized_error_alert_announcement": 2,
+    "pending_status_announcement": 1,
+    "keyboard_enter_submit_blocked": "3_of_3_viewports",
+    "rtl_logical_layout": true,
+    "physical_direction_css": 0,
+    "raw_translation_keys": 0
+  },
+  "gates": {
+    "focused_frontend_suites": 29,
+    "full_vitest": { "files": 102, "passed": 1358, "failed": 0 },
+    "backend_detection_subset": 34,
+    "backend_ruff": "clean",
+    "eslint": "clean",
+    "typecheck": "pass",
+    "production_build": "pass",
+    "css_lint": "pass",
+    "i18n_lint": "pass",
+    "harness_guard_specs_classified": 39,
+    "generated_api_parity": "64=64=64",
+    "git_diff_check": "clean"
+  },
+  "cleanup": {
+    "protected_dirty_baseline_preserved": true,
+    "tracked_evidence_output": 0,
+    "disposable_resources_remaining": 0,
+    "sensitive_values_in_evidence": 0
+  }
+}
