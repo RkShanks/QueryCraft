@@ -473,11 +473,18 @@
       "status": "Resolved",
       "branch": "phase-6/wave-19.27-responsive-evidence",
       "starting_main": "14f538aebf388a7471bdd59b00f8ff9bfa1a12ab",
-      "tested_head": "f0dc650bc5dd7c59b6169484f597c4437d22cd1c",
+      "tested_head": "8650ca8feb5870d21ce266cca8b64fc3c06bdf46",
       "pull_request": "https://github.com/RkShanks/QueryCraft/pull/334",
       "authoritative_ci": {
-        "run_id": 32989322103,
-        "head_commit": "9f21641b299bac31c7486fa45c8152ceced2c8b0",
+        "run_id": 32990393773,
+        "head_commit": "8650ca8feb5870d21ce266cca8b64fc3c06bdf46",
+        "backend_test": "passed",
+        "frontend_test": "passed"
+      },
+      "merge_commit": "e4b15ae96ec0f41d0903fa5ec27aebb6da058965",
+      "post_merge_ci": {
+        "run_id": 32991308202,
+        "head_commit": "e4b15ae96ec0f41d0903fa5ec27aebb6da058965",
         "backend_test": "passed",
         "frontend_test": "passed"
       },
