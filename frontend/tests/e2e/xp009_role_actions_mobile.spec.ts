@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { mockConnections, mockLocalAuth } from './helpers/mock-backend';
+import { mockConnections, mockLocalAuth, mockQueryLimits, mockSessionsList } from './helpers/mock-backend';
 import { signInLocalUser } from './helpers/auth';
 
 const customRole = {
@@ -38,13 +38,8 @@ const builtinRole = {
 async function mockRoleAdminData(page: Page) {
   await mockLocalAuth(page);
   await mockConnections(page);
-  await page.route('**/api/v1/sessions', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ sessions: [] }),
-    })
-  );
+  await mockSessionsList(page);
+  await mockQueryLimits(page);
   await page.route('**/api/v1/admin/roles**', async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;

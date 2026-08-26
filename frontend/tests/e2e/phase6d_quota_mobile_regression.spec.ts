@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { mockQueryLimits, mockSessionsList } from './helpers/mock-backend';
 
 const quota = {
   role_id: 'mobile-regression-role',
@@ -32,21 +33,8 @@ test.describe('P6-FR-179 mobile quota actions', () => {
         body: JSON.stringify({ connections: [] }),
       })
     );
-    await page.route('**/api/v1/sessions', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          items: [],
-          pagination: {
-            page: 1,
-            page_size: 10,
-            total_entries: 0,
-            total_pages: 0,
-          },
-        }),
-      })
-    );
+    await mockSessionsList(page);
+    await mockQueryLimits(page);
     await page.route('**/api/v1/admin/quotas/status', (route) =>
       route.fulfill({
         status: 200,

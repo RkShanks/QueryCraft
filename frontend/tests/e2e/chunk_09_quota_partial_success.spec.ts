@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { mockQueryLimits, mockSessionsList } from './helpers/mock-backend';
 
 const roleId = 'chunk-09-role';
 const pendingResponse = {
@@ -66,16 +67,8 @@ async function installQuotaOnlyBackend(page: Page, state: QuotaBackendState) {
       body: JSON.stringify({ connections: [] }),
     })
   );
-  await page.route('**/api/v1/sessions', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        items: [],
-        pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 0 },
-      }),
-    })
-  );
+  await mockSessionsList(page);
+  await mockQueryLimits(page);
   await page.route('**/api/v1/admin/quotas/status', (route) =>
     route.fulfill({
       status: 200,

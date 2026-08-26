@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { mockSessionsList } from './helpers/mock-backend';
 
 test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
   test.beforeEach(async ({ page }) => {
@@ -45,16 +46,7 @@ test.describe('Wave 18.4b — Frontend Smoke Verification', () => {
     });
 
     // 3. Mock Sessions
-    await page.route('**/api/v1/sessions', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          items: [],
-          pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 0 }
-        })
-      });
-    });
+    await mockSessionsList(page);
 
     // 4. Mock Roles
     await page.route('**/api/v1/admin/roles', async (route) => {
