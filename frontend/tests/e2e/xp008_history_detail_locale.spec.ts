@@ -5,6 +5,8 @@ import {
   mockHistoryDetail,
   mockHistoryList,
   mockLocalAuth,
+  mockQueryLimits,
+  mockSessionsList,
 } from './helpers/mock-backend';
 
 const historyItem = {
@@ -12,18 +14,16 @@ const historyItem = {
   question_text: 'Customer count',
   generated_sql: 'SELECT COUNT(*) FROM customer',
   accepted_at: '2026-07-31T00:00:00Z',
+  llm_provider: 'gemini',
+  database_connection_name: 'Local Pagila',
+  database_type: 'postgresql',
 };
 
 async function mockHistoryPage(page: Page) {
   await mockLocalAuth(page);
   await mockConnections(page);
-  await page.route(/\/api\/v1\/sessions(?:\?.*)?$/, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ items: [], total: 0 }),
-    })
-  );
+  await mockSessionsList(page);
+  await mockQueryLimits(page);
   await mockHistoryList(page, {
     items: [historyItem],
     total: 1,
