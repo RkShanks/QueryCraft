@@ -5,7 +5,7 @@ import { mockConnections, mockLocalAuth, mockQueryLimits, mockSessionsList } fro
 import { signInLocalUser } from './helpers/auth';
 
 const connection = {
-  id: 'direction-check',
+  id: '550e8400-e29b-41d4-a716-4466554400c8',
   display_name: 'قاعدة التحليلات',
   database_type: 'postgresql',
   port: 5432,
@@ -57,7 +57,7 @@ async function mockAdminConnections(page: Page, updateShape: { writeOnlyKeysAbse
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ connections: [connection] }),
+      body: JSON.stringify([connection]),
     });
   });
 }
