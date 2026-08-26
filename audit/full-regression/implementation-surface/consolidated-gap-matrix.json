@@ -459,6 +459,13 @@
       "status": "Resolved",
       "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/332",
       "tested_main": "2082f8d3ddc17ddc2c56080c051d9ca503ebc967",
+      "tested_head": "9d5ad303a1e09e67c45776fee87bf32b97fb8b3f",
+      "authoritative_ci": {
+        "run_id": 32922572101,
+        "backend_test": "passed",
+        "frontend_test": "passed"
+      },
+      "merge_commit": "daa9edbe3730fd9ee04b32eabf82d126f51feb6e",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-26-detection-form.json"
     }
   },
