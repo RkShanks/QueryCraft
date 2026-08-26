@@ -467,6 +467,14 @@
       },
       "merge_commit": "daa9edbe3730fd9ee04b32eabf82d126f51feb6e",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-26-detection-form.json"
+    },
+    "CHUNK-27": {
+      "gap_id": "IS-GAP-046",
+      "status": "Pending (local verification passed; authoritative CI pending)",
+      "branch": "phase-6/wave-19.27-responsive-evidence",
+      "starting_main": "14f538aebf388a7471bdd59b00f8ff9bfa1a12ab",
+      "tested_head": "f0dc650bc5dd7c59b6169484f597c4437d22cd1c",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-27-responsive.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -2914,6 +2922,9 @@
       "source_refs": [
         "frontend/tests/e2e/phase6d_quota_mobile_regression.spec.ts",
         "frontend/tests/e2e/xp009_role_actions_mobile.spec.ts",
+        "frontend/tests/e2e/chunk27_responsive_evidence.spec.ts",
+        "frontend/tests/e2e/helpers/mock-backend.ts::mockSessionsList",
+        "audit/full-regression/implementation-surface/evidence/chunk-27-responsive.json",
         "frontend/playwright.config.ts",
         "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-b-security-ui-report-2026-07-29.md::XP-008",
         "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-b-security-ui-report-2026-07-29.md::XP-009"

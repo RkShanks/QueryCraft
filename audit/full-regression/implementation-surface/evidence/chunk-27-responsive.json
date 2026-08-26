@@ -1,0 +1,134 @@
+{
+  "chunk": "CHUNK-27",
+  "gap_id": "IS-GAP-046",
+  "status": "local_verification_passed_ci_pending",
+  "classifications": {
+    "browser_mode": "mocked",
+    "browser_engine": "chromium",
+    "chrome_devtools_mcp": "mocked_fetch_sentinel",
+    "viewports_px": [1440, 768, 375],
+    "locales": ["en", "ar"],
+    "matrix_cases": 36,
+    "states": [
+      "loading_status",
+      "empty",
+      "result_table_pagination",
+      "rejection_alert",
+      "failure_and_recovery",
+      "history_search_and_paging",
+      "bounded_internal_scroll",
+      "permission_denial",
+      "dialog_focus_trap",
+      "download_and_object_url_cleanup"
+    ]
+  },
+  "counts": {
+    "red_browser_cases_failed": 6,
+    "negative_control_detectors_passed": 2,
+    "responsive_matrix": {
+      "passed": 36,
+      "failed": 0
+    },
+    "required_browser_subset": {
+      "passed": 64,
+      "failed": 0
+    },
+    "connection_race_repeat": {
+      "passed": 12,
+      "failed": 0
+    },
+    "frontend_full_vitest": {
+      "files": 102,
+      "passed": 1358,
+      "failed": 0
+    },
+    "locale_logical_css": {
+      "files": 6,
+      "passed": 422,
+      "failed": 0
+    },
+    "backend_unit": {
+      "passed": 2289,
+      "skipped": 365,
+      "deselected": 44,
+      "warnings": 3,
+      "failed": 0
+    },
+    "backend_openapi": {
+      "passed": 21,
+      "failed": 0
+    },
+    "harness_specs_classified": 40,
+    "chrome_devtools_mcp_sentinels": 1
+  },
+  "pass_fail": {
+    "eslint": "pass",
+    "typecheck": "pass",
+    "production_build": "pass",
+    "css_lint": "pass",
+    "generated_api_parity": "pass",
+    "harness_guard": "pass",
+    "git_diff_check": "pass",
+    "backend_ruff": "pass",
+    "test_guard": "pass",
+    "clean_code_guard": "pass",
+    "vercel_react_best_practices": "not_applicable_no_react_product_change",
+    "docs_guard": "pass",
+    "chrome_devtools_console": "pass",
+    "authoritative_ci": "pending"
+  },
+  "request_counts_and_methods": {
+    "sessions_list": {
+      "method": "GET",
+      "limit": 50,
+      "unmocked_5xx_after_fix": 0
+    },
+    "workspace_success_per_case": {
+      "method": "POST",
+      "requests": 1,
+      "cases": 6
+    },
+    "workspace_rejection_failure_recovery_per_case": {
+      "method": "POST",
+      "requests": 3,
+      "intentional_5xx": 1,
+      "cases": 6
+    },
+    "audit_export_per_case": {
+      "method": "POST",
+      "requests": 1,
+      "browser_downloads": 1,
+      "object_urls_created": 1,
+      "object_urls_revoked": 1,
+      "download_anchors_remaining": 0,
+      "cases": 6
+    },
+    "permission_denial_per_case": {
+      "unauthorized_role_requests": 0,
+      "cases": 6
+    },
+    "chrome_devtools_mcp": {
+      "session_get_requests": 2,
+      "submit_post_requests": 1,
+      "unexpected_api_requests": 0,
+      "console_errors_or_warnings": 0,
+      "horizontal_overflow_px": 0,
+      "raw_translation_key_candidates": 0,
+      "critical_controls_unreachable_after_scroll": 0
+    }
+  },
+  "cleanup": {
+    "temporary_browser_output_remaining": 0,
+    "temporary_downloads_remaining": 0,
+    "temporary_build_output_remaining": 0,
+    "temporary_vite_processes_remaining": 0,
+    "tracked_screenshots_added_or_updated": 0,
+    "raw_payloads_in_evidence": 0,
+    "sensitive_values_in_evidence": 0,
+    "protected_modified_pngs_preserved": 14,
+    "historical_untracked_screenshots_preserved": 7,
+    "historical_trace_archives_preserved": 2,
+    "protected_baseline_staged": false,
+    "git_add_all_used": false
+  }
+}
