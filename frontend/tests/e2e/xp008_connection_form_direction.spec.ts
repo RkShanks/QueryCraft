@@ -1,11 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import en from '../../src/locales/en.json' with { type: 'json' };
 import ar from '../../src/locales/ar.json' with { type: 'json' };
-import { mockConnections, mockLocalAuth } from './helpers/mock-backend';
+import { mockConnections, mockLocalAuth, mockQueryLimits, mockSessionsList } from './helpers/mock-backend';
 import { signInLocalUser } from './helpers/auth';
 
 const connection = {
-  id: 'direction-check',
+  id: '550e8400-e29b-41d4-a716-4466554400c8',
   display_name: 'قاعدة التحليلات',
   database_type: 'postgresql',
   port: 5432,
@@ -39,13 +39,8 @@ function message(locale: 'en' | 'ar', key: string) {
 async function mockAdminConnections(page: Page, updateShape: { writeOnlyKeysAbsent: boolean }) {
   await mockLocalAuth(page);
   await mockConnections(page);
-  await page.route('**/api/v1/sessions', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ sessions: [] }),
-    })
-  );
+  await mockSessionsList(page);
+  await mockQueryLimits(page);
   await page.route('**/api/v1/admin/connections**', async (route) => {
     if (route.request().method() === 'PUT') {
       const payload = route.request().postDataJSON() as Record<string, unknown>;
@@ -62,7 +57,7 @@ async function mockAdminConnections(page: Page, updateShape: { writeOnlyKeysAbse
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ connections: [connection] }),
+      body: JSON.stringify([connection]),
     });
   });
 }
@@ -165,10 +160,10 @@ for (const viewport of [
       }
       await expectNoPageOverflow(page);
 
-      const updateRequest = page.waitForRequest(
-        (request) =>
-          request.method() === 'PUT' &&
-          new URL(request.url()).pathname.endsWith(`/${connection.id}`)
+      const updateResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PUT' &&
+          new URL(response.url()).pathname.endsWith(`/${connection.id}`)
       );
       const save = page.getByRole('button', {
         name: message(locale, 'admin.connections.form.submit.edit'),
@@ -176,7 +171,7 @@ for (const viewport of [
       await focusWithTab(page, save);
       await expectVisibleKeyboardFocus(save);
       await page.keyboard.press('Enter');
-      await updateRequest;
+      await updateResponse;
       expect(updateShape.writeOnlyKeysAbsent).toBe(true);
       await expectNoPageOverflow(page);
     });

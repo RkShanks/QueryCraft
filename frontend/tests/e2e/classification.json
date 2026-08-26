@@ -155,6 +155,10 @@
     "tests/e2e/chunk26_detection_boundary.spec.ts": {
       "category": "mocked",
       "reason": "Deterministic detection threshold boundary, mutation-suppression and recovery states."
+    },
+    "tests/e2e/chunk27_responsive_evidence.spec.ts": {
+      "category": "mocked",
+      "reason": "Deterministic responsive and accessibility assertion matrix: overflow, reachability, focus, dialogs, bounded tables, downloads, permission denial, localized alerts and request contracts across EN/AR at 1440/768/375."
     }
   },
   "mockHelpers": [

@@ -1,17 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { mockConnections, mockLocalAuth } from './helpers/mock-backend';
+import { mockConnections, mockLocalAuth, mockQueryLimits, mockSessionsList } from './helpers/mock-backend';
 import { signInLocalUser } from './helpers/auth';
 
 async function mockShellData(page: Page) {
   await mockLocalAuth(page);
   await mockConnections(page);
-  await page.route('**/api/v1/sessions', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ sessions: [] }),
-    });
-  });
+  await mockSessionsList(page);
+  await mockQueryLimits(page);
 }
 
 async function expectSidebarBesideWorkspace(page: Page) {

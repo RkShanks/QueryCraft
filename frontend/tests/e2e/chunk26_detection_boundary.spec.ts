@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Request, type Route } from '@playwright/test';
 import ar from '../../src/locales/ar.json' with { type: 'json' };
 import en from '../../src/locales/en.json' with { type: 'json' };
 import { signInLocalUser } from './helpers/auth';
