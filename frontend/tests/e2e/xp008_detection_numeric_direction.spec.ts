@@ -76,13 +76,19 @@ for (const viewport of [
   { width: 1440, height: 900 },
 ]) {
   for (const locale of ['en', 'ar'] as const) {
-    test(`keeps ${locale} detection thresholds LTR at ${viewport.width}px`, async ({
-      page,
-    }) => {
-      await page.setViewportSize(viewport);
-      await mockDetectionPage(page);
-      await signInLocalUser(page);
-      await page.goto(`/admin/detection?lng=${locale}`);
+  test(`keeps ${locale} detection thresholds LTR at ${viewport.width}px`, async ({
+    page,
+  }) => {
+    const failedResponses: string[] = [];
+    page.on('response', (response) => {
+      if (response.status() >= 500) {
+        failedResponses.push(`${response.status()} ${new URL(response.url()).pathname}`);
+      }
+    });
+    await page.setViewportSize(viewport);
+    await mockDetectionPage(page);
+    await signInLocalUser(page);
+    await page.goto(`/admin/detection?lng=${locale}`);
 
       await expect(page.locator('html')).toHaveAttribute(
         'dir',
@@ -101,6 +107,7 @@ for (const viewport of [
       }
 
       await expectNoPageOverflow(page);
+      expect(failedResponses).toEqual([]);
     });
   }
 }
