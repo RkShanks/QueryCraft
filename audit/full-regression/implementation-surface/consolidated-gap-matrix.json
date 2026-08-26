@@ -63,8 +63,8 @@
       "Needs Decision": 1
     },
     "status": {
-      "Pending": 4,
-      "Resolved": 38,
+      "Pending": 3,
+      "Resolved": 39,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 3,
@@ -453,6 +453,13 @@
         "frontend_test": "passed",
         "merge_commit": "3236ce02d9bda8924aa43db77b456a63e26b1088"
       }
+    },
+    "CHUNK-26": {
+      "gap_id": "IS-GAP-040",
+      "status": "Resolved",
+      "fix_pr": "PENDING_PR",
+      "tested_main": "2082f8d3ddc17ddc2c56080c051d9ca503ebc967",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-26-detection-form.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -2589,7 +2596,7 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-26",
-      "status": "Pending",
+      "status": "Resolved",
       "source_refs": [
         "frontend/src/pages/AdminDetectionPage.tsx::handleSave",
         "frontend/src/hooks/useAdminDetection.ts",
