@@ -474,6 +474,7 @@
       "branch": "phase-6/wave-19.27-responsive-evidence",
       "starting_main": "14f538aebf388a7471bdd59b00f8ff9bfa1a12ab",
       "tested_head": "f0dc650bc5dd7c59b6169484f597c4437d22cd1c",
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/334",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-27-responsive.json"
     }
   },
