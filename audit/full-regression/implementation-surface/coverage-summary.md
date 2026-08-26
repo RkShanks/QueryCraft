@@ -97,8 +97,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 
 | Status | Count |
 | --- | ---: |
-| Pending | 3 |
-| Resolved | 39 |
+| Pending | 2 |
+| Resolved | 40 |
 | Resolved on tested branch | 0 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
@@ -157,7 +157,7 @@ These decisions block only `CHUNK-30` and `CHUNK-31`. All product chunks through
 `IS-GAP-040` is **Resolved** via CHUNK-26 from synchronized main `2082f8d3ddc17ddc2c56080c051d9ca503ebc967` (RED `18ec64e` → GREEN `59b5be4` → browser proof `06b00e3`). Its [CHUNK-26 evidence](evidence/chunk-26-detection-form.md) records a ten-class numeric boundary matrix (non-numeric/NaN, both non-finite signs, below-range, above-range, equal, inverted, direct DOM property bypass, native constraint bypass, exact 0/1 boundaries) enforced in one shared validator before any mutation, with zero invalid mutation requests across the 12-case mocked EN/AR 1440/768/375 Chromium proof, exactly one PUT for a valid boundary save, exactly two PUTs for rejection-then-retry with edits preserved, fail-closed malformed GET/PUT responses via the CHUNK-17 validators, sanitized localized EN/AR error toasts, `aria-invalid`/`aria-describedby`/`role="alert"`/`role="status"` announcements, deterministic dirty-aware reset without mutation, duplicate-submit suppression, and untouched CHUNK-10 backend invariants (P6-FR-159, P6-FR-160). Gates: 29 focused frontend tests inside the 1,358-test full Vitest run, 34 backend detection subset tests, ESLint/typecheck/build/CSS-lint/i18n-lint/harness-guard (39 specs)/generated-parity (64=64=64)/diff-check all green.
 PR [#332](https://github.com/RkShanks/QueryCraft/pull/332) passed authoritative CI run `32922572101` at tested head `9d5ad303a1e09e67c45776fee87bf32b97fb8b3f` and squash-merged as `daa9edbe3730fd9ee04b32eabf82d126f51feb6e`.
 
-`IS-GAP-046` remains **Pending** while authoritative CI and merge are outstanding in [#334](https://github.com/RkShanks/QueryCraft/pull/334). Local CHUNK-27 verification passed at `f0dc650bc5dd7c59b6169484f597c4437d22cd1c`: 36/36 assertion-bearing EN/AR 1440/768/375 responsive cases and the complete 64/64 focused browser subset passed, with strict `GET /api/v1/sessions?limit=50` harness enforcement, zero unexpected 5xx responses, machine-observable loading/empty/failure/recovery, overflow/reachability, semantic alert/status, bounded table/scroll, permission-denial, dialog-focus and browser download/object-URL cleanup assertions. Chrome DevTools MCP independently passed the AR 375px sentinel. Full frontend gates (1,358 Vitest tests, 422 locale/logical-CSS checks, lint/typecheck/build/CSS/API-parity/harness/diff) and the CI-equivalent backend gate (2,289 passed, 365 skipped) are green. See [value-safe JSON evidence](evidence/chunk-27-responsive.json).
+`IS-GAP-046` is **Resolved** through [#334](https://github.com/RkShanks/QueryCraft/pull/334). Local CHUNK-27 verification passed at `f0dc650bc5dd7c59b6169484f597c4437d22cd1c`: 36/36 assertion-bearing EN/AR 1440/768/375 responsive cases and the complete 64/64 focused browser subset passed, with strict `GET /api/v1/sessions?limit=50` harness enforcement, zero unexpected 5xx responses, machine-observable loading/empty/failure/recovery, overflow/reachability, semantic alert/status, bounded table/scroll, permission-denial, dialog-focus and browser download/object-URL cleanup assertions. Chrome DevTools MCP independently passed the AR 375px sentinel. Full frontend gates (1,358 Vitest tests, 422 locale/logical-CSS checks, lint/typecheck/build/CSS/API-parity/harness/diff) and the CI-equivalent backend gate (2,289 passed, 365 skipped) are green. Authoritative CI run `32989322103` passed backend-test and frontend-test at `9f21641b299bac31c7486fa45c8152ceced2c8b0`. See [value-safe JSON evidence](evidence/chunk-27-responsive.json).
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 

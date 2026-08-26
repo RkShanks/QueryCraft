@@ -1,7 +1,14 @@
 {
   "chunk": "CHUNK-27",
   "gap_id": "IS-GAP-046",
-  "status": "local_verification_passed_ci_pending",
+  "status": "resolved",
+  "pull_request": "https://github.com/RkShanks/QueryCraft/pull/334",
+  "authoritative_ci": {
+    "run_id": 32989322103,
+    "head_commit": "9f21641b299bac31c7486fa45c8152ceced2c8b0",
+    "backend_test": "passed",
+    "frontend_test": "passed"
+  },
   "classifications": {
     "browser_mode": "mocked",
     "browser_engine": "chromium",
@@ -75,7 +82,7 @@
     "vercel_react_best_practices": "not_applicable_no_react_product_change",
     "docs_guard": "pass",
     "chrome_devtools_console": "pass",
-    "authoritative_ci": "pending"
+    "authoritative_ci": "pass"
   },
   "request_counts_and_methods": {
     "sessions_list": {
