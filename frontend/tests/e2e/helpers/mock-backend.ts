@@ -1,5 +1,5 @@
 import type { Page, Route } from '@playwright/test';
-import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse, UserProfile } from '../../../src/api/generated/types.gen';
+import type { QueryResult, EvaluatorRejection, RefinePrompt, AcceptedQuerySummary, HistoryListResponse, ErrorResponse, SessionListResponse, UserProfile } from '../../../src/api/generated/types.gen';
 import { PERMISSIONS } from '../../../src/auth/permissions';
 import { E2E_USER_CONNECTIONS_RESPONSE } from '../../../src/test/fixtures/userConnections';
 
@@ -269,5 +269,29 @@ export const mockConnections = (page: Page) =>
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(E2E_USER_CONNECTIONS_RESPONSE),
+    });
+  });
+
+/**
+ * Intercept the current bounded sessions list request (`GET /api/v1/sessions?limit=50`)
+ * and return one keyset page in the SessionListResponse shape.
+ */
+export const mockSessionsList = (page: Page, items: SessionListResponse['items'] = []) =>
+  page.route(/\/api\/v1\/sessions(?:\?.*)?$/, async (route: Route) => {
+    const body: SessionListResponse = {
+      items,
+      total: items.length,
+      next_cursor: null,
+    };
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  });
+
+/** Intercept GET /api/v1/query/limits with the configured prompt limit. */
+export const mockQueryLimits = (page: Page, maxQuestionLength = 2000) =>
+  page.route('**/api/v1/query/limits', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ max_question_length: maxQuestionLength }),
     });
   });

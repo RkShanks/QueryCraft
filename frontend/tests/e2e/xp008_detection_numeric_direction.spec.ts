@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import ar from '../../src/locales/ar.json' with { type: 'json' };
 import en from '../../src/locales/en.json' with { type: 'json' };
 import { signInLocalUser } from './helpers/auth';
-import { mockConnections, mockLocalAuth } from './helpers/mock-backend';
+import { mockConnections, mockLocalAuth, mockQueryLimits, mockSessionsList } from './helpers/mock-backend';
 
 const localeMessages = { en, ar } as const;
 const thresholdKeys = [
@@ -17,13 +17,8 @@ function message(locale: 'en' | 'ar', key: (typeof thresholdKeys)[number]) {
 async function mockDetectionPage(page: Page) {
   await mockLocalAuth(page);
   await mockConnections(page);
-  await page.route('**/api/v1/sessions', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ sessions: [] }),
-    })
-  );
+  await mockSessionsList(page);
+  await mockQueryLimits(page);
   await page.route('**/api/v1/admin/detection/config', (route) =>
     route.fulfill({
       status: 200,
