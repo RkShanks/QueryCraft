@@ -457,7 +457,7 @@
     "CHUNK-26": {
       "gap_id": "IS-GAP-040",
       "status": "Resolved",
-      "fix_pr": "PENDING_PR",
+      "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/332",
       "tested_main": "2082f8d3ddc17ddc2c56080c051d9ca503ebc967",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-26-detection-form.json"
     }
