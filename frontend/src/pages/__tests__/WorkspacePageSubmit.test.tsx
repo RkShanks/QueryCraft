@@ -430,7 +430,7 @@ describe('WorkspacePage first-submit UX', () => {
 });
 
 describe('WorkspacePage submit scenarios', () => {
-  it('CHUNK-28 removes hostile input once the rejection response is observed', async () => {
+  it('CHUNK-28 sanitized hostile state excludes the submitted question', async () => {
     const canary = `sensitive-${crypto.randomUUID()}`;
     let resolveRejectedResponse: (() => void) | undefined;
     const rejectedResponseObserved = new Promise<void>((resolve) => {
@@ -458,11 +458,16 @@ describe('WorkspacePage submit scenarios', () => {
 
     await typeAndSubmit(canary);
     await rejectedResponseObserved;
+    const hostileBanner = await screen.findByRole('alert');
 
+    expect(hostileBanner).toHaveTextContent(
+      'This request was blocked because it contains content that violates our security policy.'
+    );
     expect(
       document.body.textContent?.includes(canary) ?? false,
-      'hostile response boundary retains sensitive DOM text'
+      'sanitized hostile state retains sensitive DOM text'
     ).toBe(false);
+    expect(screen.getByRole('textbox')).toHaveValue('');
   });
 
   it('removes rejected hostile input from the rendered workspace', async () => {
