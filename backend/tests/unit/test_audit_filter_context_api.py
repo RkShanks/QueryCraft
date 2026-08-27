@@ -28,7 +28,7 @@ def _admin_session() -> dict[str, object]:
     }
 
 
-def _filter_context_app(session: dict[str, object], session_id: str = "http-session-a") -> FastAPI:
+def _filter_context_app(session: dict[str, object] | None, session_id: str = "http-session-a") -> FastAPI:
     class SessionInjectionMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
             request.state.session = session
@@ -185,3 +185,56 @@ async def test_mixed_context_and_raw_filters_are_rejected_without_echoing_values
     assert export.status_code == 422
     assert canary not in search.text
     assert canary not in export.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("session", "expected_status"),
+    [
+        (None, 401),
+        (
+            {
+                "user_id": str(uuid.uuid4()),
+                "role_id": str(uuid.uuid4()),
+                "permissions": ["query.submit"],
+                "username": "user@example.com",
+            },
+            403,
+        ),
+    ],
+)
+async def test_context_creation_requires_exact_audit_permission(session, expected_status: int):
+    app = _filter_context_app(session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/v1/admin/audit/filter-context", json={})
+
+    assert response.status_code == expected_status
+
+
+@pytest.mark.asyncio
+async def test_identity_replacement_and_permission_revocation_apply_on_next_request():
+    session = _admin_session()
+    app = _filter_context_app(session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        issued = await client.post(
+            "/api/v1/admin/audit/filter-context",
+            json={"actor_identity": "actor-a"},
+        )
+        token = issued.json()["filter_context"]
+        session["user_id"] = str(uuid.uuid4())
+        replaced_identity = await client.get(
+            "/api/v1/admin/audit/entries",
+            params={"filter_context": token},
+        )
+        session["permissions"] = []
+        revoked = await client.get(
+            "/api/v1/admin/audit/entries",
+            params={"filter_context": token},
+        )
+
+    assert replaced_identity.status_code == 422
+    assert replaced_identity.json()["message_key"] == "error.audit_filter_context_invalid"
+    assert revoked.status_code == 403
+    assert revoked.json()["message_key"] == "error.forbidden"

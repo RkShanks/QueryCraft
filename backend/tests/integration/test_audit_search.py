@@ -251,9 +251,7 @@ class TestAuditSearchSelfAuditEvent:
             context = row[0] if isinstance(row[0], dict) else json.loads(row[0])
 
             # Must contain filter summary and pagination metadata
-            assert "filters" in context or "filter_summary" in context, (
-                f"audit.search context must contain filter summary, got: {context}"
-            )
+            assert "applied_fields" in context, f"audit.search context must contain applied field names, got: {context}"
             assert "page" in context or "pagination" in context, (
                 f"audit.search context must contain pagination metadata, got: {context}"
             )
@@ -300,7 +298,7 @@ class TestAuditSearchSelfAuditEvent:
             context = row[0] if isinstance(row[0], dict) else json.loads(row[0])
             context_text = str(context)
             assert sensitive_filter not in context_text
-            assert "[REDACTED]" in context_text
+            assert context["applied_fields"] == ["actor_identity"]
 
 
 class TestAuditSearchResponseShape:
