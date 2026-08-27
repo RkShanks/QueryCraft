@@ -299,9 +299,12 @@ test('keeps rejected, failed, searched, exported, and switched identity state va
     })(),
     (response) => response.url().includes('/api/v1/query/submit'),
   );
-  expect((await hostileResponse).status()).toBe(400);
-  await expect(page.getByTestId('hostile-input-blocked-banner')).toBeVisible({ timeout: 10_000 });
+  const hostileResponseValue = await hostileResponse;
+  expect(hostileResponseValue.status()).toBe(400);
+  const hostileResponseBody = (await hostileResponseValue.json()) as { message_key?: string };
+  expect(hostileResponseBody.message_key).toBe('error.hostile_input_blocked');
   await assertBrowserClean(page, observer, canary, 'hostile rejection');
+  await expect(page.locator('[role="alert"]').first()).toBeVisible({ timeout: 10_000 });
 
   // Provider failure: deterministic unreachable Ollama boundary; reload also
   // checks that an implicit failed submission did not surface a raw preview.
@@ -313,7 +316,10 @@ test('keeps rejected, failed, searched, exported, and switched identity state va
     })(),
     (response) => response.url().includes('/api/v1/query/submit'),
   );
-  expect((await providerResponse).status()).toBe(502);
+  const providerResponseValue = await providerResponse;
+  expect(providerResponseValue.status()).toBe(502);
+  const providerResponseBody = (await providerResponseValue.json()) as { message_key?: string };
+  expect(providerResponseBody.message_key).toBe('error.llmUnavailable');
   await expect(page.getByText(/AI service is temporarily unavailable/i)).toBeVisible({ timeout: 15_000 });
   await assertBrowserClean(page, observer, canary, 'provider failure');
   await page.reload();
