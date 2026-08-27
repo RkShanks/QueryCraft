@@ -71,8 +71,15 @@ from app.core.exceptions import QuotaExceededError, QuotaUnavailableError
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType, Permission
 from app.repositories.quota_repository import QuotaRepository
-from app.schemas.audit_search import MAX_AUDIT_SEARCH_PAGE, AuditExportRequest, AuditSearchParams
+from app.schemas.audit_search import (
+    MAX_AUDIT_SEARCH_PAGE,
+    AuditExportRequest,
+    AuditFilterContextRequest,
+    AuditFilterContextResponse,
+    AuditSearchParams,
+)
 from app.services.audit_export_service import AuditExportService, ExportLimitExceededError, redact_audit_export_value
+from app.services.audit_filter_context import AuditFilterContextBinding, AuditFilterContextService
 from app.services.audit_search_service import AuditSearchService
 from app.services.audit_service import AuditService, VerificationResult
 from app.services.quota_service import QuotaService
@@ -84,6 +91,18 @@ router = APIRouter(prefix="/admin/audit", tags=["Admin Audit"])
 # a constant sentinel avoids exposing internal row UUIDs to end users.
 AUDIT_VERIFY_RESOURCE_ID: str = "audit_chain"
 AUDIT_VERIFY_RESOURCE_TYPE: str = "audit_chain"
+
+
+def _filter_context_binding(request: Request, session: dict) -> AuditFilterContextBinding:
+    """Return the authenticated user and HTTP-session binding."""
+    user_id = session.get("user_id")
+    session_id = getattr(request.state, "session_id", None)
+    if not isinstance(user_id, str) or not user_id or not isinstance(session_id, str) or not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    return AuditFilterContextBinding(user_id=user_id, session_id=session_id)
 
 
 def _verification_to_response(result: VerificationResult) -> dict[str, Any]:
@@ -321,6 +340,20 @@ async def get_audit_retention(
         "last_purge_at": last_purge_at,
         "purged_count": purged_count,
     }
+
+
+@router.post("/filter-context", response_model=AuditFilterContextResponse)
+async def create_audit_filter_context(
+    request: Request,
+    response: Response,
+    context_request: AuditFilterContextRequest = Body(...),  # noqa: B008
+    session: dict = Depends(require_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
+):
+    """Seal validated audit filters for the current identity and session."""
+    binding = _filter_context_binding(request, session)
+    service = AuditFilterContextService(get_settings().PLATFORM_ENCRYPTION_KEY)
+    response.headers["Cache-Control"] = "no-store"
+    return service.issue(context_request, binding)
 
 
 @router.get("/entries")
