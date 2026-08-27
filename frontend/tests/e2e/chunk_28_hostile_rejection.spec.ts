@@ -1,11 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import en from '../../src/locales/en.json';
-import ar from '../../src/locales/ar.json';
 
 test.use({ screenshot: 'off', trace: 'off', video: 'off' });
 
 type PrivacyObserver = {
   responseCanaryObserved: boolean;
+  submitRequestCount: number;
   unexpectedConsoleErrorCount: number;
   pageErrorCount: number;
   flush: () => Promise<void>;
@@ -15,6 +14,7 @@ function observePrivacyChannels(page: Page, canary: string): PrivacyObserver {
   const pendingResponseChecks: Array<Promise<void>> = [];
   const observer: PrivacyObserver = {
     responseCanaryObserved: false,
+    submitRequestCount: 0,
     unexpectedConsoleErrorCount: 0,
     pageErrorCount: 0,
     flush: async () => {
@@ -31,6 +31,11 @@ function observePrivacyChannels(page: Page, canary: string): PrivacyObserver {
         }
       }).catch(() => undefined),
     );
+  });
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().includes('/api/v1/query/submit')) {
+      observer.submitRequestCount += 1;
+    }
   });
   page.on('console', (message) => {
     const messageText = message.text();
@@ -139,10 +144,30 @@ async function signIn(page: Page, language: 'en' | 'ar'): Promise<void> {
 }
 
 const cases = [
-  { language: 'en' as const, direction: 'ltr', width: 1440, message: en['error.hostile_input_blocked'] },
-  { language: 'en' as const, direction: 'ltr', width: 375, message: en['error.hostile_input_blocked'] },
-  { language: 'ar' as const, direction: 'rtl', width: 1440, message: ar['error.hostile_input_blocked'] },
-  { language: 'ar' as const, direction: 'rtl', width: 375, message: ar['error.hostile_input_blocked'] },
+  {
+    language: 'en' as const,
+    direction: 'ltr',
+    width: 1440,
+    message: 'This request was blocked because it contains content that violates our security policy.',
+  },
+  {
+    language: 'en' as const,
+    direction: 'ltr',
+    width: 375,
+    message: 'This request was blocked because it contains content that violates our security policy.',
+  },
+  {
+    language: 'ar' as const,
+    direction: 'rtl',
+    width: 1440,
+    message: 'تم حظر هذا الطلب لأنه يحتوي على محتوى ينتهك سياسة الأمان.',
+  },
+  {
+    language: 'ar' as const,
+    direction: 'rtl',
+    width: 375,
+    message: 'تم حظر هذا الطلب لأنه يحتوي على محتوى ينتهك سياسة الأمان.',
+  },
 ];
 
 for (const privacyCase of cases) {
@@ -165,6 +190,23 @@ for (const privacyCase of cases) {
     expect((await response.json() as { message_key?: string }).message_key)
       .toBe('error.hostile_input_blocked');
 
+    await expect(prompt).toBeEnabled({ timeout: 10_000 });
+    const settledState = await page.evaluate((needle) => ({
+      canaryInDom: (document.body.textContent ?? '').includes(needle),
+      alertCount: document.querySelectorAll('[role="alert"]').length,
+      hostileBannerCount: document.querySelectorAll('[data-testid="hostile-input-blocked-banner"][role="alert"]').length,
+      userBubbleCount: document.querySelectorAll('[data-testid="user-bubble"]').length,
+      loadingCount: document.querySelectorAll('[data-testid="assistant-loading"]').length,
+      promptEmpty: (document.querySelector('textarea') as HTMLTextAreaElement | null)?.value === '',
+    }), canary);
+    expect(settledState).toEqual({
+      canaryInDom: false,
+      alertCount: 1,
+      hostileBannerCount: 1,
+      userBubbleCount: 0,
+      loadingCount: 0,
+      promptEmpty: true,
+    });
     await expect(page.getByRole('alert').filter({ hasText: privacyCase.message }))
       .toBeVisible({ timeout: 10_000 });
     await observer.flush();
@@ -176,9 +218,9 @@ for (const privacyCase of cases) {
     expect(observer.pageErrorCount).toBe(0);
 
     await prompt.fill('Count customer records');
-    await page.getByTestId('prompt-send').click();
-    await page.getByTestId('prompt-send').click({ force: true });
+    await page.getByTestId('prompt-send').dblclick();
     await expect(page.getByTestId('assistant-response-card')).toBeVisible({ timeout: 15_000 });
+    expect(observer.submitRequestCount).toBe(2);
     expect(await browserContainsCanary(page, canary), 'subsequent submission restored sensitive value').toBe(false);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
