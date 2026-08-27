@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -47,10 +48,17 @@ def _filter_context_app(session: dict[str, object], session_id: str = "http-sess
         content = exc.detail if isinstance(exc.detail, dict) else {"error": "error"}
         return JSONResponse(status_code=exc.status_code, content=content)
 
+    async def _validation_exception_handler(_request, _exc):
+        return JSONResponse(
+            status_code=422,
+            content={"error": "validation", "message_key": "error.validation.generic"},
+        )
+
     app = FastAPI()
     use_test_session_current_role(app)
     app.add_middleware(SessionInjectionMiddleware)
     app.add_exception_handler(HTTPException, _http_exception_handler)
+    app.add_exception_handler(RequestValidationError, _validation_exception_handler)
     app.dependency_overrides[get_db] = _mock_get_db
     app.dependency_overrides[get_redis] = _mock_get_redis
     app.include_router(admin_audit_router, prefix="/api/v1")
@@ -88,7 +96,9 @@ async def test_search_and_export_resolve_the_same_context_without_raw_filters_in
         captured_search_actor = params.actor_identity
         return AuditSearchResponse(
             entries=[],
-            pagination=AuditSearchPagination(page=params.page, page_size=params.page_size, total_entries=0, total_pages=1),
+            pagination=AuditSearchPagination(
+                page=params.page, page_size=params.page_size, total_entries=0, total_pages=1
+            ),
         )
 
     async def _export(_db, _retention_months, **filters):
@@ -122,5 +132,56 @@ async def test_search_and_export_resolve_the_same_context_without_raw_filters_in
     assert captured_export_actor == canary
     assert search.headers["cache-control"] == "no-store"
     assert export.headers["cache-control"] == "no-store"
+    assert canary not in search.text
+    assert canary not in export.text
+
+
+@pytest.mark.asyncio
+async def test_invalid_contexts_use_one_sanitized_error_for_search_and_export():
+    app = _filter_context_app(_admin_session())
+    invalid_context = base64.b64encode(b"malformed-context").decode()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        search = await client.get(
+            "/api/v1/admin/audit/entries",
+            params={"filter_context": invalid_context},
+        )
+        export = await client.post(
+            "/api/v1/admin/audit/export",
+            json={"format": "csv", "filter_context": invalid_context},
+        )
+
+    expected = {
+        "error": "invalid_filter_context",
+        "message_key": "error.audit_filter_context_invalid",
+    }
+    assert search.status_code == 422
+    assert export.status_code == 422
+    assert search.json() == expected
+    assert export.json() == expected
+
+
+@pytest.mark.asyncio
+async def test_mixed_context_and_raw_filters_are_rejected_without_echoing_values():
+    canary = "actor-sensitive-canary"
+    app = _filter_context_app(_admin_session())
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        issued = await client.post(
+            "/api/v1/admin/audit/filter-context",
+            json={"actor_identity": canary},
+        )
+        token = issued.json()["filter_context"]
+        search = await client.get(
+            "/api/v1/admin/audit/entries",
+            params={"filter_context": token, "actor_identity": canary},
+        )
+        export = await client.post(
+            "/api/v1/admin/audit/export",
+            json={"format": "json", "filter_context": token, "actor_identity": canary},
+        )
+
+    assert search.status_code == 422
+    assert export.status_code == 422
     assert canary not in search.text
     assert canary not in export.text
