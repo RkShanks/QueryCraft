@@ -1,11 +1,41 @@
 import { describe, it, expect } from 'vitest';
-import { searchAuditEntries, exportAuditEntries, getAuditRetention } from './audit';
+import {
+  createAuditFilterContext,
+  searchAuditEntries,
+  exportAuditEntries,
+  getAuditRetention,
+} from './audit';
 import { AuditDownloadError } from './auditDownload';
 import { server } from '../test/server';
 import { http, HttpResponse } from 'msw';
 import { ClientContractError } from './responseValidation';
 
 describe('audit API client', () => {
+  it('creates an opaque filter context without sending raw filters in a URL', async () => {
+    const canary = 'actor-sensitive-canary';
+    let requestUrl = '';
+    server.use(
+      http.post('/api/v1/admin/audit/filter-context', async ({ request }) => {
+        requestUrl = request.url;
+        expect(await request.json()).toEqual({ actor_identity: canary });
+        return HttpResponse.json({
+          filter_context: 'opaque-filter-context',
+          applied_fields: ['actor_identity'],
+          expires_at: '2026-08-27T12:15:00Z',
+        });
+      })
+    );
+
+    const context = await createAuditFilterContext({ actor_identity: canary });
+
+    expect(requestUrl).not.toContain(canary);
+    expect(context).toEqual({
+      filter_context: 'opaque-filter-context',
+      applied_fields: ['actor_identity'],
+      expires_at: '2026-08-27T12:15:00Z',
+    });
+  });
+
   it('should search audit entries with params', async () => {
     server.use(
       http.get('/api/v1/admin/audit/entries', ({ request }) => {
