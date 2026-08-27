@@ -97,7 +97,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 
 | Status | Count |
 | --- | ---: |
-| Pending | 2 |
+| Pending | 1 |
+| Blocked | 1 |
 | Resolved | 40 |
 | Resolved on tested branch | 0 |
 | Closed by Existing Evidence | 0 |
@@ -158,6 +159,8 @@ These decisions block only `CHUNK-30` and `CHUNK-31`. All product chunks through
 PR [#332](https://github.com/RkShanks/QueryCraft/pull/332) passed authoritative CI run `32922572101` at tested head `9d5ad303a1e09e67c45776fee87bf32b97fb8b3f` and squash-merged as `daa9edbe3730fd9ee04b32eabf82d126f51feb6e`.
 
 `IS-GAP-046` is **Resolved and merged** through [#334](https://github.com/RkShanks/QueryCraft/pull/334). CHUNK-27 verification passed at final PR head `8650ca8feb5870d21ce266cca8b64fc3c06bdf46`: 36/36 assertion-bearing EN/AR 1440/768/375 responsive cases and the complete 64/64 focused browser subset passed, with strict `GET /api/v1/sessions?limit=50` harness enforcement, zero unexpected 5xx responses, machine-observable loading/empty/failure/recovery, overflow/reachability, semantic alert/status, bounded table/scroll, permission-denial, dialog-focus and browser download/object-URL cleanup assertions. Chrome DevTools MCP independently passed the AR 375px sentinel. Full frontend gates (1,358 Vitest tests, 422 locale/logical-CSS checks, lint/typecheck/build/CSS/API-parity/harness/diff) and the CI-equivalent backend gate (2,289 passed, 365 skipped) are green. Authoritative CI run `32990393773` passed backend-test and frontend-test; the PR squash-merged as `e4b15ae96ec0f41d0903fa5ec27aebb6da058965`, where post-merge CI run `32991308202` also passed both jobs. See [value-safe JSON evidence](evidence/chunk-27-responsive.json).
+
+`IS-GAP-047` is **Blocked — product defect reproduced** on `phase-6/wave-19.28-browser-privacy-evidence`. The real API returned HTTP 400 with the sanitized hostile-rejection classification, then the value-safe Playwright Chromium scan observed a synthetic canary in DOM text and stopped immediately. Chrome DevTools MCP was unavailable; no product code was changed, and the remaining provider, audit/export, identity-switch and post-cleanup flows are `not_run_after_stop`. See [CHUNK-28 Markdown evidence](evidence/chunk-28-browser-privacy.md) and [JSON evidence](evidence/chunk-28-browser-privacy.json); a separate product fix is required before closure.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
