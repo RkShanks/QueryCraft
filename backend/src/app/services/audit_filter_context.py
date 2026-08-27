@@ -1,0 +1,121 @@
+"""Authenticated-encrypted, identity-bound audit filter contexts."""
+
+from __future__ import annotations
+
+import binascii
+import json
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from typing import Literal
+
+from cryptography.exceptions import InvalidTag
+from pydantic import BaseModel, ValidationError
+
+from app.core.encryption import decrypt, encrypt
+from app.schemas.audit_search import (
+    AuditFilterContextRequest,
+    AuditFilterContextResponse,
+    AuditFilterField,
+    AuditFilterParams,
+)
+
+_CONTEXT_PURPOSE = "audit_filter_context"
+_CONTEXT_VERSION = 1
+_FILTER_FIELDS: tuple[AuditFilterField, ...] = (
+    "start_date",
+    "end_date",
+    "action_type",
+    "actor_identity",
+    "outcome",
+    "resource_type",
+)
+
+
+@dataclass(frozen=True)
+class AuditFilterContextBinding:
+    """Authenticated identity and HTTP session bound to a filter context."""
+
+    user_id: str
+    session_id: str
+
+
+class AuditFilterContextError(Exception):
+    """A filter context failed authenticated validation."""
+
+
+class AuditFilterContextPayload(BaseModel):
+    """Encrypted filter-context payload."""
+
+    purpose: Literal["audit_filter_context"]
+    version: Literal[1]
+    user_id: str
+    session_id: str
+    issued_at: int
+    expires_at: int
+    filters: AuditFilterParams
+
+
+class AuditFilterContextService:
+    """Issue and resolve stateless AES-GCM audit filter contexts."""
+
+    def __init__(self, encryption_key: str) -> None:
+        self._encryption_key = encryption_key
+
+    def issue(
+        self,
+        request: AuditFilterContextRequest,
+        binding: AuditFilterContextBinding,
+        *,
+        now: datetime | None = None,
+    ) -> AuditFilterContextResponse:
+        """Seal normalized filters without echoing their values."""
+        issued_at = _utc_now(now)
+        expires_at = issued_at + timedelta(seconds=request.expires_in_seconds)
+        filters = AuditFilterParams.model_validate(request.model_dump(include=set(_FILTER_FIELDS)))
+        payload = AuditFilterContextPayload(
+            purpose=_CONTEXT_PURPOSE,
+            version=_CONTEXT_VERSION,
+            user_id=binding.user_id,
+            session_id=binding.session_id,
+            issued_at=int(issued_at.timestamp()),
+            expires_at=int(expires_at.timestamp()),
+            filters=filters,
+        )
+        token = encrypt(payload.model_dump_json(), self._encryption_key)
+        return AuditFilterContextResponse(
+            filter_context=token,
+            applied_fields=[field for field in _FILTER_FIELDS if getattr(filters, field) is not None],
+            expires_at=expires_at,
+        )
+
+    def resolve(
+        self,
+        filter_context: str,
+        binding: AuditFilterContextBinding,
+        *,
+        now: datetime | None = None,
+    ) -> AuditFilterParams:
+        """Resolve a valid context for its bound identity and session."""
+        try:
+            plaintext = decrypt(filter_context, self._encryption_key)
+            payload = AuditFilterContextPayload.model_validate(json.loads(plaintext))
+        except (binascii.Error, InvalidTag, UnicodeDecodeError, json.JSONDecodeError, ValidationError, ValueError):
+            raise AuditFilterContextError from None
+
+        current_timestamp = int(_utc_now(now).timestamp())
+        if (
+            payload.user_id != binding.user_id
+            or payload.session_id != binding.session_id
+            or payload.issued_at > current_timestamp
+            or payload.expires_at <= payload.issued_at
+            or current_timestamp >= payload.expires_at
+        ):
+            raise AuditFilterContextError
+        return payload.filters
+
+
+def _utc_now(current: datetime | None) -> datetime:
+    instant = current or datetime.now(UTC)
+    if instant.tzinfo is None:
+        return instant.replace(tzinfo=UTC)
+    return instant.astimezone(UTC)

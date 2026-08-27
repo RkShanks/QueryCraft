@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field, StringConstraints, field_validator, model
 from app.db.models.enums import AuditActionType
 
 MAX_AUDIT_SEARCH_PAGE = 2_147_483_647
+AUDIT_FILTER_CONTEXT_DEFAULT_TTL_SECONDS = 900
+AUDIT_FILTER_CONTEXT_MAX_TTL_SECONDS = 3600
 
 AuditOutcome = Literal["success", "failure", "denied", "blocked", "flagged", "broken"]
 AuditFilterText = Annotated[
@@ -19,6 +21,14 @@ AuditFilterText = Annotated[
         max_length=512,
         pattern=r"^[^\x00-\x1f\x7f]+$",
     ),
+]
+AuditFilterField = Literal[
+    "start_date",
+    "end_date",
+    "action_type",
+    "actor_identity",
+    "outcome",
+    "resource_type",
 ]
 
 
@@ -55,6 +65,24 @@ class AuditSearchParams(AuditFilterParams):
 
     page: int = Field(default=1, ge=1, le=MAX_AUDIT_SEARCH_PAGE)
     page_size: int = Field(default=50, ge=1, le=100)
+
+
+class AuditFilterContextRequest(AuditFilterParams):
+    """Validated filters to seal into a short-lived opaque context."""
+
+    expires_in_seconds: int = Field(
+        default=AUDIT_FILTER_CONTEXT_DEFAULT_TTL_SECONDS,
+        ge=1,
+        le=AUDIT_FILTER_CONTEXT_MAX_TTL_SECONDS,
+    )
+
+
+class AuditFilterContextResponse(BaseModel):
+    """Value-safe metadata returned for an opaque filter context."""
+
+    filter_context: str
+    applied_fields: list[AuditFilterField]
+    expires_at: datetime
 
 
 class AuditEntryRead(BaseModel):
