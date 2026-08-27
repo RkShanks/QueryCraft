@@ -54,7 +54,10 @@ async def test_blocked_hostile_input_is_durably_audited(
     )
 
     assert response.status_code == 400
-    assert response.json() == {"message_key": "error.hostile_input_blocked"}
+    assert response.json() == {
+        "error": "hostile_input_blocked",
+        "message_key": "error.hostile_input_blocked",
+    }
     assert await _event_count(async_engine_fixture, AuditActionType.HOSTILE_INPUT_BLOCKED) == count_before + 1
 
     entry = await _latest_event(async_engine_fixture, AuditActionType.HOSTILE_INPUT_BLOCKED)

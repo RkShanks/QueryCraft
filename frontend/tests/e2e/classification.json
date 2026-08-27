@@ -159,6 +159,10 @@
     "tests/e2e/chunk27_responsive_evidence.spec.ts": {
       "category": "mocked",
       "reason": "Deterministic responsive and accessibility assertion matrix: overflow, reachability, focus, dialogs, bounded tables, downloads, permission denial, localized alerts and request contracts across EN/AR at 1440/768/375."
+    },
+    "tests/e2e/chunk_28_hostile_rejection.spec.ts": {
+      "category": "live",
+      "reason": "Real FastAPI plus isolated Chromium proof that the semantic hostile-rejection state is value-safe across EN/AR desktop and mobile, then permits one benign submission."
     }
   },
   "mockHelpers": [
@@ -203,6 +207,12 @@
       "title": "CHUNK-21 disposable live credentials are required.",
       "reason": "The live async boundary requires an isolated running FastAPI stack with disposable credentials.",
       "supersededBy": "The same spec runs in CHUNK-21 evidence against the disposable Compose stack."
+    },
+    {
+      "spec": "tests/e2e/chunk_28_hostile_rejection.spec.ts",
+      "title": "CHUNK-28 disposable live credentials are required.",
+      "reason": "The live hostile-rejection boundary requires an isolated FastAPI runtime and disposable user.",
+      "supersededBy": "The same spec runs for CHUNK-28 against the disposable PostgreSQL, Redis, backend and browser stack."
     }
   ]
 }
