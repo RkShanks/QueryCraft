@@ -1,0 +1,55 @@
+{
+  "chunk": "CHUNK-28",
+  "gap": "IS-GAP-047",
+  "status": "blocked_product_defect_reproduced",
+  "browser_runner": "playwright_chromium_substitution",
+  "chrome_devtools_mcp_available": false,
+  "isolated_runtime": {
+    "postgres": true,
+    "redis": true,
+    "backend": true,
+    "frontend": true,
+    "browser_profile": true,
+    "runtime_destroyed": true,
+    "temporary_output_removed": true
+  },
+  "prerequisites": {
+    "IS-GAP-002": "resolved",
+    "IS-GAP-008": "resolved",
+    "IS-GAP-023": "resolved",
+    "IS-GAP-034": "resolved",
+    "IS-GAP-042": "resolved"
+  },
+  "red_green": {
+    "red_completed": true,
+    "green_completed": true,
+    "live_matrix_completed": true,
+    "scanner_unit_tests_passed": 2
+  },
+  "hostile_rejection": {
+    "api_status": 400,
+    "api_message_classification": "error.hostile_input_blocked",
+    "dom_canary_observed": true,
+    "scan_stop": "immediate",
+    "user_facing_alert_observed": "not_run_after_dom_stop",
+    "remaining_channels": "not_run_after_stop"
+  },
+  "provider_failure": "not_run_after_stop",
+  "audit_search_export": "not_run_after_stop",
+  "identity_switch": "not_run_after_stop",
+  "cross_channel_cleanup": "not_run_after_stop",
+  "cleanup": {
+    "backend_stopped": true,
+    "frontend_stopped": true,
+    "containers_removed": true,
+    "network_removed": true,
+    "temp_files_removed": true,
+    "browser_output_removed": true,
+    "protected_baseline_untouched": true
+  },
+  "finding": {
+    "category": "hostile_rejection_dom_retention",
+    "severity": "high",
+    "product_fix_required": true
+  }
+}

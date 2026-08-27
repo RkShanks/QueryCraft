@@ -63,7 +63,8 @@
       "Needs Decision": 1
     },
     "status": {
-      "Pending": 2,
+      "Pending": 1,
+      "Blocked": 1,
       "Resolved": 40,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
@@ -489,6 +490,21 @@
         "frontend_test": "passed"
       },
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-27-responsive.json"
+    },
+    "CHUNK-28": {
+      "gap_id": "IS-GAP-047",
+      "status": "Blocked — product defect reproduced",
+      "branch": "phase-6/wave-19.28-browser-privacy-evidence",
+      "starting_main": "daac0e806ddb6c8028c9694e723724b82535456a",
+      "tested_commits": {
+        "red": "b3c8c78",
+        "green": "dca5dc5",
+        "live_matrix": "16f9d87"
+      },
+      "live_browser": "Playwright Chromium substitution; Chrome DevTools MCP unavailable",
+      "stop_classification": "hostile_rejection_dom_retention",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-28-browser-privacy.json",
+      "product_fix_required": true
     }
   },
   "raw_candidate_dispositions": {
@@ -2984,14 +3000,16 @@
       ],
       "owner": "Frontend Implementer with security review; Gemini",
       "chunk": "CHUNK-28",
-      "status": "Pending",
+      "status": "Blocked — product defect reproduced",
       "source_refs": [
         "frontend/src/hooks/useQuerySubmit.ts::handleError",
         "frontend/src/pages/AdminAuditPage.tsx::handleExport",
         "frontend/src/providers/QueryProvider.tsx::queryClient",
         "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/phase-6-current-head-browser-evidence-2026-07-29.json::prohibited_response_or_retention_scan",
         "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-b-security-ui-report-2026-07-29.md::XP-012",
-        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-current-head-report-2026-08-01.md::XP-012"
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-current-head-report-2026-08-01.md::XP-012",
+        "audit/full-regression/implementation-surface/evidence/chunk-28-browser-privacy.md",
+        "audit/full-regression/implementation-surface/evidence/chunk-28-browser-privacy.json"
       ]
     }
   ],
