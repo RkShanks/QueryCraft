@@ -2,13 +2,16 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminAudit } from '../hooks/useAdminAudit';
 import { Shield, CheckCircle2, XCircle, AlertTriangle, X, RefreshCw, Download } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  createAuditFilterContext,
   searchAuditEntries,
   exportAuditEntries,
   getAuditRetention,
   AuditDownloadError,
   type AuditExportRequest,
+  type AuditFilterContextRequest,
+  type AuditFilterContextResponse,
   type AuditSearchParams,
   type AuditSearchResponse,
 } from '../api/audit';
@@ -42,59 +45,39 @@ interface LastVerification {
  * states; only a settled response carries its own applied filters so results,
  * the visible summary and every export request stay bound to one dataset.
  */
-interface AppliedAuditFilters {
-  start_date: string;
-  end_date: string;
-  action_type: string;
-  actor_identity: string;
-  outcome: string;
-  resource_type: string;
+type AuditFilterField = AuditFilterContextResponse['applied_fields'][number];
+
+interface AuditFilterAuthority {
+  filterContext: string | null;
+  appliedFields: AuditFilterField[];
 }
 
-const EMPTY_APPLIED_FILTERS: AppliedAuditFilters = {
-  start_date: '',
-  end_date: '',
-  action_type: '',
-  actor_identity: '',
-  outcome: '',
-  resource_type: '',
+const UNFILTERED_AUTHORITY: AuditFilterAuthority = {
+  filterContext: null,
+  appliedFields: [],
 };
 
+const AUDIT_SEARCH_QUERY_KEY = 'adminAuditEntries';
+
 interface AuditSearchSnapshot {
-  filters: AppliedAuditFilters;
+  filterContext: string | null;
+  appliedFields: AuditFilterField[];
   response: AuditSearchResponse;
 }
 
-function filtersToSearchParams(
-  filters: AppliedAuditFilters,
+function contextToSearchParams(
+  filterContext: string | null,
   page: number
-): Record<string, unknown> {
-  const params: Record<string, unknown> = {
+): AuditSearchParams {
+  return {
+    filter_context: filterContext ?? undefined,
     page,
     page_size: 10,
   };
-  if (filters.start_date) params.start_date = filters.start_date;
-  if (filters.end_date) params.end_date = filters.end_date;
-  if (filters.action_type) params.action_type = filters.action_type;
-  if (filters.actor_identity) params.actor_identity = filters.actor_identity;
-  if (filters.outcome) params.outcome = filters.outcome;
-  if (filters.resource_type) params.resource_type = filters.resource_type;
-  return params;
-}
-
-function areSameFilters(a: AppliedAuditFilters, b: AppliedAuditFilters): boolean {
-  return (
-    a.start_date === b.start_date &&
-    a.end_date === b.end_date &&
-    a.action_type === b.action_type &&
-    a.actor_identity === b.actor_identity &&
-    a.outcome === b.outcome &&
-    a.resource_type === b.resource_type
-  );
 }
 
 const APPLIED_FILTER_FIELD_LABELS: ReadonlyArray<
-  readonly [keyof AppliedAuditFilters, 'audit.search.date_from' | 'audit.search.date_to' | 'audit.search.action_type' | 'audit.search.actor' | 'audit.search.outcome' | 'audit.search.resource_type']
+  readonly [AuditFilterField, 'audit.search.date_from' | 'audit.search.date_to' | 'audit.search.action_type' | 'audit.search.actor' | 'audit.search.outcome' | 'audit.search.resource_type']
 > = [
   ['start_date', 'audit.search.date_from'],
   ['end_date', 'audit.search.date_to'],
@@ -109,9 +92,12 @@ const RESPONSIVE_AUDIT_CELL_CLASS =
 
 export const AdminAuditPage: React.FC = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
   const exportScopeRef = useRef<RequestScope | null>(null);
+  const contextScopeRef = useRef<RequestScope | null>(null);
+  const contextRequestGenerationRef = useRef(0);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -124,10 +110,16 @@ export const AdminAuditPage: React.FC = () => {
       exportScopeRef.current?.abort();
       exportScopeRef.current?.dispose();
       exportScopeRef.current = null;
+      contextRequestGenerationRef.current += 1;
+      contextScopeRef.current?.abort();
+      contextScopeRef.current?.dispose();
+      contextScopeRef.current = null;
+      void queryClient.cancelQueries({ queryKey: [AUDIT_SEARCH_QUERY_KEY] });
+      queryClient.removeQueries({ queryKey: [AUDIT_SEARCH_QUERY_KEY] });
       for (const timer of timers) clearTimeout(timer);
       timers.clear();
     };
-  }, []);
+  }, [queryClient]);
 
   const addToast = (type: 'success' | 'error', message: string) => {
     const id = `${Date.now()}-${Math.random()}`;
@@ -154,19 +146,29 @@ export const AdminAuditPage: React.FC = () => {
   const [outcome, setOutcome] = useState('all');
   const [resourceType, setResourceType] = useState('');
   const [page, setPage] = useState(1);
-  const [requestedFilters, setRequestedFilters] = useState<AppliedAuditFilters>(EMPTY_APPLIED_FILTERS);
+  const [requestedAuthority, setRequestedAuthority] = useState<AuditFilterAuthority>(UNFILTERED_AUTHORITY);
+  const [isCreatingContext, setIsCreatingContext] = useState(false);
   // Last displayed snapshot kept so failed searches keep showing the prior
   // applied dataset instead of an empty table.
   const [retainedSnapshot, setRetainedSnapshot] = useState<AuditSearchSnapshot>();
 
-  const buildFiltersFromInputs = (): AppliedAuditFilters => ({
-    start_date: startDate ? `${startDate}T00:00:00Z` : '',
-    end_date: endDate ? `${endDate}T23:59:59Z` : '',
-    action_type: actionType,
-    actor_identity: actorIdentity,
-    outcome: outcome === 'all' ? '' : outcome,
-    resource_type: resourceType,
+  const buildFiltersFromInputs = (): AuditFilterContextRequest => ({
+    start_date: startDate ? `${startDate}T00:00:00Z` : undefined,
+    end_date: endDate ? `${endDate}T23:59:59Z` : undefined,
+    action_type: (actionType || undefined) as AuditFilterContextRequest['action_type'],
+    actor_identity: actorIdentity || undefined,
+    outcome: (outcome === 'all' ? undefined : outcome) as AuditFilterContextRequest['outcome'],
+    resource_type: resourceType || undefined,
   });
+
+  const clearDraftFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setActionType('');
+    setActorIdentity('');
+    setOutcome('all');
+    setResourceType('');
+  };
 
   const cancelExport = () => {
     exportScopeRef.current?.abort();
@@ -174,15 +176,10 @@ export const AdminAuditPage: React.FC = () => {
 
   const buildExportRequest = (
     format: 'csv' | 'json',
-    appliedFilters: AppliedAuditFilters
+    filterContext: string | null
   ): AuditExportRequest => ({
     format,
-    start_date: appliedFilters.start_date || undefined,
-    end_date: appliedFilters.end_date || undefined,
-    action_type: (appliedFilters.action_type || undefined) as AuditExportRequest['action_type'],
-    actor_identity: appliedFilters.actor_identity || undefined,
-    outcome: (appliedFilters.outcome || undefined) as AuditExportRequest['outcome'],
-    resource_type: appliedFilters.resource_type || undefined,
+    filter_context: filterContext ?? undefined,
   });
 
   const handleExport = async (format: 'csv' | 'json') => {
@@ -194,7 +191,7 @@ export const AdminAuditPage: React.FC = () => {
     exportScopeRef.current = scope;
     try {
       const download = await exportAuditEntries(
-        buildExportRequest(format, exportFilters),
+        buildExportRequest(format, exportFilterContext),
         scope.signal
       );
       if (scope.aborted || !mountedRef.current) return;
@@ -258,18 +255,21 @@ export const AdminAuditPage: React.FC = () => {
   };
 
   const searchQuery = useQuery({
-    queryKey: ['adminAuditEntries', requestedFilters, page],
+    queryKey: [AUDIT_SEARCH_QUERY_KEY, requestedAuthority.filterContext, page],
     queryFn: async ({ signal }): Promise<AuditSearchSnapshot> => {
       const response = await searchAuditEntries(
-        filtersToSearchParams(requestedFilters, page) as AuditSearchParams,
+        contextToSearchParams(requestedAuthority.filterContext, page),
         signal
       );
-      // The settled response carries the exact filters it was requested with;
-      // display and export derive from this snapshot atomically.
-      return { filters: requestedFilters, response };
+      return {
+        filterContext: requestedAuthority.filterContext,
+        appliedFields: requestedAuthority.appliedFields,
+        response,
+      };
     },
     placeholderData: (previousData) => previousData,
     enabled: canVerifyAudit,
+    gcTime: 0,
   });
 
   const retentionQuery = useQuery({
@@ -291,34 +291,58 @@ export const AdminAuditPage: React.FC = () => {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (contextScopeRef.current) return;
     retainDisplayedSnapshot();
     setPage(1);
-    setRequestedFilters(buildFiltersFromInputs());
+    const requestGeneration = contextRequestGenerationRef.current + 1;
+    contextRequestGenerationRef.current = requestGeneration;
+    const scope = new RequestScope();
+    contextScopeRef.current = scope;
+    setIsCreatingContext(true);
+    const pendingContext = createAuditFilterContext(buildFiltersFromInputs(), scope.signal);
+    clearDraftFilters();
+    void pendingContext
+      .then((context) => {
+        if (!mountedRef.current || scope.aborted || contextRequestGenerationRef.current !== requestGeneration) return;
+        setRequestedAuthority({
+          filterContext: context.filter_context,
+          appliedFields: context.applied_fields,
+        });
+      })
+      .catch((error: unknown) => {
+        if (!mountedRef.current || isAbortFailure(error)) return;
+        addToast('error', t('audit.search.context_error'));
+      })
+      .finally(() => {
+        scope.dispose();
+        if (contextScopeRef.current === scope) contextScopeRef.current = null;
+        if (mountedRef.current && contextRequestGenerationRef.current === requestGeneration) {
+          setIsCreatingContext(false);
+        }
+      });
   };
 
   const handleReset = () => {
+    contextRequestGenerationRef.current += 1;
+    contextScopeRef.current?.abort();
+    contextScopeRef.current?.dispose();
+    contextScopeRef.current = null;
+    setIsCreatingContext(false);
     retainDisplayedSnapshot();
-    setStartDate('');
-    setEndDate('');
-    setActionType('');
-    setActorIdentity('');
-    setOutcome('all');
-    setResourceType('');
+    clearDraftFilters();
     setPage(1);
-    setRequestedFilters(EMPTY_APPLIED_FILTERS);
+    setRequestedAuthority(UNFILTERED_AUTHORITY);
   };
 
-  // Draft inputs versus the filters governing the displayed dataset.
-  const draftFilters = buildFiltersFromInputs();
-  const appliedFilters = snapshot?.filters ?? EMPTY_APPLIED_FILTERS;
-  const hasUnappliedChanges =
-    searchData !== undefined && !areSameFilters(draftFilters, appliedFilters);
-  // Before any dataset has been displayed, an export rides the requested
-  // filters of the in-flight initial search.
-  const exportFilters = snapshot?.filters ?? requestedFilters;
+  const hasUnappliedChanges = Boolean(
+    searchData !== undefined &&
+      (startDate || endDate || actionType || actorIdentity || outcome !== 'all' || resourceType)
+  );
+  const exportFilterContext = snapshot?.filterContext ?? requestedAuthority.filterContext;
+  const appliedFields = snapshot?.appliedFields ?? [];
   const appliedFilterEntries = APPLIED_FILTER_FIELD_LABELS
-    .map(([field, labelKey]) => [labelKey, appliedFilters[field]] as const)
-    .filter(([, value]) => value !== '');
+    .filter(([field]) => appliedFields.includes(field))
+    .map(([, labelKey]) => labelKey);
 
   const handleVerify = () => {
     verifyMutation.mutate(undefined, {
@@ -707,9 +731,10 @@ export const AdminAuditPage: React.FC = () => {
             )}
             <button
               type="submit"
-              className="min-w-0 px-3 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors text-sm font-medium cursor-pointer sm:px-4"
+              disabled={isCreatingContext}
+              className="min-w-0 px-3 py-2 bg-neon-cyan text-gray-900 rounded-md hover:bg-opacity-90 transition-colors text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed sm:px-4"
             >
-              {t('audit.search.submit')}
+              {isCreatingContext ? t('audit.search.creating_context') : t('audit.search.submit')}
             </button>
           </div>
         </form>
@@ -724,15 +749,13 @@ export const AdminAuditPage: React.FC = () => {
             {appliedFilterEntries.length === 0 ? (
               <span>{t('audit.search.all_entries')}</span>
             ) : (
-              appliedFilterEntries.map(([labelKey, value]) => (
+              appliedFilterEntries.map((labelKey) => (
                 <span
                   key={labelKey}
                   className="inline-flex min-w-0 max-w-full items-center gap-1 rounded border border-gray-800 bg-gray-950 px-2 py-0.5"
                 >
                   <span className="shrink-0 text-gray-400">{t(labelKey)}:</span>
-                  <span dir="ltr" className="min-w-0 break-all font-mono text-gray-200">
-                    {value}
-                  </span>
+                  <span className="text-gray-200">{t('audit.search.applied')}</span>
                 </span>
               ))
             )}

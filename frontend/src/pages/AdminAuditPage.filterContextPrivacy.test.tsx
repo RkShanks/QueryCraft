@@ -84,7 +84,7 @@ describe('AdminAuditPage opaque filter retention (CHUNK-28)', () => {
     expect(searchUrls.some((url) => url.includes(FILTER_CONTEXT))).toBe(true);
     expect(searchUrls.some((url) => url.includes(canary))).toBe(false);
     expect(searchUrls.some((url) => url.includes('actor_identity='))).toBe(false);
-    expect(screen.getByTestId('audit-applied-filters')).toHaveTextContent('Actor: Applied');
+    expect(screen.getByTestId('audit-applied-filters')).toHaveTextContent(/Actor:\s*Applied/);
     expect(screen.getByTestId('audit-applied-filters')).not.toHaveTextContent(canary);
     expect(document.documentElement.outerHTML).not.toContain(canary);
     expect(JSON.stringify(queryClient.getQueryCache().getAll().map((query) => query.queryKey))).not.toContain(canary);
