@@ -1,6 +1,5 @@
 import { expect, test, type Page, type Response } from '@playwright/test';
 import { readFile, rm } from 'node:fs/promises';
-import { containsSensitiveCanary } from '../../src/test/privacyEvidence';
 
 /**
  * CHUNK-28 / IS-GAP-047 — real API + real Chromium privacy boundary.

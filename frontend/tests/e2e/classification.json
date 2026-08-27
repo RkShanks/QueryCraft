@@ -207,6 +207,12 @@
       "title": "CHUNK-21 disposable live credentials are required.",
       "reason": "The live async boundary requires an isolated running FastAPI stack with disposable credentials.",
       "supersededBy": "The same spec runs in CHUNK-21 evidence against the disposable Compose stack."
+    },
+    {
+      "spec": "tests/e2e/chunk_28_browser_privacy.spec.ts",
+      "title": "CHUNK-28 disposable live credentials are required.",
+      "reason": "The live cross-channel privacy matrix requires explicitly provisioned disposable users in an isolated FastAPI runtime.",
+      "supersededBy": "The same spec runs in CHUNK-28 evidence with disposable users and a fresh browser profile."
     }
   ]
 }
