@@ -17,7 +17,12 @@ from app.schemas.admin_settings import (
     UpdateAdminSettingsResponse,
 )
 from app.schemas.audit import AuditRetentionResponse, AuditStatusResponse, AuditVerifyResponse
-from app.schemas.audit_search import AuditExportRequest, AuditSearchResponse
+from app.schemas.audit_search import (
+    AuditExportRequest,
+    AuditFilterContextRequest,
+    AuditFilterContextResponse,
+    AuditSearchResponse,
+)
 from app.schemas.auth import UserProfile
 from app.schemas.connection import (
     ConnectionResponse,
@@ -110,6 +115,7 @@ OPERATION_IDS: dict[OperationKey, str] = {
     ("POST", "/api/v1/admin/roles/test-policy"): "testDraftRolePolicy",
     ("POST", "/api/v1/admin/roles/{role_id}/test-policy"): "testRolePolicy",
     ("POST", "/api/v1/admin/audit/verify"): "verifyAuditChain",
+    ("POST", "/api/v1/admin/audit/filter-context"): "createAuditFilterContext",
     ("GET", "/api/v1/admin/audit/status"): "getAuditStatus",
     ("GET", "/api/v1/admin/audit/retention"): "getAuditRetention",
     ("GET", "/api/v1/admin/audit/entries"): "searchAuditEntries",
@@ -135,6 +141,7 @@ REQUEST_MODELS: dict[OperationKey, ModelType] = {
     ("POST", "/api/v1/query/regenerate"): RegenerateQueryRequest,
     ("PUT", "/api/v1/admin/quotas/{role_id}"): RoleQuotaUpsert,
     ("POST", "/api/v1/admin/audit/export"): AuditExportRequest,
+    ("POST", "/api/v1/admin/audit/filter-context"): AuditFilterContextRequest,
     ("POST", "/api/v1/admin/roles/test-policy"): DraftPolicyTestRequest,
 }
 
@@ -179,6 +186,7 @@ SUCCESS_MODELS: dict[OperationKey, tuple[int, ResponseModels]] = {
     ("POST", "/api/v1/admin/roles/test-policy"): (200, PolicyTestResponse),
     ("POST", "/api/v1/admin/roles/{role_id}/test-policy"): (200, PolicyTestResponse),
     ("POST", "/api/v1/admin/audit/verify"): (200, AuditVerifyResponse),
+    ("POST", "/api/v1/admin/audit/filter-context"): (200, AuditFilterContextResponse),
     ("GET", "/api/v1/admin/audit/status"): (200, AuditStatusResponse),
     ("GET", "/api/v1/admin/audit/retention"): (200, AuditRetentionResponse),
     ("GET", "/api/v1/admin/audit/entries"): (200, AuditSearchResponse),
@@ -358,6 +366,7 @@ for _operation_key, _statuses in {
     ("POST", "/api/v1/admin/roles/test-policy"): (400, 422, 500),
     ("POST", "/api/v1/admin/roles/{role_id}/test-policy"): (400, 404, 422, 500),
     ("POST", "/api/v1/admin/audit/verify"): (500,),
+    ("POST", "/api/v1/admin/audit/filter-context"): (422, 500),
     ("GET", "/api/v1/admin/audit/entries"): (422, 500),
     ("POST", "/api/v1/admin/audit/export"): (422, 500, 503),
     ("GET", "/api/v1/connections"): (503,),
@@ -500,7 +509,10 @@ def _patch_export_response(operation: dict[str, Any]) -> None:
     binary_schema = {"type": "string", "format": "binary"}
     operation["responses"]["200"] = {
         "description": "Filtered audit download.",
-        "headers": {"Content-Disposition": {"schema": {"type": "string"}}},
+        "headers": {
+            "Content-Disposition": {"schema": {"type": "string"}},
+            "Cache-Control": {"schema": {"type": "string", "const": "no-store"}},
+        },
         "content": {"text/csv": {"schema": binary_schema}, "application/json": {"schema": binary_schema}},
     }
 
@@ -533,6 +545,13 @@ def _patch_special_operations(schema: dict[str, Any]) -> None:
         _patch_redirect_response(_operation(schema, operation_key))
     _patch_saml_form(_operation(schema, ("POST", "/api/v1/auth/sso/saml/callback")))
     _patch_export_response(_operation(schema, ("POST", "/api/v1/admin/audit/export")))
+    for operation_key in (
+        ("POST", "/api/v1/admin/audit/filter-context"),
+        ("GET", "/api/v1/admin/audit/entries"),
+    ):
+        _operation(schema, operation_key)["responses"]["200"].setdefault("headers", {})["Cache-Control"] = {
+            "schema": {"type": "string", "const": "no-store"}
+        }
 
 
 def build_openapi_schema(app: FastAPI) -> dict[str, Any]:

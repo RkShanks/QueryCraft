@@ -1,4 +1,5 @@
 import {
+  createAuditFilterContext as createCanonicalAuditFilterContext,
   exportAuditEntries as exportCanonicalAuditEntries,
   getAuditRetention as getCanonicalAuditRetention,
   searchAuditEntries as searchCanonicalAuditEntries,
@@ -6,6 +7,8 @@ import {
 import type {
   AuditEntryRead,
   AuditExportRequest,
+  AuditFilterContextRequest,
+  AuditFilterContextResponse,
   AuditRetentionResponse,
   AuditSearchResponse,
   SearchAuditEntriesData,
@@ -19,11 +22,35 @@ import {
   safeAuditExportFilename,
 } from './auditDownload';
 
-export type AuditSearchParams = NonNullable<SearchAuditEntriesData['query']>;
+type CanonicalAuditSearchParams = NonNullable<SearchAuditEntriesData['query']>;
+
+export interface AuditSearchParams {
+  filter_context?: CanonicalAuditSearchParams['filter_context'];
+  page?: CanonicalAuditSearchParams['page'];
+  page_size?: CanonicalAuditSearchParams['page_size'];
+}
 export type AuditEntry = AuditEntryRead;
-export type { AuditExportRequest, AuditRetentionResponse, AuditSearchResponse };
+export type {
+  AuditExportRequest,
+  AuditFilterContextRequest,
+  AuditFilterContextResponse,
+  AuditRetentionResponse,
+  AuditSearchResponse,
+};
 export type { AuditDownload, AuditExportFormat } from './auditDownload';
 export { AuditDownloadError } from './auditDownload';
+
+export async function createAuditFilterContext(
+  request: AuditFilterContextRequest,
+  signal?: AbortSignal
+): Promise<AuditFilterContextResponse> {
+  const response = await createCanonicalAuditFilterContext({
+    body: request,
+    throwOnError: true,
+    signal,
+  });
+  return response.data;
+}
 
 export async function searchAuditEntries(
   params: AuditSearchParams,

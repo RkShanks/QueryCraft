@@ -495,6 +495,21 @@
             "default": null,
             "title": "End Date"
           },
+          "filter_context": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9+/=]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Filter Context"
+          },
           "format": {
             "enum": [
               "csv",
@@ -556,6 +571,143 @@
           "format"
         ],
         "title": "AuditExportRequest",
+        "type": "object"
+      },
+      "AuditFilterContextRequest": {
+        "description": "Validated filters to seal into a short-lived opaque context.",
+        "properties": {
+          "action_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditActionType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "actor_identity": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 1,
+                "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actor Identity"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "End Date"
+          },
+          "expires_in_seconds": {
+            "default": 900,
+            "maximum": 3600,
+            "minimum": 1,
+            "title": "Expires In Seconds",
+            "type": "integer"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "success",
+                  "failure",
+                  "denied",
+                  "blocked",
+                  "flagged",
+                  "broken"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Outcome"
+          },
+          "resource_type": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 1,
+                "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Resource Type"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Start Date"
+          }
+        },
+        "title": "AuditFilterContextRequest",
+        "type": "object"
+      },
+      "AuditFilterContextResponse": {
+        "description": "Value-safe metadata returned for an opaque filter context.",
+        "properties": {
+          "applied_fields": {
+            "items": {
+              "enum": [
+                "start_date",
+                "end_date",
+                "action_type",
+                "actor_identity",
+                "outcome",
+                "resource_type"
+              ],
+              "type": "string"
+            },
+            "title": "Applied Fields",
+            "type": "array"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "filter_context": {
+            "title": "Filter Context",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filter_context",
+          "applied_fields",
+          "expires_at"
+        ],
+        "title": "AuditFilterContextResponse",
         "type": "object"
       },
       "AuditRetentionResponse": {
@@ -3697,73 +3849,9 @@
   "paths": {
     "/api/v1/admin/audit/entries": {
       "get": {
-        "description": "GET /admin/audit/entries — filtered, paginated audit log search.\n\nPermission: ``admin.audit.verify`` (existing Phase 5 permission).\n\nBehaviour:\n  1. Parse filter params from query string.\n  2. Enforce retention window server-side (entries older than\n     ``AUDIT_RETENTION_MONTHS`` are excluded before pagination).\n  3. Return ``AuditSearchResponse`` with paginated entries. Results use\n     ``timestamp DESC, sequence_number DESC`` ordering and are bounded by\n     the maximum sequence present when that request starts. Because this is\n     stateless offset pagination, separate page requests made while new\n     entries arrive can still observe normal offset drift.\n  4. Emit ``AUDIT_SEARCH`` audit event whose context contains ONLY:\n     - sanitized filter summary (param names + values, no result content)\n     - pagination metadata (page, page_size)\n     Never log returned entry values in the audit context.\n\nResponse shape: ``AuditSearchResponse``\n(``entries`` list + ``pagination`` metadata).",
+        "description": "Search retained audit entries using raw-compatible or opaque filters.",
         "operationId": "searchAuditEntries",
         "parameters": [
-          {
-            "in": "query",
-            "name": "action_type",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Action Type"
-            }
-          },
-          {
-            "in": "query",
-            "name": "actor_identity",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Actor Identity"
-            }
-          },
-          {
-            "in": "query",
-            "name": "outcome",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Outcome"
-            }
-          },
-          {
-            "in": "query",
-            "name": "resource_type",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Resource Type"
-            }
-          },
           {
             "in": "query",
             "name": "start_date",
@@ -3771,6 +3859,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "date-time",
                   "type": "string"
                 },
                 {
@@ -3787,6 +3876,7 @@
             "schema": {
               "anyOf": [
                 {
+                  "format": "date-time",
                   "type": "string"
                 },
                 {
@@ -3794,6 +3884,103 @@
                 }
               ],
               "title": "End Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AuditActionType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "actor_identity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Identity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "success",
+                    "failure",
+                    "denied",
+                    "blocked",
+                    "flagged",
+                    "broken"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resource_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Resource Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filter_context",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8192,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9+/=]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Filter Context"
             }
           },
           {
@@ -3830,7 +4017,15 @@
                 }
               }
             },
-            "description": "Successful response."
+            "description": "Successful response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "content": {
@@ -3923,6 +4118,12 @@
             },
             "description": "Filtered audit download.",
             "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              },
               "Content-Disposition": {
                 "schema": {
                   "type": "string"
@@ -4004,6 +4205,98 @@
           }
         ],
         "summary": "Export Audit Entries",
+        "tags": [
+          "Admin Audit"
+        ]
+      }
+    },
+    "/api/v1/admin/audit/filter-context": {
+      "post": {
+        "description": "Seal validated audit filters for the current identity and session.",
+        "operationId": "createAuditFilterContext",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditFilterContextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditFilterContextResponse"
+                }
+              }
+            },
+            "description": "Successful response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sanitized error response."
+          }
+        },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "summary": "Create Audit Filter Context",
         "tags": [
           "Admin Audit"
         ]
