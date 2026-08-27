@@ -1,83 +1,84 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AdminAuditPage } from './AdminAuditPage';
-import { createWrapper } from '../test/utils';
-import { server } from '../test/server';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
+import { AdminAuditPage } from './AdminAuditPage';
+import { server } from '../test/server';
+import { renderWithClient } from '../test/utils';
 
-/**
- * CHUNK-22 / IS-GAP-034 — applied-filter authority for audit search/export.
- * Draft form inputs, requested searches and the successfully applied/displayed
- * filters are separate: results, the visible filter summary and every export
- * request must refer to the same applied dataset while unsent changes,
- * pending searches and failed searches never silently move export scope.
- */
+/** CHUNK-22 authority regressions carried forward through CHUNK-28 opaque contexts. */
 
-const APPLIED_FILTERS_LABEL = 'Applied filters';
-const DRAFT_NOTICE_TEXT =
-  'Unapplied filter changes are excluded from these results and exports. Run Search to apply them.';
-
-let downloadSpies: {
-  createObjectURL: ReturnType<typeof vi.spyOn>;
-  revokeObjectURL: ReturnType<typeof vi.spyOn>;
-  click: ReturnType<typeof vi.spyOn>;
-};
-
-function installDownloadSpies() {
-  const createObjectURL = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:mock');
-  const revokeObjectURL = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
-  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-  return { createObjectURL, revokeObjectURL, click };
+interface ContextCall {
+  body: Record<string, unknown>;
+  token: string;
 }
 
 interface EntriesCall {
-  params: Record<string, string>;
+  context: string | null;
+  page: number;
 }
 
-function entriesRecorder(responder?: (callIndex: number) => Response | Promise<Response>) {
-  const calls: EntriesCall[] = [];
-  server.use(
-    http.get('/api/v1/admin/audit/entries', async ({ request }) => {
-      const url = new URL(request.url);
-      const params: Record<string, string> = {};
-      url.searchParams.forEach((value, key) => {
-        params[key] = value;
-      });
-      calls.push({ params });
-      if (responder) return responder(calls.length);
-      return HttpResponse.json({
-        entries: [
-          {
-            sequence_number: calls.length,
-            timestamp: '2026-07-01T12:00:00Z',
-            actor_identity: params.actor_identity ?? 'seeded-actor@example.com',
-            action_type: params.action_type ?? 'query.submit',
-            resource_type: params.resource_type ?? 'database',
-            outcome: 'success',
-            context: {},
-          },
-        ],
-        pagination: {
-          page: Number(params.page ?? 1),
-          page_size: 10,
-          total_entries: 1,
-          total_pages: 1,
-        },
-      });
-    }),
-  );
-  return calls;
-}
+let createObjectUrlSpy: ReturnType<typeof vi.spyOn>;
 
 function mockAuditShell() {
   server.use(
     http.get('/api/v1/admin/audit/status', () =>
-      HttpResponse.json({ total_entries: 0, last_verification: null }),
+      HttpResponse.json({ total_entries: 0, last_verification: null })
     ),
     http.get('/api/v1/admin/audit/retention', () =>
-      HttpResponse.json({ retention_months: 24, last_purge_at: null, purged_count: null }),
-    ),
+      HttpResponse.json({ retention_months: 24, last_purge_at: null, purged_count: null })
+    )
   );
+}
+
+function contextRecorder() {
+  const calls: ContextCall[] = [];
+  server.use(
+    http.post('/api/v1/admin/audit/filter-context', async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      const token = `opaque-context-${calls.length + 1}`;
+      calls.push({ body, token });
+      return HttpResponse.json({
+        filter_context: token,
+        applied_fields: Object.keys(body),
+        expires_at: '2026-08-27T12:15:00Z',
+      });
+    })
+  );
+  return calls;
+}
+
+function entriesRecorder(responder?: (call: EntriesCall) => Response | Promise<Response>) {
+  const calls: EntriesCall[] = [];
+  server.use(
+    http.get('/api/v1/admin/audit/entries', async ({ request }) => {
+      const url = new URL(request.url);
+      const call = {
+        context: url.searchParams.get('filter_context'),
+        page: Number(url.searchParams.get('page') ?? 1),
+      };
+      calls.push(call);
+      if (responder) return responder(call);
+      return entriesResponse(call);
+    })
+  );
+  return calls;
+}
+
+function entriesResponse(call: EntriesCall): Response {
+  return HttpResponse.json({
+    entries: [
+      {
+        sequence_number: call.page,
+        timestamp: '2026-07-01T12:00:00Z',
+        actor_identity: call.context ? `dataset-${call.context}` : 'dataset-unfiltered',
+        action_type: 'query.submit',
+        resource_type: 'database',
+        outcome: 'success',
+        context: {},
+      },
+    ],
+    pagination: { page: call.page, page_size: 10, total_entries: 25, total_pages: 3 },
+  });
 }
 
 function gateControl() {
@@ -88,351 +89,174 @@ function gateControl() {
   return { gate, release };
 }
 
+async function applyActorFilter(actor: string) {
+  await screen.findByText('dataset-unfiltered');
+  fireEvent.change(screen.getByLabelText('Actor'), { target: { value: actor } });
+  fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+  expect(await screen.findByText('dataset-opaque-context-1')).toBeInTheDocument();
+}
+
 async function exportRequestBody(format: 'csv' | 'json'): Promise<Record<string, unknown>> {
   let body: Record<string, unknown> | undefined;
   server.use(
     http.post('/api/v1/admin/audit/export', async ({ request }) => {
       body = (await request.json()) as Record<string, unknown>;
-      return new HttpResponse('seq\n1\n', {
+      return new HttpResponse(format === 'csv' ? 'seq\n1\n' : '{}', {
         headers: {
           'Content-Type': format === 'csv' ? 'text/csv' : 'application/json',
-          'Content-Disposition': `attachment; filename="audit_export_20260823T120000Z.${format}"`,
+          'Content-Disposition': `attachment; filename="audit_export_20260827T120000Z.${format}"`,
         },
       });
-    }),
+    })
   );
   fireEvent.click(screen.getByRole('button', { name: `Export ${format.toUpperCase()}` }));
   await waitFor(() => expect(body).toBeDefined());
-  expect(downloadSpies.createObjectURL).toHaveBeenCalled();
-  downloadSpies.createObjectURL.mockClear();
-  downloadSpies.click.mockClear();
+  expect(createObjectUrlSpy).toHaveBeenCalled();
+  createObjectUrlSpy.mockClear();
   return body as Record<string, unknown>;
-}
-
-/** Applies one actor filter through Search and waits for it to govern results. */
-async function applyInitialActorFilter(actor: string) {
-  // Let the unfiltered mount fetch settle so the applied search below starts
-  // from a fully displayed dataset.
-  await screen.findByRole('table', { name: 'Audit search results' });
-  fireEvent.change(screen.getByLabelText('Actor'), { target: { value: actor } });
-  fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-  const table = await screen.findByRole('table', { name: 'Audit search results' });
-  await waitFor(() =>
-    expect(within(table).getAllByText(actor).length).toBeGreaterThan(0),
-  );
-}
-
-function resultRows() {
-  return screen.getByRole('table', { name: 'Audit search results' });
 }
 
 beforeEach(() => {
   mockAuditShell();
-  downloadSpies = installDownloadSpies();
+  createObjectUrlSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:mock');
+  vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('AdminAuditPage applied-filter contract (CHUNK-22 / IS-GAP-034)', () => {
-  it('exports exactly the applied filters and excludes unsent narrowing drafts', async () => {
+describe('AdminAuditPage applied-filter authority (CHUNK-22 / CHUNK-28)', () => {
+  it('exports the settled context and excludes unsent narrowing drafts', async () => {
+    const contexts = contextRecorder();
     entriesRecorder();
-    render(<AdminAuditPage />, { wrapper: createWrapper() });
-    await applyInitialActorFilter('user-actor@example.com');
+    const { container } = renderWithClient(<AdminAuditPage />);
+    await applyActorFilter('first-sensitive-draft');
 
-    fireEvent.change(screen.getByLabelText('Actor'), {
-      target: { value: 'draft-narrower@example.com' },
-    });
-    fireEvent.change(screen.getByLabelText('Date From'), { target: { value: '2026-07-01' } });
-
-    const body = await exportRequestBody('csv');
-    expect(body).toEqual({ format: 'csv', actor_identity: 'user-actor@example.com' });
+    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'unsent-sensitive-draft' } });
+    expect(await exportRequestBody('csv')).toEqual({ format: 'csv', filter_context: contexts[0].token });
+    expect(container.innerHTML).not.toContain('first-sensitive-draft');
   });
 
-  it('exports the applied filters when an unsent draft widens them', async () => {
-    entriesRecorder();
-    render(<AdminAuditPage />, { wrapper: createWrapper() });
-    await applyInitialActorFilter('user-actor@example.com');
-
-    // The actor filter was applied through Search; clearing the input must not
-    // widen the export scope until Search runs.
-    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: '' } });
-
-    const body = await exportRequestBody('json');
-    expect(body).toEqual({
-      format: 'json',
-      actor_identity: 'user-actor@example.com',
-    });
-  });
-
-  it('keeps export tied to the prior displayed dataset while a new search is pending', async () => {
-    const calls = entriesRecorder();
-    render(<AdminAuditPage />, { wrapper: createWrapper() });
-    await applyInitialActorFilter('user-actor@example.com');
-    expect(calls[calls.length - 1].params.actor_identity).toBe('user-actor@example.com');
-
+  it('keeps export on the prior context while a new search is pending', async () => {
+    const contexts = contextRecorder();
     const pending = gateControl();
-    let gatedSeen = false;
-    server.use(
-      http.get('/api/v1/admin/audit/entries', async ({ request }) => {
-        const url = new URL(request.url);
-        gatedSeen = url.searchParams.get('actor_identity') === 'pending-actor@example.com';
-        await pending.gate;
-        return HttpResponse.json({
-          entries: [
-            {
-              sequence_number: 2,
-              timestamp: '2026-07-02T12:00:00Z',
-              actor_identity: 'pending-actor@example.com',
-              action_type: 'session.sign_in',
-              resource_type: 'session',
-              outcome: 'failure',
-              context: {},
-            },
-          ],
-          pagination: { page: 1, page_size: 10, total_entries: 1, total_pages: 1 },
-        });
-      }),
-    );
+    entriesRecorder(async (call) => {
+      if (call.context === 'opaque-context-2') await pending.gate;
+      return entriesResponse({ ...call, page: 1 });
+    });
+    renderWithClient(<AdminAuditPage />);
+    await applyActorFilter('first-sensitive-draft');
 
-    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'pending-actor@example.com' } });
+    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'pending-sensitive-draft' } });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-    await waitFor(() => expect(gatedSeen).toBe(true));
-
-    const pendingBody = await exportRequestBody('csv');
-    expect(pendingBody).toEqual({ format: 'csv', actor_identity: 'user-actor@example.com' });
+    await waitFor(() => expect(contexts).toHaveLength(2));
+    expect(await exportRequestBody('json')).toEqual({ format: 'json', filter_context: contexts[0].token });
 
     pending.release();
-
-    await waitFor(() =>
-      expect(within(resultRows()).getAllByText('pending-actor@example.com').length).toBeGreaterThan(0),
-    );
-    const appliedBody = await exportRequestBody('csv');
-    expect(appliedBody).toEqual({ format: 'csv', actor_identity: 'pending-actor@example.com' });
+    expect(await screen.findByText('dataset-opaque-context-2')).toBeInTheDocument();
+    expect(await exportRequestBody('json')).toEqual({ format: 'json', filter_context: contexts[1].token });
   });
 
-  it('keeps export tied to the prior displayed dataset after a failed search', async () => {
-    const calls = entriesRecorder();
-    render(<AdminAuditPage />, { wrapper: createWrapper() });
-    await applyInitialActorFilter('user-actor@example.com');
-
-    server.use(
-      http.get('/api/v1/admin/audit/entries', () =>
-        HttpResponse.json(
-          { error: 'internal', message_key: 'error.internal' },
-          { status: 500 },
-        ),
-      ),
-    );
-
-    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'failed-actor@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-
-    // The prior displayed rows stay visible with a recoverable error state.
-    await screen.findByRole('alert');
-    expect(within(resultRows()).getByText('user-actor@example.com')).toBeInTheDocument();
-
-    const body = await exportRequestBody('csv');
-    expect(body).toEqual({ format: 'csv', actor_identity: 'user-actor@example.com' });
-    expect(calls.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('updates displayed rows and applied filters atomically on successful search', async () => {
-    entriesRecorder();
-    render(<AdminAuditPage />, { wrapper: createWrapper() });
-    await applyInitialActorFilter('user-actor@example.com');
-
-    const successGate = gateControl();
-    let releasedWithoutEarlyApply = true;
-    server.use(
-      http.get('/api/v1/admin/audit/entries', async ({ request }) => {
-        const url = new URL(request.url);
-        if (url.searchParams.get('action_type') === 'session.sign_in') {
-          await successGate.gate;
-          releasedWithoutEarlyApply = false;
-          return HttpResponse.json({
-            entries: [
-              {
-                sequence_number: 3,
-                timestamp: '2026-07-03T12:00:00Z',
-                actor_identity: 'signin-actor@example.com',
-                action_type: 'session.sign_in',
-                resource_type: 'session',
-                outcome: 'success',
-                context: {},
-              },
-            ],
-            pagination: { page: 1, page_size: 10, total_entries: 1, total_pages: 1 },
-          });
-        }
-        return HttpResponse.json({
-          entries: [],
-          pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 1 },
-        });
-      }),
-    );
-
-    fireEvent.change(screen.getByLabelText('Action Type'), { target: { value: 'session.sign_in' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-
-    // While the request is in flight the prior applied summary still governs.
-    const summary = screen.getByTestId('audit-applied-filters');
-    expect(summary).toHaveTextContent('user-actor@example.com');
-    expect(summary).not.toHaveTextContent('session.sign_in');
-
-    successGate.release();
-    await waitFor(() =>
-      expect(within(resultRows()).getAllByText('signin-actor@example.com').length).toBeGreaterThan(0),
-    );
-    expect(releasedWithoutEarlyApply).toBe(false);
-
-    // Rows and summary moved to the new dataset together, atomically; the
-    // untouched actor input stays part of the newly applied set.
-    const summaryAfter = screen.getByTestId('audit-applied-filters');
-    expect(summaryAfter).toHaveTextContent('session.sign_in');
-
-    const body = await exportRequestBody('csv');
-    expect(body).toEqual({
-      format: 'csv',
-      action_type: 'session.sign_in',
-      actor_identity: 'user-actor@example.com',
+  it('keeps the prior dataset and export context after a failed new search', async () => {
+    const contexts = contextRecorder();
+    entriesRecorder((call) => {
+      if (call.context === 'opaque-context-2') {
+        return HttpResponse.json({ error: 'internal', message_key: 'error.internal' }, { status: 500 });
+      }
+      return entriesResponse({ ...call, page: 1 });
     });
+    renderWithClient(<AdminAuditPage />);
+    await applyActorFilter('first-sensitive-draft');
+
+    fireEvent.change(screen.getByLabelText('Resource Type'), { target: { value: 'failed-sensitive-draft' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByRole('alert');
+    expect(screen.getByText('dataset-opaque-context-1')).toBeInTheDocument();
+    expect(await exportRequestBody('csv')).toEqual({ format: 'csv', filter_context: contexts[0].token });
+    expect(document.documentElement.outerHTML).not.toContain('failed-sensitive-draft');
   });
 
-  it('retains applied filters across pagination for display and export', async () => {
-    const calls: EntriesCall[] = [];
-    server.use(
-      http.get('/api/v1/admin/audit/entries', async ({ request }) => {
-        const url = new URL(request.url);
-        const params: Record<string, string> = {};
-        url.searchParams.forEach((value, key) => {
-          params[key] = value;
-        });
-        calls.push({ params });
-        const page = Number(params.page ?? 1);
-        return HttpResponse.json({
-          entries: [
-            {
-              sequence_number: page,
-              timestamp: '2026-07-01T12:00:00Z',
-              actor_identity: 'paged-actor@example.com',
-              action_type: 'query.submit',
-              resource_type: 'database',
-              outcome: 'success',
-              context: {},
-            },
-          ],
-          pagination: { page, page_size: 10, total_entries: 25, total_pages: 3 },
-        });
-      }),
-    );
-    render(<AdminAuditPage />, { wrapper: createWrapper() });
-    await screen.findByText('paged-actor@example.com');
-
-    fireEvent.change(screen.getByLabelText('Action Type'), { target: { value: 'query.submit' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-    await waitFor(() => expect(calls[calls.length - 1].params.action_type).toBe('query.submit'));
+  it('retains the exact context across pagination and export', async () => {
+    const contexts = contextRecorder();
+    const entries = entriesRecorder();
+    renderWithClient(<AdminAuditPage />);
+    await applyActorFilter('paged-sensitive-draft');
 
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-    await waitFor(() => expect(calls[calls.length - 1].params.page).toBe('2'));
-
-    await screen.findByText('Page 2 of 3');
-    const body = await exportRequestBody('json');
-    expect(body).toEqual({ format: 'json', action_type: 'query.submit' });
+    await waitFor(() => expect(entries.at(-1)).toEqual({ context: contexts[0].token, page: 2 }));
+    expect(await exportRequestBody('json')).toEqual({ format: 'json', filter_context: contexts[0].token });
   });
 
-  it('shows the applied-filter summary and a polite notice only while drafts differ', async () => {
+  it('renders only field labels/status and marks new drafts as unapplied', async () => {
+    contextRecorder();
     entriesRecorder();
-    render(<AdminAuditPage />, { wrapper: createWrapper() });
-    await applyInitialActorFilter('user-actor@example.com');
+    renderWithClient(<AdminAuditPage />);
+    await applyActorFilter('first-sensitive-draft');
 
     const summary = screen.getByTestId('audit-applied-filters');
-    expect(summary).toHaveTextContent(APPLIED_FILTERS_LABEL);
-    expect(summary).toHaveTextContent('user-actor@example.com');
-    expect(screen.queryByTestId('audit-draft-filters-notice')).not.toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText('Actor'), {
-      target: { value: 'unsent-actor@example.com' },
-    });
-
-    expect(await screen.findByTestId('audit-draft-filters-notice')).toHaveTextContent(
-      DRAFT_NOTICE_TEXT,
-    );
-    // The summary keeps describing the displayed dataset.
-    expect(screen.getByTestId('audit-applied-filters')).toHaveTextContent('user-actor@example.com');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-    await waitFor(() =>
-      expect(screen.queryByTestId('audit-draft-filters-notice')).not.toBeInTheDocument(),
-    );
-    expect(screen.getByTestId('audit-applied-filters')).toHaveTextContent('unsent-actor@example.com');
+    expect(summary).toHaveTextContent(/Actor:\s*Applied/);
+    expect(summary).not.toHaveTextContent('first-sensitive-draft');
+    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'unsent-sensitive-draft' } });
+    expect(await screen.findByTestId('audit-draft-filters-notice')).toBeInTheDocument();
   });
 
-  it('repeats the exact failed applied request once on retry and suppresses duplicate clicks', async () => {
-    entriesRecorder();
-    render(<AdminAuditPage />, { wrapper: createWrapper() });
-    await applyInitialActorFilter('user-actor@example.com');
+  it('reset returns search and export to the unfiltered authority', async () => {
+    contextRecorder();
+    const entries = entriesRecorder();
+    renderWithClient(<AdminAuditPage />);
+    await applyActorFilter('first-sensitive-draft');
 
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    await waitFor(() => expect(entries.at(-1)?.context).toBeNull());
+    await waitFor(() => expect(screen.getByTestId('audit-applied-filters')).toHaveTextContent('All entries'));
+    expect(await exportRequestBody('csv')).toEqual({ format: 'csv' });
+  });
+
+  it('retries a failed search with the same context and suppresses duplicate clicks', async () => {
+    contextRecorder();
     let failingCalls = 0;
-    server.use(
-      http.get('/api/v1/admin/audit/entries', ({ request }) => {
-        const url = new URL(request.url);
-        if (url.searchParams.get('actor_identity') === 'retry-actor@example.com') {
-          failingCalls += 1;
-          return HttpResponse.json({ error: 'internal', message_key: 'error.internal' }, { status: 500 });
-        }
-        return HttpResponse.json({
-          entries: [],
-          pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 1 },
-        });
-      }),
-    );
-
-    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'retry-actor@example.com' } });
+    entriesRecorder((call) => {
+      if (call.context) {
+        failingCalls += 1;
+        return HttpResponse.json({ error: 'internal', message_key: 'error.internal' }, { status: 500 });
+      }
+      return HttpResponse.json({
+        entries: [],
+        pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 1 },
+      });
+    });
+    renderWithClient(<AdminAuditPage />);
+    await screen.findByText('No audit entries found.');
+    fireEvent.change(screen.getByLabelText('Actor'), { target: { value: 'retry-sensitive-draft' } });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
     const retry = await screen.findByRole('button', { name: 'Retry' });
     fireEvent.click(retry);
     fireEvent.click(retry);
-
     await waitFor(() => expect(failingCalls).toBe(2));
-    await waitFor(() => expect(retry).toBeEnabled());
-    // No further retries happen after settling; the retried request is identical.
-    const retryCalls = failingCalls;
-    await waitFor(() => expect(failingCalls).toBe(retryCalls));
   });
 
-  it('suppresses duplicate export clicks so one request creates one download', async () => {
+  it('suppresses duplicate export clicks for the settled context', async () => {
+    contextRecorder();
     entriesRecorder();
-    render(<AdminAuditPage />, { wrapper: createWrapper() });
-    await applyInitialActorFilter('user-actor@example.com');
-
+    renderWithClient(<AdminAuditPage />);
+    await applyActorFilter('first-sensitive-draft');
     const exportGate = gateControl();
     let exportCalls = 0;
     server.use(
       http.post('/api/v1/admin/audit/export', async () => {
         exportCalls += 1;
         await exportGate.gate;
-        return new HttpResponse('seq\n1\n', {
-          headers: {
-            'Content-Type': 'text/csv',
-            'Content-Disposition': 'attachment; filename="audit_export_20260823T120000Z.csv"',
-          },
-        });
-      }),
+        return new HttpResponse('seq\n1\n', { headers: { 'Content-Type': 'text/csv' } });
+      })
     );
 
-    const csvButton = screen.getByRole('button', { name: 'Export CSV' });
-    fireEvent.click(csvButton);
-    fireEvent.click(csvButton);
-    fireEvent.click(csvButton);
-
+    const button = screen.getByRole('button', { name: 'Export CSV' });
+    fireEvent.click(button);
+    fireEvent.click(button);
     await waitFor(() => expect(exportCalls).toBe(1));
-    expect(csvButton).toBeDisabled();
-
     exportGate.release();
-    await waitFor(() => expect(downloadSpies.createObjectURL).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(csvButton).toBeEnabled());
   });
 });

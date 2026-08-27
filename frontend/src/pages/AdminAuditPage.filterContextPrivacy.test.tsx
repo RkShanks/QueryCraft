@@ -93,4 +93,76 @@ describe('AdminAuditPage opaque filter retention (CHUNK-28)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
     await waitFor(() => expect(exportBody).toEqual({ format: 'json', filter_context: FILTER_CONTEXT }));
   });
+
+  it('discards a rejected raw draft and keeps the prior unfiltered export authority', async () => {
+    const canary = 'rejected-sensitive-canary';
+    let exportBody: unknown;
+    server.use(
+      http.post('/api/v1/admin/audit/filter-context', () =>
+        HttpResponse.json(
+          { error: 'invalid_filter', message_key: 'error.validation.generic' },
+          { status: 422 }
+        )
+      ),
+      http.get('/api/v1/admin/audit/entries', () =>
+        HttpResponse.json({
+          entries: [],
+          pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 1 },
+        })
+      ),
+      http.post('/api/v1/admin/audit/export', async ({ request }) => {
+        exportBody = await request.json();
+        return new HttpResponse('{}', { headers: { 'Content-Type': 'application/json' } });
+      })
+    );
+
+    const { queryClient } = renderWithClient(<AdminAuditPage />);
+    const actorInput = await screen.findByLabelText('Actor');
+    fireEvent.change(actorInput, { target: { value: canary } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(await screen.findByText('The filters could not be applied. Please enter them again.')).toBeInTheDocument();
+    expect(actorInput).toHaveValue('');
+    expect(document.documentElement.outerHTML).not.toContain(canary);
+    expect(JSON.stringify(queryClient.getQueryCache().getAll())).not.toContain(canary);
+    fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
+    await waitFor(() => expect(exportBody).toEqual({ format: 'json' }));
+  });
+
+  it('removes context queries and suppresses late settlement on unmount', async () => {
+    let releaseSearch!: () => void;
+    const pendingSearch = new Promise<void>((resolve) => {
+      releaseSearch = resolve;
+    });
+    server.use(
+      http.post('/api/v1/admin/audit/filter-context', () =>
+        HttpResponse.json({
+          filter_context: FILTER_CONTEXT,
+          applied_fields: ['actor_identity'],
+          expires_at: '2026-08-27T12:15:00Z',
+        })
+      ),
+      http.get('/api/v1/admin/audit/entries', async ({ request }) => {
+        if (new URL(request.url).searchParams.has('filter_context')) await pendingSearch;
+        return HttpResponse.json({
+          entries: [],
+          pagination: { page: 1, page_size: 10, total_entries: 0, total_pages: 1 },
+        });
+      })
+    );
+
+    const { queryClient, unmount } = renderWithClient(<AdminAuditPage />);
+    const actorInput = await screen.findByLabelText('Actor');
+    fireEvent.change(actorInput, { target: { value: 'unmount-sensitive-canary' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await waitFor(() =>
+      expect(queryClient.getQueryCache().getAll().some((query) => query.queryKey.includes(FILTER_CONTEXT))).toBe(true)
+    );
+
+    unmount();
+    releaseSearch();
+    await waitFor(() =>
+      expect(queryClient.getQueryCache().findAll({ queryKey: ['adminAuditEntries'] })).toHaveLength(0)
+    );
+  });
 });
