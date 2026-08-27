@@ -17,6 +17,7 @@ import {
 } from '../api/audit';
 import {
   AUDIT_EXPORT_TIMEOUT_MS,
+  ORDINARY_REQUEST_TIMEOUT_MS,
   RequestScope,
   isAbortFailure,
   isClientDeadlineError,
@@ -296,7 +297,7 @@ export const AdminAuditPage: React.FC = () => {
     setPage(1);
     const requestGeneration = contextRequestGenerationRef.current + 1;
     contextRequestGenerationRef.current = requestGeneration;
-    const scope = new RequestScope();
+    const scope = new RequestScope({ timeoutMs: ORDINARY_REQUEST_TIMEOUT_MS });
     contextScopeRef.current = scope;
     setIsCreatingContext(true);
     const pendingContext = createAuditFilterContext(buildFiltersFromInputs(), scope.signal);
@@ -310,7 +311,7 @@ export const AdminAuditPage: React.FC = () => {
         });
       })
       .catch((error: unknown) => {
-        if (!mountedRef.current || isAbortFailure(error)) return;
+        if (!mountedRef.current || (isAbortFailure(error) && scope.reason !== 'deadline')) return;
         addToast('error', t('audit.search.context_error'));
       })
       .finally(() => {
