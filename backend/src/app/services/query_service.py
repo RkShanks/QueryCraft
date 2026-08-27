@@ -709,7 +709,10 @@ class QueryService:
                 await self._db_session.commit()
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail={"message_key": "error.hostile_input_blocked"},
+                    detail={
+                        "error": "hostile_input_blocked",
+                        "message_key": "error.hostile_input_blocked",
+                    },
                 )
             if _detection_outcome.outcome == "flagged":
                 # Emit HOSTILE_INPUT_FLAGGED audit; request continues.
