@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from cryptography.exceptions import InvalidTag
-from pydantic import BaseModel, ValidationError
+from pydantic import AwareDatetime, BaseModel, ValidationError
 
 from app.core.encryption import decrypt, encrypt
 from app.schemas.audit_search import (
@@ -22,6 +22,8 @@ from app.schemas.audit_search import (
 
 _CONTEXT_PURPOSE = "audit_filter_context"
 _CONTEXT_VERSION = 1
+
+
 @dataclass(frozen=True)
 class AuditFilterContextBinding:
     """Authenticated identity and HTTP session bound to a filter context."""
@@ -41,8 +43,8 @@ class AuditFilterContextPayload(BaseModel):
     version: Literal[1]
     user_id: str
     session_id: str
-    issued_at: int
-    expires_at: int
+    issued_at: AwareDatetime
+    expires_at: AwareDatetime
     filters: AuditFilterParams
 
 
@@ -68,8 +70,8 @@ class AuditFilterContextService:
             version=_CONTEXT_VERSION,
             user_id=binding.user_id,
             session_id=binding.session_id,
-            issued_at=int(issued_at.timestamp()),
-            expires_at=int(expires_at.timestamp()),
+            issued_at=issued_at,
+            expires_at=expires_at,
             filters=filters,
         )
         token = encrypt(payload.model_dump_json(), self._encryption_key)
@@ -93,13 +95,13 @@ class AuditFilterContextService:
         except (binascii.Error, InvalidTag, UnicodeDecodeError, json.JSONDecodeError, ValidationError, ValueError):
             raise AuditFilterContextError from None
 
-        current_timestamp = int(_utc_now(now).timestamp())
+        current_time = _utc_now(now)
         if (
             payload.user_id != binding.user_id
             or payload.session_id != binding.session_id
-            or payload.issued_at > current_timestamp
+            or payload.issued_at > current_time
             or payload.expires_at <= payload.issued_at
-            or current_timestamp >= payload.expires_at
+            or current_time >= payload.expires_at
         ):
             raise AuditFilterContextError
         return payload.filters
