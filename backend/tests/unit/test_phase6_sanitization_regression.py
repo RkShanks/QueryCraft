@@ -340,10 +340,11 @@ class TestRouteSanitizationRegression:
 
         assert response.status_code == 400
         body = response.json()
+        assert body.get("error") == "hostile_input_blocked"
         assert body.get("message_key") == "error.hostile_input_blocked"
 
-        # Verify body contains only message_key and leaks no details
-        assert set(body.keys()) == {"message_key"}
+        # Verify body matches the generated ErrorResponse contract and leaks no details.
+        assert set(body.keys()) == {"error", "message_key"}
         _assert_safe_error_body(body, "hostile_blocked_route")
 
     async def test_export_limit_exceeded_route_response_is_safe(self, app_instance, client, redis_client) -> None:
