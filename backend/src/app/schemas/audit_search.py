@@ -22,6 +22,10 @@ AuditFilterText = Annotated[
         pattern=r"^[^\x00-\x1f\x7f]+$",
     ),
 ]
+AuditFilterContextToken = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=8192, pattern=r"^[A-Za-z0-9+/=]+$"),
+]
 AuditFilterField = Literal[
     "start_date",
     "end_date",
@@ -30,6 +34,14 @@ AuditFilterField = Literal[
     "outcome",
     "resource_type",
 ]
+AUDIT_FILTER_FIELDS: tuple[AuditFilterField, ...] = (
+    "start_date",
+    "end_date",
+    "action_type",
+    "actor_identity",
+    "outcome",
+    "resource_type",
+)
 
 
 class AuditFilterParams(BaseModel):
@@ -60,8 +72,33 @@ class AuditFilterParams(BaseModel):
         return self
 
 
+def applied_audit_filter_fields(filters: AuditFilterParams) -> list[AuditFilterField]:
+    """Return only the safe names of filters that are applied."""
+    return [field for field in AUDIT_FILTER_FIELDS if getattr(filters, field) is not None]
+
+
+class AuditFilterContextCarrier(AuditFilterParams):
+    """Raw-compatible request fields with optional opaque context authority."""
+
+    filter_context: AuditFilterContextToken | None = None
+
+    @model_validator(mode="after")
+    def reject_mixed_context_and_raw_filters(self) -> Self:
+        """Reject ambiguous requests that mix context and raw filters."""
+        if self.filter_context is not None and applied_audit_filter_fields(self):
+            raise ValueError("filter_context cannot be mixed with raw filters")
+        return self
+
+
 class AuditSearchParams(AuditFilterParams):
     """Audit search query parameters."""
+
+    page: int = Field(default=1, ge=1, le=MAX_AUDIT_SEARCH_PAGE)
+    page_size: int = Field(default=50, ge=1, le=100)
+
+
+class AuditSearchRequest(AuditFilterContextCarrier):
+    """Raw-compatible HTTP search parameters."""
 
     page: int = Field(default=1, ge=1, le=MAX_AUDIT_SEARCH_PAGE)
     page_size: int = Field(default=50, ge=1, le=100)
@@ -114,7 +151,7 @@ class AuditSearchResponse(BaseModel):
     pagination: AuditSearchPagination
 
 
-class AuditExportRequest(AuditFilterParams):
+class AuditExportRequest(AuditFilterContextCarrier):
     """Audit export request filters."""
 
     format: Literal["csv", "json"]

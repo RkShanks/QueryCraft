@@ -13,24 +13,15 @@ from pydantic import BaseModel, ValidationError
 
 from app.core.encryption import decrypt, encrypt
 from app.schemas.audit_search import (
+    AUDIT_FILTER_FIELDS,
     AuditFilterContextRequest,
     AuditFilterContextResponse,
-    AuditFilterField,
     AuditFilterParams,
+    applied_audit_filter_fields,
 )
 
 _CONTEXT_PURPOSE = "audit_filter_context"
 _CONTEXT_VERSION = 1
-_FILTER_FIELDS: tuple[AuditFilterField, ...] = (
-    "start_date",
-    "end_date",
-    "action_type",
-    "actor_identity",
-    "outcome",
-    "resource_type",
-)
-
-
 @dataclass(frozen=True)
 class AuditFilterContextBinding:
     """Authenticated identity and HTTP session bound to a filter context."""
@@ -71,7 +62,7 @@ class AuditFilterContextService:
         """Seal normalized filters without echoing their values."""
         issued_at = _utc_now(now)
         expires_at = issued_at + timedelta(seconds=request.expires_in_seconds)
-        filters = AuditFilterParams.model_validate(request.model_dump(include=set(_FILTER_FIELDS)))
+        filters = AuditFilterParams.model_validate(request.model_dump(include=set(AUDIT_FILTER_FIELDS)))
         payload = AuditFilterContextPayload(
             purpose=_CONTEXT_PURPOSE,
             version=_CONTEXT_VERSION,
@@ -84,7 +75,7 @@ class AuditFilterContextService:
         token = encrypt(payload.model_dump_json(), self._encryption_key)
         return AuditFilterContextResponse(
             filter_context=token,
-            applied_fields=[field for field in _FILTER_FIELDS if getattr(filters, field) is not None],
+            applied_fields=applied_audit_filter_fields(filters),
             expires_at=expires_at,
         )
 
