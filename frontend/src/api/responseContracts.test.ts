@@ -55,7 +55,7 @@ const validQueryResult = {
 
 describe('generated response contract manifest', () => {
   it('classifies every canonical operation exactly once', () => {
-    expect(responseOperationManifest).toHaveLength(64);
+    expect(responseOperationManifest).toHaveLength(65);
     expect(
       Object.fromEntries(
         ['consumed_json', 'no_body', 'browser_redirect', 'blob_download', 'unused'].map(
@@ -68,14 +68,14 @@ describe('generated response contract manifest', () => {
         )
       )
     ).toEqual({
-      consumed_json: 41,
+      consumed_json: 42,
       no_body: 8,
       browser_redirect: 4,
       blob_download: 1,
       unused: 10,
     });
     expect(new Set(responseOperationManifest.map((operation) => operation.operationId)).size).toBe(
-      64
+      65
     );
   });
 });

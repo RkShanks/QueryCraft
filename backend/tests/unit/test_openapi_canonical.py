@@ -87,7 +87,7 @@ def test_operation_ids_are_unique_stable_and_preserve_existing_client_names():
     assert runtime_ids[("GET", "/api/v1/sessions")] == "getSessions"
     assert runtime_ids[("GET", "/api/v1/admin/connections")] == "listAdminConnections"
     assert runtime_ids[("POST", "/api/v1/admin/roles/test-policy")] == "testDraftRolePolicy"
-    assert len(runtime_ids) == 64
+    assert len(runtime_ids) == 65
 
 
 def test_all_request_bodies_match_runtime_schema_and_content_types():
