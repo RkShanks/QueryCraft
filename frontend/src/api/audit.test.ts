@@ -36,11 +36,12 @@ describe('audit API client', () => {
     });
   });
 
-  it('should search audit entries with params', async () => {
+  it('searches with only opaque context and pagination params', async () => {
     server.use(
       http.get('/api/v1/admin/audit/entries', ({ request }) => {
         const url = new URL(request.url);
-        expect(url.searchParams.get('action_type')).toBe('test.action');
+        expect(url.searchParams.get('filter_context')).toBe('opaque-filter-context');
+        expect(url.searchParams.has('action_type')).toBe(false);
         return HttpResponse.json({
           entries: [],
           pagination: {
@@ -53,7 +54,7 @@ describe('audit API client', () => {
       })
     );
 
-    const res = await searchAuditEntries({ action_type: 'test.action' });
+    const res = await searchAuditEntries({ filter_context: 'opaque-filter-context' });
     expect(res.entries).toEqual([]);
   });
 
