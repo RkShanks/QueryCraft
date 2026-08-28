@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field, StringConstraints, field_validator, model
 from app.db.models.enums import AuditActionType
 
 MAX_AUDIT_SEARCH_PAGE = 2_147_483_647
+AUDIT_FILTER_CONTEXT_DEFAULT_TTL_SECONDS = 900
+AUDIT_FILTER_CONTEXT_MAX_TTL_SECONDS = 3600
 
 AuditOutcome = Literal["success", "failure", "denied", "blocked", "flagged", "broken"]
 AuditFilterText = Annotated[
@@ -20,6 +22,26 @@ AuditFilterText = Annotated[
         pattern=r"^[^\x00-\x1f\x7f]+$",
     ),
 ]
+AuditFilterContextToken = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=8192, pattern=r"^[A-Za-z0-9+/=]+$"),
+]
+AuditFilterField = Literal[
+    "start_date",
+    "end_date",
+    "action_type",
+    "actor_identity",
+    "outcome",
+    "resource_type",
+]
+AUDIT_FILTER_FIELDS: tuple[AuditFilterField, ...] = (
+    "start_date",
+    "end_date",
+    "action_type",
+    "actor_identity",
+    "outcome",
+    "resource_type",
+)
 
 
 class AuditFilterParams(BaseModel):
@@ -50,11 +72,54 @@ class AuditFilterParams(BaseModel):
         return self
 
 
+def applied_audit_filter_fields(filters: AuditFilterParams) -> list[AuditFilterField]:
+    """Return only the safe names of filters that are applied."""
+    return [field for field in AUDIT_FILTER_FIELDS if getattr(filters, field) is not None]
+
+
+class AuditFilterContextCarrier(AuditFilterParams):
+    """Raw-compatible request fields with optional opaque context authority."""
+
+    filter_context: AuditFilterContextToken | None = None
+
+    @model_validator(mode="after")
+    def reject_mixed_context_and_raw_filters(self) -> Self:
+        """Reject ambiguous requests that mix context and raw filters."""
+        if self.filter_context is not None and applied_audit_filter_fields(self):
+            raise ValueError("filter_context cannot be mixed with raw filters")
+        return self
+
+
 class AuditSearchParams(AuditFilterParams):
     """Audit search query parameters."""
 
     page: int = Field(default=1, ge=1, le=MAX_AUDIT_SEARCH_PAGE)
     page_size: int = Field(default=50, ge=1, le=100)
+
+
+class AuditSearchRequest(AuditFilterContextCarrier):
+    """Raw-compatible HTTP search parameters."""
+
+    page: int = Field(default=1, ge=1, le=MAX_AUDIT_SEARCH_PAGE)
+    page_size: int = Field(default=50, ge=1, le=100)
+
+
+class AuditFilterContextRequest(AuditFilterParams):
+    """Validated filters to seal into a short-lived opaque context."""
+
+    expires_in_seconds: int = Field(
+        default=AUDIT_FILTER_CONTEXT_DEFAULT_TTL_SECONDS,
+        ge=1,
+        le=AUDIT_FILTER_CONTEXT_MAX_TTL_SECONDS,
+    )
+
+
+class AuditFilterContextResponse(BaseModel):
+    """Value-safe metadata returned for an opaque filter context."""
+
+    filter_context: str
+    applied_fields: list[AuditFilterField]
+    expires_at: datetime
 
 
 class AuditEntryRead(BaseModel):
@@ -86,7 +151,7 @@ class AuditSearchResponse(BaseModel):
     pagination: AuditSearchPagination
 
 
-class AuditExportRequest(AuditFilterParams):
+class AuditExportRequest(AuditFilterContextCarrier):
     """Audit export request filters."""
 
     format: Literal["csv", "json"]

@@ -55,10 +55,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response, status  # noqa: F401
-from pydantic import ValidationError
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,8 +70,22 @@ from app.core.exceptions import QuotaExceededError, QuotaUnavailableError
 from app.db.models.audit_log_entry import AuditLogEntry
 from app.db.models.enums import AuditActionType, Permission
 from app.repositories.quota_repository import QuotaRepository
-from app.schemas.audit_search import MAX_AUDIT_SEARCH_PAGE, AuditExportRequest, AuditSearchParams
-from app.services.audit_export_service import AuditExportService, ExportLimitExceededError, redact_audit_export_value
+from app.schemas.audit_search import (
+    AuditExportRequest,
+    AuditFilterContextCarrier,
+    AuditFilterContextRequest,
+    AuditFilterContextResponse,
+    AuditFilterParams,
+    AuditSearchParams,
+    AuditSearchRequest,
+    applied_audit_filter_fields,
+)
+from app.services.audit_export_service import AuditExportService, ExportLimitExceededError
+from app.services.audit_filter_context import (
+    AuditFilterContextBinding,
+    AuditFilterContextError,
+    AuditFilterContextService,
+)
 from app.services.audit_search_service import AuditSearchService
 from app.services.audit_service import AuditService, VerificationResult
 from app.services.quota_service import QuotaService
@@ -84,6 +97,47 @@ router = APIRouter(prefix="/admin/audit", tags=["Admin Audit"])
 # a constant sentinel avoids exposing internal row UUIDs to end users.
 AUDIT_VERIFY_RESOURCE_ID: str = "audit_chain"
 AUDIT_VERIFY_RESOURCE_TYPE: str = "audit_chain"
+
+
+def _filter_context_binding(request: Request, session: dict) -> AuditFilterContextBinding:
+    """Return the authenticated user and HTTP-session binding."""
+    user_id = session.get("user_id")
+    session_id = getattr(request.state, "session_id", None)
+    if not isinstance(user_id, str) or not user_id or not isinstance(session_id, str) or not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+        )
+    return AuditFilterContextBinding(user_id=user_id, session_id=session_id)
+
+
+def _invalid_filter_context() -> HTTPException:
+    """Return the uniform sanitized filter-context failure."""
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail={
+            "error": "invalid_filter_context",
+            "message_key": "error.audit_filter_context_invalid",
+        },
+    )
+
+
+def _resolved_audit_filters(
+    request: Request,
+    session: dict,
+    carrier: AuditFilterContextCarrier,
+) -> AuditFilterParams:
+    """Resolve raw-compatible or opaque audit filters."""
+    if carrier.filter_context is None:
+        return AuditFilterParams.model_validate(
+            carrier.model_dump(exclude={"filter_context", "page", "page_size", "format"})
+        )
+
+    service = AuditFilterContextService(get_settings().PLATFORM_ENCRYPTION_KEY)
+    try:
+        return service.resolve(carrier.filter_context, _filter_context_binding(request, session))
+    except AuditFilterContextError:
+        raise _invalid_filter_context() from None
 
 
 def _verification_to_response(result: VerificationResult) -> dict[str, Any]:
@@ -323,126 +377,56 @@ async def get_audit_retention(
     }
 
 
+@router.post("/filter-context", response_model=AuditFilterContextResponse)
+async def create_audit_filter_context(
+    request: Request,
+    response: Response,
+    context_request: AuditFilterContextRequest = Body(...),  # noqa: B008
+    session: dict = Depends(require_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
+):
+    """Seal validated audit filters for the current identity and session."""
+    binding = _filter_context_binding(request, session)
+    service = AuditFilterContextService(get_settings().PLATFORM_ENCRYPTION_KEY)
+    response.headers["Cache-Control"] = "no-store"
+    return service.issue(context_request, binding)
+
+
 @router.get("/entries")
 async def search_audit_entries(
     request: Request,
+    response: Response,
+    search_request: Annotated[AuditSearchRequest, Query()],
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
-    action_type: str | None = Query(default=None),
-    actor_identity: str | None = Query(default=None),
-    outcome: str | None = Query(default=None),
-    resource_type: str | None = Query(default=None),
-    start_date: str | None = Query(default=None),
-    end_date: str | None = Query(default=None),
-    page: int = Query(default=1, ge=1, le=MAX_AUDIT_SEARCH_PAGE),
-    page_size: int = Query(default=50, ge=1, le=100),
+    session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
 ):
-    """GET /admin/audit/entries — filtered, paginated audit log search.
-
-    Permission: ``admin.audit.verify`` (existing Phase 5 permission).
-
-    Behaviour:
-      1. Parse filter params from query string.
-      2. Enforce retention window server-side (entries older than
-         ``AUDIT_RETENTION_MONTHS`` are excluded before pagination).
-      3. Return ``AuditSearchResponse`` with paginated entries. Results use
-         ``timestamp DESC, sequence_number DESC`` ordering and are bounded by
-         the maximum sequence present when that request starts. Because this is
-         stateless offset pagination, separate page requests made while new
-         entries arrive can still observe normal offset drift.
-      4. Emit ``AUDIT_SEARCH`` audit event whose context contains ONLY:
-         - sanitized filter summary (param names + values, no result content)
-         - pagination metadata (page, page_size)
-         Never log returned entry values in the audit context.
-
-    Response shape: ``AuditSearchResponse``
-    (``entries`` list + ``pagination`` metadata).
-    """
+    """Search retained audit entries using raw-compatible or opaque filters."""
     try:
-        # Parse dates if provided
-        from datetime import datetime
-
-        parsed_start = None
-        parsed_end = None
-        if start_date:
-            try:
-                parsed_start = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail={"error": "invalid_date", "message_key": "error.invalid_date", "field": "start_date"},
-                ) from None
-        if end_date:
-            try:
-                parsed_end = datetime.fromisoformat(end_date.replace("Z", "+00:00"))
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail={"error": "invalid_date", "message_key": "error.invalid_date", "field": "end_date"},
-                ) from None
-
+        filters = _resolved_audit_filters(request, session, search_request)
         params = AuditSearchParams(
-            start_date=parsed_start,
-            end_date=parsed_end,
-            action_type=action_type,
-            actor_identity=actor_identity,
-            outcome=outcome,
-            resource_type=resource_type,
-            page=page,
-            page_size=page_size,
+            **filters.model_dump(),
+            page=search_request.page,
+            page_size=search_request.page_size,
         )
-
-        settings = get_settings()
-        retention_months = settings.AUDIT_RETENTION_MONTHS
-
-        result = await AuditSearchService.search(db, params, retention_months)
-
-        # Build sanitized filter summary — param names + values only.
-        # Never include returned entry content.
-        filter_summary: dict[str, Any] = {}
-        if action_type is not None:
-            filter_summary["action_type"] = action_type
-        if actor_identity is not None:
-            filter_summary["actor_identity"] = actor_identity
-        if outcome is not None:
-            filter_summary["outcome"] = outcome
-        if resource_type is not None:
-            filter_summary["resource_type"] = resource_type
-        if start_date is not None:
-            filter_summary["start_date"] = start_date
-        if end_date is not None:
-            filter_summary["end_date"] = end_date
-
-        actor_identity_val = (_session or {}).get("username") if _session else None
-
-        safe_filter_summary = redact_audit_export_value(filter_summary)
-
-        # Emit AUDIT_SEARCH — context: filter summary + pagination metadata only.
-        # Never include returned entry values.
+        result = await AuditSearchService.search(db, params, get_settings().AUDIT_RETENTION_MONTHS)
+        applied_fields = applied_audit_filter_fields(filters)
         await AuditService.log(
             db,
             action=AuditActionType.AUDIT_SEARCH,
-            actor_identity=actor_identity_val,
+            actor_identity=session.get("username"),
             resource_type="audit_log",
             resource_id=None,
             outcome="success",
             context={
-                "filters": safe_filter_summary,
-                "page": page,
-                "page_size": page_size,
+                "applied_fields": applied_fields,
+                "page": search_request.page,
+                "page_size": search_request.page_size,
             },
         )
-
         await db.commit()
+        response.headers["Cache-Control"] = "no-store"
         return result
-
     except HTTPException:
         raise
-    except ValidationError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": "invalid_filter", "message_key": "error.validation.generic"},
-        ) from None
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -452,9 +436,10 @@ async def search_audit_entries(
 
 @router.post("/export")
 async def export_audit_entries(
+    request: Request,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     redis: Redis = Depends(get_redis),  # noqa: B008
-    _session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
+    session: dict = Depends(require_phase6_admin_permission(Permission.ADMIN_AUDIT_VERIFY)),  # noqa: B008
     export_req: AuditExportRequest = Body(...),  # noqa: B008
 ):
     """POST /admin/audit/export — export filtered audit entries as CSV or JSON.
@@ -479,8 +464,9 @@ async def export_audit_entries(
     """
     try:
         # ── Step 1: Quota check (fail-closed) ──────────────────────────────
-        user_id_str = _session.get("user_id", "")
-        role_id_str = _session.get("role_id", "")
+        filters = _resolved_audit_filters(request, session, export_req)
+        user_id_str = session.get("user_id", "")
+        role_id_str = session.get("role_id", "")
         try:
             user_uuid = uuid.UUID(user_id_str) if user_id_str else uuid.uuid4()
             role_uuid = uuid.UUID(role_id_str) if role_id_str else uuid.uuid4()
@@ -517,12 +503,12 @@ async def export_audit_entries(
         total_count, entries = await AuditSearchService.get_all_entries_for_export(
             db,
             retention_months,
-            action_type=export_req.action_type,
-            actor_identity=export_req.actor_identity,
-            outcome=export_req.outcome,
-            resource_type=export_req.resource_type,
-            start_date=export_req.start_date,
-            end_date=export_req.end_date,
+            action_type=filters.action_type,
+            actor_identity=filters.actor_identity,
+            outcome=filters.outcome,
+            resource_type=filters.resource_type,
+            start_date=filters.start_date,
+            end_date=filters.end_date,
         )
 
         # ── Step 4: Enforce 50k limit ───────────────────────────────────────
@@ -533,30 +519,14 @@ async def export_audit_entries(
             )
 
         # ── Step 5: Serialize via AuditExportService ────────────────────────
-        actor_identity_val = _session.get("username") or _session.get("user_id") or ""
+        actor_identity_val = session.get("username") or session.get("user_id") or ""
         export_timestamp = datetime.now(UTC).isoformat()
-
-        # Build sanitized filter summary — param names + values only (no entry content).
-        filter_summary: dict[str, Any] = {}
-        if export_req.action_type is not None:
-            filter_summary["action_type"] = export_req.action_type
-        if export_req.actor_identity is not None:
-            filter_summary["actor_identity"] = export_req.actor_identity
-        if export_req.outcome is not None:
-            filter_summary["outcome"] = export_req.outcome
-        if export_req.resource_type is not None:
-            filter_summary["resource_type"] = export_req.resource_type
-        if export_req.start_date is not None:
-            filter_summary["start_date"] = export_req.start_date.isoformat()
-        if export_req.end_date is not None:
-            filter_summary["end_date"] = export_req.end_date.isoformat()
-        filter_summary["format"] = export_req.format
-        safe_filter_summary = redact_audit_export_value(filter_summary)
+        applied_fields = applied_audit_filter_fields(filters)
 
         metadata = {
             "export_actor": actor_identity_val,
             "export_timestamp": export_timestamp,
-            "filter_summary": str(safe_filter_summary),
+            "filter_summary": applied_fields,
             "record_count": len(entries),
         }
 
@@ -581,7 +551,8 @@ async def export_audit_entries(
             resource_id=None,
             outcome="success",
             context={
-                "filter_summary": safe_filter_summary,
+                "applied_fields": applied_fields,
+                "format": export_req.format,
                 "record_count": len(entries),
             },
         )
@@ -595,6 +566,7 @@ async def export_audit_entries(
                 media_type="text/csv; charset=utf-8",
                 headers={
                     "Content-Disposition": f'attachment; filename="audit_export_{filename_ts}.csv"',
+                    "Cache-Control": "no-store",
                 },
             )
         else:
@@ -603,6 +575,7 @@ async def export_audit_entries(
                 media_type="application/json; charset=utf-8",
                 headers={
                     "Content-Disposition": f'attachment; filename="audit_export_{filename_ts}.json"',
+                    "Cache-Control": "no-store",
                 },
             )
 

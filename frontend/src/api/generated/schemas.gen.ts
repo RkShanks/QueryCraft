@@ -501,6 +501,21 @@ export const AuditExportRequestSchema = {
             default: null,
             title: 'End Date'
         },
+        filter_context: {
+            anyOf: [
+                {
+                    maxLength: 8192,
+                    minLength: 1,
+                    pattern: '^[A-Za-z0-9+/=]+$',
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Filter Context'
+        },
         format: {
             enum: [
                 'csv',
@@ -562,6 +577,145 @@ export const AuditExportRequestSchema = {
         'format'
     ],
     title: 'AuditExportRequest',
+    type: 'object'
+} as const;
+
+export const AuditFilterContextRequestSchema = {
+    description: 'Validated filters to seal into a short-lived opaque context.',
+    properties: {
+        action_type: {
+            anyOf: [
+                {
+                    $ref: '#/components/schemas/AuditActionType'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null
+        },
+        actor_identity: {
+            anyOf: [
+                {
+                    maxLength: 512,
+                    minLength: 1,
+                    pattern: '^[^\\x00-\\x1f\\x7f]+$',
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Actor Identity'
+        },
+        end_date: {
+            anyOf: [
+                {
+                    format: 'date-time',
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'End Date'
+        },
+        expires_in_seconds: {
+            default: 900,
+            maximum: 3600,
+            minimum: 1,
+            title: 'Expires In Seconds',
+            type: 'integer'
+        },
+        outcome: {
+            anyOf: [
+                {
+                    enum: [
+                        'success',
+                        'failure',
+                        'denied',
+                        'blocked',
+                        'flagged',
+                        'broken'
+                    ],
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Outcome'
+        },
+        resource_type: {
+            anyOf: [
+                {
+                    maxLength: 512,
+                    minLength: 1,
+                    pattern: '^[^\\x00-\\x1f\\x7f]+$',
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Resource Type'
+        },
+        start_date: {
+            anyOf: [
+                {
+                    format: 'date-time',
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            default: null,
+            title: 'Start Date'
+        }
+    },
+    title: 'AuditFilterContextRequest',
+    type: 'object'
+} as const;
+
+export const AuditFilterContextResponseSchema = {
+    description: 'Value-safe metadata returned for an opaque filter context.',
+    properties: {
+        applied_fields: {
+            items: {
+                enum: [
+                    'start_date',
+                    'end_date',
+                    'action_type',
+                    'actor_identity',
+                    'outcome',
+                    'resource_type'
+                ],
+                type: 'string'
+            },
+            title: 'Applied Fields',
+            type: 'array'
+        },
+        expires_at: {
+            format: 'date-time',
+            title: 'Expires At',
+            type: 'string'
+        },
+        filter_context: {
+            title: 'Filter Context',
+            type: 'string'
+        }
+    },
+    required: [
+        'filter_context',
+        'applied_fields',
+        'expires_at'
+    ],
+    title: 'AuditFilterContextResponse',
     type: 'object'
 } as const;
 

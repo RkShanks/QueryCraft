@@ -52,6 +52,9 @@ vi.mock('react-i18next', () => ({
           'audit.search.outcome': 'Outcome',
           'audit.search.resource_type': 'Resource Type',
           'audit.search.submit': 'Search',
+          'audit.search.creating_context': 'Applying filters…',
+          'audit.search.context_error': 'The filters could not be applied. Please enter them again.',
+          'audit.search.applied': 'Applied',
           'audit.search.reset': 'Reset',
           'audit.search.prev_page': 'Previous',
           'audit.search.next_page': 'Next',
@@ -107,6 +110,9 @@ vi.mock('react-i18next', () => ({
           'audit.search.outcome': 'النتيجة',
           'audit.search.resource_type': 'نوع المورد',
           'audit.search.submit': 'بحث',
+          'audit.search.creating_context': 'جارٍ تطبيق عوامل التصفية…',
+          'audit.search.context_error': 'تعذر تطبيق عوامل التصفية. يُرجى إدخالها مرة أخرى.',
+          'audit.search.applied': 'مطبق',
           'audit.search.reset': 'إعادة ضبط',
           'audit.search.prev_page': 'السابق',
           'audit.search.next_page': 'التالي',
@@ -439,9 +445,18 @@ describe('AdminAuditPage', () => {
       expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument();
     });
 
-    it('submits search filters correctly to GET /admin/audit/entries', async () => {
+    it('submits raw filters to context creation and searches only with its opaque token', async () => {
       const requestedParams: Record<string, string> = {};
+      let contextBody: unknown;
       server.use(
+        http.post('/api/v1/admin/audit/filter-context', async ({ request }) => {
+          contextBody = await request.json();
+          return HttpResponse.json({
+            filter_context: 'opaque-search-context',
+            applied_fields: ['start_date', 'end_date', 'action_type', 'actor_identity', 'outcome', 'resource_type'],
+            expires_at: '2026-08-27T12:15:00Z',
+          });
+        }),
         http.get('/api/v1/admin/audit/entries', ({ request }) => {
           const url = new URL(request.url);
           url.searchParams.forEach((value, key) => {
@@ -477,13 +492,18 @@ describe('AdminAuditPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
       await waitFor(() => {
-        expect(requestedParams.start_date).toContain('2026-07-01');
-        expect(requestedParams.end_date).toContain('2026-07-02');
-        expect(requestedParams.action_type).toBe('query.submit');
-        expect(requestedParams.actor_identity).toBe('user@example.com');
-        expect(requestedParams.outcome).toBe('success');
-        expect(requestedParams.resource_type).toBe('database');
+        expect(contextBody).toEqual({
+          start_date: '2026-07-01T00:00:00Z',
+          end_date: '2026-07-02T23:59:59Z',
+          action_type: 'query.submit',
+          actor_identity: 'user@example.com',
+          outcome: 'success',
+          resource_type: 'database',
+        });
+        expect(requestedParams.filter_context).toBe('opaque-search-context');
       });
+      expect(requestedParams).not.toHaveProperty('actor_identity');
+      expect(requestedParams).not.toHaveProperty('resource_type');
     });
 
     it('renders audit entries table data correctly', async () => {
@@ -637,6 +657,13 @@ describe('AdminAuditPage', () => {
     it('triggers CSV export with current search filters on Export CSV click', async () => {
       let exportBody: unknown = null;
       server.use(
+        http.post('/api/v1/admin/audit/filter-context', () =>
+          HttpResponse.json({
+            filter_context: 'opaque-export-context',
+            applied_fields: ['actor_identity'],
+            expires_at: '2026-08-27T12:15:00Z',
+          })
+        ),
         http.post('/api/v1/admin/audit/export', async ({ request }) => {
           exportBody = await request.json();
           return HttpResponse.text('col1,col2\nval1,val2', {
@@ -660,6 +687,7 @@ describe('AdminAuditPage', () => {
       const actorInput = await screen.findByLabelText('Actor');
       fireEvent.change(actorInput, { target: { value: 'export-actor@example.com' } });
       fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+      await waitFor(() => expect(actorInput).toHaveValue(''));
 
       // Click CSV export
       const csvBtn = await screen.findByRole('button', { name: 'Export CSV' });
@@ -668,7 +696,7 @@ describe('AdminAuditPage', () => {
       await waitFor(() => {
         expect(exportBody).toEqual({
           format: 'csv',
-          actor_identity: 'export-actor@example.com',
+          filter_context: 'opaque-export-context',
         });
       });
 

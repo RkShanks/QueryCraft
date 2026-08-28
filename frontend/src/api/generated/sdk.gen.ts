@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AcceptQueryData, AcceptQueryErrors, AcceptQueryResponses, CreateAdminConnectionData, CreateAdminConnectionErrors, CreateAdminConnectionResponses, CreateGroupMappingData, CreateGroupMappingErrors, CreateGroupMappingResponses, CreateRoleData, CreateRoleErrors, CreateRoleResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, CreateSsoProviderData, CreateSsoProviderErrors, CreateSsoProviderResponses, DeleteAdminConnectionData, DeleteAdminConnectionErrors, DeleteAdminConnectionResponses, DeleteGroupMappingData, DeleteGroupMappingErrors, DeleteGroupMappingResponses, DeleteHistoryEntryData, DeleteHistoryEntryErrors, DeleteHistoryEntryResponses, DeleteQuotaData, DeleteQuotaErrors, DeleteQuotaResponses, DeleteRoleData, DeleteRoleErrors, DeleteRoleResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, DeleteSsoProviderData, DeleteSsoProviderErrors, DeleteSsoProviderResponses, DisableAdminConnectionData, DisableAdminConnectionErrors, DisableAdminConnectionResponses, EnableAdminConnectionData, EnableAdminConnectionErrors, EnableAdminConnectionResponses, ExportAuditEntriesData, ExportAuditEntriesErrors, ExportAuditEntriesResponses, GetAdminConnectionData, GetAdminConnectionErrors, GetAdminConnectionResponses, GetAdminConnectionSchemaData, GetAdminConnectionSchemaErrors, GetAdminConnectionSchemaResponses, GetAdminSettingsData, GetAdminSettingsErrors, GetAdminSettingsResponses, GetAuditRetentionData, GetAuditRetentionErrors, GetAuditRetentionResponses, GetAuditStatusData, GetAuditStatusErrors, GetAuditStatusResponses, GetDetectionConfigData, GetDetectionConfigErrors, GetDetectionConfigResponses, GetHealthData, GetHealthResponses, GetHistoryEntryData, GetHistoryEntryErrors, GetHistoryEntryResponses, GetMeData, GetMeErrors, GetMeResponses, GetQueryLimitsData, GetQueryLimitsErrors, GetQueryLimitsResponses, GetQuotaData, GetQuotaErrors, GetQuotaResponses, GetQuotaStatusData, GetQuotaStatusErrors, GetQuotaStatusResponses, GetReadinessData, GetReadinessErrors, GetReadinessResponses, GetRoleData, GetRoleErrors, GetRoleResponses, GetSessionData, GetSessionErrors, GetSessionResponses, GetSessionsData, GetSessionsErrors, GetSessionsResponses, ListAdminConnectionsData, ListAdminConnectionsErrors, ListAdminConnectionsResponses, ListAdminSsoProvidersData, ListAdminSsoProvidersErrors, ListAdminSsoProvidersResponses, ListGroupMappingsData, ListGroupMappingsErrors, ListGroupMappingsResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, ListQuotasData, ListQuotasErrors, ListQuotasResponses, ListRolesData, ListRolesErrors, ListRolesResponses, ListSsoProvidersData, ListSsoProvidersErrors, ListSsoProvidersResponses, ListUserConnectionsData, ListUserConnectionsErrors, ListUserConnectionsResponses, OidcCallbackData, OidcCallbackErrors, OidcLoginData, RefreshAdminConnectionSchemaData, RefreshAdminConnectionSchemaErrors, RefreshAdminConnectionSchemaResponses, RefreshSchemaData, RefreshSchemaErrors, RefreshSchemaResponses, RegenerateQueryData, RegenerateQueryErrors, RegenerateQueryResponses, RejectQueryData, RejectQueryErrors, RejectQueryResponses, SamlCallbackData, SamlCallbackErrors, SamlLoginData, SearchAuditEntriesData, SearchAuditEntriesErrors, SearchAuditEntriesResponses, SignInData, SignInErrors, SignInResponses, SignOutData, SignOutErrors, SignOutResponses, SubmitQuestionData, SubmitQuestionErrors, SubmitQuestionResponses, TestAdminConnectionData, TestAdminConnectionErrors, TestAdminConnectionResponses, TestDraftRolePolicyData, TestDraftRolePolicyErrors, TestDraftRolePolicyResponses, TestRolePolicyData, TestRolePolicyErrors, TestRolePolicyResponses, UpdateAdminConnectionData, UpdateAdminConnectionErrors, UpdateAdminConnectionResponses, UpdateAdminSettingsData, UpdateAdminSettingsErrors, UpdateAdminSettingsResponses, UpdateDetectionConfigData, UpdateDetectionConfigErrors, UpdateDetectionConfigResponses, UpdateFeedbackData, UpdateFeedbackErrors, UpdateFeedbackResponses, UpdateRoleData, UpdateRoleErrors, UpdateRoleResponses, UpdateSessionConnectionData, UpdateSessionConnectionErrors, UpdateSessionConnectionResponses, UpdateSsoProviderData, UpdateSsoProviderErrors, UpdateSsoProviderResponses, UpsertQuotaData, UpsertQuotaErrors, UpsertQuotaResponses, VerifyAuditChainData, VerifyAuditChainErrors, VerifyAuditChainResponses } from './types.gen';
+import type { AcceptQueryData, AcceptQueryErrors, AcceptQueryResponses, CreateAdminConnectionData, CreateAdminConnectionErrors, CreateAdminConnectionResponses, CreateAuditFilterContextData, CreateAuditFilterContextErrors, CreateAuditFilterContextResponses, CreateGroupMappingData, CreateGroupMappingErrors, CreateGroupMappingResponses, CreateRoleData, CreateRoleErrors, CreateRoleResponses, CreateSessionData, CreateSessionErrors, CreateSessionResponses, CreateSsoProviderData, CreateSsoProviderErrors, CreateSsoProviderResponses, DeleteAdminConnectionData, DeleteAdminConnectionErrors, DeleteAdminConnectionResponses, DeleteGroupMappingData, DeleteGroupMappingErrors, DeleteGroupMappingResponses, DeleteHistoryEntryData, DeleteHistoryEntryErrors, DeleteHistoryEntryResponses, DeleteQuotaData, DeleteQuotaErrors, DeleteQuotaResponses, DeleteRoleData, DeleteRoleErrors, DeleteRoleResponses, DeleteSessionData, DeleteSessionErrors, DeleteSessionResponses, DeleteSsoProviderData, DeleteSsoProviderErrors, DeleteSsoProviderResponses, DisableAdminConnectionData, DisableAdminConnectionErrors, DisableAdminConnectionResponses, EnableAdminConnectionData, EnableAdminConnectionErrors, EnableAdminConnectionResponses, ExportAuditEntriesData, ExportAuditEntriesErrors, ExportAuditEntriesResponses, GetAdminConnectionData, GetAdminConnectionErrors, GetAdminConnectionResponses, GetAdminConnectionSchemaData, GetAdminConnectionSchemaErrors, GetAdminConnectionSchemaResponses, GetAdminSettingsData, GetAdminSettingsErrors, GetAdminSettingsResponses, GetAuditRetentionData, GetAuditRetentionErrors, GetAuditRetentionResponses, GetAuditStatusData, GetAuditStatusErrors, GetAuditStatusResponses, GetDetectionConfigData, GetDetectionConfigErrors, GetDetectionConfigResponses, GetHealthData, GetHealthResponses, GetHistoryEntryData, GetHistoryEntryErrors, GetHistoryEntryResponses, GetMeData, GetMeErrors, GetMeResponses, GetQueryLimitsData, GetQueryLimitsErrors, GetQueryLimitsResponses, GetQuotaData, GetQuotaErrors, GetQuotaResponses, GetQuotaStatusData, GetQuotaStatusErrors, GetQuotaStatusResponses, GetReadinessData, GetReadinessErrors, GetReadinessResponses, GetRoleData, GetRoleErrors, GetRoleResponses, GetSessionData, GetSessionErrors, GetSessionResponses, GetSessionsData, GetSessionsErrors, GetSessionsResponses, ListAdminConnectionsData, ListAdminConnectionsErrors, ListAdminConnectionsResponses, ListAdminSsoProvidersData, ListAdminSsoProvidersErrors, ListAdminSsoProvidersResponses, ListGroupMappingsData, ListGroupMappingsErrors, ListGroupMappingsResponses, ListHistoryData, ListHistoryErrors, ListHistoryResponses, ListQuotasData, ListQuotasErrors, ListQuotasResponses, ListRolesData, ListRolesErrors, ListRolesResponses, ListSsoProvidersData, ListSsoProvidersErrors, ListSsoProvidersResponses, ListUserConnectionsData, ListUserConnectionsErrors, ListUserConnectionsResponses, OidcCallbackData, OidcCallbackErrors, OidcLoginData, RefreshAdminConnectionSchemaData, RefreshAdminConnectionSchemaErrors, RefreshAdminConnectionSchemaResponses, RefreshSchemaData, RefreshSchemaErrors, RefreshSchemaResponses, RegenerateQueryData, RegenerateQueryErrors, RegenerateQueryResponses, RejectQueryData, RejectQueryErrors, RejectQueryResponses, SamlCallbackData, SamlCallbackErrors, SamlLoginData, SearchAuditEntriesData, SearchAuditEntriesErrors, SearchAuditEntriesResponses, SignInData, SignInErrors, SignInResponses, SignOutData, SignOutErrors, SignOutResponses, SubmitQuestionData, SubmitQuestionErrors, SubmitQuestionResponses, TestAdminConnectionData, TestAdminConnectionErrors, TestAdminConnectionResponses, TestDraftRolePolicyData, TestDraftRolePolicyErrors, TestDraftRolePolicyResponses, TestRolePolicyData, TestRolePolicyErrors, TestRolePolicyResponses, UpdateAdminConnectionData, UpdateAdminConnectionErrors, UpdateAdminConnectionResponses, UpdateAdminSettingsData, UpdateAdminSettingsErrors, UpdateAdminSettingsResponses, UpdateDetectionConfigData, UpdateDetectionConfigErrors, UpdateDetectionConfigResponses, UpdateFeedbackData, UpdateFeedbackErrors, UpdateFeedbackResponses, UpdateRoleData, UpdateRoleErrors, UpdateRoleResponses, UpdateSessionConnectionData, UpdateSessionConnectionErrors, UpdateSessionConnectionResponses, UpdateSsoProviderData, UpdateSsoProviderErrors, UpdateSsoProviderResponses, UpsertQuotaData, UpsertQuotaErrors, UpsertQuotaResponses, VerifyAuditChainData, VerifyAuditChainErrors, VerifyAuditChainResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -21,26 +21,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 /**
  * Search Audit Entries
  *
- * GET /admin/audit/entries — filtered, paginated audit log search.
- *
- * Permission: ``admin.audit.verify`` (existing Phase 5 permission).
- *
- * Behaviour:
- * 1. Parse filter params from query string.
- * 2. Enforce retention window server-side (entries older than
- * ``AUDIT_RETENTION_MONTHS`` are excluded before pagination).
- * 3. Return ``AuditSearchResponse`` with paginated entries. Results use
- * ``timestamp DESC, sequence_number DESC`` ordering and are bounded by
- * the maximum sequence present when that request starts. Because this is
- * stateless offset pagination, separate page requests made while new
- * entries arrive can still observe normal offset drift.
- * 4. Emit ``AUDIT_SEARCH`` audit event whose context contains ONLY:
- * - sanitized filter summary (param names + values, no result content)
- * - pagination metadata (page, page_size)
- * Never log returned entry values in the audit context.
- *
- * Response shape: ``AuditSearchResponse``
- * (``entries`` list + ``pagination`` metadata).
+ * Search retained audit entries using raw-compatible or opaque filters.
  */
 export const searchAuditEntries = <ThrowOnError extends boolean = false>(options?: Options<SearchAuditEntriesData, ThrowOnError>) => (options?.client ?? client).get<SearchAuditEntriesResponses, SearchAuditEntriesErrors, ThrowOnError>({
     security: [{
@@ -82,6 +63,25 @@ export const exportAuditEntries = <ThrowOnError extends boolean = false>(options
             type: 'apiKey'
         }],
     url: '/api/v1/admin/audit/export',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Create Audit Filter Context
+ *
+ * Seal validated audit filters for the current identity and session.
+ */
+export const createAuditFilterContext = <ThrowOnError extends boolean = false>(options: Options<CreateAuditFilterContextData, ThrowOnError>) => (options.client ?? client).post<CreateAuditFilterContextResponses, CreateAuditFilterContextErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'session_id',
+            type: 'apiKey'
+        }],
+    url: '/api/v1/admin/audit/filter-context',
     ...options,
     headers: {
         'Content-Type': 'application/json',

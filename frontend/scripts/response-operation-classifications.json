@@ -4,6 +4,7 @@
     "consumed_json": [
       "acceptQuery",
       "createAdminConnection",
+      "createAuditFilterContext",
       "createRole",
       "createSsoProvider",
       "disableAdminConnection",

@@ -125,6 +125,57 @@ export const responseOperationManifest = [
     "unusedReason": null
   },
   {
+    "classification": "consumed_json",
+    "method": "POST",
+    "operationId": "createAuditFilterContext",
+    "path": "/api/v1/admin/audit/filter-context",
+    "responses": [
+      {
+        "contentType": "application/json",
+        "schema": {
+          "$ref": "#/components/schemas/AuditFilterContextResponse"
+        },
+        "status": "200"
+      },
+      {
+        "contentType": "application/json",
+        "schema": {
+          "$ref": "#/components/schemas/ErrorResponse"
+        },
+        "status": "401"
+      },
+      {
+        "contentType": "application/json",
+        "schema": {
+          "$ref": "#/components/schemas/ErrorResponse"
+        },
+        "status": "403"
+      },
+      {
+        "contentType": "application/json",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            {
+              "$ref": "#/components/schemas/ValidationErrorResponse"
+            }
+          ]
+        },
+        "status": "422"
+      },
+      {
+        "contentType": "application/json",
+        "schema": {
+          "$ref": "#/components/schemas/ErrorResponse"
+        },
+        "status": "500"
+      }
+    ],
+    "unusedReason": null
+  },
+  {
     "classification": "unused",
     "method": "POST",
     "operationId": "createGroupMapping",

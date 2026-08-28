@@ -293,9 +293,7 @@ class TestAuditExportSelfAuditEvent:
             context = row[0] if isinstance(row[0], dict) else json.loads(row[0])
 
             # Must contain filter_summary and record_count
-            assert "filter_summary" in context or "filters" in context, (
-                f"audit.export context must contain filter summary, got: {context}"
-            )
+            assert "applied_fields" in context, f"audit.export context must contain applied field names, got: {context}"
             assert "record_count" in context, f"audit.export context must contain record_count, got: {context}"
 
             # Must NOT contain exported entry values
@@ -335,7 +333,7 @@ class TestAuditExportSelfAuditEvent:
             context = row[0] if isinstance(row[0], dict) else json.loads(row[0])
             # The context keys should be: filter_summary (or filters), record_count only
             # No entry-level fields like sequence_number, row_hash, actor_identity values
-            allowed_keys = {"filter_summary", "filters", "record_count", "format"}
+            allowed_keys = {"applied_fields", "record_count", "format"}
             extra_keys = set(context.keys()) - allowed_keys
             assert not extra_keys, (
                 f"audit.export context contains unexpected keys: {extra_keys}. Only {allowed_keys} are permitted."
@@ -358,7 +356,7 @@ class TestAuditExportSelfAuditEvent:
         assert response.status_code == 200
         body = response.content.decode("utf-8")
         assert sensitive_filter not in body
-        assert "[REDACTED]" in body
+        assert "actor_identity" in body
 
         async with async_engine_fixture.connect() as conn:
             result = await conn.execute(
@@ -376,7 +374,7 @@ class TestAuditExportSelfAuditEvent:
             context = row[0] if isinstance(row[0], dict) else json.loads(row[0])
             context_text = str(context)
             assert sensitive_filter not in context_text
-            assert "[REDACTED]" in context_text
+            assert context["applied_fields"] == ["actor_identity"]
 
 
 # ---------------------------------------------------------------------------

@@ -245,6 +245,10 @@ export type AuditExportRequest = {
      */
     end_date?: string | null;
     /**
+     * Filter Context
+     */
+    filter_context?: string | null;
+    /**
      * Format
      */
     format: 'csv' | 'json';
@@ -260,6 +264,59 @@ export type AuditExportRequest = {
      * Start Date
      */
     start_date?: string | null;
+};
+
+/**
+ * AuditFilterContextRequest
+ *
+ * Validated filters to seal into a short-lived opaque context.
+ */
+export type AuditFilterContextRequest = {
+    action_type?: AuditActionType | null;
+    /**
+     * Actor Identity
+     */
+    actor_identity?: string | null;
+    /**
+     * End Date
+     */
+    end_date?: string | null;
+    /**
+     * Expires In Seconds
+     */
+    expires_in_seconds?: number;
+    /**
+     * Outcome
+     */
+    outcome?: 'success' | 'failure' | 'denied' | 'blocked' | 'flagged' | 'broken' | null;
+    /**
+     * Resource Type
+     */
+    resource_type?: string | null;
+    /**
+     * Start Date
+     */
+    start_date?: string | null;
+};
+
+/**
+ * AuditFilterContextResponse
+ *
+ * Value-safe metadata returned for an opaque filter context.
+ */
+export type AuditFilterContextResponse = {
+    /**
+     * Applied Fields
+     */
+    applied_fields: Array<'start_date' | 'end_date' | 'action_type' | 'actor_identity' | 'outcome' | 'resource_type'>;
+    /**
+     * Expires At
+     */
+    expires_at: string;
+    /**
+     * Filter Context
+     */
+    filter_context: string;
 };
 
 /**
@@ -2337,22 +2394,6 @@ export type SearchAuditEntriesData = {
     path?: never;
     query?: {
         /**
-         * Action Type
-         */
-        action_type?: string | null;
-        /**
-         * Actor Identity
-         */
-        actor_identity?: string | null;
-        /**
-         * Outcome
-         */
-        outcome?: string | null;
-        /**
-         * Resource Type
-         */
-        resource_type?: string | null;
-        /**
          * Start Date
          */
         start_date?: string | null;
@@ -2360,6 +2401,26 @@ export type SearchAuditEntriesData = {
          * End Date
          */
         end_date?: string | null;
+        /**
+         * Action Type
+         */
+        action_type?: AuditActionType | null;
+        /**
+         * Actor Identity
+         */
+        actor_identity?: string | null;
+        /**
+         * Outcome
+         */
+        outcome?: 'success' | 'failure' | 'denied' | 'blocked' | 'flagged' | 'broken' | null;
+        /**
+         * Resource Type
+         */
+        resource_type?: string | null;
+        /**
+         * Filter Context
+         */
+        filter_context?: string | null;
         /**
          * Page
          */
@@ -2446,6 +2507,43 @@ export type ExportAuditEntriesResponses = {
 };
 
 export type ExportAuditEntriesResponse = ExportAuditEntriesResponses[keyof ExportAuditEntriesResponses];
+
+export type CreateAuditFilterContextData = {
+    body: AuditFilterContextRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/admin/audit/filter-context';
+};
+
+export type CreateAuditFilterContextErrors = {
+    /**
+     * Sanitized error response.
+     */
+    401: ErrorResponse;
+    /**
+     * Sanitized error response.
+     */
+    403: ErrorResponse;
+    /**
+     * Sanitized error response.
+     */
+    422: ErrorResponse | ValidationErrorResponse;
+    /**
+     * Sanitized error response.
+     */
+    500: ErrorResponse;
+};
+
+export type CreateAuditFilterContextError = CreateAuditFilterContextErrors[keyof CreateAuditFilterContextErrors];
+
+export type CreateAuditFilterContextResponses = {
+    /**
+     * Successful response.
+     */
+    200: AuditFilterContextResponse;
+};
+
+export type CreateAuditFilterContextResponse = CreateAuditFilterContextResponses[keyof CreateAuditFilterContextResponses];
 
 export type GetAuditRetentionData = {
     body?: never;

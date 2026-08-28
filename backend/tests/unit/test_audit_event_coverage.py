@@ -1157,7 +1157,7 @@ class TestForbiddenTokenSweep:
 
 class TestAuditSearchEmits:
     """``GET /admin/audit/entries`` emits ``AUDIT_SEARCH`` after a successful
-    search (T-862). The context contains only the sanitized filter summary
+    search (T-862). The context contains only safe applied field names
     and pagination metadata — never the returned entry values."""
 
     def test_action_type_is_shipped(self):
@@ -1168,7 +1168,9 @@ class TestAuditSearchEmits:
         """Verify AUDIT_SEARCH is emitted with filter summary and pagination only."""
         from unittest.mock import MagicMock
 
-        from app.schemas.audit_search import AuditSearchPagination, AuditSearchResponse
+        from fastapi import Response
+
+        from app.schemas.audit_search import AuditSearchPagination, AuditSearchRequest, AuditSearchResponse
 
         _empty_response = AuditSearchResponse(
             entries=[],
@@ -1194,24 +1196,19 @@ class TestAuditSearchEmits:
 
                 await search_audit_entries(
                     request=request,
+                    response=Response(),
                     db=db,
-                    _session=_session,
-                    action_type="audit.verify",
-                    actor_identity=None,
-                    outcome=None,
-                    resource_type=None,
-                    start_date=None,
-                    end_date=None,
-                    page=1,
-                    page_size=10,
+                    session=_session,
+                    search_request=AuditSearchRequest(action_type="audit.verify", page=1, page_size=10),
                 )
 
         actions = _captured_actions(mock_audit)
         assert AuditActionType.AUDIT_SEARCH in actions, f"Expected AUDIT_SEARCH in audit calls, got {actions}"
 
         ctx = _context_for(mock_audit, AuditActionType.AUDIT_SEARCH)
-        # Must have filter summary and pagination
-        assert "filters" in ctx, f"Expected 'filters' key in AUDIT_SEARCH context, got {ctx}"
+        # Must have only safe field names and pagination metadata.
+        assert ctx.get("applied_fields") == ["action_type"]
+        assert "audit.verify" not in str(ctx)
         assert "page" in ctx, f"Expected 'page' key in AUDIT_SEARCH context, got {ctx}"
         assert "page_size" in ctx, f"Expected 'page_size' key in AUDIT_SEARCH context, got {ctx}"
         # Must NOT contain row_hash, prev_hash, or any returned entry field
@@ -1226,7 +1223,7 @@ class TestAuditSearchEmits:
 
 class TestAuditExportEmits:
     """``POST /admin/audit/export`` emits ``AUDIT_EXPORT`` after a successful
-    export (T-868). The context contains only filter_summary and record_count —
+    export (T-868). The context contains only applied field names, format and record count —
     never the exported entry values."""
 
     def test_action_type_is_shipped(self):
@@ -1261,15 +1258,16 @@ class TestAuditExportEmits:
                 "permissions": [str(Permission.ADMIN_AUDIT_VERIFY)],
                 "username": "auditor@test",
             }
-            db = AsyncMock()
+            db = MagicMock()
             db.commit = AsyncMock()
-            redis = AsyncMock()
+            redis = MagicMock()
             export_req = AuditExportRequest(format="json")
 
             await export_audit_entries(
+                request=MagicMock(),
                 db=db,
                 redis=redis,
-                _session=_session,
+                session=_session,
                 export_req=export_req,
             )
 
@@ -1277,8 +1275,9 @@ class TestAuditExportEmits:
         assert AuditActionType.AUDIT_EXPORT in actions, f"Expected AUDIT_EXPORT in audit calls, got {actions}"
 
         ctx = _context_for(mock_audit, AuditActionType.AUDIT_EXPORT)
-        # Must contain filter_summary and record_count
-        assert "filter_summary" in ctx, f"Expected 'filter_summary' key in AUDIT_EXPORT context, got {ctx}"
+        # Must contain only safe filter field names, format and record count.
+        assert ctx.get("applied_fields") == []
+        assert ctx.get("format") == "json"
         assert "record_count" in ctx, f"Expected 'record_count' key in AUDIT_EXPORT context, got {ctx}"
         # Must NOT contain row_hash, prev_hash or any raw entry content
         ctx_str = str(ctx)
@@ -1338,17 +1337,18 @@ class TestAuditExportEmits:
                 "permissions": [str(Permission.ADMIN_AUDIT_VERIFY)],
                 "username": "auditor@test",
             }
-            db = AsyncMock()
+            db = MagicMock()
             db.commit = AsyncMock()
-            redis = AsyncMock()
+            redis = MagicMock()
             export_req = AuditExportRequest(format="csv")
 
             # Must not raise — previously this would raise ValidationError
             # (swallowed as 500) when page_size=150 was passed to AuditSearchParams.
             response = await export_audit_entries(
+                request=MagicMock(),
                 db=db,
                 redis=redis,
-                _session=_session,
+                session=_session,
                 export_req=export_req,
             )
 
