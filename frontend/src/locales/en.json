@@ -527,6 +527,7 @@
   "audit.search.submit": "Search",
   "audit.search.creating_context": "Applying filters…",
   "audit.search.context_error": "The filters could not be applied. Please enter them again.",
+  "error.audit_filter_context_invalid": "The audit filter context is invalid or expired.",
   "audit.search.reset": "Reset",
   "audit.search.prev_page": "Previous",
   "audit.search.next_page": "Next",

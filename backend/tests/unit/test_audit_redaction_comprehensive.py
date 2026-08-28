@@ -173,10 +173,10 @@ _SAFE_KEYS: tuple[str, ...] = (
     # thresholds were updated. Safe — they carry no sensitive value.
     "block_confidence_updated",
     "flag_confidence_updated",
-    # T-862 audit.search context: sanitized filter summary dict and pagination
-    # metadata emitted by GET /admin/audit/entries. These keys hold only
-    # caller-supplied filter param names/values and page numbers — never
-    # returned entry content or secrets.
+    # T-862 / CHUNK-28 audit search and export contexts: only safe applied
+    # filter field names and pagination/export categories are emitted. Raw
+    # caller-supplied filter values are never persisted.
+    "applied_fields",
     "filters",
     "page",
     "page_size",
