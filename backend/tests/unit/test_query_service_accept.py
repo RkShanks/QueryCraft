@@ -9,9 +9,18 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.config import get_settings
+from app.core.encryption import encrypt
 from app.services.query_service import QueryService
 
 CONNECTION_ID = "00000000-0000-0000-0000-000000000001"
+
+
+def _encrypted_text(text: str, purpose: str) -> str:
+    return encrypt(
+        json.dumps({"purpose": purpose, "version": 1, "text": text}),
+        get_settings().PLATFORM_ENCRYPTION_KEY,
+    )
 
 
 def _attempt_json():
@@ -21,8 +30,8 @@ def _attempt_json():
             "session_id": "sess-1",
             "user_id": "550e8400-e29b-41d4-a716-446655440000",
             "database_connection_id": CONNECTION_ID,
-            "question": "Q",
-            "sql": "SELECT 1",
+            "question": _encrypted_text("Q", "attempt.question"),
+            "sql": _encrypted_text("SELECT 1", "attempt.sql"),
             "llm_provider": "ollama",
             "attempt_number": 1,
             "state": "EXECUTED",
@@ -135,8 +144,8 @@ class TestQueryServiceAccept:
                     "session_id": "sess-2",
                     "user_id": "550e8400-e29b-41d4-a716-446655440000",
                     "database_connection_id": CONNECTION_ID,
-                    "question": "Q",
-                    "sql": "SELECT 1",
+                    "question": _encrypted_text("Q", "attempt.question"),
+                    "sql": _encrypted_text("SELECT 1", "attempt.sql"),
                     "llm_provider": "ollama",
                 }
             ),
@@ -177,8 +186,8 @@ class TestQueryServiceAccept:
                     "session_id": "sess-1",
                     "user_id": "550e8400-e29b-41d4-a716-446655440000",
                     "database_connection_id": CONNECTION_ID,
-                    "question": "Q",
-                    "sql": "SELECT 1",
+                    "question": _encrypted_text("Q", "attempt.question"),
+                    "sql": _encrypted_text("SELECT 1", "attempt.sql"),
                     "llm_provider": "ollama",
                     "attempt_number": 1,
                     "state": bad_state,

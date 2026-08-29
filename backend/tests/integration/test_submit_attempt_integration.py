@@ -13,6 +13,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy import text
 
+from app.core.attempt_store import get_attempt
+
 
 async def _clear_attempt_state(redis_client) -> None:
     keys = await redis_client.keys("attempt:*")
@@ -50,13 +52,12 @@ class TestSubmitAttemptIntegration:
         data = response.json()
         attempt_id = data["attempt_id"]
 
-        # Verify attempt in Redis with EXECUTED state
-        raw = await redis_client.get(f"attempt:{attempt_id}")
-        assert raw is not None
-        attempt = json.loads(raw)
-        assert attempt["state"] == "EXECUTED"
-        assert attempt["sql"] == "SELECT 1 AS id"
-        assert attempt["question"] == "What is one?"
+        # Verify attempt in Redis with EXECUTED state and in-memory text restore.
+        http_session_id = authenticated_client.cookies.get("session_id")
+        attempt = await get_attempt(attempt_id, http_session_id, redis_client)
+        assert attempt.state == "EXECUTED"
+        assert attempt.sql == "SELECT 1 AS id"
+        assert attempt.question == "What is one?"
 
         # Accept and verify attempt_id linkage in accepted_queries
         accept_resp = await authenticated_client.post(
