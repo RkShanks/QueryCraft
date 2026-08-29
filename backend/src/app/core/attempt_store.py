@@ -41,13 +41,14 @@ class EphemeralAttempt(BaseModel):
 class _EncryptedAttemptText(BaseModel):
     """Authenticated payload for user-controlled attempt text."""
 
-    purpose: Literal["attempt.question", "attempt.sql"]
+    purpose: Literal["attempt.question", "attempt.sql", "attempt.evaluator_result"]
     version: Literal[1]
     text: str
 
 
 _QUESTION_PURPOSE = "attempt.question"
 _SQL_PURPOSE = "attempt.sql"
+_EVALUATOR_PURPOSE = "attempt.evaluator_result"
 
 
 # Default TTL from settings; can be overridden in tests.
@@ -90,6 +91,9 @@ async def store_attempt(
     data["session_id"] = session_id
     data["question"] = _seal_attempt_text(attempt.question, _QUESTION_PURPOSE)
     data["sql"] = _seal_attempt_text(attempt.sql, _SQL_PURPOSE)
+    if attempt.evaluator_result is not None:
+        evaluator_json = json.dumps(attempt.evaluator_result, separators=(",", ":"))
+        data["evaluator_result"] = _seal_attempt_text(evaluator_json, _EVALUATOR_PURPOSE)
     key = f"attempt:{data.get('attempt_id')}"
     await redis.set(key, json.dumps(data), ex=ttl)
 
@@ -127,8 +131,14 @@ async def get_attempt(
     try:
         data["question"] = _open_attempt_text(data.get("question"), _QUESTION_PURPOSE)
         data["sql"] = _open_attempt_text(data.get("sql"), _SQL_PURPOSE)
+        if data.get("evaluator_result") is not None:
+            evaluator_json = _open_attempt_text(data["evaluator_result"], _EVALUATOR_PURPOSE)
+            evaluator_result = json.loads(evaluator_json)
+            if not isinstance(evaluator_result, dict):
+                raise AttemptContextInvalid()
+            data["evaluator_result"] = evaluator_result
         return EphemeralAttempt.model_validate(data)
-    except (AttemptContextInvalid, ValidationError):
+    except (AttemptContextInvalid, ValidationError, json.JSONDecodeError, TypeError):
         await redis.delete(key)
         raise AttemptContextInvalid from None
 

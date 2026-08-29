@@ -12,7 +12,6 @@ from app.core.attempt_store import EphemeralAttempt, get_attempt, store_attempt
 from app.core.encryption import decrypt, encrypt
 from app.core.exceptions import AttemptContextInvalid
 
-
 CONNECTION_ID = UUID("550e8400-e29b-41d4-a716-446655440001")
 
 
