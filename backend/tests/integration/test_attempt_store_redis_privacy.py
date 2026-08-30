@@ -160,6 +160,7 @@ async def test_api_success_keeps_canary_out_of_real_redis(
     authenticated_client,
     redis_client,
     query_submit_payload,
+    caplog,
 ) -> None:
     """A successful real API flow keeps question and generated SQL opaque."""
     from app.source_db.adapters import ExecuteResult
@@ -183,7 +184,9 @@ async def test_api_success_keeps_canary_out_of_real_redis(
     summary = await _scan_redis_namespace(redis_client, canary)
     states = await _attempt_states(redis_client)
     response_successful = response.status_code == 200
+    logs_safe = all(canary not in record.getMessage() for record in caplog.records)
     assert response_successful is True, "successful API flow did not return success"
+    assert logs_safe is True, "successful API flow logged the canary"
     assert summary["canary_present"] is False, "successful API flow retained the canary in Redis"
     assert states == ["EXECUTED"], "successful API flow did not persist its executed state"
 
@@ -193,6 +196,7 @@ async def test_api_provider_failure_keeps_canary_out_of_pending_redis_state(
     authenticated_client,
     redis_client,
     query_submit_payload,
+    caplog,
 ) -> None:
     """Provider failure leaves only opaque pending attempt state."""
     canary = "chunk28-api-provider-canary"
@@ -206,9 +210,11 @@ async def test_api_provider_failure_keeps_canary_out_of_pending_redis_state(
         )
 
     response_safe = canary not in response.text
+    logs_safe = all(canary not in record.getMessage() for record in caplog.records)
     summary = await _scan_redis_namespace(redis_client, canary)
     states = await _attempt_states(redis_client)
     assert response_safe is True, "provider failure response contains the canary"
+    assert logs_safe is True, "provider failure logged the canary"
     assert summary["canary_present"] is False, "provider failure retained the canary in Redis"
     assert states == ["PENDING"], "provider failure did not preserve the pending lifecycle state"
 
@@ -218,6 +224,7 @@ async def test_api_evaluator_rejection_keeps_canary_out_of_rejected_redis_state(
     authenticated_client,
     redis_client,
     query_submit_payload,
+    caplog,
 ) -> None:
     """Evaluator rejection stores an opaque rejected attempt."""
     canary = "chunk28-api-rejection-canary"
@@ -231,9 +238,11 @@ async def test_api_evaluator_rejection_keeps_canary_out_of_rejected_redis_state(
         )
 
     response_safe = canary not in response.text
+    logs_safe = all(canary not in record.getMessage() for record in caplog.records)
     summary = await _scan_redis_namespace(redis_client, canary)
     states = await _attempt_states(redis_client)
     assert response_safe is True, "evaluator rejection response contains the canary"
+    assert logs_safe is True, "evaluator rejection logged the canary"
     assert summary["canary_present"] is False, "evaluator rejection retained the canary in Redis"
     assert states == ["REJECTED"], "evaluator rejection did not persist its rejected lifecycle state"
 
@@ -243,6 +252,7 @@ async def test_api_timeout_keeps_canary_out_of_timeout_redis_state(
     authenticated_client,
     redis_client,
     query_submit_payload,
+    caplog,
 ) -> None:
     """Source timeout stores an opaque timeout attempt."""
     canary = "chunk28-api-timeout-canary"
@@ -262,8 +272,10 @@ async def test_api_timeout_keeps_canary_out_of_timeout_redis_state(
         )
 
     response_safe = canary not in response.text
+    logs_safe = all(canary not in record.getMessage() for record in caplog.records)
     summary = await _scan_redis_namespace(redis_client, canary)
     states = await _attempt_states(redis_client)
     assert response_safe is True, "timeout response contains the canary"
+    assert logs_safe is True, "timeout flow logged the canary"
     assert summary["canary_present"] is False, "timeout flow retained the canary in Redis"
     assert states == ["TIMEOUT"], "timeout flow did not persist its timeout lifecycle state"

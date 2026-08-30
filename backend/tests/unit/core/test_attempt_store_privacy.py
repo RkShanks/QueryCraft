@@ -62,11 +62,19 @@ def _serialized_attempt(*, question: str, sql: str, key: str) -> dict[str, objec
 
 @pytest.mark.parametrize(
     "corruption",
-    ["legacy_plaintext", "tampered", "wrong_key", "unsupported_version", "wrong_purpose", "malformed"],
+    [
+        "legacy_plaintext",
+        "tampered",
+        "wrong_key",
+        "unsupported_version",
+        "wrong_purpose",
+        "malformed",
+        "malformed_document",
+    ],
 )
 async def test_corrupt_attempt_state_fails_closed_and_is_deleted(corruption: str, test_encryption_key: str) -> None:
     """Corrupt or legacy text cannot be used as a valid attempt."""
-    stored = _serialized_attempt(question="question", sql="SELECT 1", key=test_encryption_key)
+    stored: dict[str, object] | str = _serialized_attempt(question="question", sql="SELECT 1", key=test_encryption_key)
     if corruption == "legacy_plaintext":
         stored["question"] = "legacy plaintext"
     elif corruption == "tampered":
@@ -80,11 +88,13 @@ async def test_corrupt_attempt_state_fails_closed_and_is_deleted(corruption: str
         stored["question"] = _encrypted_text("question", "attempt.question", test_encryption_key, version=2)
     elif corruption == "wrong_purpose":
         stored["question"] = _encrypted_text("question", "attempt.sql", test_encryption_key)
+    elif corruption == "malformed_document":
+        stored = "not-json"
     else:
         stored["question"] = "not-a-ciphertext"
 
     redis = AsyncMock(spec=Redis)
-    redis.get = AsyncMock(return_value=json.dumps(stored))
+    redis.get = AsyncMock(return_value=stored if isinstance(stored, str) else json.dumps(stored))
     redis.delete = AsyncMock(return_value=1)
 
     with pytest.raises(AttemptContextInvalid) as exc_info:
@@ -130,6 +140,31 @@ async def test_attempt_text_round_trip_uses_authenticated_markers_and_fresh_nonc
     sql_restored = restored.sql == f"SELECT '{canary}'"
     assert question_restored is True, "question could not be restored for retry"
     assert sql_restored is True, "generated SQL could not be restored for retry"
+
+
+async def test_evaluator_payload_round_trips_only_after_authenticated_decryption(test_encryption_key: str) -> None:
+    """Sealed evaluator metadata remains available to server-side consumers."""
+    redis = AsyncMock(spec=Redis)
+    redis.set = AsyncMock(return_value=True)
+    canary = "chunk28-evaluator-round-trip-canary"
+    evaluator_result = {"passed": False, "violations": [{"rule": canary, "message_key": canary}]}
+    attempt = EphemeralAttempt(
+        attempt_id="privacy-a5",
+        session_id="privacy-session",
+        database_connection_id=CONNECTION_ID,
+        question="question",
+        evaluator_result=evaluator_result,
+    )
+
+    await store_attempt(attempt, attempt.session_id, redis)
+    serialized = redis.set.await_args.args[1]
+    redis.get = AsyncMock(return_value=serialized)
+    restored = await get_attempt("privacy-a5", "privacy-session", redis)
+
+    metadata_restored = restored.evaluator_result == evaluator_result
+    canary_absent = canary not in serialized
+    assert metadata_restored is True, "sealed evaluator metadata could not be restored"
+    assert canary_absent is True, "evaluator metadata was serialized as plaintext"
 
 
 async def test_evaluator_payload_cannot_retain_user_canary() -> None:
