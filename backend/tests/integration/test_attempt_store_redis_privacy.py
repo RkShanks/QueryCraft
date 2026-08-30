@@ -28,7 +28,13 @@ def _contains_canary(value: Any, canary: str) -> bool:
         except (ValueError, binascii.Error):
             return False
     if isinstance(value, str):
-        return _contains_canary(value.encode(), canary)
+        if _contains_canary(value.encode(), canary):
+            return True
+        try:
+            parsed_json = json.loads(value)
+        except json.JSONDecodeError:
+            return False
+        return parsed_json != value and _contains_canary(parsed_json, canary)
     if isinstance(value, dict):
         return any(_contains_canary(part, canary) for pair in value.items() for part in pair)
     if isinstance(value, (list, tuple, set)):
@@ -81,6 +87,18 @@ async def _scan_redis_namespace(redis_client, canary: str) -> dict[str, Any]:
         "namespaces": sorted(namespaces),
         "types": dict(sorted(types.items())),
     }
+
+
+@pytest.mark.integration
+async def test_scanner_detects_nested_base64_canary(redis_client) -> None:
+    """The value-safe scanner detects encoded values nested in Redis JSON."""
+    canary = "chunk28-scanner-calibration-canary"
+    encoded_canary = base64.b64encode(canary.encode()).decode()
+    await redis_client.set("scanner:calibration", json.dumps({"encoded": encoded_canary}))
+
+    summary = await _scan_redis_namespace(redis_client, canary)
+
+    assert summary["canary_present"] is True, "Redis scanner missed nested encoded data"
 
 
 @pytest.mark.integration
