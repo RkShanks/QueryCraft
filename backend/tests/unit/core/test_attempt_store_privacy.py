@@ -74,7 +74,7 @@ def _serialized_attempt(*, question: str, sql: str, key: str) -> dict[str, objec
 )
 async def test_corrupt_attempt_state_fails_closed_and_is_deleted(corruption: str, test_encryption_key: str) -> None:
     """Corrupt or legacy text cannot be used as a valid attempt."""
-    stored: dict[str, object] | str = _serialized_attempt(question="question", sql="SELECT 1", key=test_encryption_key)
+    stored = _serialized_attempt(question="question", sql="SELECT 1", key=test_encryption_key)
     if corruption == "legacy_plaintext":
         stored["question"] = "legacy plaintext"
     elif corruption == "tampered":
@@ -88,13 +88,12 @@ async def test_corrupt_attempt_state_fails_closed_and_is_deleted(corruption: str
         stored["question"] = _encrypted_text("question", "attempt.question", test_encryption_key, version=2)
     elif corruption == "wrong_purpose":
         stored["question"] = _encrypted_text("question", "attempt.sql", test_encryption_key)
-    elif corruption == "malformed_document":
-        stored = "not-json"
-    else:
+    elif corruption == "malformed":
         stored["question"] = "not-a-ciphertext"
 
     redis = AsyncMock(spec=Redis)
-    redis.get = AsyncMock(return_value=stored if isinstance(stored, str) else json.dumps(stored))
+    redis_value = "not-json" if corruption == "malformed_document" else json.dumps(stored)
+    redis.get = AsyncMock(return_value=redis_value)
     redis.delete = AsyncMock(return_value=1)
 
     with pytest.raises(AttemptContextInvalid) as exc_info:

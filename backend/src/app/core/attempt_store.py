@@ -79,6 +79,18 @@ def _open_attempt_text(ciphertext: Any, purpose: str) -> str:
     return payload.text
 
 
+def _restore_attempt_fields(parsed_document: dict[str, Any]) -> EphemeralAttempt:
+    parsed_document["question"] = _open_attempt_text(parsed_document.get("question"), _QUESTION_PURPOSE)
+    parsed_document["sql"] = _open_attempt_text(parsed_document.get("sql"), _SQL_PURPOSE)
+    if parsed_document.get("evaluator_result") is not None:
+        evaluator_json = _open_attempt_text(parsed_document["evaluator_result"], _EVALUATOR_PURPOSE)
+        evaluator_result = json.loads(evaluator_json)
+        if not isinstance(evaluator_result, dict):
+            raise AttemptContextInvalid()
+        parsed_document["evaluator_result"] = evaluator_result
+    return EphemeralAttempt.model_validate(parsed_document)
+
+
 async def store_attempt(
     attempt: EphemeralAttempt,
     session_id: str,
@@ -129,15 +141,7 @@ async def get_attempt(
         raise AttemptOwnershipViolation()
 
     try:
-        parsed_document["question"] = _open_attempt_text(parsed_document.get("question"), _QUESTION_PURPOSE)
-        parsed_document["sql"] = _open_attempt_text(parsed_document.get("sql"), _SQL_PURPOSE)
-        if parsed_document.get("evaluator_result") is not None:
-            evaluator_json = _open_attempt_text(parsed_document["evaluator_result"], _EVALUATOR_PURPOSE)
-            evaluator_result = json.loads(evaluator_json)
-            if not isinstance(evaluator_result, dict):
-                raise AttemptContextInvalid()
-            parsed_document["evaluator_result"] = evaluator_result
-        return EphemeralAttempt.model_validate(parsed_document)
+        return _restore_attempt_fields(parsed_document)
     except (AttemptContextInvalid, ValidationError, json.JSONDecodeError, TypeError):
         await redis.delete(key)
         raise AttemptContextInvalid from None
