@@ -4,13 +4,17 @@ T-110: store_attempt, get_attempt, delete_attempt with session ownership
 validation (Inv 6) and 15-minute TTL.
 """
 
+import binascii
 import json
 import uuid
-from typing import Any
+from typing import Any, Literal
 
+from cryptography.exceptions import InvalidTag
 from pydantic import BaseModel, ConfigDict, ValidationError
 from redis.asyncio import Redis
 
+from app.core.config import get_settings
+from app.core.encryption import decrypt, encrypt
 from app.core.exceptions import AttemptContextInvalid, AttemptNotFound, AttemptOwnershipViolation
 
 
@@ -34,8 +38,57 @@ class EphemeralAttempt(BaseModel):
     expires_at: str = ""
 
 
+class _EncryptedAttemptText(BaseModel):
+    """Authenticated payload for user-controlled attempt text."""
+
+    purpose: Literal["attempt.question", "attempt.sql", "attempt.evaluator_result"]
+    version: Literal[1]
+    text: str
+
+
+_QUESTION_PURPOSE = "attempt.question"
+_SQL_PURPOSE = "attempt.sql"
+_EVALUATOR_PURPOSE = "attempt.evaluator_result"
+
+
 # Default TTL from settings; can be overridden in tests.
 _ATTEMPT_TTL_SECONDS = 15 * 60
+
+
+def _seal_attempt_text(plaintext: str, purpose: str) -> str:
+    payload = _EncryptedAttemptText(purpose=purpose, version=1, text=plaintext)
+    return encrypt(payload.model_dump_json(), get_settings().PLATFORM_ENCRYPTION_KEY)
+
+
+def _open_attempt_text(ciphertext: Any, purpose: str) -> str:
+    try:
+        plaintext = decrypt(ciphertext, get_settings().PLATFORM_ENCRYPTION_KEY)
+        payload = _EncryptedAttemptText.model_validate_json(plaintext)
+    except (
+        binascii.Error,
+        InvalidTag,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        ValidationError,
+        TypeError,
+        ValueError,
+    ):
+        raise AttemptContextInvalid from None
+    if payload.purpose != purpose:
+        raise AttemptContextInvalid()
+    return payload.text
+
+
+def _restore_attempt_fields(parsed_document: dict[str, Any]) -> EphemeralAttempt:
+    parsed_document["question"] = _open_attempt_text(parsed_document.get("question"), _QUESTION_PURPOSE)
+    parsed_document["sql"] = _open_attempt_text(parsed_document.get("sql"), _SQL_PURPOSE)
+    if parsed_document.get("evaluator_result") is not None:
+        evaluator_json = _open_attempt_text(parsed_document["evaluator_result"], _EVALUATOR_PURPOSE)
+        evaluator_result = json.loads(evaluator_json)
+        if not isinstance(evaluator_result, dict):
+            raise AttemptContextInvalid()
+        parsed_document["evaluator_result"] = evaluator_result
+    return EphemeralAttempt.model_validate(parsed_document)
 
 
 async def store_attempt(
@@ -45,11 +98,16 @@ async def store_attempt(
     ttl: int = _ATTEMPT_TTL_SECONDS,
 ) -> None:
     """Serialize *attempt* to JSON and store in Redis with TTL."""
-    data = attempt.model_dump(mode="json")
+    serialized_attempt = attempt.model_dump(mode="json")
     # Ensure session_id is present for ownership validation
-    data["session_id"] = session_id
-    key = f"attempt:{data.get('attempt_id')}"
-    await redis.set(key, json.dumps(data), ex=ttl)
+    serialized_attempt["session_id"] = session_id
+    serialized_attempt["question"] = _seal_attempt_text(attempt.question, _QUESTION_PURPOSE)
+    serialized_attempt["sql"] = _seal_attempt_text(attempt.sql, _SQL_PURPOSE)
+    if attempt.evaluator_result is not None:
+        evaluator_json = json.dumps(attempt.evaluator_result, separators=(",", ":"))
+        serialized_attempt["evaluator_result"] = _seal_attempt_text(evaluator_json, _EVALUATOR_PURPOSE)
+    key = f"attempt:{serialized_attempt.get('attempt_id')}"
+    await redis.set(key, json.dumps(serialized_attempt), ex=ttl)
 
 
 async def get_attempt(
@@ -71,19 +129,22 @@ async def get_attempt(
         raise AttemptNotFound()
 
     try:
-        data = json.loads(raw)
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise AttemptContextInvalid() from exc
-    if not isinstance(data, dict):
+        parsed_document = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+        await redis.delete(key)
+        raise AttemptContextInvalid from None
+    if not isinstance(parsed_document, dict):
+        await redis.delete(key)
         raise AttemptContextInvalid()
-    stored_session = data.get("session_id")
+    stored_session = parsed_document.get("session_id")
     if stored_session != session_id:
         raise AttemptOwnershipViolation()
 
     try:
-        return EphemeralAttempt.model_validate(data)
-    except ValidationError as exc:
-        raise AttemptContextInvalid() from exc
+        return _restore_attempt_fields(parsed_document)
+    except (AttemptContextInvalid, ValidationError, json.JSONDecodeError, TypeError):
+        await redis.delete(key)
+        raise AttemptContextInvalid from None
 
 
 async def delete_attempt(attempt_id: str, redis: Redis) -> None:

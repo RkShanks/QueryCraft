@@ -43,12 +43,16 @@ class TestAttemptStoreUnit:
     async def test_get_attempt_returns_data_when_session_matches(self):
         """get_attempt returns attempt when session_id matches."""
         redis = AsyncMock(spec=Redis)
-        raw = (
-            '{"attempt_id":"a1","session_id":"s1","sql":"SELECT 1","question":"q1",'
-            f'"database_connection_id":"{CONNECTION_ID}",'
-            '"evaluator_result":null,"created_at":"","expires_at":""}'
+        redis.set = AsyncMock(return_value=True)
+        attempt = EphemeralAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            database_connection_id=CONNECTION_ID,
+            sql="SELECT 1",
+            question="q1",
         )
-        redis.get = AsyncMock(return_value=raw)
+        await store_attempt(attempt, "s1", redis)
+        redis.get = AsyncMock(return_value=redis.set.await_args.args[1])
 
         result = await get_attempt("a1", "s1", redis)
         assert result.attempt_id == "a1"
@@ -57,12 +61,16 @@ class TestAttemptStoreUnit:
     async def test_get_attempt_raises_ownership_violation(self):
         """get_attempt with wrong session_id raises AttemptOwnershipViolation."""
         redis = AsyncMock(spec=Redis)
-        raw = (
-            '{"attempt_id":"a1","session_id":"s1","sql":"SELECT 1","question":"q1",'
-            f'"database_connection_id":"{CONNECTION_ID}",'
-            '"evaluator_result":null,"created_at":"","expires_at":""}'
+        redis.set = AsyncMock(return_value=True)
+        attempt = EphemeralAttempt(
+            attempt_id="a1",
+            session_id="s1",
+            database_connection_id=CONNECTION_ID,
+            sql="SELECT 1",
+            question="q1",
         )
-        redis.get = AsyncMock(return_value=raw)
+        await store_attempt(attempt, "s1", redis)
+        redis.get = AsyncMock(return_value=redis.set.await_args.args[1])
 
         with pytest.raises(AttemptOwnershipViolation):
             await get_attempt("a1", "s2", redis)
@@ -140,16 +148,22 @@ class TestAttemptStoreUnit:
     async def test_missing_or_malformed_connection_context_fails_closed(self, stored_context):
         """Legacy or corrupt Redis attempts cannot select a fallback source."""
         redis = AsyncMock(spec=Redis)
-        redis.get = AsyncMock(
-            return_value=json.dumps(
-                {
-                    "attempt_id": "a1",
-                    "session_id": "s1",
-                    "user_id": "u1",
-                    **stored_context,
-                }
-            )
+        redis.set = AsyncMock(return_value=True)
+        await store_attempt(
+            EphemeralAttempt(
+                attempt_id="a1",
+                session_id="s1",
+                user_id="u1",
+                database_connection_id=CONNECTION_ID,
+            ),
+            "s1",
+            redis,
         )
+        stored = json.loads(redis.set.await_args.args[1])
+        stored.pop("database_connection_id", None)
+        stored.update(stored_context)
+        redis.get = AsyncMock(return_value=json.dumps(stored))
+        redis.delete = AsyncMock(return_value=1)
 
         with pytest.raises(AttemptContextInvalid):
             await get_attempt("a1", "s1", redis)
