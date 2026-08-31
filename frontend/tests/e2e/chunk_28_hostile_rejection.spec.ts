@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { assertReactApplicationStateClean } from './helpers/chunk28ReactState';
 
 test.use({ screenshot: 'off', trace: 'off', video: 'off' });
 
@@ -153,6 +154,12 @@ const cases = [
   {
     language: 'en' as const,
     direction: 'ltr',
+    width: 768,
+    message: 'This request was blocked because it contains content that violates our security policy.',
+  },
+  {
+    language: 'en' as const,
+    direction: 'ltr',
     width: 375,
     message: 'This request was blocked because it contains content that violates our security policy.',
   },
@@ -160,6 +167,12 @@ const cases = [
     language: 'ar' as const,
     direction: 'rtl',
     width: 1440,
+    message: 'تم حظر هذا الطلب لأنه يحتوي على محتوى ينتهك سياسة الأمان.',
+  },
+  {
+    language: 'ar' as const,
+    direction: 'rtl',
+    width: 768,
     message: 'تم حظر هذا الطلب لأنه يحتوي على محتوى ينتهك سياسة الأمان.',
   },
   {
@@ -209,6 +222,7 @@ for (const privacyCase of cases) {
     });
     await expect(page.getByRole('alert').filter({ hasText: privacyCase.message }))
       .toBeVisible({ timeout: 10_000 });
+    await assertReactApplicationStateClean(page, canary, 'hostile rejection');
     await observer.flush();
     expect(observer.responseCanaryObserved, 'sensitive value observed outside the request').toBe(false);
     expect(await browserContainsCanary(page, canary), 'stable hostile state contains sensitive value').toBe(false);
@@ -220,6 +234,7 @@ for (const privacyCase of cases) {
     await prompt.fill('Count customer records');
     await page.getByTestId('prompt-send').dblclick();
     await expect(page.getByTestId('assistant-response-card')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('user-bubble').last()).toContainText('Count customer records');
     expect(observer.submitRequestCount).toBe(2);
     expect(await browserContainsCanary(page, canary), 'subsequent submission restored sensitive value').toBe(false);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

@@ -163,6 +163,10 @@
     "tests/e2e/chunk_28_hostile_rejection.spec.ts": {
       "category": "live",
       "reason": "Real FastAPI plus isolated Chromium proof that the semantic hostile-rejection state is value-safe across EN/AR desktop and mobile, then permits one benign submission."
+    },
+    "tests/e2e/chunk_28_audit_search_retention.spec.ts": {
+      "category": "mocked",
+      "reason": "Real FastAPI audit-context flow with one browser-boundary failure injection proving prior pagination/export authority survives a failed replacement search."
     }
   },
   "mockHelpers": [
@@ -213,6 +217,12 @@
       "title": "CHUNK-28 disposable live credentials are required.",
       "reason": "The live hostile-rejection boundary requires an isolated FastAPI runtime and disposable user.",
       "supersededBy": "The same spec runs for CHUNK-28 against the disposable PostgreSQL, Redis, backend and browser stack."
+    },
+    {
+      "spec": "tests/e2e/chunk_28_audit_search_retention.spec.ts",
+      "title": "Disposable CHUNK-28 credentials are required.",
+      "reason": "The live audit-search retention flow requires two explicitly provisioned audit-authorized identities in an isolated FastAPI runtime.",
+      "supersededBy": "The same spec runs in CHUNK-28 evidence with disposable users, opaque contexts, and a fresh browser profile."
     }
   ]
 }
