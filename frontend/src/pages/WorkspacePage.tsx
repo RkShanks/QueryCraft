@@ -799,7 +799,7 @@ export const WorkspacePage: React.FC = () => {
         ...prev,
         {
           id: turnId,
-          question,
+          question: '',
           isLoading: true,
           connectionName: meta.name,
           databaseType: meta.type,
@@ -821,6 +821,7 @@ export const WorkspacePage: React.FC = () => {
               t.id === turnId
                 ? {
                     ...t,
+                    question,
                     isLoading: false,
                     result,
                     sql: result.generated_sql,
@@ -834,11 +835,13 @@ export const WorkspacePage: React.FC = () => {
         } else if (record && typeof record === 'object' && 'kind' in record && record.kind === 'refine') {
           setLocalTurns((prev) =>
             prev.map((t) =>
-              t.id === turnId ? { ...t, isLoading: false, refinePrompt: data as RefinePrompt } : t
+              t.id === turnId
+                ? { ...t, question, isLoading: false, refinePrompt: data as RefinePrompt }
+                : t
             )
           );
         } else {
-          setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, isLoading: false } : t)));
+          setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, question, isLoading: false } : t)));
         }
       } catch (err: unknown) {
         if (isSessionDeletionError(err) || isRequestAbortedError(err)) {
@@ -864,7 +867,7 @@ export const WorkspacePage: React.FC = () => {
           const resetAt = (apiErr.reset_at as string) || (apiErr.detail as Record<string, unknown>)?.reset_at as string;
           setLocalTurns((prev) =>
             prev.map((t) =>
-              t.id === turnId ? { ...t, isLoading: false, quotaExceeded: { resetAt } } : t
+              t.id === turnId ? { ...t, question, isLoading: false, quotaExceeded: { resetAt } } : t
             )
           );
           return;
@@ -879,13 +882,13 @@ export const WorkspacePage: React.FC = () => {
         if ('violations' in apiErr) {
           setLocalTurns((prev) =>
             prev.map((t) =>
-              t.id === turnId ? { ...t, isLoading: false, evaluatorRejection: apiErr as unknown as EvaluatorRejection } : t
+              t.id === turnId ? { ...t, question, isLoading: false, evaluatorRejection: apiErr as unknown as EvaluatorRejection } : t
             )
           );
         } else if ('kind' in apiErr && apiErr.kind === 'refine') {
           setLocalTurns((prev) =>
             prev.map((t) =>
-              t.id === turnId ? { ...t, isLoading: false, refinePrompt: apiErr as unknown as RefinePrompt } : t
+              t.id === turnId ? { ...t, question, isLoading: false, refinePrompt: apiErr as unknown as RefinePrompt } : t
             )
           );
         } else {
@@ -900,10 +903,10 @@ export const WorkspacePage: React.FC = () => {
             const connErr = mapApiErrorToConnectionErrorKind(apiErr);
             if (connErr) {
               setLocalTurns((prev) =>
-                prev.map((t) => (t.id === turnId ? { ...t, isLoading: false, connectionError: connErr } : t))
+                prev.map((t) => (t.id === turnId ? { ...t, question, isLoading: false, connectionError: connErr } : t))
               );
             } else {
-              setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, isLoading: false } : t)));
+              setLocalTurns((prev) => prev.map((t) => (t.id === turnId ? { ...t, question, isLoading: false } : t)));
             }
           }
         }
@@ -966,7 +969,7 @@ export const WorkspacePage: React.FC = () => {
             <div className="workspace-messages">
             {allTurns.map((turn) => (
               <div key={turn.id} className="workspace-message-pair">
-                {!turn.hostileInputBlocked && <UserBubble text={turn.question} />}
+                {!turn.hostileInputBlocked && turn.question && <UserBubble text={turn.question} />}
                 {turn.isLoading ? (
                   <div
                     className="workspace-assistant-loading"

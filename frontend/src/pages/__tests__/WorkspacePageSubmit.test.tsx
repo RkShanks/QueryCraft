@@ -164,11 +164,11 @@ describe('WorkspacePage first-submit UX', () => {
       expect(loading).toHaveTextContent('Analyzing your question...');
     });
 
-    expect(screen.getByText('How many actors?')).toBeInTheDocument();
-
     await waitFor(() => {
       expect(screen.getByTestId('assistant-response-card')).toBeInTheDocument();
     });
+
+    expect(screen.getByText('How many actors?')).toBeInTheDocument();
 
     expect(screen.queryByText('Start a new conversation')).not.toBeInTheDocument();
 
@@ -408,6 +408,26 @@ describe('WorkspacePage first-submit UX', () => {
   }, 15000);
 
   it('second submit (follow-up) in same session preserves both turns', async () => {
+    let submitCount = 0;
+    server.use(
+      http.post('/api/v1/query/submit', async ({ request }) => {
+        const body = (await request.json()) as { question: string; session_id?: string };
+        submitCount += 1;
+        return HttpResponse.json({
+          kind: 'result',
+          attempt_id: `follow-up-attempt-${submitCount}`,
+          session_id: body.session_id ?? 'follow-up-session',
+          question: body.question,
+          generated_sql: 'SELECT COUNT(*) FROM customer',
+          columns: [{ name: 'count', type: 'bigint' }],
+          rows: [[1]],
+          row_count: 1,
+          attempt_number: 1,
+          is_last_auto_retry: false,
+          accepted_query_id: `follow-up-accepted-${submitCount}`,
+        } satisfies QueryResult);
+      }),
+    );
     renderWithClient(<WorkspacePage />);
 
     await typeAndSubmit('First question?');
