@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { assertReactApplicationStateClean } from './helpers/chunk28ReactState';
 
 test.use({ screenshot: 'off', trace: 'off', video: 'off' });
 
@@ -209,6 +210,7 @@ for (const privacyCase of cases) {
     });
     await expect(page.getByRole('alert').filter({ hasText: privacyCase.message }))
       .toBeVisible({ timeout: 10_000 });
+    await assertReactApplicationStateClean(page, canary, 'hostile rejection');
     await observer.flush();
     expect(observer.responseCanaryObserved, 'sensitive value observed outside the request').toBe(false);
     expect(await browserContainsCanary(page, canary), 'stable hostile state contains sensitive value').toBe(false);
