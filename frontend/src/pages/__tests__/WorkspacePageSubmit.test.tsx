@@ -527,6 +527,7 @@ describe('WorkspacePage submit scenarios', () => {
     fireEvent.click(screen.getByTestId('prompt-send'));
 
     expect(await screen.findByTestId('assistant-response-card')).toBeInTheDocument();
+    expect(screen.getByText('Count customer records')).toBeInTheDocument();
     expect(submitRequestCount).toBe(2);
     expect(document.body.textContent?.includes(canary) ?? false).toBe(false);
   });
