@@ -1303,7 +1303,7 @@ class QueryService:
                 )
 
             try:
-                attempt_obj = await get_attempt(attempt_id, http_session_id, self._redis)
+                attempt_obj = await get_attempt(attempt_id, http_session_id, user_id, self._redis)
                 self._require_attempt_binding(attempt_obj, user_id)
             except AttemptNotFound:
                 raise HTTPException(
@@ -1469,7 +1469,7 @@ class QueryService:
                 )
             deadline.ensure_active()
 
-            prior = await get_attempt(attempt_id, http_session_id, self._redis)
+            prior = await get_attempt(attempt_id, http_session_id, user_id, self._redis)
             timeout_attempt = prior
             connection_id = self._require_attempt_binding(prior, user_id)
             if prior.state != "EXECUTED":

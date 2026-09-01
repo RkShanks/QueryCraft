@@ -202,7 +202,12 @@ async def _build_query_service_for_attempt(
             detail={"error": "attempt_not_active", "message_key": "error.attemptInvalid"},
         )
 
-    attempt = await get_attempt(context.attempt_id, context.http_session_id, redis)
+    attempt = await get_attempt(
+        context.attempt_id,
+        context.http_session_id,
+        context.user_id,
+        redis,
+    )
     if attempt.user_id != context.user_id:
         raise AttemptOwnershipViolation()
     if attempt.chat_session_id is None:
