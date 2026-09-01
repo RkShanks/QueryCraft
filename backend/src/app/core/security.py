@@ -9,6 +9,8 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from redis.exceptions import RedisError
 
+from app.core.exceptions import SessionRecordInvalid
+from app.core.session_record import parse_session_record
 from app.repositories.session_repository import (
     IndexedSessionCreateRequest,
     IndexedSessionRefreshRequest,
@@ -66,21 +68,34 @@ class SessionMiddleware:
     async def _load_session(self, session_id: str) -> dict | None:
         redis = await self._get_redis()
         idle_limit = self.idle_timeout_hours * 3600
-        session_data = await SessionRepository.refresh_indexed_session(
-            redis,
-            IndexedSessionRefreshRequest(
-                session_id=session_id,
-                now=time.time(),
-                ttl_seconds=idle_limit,
-            ),
-        )
-        if session_data is None:
-            return None
-
-        session = json.loads(session_data)
-        if not isinstance(session, dict):
-            raise ValueError("invalid session payload")
-        return session
+        for _load_attempt in range(2):
+            stored_session = await SessionRepository.read_indexed_session(redis, session_id)
+            if stored_session.session_json is None:
+                return None
+            try:
+                parse_session_record(stored_session.session_json, stored_session.indexed_user_id)
+            except SessionRecordInvalid:
+                await SessionRepository.delete_corrupt_indexed_session(
+                    redis,
+                    session_id,
+                    stored_session.session_json,
+                )
+                raise
+            refresh_result = await SessionRepository.refresh_indexed_session_state(
+                redis,
+                IndexedSessionRefreshRequest(
+                    session_id=session_id,
+                    now=time.time(),
+                    ttl_seconds=idle_limit,
+                    expected_session_json=stored_session.session_json,
+                ),
+            )
+            if refresh_result.concurrent_replacement:
+                continue
+            if refresh_result.session_json is None:
+                return None
+            return parse_session_record(refresh_result.session_json, stored_session.indexed_user_id)
+        raise SessionRecordInvalid()
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http" and scope.get("path") in self.OPERATIONAL_PROBE_PATHS:
@@ -104,7 +119,7 @@ class SessionMiddleware:
         if session_id:
             try:
                 session = await self._load_session(session_id)
-            except (RedisError, OSError, TypeError, ValueError):
+            except (RedisError, OSError, SessionRecordInvalid):
                 from starlette.responses import JSONResponse
 
                 response = JSONResponse(

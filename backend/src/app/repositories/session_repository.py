@@ -57,11 +57,31 @@ class IndexedSessionRefreshRequest:
     replacement_session_json: str | None = None
 
 
+@dataclass(frozen=True)
+class IndexedSessionReadResult:
+    """Atomic Redis session payload and reverse-owner snapshot."""
+
+    session_json: str | None
+    indexed_user_id: str | None
+
+
+@dataclass(frozen=True)
+class IndexedSessionRefreshResult:
+    """Atomic refresh outcome with concurrent-replacement classification."""
+
+    session_json: str | None
+    concurrent_replacement: bool
+
+
 _SESSION_SCORE_SCALE = 1_000_000
 
 
 def _session_key(session_id: str) -> str:
     return f"session:{session_id}"
+
+
+def _session_owner_key(session_id: str) -> str:
+    return f"session_owner:{session_id}"
 
 
 def _user_index_key(user_id: str) -> str:
@@ -76,6 +96,7 @@ _CREATE_INDEXED_SESSION_LUA = f"""
 local session_type = redis.call('TYPE', KEYS[1]).ok
 local index_type = redis.call('TYPE', KEYS[2]).ok
 local sequence_type = redis.call('TYPE', KEYS[3]).ok
+local owner_type = redis.call('TYPE', KEYS[4]).ok
 if session_type ~= 'none' and session_type ~= 'string' then
   return redis.error_reply('invalid-session-key-type')
 end
@@ -84,6 +105,9 @@ if index_type ~= 'none' and index_type ~= 'zset' then
 end
 if sequence_type ~= 'none' and sequence_type ~= 'string' then
   return redis.error_reply('invalid-sequence-key-type')
+end
+if owner_type ~= 'none' and owner_type ~= 'string' then
+  return redis.error_reply('invalid-session-owner-key-type')
 end
 
 local created_at = tonumber(ARGV[3])
@@ -104,6 +128,10 @@ if type(requested_payload['user_id']) ~= 'string' or requested_payload['user_id'
 end
 
 local existing_raw = redis.call('GET', KEYS[1])
+local existing_owner = redis.call('GET', KEYS[4])
+if existing_owner ~= false and existing_owner ~= ARGV[6] then
+  return redis.error_reply('session-user-mismatch')
+end
 if existing_raw ~= false then
   local existing_payload = cjson.decode(existing_raw)
   if type(existing_payload['user_id']) == 'string' and existing_payload['user_id'] ~= ARGV[6] then
@@ -145,6 +173,7 @@ local stale_members = redis.call('ZRANGE', KEYS[2], 0, -1)
 for _, member in ipairs(stale_members) do
   if redis.call('EXISTS', 'session:' .. member) == 0 then
     redis.call('ZREM', KEYS[2], member)
+    redis.call('DEL', 'session_owner:' .. member)
   end
 end
 
@@ -163,6 +192,7 @@ else
 end
 
 redis.call('SET', KEYS[1], ARGV[2], 'EX', ttl_seconds)
+redis.call('SET', KEYS[4], ARGV[6], 'EX', ttl_seconds)
 redis.call('EXPIRE', KEYS[2], ttl_seconds)
 redis.call('EXPIRE', KEYS[3], ttl_seconds)
 
@@ -175,6 +205,7 @@ if max_sessions > 0 then
     end
     local victim = victims[1]
     redis.call('DEL', 'session:' .. victim)
+    redis.call('DEL', 'session_owner:' .. victim)
     redis.call('ZREM', KEYS[2], victim)
     evicted = evicted + 1
   end
@@ -190,21 +221,38 @@ return {{sequence, live_count, evicted}}
 
 _DELETE_INDEXED_SESSION_LUA = """
 local session_type = redis.call('TYPE', KEYS[1]).ok
+local owner_type = redis.call('TYPE', KEYS[2]).ok
 if session_type ~= 'none' and session_type ~= 'string' then
   return redis.error_reply('invalid-session-key-type')
 end
+if owner_type ~= 'none' and owner_type ~= 'string' then
+  return redis.error_reply('invalid-session-owner-key-type')
+end
 
 local raw = redis.call('GET', KEYS[1])
-if not raw then
+local owner_user_id = redis.call('GET', KEYS[2])
+if raw == false and owner_user_id == false then
   return {0, false, false, '', ''}
 end
 
-local decoded = cjson.decode(raw)
-local user_id = decoded['user_id']
-local actor_identity = decoded['username']
-if type(user_id) ~= 'string' or user_id == '' then
+local payload_user_id = false
+local actor_identity = ''
+if raw ~= false then
+  local decoded_ok, decoded = pcall(cjson.decode, raw)
+  if decoded_ok and type(decoded) == 'table' then
+    if type(decoded['user_id']) == 'string' and decoded['user_id'] ~= '' then
+      payload_user_id = decoded['user_id']
+    end
+    if type(decoded['username']) == 'string' then
+      actor_identity = decoded['username']
+    end
+  end
+end
+local user_id = owner_user_id ~= false and owner_user_id or payload_user_id
+if user_id == false then
   redis.call('DEL', KEYS[1])
-  return {1, false, false, '', type(actor_identity) == 'string' and actor_identity or ''}
+  redis.call('DEL', KEYS[2])
+  return {raw ~= false and 1 or 0, false, false, '', actor_identity}
 end
 
 local index_key = 'user_sessions:' .. user_id
@@ -227,29 +275,94 @@ if index_type == 'zset' then
   for _, member in ipairs(members) do
     if member ~= ARGV[1] and redis.call('EXISTS', 'session:' .. member) == 0 then
       redis.call('ZREM', index_key, member)
+      redis.call('DEL', 'session_owner:' .. member)
     end
   end
 end
 
 redis.call('DEL', KEYS[1])
+redis.call('DEL', KEYS[2])
 if index_type == 'zset' then
   redis.call('ZREM', index_key, ARGV[1])
   if redis.call('ZCARD', index_key) == 0 then
     redis.call('DEL', index_key)
     redis.call('DEL', sequence_key)
-    return {1, true, true, user_id, type(actor_identity) == 'string' and actor_identity or ''}
+    return {raw ~= false and 1 or 0, true, true, user_id, actor_identity}
   end
 else
   redis.call('DEL', sequence_key)
-  return {1, true, true, user_id, type(actor_identity) == 'string' and actor_identity or ''}
+  return {raw ~= false and 1 or 0, true, true, user_id, actor_identity}
 end
-return {1, true, false, user_id, type(actor_identity) == 'string' and actor_identity or ''}
+return {raw ~= false and 1 or 0, true, false, user_id, actor_identity}
+"""
+
+_DELETE_CORRUPT_INDEXED_SESSION_LUA = """
+local session_type = redis.call('TYPE', KEYS[1]).ok
+local owner_type = redis.call('TYPE', KEYS[2]).ok
+if session_type ~= 'none' and session_type ~= 'string' then
+  return redis.error_reply('invalid-session-key-type')
+end
+if owner_type ~= 'none' and owner_type ~= 'string' then
+  return redis.error_reply('invalid-session-owner-key-type')
+end
+
+local raw = redis.call('GET', KEYS[1])
+if raw == false or raw ~= ARGV[2] then
+  return 0
+end
+local user_id = redis.call('GET', KEYS[2])
+if user_id == false then
+  local decoded_ok, decoded = pcall(cjson.decode, raw)
+  if decoded_ok and type(decoded) == 'table' and type(decoded['user_id']) == 'string' then
+    user_id = decoded['user_id']
+  end
+end
+
+local index_key = nil
+local sequence_key = nil
+local index_type = 'none'
+if user_id ~= false and user_id ~= '' then
+  index_key = 'user_sessions:' .. user_id
+  sequence_key = 'user_sessions_seq:' .. user_id
+  index_type = redis.call('TYPE', index_key).ok
+  local sequence_type = redis.call('TYPE', sequence_key).ok
+  if index_type ~= 'none' and index_type ~= 'zset' then
+    return redis.error_reply('invalid-index-key-type')
+  end
+  if sequence_type ~= 'none' and sequence_type ~= 'string' then
+    return redis.error_reply('invalid-sequence-key-type')
+  end
+end
+
+redis.call('DEL', KEYS[1])
+redis.call('DEL', KEYS[2])
+if index_type == 'zset' then
+  local members = redis.call('ZRANGE', index_key, 0, -1)
+  for _, member in ipairs(members) do
+    if member ~= ARGV[1] and redis.call('EXISTS', 'session:' .. member) == 0 then
+      redis.call('ZREM', index_key, member)
+      redis.call('DEL', 'session_owner:' .. member)
+    end
+  end
+  redis.call('ZREM', index_key, ARGV[1])
+  if redis.call('ZCARD', index_key) == 0 then
+    redis.call('DEL', index_key)
+    redis.call('DEL', sequence_key)
+  end
+elseif sequence_key ~= nil then
+  redis.call('DEL', sequence_key)
+end
+return 1
 """
 
 _REFRESH_INDEXED_SESSION_LUA = f"""
 local session_type = redis.call('TYPE', KEYS[1]).ok
+local owner_type = redis.call('TYPE', KEYS[2]).ok
 if session_type ~= 'none' and session_type ~= 'string' then
   return redis.error_reply('invalid-session-key-type')
+end
+if owner_type ~= 'none' and owner_type ~= 'string' then
+  return redis.error_reply('invalid-session-owner-key-type')
 end
 
 local now = tonumber(ARGV[1])
@@ -264,6 +377,9 @@ end
 local raw = redis.call('GET', KEYS[1])
 if not raw then
   return nil
+end
+if ARGV[4] ~= '' and raw ~= ARGV[4] then
+  return {{2, raw}}
 end
 
 local decoded = cjson.decode(raw)
@@ -283,6 +399,10 @@ if ARGV[5] ~= '' then
   end
 end
 local user_id = decoded['user_id']
+local owner_user_id = redis.call('GET', KEYS[2])
+if owner_user_id ~= false and owner_user_id ~= user_id then
+  return redis.error_reply('session-user-mismatch')
+end
 local last_activity = tonumber(decoded['last_activity'] or '0')
 local index_key = nil
 local sequence_key = nil
@@ -307,12 +427,14 @@ if type(user_id) == 'string' and user_id ~= '' then
 end
 if now - last_activity > ttl_seconds then
   redis.call('DEL', KEYS[1])
+  redis.call('DEL', KEYS[2])
   if index_key ~= nil then
     if index_type == 'zset' then
       local members = redis.call('ZRANGE', index_key, 0, -1)
       for _, member in ipairs(members) do
         if member ~= ARGV[3] and redis.call('EXISTS', 'session:' .. member) == 0 then
           redis.call('ZREM', index_key, member)
+          redis.call('DEL', 'session_owner:' .. member)
         end
       end
       redis.call('ZREM', index_key, ARGV[3])
@@ -362,6 +484,7 @@ decoded['generation'] = tonumber(decoded['generation'] or '0') + 1
 local refreshed = cjson.encode(decoded)
 redis.call('SET', KEYS[1], refreshed, 'EX', ttl_seconds)
 if type(user_id) == 'string' and user_id ~= '' then
+  redis.call('SET', KEYS[2], user_id, 'EX', ttl_seconds)
   local index_key = 'user_sessions:' .. user_id
   local sequence_key = 'user_sessions_seq:' .. user_id
   if redis.call('TYPE', index_key).ok == 'zset' then
@@ -516,6 +639,7 @@ class SessionRepository:
             _session_key(request.session_id),
             _user_index_key(request.user_id),
             _user_sequence_key(request.user_id),
+            _session_owner_key(request.session_id),
             request.session_id,
             request.session_json,
             str(float(request.created_at)),
@@ -523,7 +647,7 @@ class SessionRepository:
             str(int(request.ttl_seconds)),
             request.user_id,
         )
-        sequence, live_count, evicted_count = await redis.eval(_CREATE_INDEXED_SESSION_LUA, 3, *keys_and_args)
+        sequence, live_count, evicted_count = await redis.eval(_CREATE_INDEXED_SESSION_LUA, 4, *keys_and_args)
         return IndexedSessionCreateResult(
             sequence=int(sequence),
             live_indexed_sessions=int(live_count),
@@ -535,8 +659,9 @@ class SessionRepository:
         """Delete a session key and matching user-index member atomically."""
         session_deleted, user_found, index_empty, user_id, actor_identity = await redis.eval(
             _DELETE_INDEXED_SESSION_LUA,
-            1,
+            2,
             _session_key(session_id),
+            _session_owner_key(session_id),
             session_id,
         )
         return IndexedSessionDeleteResult(
@@ -547,19 +672,67 @@ class SessionRepository:
         )
 
     @staticmethod
-    async def refresh_indexed_session(
+    async def read_indexed_session(redis: Redis, session_id: str) -> IndexedSessionReadResult:
+        """Read a session and its reverse-owner key in one Redis command."""
+        session_json, indexed_user_id = await redis.mget(
+            _session_key(session_id),
+            _session_owner_key(session_id),
+        )
+        return IndexedSessionReadResult(
+            session_json=session_json if isinstance(session_json, str) else None,
+            indexed_user_id=indexed_user_id if isinstance(indexed_user_id, str) else None,
+        )
+
+    @staticmethod
+    async def delete_corrupt_indexed_session(
+        redis: Redis,
+        session_id: str,
+        expected_session_json: str,
+    ) -> bool:
+        """Compare-delete corrupt owned state and reconcile its user index."""
+        deleted = await redis.eval(
+            _DELETE_CORRUPT_INDEXED_SESSION_LUA,
+            2,
+            _session_key(session_id),
+            _session_owner_key(session_id),
+            session_id,
+            expected_session_json,
+        )
+        return bool(deleted)
+
+    @staticmethod
+    async def refresh_indexed_session_state(
         redis: Redis,
         request: IndexedSessionRefreshRequest,
-    ) -> str | None:
-        """Refresh session JSON atomically without recreating an evicted key."""
-        refreshed_session = await redis.eval(
+    ) -> IndexedSessionRefreshResult:
+        """Refresh a session while exposing compare-and-set replacement races."""
+        refresh_outcome = await redis.eval(
             _REFRESH_INDEXED_SESSION_LUA,
-            1,
+            2,
             _session_key(request.session_id),
+            _session_owner_key(request.session_id),
             str(float(request.now)),
             str(int(request.ttl_seconds)),
             request.session_id,
             request.expected_session_json or "",
             request.replacement_session_json or "",
         )
-        return refreshed_session if isinstance(refreshed_session, str) else None
+        if isinstance(refresh_outcome, list) and len(refresh_outcome) == 2 and refresh_outcome[0] == 2:
+            replacement_json = refresh_outcome[1]
+            return IndexedSessionRefreshResult(
+                session_json=replacement_json if isinstance(replacement_json, str) else None,
+                concurrent_replacement=True,
+            )
+        return IndexedSessionRefreshResult(
+            session_json=refresh_outcome if isinstance(refresh_outcome, str) else None,
+            concurrent_replacement=False,
+        )
+
+    @staticmethod
+    async def refresh_indexed_session(
+        redis: Redis,
+        request: IndexedSessionRefreshRequest,
+    ) -> str | None:
+        """Refresh session JSON atomically without recreating an evicted key."""
+        refresh_result = await SessionRepository.refresh_indexed_session_state(redis, request)
+        return refresh_result.session_json

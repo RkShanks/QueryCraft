@@ -204,6 +204,13 @@ class SessionInvalidated(SessionError):
         super().__init__("Session not found", message_key="error.notFound")
 
 
+class SessionRecordInvalid(SessionError):
+    """Raised when persisted authentication state fails structural validation."""
+
+    def __init__(self) -> None:
+        super().__init__("invalid session state", message_key="error.service_unavailable")
+
+
 class InvalidCursorError(QueryCraftError):
     """Raised when a pagination cursor cannot be parsed."""
 
