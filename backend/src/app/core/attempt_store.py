@@ -183,6 +183,32 @@ async def _delete_corrupt_attempt(redis: Redis, key: str, expected_attempt_json:
     await redis.eval(_DELETE_CORRUPT_ATTEMPT_LUA, 1, key, expected_attempt_json)
 
 
+def _parse_owned_attempt(raw: str, session_id: str, user_id: str) -> dict[str, Any]:
+    try:
+        parsed_document = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+        raise AttemptContextInvalid from None
+    if not isinstance(parsed_document, dict):
+        raise AttemptContextInvalid()
+    try:
+        ownership = _AttemptOwnership.model_validate(parsed_document)
+    except ValidationError:
+        raise AttemptContextInvalid from None
+    if ownership.session_id != session_id or ownership.user_id != user_id:
+        raise AttemptOwnershipViolation()
+    return parsed_document
+
+
+def _validate_stored_attempt(parsed_document: dict[str, Any], attempt_id: str) -> _StoredAttemptRecord:
+    try:
+        stored_record = _StoredAttemptRecord.model_validate(parsed_document)
+    except ValidationError:
+        raise AttemptContextInvalid from None
+    if stored_record.attempt_id != attempt_id:
+        raise AttemptContextInvalid()
+    return stored_record
+
+
 async def store_attempt(
     attempt: EphemeralAttempt,
     session_id: str,
@@ -191,7 +217,6 @@ async def store_attempt(
 ) -> None:
     """Serialize *attempt* to JSON and store in Redis with TTL."""
     serialized_attempt = attempt.model_dump(mode="json")
-    # Ensure session_id is present for ownership validation
     serialized_attempt["session_id"] = session_id
     serialized_attempt["question"] = _seal_attempt_text(attempt.question, _QUESTION_PURPOSE)
     serialized_attempt["sql"] = _seal_attempt_text(attempt.sql, _SQL_PURPOSE)
@@ -212,32 +237,18 @@ async def get_attempt(
 
     Raises:
         AttemptNotFound: if the key does not exist.
-        AttemptExpired: if the key has expired (handled by Redis, but we
-            treat a missing key after existing as expired).
-        AttemptOwnershipViolation: if the stored session_id doesn't match.
+        AttemptOwnershipViolation: if the stored session or user doesn't match.
+        AttemptContextInvalid: if the owned record is structurally invalid.
     """
     key = f"attempt:{attempt_id}"
     raw = await redis.get(key)
     if raw is None:
         raise AttemptNotFound()
 
-    try:
-        parsed_document = json.loads(raw)
-    except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
-        raise AttemptContextInvalid from None
-    if not isinstance(parsed_document, dict):
-        raise AttemptContextInvalid()
-    try:
-        ownership = _AttemptOwnership.model_validate(parsed_document)
-    except ValidationError:
-        raise AttemptContextInvalid from None
-    if ownership.session_id != session_id or ownership.user_id != user_id:
-        raise AttemptOwnershipViolation()
+    parsed_document = _parse_owned_attempt(raw, session_id, user_id)
 
     try:
-        stored_record = _StoredAttemptRecord.model_validate(parsed_document)
-        if stored_record.attempt_id != attempt_id:
-            raise AttemptContextInvalid()
+        stored_record = _validate_stored_attempt(parsed_document, attempt_id)
         return _restore_attempt_fields(stored_record)
     except (AttemptContextInvalid, ValidationError, json.JSONDecodeError, TypeError):
         await _delete_corrupt_attempt(redis, key, raw)

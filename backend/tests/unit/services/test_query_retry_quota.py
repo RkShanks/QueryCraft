@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -15,6 +16,7 @@ from app.core.attempt_store import EphemeralAttempt, store_attempt
 from app.core.exceptions import (
     AttemptContextInvalid,
     AttemptNotFound,
+    AttemptOwnershipViolation,
     LLMTimeout,
     PolicySchemaConflictError,
     QuotaExceededError,
@@ -37,7 +39,7 @@ ROLE_ID = "660e8400-e29b-41d4-a716-446655440000"
 CONNECTION_ID = "770e8400-e29b-41d4-a716-446655440000"
 CHAT_SESSION_ID = "880e8400-e29b-41d4-a716-446655440000"
 HTTP_SESSION_ID = "retry-quota-session"
-PRIOR_ATTEMPT_ID = "prior-attempt"
+PRIOR_ATTEMPT_ID = "990e8400-e29b-41d4-a716-446655440000"
 RESET_AT = "2026-08-10T00:00:00+00:00"
 
 
@@ -262,12 +264,12 @@ async def test_retry_execution_quota_denial_stops_after_one_provider_call(availa
     assert dependencies.source.calls == 0
 
 
-@pytest.mark.parametrize("scenario", ["inactive", "forged", "wrong_user"])
+@pytest.mark.parametrize("scenario", ["inactive", "forged", "wrong_user", "corrupt"])
 async def test_invalid_or_unowned_retry_attempts_charge_nothing(scenario: str) -> None:
     service, dependencies = _service()
     await _seed_attempt(service)
 
-    with patch("app.services.query_service.AuditService.log", new_callable=AsyncMock):
+    with patch("app.services.query_service.AuditService.log", new_callable=AsyncMock) as audit_log:
         if scenario == "inactive":
             await service._redis.set(f"active_attempt:{HTTP_SESSION_ID}", "replacement-attempt")
             with pytest.raises(HTTPException) as exc_info:
@@ -277,13 +279,22 @@ async def test_invalid_or_unowned_retry_attempts_charge_nothing(scenario: str) -
             await service._redis.set(f"active_attempt:{HTTP_SESSION_ID}", "forged-attempt")
             with pytest.raises(AttemptNotFound):
                 await service.regenerate_query("forged-attempt", HTTP_SESSION_ID, USER_ID)
-        else:
-            with pytest.raises(AttemptContextInvalid):
+        elif scenario == "wrong_user":
+            with pytest.raises(AttemptOwnershipViolation):
                 await service.regenerate_query(
                     PRIOR_ATTEMPT_ID,
                     HTTP_SESSION_ID,
                     "550e8400-e29b-41d4-a716-446655440001",
                 )
+        else:
+            attempt_key = f"attempt:{PRIOR_ATTEMPT_ID}"
+            stored_attempt = json.loads(await dependencies.redis.get(attempt_key))
+            stored_attempt["attempt_number"] = 0
+            await dependencies.redis.set(attempt_key, json.dumps(stored_attempt))
+            with pytest.raises(AttemptContextInvalid):
+                await service.regenerate_query(PRIOR_ATTEMPT_ID, HTTP_SESSION_ID, USER_ID)
+
+        audit_log.assert_not_awaited()
 
     dependencies.quota.check_and_increment.assert_not_awaited()
     assert dependencies.provider.calls == 0

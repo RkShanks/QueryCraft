@@ -216,7 +216,7 @@ class TestQueryServiceReject:
     async def test_reject_raises_on_cross_session(self, service, mock_deps):
         """reject_query with wrong session raises AttemptOwnershipViolation."""
 
-        async def _get_attempt(aid, sid, redis):
+        async def _get_attempt(aid, sid, uid, redis):
             raise AttemptOwnershipViolation()
 
         mock_deps["redis"].get = AsyncMock(return_value="a1")
@@ -229,7 +229,7 @@ class TestQueryServiceReject:
     async def test_reject_raises_on_missing_attempt(self, service, mock_deps):
         """reject_query with nonexistent attempt raises AttemptNotFound."""
 
-        async def _get_attempt(aid, sid, redis):
+        async def _get_attempt(aid, sid, uid, redis):
             raise AttemptNotFound()
 
         mock_deps["redis"].get = AsyncMock(return_value="missing")

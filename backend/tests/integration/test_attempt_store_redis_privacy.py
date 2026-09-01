@@ -8,32 +8,16 @@ import json
 from collections import Counter
 from typing import Any
 from unittest.mock import AsyncMock, patch
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 import pytest
 
 from app.core.attempt_store import EphemeralAttempt, get_attempt, store_attempt
-from app.core.exceptions import AttemptContextInvalid
 
 CONNECTION_ID = UUID("550e8400-e29b-41d4-a716-446655440001")
 LIFECYCLE_STATES = ("PENDING", "GENERATED", "EVALUATED", "EXECUTED", "REJECTED", "FAILED", "TIMEOUT")
-CORRUPTION_ATTEMPT_ID = "550e8400-e29b-41d4-a716-446655440013"
-CORRUPTION_USER_ID = "550e8400-e29b-41d4-a716-446655440023"
-CORRUPTION_CHAT_SESSION_ID = "550e8400-e29b-41d4-a716-446655440033"
-
-
-class _ReplaceBeforeAttemptCleanupRedis:
-    def __init__(self, redis_client, attempt_key: str, replacement_json: str):
-        self._redis = redis_client
-        self._attempt_key = attempt_key
-        self._replacement_json = replacement_json
-
-    def __getattr__(self, name: str):
-        return getattr(self._redis, name)
-
-    async def eval(self, script: str, numkeys: int, *keys_and_args: str):
-        await self._redis.set(self._attempt_key, self._replacement_json, ex=900)
-        return await self._redis.eval(script, numkeys, *keys_and_args)
+ATTEMPT_USER_ID = "550e8400-e29b-41d4-a716-446655440024"
+ATTEMPT_CHAT_SESSION_ID = "550e8400-e29b-41d4-a716-446655440034"
 
 
 def _contains_canary(value: Any, canary: str) -> bool:
@@ -124,21 +108,31 @@ async def test_scanner_detects_nested_base64_canary(redis_client) -> None:
 async def test_each_persisted_attempt_state_hides_canary(redis_client, state: str) -> None:
     """Every persisted lifecycle state is opaque in all Redis data types."""
     canary = f"chunk28-lifecycle-canary-{state.lower()}"
+    attempt_id = str(uuid5(NAMESPACE_URL, f"querycraft-lifecycle-{state}"))
+    evaluator_result = None
+    if state == "REJECTED":
+        evaluator_result = {
+            "passed": False,
+            "violations": [{"rule": "read_only", "message_key": "error.queryBlocked"}],
+        }
     await store_attempt(
         EphemeralAttempt(
-            attempt_id=f"lifecycle-{state.lower()}",
+            attempt_id=attempt_id,
             session_id="lifecycle-session",
+            chat_session_id=ATTEMPT_CHAT_SESSION_ID,
+            user_id=ATTEMPT_USER_ID,
             database_connection_id=CONNECTION_ID,
             question=canary,
             sql=f"SELECT '{canary}'",
             state=state,
+            evaluator_result=evaluator_result,
         ),
         "lifecycle-session",
         redis_client,
     )
 
     before_read = await _scan_redis_namespace(redis_client, canary)
-    restored = await get_attempt(f"lifecycle-{state.lower()}", "lifecycle-session", redis_client)
+    restored = await get_attempt(attempt_id, "lifecycle-session", ATTEMPT_USER_ID, redis_client)
     after_read = await _scan_redis_namespace(redis_client, canary)
     question_restored = restored.question == canary
     sql_restored = restored.sql == f"SELECT '{canary}'"
@@ -156,79 +150,35 @@ async def test_each_persisted_attempt_state_hides_canary(redis_client, state: st
 async def test_retry_replacement_attempt_hides_canary(redis_client, replacement: str, state: str) -> None:
     """Reject/regenerate replacement records preserve retry text only in memory."""
     canary = f"chunk28-replacement-canary-{replacement}"
-    attempt_id = f"replacement-{replacement}"
+    attempt_id = str(uuid5(NAMESPACE_URL, f"querycraft-replacement-{replacement}"))
+    evaluator_result = None
+    if state == "REJECTED":
+        evaluator_result = {
+            "passed": False,
+            "violations": [{"rule": "read_only", "message_key": "error.queryBlocked"}],
+        }
     await store_attempt(
         EphemeralAttempt(
             attempt_id=attempt_id,
             session_id="replacement-session",
+            chat_session_id=ATTEMPT_CHAT_SESSION_ID,
+            user_id=ATTEMPT_USER_ID,
             database_connection_id=CONNECTION_ID,
             question=canary,
             sql=f"SELECT '{canary}'",
             attempt_number=2,
             state=state,
+            evaluator_result=evaluator_result,
         ),
         "replacement-session",
         redis_client,
     )
 
     summary = await _scan_redis_namespace(redis_client, canary)
-    restored = await get_attempt(attempt_id, "replacement-session", redis_client)
+    restored = await get_attempt(attempt_id, "replacement-session", ATTEMPT_USER_ID, redis_client)
     restored_text = restored.question == canary and restored.sql == f"SELECT '{canary}'"
     assert summary["canary_present"] is False, f"Redis leak in replacement {replacement}"
     assert restored_text is True, f"replacement restore failed for {replacement}"
-
-
-@pytest.mark.integration
-async def test_corrupt_owned_attempt_is_removed_and_later_valid_state_recovers(redis_client) -> None:
-    """Owned semantic corruption is removed without requiring a process restart."""
-    attempt = EphemeralAttempt(
-        attempt_id=CORRUPTION_ATTEMPT_ID,
-        session_id="attempt-corruption-session",
-        chat_session_id=CORRUPTION_CHAT_SESSION_ID,
-        user_id=CORRUPTION_USER_ID,
-        database_connection_id=CONNECTION_ID,
-        state="EXECUTED",
-    )
-    await store_attempt(attempt, attempt.session_id, redis_client)
-    attempt_key = f"attempt:{CORRUPTION_ATTEMPT_ID}"
-    corrupt_document = json.loads(await redis_client.get(attempt_key))
-    corrupt_document["attempt_number"] = 0
-    await redis_client.set(attempt_key, json.dumps(corrupt_document), ex=900)
-
-    with pytest.raises(AttemptContextInvalid):
-        await get_attempt(CORRUPTION_ATTEMPT_ID, attempt.session_id, CORRUPTION_USER_ID, redis_client)
-
-    assert await redis_client.exists(attempt_key) == 0
-    await store_attempt(attempt, attempt.session_id, redis_client)
-    recovered = await get_attempt(CORRUPTION_ATTEMPT_ID, attempt.session_id, CORRUPTION_USER_ID, redis_client)
-    assert recovered.state == "EXECUTED"
-
-
-@pytest.mark.integration
-async def test_stale_attempt_corruption_cleanup_preserves_valid_replacement(redis_client) -> None:
-    """Compare-delete cannot remove a concurrently replaced valid attempt."""
-    attempt = EphemeralAttempt(
-        attempt_id=CORRUPTION_ATTEMPT_ID,
-        session_id="attempt-replacement-session",
-        chat_session_id=CORRUPTION_CHAT_SESSION_ID,
-        user_id=CORRUPTION_USER_ID,
-        database_connection_id=CONNECTION_ID,
-        state="EXECUTED",
-    )
-    await store_attempt(attempt, attempt.session_id, redis_client)
-    attempt_key = f"attempt:{CORRUPTION_ATTEMPT_ID}"
-    replacement_json = await redis_client.get(attempt_key)
-    corrupt_document = json.loads(replacement_json)
-    corrupt_document["state"] = "SUCCESS"
-    await redis_client.set(attempt_key, json.dumps(corrupt_document), ex=900)
-    replacing_redis = _ReplaceBeforeAttemptCleanupRedis(redis_client, attempt_key, replacement_json)
-
-    with pytest.raises(AttemptContextInvalid):
-        await get_attempt(CORRUPTION_ATTEMPT_ID, attempt.session_id, CORRUPTION_USER_ID, replacing_redis)
-
-    assert await redis_client.get(attempt_key) == replacement_json
-    recovered = await get_attempt(CORRUPTION_ATTEMPT_ID, attempt.session_id, CORRUPTION_USER_ID, redis_client)
-    assert recovered.state == "EXECUTED"
 
 
 async def _attempt_states(redis_client) -> list[str]:

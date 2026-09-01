@@ -101,13 +101,13 @@ async def test_corrupt_attempt_state_fails_closed_and_is_deleted(corruption: str
     redis.eval = AsyncMock(return_value=1)
 
     with pytest.raises(AttemptContextInvalid) as exc_info:
-        await get_attempt(ATTEMPT_ID, "privacy-session", redis)
+        await get_attempt(ATTEMPT_ID, "privacy-session", USER_ID, redis)
 
     sanitized_error = str(exc_info.value) == str(AttemptContextInvalid())
     assert sanitized_error is True, "corrupt attempt returned a non-constant error"
     expected_cleanup_count = 0 if corruption == "malformed_document" else 1
     assert redis.eval.await_count == expected_cleanup_count
-    redis.delete.assert_not_awaited()
+    redis.delete.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -144,7 +144,7 @@ async def test_invalid_evaluator_structure_is_rejected_before_use(
     redis.eval = AsyncMock(return_value=1)
 
     with pytest.raises(AttemptContextInvalid):
-        await get_attempt(ATTEMPT_ID, "privacy-session", redis)
+        await get_attempt(ATTEMPT_ID, "privacy-session", USER_ID, redis)
 
     redis.eval.assert_awaited_once()
 
@@ -155,8 +155,10 @@ async def test_attempt_text_round_trip_uses_authenticated_markers_and_fresh_nonc
     redis.set = AsyncMock(return_value=True)
     canary = "chunk28-round-trip-canary"
     attempt = EphemeralAttempt(
-        attempt_id="privacy-a3",
+        attempt_id=ATTEMPT_ID,
         session_id="privacy-session",
+        chat_session_id=CHAT_SESSION_ID,
+        user_id=USER_ID,
         database_connection_id=CONNECTION_ID,
         question=canary,
         sql=f"SELECT '{canary}'",
@@ -178,7 +180,7 @@ async def test_attempt_text_round_trip_uses_authenticated_markers_and_fresh_nonc
     assert plaintext_absent is True, "attempt ciphertext exposes the canary"
 
     redis.get = AsyncMock(return_value=first_serialized)
-    restored = await get_attempt("privacy-a3", "privacy-session", redis)
+    restored = await get_attempt(ATTEMPT_ID, "privacy-session", USER_ID, redis)
     question_restored = restored.question == canary
     sql_restored = restored.sql == f"SELECT '{canary}'"
     assert question_restored is True, "question could not be restored for retry"
@@ -192,17 +194,20 @@ async def test_evaluator_payload_round_trips_only_after_authenticated_decryption
     canary = "chunk28-evaluator-round-trip-canary"
     evaluator_result = {"passed": False, "violations": [{"rule": canary, "message_key": canary}]}
     attempt = EphemeralAttempt(
-        attempt_id="privacy-a5",
+        attempt_id=ATTEMPT_ID,
         session_id="privacy-session",
+        chat_session_id=CHAT_SESSION_ID,
+        user_id=USER_ID,
         database_connection_id=CONNECTION_ID,
         question="question",
+        state="REJECTED",
         evaluator_result=evaluator_result,
     )
 
     await store_attempt(attempt, attempt.session_id, redis)
     serialized = redis.set.await_args.args[1]
     redis.get = AsyncMock(return_value=serialized)
-    restored = await get_attempt("privacy-a5", "privacy-session", redis)
+    restored = await get_attempt(ATTEMPT_ID, "privacy-session", USER_ID, redis)
 
     metadata_restored = restored.evaluator_result == evaluator_result
     canary_absent = canary not in serialized
@@ -216,10 +221,13 @@ async def test_evaluator_payload_cannot_retain_user_canary() -> None:
     redis.set = AsyncMock(return_value=True)
     canary = "chunk28-evaluator-canary"
     attempt = EphemeralAttempt(
-        attempt_id="privacy-a4",
+        attempt_id=ATTEMPT_ID,
         session_id="privacy-session",
+        chat_session_id=CHAT_SESSION_ID,
+        user_id=USER_ID,
         database_connection_id=CONNECTION_ID,
         question="question",
+        state="REJECTED",
         evaluator_result={"passed": False, "violations": [{"rule": canary, "message_key": canary}]},
     )
 
