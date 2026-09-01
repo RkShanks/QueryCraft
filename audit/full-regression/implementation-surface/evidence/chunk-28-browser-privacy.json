@@ -5,6 +5,7 @@
   "starting_main": "4d4938e136b117851e6cf2dc3078b1b880a941ab",
   "tested_head": "8066a973a13b6cba4f709c66d80d8d1f50454253",
   "branch": "phase-6/wave-19.28-browser-privacy-closure-merged-main",
+  "pull_request": "https://github.com/RkShanks/QueryCraft/pull/341",
   "prerequisites": {
     "hostile_rejection_envelope_pr_337": "merged",
     "audit_search_retention_pr_338": "merged",

@@ -1,6 +1,6 @@
 # CHUNK-28 merged-main browser privacy closure
 
-Status: **Resolved** for `IS-GAP-047` on tested closure head `8066a973a13b6cba4f709c66d80d8d1f50454253`, based on authoritative main `4d4938e136b117851e6cf2dc3078b1b880a941ab` after merged fixes #337–#340.
+Status: **Resolved** for `IS-GAP-047` on tested closure head `8066a973a13b6cba4f709c66d80d8d1f50454253`, delivered through [#341](https://github.com/RkShanks/QueryCraft/pull/341) from authoritative main `4d4938e136b117851e6cf2dc3078b1b880a941ab` after merged fixes #337–#340.
 
 This report is value-safe. It retains only booleans, counts, categories, statuses, classifications, and commit identifiers. It contains no synthetic value, prompt, credential, cookie, response body, SQL payload, downloaded content, browser profile, screenshot, video, trace, or decrypted application ciphertext.
 
