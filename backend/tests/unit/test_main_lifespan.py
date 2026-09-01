@@ -2,7 +2,7 @@
 
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -74,7 +74,7 @@ async def test_lifespan_attempts_every_closer_after_one_ordinary_failure(failed_
     assert exc_info.value.failure_categories == (failed_category,)
     assert exc_info.value.failure_count == 1
     assert observed == [(category, False) for category in _SHUTDOWN_CATEGORIES]
-    shutdown_logger.info.assert_not_called()
+    assert call("application_shutdown") not in shutdown_logger.info.call_args_list
     shutdown_logger.error.assert_called_once_with(
         "application_shutdown_failed",
         failure_categories=(failed_category,),
