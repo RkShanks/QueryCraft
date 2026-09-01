@@ -28,7 +28,7 @@ from app.services.sso_service import SsoService, SsoValidationError
 
 
 def _atomic_session_eval(*args):
-    return [1, 1, 0] if args[1] == 3 else [1, True, True, "", ""]
+    return [1, 1, 0] if args[1] == 4 else [1, True, True, "", ""]
 
 
 def _make_oidc_provider():

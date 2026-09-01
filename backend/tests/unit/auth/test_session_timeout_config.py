@@ -12,7 +12,7 @@ from app.services.auth_service import AuthService
 
 
 def _atomic_session_eval(*args):
-    return [1, 1, 0] if args[1] == 3 else [0, False, True, "", ""]
+    return [1, 1, 0] if args[1] == 4 else [0, False, True, "", ""]
 
 
 class TestSessionTimeoutConfig:
@@ -53,8 +53,8 @@ class TestSessionTimeoutConfig:
         await service.sign_in("admin", "secret")
 
         create_call = mock_redis.eval.await_args.args
-        assert create_call[1] == 3
-        assert create_call[9] == "7200"
+        assert create_call[1] == 4
+        assert create_call[10] == "7200"
 
     @pytest.mark.asyncio
     async def test_sign_in_uses_default_timeout(self, mock_repo, mock_redis, mock_user):
@@ -67,5 +67,5 @@ class TestSessionTimeoutConfig:
         await service.sign_in("admin", "secret")
 
         create_call = mock_redis.eval.await_args.args
-        assert create_call[1] == 3
-        assert create_call[9] == "28800"
+        assert create_call[1] == 4
+        assert create_call[10] == "28800"

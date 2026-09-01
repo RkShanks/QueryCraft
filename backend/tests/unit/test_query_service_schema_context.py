@@ -257,7 +257,7 @@ async def test_regenerate_query_passes_schema_context():
     orig_get = qs.get_attempt
     orig_delete = qs.delete_attempt
 
-    async def fake_get(attempt_id, session_id, redis):
+    async def fake_get(attempt_id, session_id, user_id, redis):
         return FakeAttempt()
 
     async def fake_delete(attempt_id, redis):

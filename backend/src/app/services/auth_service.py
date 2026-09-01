@@ -12,7 +12,9 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.core.exceptions import SessionRecordInvalid
 from app.core.security import verify_password
+from app.core.session_record import parse_session_record
 from app.db.models.enums import AuditActionType
 from app.repositories.session_repository import (
     IndexedSessionCreateRequest,
@@ -224,13 +226,7 @@ class AuthService:
         every request. Redis stores the refreshed values for consumers, but
         never remains the authorization source after a role changes.
         """
-        raw = await self._redis.get(f"session:{session_id}")
-        if raw is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"error": "unauthorized", "message_key": "error.unauthorized"},
-            )
-        data = json.loads(raw)
+        raw, data = await self._validated_session(session_id)
         user_id = uuid.UUID(data["user_id"])
         user = await self._repo.get_by_id(user_id)
         if user is None:
@@ -261,7 +257,7 @@ class AuthService:
             data["role_id"] = role_id
             data["role_name"] = role_name
             ttl_seconds = self._settings.SESSION_IDLE_TIMEOUT_HOURS * 3600
-            refreshed_session = await SessionRepository.refresh_indexed_session(
+            refresh_result = await SessionRepository.refresh_indexed_session_state(
                 self._redis,
                 IndexedSessionRefreshRequest(
                     session_id=session_id,
@@ -271,7 +267,7 @@ class AuthService:
                     replacement_session_json=json.dumps(data),
                 ),
             )
-            if refreshed_session is None:
+            if refresh_result.session_json is None or refresh_result.concurrent_replacement:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail={"error": "unauthorized", "message_key": "error.unauthorized"},
@@ -285,5 +281,29 @@ class AuthService:
             role_id=role_id,
             role_name=role_name,
             permissions=permissions,
-            auth_provider=data.get("auth_provider", "local"),
+            auth_provider=data["auth_provider"],
         )
+
+    async def _validated_session(self, session_id: str) -> tuple[str, dict]:
+        stored_session = await SessionRepository.read_indexed_session(self._redis, session_id)
+        if stored_session.session_json is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"error": "unauthorized", "message_key": "error.unauthorized"},
+            )
+        try:
+            session = parse_session_record(stored_session.session_json, stored_session.indexed_user_id)
+        except SessionRecordInvalid:
+            await SessionRepository.delete_corrupt_indexed_session(
+                self._redis,
+                session_id,
+                stored_session.session_json,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "service_unavailable",
+                    "message_key": "error.service_unavailable",
+                },
+            ) from None
+        return stored_session.session_json, session

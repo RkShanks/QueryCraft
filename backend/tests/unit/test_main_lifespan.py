@@ -1,11 +1,171 @@
-"""Unit tests for lifespan startup helpers."""
+"""Unit tests for application startup and shutdown."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import _sync_admin_user, _upsert_source_db_connection
+
+_SHUTDOWN_CATEGORIES = (
+    "source_connector",
+    "llm_adapters",
+    "session_middleware",
+    "shared_redis",
+    "database_engine",
+)
+
+
+def _lifespan_settings() -> MagicMock:
+    settings = MagicMock()
+    settings.LOG_LEVEL = "INFO"
+    settings.DATABASE_URL = "postgresql+asyncpg://platform"
+    settings.DB_CREDENTIAL_KEY = "test-key"
+    return settings
+
+
+def _closer(category: str, app, observed: list[tuple[str, bool]], fails: bool = False) -> AsyncMock:
+    async def close() -> None:
+        observed.append((category, app.state.readiness.accepts_traffic))
+        if fails:
+            raise RuntimeError("private shutdown detail")
+
+    return AsyncMock(side_effect=close)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failed_category", _SHUTDOWN_CATEGORIES)
+async def test_lifespan_attempts_every_closer_after_one_ordinary_failure(failed_category):
+    """IS-GAP-021: one failed resource cannot skip later independent cleanup."""
+    from app.main import create_app, lifespan
+
+    app = create_app()
+    observed: list[tuple[str, bool]] = []
+    closers = {
+        category: _closer(category, app, observed, category == failed_category) for category in _SHUTDOWN_CATEGORIES
+    }
+    middleware = SimpleNamespace(aclose=closers["session_middleware"])
+    shutdown_logger = MagicMock()
+
+    with (
+        patch("app.main.get_settings", return_value=_lifespan_settings()),
+        patch("app.main.setup_logging"),
+        patch("app.main.init_redis", new_callable=AsyncMock),
+        patch("app.main._check_alembic_drift", new_callable=AsyncMock),
+        patch("app.main.init_credential_provider"),
+        patch("app.main._upsert_source_db_connection", new_callable=AsyncMock),
+        patch("app.main._sync_admin_user", new_callable=AsyncMock),
+        patch("app.api.v1.query.close_source_db_connector", closers["source_connector"]),
+        patch("app.main.LLMProviderFactory.shutdown_all", closers["llm_adapters"]),
+        patch("app.main.SessionMiddleware._instances", [middleware]),
+        patch("app.main.close_redis", closers["shared_redis"]),
+        patch("app.main.dispose_engine", closers["database_engine"]),
+        patch("app.main.logger", shutdown_logger),
+        pytest.raises(RuntimeError, match="^application shutdown failed$") as exc_info,
+    ):
+        async with lifespan(app):
+            pass
+
+    assert type(exc_info.value).__name__ == "ApplicationShutdownError"
+    assert exc_info.value.failure_categories == (failed_category,)
+    assert exc_info.value.failure_count == 1
+    assert observed == [(category, False) for category in _SHUTDOWN_CATEGORIES]
+    assert call("application_shutdown") not in shutdown_logger.info.call_args_list
+    shutdown_logger.error.assert_called_once_with(
+        "application_shutdown_failed",
+        failure_categories=(failed_category,),
+        failure_count=1,
+    )
+
+
+@pytest.mark.asyncio
+async def test_lifespan_aggregates_simultaneous_failures_and_all_middleware_instances():
+    """Each middleware client is independent and failures retain only safe categories."""
+    from app.main import create_app, lifespan
+
+    app = create_app()
+    observed: list[tuple[str, bool]] = []
+    source_close = _closer("source_connector", app, observed, fails=True)
+    llm_close = _closer("llm_adapters", app, observed)
+    session_closers = [_closer("session_middleware", app, observed, fails=index != 1) for index in range(3)]
+    redis_close = _closer("shared_redis", app, observed)
+    engine_close = _closer("database_engine", app, observed, fails=True)
+    middleware_instances = [SimpleNamespace(aclose=close) for close in session_closers]
+    failed_middleware_instances = middleware_instances[::2]
+    shutdown_logger = MagicMock()
+
+    with (
+        patch("app.main.get_settings", return_value=_lifespan_settings()),
+        patch("app.main.setup_logging"),
+        patch("app.main.init_redis", new_callable=AsyncMock),
+        patch("app.main._check_alembic_drift", new_callable=AsyncMock),
+        patch("app.main.init_credential_provider"),
+        patch("app.main._upsert_source_db_connection", new_callable=AsyncMock),
+        patch("app.main._sync_admin_user", new_callable=AsyncMock),
+        patch("app.api.v1.query.close_source_db_connector", source_close),
+        patch("app.main.LLMProviderFactory.shutdown_all", llm_close),
+        patch("app.main.SessionMiddleware._instances", middleware_instances),
+        patch("app.main.close_redis", redis_close),
+        patch("app.main.dispose_engine", engine_close),
+        patch("app.main.logger", shutdown_logger),
+        pytest.raises(RuntimeError, match="^application shutdown failed$") as exc_info,
+    ):
+        async with lifespan(app):
+            pass
+
+    expected_failures = (
+        "source_connector",
+        "session_middleware",
+        "session_middleware",
+        "database_engine",
+    )
+    assert exc_info.value.failure_categories == expected_failures
+    assert exc_info.value.failure_count == 4
+    assert observed == [
+        ("source_connector", False),
+        ("llm_adapters", False),
+        ("session_middleware", False),
+        ("session_middleware", False),
+        ("session_middleware", False),
+        ("shared_redis", False),
+        ("database_engine", False),
+    ]
+    assert middleware_instances == failed_middleware_instances
+    shutdown_logger.error.assert_called_once_with(
+        "application_shutdown_failed",
+        failure_categories=expected_failures,
+        failure_count=4,
+    )
+
+
+@pytest.mark.asyncio
+async def test_lifespan_does_not_suppress_cancellation():
+    """Cancellation remains process control and stops ordinary cleanup aggregation."""
+    from app.main import create_app, lifespan
+
+    app = create_app()
+    source_close = AsyncMock(side_effect=asyncio.CancelledError)
+    llm_close = AsyncMock()
+
+    with (
+        patch("app.main.get_settings", return_value=_lifespan_settings()),
+        patch("app.main.setup_logging"),
+        patch("app.main.init_redis", new_callable=AsyncMock),
+        patch("app.main._check_alembic_drift", new_callable=AsyncMock),
+        patch("app.main.init_credential_provider"),
+        patch("app.main._upsert_source_db_connection", new_callable=AsyncMock),
+        patch("app.main._sync_admin_user", new_callable=AsyncMock),
+        patch("app.api.v1.query.close_source_db_connector", source_close),
+        patch("app.main.LLMProviderFactory.shutdown_all", llm_close),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        async with lifespan(app):
+            pass
+
+    source_close.assert_awaited_once_with()
+    llm_close.assert_not_awaited()
 
 
 @pytest.mark.asyncio

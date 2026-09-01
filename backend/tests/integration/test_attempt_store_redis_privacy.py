@@ -8,7 +8,7 @@ import json
 from collections import Counter
 from typing import Any
 from unittest.mock import AsyncMock, patch
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 import pytest
 
@@ -16,6 +16,8 @@ from app.core.attempt_store import EphemeralAttempt, get_attempt, store_attempt
 
 CONNECTION_ID = UUID("550e8400-e29b-41d4-a716-446655440001")
 LIFECYCLE_STATES = ("PENDING", "GENERATED", "EVALUATED", "EXECUTED", "REJECTED", "FAILED", "TIMEOUT")
+ATTEMPT_USER_ID = "550e8400-e29b-41d4-a716-446655440024"
+ATTEMPT_CHAT_SESSION_ID = "550e8400-e29b-41d4-a716-446655440034"
 
 
 def _contains_canary(value: Any, canary: str) -> bool:
@@ -106,21 +108,31 @@ async def test_scanner_detects_nested_base64_canary(redis_client) -> None:
 async def test_each_persisted_attempt_state_hides_canary(redis_client, state: str) -> None:
     """Every persisted lifecycle state is opaque in all Redis data types."""
     canary = f"chunk28-lifecycle-canary-{state.lower()}"
+    attempt_id = str(uuid5(NAMESPACE_URL, f"querycraft-lifecycle-{state}"))
+    evaluator_result = None
+    if state == "REJECTED":
+        evaluator_result = {
+            "passed": False,
+            "violations": [{"rule": "read_only", "message_key": "error.queryBlocked"}],
+        }
     await store_attempt(
         EphemeralAttempt(
-            attempt_id=f"lifecycle-{state.lower()}",
+            attempt_id=attempt_id,
             session_id="lifecycle-session",
+            chat_session_id=ATTEMPT_CHAT_SESSION_ID,
+            user_id=ATTEMPT_USER_ID,
             database_connection_id=CONNECTION_ID,
             question=canary,
             sql=f"SELECT '{canary}'",
             state=state,
+            evaluator_result=evaluator_result,
         ),
         "lifecycle-session",
         redis_client,
     )
 
     before_read = await _scan_redis_namespace(redis_client, canary)
-    restored = await get_attempt(f"lifecycle-{state.lower()}", "lifecycle-session", redis_client)
+    restored = await get_attempt(attempt_id, "lifecycle-session", ATTEMPT_USER_ID, redis_client)
     after_read = await _scan_redis_namespace(redis_client, canary)
     question_restored = restored.question == canary
     sql_restored = restored.sql == f"SELECT '{canary}'"
@@ -138,23 +150,32 @@ async def test_each_persisted_attempt_state_hides_canary(redis_client, state: st
 async def test_retry_replacement_attempt_hides_canary(redis_client, replacement: str, state: str) -> None:
     """Reject/regenerate replacement records preserve retry text only in memory."""
     canary = f"chunk28-replacement-canary-{replacement}"
-    attempt_id = f"replacement-{replacement}"
+    attempt_id = str(uuid5(NAMESPACE_URL, f"querycraft-replacement-{replacement}"))
+    evaluator_result = None
+    if state == "REJECTED":
+        evaluator_result = {
+            "passed": False,
+            "violations": [{"rule": "read_only", "message_key": "error.queryBlocked"}],
+        }
     await store_attempt(
         EphemeralAttempt(
             attempt_id=attempt_id,
             session_id="replacement-session",
+            chat_session_id=ATTEMPT_CHAT_SESSION_ID,
+            user_id=ATTEMPT_USER_ID,
             database_connection_id=CONNECTION_ID,
             question=canary,
             sql=f"SELECT '{canary}'",
             attempt_number=2,
             state=state,
+            evaluator_result=evaluator_result,
         ),
         "replacement-session",
         redis_client,
     )
 
     summary = await _scan_redis_namespace(redis_client, canary)
-    restored = await get_attempt(attempt_id, "replacement-session", redis_client)
+    restored = await get_attempt(attempt_id, "replacement-session", ATTEMPT_USER_ID, redis_client)
     restored_text = restored.question == canary and restored.sql == f"SELECT '{canary}'"
     assert summary["canary_present"] is False, f"Redis leak in replacement {replacement}"
     assert restored_text is True, f"replacement restore failed for {replacement}"

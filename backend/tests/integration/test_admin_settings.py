@@ -39,15 +39,17 @@ class TestAdminSettingsRouter:
                 "display_name": "Regular User",
                 "role": "user",
                 "role_id": "00000000-0000-0000-0000-000000000002",
+                "role_name": "User",
                 "permissions": ["query.submit"],
                 "auth_provider": "oidc",
+                "subject_id": "regular_user",
             },
         )
         app_client.cookies.set(SessionMiddleware.COOKIE_NAME, session_id)
 
         response = await app_client.get("/api/v1/admin/settings")
         app_client.cookies.clear()
-        await redis_client.delete(f"session:{session_id}")
+        await SessionMiddleware.delete_session(redis_client, session_id)
         assert response.status_code == 403
 
     @pytest.mark.asyncio

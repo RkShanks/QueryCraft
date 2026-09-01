@@ -63,8 +63,8 @@
       "Needs Decision": 1
     },
     "status": {
-      "Pending": 1,
-      "Resolved": 41,
+      "Pending": 0,
+      "Resolved": 42,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 3,
@@ -498,6 +498,15 @@
       "tested_head": "8066a973a13b6cba4f709c66d80d8d1f50454253",
       "pull_request": "https://github.com/RkShanks/QueryCraft/pull/341",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-28-browser-privacy.json"
+    },
+    "CHUNK-29": {
+      "gap_id": "IS-GAP-021",
+      "status": "Resolved",
+      "branch": "phase-6/wave-19.29-cleanup-cache-recovery",
+      "starting_main": "f96e6747154129ace3da95c34efaf80ee8f6ffa1",
+      "tested_head": "47c5662db951de70c2d2c7c2fd9aeb8010ef682c",
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/342",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-29-cleanup-cache.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -1589,11 +1598,23 @@
       ],
       "owner": "Backend Implementer; Kimi/GLM",
       "chunk": "CHUNK-29",
-      "status": "Pending",
+      "status": "Resolved",
+      "resolution": {
+        "fix_pr": "https://github.com/RkShanks/QueryCraft/pull/342",
+        "tested_product_commit": "47c5662db951de70c2d2c7c2fd9aeb8010ef682c",
+        "evidence": "audit/full-regression/implementation-surface/evidence/chunk-29-cleanup-cache.json"
+      },
       "source_refs": [
         "backend/src/app/main.py::lifespan",
+        "backend/src/app/llm/factory.py::LLMProviderFactory.shutdown_all",
+        "backend/src/app/core/security.py::SessionMiddleware",
+        "backend/src/app/services/auth_service.py::AuthService.get_me",
+        "backend/src/app/core/session_record.py::SessionRecord",
+        "backend/src/app/repositories/session_repository.py::SessionRepository",
         "backend/src/app/core/attempt_store.py::get_attempt",
         "backend/tests/unit/test_main_lifespan.py",
+        "backend/tests/unit/test_session_middleware_redis_lifecycle.py",
+        "backend/tests/unit/test_auth_service.py",
         "backend/tests/unit/core/test_attempt_store.py"
       ]
     },

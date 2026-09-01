@@ -3,7 +3,7 @@
 import os
 
 from app.llm.anthropic_adapter import AnthropicAdapter
-from app.llm.exceptions import LLMConfigurationError
+from app.llm.exceptions import LLMConfigurationError, LLMShutdownError
 from app.llm.gemini_adapter import GeminiAdapter
 from app.llm.ollama_adapter import OllamaAdapter
 from app.llm.openai_adapter import OpenAIAdapter
@@ -92,8 +92,16 @@ class LLMProviderFactory:
 
     @classmethod
     async def shutdown_all(cls) -> None:
-        """Close every cached adapter and clear the cache."""
-        for adapter in list(cls._cache.values()):
-            if hasattr(adapter, "aclose"):
-                await adapter.aclose()
-        cls._cache.clear()
+        """Attempt every cached adapter close and retain failures for retry."""
+        failure_count = 0
+        for cache_key, adapter in list(cls._cache.items()):
+            try:
+                if hasattr(adapter, "aclose"):
+                    await adapter.aclose()
+            except Exception:
+                failure_count += 1
+                continue
+            if cls._cache.get(cache_key) is adapter:
+                cls._cache.pop(cache_key)
+        if failure_count:
+            raise LLMShutdownError(failure_count) from None

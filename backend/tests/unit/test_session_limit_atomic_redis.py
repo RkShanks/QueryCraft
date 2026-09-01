@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from redis.exceptions import ResponseError
 
 from app.core.dependencies import require_active_user
+from app.core.exceptions import SessionRecordInvalid
 from app.core.security import SessionMiddleware
 from app.db.models.role import Role
 from app.db.models.user import User
@@ -39,6 +40,22 @@ def _admin_user(user_id: str | uuid.UUID) -> User:
     )
     user.role_obj = Role(id=ROLE_ID, name="Admin", permissions=["query.submit"])
     return user
+
+
+def _valid_redis_session(user_id: str, *, username: str = "admin") -> dict:
+    return {
+        "user_id": user_id,
+        "username": username,
+        "display_name": "Admin",
+        "role": "admin",
+        "role_id": str(ROLE_ID),
+        "role_name": "Admin",
+        "permissions": ["query.submit"],
+        "auth_provider": "local",
+        "subject_id": username,
+        "created_at": 1000.0,
+        "last_activity": 1000.0,
+    }
 
 
 async def _indexed_members(redis_client, user_id: str) -> list[str]:
@@ -117,6 +134,13 @@ class _EvictAfterReadRedis:
             await self._redis.zrem(self._index_key, self._session_id)
         return session_json
 
+    async def mget(self, *keys: str):
+        session_values = await self._redis.mget(*keys)
+        if self._session_key in keys and session_values[keys.index(self._session_key)] is not None:
+            await self._redis.delete(self._session_key)
+            await self._redis.zrem(self._index_key, self._session_id)
+        return session_values
+
     async def eval(self, script: str, numkeys: int, *keys_and_args: str):
         if keys_and_args and keys_and_args[0] == self._session_key:
             await self._redis.delete(self._session_key)
@@ -132,7 +156,7 @@ async def test_session_refresh_does_not_resurrect_concurrently_evicted_session(r
     session_id = "old-refresh-session"
     await redis_client.set(
         f"session:{session_id}",
-        json.dumps({"user_id": user_id, "last_activity": 1000.0}),
+        json.dumps(_valid_redis_session(user_id)),
         ex=3600,
     )
     await redis_client.zadd(f"user_sessions:{user_id}", {session_id: 1000.0})
@@ -197,20 +221,17 @@ async def test_refresh_cas_mismatch_does_not_overwrite_newer_session_payload(red
     """A stale read-modify-write refresh must not replace newer session JSON."""
     user_id = "550e8400-e29b-41d4-a716-446655440445"
     session_id = "cas-refresh-session"
-    stale_payload = json.dumps(
-        {"user_id": user_id, "last_activity": 1000.0, "permissions": ["query.submit"], "generation": 1}
-    )
+    stale_payload = json.dumps({**_valid_redis_session(user_id), "permissions": ["query.submit"], "generation": 1})
     current_payload = json.dumps(
         {
-            "user_id": user_id,
+            **_valid_redis_session(user_id),
             "last_activity": 1002.0,
             "permissions": ["admin.roles.manage"],
             "generation": 2,
-            "auth_provider": "local",
         }
     )
     stale_replacement = json.dumps(
-        {"user_id": user_id, "last_activity": 1000.0, "permissions": ["query.history.view"], "generation": 1}
+        {**_valid_redis_session(user_id), "permissions": ["query.history.view"], "generation": 1}
     )
     await redis_client.set(f"session:{session_id}", current_payload, ex=3600)
     await redis_client.zadd(f"user_sessions:{user_id}", {session_id: 1000.0})
@@ -229,10 +250,10 @@ async def test_refresh_cas_mismatch_does_not_overwrite_newer_session_payload(red
 
     refreshed_payload = json.loads(refreshed)
     stored_payload = json.loads(await redis_client.get(f"session:{session_id}"))
-    assert refreshed_payload["permissions"] == ["query.history.view"]
-    assert stored_payload["permissions"] == ["query.history.view"]
+    assert refreshed_payload["permissions"] == ["admin.roles.manage"]
+    assert stored_payload["permissions"] == ["admin.roles.manage"]
     assert stored_payload["auth_provider"] == "local"
-    assert stored_payload["generation"] == 3
+    assert stored_payload["generation"] == 2
 
 
 @pytest.mark.integration
@@ -504,7 +525,7 @@ async def test_idle_expiry_removes_session_index_and_sequence(redis_client):
     session_id = "idle-expired-session"
     await redis_client.set(
         f"session:{session_id}",
-        json.dumps({"user_id": user_id, "last_activity": 10.0}),
+        json.dumps({**_valid_redis_session(user_id), "last_activity": 10.0}),
         ex=3600,
     )
     await redis_client.zadd(f"user_sessions:{user_id}", {session_id: 10.0})
@@ -530,7 +551,7 @@ async def test_idle_expiry_prunes_stale_members_before_empty_index_cleanup(redis
     stale_session_id = "idle-expired-stale-member"
     await redis_client.set(
         f"session:{session_id}",
-        json.dumps({"user_id": user_id, "last_activity": 10.0}),
+        json.dumps({**_valid_redis_session(user_id), "last_activity": 10.0}),
         ex=3600,
     )
     await redis_client.zadd(
@@ -600,3 +621,101 @@ async def test_local_login_failed_audit_rolls_back_session_index_and_sequence(re
     assert await redis_client.exists(f"session:{session_id}") == 0
     assert await redis_client.exists(f"user_sessions:{user_id}") == 0
     assert await redis_client.exists(f"user_sessions_seq:{user_id}") == 0
+
+
+async def _create_full_indexed_session(redis_client, user_id: str, session_id: str, session_json: str) -> None:
+    await session_repository.SessionRepository.create_indexed_session(
+        redis_client,
+        session_repository.IndexedSessionCreateRequest(
+            user_id=user_id,
+            session_id=session_id,
+            session_json=session_json,
+            created_at=1000.0,
+            max_sessions=5,
+            ttl_seconds=3600,
+        ),
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_corrupt_owned_session_removes_record_index_and_owner_then_recovers(redis_client):
+    """Owned corruption is removed atomically and a later valid record can load."""
+    user_id = "550e8400-e29b-41d4-a716-446655440996"
+    session_id = "corrupt-owned-session"
+    valid_session_json = json.dumps(_valid_redis_session(user_id))
+    await _create_full_indexed_session(redis_client, user_id, session_id, valid_session_json)
+    await redis_client.set(
+        f"session:{session_id}",
+        json.dumps({key: val for key, val in _valid_redis_session(user_id).items() if key != "user_id"}),
+        ex=3600,
+    )
+    middleware = SessionMiddleware(lambda *_: None, "redis://unused", idle_timeout_hours=1)
+    middleware._redis = redis_client
+
+    with pytest.raises(SessionRecordInvalid) as exc_info:
+        await middleware._load_session(session_id)
+
+    assert type(exc_info.value).__name__ == "SessionRecordInvalid"
+    assert str(exc_info.value) == "invalid session state"
+    assert await redis_client.exists(f"session:{session_id}") == 0
+    assert await redis_client.exists(f"session_owner:{session_id}") == 0
+    assert await redis_client.exists(f"user_sessions:{user_id}") == 0
+    assert await redis_client.exists(f"user_sessions_seq:{user_id}") == 0
+
+    await _create_full_indexed_session(redis_client, user_id, session_id, valid_session_json)
+    with patch("app.core.security.time.time", return_value=1001.0):
+        loaded_session = await middleware._load_session(session_id)
+    assert loaded_session is not None
+    assert loaded_session["user_id"] == user_id
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_corrupt_session_owner_relationship_reconciles_authoritative_index(redis_client):
+    """Cleanup follows the immutable reverse owner rather than a corrupt payload claim."""
+    indexed_user_id = "550e8400-e29b-41d4-a716-446655440997"
+    corrupt_user_id = "550e8400-e29b-41d4-a716-446655440998"
+    session_id = "corrupt-owner-relationship"
+    valid_session_json = json.dumps(_valid_redis_session(indexed_user_id))
+    await _create_full_indexed_session(redis_client, indexed_user_id, session_id, valid_session_json)
+    await redis_client.set(
+        f"session:{session_id}",
+        json.dumps(_valid_redis_session(corrupt_user_id)),
+        ex=3600,
+    )
+    middleware = SessionMiddleware(lambda *_: None, "redis://unused", idle_timeout_hours=1)
+    middleware._redis = redis_client
+
+    with pytest.raises(SessionRecordInvalid) as exc_info:
+        await middleware._load_session(session_id)
+
+    assert type(exc_info.value).__name__ == "SessionRecordInvalid"
+    assert await redis_client.exists(f"session:{session_id}") == 0
+    assert await _indexed_members(redis_client, indexed_user_id) == []
+    assert await _indexed_members(redis_client, corrupt_user_id) == []
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_stale_corruption_cleanup_preserves_valid_session_replacement(redis_client):
+    """Compare-and-delete cannot remove a newer valid session generation."""
+    user_id = "550e8400-e29b-41d4-a716-446655440999"
+    session_id = "corrupt-replacement-race"
+    initial_json = json.dumps(_valid_redis_session(user_id))
+    await _create_full_indexed_session(redis_client, user_id, session_id, initial_json)
+    corrupt_json = json.dumps({**_valid_redis_session(user_id), "permissions": {}})
+    await redis_client.set(f"session:{session_id}", corrupt_json, ex=3600)
+    replacement_json = json.dumps({**_valid_redis_session(user_id), "username": "replacement"})
+    await redis_client.set(f"session:{session_id}", replacement_json, ex=3600)
+
+    deleted = await session_repository.SessionRepository.delete_corrupt_indexed_session(
+        redis_client,
+        session_id,
+        corrupt_json,
+    )
+
+    assert deleted is False
+    assert await redis_client.get(f"session:{session_id}") == replacement_json
+    assert await _indexed_members(redis_client, user_id) == [session_id]
+    assert await redis_client.get(f"session_owner:{session_id}") == user_id

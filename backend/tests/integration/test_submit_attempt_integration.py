@@ -54,7 +54,9 @@ class TestSubmitAttemptIntegration:
 
         # Verify attempt in Redis with EXECUTED state and in-memory text restore.
         http_session_id = authenticated_client.cookies.get("session_id")
-        attempt = await get_attempt(attempt_id, http_session_id, redis_client)
+        session_json = await redis_client.get(f"session:{http_session_id}")
+        user_id = json.loads(session_json)["user_id"]
+        attempt = await get_attempt(attempt_id, http_session_id, user_id, redis_client)
         assert attempt.state == "EXECUTED"
         assert attempt.sql == "SELECT 1 AS id"
         assert attempt.question == "What is one?"

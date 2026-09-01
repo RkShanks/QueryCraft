@@ -7,10 +7,10 @@ validation (Inv 6) and 15-minute TTL.
 import binascii
 import json
 import uuid
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from cryptography.exceptions import InvalidTag
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, ValidationError, field_validator, model_validator
 from redis.asyncio import Redis
 
 from app.core.config import get_settings
@@ -38,8 +38,85 @@ class EphemeralAttempt(BaseModel):
     expires_at: str = ""
 
 
+NonEmptyString = Annotated[str, Field(min_length=1)]
+AttemptState = Literal["PENDING", "GENERATED", "EVALUATED", "EXECUTED", "REJECTED", "TIMEOUT", "FAILED"]
+
+
+def _require_canonical_uuid(identifier: str) -> str:
+    try:
+        parsed_identifier = uuid.UUID(identifier)
+    except ValueError:
+        raise ValueError("identifier must be a UUID") from None
+    if str(parsed_identifier) != identifier:
+        raise ValueError("identifier must be canonical")
+    return identifier
+
+
+class _AttemptOwnership(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True)
+
+    session_id: NonEmptyString
+    user_id: NonEmptyString
+
+    @field_validator("user_id")
+    @classmethod
+    def canonical_user_id(cls, identifier: str) -> str:
+        return _require_canonical_uuid(identifier)
+
+
+class _StoredAttemptRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    attempt_id: NonEmptyString
+    session_id: NonEmptyString
+    chat_session_id: NonEmptyString | None
+    user_id: NonEmptyString
+    database_connection_id: NonEmptyString
+    sql: str
+    question: str
+    attempt_number: Annotated[StrictInt, Field(ge=1)]
+    state: AttemptState
+    llm_provider: str
+    evaluator_result: str | None
+    created_at: str
+    expires_at: str
+
+    @field_validator("attempt_id", "user_id", "database_connection_id")
+    @classmethod
+    def canonical_required_uuid(cls, identifier: str) -> str:
+        return _require_canonical_uuid(identifier)
+
+    @field_validator("chat_session_id")
+    @classmethod
+    def canonical_optional_uuid(cls, identifier: str | None) -> str | None:
+        return _require_canonical_uuid(identifier) if identifier is not None else None
+
+    @model_validator(mode="after")
+    def evaluator_matches_state(self) -> "_StoredAttemptRecord":
+        evaluator_present = self.evaluator_result is not None
+        if evaluator_present != (self.state == "REJECTED"):
+            raise ValueError("evaluator result does not match attempt state")
+        return self
+
+
+class _EvaluatorViolation(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    rule: NonEmptyString
+    message_key: NonEmptyString
+
+
+class _StoredEvaluatorResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    passed: Literal[False]
+    violations: Annotated[list[_EvaluatorViolation], Field(min_length=1)]
+
+
 class _EncryptedAttemptText(BaseModel):
     """Authenticated payload for user-controlled attempt text."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     purpose: Literal["attempt.question", "attempt.sql", "attempt.evaluator_result"]
     version: Literal[1]
@@ -53,6 +130,18 @@ _EVALUATOR_PURPOSE = "attempt.evaluator_result"
 
 # Default TTL from settings; can be overridden in tests.
 _ATTEMPT_TTL_SECONDS = 15 * 60
+
+_DELETE_CORRUPT_ATTEMPT_LUA = """
+local key_type = redis.call('TYPE', KEYS[1]).ok
+if key_type ~= 'none' and key_type ~= 'string' then
+  return redis.error_reply('invalid-attempt-key-type')
+end
+local current = redis.call('GET', KEYS[1])
+if current == false or current ~= ARGV[1] then
+  return 0
+end
+return redis.call('DEL', KEYS[1])
+"""
 
 
 def _seal_attempt_text(plaintext: str, purpose: str) -> str:
@@ -79,16 +168,45 @@ def _open_attempt_text(ciphertext: Any, purpose: str) -> str:
     return payload.text
 
 
-def _restore_attempt_fields(parsed_document: dict[str, Any]) -> EphemeralAttempt:
+def _restore_attempt_fields(stored_record: _StoredAttemptRecord) -> EphemeralAttempt:
+    parsed_document = stored_record.model_dump()
     parsed_document["question"] = _open_attempt_text(parsed_document.get("question"), _QUESTION_PURPOSE)
     parsed_document["sql"] = _open_attempt_text(parsed_document.get("sql"), _SQL_PURPOSE)
     if parsed_document.get("evaluator_result") is not None:
         evaluator_json = _open_attempt_text(parsed_document["evaluator_result"], _EVALUATOR_PURPOSE)
-        evaluator_result = json.loads(evaluator_json)
-        if not isinstance(evaluator_result, dict):
-            raise AttemptContextInvalid()
-        parsed_document["evaluator_result"] = evaluator_result
+        evaluator_result = _StoredEvaluatorResult.model_validate_json(evaluator_json)
+        parsed_document["evaluator_result"] = evaluator_result.model_dump()
     return EphemeralAttempt.model_validate(parsed_document)
+
+
+async def _delete_corrupt_attempt(redis: Redis, key: str, expected_attempt_json: str) -> None:
+    await redis.eval(_DELETE_CORRUPT_ATTEMPT_LUA, 1, key, expected_attempt_json)
+
+
+def _parse_owned_attempt(raw: str, session_id: str, user_id: str) -> dict[str, Any]:
+    try:
+        parsed_document = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
+        raise AttemptContextInvalid from None
+    if not isinstance(parsed_document, dict):
+        raise AttemptContextInvalid()
+    try:
+        ownership = _AttemptOwnership.model_validate(parsed_document)
+    except ValidationError:
+        raise AttemptContextInvalid from None
+    if ownership.session_id != session_id or ownership.user_id != user_id:
+        raise AttemptOwnershipViolation()
+    return parsed_document
+
+
+def _validate_stored_attempt(parsed_document: dict[str, Any], attempt_id: str) -> _StoredAttemptRecord:
+    try:
+        stored_record = _StoredAttemptRecord.model_validate(parsed_document)
+    except ValidationError:
+        raise AttemptContextInvalid from None
+    if stored_record.attempt_id != attempt_id:
+        raise AttemptContextInvalid()
+    return stored_record
 
 
 async def store_attempt(
@@ -99,7 +217,6 @@ async def store_attempt(
 ) -> None:
     """Serialize *attempt* to JSON and store in Redis with TTL."""
     serialized_attempt = attempt.model_dump(mode="json")
-    # Ensure session_id is present for ownership validation
     serialized_attempt["session_id"] = session_id
     serialized_attempt["question"] = _seal_attempt_text(attempt.question, _QUESTION_PURPOSE)
     serialized_attempt["sql"] = _seal_attempt_text(attempt.sql, _SQL_PURPOSE)
@@ -113,37 +230,28 @@ async def store_attempt(
 async def get_attempt(
     attempt_id: str,
     session_id: str,
+    user_id: str,
     redis: Redis,
 ) -> EphemeralAttempt:
     """Retrieve an attempt from Redis and validate session ownership.
 
     Raises:
         AttemptNotFound: if the key does not exist.
-        AttemptExpired: if the key has expired (handled by Redis, but we
-            treat a missing key after existing as expired).
-        AttemptOwnershipViolation: if the stored session_id doesn't match.
+        AttemptOwnershipViolation: if the stored session or user doesn't match.
+        AttemptContextInvalid: if the owned record is structurally invalid.
     """
     key = f"attempt:{attempt_id}"
     raw = await redis.get(key)
     if raw is None:
         raise AttemptNotFound()
 
-    try:
-        parsed_document = json.loads(raw)
-    except (json.JSONDecodeError, UnicodeDecodeError, TypeError):
-        await redis.delete(key)
-        raise AttemptContextInvalid from None
-    if not isinstance(parsed_document, dict):
-        await redis.delete(key)
-        raise AttemptContextInvalid()
-    stored_session = parsed_document.get("session_id")
-    if stored_session != session_id:
-        raise AttemptOwnershipViolation()
+    parsed_document = _parse_owned_attempt(raw, session_id, user_id)
 
     try:
-        return _restore_attempt_fields(parsed_document)
+        stored_record = _validate_stored_attempt(parsed_document, attempt_id)
+        return _restore_attempt_fields(stored_record)
     except (AttemptContextInvalid, ValidationError, json.JSONDecodeError, TypeError):
-        await redis.delete(key)
+        await _delete_corrupt_attempt(redis, key, raw)
         raise AttemptContextInvalid from None
 
 

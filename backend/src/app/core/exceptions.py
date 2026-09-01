@@ -36,6 +36,15 @@ class ConfigurationError(QueryCraftError):
         self.detail = detail
 
 
+class ApplicationShutdownError(RuntimeError):
+    """Raised after application shutdown attempts every independent closer."""
+
+    def __init__(self, failure_categories: tuple[str, ...]) -> None:
+        super().__init__("application shutdown failed")
+        self.failure_categories = failure_categories
+        self.failure_count = len(failure_categories)
+
+
 class LLMError(QueryCraftError):
     """Base for LLM adapter errors."""
 
@@ -68,6 +77,14 @@ class LLMConfigurationError(LLMError):
 
     def __init__(self, message: str = "LLM configuration error"):
         super().__init__(message, message_key="error.llmUnavailable")
+
+
+class LLMShutdownError(RuntimeError):
+    """Raised after every cached LLM adapter receives a close attempt."""
+
+    def __init__(self, failure_count: int) -> None:
+        super().__init__("llm adapter shutdown failed")
+        self.failure_count = failure_count
 
 
 # ─── Evaluator ───
@@ -153,7 +170,7 @@ class AttemptExpired(AttemptError):
 
 
 class AttemptOwnershipViolation(AttemptError):
-    """Raised when session_id doesn't match the attempt's owner."""
+    """Raised when the session or user doesn't match the attempt's owner."""
 
     def __init__(self) -> None:
         super().__init__("No active query result to act on", message_key="error.attemptInvalid")
@@ -185,6 +202,13 @@ class SessionInvalidated(SessionError):
 
     def __init__(self) -> None:
         super().__init__("Session not found", message_key="error.notFound")
+
+
+class SessionRecordInvalid(SessionError):
+    """Raised when persisted authentication state fails structural validation."""
+
+    def __init__(self) -> None:
+        super().__init__("invalid session state", message_key="error.service_unavailable")
 
 
 class InvalidCursorError(QueryCraftError):
