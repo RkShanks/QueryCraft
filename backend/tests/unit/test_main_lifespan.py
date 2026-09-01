@@ -9,7 +9,6 @@ from httpx import ASGITransport, AsyncClient
 
 from app.main import _sync_admin_user, _upsert_source_db_connection
 
-
 _SHUTDOWN_CATEGORIES = (
     "source_connector",
     "llm_adapters",
@@ -45,8 +44,7 @@ async def test_lifespan_attempts_every_closer_after_one_ordinary_failure(failed_
     app = create_app()
     observed: list[tuple[str, bool]] = []
     closers = {
-        category: _closer(category, app, observed, category == failed_category)
-        for category in _SHUTDOWN_CATEGORIES
+        category: _closer(category, app, observed, category == failed_category) for category in _SHUTDOWN_CATEGORIES
     }
     middleware = SimpleNamespace(aclose=closers["session_middleware"])
     shutdown_logger = MagicMock()
@@ -91,10 +89,7 @@ async def test_lifespan_aggregates_simultaneous_failures_and_all_middleware_inst
     observed: list[tuple[str, bool]] = []
     source_close = _closer("source_connector", app, observed, fails=True)
     llm_close = _closer("llm_adapters", app, observed)
-    session_closers = [
-        _closer("session_middleware", app, observed, fails=index != 1)
-        for index in range(3)
-    ]
+    session_closers = [_closer("session_middleware", app, observed, fails=index != 1) for index in range(3)]
     redis_close = _closer("shared_redis", app, observed)
     engine_close = _closer("database_engine", app, observed, fails=True)
     middleware_instances = [SimpleNamespace(aclose=close) for close in session_closers]

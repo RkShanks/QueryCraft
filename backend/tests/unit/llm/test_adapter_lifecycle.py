@@ -144,7 +144,5 @@ async def test_factory_shutdown_failure_does_not_skip_later_cached_adapters(fail
         adapter.should_fail = False
     await LLMProviderFactory.shutdown_all()
 
-    assert [adapter.close_count for adapter in adapters] == [
-        2 if index in failed_indexes else 1 for index in range(3)
-    ]
+    assert [adapter.close_count for adapter in adapters] == [2 if index in failed_indexes else 1 for index in range(3)]
     assert LLMProviderFactory._cache == {}

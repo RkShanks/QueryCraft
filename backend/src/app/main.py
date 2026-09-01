@@ -1,5 +1,6 @@
 """FastAPI application factory and lifespan event handler."""
 
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request, status
@@ -27,7 +28,11 @@ _SHARED_REDIS_CATEGORY = "shared_redis"
 _DATABASE_ENGINE_CATEGORY = "database_engine"
 
 
-async def _close_resource(category, closer, failure_categories: list[str]) -> bool:
+async def _close_resource(
+    category: str,
+    closer: Callable[[], Awaitable[None]],
+    failure_categories: list[str],
+) -> bool:
     try:
         await closer()
     except Exception:
