@@ -47,12 +47,13 @@ class SourceDBConnector:
             return
 
         owner_loop = self._pool_loop
-        self._pool = None
-        self._pool_loop = None
         if owner_loop is not None and owner_loop is not asyncio.get_running_loop():
             pool.terminate()
-            return
-        await pool.close()
+        else:
+            await pool.close()
+        if self._pool is pool:
+            self._pool = None
+            self._pool_loop = None
 
     @asynccontextmanager
     async def get_connection(self) -> "asyncpg.Connection":
