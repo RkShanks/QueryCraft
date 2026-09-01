@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from redis.exceptions import ResponseError
 
 from app.core.dependencies import require_active_user
+from app.core.exceptions import SessionRecordInvalid
 from app.core.security import SessionMiddleware
 from app.db.models.role import Role
 from app.db.models.user import User
@@ -133,6 +134,13 @@ class _EvictAfterReadRedis:
             await self._redis.zrem(self._index_key, self._session_id)
         return session_json
 
+    async def mget(self, *keys: str):
+        session_values = await self._redis.mget(*keys)
+        if self._session_key in keys and session_values[keys.index(self._session_key)] is not None:
+            await self._redis.delete(self._session_key)
+            await self._redis.zrem(self._index_key, self._session_id)
+        return session_values
+
     async def eval(self, script: str, numkeys: int, *keys_and_args: str):
         if keys_and_args and keys_and_args[0] == self._session_key:
             await self._redis.delete(self._session_key)
@@ -148,7 +156,7 @@ async def test_session_refresh_does_not_resurrect_concurrently_evicted_session(r
     session_id = "old-refresh-session"
     await redis_client.set(
         f"session:{session_id}",
-        json.dumps({"user_id": user_id, "last_activity": 1000.0}),
+        json.dumps(_valid_redis_session(user_id)),
         ex=3600,
     )
     await redis_client.zadd(f"user_sessions:{user_id}", {session_id: 1000.0})
@@ -213,20 +221,17 @@ async def test_refresh_cas_mismatch_does_not_overwrite_newer_session_payload(red
     """A stale read-modify-write refresh must not replace newer session JSON."""
     user_id = "550e8400-e29b-41d4-a716-446655440445"
     session_id = "cas-refresh-session"
-    stale_payload = json.dumps(
-        {"user_id": user_id, "last_activity": 1000.0, "permissions": ["query.submit"], "generation": 1}
-    )
+    stale_payload = json.dumps({**_valid_redis_session(user_id), "permissions": ["query.submit"], "generation": 1})
     current_payload = json.dumps(
         {
-            "user_id": user_id,
+            **_valid_redis_session(user_id),
             "last_activity": 1002.0,
             "permissions": ["admin.roles.manage"],
             "generation": 2,
-            "auth_provider": "local",
         }
     )
     stale_replacement = json.dumps(
-        {"user_id": user_id, "last_activity": 1000.0, "permissions": ["query.history.view"], "generation": 1}
+        {**_valid_redis_session(user_id), "permissions": ["query.history.view"], "generation": 1}
     )
     await redis_client.set(f"session:{session_id}", current_payload, ex=3600)
     await redis_client.zadd(f"user_sessions:{user_id}", {session_id: 1000.0})
@@ -245,10 +250,10 @@ async def test_refresh_cas_mismatch_does_not_overwrite_newer_session_payload(red
 
     refreshed_payload = json.loads(refreshed)
     stored_payload = json.loads(await redis_client.get(f"session:{session_id}"))
-    assert refreshed_payload["permissions"] == ["query.history.view"]
-    assert stored_payload["permissions"] == ["query.history.view"]
+    assert refreshed_payload["permissions"] == ["admin.roles.manage"]
+    assert stored_payload["permissions"] == ["admin.roles.manage"]
     assert stored_payload["auth_provider"] == "local"
-    assert stored_payload["generation"] == 3
+    assert stored_payload["generation"] == 2
 
 
 @pytest.mark.integration
@@ -520,7 +525,7 @@ async def test_idle_expiry_removes_session_index_and_sequence(redis_client):
     session_id = "idle-expired-session"
     await redis_client.set(
         f"session:{session_id}",
-        json.dumps({"user_id": user_id, "last_activity": 10.0}),
+        json.dumps({**_valid_redis_session(user_id), "last_activity": 10.0}),
         ex=3600,
     )
     await redis_client.zadd(f"user_sessions:{user_id}", {session_id: 10.0})
@@ -546,7 +551,7 @@ async def test_idle_expiry_prunes_stale_members_before_empty_index_cleanup(redis
     stale_session_id = "idle-expired-stale-member"
     await redis_client.set(
         f"session:{session_id}",
-        json.dumps({"user_id": user_id, "last_activity": 10.0}),
+        json.dumps({**_valid_redis_session(user_id), "last_activity": 10.0}),
         ex=3600,
     )
     await redis_client.zadd(
@@ -648,7 +653,7 @@ async def test_corrupt_owned_session_removes_record_index_and_owner_then_recover
     middleware = SessionMiddleware(lambda *_: None, "redis://unused", idle_timeout_hours=1)
     middleware._redis = redis_client
 
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(SessionRecordInvalid) as exc_info:
         await middleware._load_session(session_id)
 
     assert type(exc_info.value).__name__ == "SessionRecordInvalid"
@@ -682,7 +687,7 @@ async def test_corrupt_session_owner_relationship_reconciles_authoritative_index
     middleware = SessionMiddleware(lambda *_: None, "redis://unused", idle_timeout_hours=1)
     middleware._redis = redis_client
 
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(SessionRecordInvalid) as exc_info:
         await middleware._load_session(session_id)
 
     assert type(exc_info.value).__name__ == "SessionRecordInvalid"

@@ -34,10 +34,12 @@ def _valid_session_record() -> dict:
 
 
 def _atomic_session_eval(*args):
-    if args[1] == 3:
+    if args[1] == 4:
         return [1, 1, 0]
-    if len(args) > 7 and args[7]:
-        return args[7]
+    if len(args) == 9:
+        return args[8] or args[7]
+    if len(args) == 6:
+        return 1
     return [0, False, True, "", ""]
 
 
@@ -57,6 +59,7 @@ class TestAuthService:
         redis.set = AsyncMock()
         redis.delete = AsyncMock()
         redis.get = AsyncMock(return_value=None)
+        redis.mget = AsyncMock(return_value=[None, None])
         redis.eval = AsyncMock(side_effect=_atomic_session_eval)
         return redis
 
@@ -93,7 +96,7 @@ class TestAuthService:
 
     @pytest.mark.asyncio
     async def test_get_me_returns_profile(self, service, mock_redis, mock_repo):
-        mock_redis.get.return_value = json.dumps(_valid_session_record())
+        mock_redis.mget.return_value = [json.dumps(_valid_session_record()), _USER_ID]
         mock_repo.get_by_id.return_value = MagicMock(
             id="550e8400-e29b-41d4-a716-446655440000",
             username="admin",
@@ -106,7 +109,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_get_me_stale_session_deletes_key_and_raises_401(self, service, mock_redis, mock_repo):
         """Stale Redis session (user_id absent from DB) deletes key and raises 401."""
-        mock_redis.get.return_value = json.dumps(_valid_session_record())
+        mock_redis.mget.return_value = [json.dumps(_valid_session_record()), _USER_ID]
         mock_repo.get_by_id.return_value = None
         with pytest.raises(Exception) as exc_info:
             await service.get_me("session-123")
@@ -133,7 +136,7 @@ class TestAuthService:
         session_document,
     ):
         raw_session = json.dumps(session_document)
-        mock_redis.get.side_effect = lambda key: _USER_ID if key.startswith("session_owner:") else raw_session
+        mock_redis.mget.return_value = [raw_session, _USER_ID]
 
         with pytest.raises(HTTPException) as exc_info:
             await service.get_me("session-123")
@@ -149,7 +152,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_get_me_redis_outage_is_not_cleaned_as_corruption(self, service, mock_redis):
         dependency_error = RedisConnectionError("private dependency location")
-        mock_redis.get.side_effect = dependency_error
+        mock_redis.mget.side_effect = dependency_error
 
         with pytest.raises(RedisConnectionError):
             await service.get_me("session-123")
@@ -160,14 +163,10 @@ class TestAuthService:
     async def test_get_me_recovers_after_later_valid_session(self, service, mock_redis, mock_repo):
         corrupt_session = json.dumps({**_valid_session_record(), "permissions": {}})
         valid_session = json.dumps(_valid_session_record())
-        session_values = iter([corrupt_session, valid_session])
-
-        def read_session(key: str):
-            if key.startswith("session_owner:"):
-                return _USER_ID
-            return next(session_values)
-
-        mock_redis.get.side_effect = read_session
+        mock_redis.mget.side_effect = [
+            [corrupt_session, _USER_ID],
+            [valid_session, _USER_ID],
+        ]
         mock_repo.get_by_id.return_value = MagicMock(
             id=_USER_ID,
             username="admin",

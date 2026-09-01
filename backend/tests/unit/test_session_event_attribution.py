@@ -58,10 +58,17 @@ class TestSessionEventAttribution:
             "username": "admin",
             "display_name": "Admin",
             "role": "admin",
+            "role_id": "550e8400-e29b-41d4-a716-446655441000",
+            "role_name": "Admin",
+            "permissions": ["query.submit"],
+            "auth_provider": "local",
+            "subject_id": "admin",
             "created_at": now,
             "last_activity": now,
         }
-        mock_redis.eval.return_value = json.dumps(session_data)
+        session_json = json.dumps(session_data)
+        mock_redis.mget.return_value = [session_json, user_id]
+        mock_redis.eval.return_value = session_json
         session_middleware._get_redis = AsyncMock(return_value=mock_redis)
 
         bound_vars = {}

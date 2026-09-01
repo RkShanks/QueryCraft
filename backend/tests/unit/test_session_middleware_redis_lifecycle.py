@@ -75,6 +75,7 @@ def _make_scope_with_cookie():
 async def test_session_middleware_caches_redis_client():
     """Redis.from_url should be called exactly once for many requests."""
     mock_redis = MagicMock()
+    mock_redis.mget = AsyncMock(return_value=[None, None])
     mock_redis.eval = AsyncMock(return_value=None)
 
     call_count = 0
@@ -101,6 +102,7 @@ async def test_session_middleware_caches_redis_client():
 async def test_session_middleware_aclose_closes_redis():
     """Calling aclose() should close the cached Redis client."""
     mock_redis = MagicMock()
+    mock_redis.mget = AsyncMock(return_value=[None, None])
     mock_redis.eval = AsyncMock(return_value=None)
     mock_redis.aclose = AsyncMock()
 
@@ -153,8 +155,10 @@ async def test_invalid_session_dependency_state_returns_sanitized_503(redis_resp
     downstream_app = AsyncMock()
     mock_redis = MagicMock()
     if isinstance(redis_response, BaseException):
+        mock_redis.mget = AsyncMock(side_effect=redis_response)
         mock_redis.eval = AsyncMock(side_effect=redis_response)
     else:
+        mock_redis.mget = AsyncMock(return_value=[redis_response, None])
         mock_redis.eval = AsyncMock(return_value=redis_response)
     middleware = SessionMiddleware(
         app=downstream_app,
@@ -189,9 +193,7 @@ async def test_semantically_corrupt_session_returns_sanitized_503(session_docume
     downstream_app = AsyncMock()
     raw_session = json.dumps(session_document)
     mock_redis = MagicMock()
-    mock_redis.get = AsyncMock(
-        side_effect=lambda key: _USER_ID if key.startswith("session_owner:") else raw_session
-    )
+    mock_redis.mget = AsyncMock(return_value=[raw_session, _USER_ID])
     mock_redis.eval = AsyncMock(return_value=raw_session)
     middleware = SessionMiddleware(
         app=downstream_app,
@@ -225,7 +227,7 @@ async def test_session_redis_outage_does_not_run_corruption_cleanup():
     downstream_app = AsyncMock()
     mock_redis = MagicMock()
     dependency_error = RedisConnectionError("private dependency location")
-    mock_redis.get = AsyncMock(side_effect=dependency_error)
+    mock_redis.mget = AsyncMock(side_effect=dependency_error)
     mock_redis.eval = AsyncMock(side_effect=dependency_error)
     middleware = SessionMiddleware(
         app=downstream_app,

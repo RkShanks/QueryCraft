@@ -13,6 +13,7 @@ from app.core.exceptions import SessionRecordInvalid
 from app.core.session_record import parse_session_record
 from app.repositories.session_repository import (
     IndexedSessionCreateRequest,
+    IndexedSessionReadResult,
     IndexedSessionRefreshRequest,
     SessionRepository,
 )
@@ -69,18 +70,9 @@ class SessionMiddleware:
         redis = await self._get_redis()
         idle_limit = self.idle_timeout_hours * 3600
         for _load_attempt in range(2):
-            stored_session = await SessionRepository.read_indexed_session(redis, session_id)
-            if stored_session.session_json is None:
+            stored_session = await self._read_validated_session(redis, session_id)
+            if stored_session is None:
                 return None
-            try:
-                parse_session_record(stored_session.session_json, stored_session.indexed_user_id)
-            except SessionRecordInvalid:
-                await SessionRepository.delete_corrupt_indexed_session(
-                    redis,
-                    session_id,
-                    stored_session.session_json,
-                )
-                raise
             refresh_result = await SessionRepository.refresh_indexed_session_state(
                 redis,
                 IndexedSessionRefreshRequest(
@@ -96,6 +88,21 @@ class SessionMiddleware:
                 return None
             return parse_session_record(refresh_result.session_json, stored_session.indexed_user_id)
         raise SessionRecordInvalid()
+
+    async def _read_validated_session(self, redis, session_id: str) -> IndexedSessionReadResult | None:
+        stored_session = await SessionRepository.read_indexed_session(redis, session_id)
+        if stored_session.session_json is None:
+            return None
+        try:
+            parse_session_record(stored_session.session_json, stored_session.indexed_user_id)
+        except SessionRecordInvalid:
+            await SessionRepository.delete_corrupt_indexed_session(
+                redis,
+                session_id,
+                stored_session.session_json,
+            )
+            raise
+        return stored_session
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http" and scope.get("path") in self.OPERATIONAL_PROBE_PATHS:
