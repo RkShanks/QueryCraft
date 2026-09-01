@@ -1,8 +1,12 @@
+/* eslint-disable local/no-inline-user-strings */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { I18nextProvider } from 'react-i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Link, MemoryRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import i18n from '../../i18n';
 import { DocumentTitle } from './DocumentTitle';
+
+vi.unmock('react-i18next');
 
 const titleCases = [
   ['/sign-in', 'Sign In', 'تسجيل الدخول'],
@@ -48,9 +52,11 @@ describe('DocumentTitle', () => {
     async (path, language, expectedTitle) => {
       await i18n.changeLanguage(language);
       render(
-        <MemoryRouter initialEntries={[path]}>
-          <DocumentTitle />
-        </MemoryRouter>
+        <I18nextProvider i18n={i18n}>
+          <MemoryRouter initialEntries={[path]}>
+            <DocumentTitle />
+          </MemoryRouter>
+        </I18nextProvider>
       );
 
       await waitFor(() => expect(document.title).toBe(expectedTitle));
@@ -60,10 +66,12 @@ describe('DocumentTitle', () => {
 
   it('tracks links, back, forward, and active-locale changes without a stale title', async () => {
     render(
-      <MemoryRouter initialEntries={['/sign-in']}>
-        <DocumentTitle />
-        <NavigationProbe />
-      </MemoryRouter>
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={['/sign-in']}>
+          <DocumentTitle />
+          <NavigationProbe />
+        </MemoryRouter>
+      </I18nextProvider>
     );
 
     await waitFor(() => expect(document.title).toBe('Sign In | QueryCraft'));
@@ -86,12 +94,14 @@ describe('DocumentTitle', () => {
 
   it('replaces an unknown-route title after a redirect', async () => {
     render(
-      <MemoryRouter initialEntries={['/unknown']}>
-        <DocumentTitle />
-        <Routes>
-          <Route path="/unknown" element={<Navigate to="/history" replace />} />
-        </Routes>
-      </MemoryRouter>
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={['/unknown']}>
+          <DocumentTitle />
+          <Routes>
+            <Route path="/unknown" element={<Navigate to="/history" replace />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nextProvider>
     );
 
     await waitFor(() => expect(document.title).toBe('Query History | QueryCraft'));
