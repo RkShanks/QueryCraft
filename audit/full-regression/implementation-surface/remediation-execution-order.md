@@ -370,6 +370,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Browser/live:** None.
 - **Isolation/cleanup/evidence:** Disposable Redis and mocked closers; `evidence/chunk-29-cleanup-cache.json`.
 - **Stop conditions:** Cleanup aggregation would hide a security failure or typed corruption semantics require a broader API change.
+- **Progress:** Resolved on tested product head `47c5662db951de70c2d2c7c2fd9aeb8010ef682c` in [#342](https://github.com/RkShanks/QueryCraft/pull/342) from authoritative main `f96e6747154129ace3da95c34efaf80ee8f6ffa1`. Five single shutdown-failure positions, cached-adapter first/middle/last/multiple failures, three middleware instances and a four-failure aggregate all attempted later ordinary closers with readiness already shutting down, constant typed outcomes, truthful cache retention and no false success event. One strict session parser covers both middleware and `/auth/me`; one ownership-first attempt parser protects decryption and deletion. Valid-JSON semantic matrices, dependency separation, atomic index reconciliation, stale compare-delete replacement races and no-restart recovery passed against disposable Redis. Focused/compatibility/integration/XP-013 gates, 2,390 backend foundation tests, Ruff/format/diff-check and all guards passed. See [Markdown](evidence/chunk-29-cleanup-cache.md) and [JSON](evidence/chunk-29-cleanup-cache.json) evidence.
 
 ## CHUNK-30 — deployed headers and documentation exposure [NEEDS DECISION]
 
@@ -395,4 +396,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-28` have completed their available closure. `CHUNK-24` remains Partial pending an approved provider environment, and `CHUNK-25` remains Partial pending vendor-published fixture checksums. `CHUNK-29` is now unblocked but has explicitly not started. Decision-gated CHUNK-30/31 remain blocked until their explicit decisions are recorded.
+`CHUNK-01` through `CHUNK-29` have completed their available implementation closure. `CHUNK-24` remains Partial pending an approved provider environment, and `CHUNK-25` remains Partial pending vendor-published fixture checksums. No Pending gap remains. Decision-gated CHUNK-30/31 remain blocked until their explicit decisions are recorded; T-905 and freeze work have not started.

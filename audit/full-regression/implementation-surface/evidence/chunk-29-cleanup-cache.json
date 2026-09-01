@@ -1,0 +1,322 @@
+{
+  "schema_version": "1.0",
+  "chunk": "CHUNK-29",
+  "gap_ids": [
+    "IS-GAP-021",
+    "BE-GAP-021"
+  ],
+  "status": "resolved_on_tested_product_head",
+  "branch": "phase-6/wave-19.29-cleanup-cache-recovery",
+  "pull_request": 342,
+  "starting_main": "f96e6747154129ace3da95c34efaf80ee8f6ffa1",
+  "tested_product_head": "47c5662db951de70c2d2c7c2fd9aeb8010ef682c",
+  "tdd": {
+    "shutdown_cleanup": {
+      "red_shas": [
+        "86ffd0f",
+        "873f5a7",
+        "1312dd4",
+        "73a06fd"
+      ],
+      "green_shas": [
+        "b11daea",
+        "87f58f7"
+      ],
+      "refactor_sha": "a5f6b82",
+      "red_status": "expected_failures_reproduced",
+      "green_status": "pass"
+    },
+    "session_corruption": {
+      "red_sha": "c335582",
+      "green_sha": "fabda26",
+      "refactor_sha": "92e8eaf",
+      "red_failed": 20,
+      "red_passed": 17,
+      "real_redis_red_failed": 3,
+      "green_status": "pass"
+    },
+    "attempt_corruption": {
+      "red_sha": "f5f36dc",
+      "green_sha": "976cdad",
+      "refactor_sha": "62246e5",
+      "compatibility_sha": "bbe1ef7",
+      "red_failed": 44,
+      "red_passed": 15,
+      "red_skipped": 2,
+      "green_status": "pass"
+    },
+    "ownership_documentation_sha": "47c5662db951de70c2d2c7c2fd9aeb8010ef682c"
+  },
+  "shutdown_failure_matrix": {
+    "single_failure_categories": [
+      "source_connector",
+      "llm_adapters",
+      "session_middleware",
+      "shared_redis",
+      "database_engine"
+    ],
+    "single_failure_cases": 5,
+    "top_level_closers_attempted_per_case": 5,
+    "top_level_failure_count_per_case": 1,
+    "readiness_shutdown_before_closers": true,
+    "llm_adapter_positions": [
+      "first",
+      "middle",
+      "last",
+      "first_and_last"
+    ],
+    "llm_adapters_per_case": 3,
+    "llm_failure_counts": [
+      1,
+      1,
+      1,
+      2
+    ],
+    "middleware_positions": [
+      "first",
+      "last"
+    ],
+    "middleware_instances_attempted": 3,
+    "simultaneous_failure_categories": [
+      "source_connector",
+      "session_middleware",
+      "session_middleware",
+      "database_engine"
+    ],
+    "simultaneous_failure_count": 4,
+    "simultaneous_closer_attempts": 7,
+    "ordinary_exception_aggregate": "ApplicationShutdownError",
+    "llm_exception_aggregate": "LLMShutdownError",
+    "success_event_on_failure": false,
+    "constant_failure_log": "application_shutdown_failed",
+    "failed_state_retained_for_retry": true,
+    "successful_state_cleared": true,
+    "repeated_cleanup": "pass",
+    "cancellation_suppressed": false
+  },
+  "session_consumer_inventory": {
+    "consumer_count": 2,
+    "consumers": [
+      "SessionMiddleware",
+      "AuthService.get_me"
+    ],
+    "shared_validation_boundary": "SessionRecord",
+    "producer_compatibility": [
+      "local_authentication",
+      "sso_authentication"
+    ]
+  },
+  "session_corruption_matrix": {
+    "middleware_case_count": 18,
+    "middleware_categories": [
+      "missing_user_id",
+      "invalid_user_uuid",
+      "noncanonical_user_uuid",
+      "username_wrong_type",
+      "permissions_wrong_container",
+      "permissions_invalid_nested_value",
+      "role_wrong_type",
+      "role_id_wrong_type",
+      "role_name_wrong_type",
+      "provider_wrong_type",
+      "provider_unknown",
+      "created_timestamp_wrong_type",
+      "activity_timestamp_null",
+      "session_index_owner_mismatch",
+      "unknown_field",
+      "document_list",
+      "document_scalar",
+      "document_null"
+    ],
+    "auth_me_case_count": 3,
+    "auth_me_categories": [
+      "user_id_null",
+      "permissions_invalid_nested_value",
+      "unknown_field"
+    ],
+    "redis_dependency_categories": [
+      "connection",
+      "timeout",
+      "command"
+    ],
+    "middleware_public_status": 503,
+    "auth_me_public_status": 503,
+    "public_error_classification": "service_unavailable",
+    "typed_internal_classification": "SessionRecordInvalid",
+    "corruption_cleanup": "atomic_compare_delete_with_index_reconciliation",
+    "dependency_cleanup": "not_attempted",
+    "invalid_state_authenticated": false,
+    "replacement_race": "valid_replacement_preserved",
+    "later_valid_recovery": "pass"
+  },
+  "attempt_corruption_matrix": {
+    "semantic_field_case_count": 16,
+    "semantic_field_categories": [
+      "attempt_uuid_invalid",
+      "attempt_uuid_noncanonical",
+      "attempt_key_mismatch",
+      "user_uuid_invalid",
+      "user_uuid_noncanonical",
+      "chat_session_uuid_invalid",
+      "source_context_uuid_invalid",
+      "state_unknown",
+      "attempt_number_zero",
+      "attempt_number_float",
+      "attempt_number_string",
+      "question_wrong_shape",
+      "sql_wrong_shape",
+      "provider_wrong_shape",
+      "created_timestamp_wrong_shape",
+      "expiry_timestamp_wrong_shape"
+    ],
+    "missing_field_case_count": 11,
+    "missing_field_categories": [
+      "attempt_id",
+      "user_id",
+      "source_context",
+      "state",
+      "attempt_number",
+      "question",
+      "sql",
+      "evaluator_result",
+      "provider",
+      "created_timestamp",
+      "expiry_timestamp"
+    ],
+    "encrypted_field_case_count": 7,
+    "encrypted_field_categories": [
+      "legacy_plaintext",
+      "authentication_tag",
+      "wrong_key",
+      "unsupported_version",
+      "wrong_purpose",
+      "malformed_ciphertext",
+      "malformed_document"
+    ],
+    "evaluator_structure_case_count": 7,
+    "evaluator_structure_categories": [
+      "missing_fields",
+      "passed_wrong_type",
+      "passed_true",
+      "violations_wrong_container",
+      "violation_missing_fields",
+      "violation_nested_value",
+      "violation_unknown_field"
+    ],
+    "ownership_categories": [
+      "wrong_session",
+      "wrong_user"
+    ],
+    "ownership_checked_before_decryption": true,
+    "unowned_cleanup": "not_attempted",
+    "owned_corruption_cleanup": "atomic_compare_delete",
+    "replacement_race": "valid_replacement_preserved",
+    "later_valid_recovery": "pass",
+    "typed_internal_classification": "AttemptContextInvalid",
+    "public_error_classification": "attempt_invalid",
+    "public_status": 422,
+    "fallback_source_calls": 0,
+    "provider_calls": 0,
+    "source_execution_calls": 0,
+    "history_writes": 0,
+    "success_audits": 0,
+    "automatic_retries": 0
+  },
+  "atomic_replacement_races": {
+    "session_cases": 1,
+    "session_valid_replacements_deleted": 0,
+    "attempt_cases": 1,
+    "attempt_valid_replacements_deleted": 0,
+    "status": "pass"
+  },
+  "gates": {
+    "focused_changed_paths": {
+      "passed": 192,
+      "deselected": 11,
+      "failed": 0
+    },
+    "compatibility_fixture_rerun": {
+      "passed": 114,
+      "skipped": 8,
+      "failed": 0
+    },
+    "session_attempt_real_redis": {
+      "passed": 25,
+      "deselected": 41,
+      "failed": 0
+    },
+    "session_delete_attempt_privacy_integration": {
+      "passed": 34,
+      "failed": 0
+    },
+    "application_log_redaction": {
+      "passed": 14,
+      "skipped": 8,
+      "deselected": 1,
+      "failed": 0
+    },
+    "xp_013_unit": {
+      "passed": 52,
+      "deselected": 24,
+      "failed": 0
+    },
+    "xp_013_real_redis_hardening": {
+      "passed": 10,
+      "failed": 0
+    },
+    "xp_013_outage_recovery": {
+      "passed": 1,
+      "failed": 0
+    },
+    "backend_unit_foundation": {
+      "passed": 2390,
+      "skipped": 366,
+      "deselected": 49,
+      "warnings": 1,
+      "failed": 0
+    },
+    "ruff_check": "pass",
+    "ruff_format": {
+      "status": "pass",
+      "files": 466
+    },
+    "git_diff_check": "pass",
+    "test_guard": "pass",
+    "clean_code_guard": "pass",
+    "docs_guard": "pass",
+    "json_validation": "pass"
+  },
+  "cleanup": {
+    "disposable_redis_containers_remaining": 0,
+    "disposable_platform_database_containers_remaining": 0,
+    "disposable_source_database_containers_remaining": 0,
+    "disposable_runtime_containers_remaining": 0,
+    "disposable_worktree": "deferred_until_post_merge",
+    "protected_tracked_pngs_preserved": 14,
+    "protected_historical_screenshots_preserved": 7,
+    "protected_trace_archives_preserved": 2,
+    "protected_hashes_match_start": true,
+    "protected_status_matches_start": true,
+    "protected_files_staged": false,
+    "git_add_all_used": false,
+    "draft_pr_336_untouched": true,
+    "draft_pr_336_status": "open_draft",
+    "draft_pr_336_head": "c8737db94dd97916b4bbe3e3ee882321db4c9757"
+  },
+  "ledger_accounting": {
+    "resolved": 42,
+    "pending": 0,
+    "partial": 2,
+    "needs_decision": 3,
+    "total": 47
+  },
+  "remaining_work": {
+    "pending_gaps": 0,
+    "decision_blocked_chunks": [
+      "CHUNK-30",
+      "CHUNK-31"
+    ],
+    "t_905_started": false,
+    "freeze_started": false
+  }
+}
