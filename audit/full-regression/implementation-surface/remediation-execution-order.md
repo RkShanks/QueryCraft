@@ -2,7 +2,7 @@
 
 Status: `CHUNK-01` through `CHUNK-23` are resolved and merged; CHUNK-12 merged through [#310](https://github.com/RkShanks/QueryCraft/pull/310) at main `58098c05dfc92b7fd22b1096d38229e5c8a66f52`, CHUNK-18 through [#316](https://github.com/RkShanks/QueryCraft/pull/316) at main `abd51680690714f9ae5b759271056c4873f6743f`, CHUNK-19 through [#317](https://github.com/RkShanks/QueryCraft/pull/317) at main `841905cd182140b60ee1594a07baa9bbdc7012b6`, CHUNK-20 through [#318](https://github.com/RkShanks/QueryCraft/pull/318) at main `48f775834a9c2c1fa3f4c2ea95132c1ff287d119`, CHUNK-21 through [#319](https://github.com/RkShanks/QueryCraft/pull/319) at main `74aa30481377321c6178d0523ab593c697525725`, CHUNK-22 through [#320](https://github.com/RkShanks/QueryCraft/pull/320) at main `e4c3ca5aac856b6c73c41c931331bf3a482a57a5`, and CHUNK-23 through [#322](https://github.com/RkShanks/QueryCraft/pull/322) at main `2114f8a8ef2f20141c0a43d87cb81b1a3ff1c758`. CHUNK-22's applied-filter, server filename, cancellation/no-partial-file, mocked Chromium and real disposable-stack CSV/JSON proof passed; authoritative CI run `32738202877` passed both backend-test and frontend-test. CHUNK-23's auth recovery and isolated OIDC/SAML rotation/outage/TLS proof passed; authoritative CI run `32773267333` passed both backend-test and frontend-test. CHUNK-24's deterministic provider matrix passed with one confirmed in-gap defect fixed (typed sanitized malformed/4xx mapping on Anthropic/OpenAI/Ollama); a post-merge follow-up additionally fixed raw `TypeError` leakage on malformed JSON container shapes (top-level null/array/scalar, null/scalar containers) via the same narrow typed mapping and squash-merged as `3fd04341f278de61ad9fef2c97b295522dde8720` via [#325](https://github.com/RkShanks/QueryCraft/pull/325), with authoritative CI run `32789833177` passed; all three live-provider smokes are classified Setup-dependent because no approved environment existed, so IS-GAP-015 is Partial rather than Resolved.
 
-The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and decision-gated surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
+The order puts the Critical source-continuity defect first, then security/data integrity, API behavior, canonical contract work, dependent frontend behavior, evidence-only work, low cleanup, and owner-policy surfaces. Every dispatch contains at most three closely related consolidated gaps and is scoped below 200k context. Mixed backend/frontend chunks are sequential handoffs: backend behavior and tests first, frontend behavior/evidence second.
 
 ## Universal dispatch contract
 
@@ -372,7 +372,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Stop conditions:** Cleanup aggregation would hide a security failure or typed corruption semantics require a broader API change.
 - **Progress:** Resolved on tested product head `47c5662db951de70c2d2c7c2fd9aeb8010ef682c` in [#342](https://github.com/RkShanks/QueryCraft/pull/342) from authoritative main `f96e6747154129ace3da95c34efaf80ee8f6ffa1`. Five single shutdown-failure positions, cached-adapter first/middle/last/multiple failures, three middleware instances and a four-failure aggregate all attempted later ordinary closers with readiness already shutting down, constant typed outcomes, truthful cache retention and no false success event. One strict session parser covers both middleware and `/auth/me`; one ownership-first attempt parser protects decryption and deletion. Valid-JSON semantic matrices, dependency separation, atomic index reconciliation, stale compare-delete replacement races and no-restart recovery passed against disposable Redis. Focused/compatibility/integration/XP-013 gates, 2,390 backend foundation tests, Ruff/format/diff-check and all guards passed. See [Markdown](evidence/chunk-29-cleanup-cache.md) and [JSON](evidence/chunk-29-cleanup-cache.json) evidence.
 
-## CHUNK-30 — deployed headers and documentation exposure [NEEDS DECISION]
+## CHUNK-30 — deployed headers and documentation exposure [DISPATCHED]
 
 - **IDs / role / branch / context:** `IS-GAP-010`, `IS-GAP-011`; Orchestrator decision, then Backend/Frontend Implementers; provisional `phase-6/wave-19.30-deployment-policy`; 80–115k after decisions.
 - **Likely source:** `backend/src/app/main.py`, `backend/src/app/core/config.py`, `frontend/Dockerfile`, `frontend/vite.config.ts`, `frontend/index.html`, `docker-compose.dev.yml`, and deployment tests/docs.
@@ -382,8 +382,9 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Browser/live:** Required proxied production-like response/title checks.
 - **Isolation/cleanup/evidence:** Disposable proxy/backend; `evidence/chunk-30-deployment-policy.md`.
 - **Stop conditions:** Do not dispatch before both ownership/exposure decisions are recorded; stop on conflicting duplicate headers or exposed internals.
+- **Progress:** Implementation pending from approved 2026-09-01 decisions: proxy solely owns deployment security headers; backend endpoint-specific cache policy passes through unchanged; production HTTP documentation is disabled while explicit development/test exposure and canonical CI generation remain available. Branch `phase-6/wave-19.30-deployment-policy` starts from `84c04a5eb066e670c4377fa0d4eee43e6a2b02d9`.
 
-## CHUNK-31 — legacy `/ask` disposition [NEEDS DECISION]
+## CHUNK-31 — legacy `/ask` disposition [PENDING]
 
 - **IDs / role / branch / context:** `IS-GAP-045`; Product owner/Orchestrator then Frontend Implementer; provisional `phase-6/wave-19.31-ask-route-disposition`; 45–75k.
 - **Likely source:** `App.tsx`, `AskQuestionPage.tsx`, legacy route/tests and bookmark/redirect evidence.
@@ -393,7 +394,8 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Browser/live:** Required direct URL/bookmark/back-forward.
 - **Isolation/cleanup/evidence:** Disposable session only; `evidence/chunk-31-ask-route.md`.
 - **Stop conditions:** Do not dispatch before support status is decided; do not silently delete compatibility or expand parity scope.
+- **Progress:** Decision approved 2026-09-01: redirect or retire `/ask` in favor of Workspace. CHUNK-31 is unblocked but not started.
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-29` have completed their available implementation closure. `CHUNK-24` remains Partial pending an approved provider environment, and `CHUNK-25` remains Partial pending vendor-published fixture checksums. No Pending gap remains. Decision-gated CHUNK-30/31 remain blocked until their explicit decisions are recorded; T-905 and freeze work have not started.
+`CHUNK-01` through `CHUNK-29` have completed their available implementation closure. `CHUNK-24` remains Partial with non-Gemini live smoke explicitly deferred until approved credentials/runtime exist and zero external calls made; `CHUNK-25` remains Partial pending vendor-published fixture checksums. CHUNK-30 is dispatched. CHUNK-31 is unblocked but not started. Pre-implementation accounting is Resolved 42, Pending 3, Partial 2, Needs Decision 0, Total 47. T-905 and freeze work have not started.

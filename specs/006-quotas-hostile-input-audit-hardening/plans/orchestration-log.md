@@ -1271,3 +1271,34 @@
 - **Branch Context**: `main` at `7fb6823af081e082f3003faa2929d9eb30cdfb33`
 - **Status**: T-903 consolidation complete. T-904 skipped by condition because consolidated Critical and High counts are zero.
 - **Next Dispatch**: T-905 final snapshot.
+
+---
+
+## CHUNK-30 / CHUNK-31 — Approved Deployment and Legacy-Route Decisions
+
+### Decision and Dispatch Record
+
+- **Date**: 2026-09-01
+- **Starting Main**: `84c04a5eb066e670c4377fa0d4eee43e6a2b02d9`
+- **CHUNK-30 Branch**: `phase-6/wave-19.30-deployment-policy`
+- **CHUNK-30 Scope**: `IS-GAP-010`, `IS-GAP-011` only.
+- **CHUNK-30 Status**: DISPATCHED; implementation pending.
+- **CHUNK-31 Status**: Unblocked by the `/ask` decision but not started.
+
+### Approved Decisions
+
+1. The reverse proxy solely owns deployment security headers.
+2. The backend solely owns endpoint-specific API cache policy; the proxy passes those values through unchanged.
+3. Production HTTP documentation routes are disabled.
+4. Development and test documentation may be explicitly enabled.
+5. Disabling HTTP documentation does not disable canonical `app.openapi()` generation for CI, Schemathesis, or generated-client parity.
+6. The legacy `/ask` route will be redirected or retired in CHUNK-31.
+7. Non-Gemini live smoke remains deferred until approved credentials and runtimes exist. No external LLM call is authorized for CHUNK-30.
+8. `IS-GAP-015` remains Partial; the live-smoke deferral does not resolve it.
+
+### Ledger and Boundary Record
+
+- `IS-GAP-010`, `IS-GAP-011`, and `IS-GAP-045` move from Needs Decision to implementation-pending.
+- Pre-implementation accounting is Resolved 42, Pending 3, Partial 2, Needs Decision 0, Total 47.
+- CHUNK-30 must stop on conflicting or duplicate deployment headers, exposed production documentation, broken canonical generation, CSP-blocked product behavior, or any need to change the approved policy.
+- T-905 and Phase 6 freeze work remain not started.
