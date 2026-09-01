@@ -22,6 +22,7 @@ import { AppShell } from './components/shell/AppShell';
 import { sessionAwareSignInPath } from './auth/sessionExpiry';
 
 import { PermissionGuard } from './components/auth/PermissionGuard';
+import { DocumentTitle } from './components/common/DocumentTitle';
 import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 import { applyDocumentLanguage, normalizeAppLanguage } from './i18n/locale';
 import {
@@ -135,6 +136,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <DocumentTitle />
       <ApplicationRoutes />
     </BrowserRouter>
   );
