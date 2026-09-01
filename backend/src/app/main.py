@@ -264,6 +264,10 @@ def create_app() -> FastAPI:
         version="1.0.0",
         description="Text-to-SQL Analytics Platform API",
         lifespan=lifespan,
+        docs_url="/docs" if settings.API_DOCUMENTATION_ENABLED else None,
+        redoc_url="/redoc" if settings.API_DOCUMENTATION_ENABLED else None,
+        openapi_url="/openapi.json" if settings.API_DOCUMENTATION_ENABLED else None,
+        swagger_ui_oauth2_redirect_url=("/docs/oauth2-redirect" if settings.API_DOCUMENTATION_ENABLED else None),
     )
     app.state.readiness = ReadinessState(
         engine_provider=get_async_engine,
