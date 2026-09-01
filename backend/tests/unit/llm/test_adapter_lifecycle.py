@@ -1,5 +1,7 @@
 """F-001: LLM adapter lifecycle + factory caching tests."""
 
+from dataclasses import dataclass
+
 import pytest
 
 from app.llm.anthropic_adapter import AnthropicAdapter
@@ -107,4 +109,42 @@ async def test_factory_shutdown_all_closes_all_cached_adapters(monkeypatch):
 
     await LLMProviderFactory.shutdown_all()
     assert len(calls) == 2
+    assert LLMProviderFactory._cache == {}
+
+
+@dataclass
+class _ControllableAdapter:
+    should_fail: bool = False
+    close_count: int = 0
+
+    async def aclose(self) -> None:
+        self.close_count += 1
+        if self.should_fail:
+            raise RuntimeError("private adapter configuration")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failed_indexes", [{0}, {1}, {2}, {0, 2}])
+async def test_factory_shutdown_failure_does_not_skip_later_cached_adapters(failed_indexes):
+    """IS-GAP-021: every cached adapter gets one close attempt per shutdown pass."""
+    adapters = [_ControllableAdapter(index in failed_indexes) for index in range(3)]
+    LLMProviderFactory._cache = {f"adapter-{index}": adapter for index, adapter in enumerate(adapters)}
+
+    with pytest.raises(RuntimeError, match="^llm adapter shutdown failed$") as exc_info:
+        await LLMProviderFactory.shutdown_all()
+
+    assert type(exc_info.value).__name__ == "LLMShutdownError"
+    assert exc_info.value.failure_count == len(failed_indexes)
+    assert [adapter.close_count for adapter in adapters] == [1, 1, 1]
+    assert list(LLMProviderFactory._cache.values()) == [
+        adapter for index, adapter in enumerate(adapters) if index in failed_indexes
+    ]
+
+    for adapter in adapters:
+        adapter.should_fail = False
+    await LLMProviderFactory.shutdown_all()
+
+    assert [adapter.close_count for adapter in adapters] == [
+        2 if index in failed_indexes else 1 for index in range(3)
+    ]
     assert LLMProviderFactory._cache == {}

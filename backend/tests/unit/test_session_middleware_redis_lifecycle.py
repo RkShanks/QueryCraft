@@ -70,6 +70,26 @@ async def test_session_middleware_aclose_closes_redis():
 
 
 @pytest.mark.asyncio
+async def test_session_middleware_failed_close_retains_client_for_retry():
+    """A failed close remains registered until a later close succeeds."""
+    mock_redis = MagicMock()
+    mock_redis.aclose = AsyncMock(side_effect=[RuntimeError("private redis detail"), None])
+    middleware = SessionMiddleware(
+        app=lambda s, r, se: asyncio.sleep(0),
+        redis_url="redis://dependency.invalid:6379/0",
+    )
+    middleware._redis = mock_redis
+
+    with pytest.raises(RuntimeError, match="private redis detail"):
+        await middleware.aclose()
+
+    assert middleware._redis is mock_redis
+    await middleware.aclose()
+    assert mock_redis.aclose.await_count == 2
+    assert middleware._redis is None
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "redis_response",
     [
