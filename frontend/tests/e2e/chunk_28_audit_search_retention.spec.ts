@@ -1,5 +1,12 @@
 import { expect, test, type Download, type Page, type Request, type Response } from '@playwright/test';
 import { readFile, rm } from 'node:fs/promises';
+import {
+  assertExternalPrivacyClean,
+  assertExternalScannerCalibrated,
+  assertRuntimeMemoryClean,
+  getRuntimeCanary,
+  recordBrowserSummary,
+} from './helpers/chunk28Privacy';
 
 /** CHUNK-28 audit-search retention privacy proof. */
 
@@ -7,6 +14,10 @@ test.use({ screenshot: 'off', trace: 'off', video: 'off' });
 
 interface PrivacyObserver {
   canaryObserved: boolean;
+  apiResponseCount: number;
+  apiStatusCounts: Record<string, number>;
+  responseInspectionFailureCount: number;
+  responseInspectionFailureStatuses: Record<string, number>;
   unexpectedConsoleErrors: number;
   pageErrors: number;
   pendingBodyChecks: Array<Promise<void>>;
@@ -15,17 +26,38 @@ interface PrivacyObserver {
 function observePrivacyBoundary(page: Page, canary: string): PrivacyObserver {
   const observer: PrivacyObserver = {
     canaryObserved: false,
+    apiResponseCount: 0,
+    apiStatusCounts: {},
+    responseInspectionFailureCount: 0,
+    responseInspectionFailureStatuses: {},
     unexpectedConsoleErrors: 0,
     pageErrors: 0,
     pendingBodyChecks: [],
   };
   page.on('response', (response) => {
     if (!response.url().includes('/api/v1/')) return;
+    observer.apiResponseCount += 1;
+    const status = String(response.status());
+    observer.apiStatusCounts[status] = (observer.apiStatusCounts[status] ?? 0) + 1;
+    if (response.request().method() === 'HEAD' || [204, 205, 304].includes(response.status())) return;
     observer.pendingBodyChecks.push(
       response.body().then((body) => {
         if (new TextDecoder().decode(body).includes(canary)) observer.canaryObserved = true;
-      }).catch(() => undefined),
+      }).catch(() => {
+        const pathname = new URL(response.url()).pathname;
+        if (pathname.startsWith('/api/v1/auth/')) {
+          const key = 'classified-auth-body-unavailable';
+          observer.apiStatusCounts[key] = (observer.apiStatusCounts[key] ?? 0) + 1;
+          return;
+        }
+        observer.responseInspectionFailureCount += 1;
+        observer.responseInspectionFailureStatuses[status] =
+          (observer.responseInspectionFailureStatuses[status] ?? 0) + 1;
+      }),
     );
+  });
+  page.on('request', (request) => {
+    if (request.url().includes(canary)) observer.canaryObserved = true;
   });
   page.on('console', (message) => {
     const messageText = message.text();
@@ -126,7 +158,12 @@ async function assertValueSafe(
   const accessibilitySnapshot = await page.locator('body').ariaSnapshot();
   expect(Object.values(browserSnapshot).some(Boolean), `${boundary}: browser surface contains sensitive value`).toBe(false);
   expect(accessibilitySnapshot.includes(canary), `${boundary}: accessibility output contains sensitive value`).toBe(false);
+  await assertRuntimeMemoryClean(page, canary, boundary);
   expect(observer.canaryObserved, `${boundary}: API or console contains sensitive value`).toBe(false);
+  expect(
+    observer.responseInspectionFailureCount,
+    `${boundary}: unclassified API bodies were unavailable ${JSON.stringify(observer.responseInspectionFailureStatuses)}`,
+  ).toBe(0);
   expect(observer.pageErrors, `${boundary}: page error count`).toBe(0);
   expect(observer.unexpectedConsoleErrors, `${boundary}: console error count`).toBe(0);
 }
@@ -195,15 +232,20 @@ test('keeps audit filters value-safe across search, export, failure, reset, relo
   test.setTimeout(120_000);
   const usernameA = process.env.CHUNK28_USER_A;
   const passwordA = process.env.CHUNK28_PASSWORD_A;
-  const usernameB = process.env.CHUNK28_USER_B;
-  const passwordB = process.env.CHUNK28_PASSWORD_B;
-  test.skip(!usernameA || !passwordA || !usernameB || !passwordB, 'Disposable CHUNK-28 credentials are required.');
+  const usernameB = process.env.CHUNK28_AUDIT_USER_B ?? process.env.CHUNK28_USER_B;
+  const passwordB = process.env.CHUNK28_AUDIT_PASSWORD_B ?? process.env.CHUNK28_PASSWORD_B;
+  const controlUrl = process.env.CHUNK28_PROVIDER_CONTROL_URL;
+  test.skip(
+    !usernameA || !passwordA || !usernameB || !passwordB || !controlUrl,
+    'Disposable CHUNK-28 credentials are required.',
+  );
 
-  const canary = `actor-${crypto.randomUUID()}`;
-  const observer = observePrivacyBoundary(page, canary);
+  await assertExternalScannerCalibrated(controlUrl!);
+  const canary = await getRuntimeCanary(controlUrl!);
   await signIn(page, usernameA!, passwordA!);
   await page.goto('/admin/audit?lng=en');
   await expect(page.getByRole('heading', { name: /audit/i }).first()).toBeVisible({ timeout: 15_000 });
+  const observer = observePrivacyBoundary(page, canary);
 
   const canarySearch = await submitFilter(page, /actor/i, canary);
   expect(canarySearch.contextResponse.status(), 'context creation status').toBe(200);
@@ -212,6 +254,7 @@ test('keeps audit filters value-safe across search, export, failure, reset, relo
   expect(canarySearch.searchResponse.url().includes(canary), 'search URL contains sensitive value').toBe(false);
   expect(canarySearch.searchResponse.url().includes('actor_identity='), 'search URL contains raw actor field').toBe(false);
   await assertValueSafe(page, observer, canary, 'successful canary search');
+  await assertExternalPrivacyClean(controlUrl!, 'successful audit search');
 
   const safeSearch = await submitFilter(page, /action type/i, 'audit.verify');
   expect(safeSearch.searchResponse.status(), 'safe search status').toBe(200);
@@ -240,6 +283,7 @@ test('keeps audit filters value-safe across search, export, failure, reset, relo
   const csvInspection = await inspectedDownload(csvDownload.request, csvDownload.download, canary, safeContext);
   expect(csvInspection.recordCount, 'CSV export count').toBe(firstPageBody.pagination.total_entries);
   await assertValueSafe(page, observer, canary, 'pagination and exports');
+  await assertExternalPrivacyClean(controlUrl!, 'audit pagination and exports');
 
   let failNextSearch = true;
   await page.route('**/api/v1/admin/audit/entries?**', async (route) => {
@@ -268,6 +312,7 @@ test('keeps audit filters value-safe across search, export, failure, reset, relo
   expect(retriedSearch.contextResponse.status(), 'retry context status').toBe(200);
   expect(retriedSearch.searchResponse.status(), 'retry search status').toBe(200);
   await assertValueSafe(page, observer, canary, 'failed search and retry');
+  await assertExternalPrivacyClean(controlUrl!, 'audit failure and retry');
 
   const resetResponse = page.waitForResponse((response) => response.url().includes('/api/v1/admin/audit/entries'));
   await page.getByRole('button', { name: /^reset$/i }).click();
@@ -277,6 +322,7 @@ test('keeps audit filters value-safe across search, export, failure, reset, relo
   await page.reload();
   await expect(page.getByRole('heading', { name: /audit/i }).first()).toBeVisible({ timeout: 15_000 });
   await assertValueSafe(page, observer, canary, 'reset and reload');
+  await assertExternalPrivacyClean(controlUrl!, 'audit reset and reload');
 
   for (const width of [1440, 768, 375]) {
     await page.setViewportSize({ width, height: 900 });
@@ -301,4 +347,13 @@ test('keeps audit filters value-safe across search, export, failure, reset, relo
   expect(reuseStatus, 'prior identity context reuse status').toBe(422);
   await assertValueSafe(page, observer, canary, 'identity replacement');
   await signOut(page);
+  await assertValueSafe(page, observer, canary, 'audit final sign-out');
+  await assertExternalPrivacyClean(controlUrl!, 'audit identity replacement and sign-out');
+  await recordBrowserSummary(controlUrl!, {
+    category: 'audit lifecycle',
+    apiResponseCount: observer.apiResponseCount,
+    apiStatusCounts: observer.apiStatusCounts,
+    pageErrorCount: observer.pageErrors,
+    consoleErrorCount: observer.unexpectedConsoleErrors,
+  });
 });
