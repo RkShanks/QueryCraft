@@ -98,6 +98,7 @@ async def test_lifespan_aggregates_simultaneous_failures_and_all_middleware_inst
     redis_close = _closer("shared_redis", app, observed)
     engine_close = _closer("database_engine", app, observed, fails=True)
     middleware_instances = [SimpleNamespace(aclose=close) for close in session_closers]
+    failed_middleware_instances = middleware_instances[::2]
     shutdown_logger = MagicMock()
 
     with (
@@ -136,7 +137,7 @@ async def test_lifespan_aggregates_simultaneous_failures_and_all_middleware_inst
         ("shared_redis", False),
         ("database_engine", False),
     ]
-    assert middleware_instances == [middleware_instances[0], middleware_instances[2]]
+    assert middleware_instances == failed_middleware_instances
     shutdown_logger.error.assert_called_once_with(
         "application_shutdown_failed",
         failure_categories=expected_failures,
