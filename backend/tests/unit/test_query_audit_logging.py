@@ -77,6 +77,7 @@ _AUDIT_KNOWN_ACCEPTED_QUERY_ID = "aaaaaaaa-0000-0000-0000-000000000001"
 _AUDIT_KNOWN_USER_ID = "550e8400-e29b-41d4-a716-446655440000"
 _AUDIT_CONNECTION_ID = "770e8400-e29b-41d4-a716-446655440000"
 _AUDIT_CHAT_SESSION_ID = "880e8400-e29b-41d4-a716-446655440000"
+_AUDIT_PRIOR_ATTEMPT_ID = "990e8400-e29b-41d4-a716-446655440000"
 
 _AUDIT_FORBIDDEN_IN_CONTEXT = (
     # raw SQL fragment
@@ -970,7 +971,7 @@ async def _invoke_execution_operation(service, deps, operation: str):
         )
     if operation == "regenerate":
         prior_attempt = EphemeralAttempt(
-            attempt_id="prior-attempt",
+            attempt_id=_AUDIT_PRIOR_ATTEMPT_ID,
             session_id="http-sess-1",
             chat_session_id=_AUDIT_CHAT_SESSION_ID,
             user_id=deps["user_id"],

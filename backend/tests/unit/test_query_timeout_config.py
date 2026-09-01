@@ -26,6 +26,7 @@ USER_ID = "550e8400-e29b-41d4-a716-446655440000"
 CONNECTION_ID = "770e8400-e29b-41d4-a716-446655440000"
 CHAT_SESSION_ID = "880e8400-e29b-41d4-a716-446655440000"
 ACCEPTED_QUERY_ID = "aaaaaaaa-0000-0000-0000-000000000001"
+PRIOR_ATTEMPT_ID = "990e8400-e29b-41d4-a716-446655440000"
 TIMEOUT_DETAIL = {"error": "timeout", "message_key": "error.timeout"}
 
 
@@ -247,7 +248,7 @@ def _build_service(
 
 async def _seed_regenerate(service: QueryService) -> EphemeralAttempt:
     prior = EphemeralAttempt(
-        attempt_id="prior-attempt",
+        attempt_id=PRIOR_ATTEMPT_ID,
         session_id="http-session",
         chat_session_id=CHAT_SESSION_ID,
         user_id=USER_ID,

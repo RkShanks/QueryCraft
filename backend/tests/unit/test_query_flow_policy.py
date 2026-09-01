@@ -994,7 +994,7 @@ class TestRegeneratePath:
         orig_get = qs.get_attempt
         orig_delete = qs.delete_attempt
 
-        async def _get(attempt_id, session_id, redis):
+        async def _get(attempt_id, session_id, user_id, redis):
             return prior_attempt
 
         async def _delete(attempt_id, redis):

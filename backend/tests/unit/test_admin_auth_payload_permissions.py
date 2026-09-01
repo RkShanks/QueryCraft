@@ -265,10 +265,12 @@ class TestGetMeStaleSessionRefreshUnit:
                 "permissions": [],
                 "auth_provider": "local",
                 "subject_id": "admin",
+                "created_at": 1000.0,
+                "last_activity": 1000.0,
             }
         )
-        mock_redis.get.return_value = stale_session
-        mock_redis.eval = AsyncMock(side_effect=lambda *args: args[7] if len(args) > 7 and args[7] else stale_session)
+        mock_redis.mget.return_value = [stale_session, str(admin_id)]
+        mock_redis.eval = AsyncMock(side_effect=lambda *args: args[8] if len(args) > 8 else stale_session)
 
         service = AuthService(mock_repo, mock_redis)
         profile = await service.get_me("sess-1")

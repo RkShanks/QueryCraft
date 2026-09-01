@@ -14,6 +14,8 @@ from app.core.encryption import encrypt
 from app.services.query_service import QueryService
 
 CONNECTION_ID = "00000000-0000-0000-0000-000000000001"
+ATTEMPT_ID = "550e8400-e29b-41d4-a716-446655440010"
+USER_ID = "550e8400-e29b-41d4-a716-446655440000"
 
 
 def _encrypted_text(text: str, purpose: str) -> str:
@@ -23,18 +25,33 @@ def _encrypted_text(text: str, purpose: str) -> str:
     )
 
 
-def _attempt_json():
+def _attempt_json(*, session_id: str = "sess-1", state: str = "EXECUTED") -> str:
+    evaluator_result = None
+    if state == "REJECTED":
+        evaluator_result = _encrypted_text(
+            json.dumps(
+                {
+                    "passed": False,
+                    "violations": [{"rule": "read_only", "message_key": "error.queryBlocked"}],
+                }
+            ),
+            "attempt.evaluator_result",
+        )
     return json.dumps(
         {
-            "attempt_id": "a-1",
-            "session_id": "sess-1",
-            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "attempt_id": ATTEMPT_ID,
+            "session_id": session_id,
+            "chat_session_id": None,
+            "user_id": USER_ID,
             "database_connection_id": CONNECTION_ID,
             "question": _encrypted_text("Q", "attempt.question"),
             "sql": _encrypted_text("SELECT 1", "attempt.sql"),
             "llm_provider": "ollama",
             "attempt_number": 1,
-            "state": "EXECUTED",
+            "state": state,
+            "evaluator_result": evaluator_result,
+            "created_at": "",
+            "expires_at": "",
         }
     )
 
@@ -99,11 +116,11 @@ class TestQueryServiceAccept:
             connection_id=CONNECTION_ID,
         )
 
-    def _make_get(self, active_attempt="a-1", attempt_data=None):
+    def _make_get(self, active_attempt=ATTEMPT_ID, attempt_data=None):
         async def _get(key):
             if key == "active_attempt:sess-1":
                 return active_attempt
-            if key == "attempt:a-1":
+            if key == f"attempt:{ATTEMPT_ID}":
                 return attempt_data or _attempt_json()
             return None
 
@@ -114,13 +131,13 @@ class TestQueryServiceAccept:
         mock_redis.get.side_effect = self._make_get()
         result = await service.accept_query(
             http_session_id="sess-1",
-            user_id="550e8400-e29b-41d4-a716-446655440000",
-            attempt_id="a-1",
+            user_id=USER_ID,
+            attempt_id=ATTEMPT_ID,
         )
         assert result.id == "q-1"
         mock_repo.create.assert_awaited_once()
         mock_redis.delete.assert_awaited()
-        assert any(call.args == ("attempt:a-1",) for call in mock_redis.delete.await_args_list)
+        assert any(call.args == (f"attempt:{ATTEMPT_ID}",) for call in mock_redis.delete.await_args_list)
 
     @pytest.mark.asyncio
     async def test_accept_expired_attempt_raises_400(self, service, mock_redis):
@@ -129,32 +146,22 @@ class TestQueryServiceAccept:
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
                 http_session_id="sess-1",
-                user_id="550e8400-e29b-41d4-a716-446655440000",
-                attempt_id="a-1",
+                user_id=USER_ID,
+                attempt_id=ATTEMPT_ID,
             )
         assert exc_info.value.status_code == 422
 
     @pytest.mark.asyncio
     async def test_accept_wrong_session_raises_400(self, service, mock_redis):
         mock_redis.get.side_effect = self._make_get(
-            active_attempt="a-1",
-            attempt_data=json.dumps(
-                {
-                    "attempt_id": "a-1",
-                    "session_id": "sess-2",
-                    "user_id": "550e8400-e29b-41d4-a716-446655440000",
-                    "database_connection_id": CONNECTION_ID,
-                    "question": _encrypted_text("Q", "attempt.question"),
-                    "sql": _encrypted_text("SELECT 1", "attempt.sql"),
-                    "llm_provider": "ollama",
-                }
-            ),
+            active_attempt=ATTEMPT_ID,
+            attempt_data=_attempt_json(session_id="sess-2"),
         )
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
                 http_session_id="sess-1",
-                user_id="550e8400-e29b-41d4-a716-446655440000",
-                attempt_id="a-1",
+                user_id=USER_ID,
+                attempt_id=ATTEMPT_ID,
             )
         assert exc_info.value.status_code == 400
 
@@ -168,8 +175,8 @@ class TestQueryServiceAccept:
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
                 http_session_id="sess-1",
-                user_id="550e8400-e29b-41d4-a716-446655440000",
-                attempt_id="a-1",
+                user_id=USER_ID,
+                attempt_id=ATTEMPT_ID,
             )
         assert exc_info.value.status_code == 409
         mock_repo.create.assert_not_called()
@@ -179,27 +186,15 @@ class TestQueryServiceAccept:
     async def test_accept_invalid_attempt_state_returns_422(self, service, mock_repo, mock_redis, bad_state):
         """O-005: accept_query must only allow EXECUTED attempts."""
         mock_redis.get.side_effect = self._make_get(
-            active_attempt="a-1",
-            attempt_data=json.dumps(
-                {
-                    "attempt_id": "a-1",
-                    "session_id": "sess-1",
-                    "user_id": "550e8400-e29b-41d4-a716-446655440000",
-                    "database_connection_id": CONNECTION_ID,
-                    "question": _encrypted_text("Q", "attempt.question"),
-                    "sql": _encrypted_text("SELECT 1", "attempt.sql"),
-                    "llm_provider": "ollama",
-                    "attempt_number": 1,
-                    "state": bad_state,
-                }
-            ),
+            active_attempt=ATTEMPT_ID,
+            attempt_data=_attempt_json(state=bad_state),
         )
 
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
                 http_session_id="sess-1",
-                user_id="550e8400-e29b-41d4-a716-446655440000",
-                attempt_id="a-1",
+                user_id=USER_ID,
+                attempt_id=ATTEMPT_ID,
             )
         assert exc_info.value.status_code == 422
         mock_repo.create.assert_not_called()
@@ -213,8 +208,8 @@ class TestQueryServiceAccept:
         with pytest.raises(Exception) as exc_info:
             await service.accept_query(
                 http_session_id="sess-1",
-                user_id="550e8400-e29b-41d4-a716-446655440000",
-                attempt_id="a-1",
+                user_id=USER_ID,
+                attempt_id=ATTEMPT_ID,
             )
         assert exc_info.value.status_code == 401
         mock_repo.create.assert_not_awaited()
