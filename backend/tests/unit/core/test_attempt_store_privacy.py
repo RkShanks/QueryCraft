@@ -13,6 +13,9 @@ from app.core.encryption import decrypt, encrypt
 from app.core.exceptions import AttemptContextInvalid
 
 CONNECTION_ID = UUID("550e8400-e29b-41d4-a716-446655440001")
+ATTEMPT_ID = "550e8400-e29b-41d4-a716-446655440012"
+USER_ID = "550e8400-e29b-41d4-a716-446655440022"
+CHAT_SESSION_ID = "550e8400-e29b-41d4-a716-446655440032"
 
 
 async def test_serialized_attempt_does_not_retain_user_canary() -> None:
@@ -45,9 +48,10 @@ def _encrypted_text(text: str, purpose: str, key: str, version: int = 1) -> str:
 
 def _serialized_attempt(*, question: str, sql: str, key: str) -> dict[str, object]:
     return {
-        "attempt_id": "privacy-a2",
+        "attempt_id": ATTEMPT_ID,
         "session_id": "privacy-session",
-        "user_id": "privacy-user",
+        "chat_session_id": CHAT_SESSION_ID,
+        "user_id": USER_ID,
         "database_connection_id": str(CONNECTION_ID),
         "question": _encrypted_text(question, "attempt.question", key),
         "sql": _encrypted_text(sql, "attempt.sql", key),
@@ -94,15 +98,55 @@ async def test_corrupt_attempt_state_fails_closed_and_is_deleted(corruption: str
     redis = AsyncMock(spec=Redis)
     redis_value = "not-json" if corruption == "malformed_document" else json.dumps(stored)
     redis.get = AsyncMock(return_value=redis_value)
-    redis.delete = AsyncMock(return_value=1)
+    redis.eval = AsyncMock(return_value=1)
 
     with pytest.raises(AttemptContextInvalid) as exc_info:
-        await get_attempt("privacy-a2", "privacy-session", redis)
+        await get_attempt(ATTEMPT_ID, "privacy-session", redis)
 
     sanitized_error = str(exc_info.value) == str(AttemptContextInvalid())
     assert sanitized_error is True, "corrupt attempt returned a non-constant error"
-    assert redis.delete.await_count == 1
-    assert redis.delete.await_args.args == ("attempt:privacy-a2",)
+    expected_cleanup_count = 0 if corruption == "malformed_document" else 1
+    assert redis.eval.await_count == expected_cleanup_count
+    redis.delete.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "evaluator_document",
+    [
+        pytest.param({}, id="missing-fields"),
+        pytest.param({"passed": "false", "violations": []}, id="passed-string"),
+        pytest.param({"passed": True, "violations": []}, id="passed-true"),
+        pytest.param({"passed": False, "violations": {}}, id="violations-object"),
+        pytest.param({"passed": False, "violations": [{}]}, id="violation-missing-fields"),
+        pytest.param(
+            {"passed": False, "violations": [{"rule": ["nested"], "message_key": "error.invalid"}]},
+            id="nested-rule",
+        ),
+        pytest.param(
+            {"passed": False, "violations": [{"rule": "rule", "message_key": "error.invalid", "extra": 1}]},
+            id="unknown-violation-field",
+        ),
+    ],
+)
+async def test_invalid_evaluator_structure_is_rejected_before_use(
+    evaluator_document,
+    test_encryption_key: str,
+) -> None:
+    stored = _serialized_attempt(question="question", sql="SELECT 1", key=test_encryption_key)
+    stored["state"] = "REJECTED"
+    stored["evaluator_result"] = _encrypted_text(
+        json.dumps(evaluator_document),
+        "attempt.evaluator_result",
+        test_encryption_key,
+    )
+    redis = AsyncMock(spec=Redis)
+    redis.get = AsyncMock(return_value=json.dumps(stored))
+    redis.eval = AsyncMock(return_value=1)
+
+    with pytest.raises(AttemptContextInvalid):
+        await get_attempt(ATTEMPT_ID, "privacy-session", redis)
+
+    redis.eval.assert_awaited_once()
 
 
 async def test_attempt_text_round_trip_uses_authenticated_markers_and_fresh_nonces(test_encryption_key: str) -> None:

@@ -5,7 +5,7 @@ TTL expiry, and missing-key handling.
 """
 
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
@@ -16,6 +16,30 @@ from app.core.attempt_store import EphemeralAttempt, delete_attempt, get_attempt
 from app.core.exceptions import AttemptContextInvalid, AttemptNotFound, AttemptOwnershipViolation
 
 CONNECTION_ID = UUID("550e8400-e29b-41d4-a716-446655440001")
+ATTEMPT_ID = "550e8400-e29b-41d4-a716-446655440010"
+OTHER_ATTEMPT_ID = "550e8400-e29b-41d4-a716-446655440011"
+USER_ID = "550e8400-e29b-41d4-a716-446655440020"
+OTHER_USER_ID = "550e8400-e29b-41d4-a716-446655440021"
+CHAT_SESSION_ID = "550e8400-e29b-41d4-a716-446655440030"
+HTTP_SESSION_ID = "attempt-owner-session"
+
+
+async def _serialized_owned_attempt() -> str:
+    redis = AsyncMock(spec=Redis)
+    redis.set = AsyncMock(return_value=True)
+    await store_attempt(
+        EphemeralAttempt(
+            attempt_id=ATTEMPT_ID,
+            session_id=HTTP_SESSION_ID,
+            chat_session_id=CHAT_SESSION_ID,
+            user_id=USER_ID,
+            database_connection_id=CONNECTION_ID,
+            state="PENDING",
+        ),
+        HTTP_SESSION_ID,
+        redis,
+    )
+    return redis.set.await_args.args[1]
 
 
 class TestAttemptStoreUnit:
@@ -192,6 +216,107 @@ class TestAttemptStoreUnit:
             "source_rows",
             "executor_result",
         }.isdisjoint(stored)
+
+    @pytest.mark.parametrize(
+        ("field", "invalid_value"),
+        [
+            pytest.param("attempt_id", "not-a-uuid", id="attempt-id-invalid"),
+            pytest.param("attempt_id", ATTEMPT_ID.upper(), id="attempt-id-noncanonical"),
+            pytest.param("attempt_id", OTHER_ATTEMPT_ID, id="attempt-id-key-mismatch"),
+            pytest.param("user_id", "not-a-uuid", id="user-id-invalid"),
+            pytest.param("user_id", USER_ID.upper(), id="user-id-noncanonical"),
+            pytest.param("chat_session_id", "not-a-uuid", id="chat-session-invalid"),
+            pytest.param("database_connection_id", "not-a-uuid", id="source-context-invalid"),
+            pytest.param("state", "SUCCESS", id="state-unknown"),
+            pytest.param("attempt_number", 0, id="attempt-number-zero"),
+            pytest.param("attempt_number", 1.5, id="attempt-number-float"),
+            pytest.param("attempt_number", "2", id="attempt-number-string"),
+            pytest.param("question", {}, id="question-object"),
+            pytest.param("sql", [], id="sql-list"),
+            pytest.param("llm_provider", {}, id="provider-object"),
+            pytest.param("created_at", [], id="created-at-list"),
+            pytest.param("expires_at", {}, id="expires-at-object"),
+        ],
+    )
+    async def test_owned_semantic_corruption_is_constant_and_compare_deleted(self, field, invalid_value):
+        stored = json.loads(await _serialized_owned_attempt())
+        stored[field] = invalid_value
+        raw_attempt = json.dumps(stored)
+        redis = AsyncMock(spec=Redis)
+        redis.get = AsyncMock(return_value=raw_attempt)
+        redis.eval = AsyncMock(return_value=1)
+
+        with pytest.raises(AttemptContextInvalid) as exc_info:
+            await get_attempt(ATTEMPT_ID, HTTP_SESSION_ID, redis)
+
+        assert str(exc_info.value) == "No active query result to act on"
+        redis.eval.assert_awaited_once()
+        redis.delete.assert_not_awaited()
+
+    @pytest.mark.parametrize(
+        "missing_field",
+        [
+            "attempt_id",
+            "user_id",
+            "database_connection_id",
+            "state",
+            "attempt_number",
+            "question",
+            "sql",
+            "evaluator_result",
+            "llm_provider",
+            "created_at",
+            "expires_at",
+        ],
+    )
+    async def test_owned_attempt_missing_required_field_fails_closed(self, missing_field):
+        stored = json.loads(await _serialized_owned_attempt())
+        stored.pop(missing_field)
+        raw_attempt = json.dumps(stored)
+        redis = AsyncMock(spec=Redis)
+        redis.get = AsyncMock(return_value=raw_attempt)
+        redis.eval = AsyncMock(return_value=1)
+
+        with pytest.raises(AttemptContextInvalid):
+            await get_attempt(ATTEMPT_ID, HTTP_SESSION_ID, redis)
+
+    async def test_wrong_user_is_rejected_before_decryption_or_cleanup(self, monkeypatch):
+        stored = json.loads(await _serialized_owned_attempt())
+        stored["question"] = "invalid-ciphertext"
+        redis = AsyncMock(spec=Redis)
+        redis.get = AsyncMock(return_value=json.dumps(stored))
+        decrypt_attempt = MagicMock(side_effect=AssertionError("decryption must not run"))
+        monkeypatch.setattr("app.core.attempt_store.decrypt", decrypt_attempt)
+
+        with pytest.raises(AttemptOwnershipViolation):
+            await get_attempt(ATTEMPT_ID, HTTP_SESSION_ID, OTHER_USER_ID, redis)
+
+        decrypt_attempt.assert_not_called()
+        redis.eval.assert_not_awaited()
+        redis.delete.assert_not_awaited()
+
+    async def test_unowned_invalid_document_is_not_destructively_cleaned(self):
+        redis = AsyncMock(spec=Redis)
+        redis.get = AsyncMock(return_value="[]")
+
+        with pytest.raises(AttemptContextInvalid):
+            await get_attempt(ATTEMPT_ID, HTTP_SESSION_ID, USER_ID, redis)
+
+        redis.eval.assert_not_awaited()
+        redis.delete.assert_not_awaited()
+
+    async def test_rejected_state_requires_structured_evaluator_result(self):
+        stored = json.loads(await _serialized_owned_attempt())
+        stored["state"] = "REJECTED"
+        raw_attempt = json.dumps(stored)
+        redis = AsyncMock(spec=Redis)
+        redis.get = AsyncMock(return_value=raw_attempt)
+        redis.eval = AsyncMock(return_value=1)
+
+        with pytest.raises(AttemptContextInvalid):
+            await get_attempt(ATTEMPT_ID, HTTP_SESSION_ID, redis)
+
+        redis.eval.assert_awaited_once()
 
 
 @pytest.mark.integration
