@@ -350,7 +350,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## CHUNK-28 — joint cross-channel privacy evidence
 
-- **IDs / role / branch / context:** `IS-GAP-047`; Frontend Implementer with security review; `phase-6/wave-19.28-browser-privacy-evidence`; 90–130k.
+- **IDs / role / branch / context:** `IS-GAP-047`; Frontend Implementer with security review; `phase-6/wave-19.28-browser-privacy-closure-merged-main`; 90–130k.
 - **Likely source:** security browser harness only unless a new defect is separately reproduced; query/audit/auth callers as observation points.
 - **TDD:** Build negative-canary assertions for DOM, accessibility text, console, storage, in-memory cache, rendered response summary and downloads across hostile/error/download/user-switch flows.
 - **Focused gates:** focused privacy/unit tests, new browser security integration and evidence schema/secret scan; lint/typecheck and diff check.
@@ -358,6 +358,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Browser/live:** Mandatory real API/browser joint flow.
 - **Isolation/cleanup/evidence:** Disposable users/sessions/audit/downloads/browser profile; boolean/count-only `evidence/chunk-28-browser-privacy.json`; destroy all canary-bearing state.
 - **Stop conditions:** Any canary is observed, evidence tooling would retain a sensitive value, or IS-GAP-002/008/023/034/042 remains open.
+- **Progress:** Resolved on tested closure head `8066a973a13b6cba4f709c66d80d8d1f50454253` through [#341](https://github.com/RkShanks/QueryCraft/pull/341) from authoritative merged main `4d4938e136b117851e6cf2dc3078b1b880a941ab`. Positive controls and zero preflights passed for every supported browser/external channel; the exact serial Chromium matrix passed 8/8 with 14 zero-observation external scans, provider/source totals 8/7, five inspected downloads, three disposable identities, full local gates and zero-resource cleanup. All 23 protected files retained their hashes/status; draft PR #336 and historical branches were untouched. See [Markdown](evidence/chunk-28-browser-privacy.md) and [JSON](evidence/chunk-28-browser-privacy.json) evidence. CHUNK-29 is unblocked and explicitly not started.
 
 ## CHUNK-29 — cleanup and corrupted-cache recovery
 
@@ -394,4 +395,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-27` have completed their available closure. `CHUNK-24` remains Partial pending an approved provider environment, and `CHUNK-25` remains Partial pending vendor-published fixture checksums. `CHUNK-28` is the next unblocked dispatch but has not started. Decision-gated CHUNK-30/31 remain blocked until their explicit decisions are recorded.
+`CHUNK-01` through `CHUNK-28` have completed their available closure. `CHUNK-24` remains Partial pending an approved provider environment, and `CHUNK-25` remains Partial pending vendor-published fixture checksums. `CHUNK-29` is now unblocked but has explicitly not started. Decision-gated CHUNK-30/31 remain blocked until their explicit decisions are recorded.

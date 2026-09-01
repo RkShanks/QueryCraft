@@ -162,11 +162,15 @@
     },
     "tests/e2e/chunk_28_hostile_rejection.spec.ts": {
       "category": "live",
-      "reason": "Real FastAPI plus isolated Chromium proof that the semantic hostile-rejection state is value-safe across EN/AR desktop and mobile, then permits one benign submission."
+      "reason": "Real FastAPI plus isolated Chromium proof that the semantic hostile-rejection state is value-safe across EN/AR at 1440/768/375, then permits one benign submission."
     },
     "tests/e2e/chunk_28_audit_search_retention.spec.ts": {
       "category": "mocked",
       "reason": "Real FastAPI audit-context flow with one browser-boundary failure injection proving prior pagination/export authority survives a failed replacement search."
+    },
+    "tests/e2e/chunk_28_browser_privacy.spec.ts": {
+      "category": "live",
+      "reason": "Real FastAPI plus isolated Chromium cross-channel negative-canary proof for hostile rejection, provider failure, audit search/export, and same-profile identity replacement."
     }
   },
   "mockHelpers": [
@@ -223,6 +227,12 @@
       "title": "Disposable CHUNK-28 credentials are required.",
       "reason": "The live audit-search retention flow requires two explicitly provisioned audit-authorized identities in an isolated FastAPI runtime.",
       "supersededBy": "The same spec runs in CHUNK-28 evidence with disposable users, opaque contexts, and a fresh browser profile."
+    },
+    {
+      "spec": "tests/e2e/chunk_28_browser_privacy.spec.ts",
+      "title": "CHUNK-28 disposable live credentials are required.",
+      "reason": "The live cross-channel privacy matrix requires explicitly provisioned disposable users in an isolated FastAPI runtime.",
+      "supersededBy": "The same spec runs in CHUNK-28 evidence with disposable users and a fresh browser profile."
     }
   ]
 }

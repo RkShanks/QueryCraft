@@ -97,8 +97,8 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 
 | Status | Count |
 | --- | ---: |
-| Pending | 2 |
-| Resolved | 40 |
+| Pending | 1 |
+| Resolved | 41 |
 | Resolved on tested branch | 0 |
 | Closed by Existing Evidence | 0 |
 | Needs Decision | 3 |
@@ -159,9 +159,11 @@ PR [#332](https://github.com/RkShanks/QueryCraft/pull/332) passed authoritative 
 
 `IS-GAP-046` is **Resolved and merged** through [#334](https://github.com/RkShanks/QueryCraft/pull/334). CHUNK-27 verification passed at final PR head `8650ca8feb5870d21ce266cca8b64fc3c06bdf46`: 36/36 assertion-bearing EN/AR 1440/768/375 responsive cases and the complete 64/64 focused browser subset passed, with strict `GET /api/v1/sessions?limit=50` harness enforcement, zero unexpected 5xx responses, machine-observable loading/empty/failure/recovery, overflow/reachability, semantic alert/status, bounded table/scroll, permission-denial, dialog-focus and browser download/object-URL cleanup assertions. Chrome DevTools MCP independently passed the AR 375px sentinel. Full frontend gates (1,358 Vitest tests, 422 locale/logical-CSS checks, lint/typecheck/build/CSS/API-parity/harness/diff) and the CI-equivalent backend gate (2,289 passed, 365 skipped) are green. Authoritative CI run `32990393773` passed backend-test and frontend-test; the PR squash-merged as `e4b15ae96ec0f41d0903fa5ec27aebb6da058965`, where post-merge CI run `32991308202` also passed both jobs. See [value-safe JSON evidence](evidence/chunk-27-responsive.json).
 
+`IS-GAP-047` is **Resolved** on tested closure head `8066a973a13b6cba4f709c66d80d8d1f50454253` through [#341](https://github.com/RkShanks/QueryCraft/pull/341) from authoritative merged main `4d4938e136b117851e6cf2dc3078b1b880a941ab`. Its [CHUNK-28 evidence](evidence/chunk-28-browser-privacy.md) records positive-control calibration and zero preflight for all browser/external scanners; an 8/8 serial real-API Chromium matrix covering hostile rejection, provider failure/reload/recovery, audit search/pagination/failure/retry/reset/reload/export, restricted 403 and identity cleanup; 14 zero-observation Redis/PostgreSQL/log scans without ciphertext decryption; exact provider/source counts of 8/7; 1,365 frontend and 2,681 backend foundation tests; complete lint/build/parity/harness/review gates; zero disposable resources; and unchanged hashes/status for all 23 protected files. CHUNK-29 is unblocked and not started.
+
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
-- CHUNK-07 closes the identity/cache/permission slice with joint same-browser cache, DOM, accessibility, storage, network and console inspection. IS-GAP-047 remains open because its broader hostile/error/download privacy flow still depends on other unresolved gaps.
+- CHUNK-07 closed the identity/cache/permission slice; CHUNK-28 now closes the broader hostile/error/download/runtime-memory/external-store privacy matrix after prerequisites #337–#340 merged.
 - CHUNK-08 closes the primary Workspace prompt-length contract. The reachable legacy `/ask` disposition remains open under IS-GAP-045/CHUNK-31. CHUNK-14 now closes canonical OpenAPI/client regeneration under IS-GAP-008.
 
 ## Decision ledger
