@@ -80,6 +80,21 @@ class TestSourceDBConnectorUnit:
         mock_pool.close.assert_awaited_once()
         assert connector._pool is None
 
+    async def test_failed_aclose_retains_pool_for_retry(self):
+        """A failed pool close must not erase the only retryable reference."""
+        connector = SourceDBConnector()
+        mock_pool = AsyncMock()
+        mock_pool.close = AsyncMock(side_effect=[RuntimeError("private source detail"), None])
+        connector._pool = mock_pool
+
+        with pytest.raises(RuntimeError, match="private source detail"):
+            await connector.aclose()
+
+        assert connector._pool is mock_pool
+        await connector.aclose()
+        assert mock_pool.close.await_count == 2
+        assert connector._pool is None
+
     async def test_aclose_terminates_pool_owned_by_another_event_loop(self):
         """A reused app can release a pool without awaiting its owner loop."""
         connector = SourceDBConnector()
