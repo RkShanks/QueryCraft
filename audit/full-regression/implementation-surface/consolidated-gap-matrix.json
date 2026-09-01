@@ -63,8 +63,8 @@
       "Needs Decision": 1
     },
     "status": {
-      "Pending": 2,
-      "Resolved": 40,
+      "Pending": 1,
+      "Resolved": 41,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 3,
@@ -489,6 +489,14 @@
         "frontend_test": "passed"
       },
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-27-responsive.json"
+    },
+    "CHUNK-28": {
+      "gap_id": "IS-GAP-047",
+      "status": "Resolved",
+      "branch": "phase-6/wave-19.28-browser-privacy-closure-merged-main",
+      "starting_main": "4d4938e136b117851e6cf2dc3078b1b880a941ab",
+      "tested_head": "8066a973a13b6cba4f709c66d80d8d1f50454253",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-28-browser-privacy.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -2293,7 +2301,7 @@
       ],
       "owner": "Frontend Implementer; Gemini",
       "chunk": "CHUNK-22",
-      "status": "Resolved on tested branch",
+      "status": "Resolved",
       "resolution": {
         "tested_product_commit": "63cc50d",
         "evidence": "audit/full-regression/implementation-surface/evidence/chunk-22-audit-download.json",
@@ -2984,14 +2992,18 @@
       ],
       "owner": "Frontend Implementer with security review; Gemini",
       "chunk": "CHUNK-28",
-      "status": "Pending",
+      "status": "Resolved",
       "source_refs": [
         "frontend/src/hooks/useQuerySubmit.ts::handleError",
         "frontend/src/pages/AdminAuditPage.tsx::handleExport",
         "frontend/src/providers/QueryProvider.tsx::queryClient",
         "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/phase-6-current-head-browser-evidence-2026-07-29.json::prohibited_response_or_retention_scan",
         "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-b-security-ui-report-2026-07-29.md::XP-012",
-        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-current-head-report-2026-08-01.md::XP-012"
+        "audit/full-regression/runs/phase-6-pre-freeze-2026-07-03/cross-phase-current-head-report-2026-08-01.md::XP-012",
+        "frontend/tests/e2e/chunk_28_browser_privacy.spec.ts",
+        "frontend/tests/e2e/chunk_28_audit_search_retention.spec.ts",
+        "frontend/tests/e2e/chunk_28_hostile_rejection.spec.ts",
+        "audit/full-regression/implementation-surface/evidence/chunk-28-browser-privacy.json"
       ]
     }
   ],
