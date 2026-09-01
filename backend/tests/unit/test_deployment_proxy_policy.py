@@ -27,10 +27,16 @@ SECURITY_HEADERS = {
     "Permissions-Policy": "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
 }
+DOCUMENTATION_PATHS = ("/docs", "/redoc", "/docs/oauth2-redirect", "/openapi.json")
 
 
 def _nginx_configuration() -> str:
     return NGINX_CONFIGURATION.read_text(encoding="utf-8")
+
+
+def _exact_location_returns_404(configuration: str, path: str) -> bool:
+    location = rf"location\s*=\s*{re.escape(path)}\s*\{{\s*return\s+404;\s*\}}"
+    return re.search(location, configuration) is not None
 
 
 @pytest.mark.anyio
@@ -64,6 +70,13 @@ def test_proxy_cache_policy_preserves_api_contracts_and_classifies_web_assets():
     assert "location ^~ /assets/" in configuration
     assert "try_files $uri =404;" in configuration
     assert "try_files $uri $uri/ /index.html;" in configuration
+
+
+@pytest.mark.parametrize("path", DOCUMENTATION_PATHS)
+def test_proxy_does_not_turn_disabled_documentation_routes_into_spa_pages(path: str):
+    configuration = _nginx_configuration()
+
+    assert _exact_location_returns_404(configuration, path)
 
 
 def test_frontend_image_installs_reviewable_nginx_configuration():
