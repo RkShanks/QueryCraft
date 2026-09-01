@@ -10,7 +10,7 @@ from redis.exceptions import RedisError
 from app.core.config import get_settings
 from app.core.credential_provider import init_credential_provider
 from app.core.dependencies import close_redis, get_initialized_redis, init_redis
-from app.core.exceptions import SessionInvalidated
+from app.core.exceptions import ApplicationShutdownError, SessionInvalidated
 from app.core.logging import get_logger, setup_logging
 from app.core.readiness import ReadinessState, source_tree_alembic_head
 from app.core.security import OriginValidatorMiddleware, SessionMiddleware
@@ -19,6 +19,48 @@ from app.llm.factory import LLMProviderFactory
 from app.schemas.operational import LivenessResponse, NotReadyResponse, ReadinessResponse
 
 logger = get_logger(__name__)
+
+_SOURCE_CONNECTOR_CATEGORY = "source_connector"
+_LLM_ADAPTERS_CATEGORY = "llm_adapters"
+_SESSION_MIDDLEWARE_CATEGORY = "session_middleware"
+_SHARED_REDIS_CATEGORY = "shared_redis"
+_DATABASE_ENGINE_CATEGORY = "database_engine"
+
+
+async def _close_resource(category, closer, failure_categories: list[str]) -> bool:
+    try:
+        await closer()
+    except Exception:
+        failure_categories.append(category)
+        return False
+    return True
+
+
+async def _close_session_middlewares(failure_categories: list[str]) -> None:
+    for middleware in list(SessionMiddleware._instances):
+        closed = await _close_resource(_SESSION_MIDDLEWARE_CATEGORY, middleware.aclose, failure_categories)
+        if closed and middleware in SessionMiddleware._instances:
+            SessionMiddleware._instances.remove(middleware)
+
+
+async def _shutdown_application() -> None:
+    from app.api.v1.query import close_source_db_connector
+
+    failure_categories: list[str] = []
+    await _close_resource(_SOURCE_CONNECTOR_CATEGORY, close_source_db_connector, failure_categories)
+    await _close_resource(_LLM_ADAPTERS_CATEGORY, LLMProviderFactory.shutdown_all, failure_categories)
+    await _close_session_middlewares(failure_categories)
+    await _close_resource(_SHARED_REDIS_CATEGORY, close_redis, failure_categories)
+    await _close_resource(_DATABASE_ENGINE_CATEGORY, dispose_engine, failure_categories)
+    if failure_categories:
+        categories = tuple(failure_categories)
+        logger.error(
+            "application_shutdown_failed",
+            failure_categories=categories,
+            failure_count=len(categories),
+        )
+        raise ApplicationShutdownError(categories) from None
+    logger.info("application_shutdown")
 
 
 @asynccontextmanager
@@ -49,17 +91,8 @@ async def lifespan(app: FastAPI):
     readiness.complete_startup()
     yield
 
-    # Shutdown
     readiness.begin_shutdown()
-    from app.api.v1.query import close_source_db_connector
-
-    await close_source_db_connector()
-    await LLMProviderFactory.shutdown_all()
-    for sm in SessionMiddleware._instances:
-        await sm.aclose()
-    await close_redis()
-    await dispose_engine()
-    logger.info("application_shutdown")
+    await _shutdown_application()
 
 
 async def _check_alembic_drift(database_url: str) -> None:

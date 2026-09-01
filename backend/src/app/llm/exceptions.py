@@ -6,8 +6,9 @@ kept for one chunk to avoid breaking existing adapter imports.
 
 from app.core.exceptions import (
     LLMConfigurationError,
+    LLMShutdownError,
     LLMTimeout,
     LLMUnavailable,
 )
 
-__all__ = ["LLMUnavailable", "LLMTimeout", "LLMConfigurationError"]
+__all__ = ["LLMUnavailable", "LLMTimeout", "LLMConfigurationError", "LLMShutdownError"]
