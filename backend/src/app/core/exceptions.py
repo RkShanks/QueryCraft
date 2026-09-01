@@ -170,7 +170,7 @@ class AttemptExpired(AttemptError):
 
 
 class AttemptOwnershipViolation(AttemptError):
-    """Raised when session_id doesn't match the attempt's owner."""
+    """Raised when the session or user doesn't match the attempt's owner."""
 
     def __init__(self) -> None:
         super().__init__("No active query result to act on", message_key="error.attemptInvalid")
