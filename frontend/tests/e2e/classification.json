@@ -171,6 +171,10 @@
     "tests/e2e/chunk_28_browser_privacy.spec.ts": {
       "category": "live",
       "reason": "Real FastAPI plus isolated Chromium cross-channel negative-canary proof for hostile rejection, provider failure, audit search/export, and same-profile identity replacement."
+    },
+    "tests/e2e/chunk_30_strict_csp.spec.ts": {
+      "category": "mocked",
+      "reason": "Production-built SPA served by real Nginx with deterministic authentication boundaries to prove strict-CSP mounting without runtime compilation."
     }
   },
   "mockHelpers": [
