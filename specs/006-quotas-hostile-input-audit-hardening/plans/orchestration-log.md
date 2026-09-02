@@ -1302,3 +1302,28 @@
 - Pre-implementation accounting is Resolved 42, Pending 3, Partial 2, Needs Decision 0, Total 47.
 - CHUNK-30 must stop on conflicting or duplicate deployment headers, exposed production documentation, broken canonical generation, CSP-blocked product behavior, or any need to change the approved policy.
 - T-905 and Phase 6 freeze work remain not started.
+
+---
+
+## CHUNK-30 — Strict-CSP Validator Generation Authorization
+
+### Decision Record
+
+- **Date**: 2026-09-02
+- **Branch**: `phase-6/wave-19.30-deployment-policy`
+- **Trigger**: Production Nginx Chromium proof reproduced an AJV `EvalError`; runtime schema compilation prevented the SPA from mounting under the approved strict CSP.
+- **Status**: CHUNK-30 resumed with an authorized in-gap prerequisite. CHUNK-31 and T-905 remain not started.
+
+### Approved Design
+
+1. Preserve the exact CSP boundary `script-src 'self'`; do not add `unsafe-eval`, `eval()`, `new Function()`, a CSP bypass, or browser-side schema compilation.
+2. Keep canonical OpenAPI as the single schema source.
+3. Extend deterministic API generation to emit standalone AJV validators plus the operation/status and union-alternative validator maps required by current sanitization behavior.
+4. Runtime response validation imports generated validators and preserves `ClientContractError`, fail-closed behavior, unknown-field stripping, and semantic checks without constructing or compiling AJV.
+5. Move AJV packages to development dependencies when no production import remains.
+6. `gen:api` and `gen:api:check` must generate and byte-check the validator artifact.
+
+### Stop Conditions
+
+- Stop if standalone generation weakens validation semantics, duplicates schemas by hand, still requires browser compilation, or requires any CSP exception.
+- Non-Gemini live smoke remains deferred/Partial with zero calls. The 23 protected artifacts and draft PR #336 remain outside CHUNK-30 ownership.
