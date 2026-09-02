@@ -9,6 +9,7 @@ import {
 } from './generated/responseValidators.gen';
 
 const UNION_VALIDATOR_ID = 'x-querycraft-union-validator';
+const COMPONENT_REFERENCE_PREFIX = '#/components/schemas/';
 type JsonRecord = Record<string, unknown>;
 
 function collectUnionValidatorIds(schema: unknown, unionIds: Set<string>): void {
@@ -31,6 +32,25 @@ function collectUnionValidatorIds(schema: unknown, unionIds: Set<string>): void 
 
   for (const nestedSchema of Object.values(schemaObject)) {
     collectUnionValidatorIds(nestedSchema, unionIds);
+  }
+}
+
+function collectComponentReferences(schema: unknown, references: Set<string>): void {
+  if (Array.isArray(schema)) {
+    for (const entry of schema) collectComponentReferences(entry, references);
+    return;
+  }
+  if (!schema || typeof schema !== 'object') return;
+
+  const schemaObject = schema as JsonRecord;
+  if (
+    typeof schemaObject.$ref === 'string' &&
+    schemaObject.$ref.startsWith(COMPONENT_REFERENCE_PREFIX)
+  ) {
+    references.add(schemaObject.$ref.slice(COMPONENT_REFERENCE_PREFIX.length));
+  }
+  for (const nestedSchema of Object.values(schemaObject)) {
+    collectComponentReferences(nestedSchema, references);
   }
 }
 
@@ -61,5 +81,15 @@ describe('generated standalone response validators', () => {
 
     expect(Object.keys(unionAlternativeValidatorsById).sort()).toEqual([...unionIds].sort());
     expect(unionIds.size).toBeGreaterThan(0);
+  });
+
+  it('includes the transitive closure of response component references', () => {
+    const referencedComponents = new Set<string>();
+    collectComponentReferences(responseOperationManifest, referencedComponents);
+    collectComponentReferences(responseComponentSchemas, referencedComponents);
+
+    expect([...referencedComponents].sort()).toEqual(
+      Object.keys(responseComponentSchemas).sort()
+    );
   });
 });
