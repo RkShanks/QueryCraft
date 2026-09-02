@@ -1,17 +1,21 @@
 import { expect, test } from '@playwright/test';
 
 const STRICT_SCRIPT_POLICY = "script-src 'self';";
+type BrowserErrorCategory = 'console_error' | 'csp_violation' | 'page_error';
 
 test.use({ screenshot: 'off', trace: 'off', video: 'off' });
 
 test('CHUNK-30 production SPA mounts under strict CSP without runtime compilation', async ({
   page,
 }) => {
-  const browserErrors: string[] = [];
+  const browserErrorCategories = new Set<BrowserErrorCategory>();
   page.on('console', (message) => {
-    if (message.type() === 'error') browserErrors.push(message.text());
+    if (message.type() !== 'error') return;
+    browserErrorCategories.add(
+      message.text().includes('Content Security Policy') ? 'csp_violation' : 'console_error'
+    );
   });
-  page.on('pageerror', (error) => browserErrors.push(error.message));
+  page.on('pageerror', () => browserErrorCategories.add('page_error'));
 
   await page.route('**/api/v1/auth/me', (route) =>
     route.fulfill({
@@ -33,7 +37,7 @@ test('CHUNK-30 production SPA mounts under strict CSP without runtime compilatio
 
   expect(contentSecurityPolicy).toContain(STRICT_SCRIPT_POLICY);
   expect(contentSecurityPolicy).not.toContain('unsafe-eval');
-  expect(browserErrors, browserErrors.join('\n')).toEqual([]);
+  expect([...browserErrorCategories].sort()).toEqual([]);
   await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible();
   await expect(page).toHaveTitle('Sign In | QueryCraft');
 });
