@@ -108,6 +108,10 @@ describe('canonical generated API contract', () => {
 
       expect(generatedValidators).toContain('responseValidatorByOperationStatus');
       expect(generatedValidators).toContain('unionAlternativeValidatorsById');
+      expect(generatedValidators).not.toMatch(/\brequire\s*\(/);
+      expect(generatedValidators).not.toMatch(/\bnew Function\b/);
+      expect(generatedValidators).not.toMatch(/\beval\s*\(/);
+      expect(generatedValidators).not.toContain('ajv/dist/compile');
 
       writeFileSync(validatorPath, `${generatedValidators}\n// stale validator artifact\n`);
       const driftCheck = spawnSync(
