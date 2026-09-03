@@ -318,21 +318,42 @@ export const WorkspacePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [loadedQuestion, setLoadedQuestion] = useState('');
 
+  const hasUrlQuestion = searchParams.has('question');
+  const hasUrlConnectionId = searchParams.has('connectionId');
   const urlQuestion = searchParams.get('question');
   const urlConnectionId = searchParams.get('connectionId');
 
   useEffect(() => {
-    if (urlQuestion || urlConnectionId) {
-      if (urlConnectionId && urlConnectionId !== selectedConnectionId) {
-        setSelectedConnectionId(urlConnectionId);
-      }
-      if (urlQuestion) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setLoadedQuestion(urlQuestion);
-      }
-      setSearchParams({}, { replace: true });
+    if (!hasUrlQuestion && !hasUrlConnectionId) return;
+    if (urlConnectionId && !userConnectionsQuery.isSuccess) return;
+
+    const isAuthorizedConnection = availableConnections.some(
+      (connection) => connection.id === urlConnectionId
+    );
+    if (isAuthorizedConnection && urlConnectionId !== selectedConnectionId) {
+      setSelectedConnectionId(urlConnectionId);
     }
-  }, [urlQuestion, urlConnectionId, selectedConnectionId, setSelectedConnectionId, setSearchParams]);
+    if (hasUrlQuestion) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoadedQuestion(urlQuestion ?? '');
+    }
+    setSearchParams((currentSearchParams) => {
+      const settledSearchParams = new URLSearchParams(currentSearchParams);
+      settledSearchParams.delete('question');
+      settledSearchParams.delete('connectionId');
+      return settledSearchParams;
+    }, { replace: true });
+  }, [
+    availableConnections,
+    hasUrlConnectionId,
+    hasUrlQuestion,
+    selectedConnectionId,
+    setSearchParams,
+    setSelectedConnectionId,
+    urlConnectionId,
+    urlQuestion,
+    userConnectionsQuery.isSuccess,
+  ]);
 
   const [localTurns, setLocalTurns] = useState<ConversationTurn[]>([]);
   const [deletedSavedIds, setDeletedSavedIds] = useState<Set<string>>(new Set());
