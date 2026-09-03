@@ -63,8 +63,8 @@
       "Needs Decision": 0
     },
     "status": {
-      "Pending": 3,
-      "Resolved": 42,
+      "Pending": 1,
+      "Resolved": 44,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 0,
@@ -513,10 +513,12 @@
         "IS-GAP-010",
         "IS-GAP-011"
       ],
-      "status": "Pending",
+      "status": "Resolved",
       "branch": "phase-6/wave-19.30-deployment-policy",
       "starting_main": "84c04a5eb066e670c4377fa0d4eee43e6a2b02d9",
-      "decision_recorded": "2026-09-01"
+      "tested_product_head": "bc0da9cfddbfca36d18f44e72cd5d71537bb5d11",
+      "decision_recorded": "2026-09-01",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-30-deployment-policy.json"
     },
     "CHUNK-31": {
       "gap_id": "IS-GAP-045",
@@ -1076,7 +1078,7 @@
       ],
       "owner": "Orchestrator decision, then Backend/Frontend Implementers",
       "chunk": "CHUNK-30",
-      "status": "Pending",
+      "status": "Resolved",
       "decision": {
         "question": "Which layer owns each security/cache header?",
         "alternatives": [
@@ -1086,6 +1088,11 @@
         "consequences": "The reverse proxy is the sole deployment-header owner; the backend remains authoritative for endpoint-specific API cache policy.",
         "approved": "Reverse proxy owns deployment security headers; backend cache policy passes through unchanged.",
         "recorded": "2026-09-01"
+      },
+      "resolution": {
+        "tested_product_head": "bc0da9cfddbfca36d18f44e72cd5d71537bb5d11",
+        "evidence": "audit/full-regression/implementation-surface/evidence/chunk-30-deployment-policy.json",
+        "result": "Proxy-only deployment headers, pass-through endpoint cache policy, localized route titles and strict-CSP standalone response validation passed static, HTTP and Chromium gates."
       },
       "source_refs": [
         "backend/src/app/main.py::create_app",
@@ -1127,7 +1134,7 @@
       ],
       "owner": "Orchestrator decision, then Backend Implementer",
       "chunk": "CHUNK-30",
-      "status": "Pending",
+      "status": "Resolved",
       "decision": {
         "question": "What is the production exposure policy for FastAPI docs/OpenAPI routes?",
         "alternatives": [
@@ -1139,6 +1146,11 @@
         "consequences": "Production documentation routes are disabled while explicit development/test exposure and canonical CI generation remain available.",
         "approved": "Disable production HTTP documentation; allow explicit development/test exposure; preserve app.openapi() and generation parity.",
         "recorded": "2026-09-01"
+      },
+      "resolution": {
+        "tested_product_head": "bc0da9cfddbfca36d18f44e72cd5d71537bb5d11",
+        "evidence": "audit/full-regression/implementation-surface/evidence/chunk-30-deployment-policy.json",
+        "result": "Secure-default HTTP documentation disablement and explicit development enablement passed while app.openapi(), canonical generation, Schemathesis input and 65-operation generated parity remained available."
       },
       "source_refs": [
         "backend/src/app/main.py::create_app",

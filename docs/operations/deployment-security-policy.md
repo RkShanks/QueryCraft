@@ -19,6 +19,12 @@ Nginx emits each deployment security header once at server scope with the `alway
 
 The proxy passes redirects, `Set-Cookie`, downloads, and API response headers through without redefining them. HSTS takes effect only when the public response is delivered over HTTPS, so the Nginx service must remain behind the deployment's TLS endpoint.
 
+## Strict CSP and response validation
+
+The deployed `script-src` policy is exactly `'self'`; it does not permit `unsafe-eval`. Browser response validation therefore imports deterministic standalone validator functions generated from `backend/openapi.json`. AJV schema compilation and format binding run during `frontend`'s `npm run gen:api`; the browser receives only emitted validator and format-checking code, not a schema compiler. The generated operation/status map and union-alternative map preserve fail-closed validation and unknown-field sanitization without `eval`, `new Function`, or a CSP exception.
+
+`npm run gen:api:check` regenerates the client, response manifest, and standalone validator artifact in a temporary directory and byte-compares them with the checked-in files. HTTP documentation exposure does not affect this process or the canonical schema source.
+
 ## Cache ownership
 
 The proxy adds `Cache-Control` only for the web application:
@@ -44,6 +50,9 @@ Verify the policy after a deployment change:
 cd backend
 uv run python scripts/generate_openapi.py --check
 uv run pytest tests/unit/test_api_documentation_policy.py tests/unit/test_openapi_canonical.py tests/unit/test_deployment_proxy_policy.py -q
+
+cd ../frontend
+npm run gen:api:check
 ```
 
 From the repository root, validate Compose and Nginx syntax:

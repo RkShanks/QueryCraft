@@ -372,7 +372,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Stop conditions:** Cleanup aggregation would hide a security failure or typed corruption semantics require a broader API change.
 - **Progress:** Resolved on tested product head `47c5662db951de70c2d2c7c2fd9aeb8010ef682c` in [#342](https://github.com/RkShanks/QueryCraft/pull/342) from authoritative main `f96e6747154129ace3da95c34efaf80ee8f6ffa1`. Five single shutdown-failure positions, cached-adapter first/middle/last/multiple failures, three middleware instances and a four-failure aggregate all attempted later ordinary closers with readiness already shutting down, constant typed outcomes, truthful cache retention and no false success event. One strict session parser covers both middleware and `/auth/me`; one ownership-first attempt parser protects decryption and deletion. Valid-JSON semantic matrices, dependency separation, atomic index reconciliation, stale compare-delete replacement races and no-restart recovery passed against disposable Redis. Focused/compatibility/integration/XP-013 gates, 2,390 backend foundation tests, Ruff/format/diff-check and all guards passed. See [Markdown](evidence/chunk-29-cleanup-cache.md) and [JSON](evidence/chunk-29-cleanup-cache.json) evidence.
 
-## CHUNK-30 — deployed headers and documentation exposure [DISPATCHED]
+## CHUNK-30 — deployed headers and documentation exposure [RESOLVED]
 
 - **IDs / role / branch / context:** `IS-GAP-010`, `IS-GAP-011`; Orchestrator decision, then Backend/Frontend Implementers; provisional `phase-6/wave-19.30-deployment-policy`; 80–115k after decisions.
 - **Likely source:** `backend/src/app/main.py`, `backend/src/app/core/config.py`, `frontend/Dockerfile`, `frontend/vite.config.ts`, `frontend/index.html`, `docker-compose.dev.yml`, and deployment tests/docs.
@@ -382,7 +382,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Browser/live:** Required proxied production-like response/title checks.
 - **Isolation/cleanup/evidence:** Disposable proxy/backend; `evidence/chunk-30-deployment-policy.md`.
 - **Stop conditions:** Do not dispatch before both ownership/exposure decisions are recorded; stop on conflicting duplicate headers or exposed internals.
-- **Progress:** Implementation pending from approved 2026-09-01 decisions: proxy solely owns deployment security headers; backend endpoint-specific cache policy passes through unchanged; production HTTP documentation is disabled while explicit development/test exposure and canonical CI generation remain available. Branch `phase-6/wave-19.30-deployment-policy` starts from `84c04a5eb066e670c4377fa0d4eee43e6a2b02d9`.
+- **Progress:** Resolved on tested product head `bc0da9cfddbfca36d18f44e72cd5d71537bb5d11` from starting main `84c04a5eb066e670c4377fa0d4eee43e6a2b02d9`. Nginx solely owns exact deployment security headers and web caching while backend endpoint cache policy passes through unchanged; production docs are disabled with explicit development enablement and 65-operation canonical generation preserved; EN/AR titles and deterministic standalone response validators pass the exact strict CSP without runtime compilation. Static, HTTP, full frontend and production-Nginx Chromium gates passed. See [evidence](evidence/chunk-30-deployment-policy.md).
 
 ## CHUNK-31 — legacy `/ask` disposition [PENDING]
 
@@ -398,4 +398,4 @@ The order puts the Critical source-continuity defect first, then security/data i
 
 ## First recommended implementation dispatch
 
-`CHUNK-01` through `CHUNK-29` have completed their available implementation closure. `CHUNK-24` remains Partial with non-Gemini live smoke explicitly deferred until approved credentials/runtime exist and zero external calls made; `CHUNK-25` remains Partial pending vendor-published fixture checksums. CHUNK-30 is dispatched. CHUNK-31 is unblocked but not started. Pre-implementation accounting is Resolved 42, Pending 3, Partial 2, Needs Decision 0, Total 47. T-905 and freeze work have not started.
+`CHUNK-01` through `CHUNK-30` have completed their available implementation closure. `CHUNK-24` remains Partial with non-Gemini live smoke explicitly deferred until approved credentials/runtime exist and zero external calls made; `CHUNK-25` remains Partial pending vendor-published fixture checksums. CHUNK-31 is unblocked but not started. Accounting is Resolved 44, Pending 1, Partial 2, Needs Decision 0, Total 47. T-905 and freeze work have not started.

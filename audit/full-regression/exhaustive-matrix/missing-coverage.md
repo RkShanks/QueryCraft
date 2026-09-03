@@ -54,8 +54,8 @@ The old setup-dependent list was executed by the accepted final current-head Pha
 
 | Consolidated ID | Approved decision | Implementation state |
 | --- | --- | --- |
-| IS-GAP-010 | Proxy solely owns deployment security headers; backend endpoint-specific cache policy passes through unchanged. | CHUNK-30 implementation pending. |
-| IS-GAP-011 | Disable production HTTP documentation; allow explicit development/test exposure; preserve canonical CI generation. | CHUNK-30 implementation pending. |
+| IS-GAP-010 | Proxy solely owns deployment security headers; backend endpoint-specific cache policy passes through unchanged. | CHUNK-30 resolved on tested product head `bc0da9cfddbfca36d18f44e72cd5d71537bb5d11`; see implementation-surface evidence. |
+| IS-GAP-011 | Disable production HTTP documentation; allow explicit development/test exposure; preserve canonical CI generation. | CHUNK-30 resolved on tested product head `bc0da9cfddbfca36d18f44e72cd5d71537bb5d11`; see implementation-surface evidence. |
 | IS-GAP-045 | Redirect or retire `/ask` in favor of Workspace. | CHUNK-31 unblocked but not started. |
 
 The decisions were recorded on 2026-09-01 and no implementation row remains decision-blocked. `IS-GAP-015` remains Partial with non-Gemini live smoke deferred until approved credentials/runtime exist; zero external LLM calls were made.

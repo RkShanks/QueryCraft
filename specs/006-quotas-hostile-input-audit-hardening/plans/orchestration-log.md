@@ -1327,3 +1327,37 @@
 
 - Stop if standalone generation weakens validation semantics, duplicates schemas by hand, still requires browser compilation, or requires any CSP exception.
 - Non-Gemini live smoke remains deferred/Partial with zero calls. The 23 protected artifacts and draft PR #336 remain outside CHUNK-30 ownership.
+
+---
+
+## CHUNK-30 — Deployment Security Policy Closure
+
+### Implementation and Evidence Record
+
+- **Date**: 2026-09-04
+- **Starting Main**: `84c04a5eb066e670c4377fa0d4eee43e6a2b02d9`
+- **Branch**: `phase-6/wave-19.30-deployment-policy`
+- **Tested Product Head**: `bc0da9cfddbfca36d18f44e72cd5d71537bb5d11`
+- **Scope**: `IS-GAP-010`, `IS-GAP-011` only, including the authorized strict-CSP validator prerequisite.
+- **Status**: Resolved pending authoritative pull-request CI and squash merge.
+- **Evidence**: `audit/full-regression/implementation-surface/evidence/chunk-30-deployment-policy.md` and `.json`.
+
+### Verified Outcome
+
+1. Nginx solely owns CSP, frame, content-type, referrer, permissions and HSTS headers with one exact value on HTML, SPA fallback, hashed assets, proxied API success/error/download and Nginx error responses. Direct backend responses emit none.
+2. Backend endpoint-specific `Cache-Control` passes through unchanged. HTML is `no-store`, hashed assets are immutable, and sensitive API/download responses retain one upstream `no-store` plus download disposition and cookies.
+3. `API_DOCUMENTATION_ENABLED` defaults to false, explicitly enables development/test documentation, and leaves `app.openapi()`, canonical generation, Schemathesis input and 65 runtime = 65 canonical = 65 generated operations intact. All four production documentation paths return 404 directly and through the proxy.
+4. Centralized QueryCraft EN/AR document titles cover every current route plus navigation, redirects, reload and back/forward without physical-direction CSS.
+5. Canonical OpenAPI generation now emits deterministic standalone operation/status and union-alternative AJV validators. Runtime response validation imports the generated maps, preserves fail-closed sanitization and semantic checks, and contains no AJV construction, compiler path, dynamic schema validation, `unsafe-eval`, `eval()` or `new Function()`.
+6. The exact production build mounted behind real strict-CSP Nginx in EN desktop and AR mobile Chromium with zero unexpected console/page/CSP errors. A real public API response and real authenticated route/reload passed. No LLM or source query ran.
+7. Backend/frontend focused and full gates, Ruff, format, ESLint, typecheck, build, CSS lint, API generation/currentness, 65-operation Schemathesis input, Compose, Nginx syntax, JSON/link/leakage/diff checks and all four guards passed.
+8. All disposable resources and browser output were removed. The 23 protected files retain their exact hashes/status and none was staged. Draft PR #336 was untouched.
+
+### Ledger and Next Dispatch
+
+- `IS-GAP-010`: Resolved.
+- `IS-GAP-011`: Resolved.
+- `IS-GAP-015`: remains Partial; non-Gemini live smoke remains deferred until credentials/runtime exist, with zero external calls.
+- Accounting: Resolved 44, Pending 1, Partial 2, Needs Decision 0, Total 47.
+- CHUNK-31 is unblocked but not started.
+- T-905 and Phase 6 freeze work were not started.
