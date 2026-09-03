@@ -92,6 +92,26 @@ describe('App exact permission routes and landing', () => {
     expect(window.history.length).toBe(historyLength);
   });
 
+  it('preserves only supported legacy bookmark parameters for Workspace', async () => {
+    authorize([PERMISSIONS.QUERY_SUBMIT]);
+    window.history.replaceState(
+      {},
+      '',
+      '/ask?question=monthly%20revenue&connectionId=connection-7&lng=ar&tracking=drop#legacy'
+    );
+
+    render(<App />);
+
+    expect(await screen.findByText('workspace-page')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/');
+    expect(Object.fromEntries(new URLSearchParams(window.location.search))).toEqual({
+      question: 'monthly revenue',
+      connectionId: 'connection-7',
+      lng: 'ar',
+    });
+    expect(window.location.hash).toBe('');
+  });
+
   it.each(routeCases)('denies %s when its exact permission is absent', async (path, permission, marker) => {
     const unrelatedPermission = permission === PERMISSIONS.QUERY_SUBMIT
       ? PERMISSIONS.QUERY_HISTORY_VIEW
