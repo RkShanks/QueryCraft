@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { generateResponseValidationArtifacts } from './generate-response-validators.mjs';
 
 const FRONTEND_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CANONICAL_OPENAPI = resolve(FRONTEND_ROOT, '../backend/openapi.json');
@@ -59,7 +60,7 @@ async function generate(output) {
     ],
     logs: { file: false, level: 'silent' },
   });
-  writeResponseManifest(output);
+  writeResponseValidationArtifacts(output);
 }
 
 function canonicalOperations(openapi) {
@@ -102,8 +103,7 @@ function responseContracts(operation) {
     .sort((left, right) => left.status.localeCompare(right.status));
 }
 
-function writeResponseManifest(output) {
-  const openapi = JSON.parse(readFileSync(CANONICAL_OPENAPI, 'utf8'));
+function canonicalResponseManifest(openapi) {
   const classificationSource = JSON.parse(readFileSync(RESPONSE_CLASSIFICATIONS, 'utf8'));
   const classifications = classificationsByOperation(classificationSource);
   const operations = canonicalOperations(openapi);
@@ -120,7 +120,7 @@ function writeResponseManifest(output) {
     }
   }
 
-  const manifest = operations.map(({ method, operation, path }) => ({
+  return operations.map(({ method, operation, path }) => ({
     classification: classifications.get(operation.operationId),
     method,
     operationId: operation.operationId,
@@ -128,13 +128,26 @@ function writeResponseManifest(output) {
     responses: responseContracts(operation),
     unusedReason: classificationSource.unused_reasons[operation.operationId] ?? null,
   }));
+}
+
+function writeResponseManifest(output, manifest, componentSchemas) {
   const source = [
     '// This file is auto-generated from backend/openapi.json.',
     '',
     `export const responseOperationManifest = ${JSON.stringify(manifest, null, 2)} as const;`,
     '',
+    `export const responseComponentSchemas = ${JSON.stringify(componentSchemas, null, 2)} as const;`,
+    '',
   ].join('\n');
   writeFileSync(join(output, 'responseManifest.gen.ts'), source);
+}
+
+function writeResponseValidationArtifacts(output) {
+  const openapi = JSON.parse(readFileSync(CANONICAL_OPENAPI, 'utf8'));
+  const manifest = canonicalResponseManifest(openapi);
+  const artifacts = generateResponseValidationArtifacts(openapi, manifest);
+  writeResponseManifest(output, artifacts.manifest, artifacts.componentSchemas);
+  writeFileSync(join(output, 'responseValidators.gen.ts'), artifacts.validatorSource);
 }
 
 function filesByRelativePath(directory) {

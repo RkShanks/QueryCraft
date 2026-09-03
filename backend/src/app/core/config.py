@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     SESSION_IDLE_TIMEOUT_HOURS: int = 8
     MAX_CONCURRENT_SESSIONS_PER_USER: int = 5
     SESSION_COOKIE_SECURE: bool = True  # Set False in tests (no HTTPS in ASGI test client)
+    API_DOCUMENTATION_ENABLED: bool = False
     SCHEMA_CACHE_TTL_SECONDS: int = 300
     MAX_SCHEMA_TOKENS: int = 60000
 

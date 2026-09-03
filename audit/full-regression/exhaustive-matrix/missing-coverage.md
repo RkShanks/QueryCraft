@@ -50,15 +50,15 @@ The old setup-dependent list was executed by the accepted final current-head Pha
 | IS-GAP-018 | Disposable filesystem/source containers | Verify downloads/checksums/reruns without shared fixtures. |
 | IS-GAP-047 | Disposable users/sessions/audit/downloads/browser profile | Destroy every canary-bearing state and retain booleans/counts only. |
 
-## [NEEDS DECISION]
+## Approved decision handoff
 
-| Consolidated ID | Exact decision | Alternatives |
+| Consolidated ID | Approved decision | Implementation state |
 | --- | --- | --- |
-| IS-GAP-010 | Which layer owns each deployed security/cache header? | Proxy-owned deployment headers plus backend API cache policy, or backend-owned headers passed through by proxy. |
-| IS-GAP-011 | What is the production docs/OpenAPI exposure policy? | Disabled UI with CI generation, admin-authenticated, trusted-network-only, or explicitly public. |
-| IS-GAP-045 | Is `/ask` supported? | Redirect/retire in favor of Workspace, or retain with full parity obligations. |
+| IS-GAP-010 | Proxy solely owns deployment security headers; backend endpoint-specific cache policy passes through unchanged. | CHUNK-30 resolved on tested product head `bc0da9cfddbfca36d18f44e72cd5d71537bb5d11`; see implementation-surface evidence. |
+| IS-GAP-011 | Disable production HTTP documentation; allow explicit development/test exposure; preserve canonical CI generation. | CHUNK-30 resolved on tested product head `bc0da9cfddbfca36d18f44e72cd5d71537bb5d11`; see implementation-surface evidence. |
+| IS-GAP-045 | Redirect or retire `/ask` in favor of Workspace. | CHUNK-31 unblocked but not started. |
 
-These decisions block only CHUNK-30 and CHUNK-31. They do not block standalone Critical CHUNK-01 or the confirmed security/data-integrity sequence.
+The decisions were recorded on 2026-09-01 and no implementation row remains decision-blocked. `IS-GAP-015` remains Partial with non-Gemini live smoke deferred until approved credentials/runtime exist; zero external LLM calls were made.
 
 ## Deferred scope
 

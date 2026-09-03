@@ -51,7 +51,7 @@
       "Low": 3
     },
     "disposition": {
-      "Confirmed Product Gap": 36,
+      "Confirmed Product Gap": 37,
       "Confirmed Coverage Gap": 4,
       "Confirmed Contract/Documentation Drift": 1,
       "Confirmed Test-Harness Gap": 1,
@@ -60,14 +60,14 @@
       "Duplicate/Merged": 0,
       "Already Covered": 0,
       "Not a Current Requirement": 0,
-      "Needs Decision": 1
+      "Needs Decision": 0
     },
     "status": {
-      "Pending": 0,
-      "Resolved": 42,
+      "Pending": 1,
+      "Resolved": 44,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
-      "Needs Decision": 3,
+      "Needs Decision": 0,
       "Partial": 2
     }
   },
@@ -507,10 +507,28 @@
       "tested_head": "47c5662db951de70c2d2c7c2fd9aeb8010ef682c",
       "pull_request": "https://github.com/RkShanks/QueryCraft/pull/342",
       "evidence": "audit/full-regression/implementation-surface/evidence/chunk-29-cleanup-cache.json"
+    },
+    "CHUNK-30": {
+      "gap_ids": [
+        "IS-GAP-010",
+        "IS-GAP-011"
+      ],
+      "status": "Resolved",
+      "branch": "phase-6/wave-19.30-deployment-policy",
+      "starting_main": "84c04a5eb066e670c4377fa0d4eee43e6a2b02d9",
+      "tested_product_head": "bc0da9cfddbfca36d18f44e72cd5d71537bb5d11",
+      "decision_recorded": "2026-09-01",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-30-deployment-policy.json"
+    },
+    "CHUNK-31": {
+      "gap_id": "IS-GAP-045",
+      "status": "Pending",
+      "decision": "Redirect or retire /ask in favor of Workspace",
+      "implementation": "Not started"
     }
   },
   "raw_candidate_dispositions": {
-    "Confirmed Product Gap": 36,
+    "Confirmed Product Gap": 37,
     "Confirmed Coverage Gap": 4,
     "Confirmed Contract/Documentation Drift": 1,
     "Confirmed Test-Harness Gap": 1,
@@ -519,7 +537,7 @@
     "Duplicate/Merged": 7,
     "Already Covered": 0,
     "Not a Current Requirement": 0,
-    "Needs Decision": 1
+    "Needs Decision": 0
   },
   "gaps": [
     {
@@ -1060,14 +1078,21 @@
       ],
       "owner": "Orchestrator decision, then Backend/Frontend Implementers",
       "chunk": "CHUNK-30",
-      "status": "Needs Decision",
+      "status": "Resolved",
       "decision": {
         "question": "Which layer owns each security/cache header?",
         "alternatives": [
           "Reverse proxy owns deployment headers; backend owns API-specific cache policy",
           "Backend emits all headers and proxy passes them through"
         ],
-        "consequences": "Dual ownership risks conflicting headers; no ownership leaves direct and proxied behavior divergent."
+        "consequences": "The reverse proxy is the sole deployment-header owner; the backend remains authoritative for endpoint-specific API cache policy.",
+        "approved": "Reverse proxy owns deployment security headers; backend cache policy passes through unchanged.",
+        "recorded": "2026-09-01"
+      },
+      "resolution": {
+        "tested_product_head": "bc0da9cfddbfca36d18f44e72cd5d71537bb5d11",
+        "evidence": "audit/full-regression/implementation-surface/evidence/chunk-30-deployment-policy.json",
+        "result": "Proxy-only deployment headers, pass-through endpoint cache policy, localized route titles and strict-CSP standalone response validation passed static, HTTP and Chromium gates."
       },
       "source_refs": [
         "backend/src/app/main.py::create_app",
@@ -1109,7 +1134,7 @@
       ],
       "owner": "Orchestrator decision, then Backend Implementer",
       "chunk": "CHUNK-30",
-      "status": "Needs Decision",
+      "status": "Resolved",
       "decision": {
         "question": "What is the production exposure policy for FastAPI docs/OpenAPI routes?",
         "alternatives": [
@@ -1118,7 +1143,14 @@
           "Allow only at a trusted network boundary",
           "Keep public by explicit acceptance"
         ],
-        "consequences": "The choice affects operations, client generation and information exposure."
+        "consequences": "Production documentation routes are disabled while explicit development/test exposure and canonical CI generation remain available.",
+        "approved": "Disable production HTTP documentation; allow explicit development/test exposure; preserve app.openapi() and generation parity.",
+        "recorded": "2026-09-01"
+      },
+      "resolution": {
+        "tested_product_head": "bc0da9cfddbfca36d18f44e72cd5d71537bb5d11",
+        "evidence": "audit/full-regression/implementation-surface/evidence/chunk-30-deployment-policy.json",
+        "result": "Secure-default HTTP documentation disablement and explicit development enablement passed while app.openapi(), canonical generation, Schemathesis input and 65-operation generated parity remained available."
       },
       "source_refs": [
         "backend/src/app/main.py::create_app",
@@ -1307,6 +1339,12 @@
       "owner": "Backend Implementer; Kimi/GLM",
       "chunk": "CHUNK-24",
       "status": "Partial",
+      "deferral": {
+        "recorded": "2026-09-01",
+        "reason": "Approved provider credentials and runtimes are unavailable.",
+        "external_llm_calls": 0,
+        "status_unchanged": "Partial"
+      },
       "source_refs": [
         "backend/src/app/llm/anthropic_adapter.py::AnthropicAdapter.generate",
         "backend/src/app/llm/openai_adapter.py::OpenAIAdapter.generate",
@@ -2882,7 +2920,7 @@
     {
       "id": "IS-GAP-045",
       "severity": "Low",
-      "disposition": "Needs Decision",
+      "disposition": "Confirmed Product Gap",
       "backend_candidates": [],
       "frontend_candidates": [
         "FE-GAP-028"
@@ -2910,14 +2948,16 @@
       ],
       "owner": "Product owner/Orchestrator decision, then Frontend Implementer",
       "chunk": "CHUNK-31",
-      "status": "Needs Decision",
+      "status": "Pending",
       "decision": {
         "question": "Is /ask a supported compatibility route?",
         "alternatives": [
           "Redirect /ask to / and migrate tests/bookmarks",
           "Keep /ask and require full parity with Workspace"
         ],
-        "consequences": "Redirect reduces duplicate surface; parity retains compatibility but doubles ongoing query-flow obligations."
+        "consequences": "CHUNK-31 will redirect or retire /ask in favor of Workspace.",
+        "approved": "Redirect or retire /ask in favor of Workspace.",
+        "recorded": "2026-09-01"
       },
       "source_refs": [
         "frontend/src/App.tsx::App",

@@ -1,7 +1,11 @@
-import Ajv2020, { type AnySchema, type ValidateFunction } from 'ajv/dist/2020';
-import addFormats from 'ajv-formats';
-import { responseOperationManifest } from './generated/responseManifest.gen';
-import * as generatedSchemas from './generated/schemas.gen';
+import {
+  responseComponentSchemas,
+  responseOperationManifest,
+} from './generated/responseManifest.gen';
+import {
+  responseValidatorByOperationStatus,
+  unionAlternativeValidatorsById,
+} from './generated/responseValidators.gen';
 import type {
   AcceptedQueryDetail,
   AcceptedQuerySummary,
@@ -38,31 +42,20 @@ export function isClientContractError(error: unknown): error is ClientContractEr
 
 type ManifestOperation = (typeof responseOperationManifest)[number];
 type JsonRecord = Record<string, unknown>;
+type ResponseValidator = (response: unknown) => boolean;
 
 const manifestById: ReadonlyMap<string, ManifestOperation> = new Map(
   responseOperationManifest.map((operation) => [operation.operationId, operation])
 );
-const compiledValidators = new Map<string, ValidateFunction>();
 const timestampPattern = /(?:Z|[+-]\d{2}:\d{2})$/;
-const componentSchemas = new Map<string, JsonRecord>();
-
-function createSchemaValidator() {
-  const validator = new Ajv2020({
-    allErrors: false,
-    coerceTypes: false,
-    strict: false,
-    useDefaults: false,
-  });
-  addFormats(validator);
-  for (const [exportName, schema] of Object.entries(generatedSchemas)) {
-    const componentName = exportName.replace(/Schema$/, '');
-    componentSchemas.set(componentName, schema as JsonRecord);
-    validator.addSchema(schema as AnySchema, `#/components/schemas/${componentName}`);
-  }
-  return validator;
-}
-
-const schemaValidator = createSchemaValidator();
+const componentSchemas = new Map<string, JsonRecord>(
+  Object.entries(responseComponentSchemas) as [string, JsonRecord][]
+);
+const responseValidators: Readonly<Record<string, ResponseValidator>> =
+  responseValidatorByOperationStatus;
+const unionValidators: Readonly<Record<string, readonly ResponseValidator[]>> =
+  unionAlternativeValidatorsById;
+const UNION_VALIDATOR_ID = 'x-querycraft-union-validator';
 
 function failContract(): never {
   throw new ClientContractError();
@@ -200,15 +193,9 @@ function responseContract(operation: ManifestOperation, status: number) {
   return operation.responses.find((response) => response.status === String(status));
 }
 
-function operationValidator(operation: ManifestOperation, status: number): ValidateFunction {
-  const cacheKey = `${operation.operationId}:${status}`;
-  const cached = compiledValidators.get(cacheKey);
-  if (cached) return cached;
-
-  const contract = responseContract(operation, status);
-  if (!contract?.schema) failContract();
-  const validator = schemaValidator.compile(contract.schema as AnySchema);
-  compiledValidators.set(cacheKey, validator);
+function operationValidator(operation: ManifestOperation, status: number): ResponseValidator {
+  const validator = responseValidators[`${operation.operationId}:${status}`];
+  if (!validator) failContract();
   return validator;
 }
 
@@ -223,13 +210,19 @@ function resolvedSchema(schema: JsonRecord): JsonRecord {
 function matchingUnionSchema(schema: JsonRecord, responseBody: unknown): JsonRecord | undefined {
   const alternatives = schema.anyOf ?? schema.oneOf;
   if (!Array.isArray(alternatives)) return undefined;
+  const unionId = schema[UNION_VALIDATOR_ID];
+  if (typeof unionId !== 'string') failContract();
+  const alternativeValidators = unionValidators[unionId];
+  if (!alternativeValidators || alternativeValidators.length !== alternatives.length) {
+    failContract();
+  }
   const responseKeys = new Set(
     responseBody && typeof responseBody === 'object' && !Array.isArray(responseBody)
       ? Object.keys(responseBody)
       : []
   );
   return (alternatives as JsonRecord[])
-    .filter((alternative) => schemaValidator.validate(alternative as AnySchema, responseBody))
+    .filter((_alternative, index) => alternativeValidators[index](responseBody))
     .sort((left, right) => {
       const matchingProperties = (alternative: JsonRecord) =>
         Object.keys(resolvedSchema(alternative).properties ?? {}).filter((key) =>

@@ -120,4 +120,15 @@ describe('App exact permission routes and landing', () => {
     expect(screen.queryByText('history-page')).not.toBeInTheDocument();
     expect(window.location.pathname).toBe('/access-denied');
   });
+
+  it('mounts route-aware document titles in the application router', async () => {
+    authorize([PERMISSIONS.QUERY_HISTORY_VIEW]);
+    document.title = 'Unbranded';
+    window.history.replaceState({}, '', '/history');
+
+    render(<App />);
+
+    expect(await screen.findByText('history-page')).toBeInTheDocument();
+    expect(document.title).toBe('Query History | QueryCraft');
+  });
 });

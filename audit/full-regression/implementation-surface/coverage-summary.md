@@ -61,7 +61,7 @@ The severity reduction from raw counts is explained entirely by deduplication:
 
 | Disposition/category | Count |
 | --- | ---: |
-| Confirmed Product Gap | 36 |
+| Confirmed Product Gap | 37 |
 | Confirmed Coverage Gap | 4 |
 | Confirmed Contract/Documentation Drift | 1 |
 | Confirmed Test-Harness Gap | 1 |
@@ -70,18 +70,18 @@ The severity reduction from raw counts is explained entirely by deduplication:
 | Duplicate/Merged | 0 |
 | Already Covered | 0 |
 | Not a Current Requirement | 0 |
-| Needs Decision | 1 |
+| Needs Decision | 0 |
 | **Total** | **47** |
 
-The category counts requested for execution planning are therefore: **product 36, coverage 4, contract 1, harness 1, operational 4, dead-code 0**, plus one product-scope decision (`IS-GAP-045`). `IS-GAP-010` and `IS-GAP-011` are operational gaps whose implementation status is also Needs Decision because ownership/exposure policy cannot be inferred from source.
+The category counts requested for execution planning are therefore: **product 37, coverage 4, contract 1, harness 1, operational 4, dead-code 0**. The owner decisions recorded on 2026-09-01 classify `IS-GAP-045` as a confirmed product gap and move `IS-GAP-010`, `IS-GAP-011`, and `IS-GAP-045` to implementation-pending.
 
-The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead maintenance surface inside the broader contract gap `IS-GAP-008`; CHUNK-14 removed it after caller verification and replacement parity gates, so it is not counted again as a separate dead-code gap. The reachable legacy `/ask` route is not declared dead until `IS-GAP-045` is decided.
+The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead maintenance surface inside the broader contract gap `IS-GAP-008`; CHUNK-14 removed it after caller verification and replacement parity gates, so it is not counted again as a separate dead-code gap. The reachable legacy `/ask` route remains present until CHUNK-31 implements its approved redirect/retirement policy.
 
 ### Raw candidate dispositions after deduplication
 
 | Candidate disposition | Count |
 | --- | ---: |
-| Confirmed Product Gap | 36 |
+| Confirmed Product Gap | 37 |
 | Confirmed Coverage Gap | 4 |
 | Confirmed Contract/Documentation Drift | 1 |
 | Confirmed Test-Harness Gap | 1 |
@@ -90,18 +90,18 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 | Duplicate/Merged | 7 |
 | Already Covered | 0 |
 | Not a Current Requirement | 0 |
-| Needs Decision | 1 |
+| Needs Decision | 0 |
 | **Total** | **54** |
 
 ## Status
 
 | Status | Count |
 | --- | ---: |
-| Pending | 0 |
-| Resolved | 42 |
+| Pending | 1 |
+| Resolved | 44 |
 | Resolved on tested branch | 0 |
 | Closed by Existing Evidence | 0 |
-| Needs Decision | 3 |
+| Needs Decision | 0 |
 | Partial | 2 |
 | **Total** | **47** |
 
@@ -146,11 +146,11 @@ The stale, uncalled `backend/scripts/update_openapi_phase5.py` was a dead mainte
 `IS-GAP-032` and `IS-GAP-038` are resolved and merged at main `48f775834a9c2c1fa3f4c2ea95132c1ff287d119` via [#318](https://github.com/RkShanks/QueryCraft/pull/318). Their [CHUNK-20 evidence](evidence/chunk-20-history-locale.md) records the bounded trimmed literal-substring history search with escaped wildcards and bound parameters, hash-bound opaque cursors that reject cross-filter replay while accepting legacy unfiltered cursors, filtered first-page totals and audit privacy; server-side frontend search with filter-bound query keys and stale-response isolation, derived selection reconciliation, panel-scoped errors, localized no-match/loading-more states and a semantic list of independent aria-pressed buttons replacing focusable divs and fake columnheaders; plus locked locale precedence (?lng= → persisted → navigator → html lang → en), ar-EG/en-US variant normalization, authoritative manual switching with stale-parameter rewrite, storage-unavailable fallbacks, an accessible EN/Arabic toggle in both shells and active-locale date/number formatting with preserved LTR SQL/code isolation. Coverage is 28 new backend tests inside the 2,561-test unit suite, 13 integration tests on a disposable PostgreSQL stack, 64 Schemathesis subtests, 52+36 focused frontend suites inside a 1,232-test full run, a six-case mocked EN/ar/ar-EG 1440/768/375 Chromium matrix and two live real-FastAPI paginated-search cases against disposable seeded records.
 `IS-GAP-043`, `IS-GAP-037` and `IS-GAP-031` are resolved and merged at main `74aa30481377321c6178d0523ab593c697525725` via [#319](https://github.com/RkShanks/QueryCraft/pull/319). Their [CHUNK-21 evidence](evidence/chunk-21-browser-async.md) records one request-scope utility giving query submit/accept/reject/regenerate owned controllers with wire-level aborts on unmount, route/session/user replacement and CHUNK-03 deletion, late-settlement suppression without error/toast/stale state, the preserved `session_deleted` precedence, CHUNK-04's authoritative backend deadline with no client query deadline, one documented bounded ordinary deadline across the previously signal-dropping queries with a localized recoverable timeout, a longer documented export deadline with explicit Cancel and exactly-once resource cleanup, a location-keyed sanitized route boundary inside the authenticated shell with retry and permission-aware navigation, navigation-scoped timer cleanup for Workspace alerts and audit toasts, one shared bounded clipboard contract across CodeBlockActionBar and HistoryDetail and contained lazy-Shiki fallbacks keeping readable plain-text LTR SQL. Coverage is seven RED/GREEN/gate commits inside a 1,283-test full Vitest run (up from 1,232), ESLint/typecheck/build/CSS-lint/gen-parity/harness guards with 36 classified specs, 37 backend compatibility unit tests plus Ruff, a six-case mocked Chromium matrix and two live cases against a disposable FastAPI stack destroyed afterward.
 `IS-GAP-034` is resolved and merged at main `e4c3ca5aac856b6c73c41c931331bf3a482a57a5` via [#320](https://github.com/RkShanks/QueryCraft/pull/320). Its [CHUNK-22 evidence](evidence/chunk-22-audit-download.md) records applied-filter authority, safe server filename/media handling, cancellation/retry/no-partial-file behavior, 1,327 frontend tests, backend export/search/OpenAPI groups, complete local frontend gates, 4/4 mocked Chromium cases, two real CSV/JSON browser downloads with checksum/redaction inspection and disposable-stack cleanup. Authoritative CI run `32738202877` passed backend-test and frontend-test; merge and cleanup completed.
-These decisions block only `CHUNK-30` and `CHUNK-31`. All product chunks through `CHUNK-23` are now merged; `CHUNK-20` merged as `48f775834a9c2c1fa3f4c2ea95132c1ff287d119` via [#318](https://github.com/RkShanks/QueryCraft/pull/318), and CHUNK-23 merged as `2114f8a8ef2f20141c0a43d87cb81b1a3ff1c758` via [#322](https://github.com/RkShanks/QueryCraft/pull/322) with authoritative backend/frontend CI passing in run `32773267333`.
+The decisions unblocked `CHUNK-30` and `CHUNK-31`; CHUNK-30 is now resolved and CHUNK-31 remains unblocked but not started. All product chunks through `CHUNK-23` are merged; `CHUNK-20` merged as `48f775834a9c2c1fa3f4c2ea95132c1ff287d119` via [#318](https://github.com/RkShanks/QueryCraft/pull/318), and CHUNK-23 merged as `2114f8a8ef2f20141c0a43d87cb81b1a3ff1c758` via [#322](https://github.com/RkShanks/QueryCraft/pull/322) with authoritative backend/frontend CI passing in run `32773267333`.
 
 `IS-GAP-044` and `IS-GAP-016` are resolved and merged at main `2114f8a8ef2f20141c0a43d87cb81b1a3ff1c758` via [#322](https://github.com/RkShanks/QueryCraft/pull/322). Their [CHUNK-23 evidence](evidence/chunk-23-auth-idp.md) records the distinct accessible provider loading/configured/empty/failure+retry states, sanitized invalid-callback mapping, double-submit suppression, rejected sign-out retry and confirmed sign-out boundaries, a reproduced-and-fixed rejected-sign-in visibility defect, and the disposable isolated HTTPS OIDC/SAML IdP proof: real-browser redirect/callback flows, signing-key and certificate rotation without restart, retired-material rejection, claim/assertion negatives, replay, outage and recovery under strict TLS with zero auth material in any channel. Authoritative CI run `32773267333` passed backend-test and frontend-test; branch deletion and synchronized main completed.
 
-`IS-GAP-015` is **Partial** via CHUNK-24 from synchronized main `1bfc245448e2ff4dd7b2111065ee7ce04bdff7e9` (RED `542bd34`, GREEN `81fc501`). Its [CHUNK-24 evidence](evidence/chunk-24-provider-matrix.md) records a 44-case deterministic matrix covering selection/normalization, factory routing, missing/malformed configuration, unsupported providers, invalid base URLs/models, timeout/cancellation propagation, HTTP/API failures, sanitized error mapping, no-unintended-fallback, no-secret-retention and cross-adapter query-composition compatibility (P1-FR-009, P1-FR-026, P2-FR-047, XP-014); one confirmed in-gap defect where the Anthropic/OpenAI/Ollama adapters leaked raw framework exceptions on malformed 200 bodies and 4xx responses was fixed by mirroring GeminiAdapter's typed sanitized constant-message mapping with no signature changes and Gemini untouched. A focused post-merge follow-up (`7f1d220` → `8406f13`) additionally reproduced and fixed raw `TypeError` leakage on malformed JSON container shapes (top-level null/array/scalar, null/scalar containers) through the same narrow typed mapping with 18 more data-driven cases, bringing deterministic coverage to 62 new cases. The follow-up squash-merged as `3fd04341f278de61ad9fef2c97b295522dde8720` via [#325](https://github.com/RkShanks/QueryCraft/pull/325), and authoritative CI run `32789833177` passed backend-test and frontend-test. Gates: focused suites 161 passed, full backend unit foundation 2258 passed/365 skipped, Ruff/format/diff-check clean. The required one-benign-live-request-per-provider evidence is Setup-dependent for all three providers — Anthropic has no credentials, Ollama is not installed locally, and the OpenAI credential's cost/invocation approval was declined by the owner — so the gap is Partial, not Resolved, with zero external spend and zero invocations.
+`IS-GAP-015` is **Partial** via CHUNK-24 from synchronized main `1bfc245448e2ff4dd7b2111065ee7ce04bdff7e9` (RED `542bd34`, GREEN `81fc501`). Its [CHUNK-24 evidence](evidence/chunk-24-provider-matrix.md) records a 44-case deterministic matrix covering selection/normalization, factory routing, missing/malformed configuration, unsupported providers, invalid base URLs/models, timeout/cancellation propagation, HTTP/API failures, sanitized error mapping, no-unintended-fallback, no-secret-retention and cross-adapter query-composition compatibility (P1-FR-009, P1-FR-026, P2-FR-047, XP-014); one confirmed in-gap defect where the Anthropic/OpenAI/Ollama adapters leaked raw framework exceptions on malformed 200 bodies and 4xx responses was fixed by mirroring GeminiAdapter's typed sanitized constant-message mapping with no signature changes and Gemini untouched. A focused post-merge follow-up (`7f1d220` → `8406f13`) additionally reproduced and fixed raw `TypeError` leakage on malformed JSON container shapes (top-level null/array/scalar, null/scalar containers) through the same narrow typed mapping with 18 more data-driven cases, bringing deterministic coverage to 62 new cases. The follow-up squash-merged as `3fd04341f278de61ad9fef2c97b295522dde8720` via [#325](https://github.com/RkShanks/QueryCraft/pull/325), and authoritative CI run `32789833177` passed backend-test and frontend-test. Gates: focused suites 161 passed, full backend unit foundation 2258 passed/365 skipped, Ruff/format/diff-check clean. The required one-benign-live-request-per-provider evidence is Setup-dependent for all three providers — Anthropic has no credentials, Ollama is not installed locally, and the OpenAI credential's cost/invocation approval was declined by the owner — so the gap is Partial, not Resolved, with zero external spend and zero invocations. On 2026-09-01 the owner explicitly deferred all non-Gemini live smoke until approved credentials/runtime exist; the status remains Partial and no external LLM call was made.
 
 `IS-GAP-018` is **Partial** via CHUNK-25 from synchronized main `3f86ada49ec97cdf8eb91f32d296d5a1763f7` (RED `45c810e` → GREEN `43186d5` for fixture downloads, RED `e09c17b` → GREEN `ec4f9d0` for the MSSQL restore, RED `d9fdbd0` → GREEN `1dcb3cb` for seed operations). Its [CHUNK-25 evidence](evidence/chunk-25-bootstrap.md) records 30 new disposable-harness cases covering failed/corrupt downloads, checksum-mismatch rejection before any mutation, fail-closed checksum requirements, interrupted-run cleanup, rerun-after-partial-failure recovery, idempotent reruns, HTTPS-only fail-aware transport, hostile environment-value rejection before any SQL or container command, doubled-quote password literals, partial MSSQL restore drop-and-restore recovery, online-database skip, failed-restore abort before login configuration, sanitized diagnostics with secret canaries absent, DSN metacharacter/control-character rejection, typed sanitized connection-failure errors that no longer leak the connection string or SA secret (P3-FR-059, P3-FR-065, XP-015, XP-018), plus seed engine disposal. Gates: focused suites 40 passed, dev-up readiness regression 4 passed, Compose readiness contract 2 passed, full backend unit foundation 2289 passed/365 skipped, Ruff/format/shell-syntax/Compose-config/diff-check clean. The residue is upstream authority: neither vendor publishes a checksum for these sample fixtures (GitHub release digest null; MySQL publishes none), so end-to-end vendor-anchored verification is Setup-dependent; the script requires an operator-supplied checksum file and no values were invented, keeping the gap Partial rather than Resolved. PR [#327](https://github.com/RkShanks/QueryCraft/pull/327) merged as `e98f2d1eed92b95c473aab793aa620ca5ddab835` after authoritative CI run `32905391474` passed; formatting follow-up [#328](https://github.com/RkShanks/QueryCraft/pull/328) merged as `3236ce02d9bda8924aa43db77b456a63e26b1088` after run `32905706341` passed both jobs.
 
@@ -163,20 +163,22 @@ PR [#332](https://github.com/RkShanks/QueryCraft/pull/332) passed authoritative 
 
 `IS-GAP-021` is **Resolved** on tested product head `47c5662db951de70c2d2c7c2fd9aeb8010ef682c` in [#342](https://github.com/RkShanks/QueryCraft/pull/342) from authoritative main `f96e6747154129ace3da95c34efaf80ee8f6ffa1`. Its [CHUNK-29 evidence](evidence/chunk-29-cleanup-cache.md) records five independent top-level shutdown failures, every cached-adapter position, multiple middleware instances, simultaneous aggregate failures, readiness and retryable lifecycle state; strict shared session validation across middleware and `/auth/me`; ownership-first attempt validation; constant sanitized outcomes; dependency/corruption separation; atomic index reconciliation and compare-delete replacement races; later valid recovery; zero prohibited query side effects; focused/real-Redis/XP-013 compatibility; the 2,390-test backend unit foundation; static gates; guard review; runtime cleanup and protected-baseline proof.
 
-No Pending consolidated gap remains. Accounting is **Resolved 42, Pending 0, Partial 2, Needs Decision 3, Total 47**.
+`IS-GAP-010` and `IS-GAP-011` are **Resolved** on tested product head `bc0da9cfddbfca36d18f44e72cd5d71537bb5d11`. Their [CHUNK-30 evidence](evidence/chunk-30-deployment-policy.md) records proxy-only security-header ownership, backend-authoritative cache pass-through, secure-default production documentation disablement, explicit development enablement, route-aware EN/AR titles, deterministic standalone response validators under the exact strict CSP, 65=65=65 API parity, direct/proxied HTTP checks and production-Nginx Chromium proof.
+
+CHUNK-30 resolves two approved rows. Accounting is **Resolved 44, Pending 1, Partial 2, Needs Decision 0, Total 47**.
 
 Existing evidence narrows the remaining work but does not close another unique consolidated root cause:
 
 - CHUNK-07 closed the identity/cache/permission slice; CHUNK-28 now closes the broader hostile/error/download/runtime-memory/external-store privacy matrix after prerequisites #337–#340 merged.
-- CHUNK-08 closes the primary Workspace prompt-length contract. The reachable legacy `/ask` disposition remains open under IS-GAP-045/CHUNK-31. CHUNK-14 now closes canonical OpenAPI/client regeneration under IS-GAP-008.
+- CHUNK-08 closes the primary Workspace prompt-length contract. CHUNK-31 will implement the approved `/ask` redirect/retirement policy and is unblocked but not started. CHUNK-14 now closes canonical OpenAPI/client regeneration under IS-GAP-008.
 
-## Decision ledger
+## Approved decision ledger
 
-- `IS-GAP-010`: assign security/cache-header ownership between backend and reverse proxy. Title work remains required under either choice.
-- `IS-GAP-011`: choose production access policy for `/docs`, `/redoc`, `/openapi.json`, and `/docs/oauth2-redirect`.
-- `IS-GAP-045`: decide whether `/ask` redirects/retires or remains a fully supported compatibility UI.
+- `IS-GAP-010`: the reverse proxy solely owns deployment security headers; backend endpoint-specific API cache policy passes through unchanged. CHUNK-30 is resolved.
+- `IS-GAP-011`: production HTTP documentation is disabled, development/test may explicitly enable it, and canonical generation remains available. CHUNK-30 is resolved.
+- `IS-GAP-045`: CHUNK-31 will redirect or retire `/ask` in favor of Workspace. It is unblocked but not started.
 
-These decisions block only `CHUNK-30` and `CHUNK-31`. All available implementation work through CHUNK-29 is closed or explicitly Partial; T-905 and freeze work have not started.
+No decision block remains. CHUNK-30 is resolved; CHUNK-31 is unblocked but not started. All implementation work through CHUNK-30 is closed or explicitly Partial; T-905 and freeze work have not started.
 
 ## Validation scope
 

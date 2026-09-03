@@ -1,7 +1,7 @@
 /// <reference types="node" />
 
 import { afterAll, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -94,6 +94,34 @@ describe('canonical generated API contract', () => {
 
       expect(generatedFiles(firstOutput)).toEqual(generatedFiles(secondOutput));
       expect(generatedFiles(firstOutput)).toEqual(generatedFiles(GENERATED_ROOT));
+    },
+    60_000
+  );
+
+  it(
+    'generates standalone response validators and detects validator drift',
+    () => {
+      const generatedOutput = join(temporaryRoot, 'validator-drift');
+      generateInto(generatedOutput);
+      const validatorPath = join(generatedOutput, 'responseValidators.gen.ts');
+      const generatedValidators = readFileSync(validatorPath, 'utf8');
+
+      expect(generatedValidators).toContain('responseValidatorByOperationStatus');
+      expect(generatedValidators).toContain('unionAlternativeValidatorsById');
+      expect(generatedValidators).not.toMatch(/\brequire\s*\(/);
+      expect(generatedValidators).not.toMatch(/\bnew Function\b/);
+      expect(generatedValidators).not.toMatch(/\beval\s*\(/);
+      expect(generatedValidators).not.toContain('ajv/dist/compile');
+
+      writeFileSync(validatorPath, `${generatedValidators}\n// stale validator artifact\n`);
+      const driftCheck = spawnSync(
+        process.execPath,
+        [GENERATOR, '--check', '--output', generatedOutput],
+        { cwd: FRONTEND_ROOT, encoding: 'utf8' }
+      );
+
+      expect(driftCheck.status).not.toBe(0);
+      expect(driftCheck.stderr).toContain('responseValidators.gen.ts');
     },
     60_000
   );

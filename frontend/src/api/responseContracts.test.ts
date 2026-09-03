@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type {
   HistoryListResponse,
   QueryResult,
@@ -53,6 +55,11 @@ const validQueryResult = {
   session_id: 'session-1',
 } satisfies QueryResult;
 
+const responseValidationSource = readFileSync(
+  resolve(process.cwd(), 'src/api/responseValidation.ts'),
+  'utf8'
+);
+
 describe('generated response contract manifest', () => {
   it('classifies every canonical operation exactly once', () => {
     expect(responseOperationManifest).toHaveLength(65);
@@ -81,6 +88,13 @@ describe('generated response contract manifest', () => {
 });
 
 describe('canonical JSON response validation', () => {
+  it('imports generated validators without a browser-side schema compiler', () => {
+    expect(responseValidationSource).toContain('./generated/responseValidators.gen');
+    expect(responseValidationSource).not.toMatch(/from ['"]ajv/);
+    expect(responseValidationSource).not.toContain('.compile(');
+    expect(responseValidationSource).not.toContain('new Ajv');
+  });
+
   it('accepts the shared Playwright connection fixture for listUserConnections', () => {
     expect(
       validateOperationResponse('listUserConnections', 200, E2E_USER_CONNECTIONS_RESPONSE)
@@ -135,6 +149,10 @@ describe('canonical JSON response validation', () => {
     }],
     ['empty cursor', 'listHistory', { ...validHistory, next_cursor: '' }],
     ['negative counter', 'getQuotaStatus', { status: [], total: -1, next_cursor: null }],
+    ['invalid audit pagination', 'searchAuditEntries', {
+      entries: [],
+      pagination: { page: 0, page_size: 10, total_entries: 0, total_pages: 0 },
+    }],
     ['invalid query union', 'submitQuestion', { ...validQueryResult, kind: 'refine' }],
     ['query column dimensions', 'submitQuestion', {
       ...validQueryResult,
@@ -204,5 +222,11 @@ describe('canonical JSON response validation', () => {
       message_key: 'error.quota_sync_pending',
       mutation_applied: true,
     });
+  });
+
+  it('rejects an error response without its safe message key', () => {
+    expect(() =>
+      validateOperationResponse('getQuotaStatus', 503, { error: 'service_unavailable' })
+    ).toThrowError(ClientContractError);
   });
 });

@@ -1271,3 +1271,93 @@
 - **Branch Context**: `main` at `7fb6823af081e082f3003faa2929d9eb30cdfb33`
 - **Status**: T-903 consolidation complete. T-904 skipped by condition because consolidated Critical and High counts are zero.
 - **Next Dispatch**: T-905 final snapshot.
+
+---
+
+## CHUNK-30 / CHUNK-31 — Approved Deployment and Legacy-Route Decisions
+
+### Decision and Dispatch Record
+
+- **Date**: 2026-09-01
+- **Starting Main**: `84c04a5eb066e670c4377fa0d4eee43e6a2b02d9`
+- **CHUNK-30 Branch**: `phase-6/wave-19.30-deployment-policy`
+- **CHUNK-30 Scope**: `IS-GAP-010`, `IS-GAP-011` only.
+- **CHUNK-30 Status**: DISPATCHED; implementation pending.
+- **CHUNK-31 Status**: Unblocked by the `/ask` decision but not started.
+
+### Approved Decisions
+
+1. The reverse proxy solely owns deployment security headers.
+2. The backend solely owns endpoint-specific API cache policy; the proxy passes those values through unchanged.
+3. Production HTTP documentation routes are disabled.
+4. Development and test documentation may be explicitly enabled.
+5. Disabling HTTP documentation does not disable canonical `app.openapi()` generation for CI, Schemathesis, or generated-client parity.
+6. The legacy `/ask` route will be redirected or retired in CHUNK-31.
+7. Non-Gemini live smoke remains deferred until approved credentials and runtimes exist. No external LLM call is authorized for CHUNK-30.
+8. `IS-GAP-015` remains Partial; the live-smoke deferral does not resolve it.
+
+### Ledger and Boundary Record
+
+- `IS-GAP-010`, `IS-GAP-011`, and `IS-GAP-045` move from Needs Decision to implementation-pending.
+- Pre-implementation accounting is Resolved 42, Pending 3, Partial 2, Needs Decision 0, Total 47.
+- CHUNK-30 must stop on conflicting or duplicate deployment headers, exposed production documentation, broken canonical generation, CSP-blocked product behavior, or any need to change the approved policy.
+- T-905 and Phase 6 freeze work remain not started.
+
+---
+
+## CHUNK-30 — Strict-CSP Validator Generation Authorization
+
+### Decision Record
+
+- **Date**: 2026-09-02
+- **Branch**: `phase-6/wave-19.30-deployment-policy`
+- **Trigger**: Production Nginx Chromium proof reproduced an AJV `EvalError`; runtime schema compilation prevented the SPA from mounting under the approved strict CSP.
+- **Status**: CHUNK-30 resumed with an authorized in-gap prerequisite. CHUNK-31 and T-905 remain not started.
+
+### Approved Design
+
+1. Preserve the exact CSP boundary `script-src 'self'`; do not add `unsafe-eval`, `eval()`, `new Function()`, a CSP bypass, or browser-side schema compilation.
+2. Keep canonical OpenAPI as the single schema source.
+3. Extend deterministic API generation to emit standalone AJV validators plus the operation/status and union-alternative validator maps required by current sanitization behavior.
+4. Runtime response validation imports generated validators and preserves `ClientContractError`, fail-closed behavior, unknown-field stripping, and semantic checks without constructing or compiling AJV.
+5. Move AJV packages to development dependencies when no production import remains.
+6. `gen:api` and `gen:api:check` must generate and byte-check the validator artifact.
+
+### Stop Conditions
+
+- Stop if standalone generation weakens validation semantics, duplicates schemas by hand, still requires browser compilation, or requires any CSP exception.
+- Non-Gemini live smoke remains deferred/Partial with zero calls. The 23 protected artifacts and draft PR #336 remain outside CHUNK-30 ownership.
+
+---
+
+## CHUNK-30 — Deployment Security Policy Closure
+
+### Implementation and Evidence Record
+
+- **Date**: 2026-09-04
+- **Starting Main**: `84c04a5eb066e670c4377fa0d4eee43e6a2b02d9`
+- **Branch**: `phase-6/wave-19.30-deployment-policy`
+- **Tested Product Head**: `bc0da9cfddbfca36d18f44e72cd5d71537bb5d11`
+- **Scope**: `IS-GAP-010`, `IS-GAP-011` only, including the authorized strict-CSP validator prerequisite.
+- **Status**: Resolved pending authoritative pull-request CI and squash merge.
+- **Evidence**: `audit/full-regression/implementation-surface/evidence/chunk-30-deployment-policy.md` and `.json`.
+
+### Verified Outcome
+
+1. Nginx solely owns CSP, frame, content-type, referrer, permissions and HSTS headers with one exact value on HTML, SPA fallback, hashed assets, proxied API success/error/download and Nginx error responses. Direct backend responses emit none.
+2. Backend endpoint-specific `Cache-Control` passes through unchanged. HTML is `no-store`, hashed assets are immutable, and sensitive API/download responses retain one upstream `no-store` plus download disposition and cookies.
+3. `API_DOCUMENTATION_ENABLED` defaults to false, explicitly enables development/test documentation, and leaves `app.openapi()`, canonical generation, Schemathesis input and 65 runtime = 65 canonical = 65 generated operations intact. All four production documentation paths return 404 directly and through the proxy.
+4. Centralized QueryCraft EN/AR document titles cover every current route plus navigation, redirects, reload and back/forward without physical-direction CSS.
+5. Canonical OpenAPI generation now emits deterministic standalone operation/status and union-alternative AJV validators. Runtime response validation imports the generated maps, preserves fail-closed sanitization and semantic checks, and contains no AJV construction, compiler path, dynamic schema validation, `unsafe-eval`, `eval()` or `new Function()`.
+6. The exact production build mounted behind real strict-CSP Nginx in EN desktop and AR mobile Chromium with zero unexpected console/page/CSP errors. A real public API response and real authenticated route/reload passed. No LLM or source query ran.
+7. Backend/frontend focused and full gates, Ruff, format, ESLint, typecheck, build, CSS lint, API generation/currentness, 65-operation Schemathesis input, Compose, Nginx syntax, JSON/link/leakage/diff checks and all four guards passed.
+8. All disposable resources and browser output were removed. The 23 protected files retain their exact hashes/status and none was staged. Draft PR #336 was untouched.
+
+### Ledger and Next Dispatch
+
+- `IS-GAP-010`: Resolved.
+- `IS-GAP-011`: Resolved.
+- `IS-GAP-015`: remains Partial; non-Gemini live smoke remains deferred until credentials/runtime exist, with zero external calls.
+- Accounting: Resolved 44, Pending 1, Partial 2, Needs Decision 0, Total 47.
+- CHUNK-31 is unblocked but not started.
+- T-905 and Phase 6 freeze work were not started.
