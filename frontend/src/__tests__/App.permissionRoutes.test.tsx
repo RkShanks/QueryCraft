@@ -82,6 +82,19 @@ describe('App exact permission routes and landing', () => {
     expect(window.location.pathname).toBe(path);
   });
 
+  it('replaces the legacy /ask entry with the guarded Workspace route', async () => {
+    authorize([PERMISSIONS.QUERY_SUBMIT]);
+    window.history.replaceState({}, '', '/ask');
+    const historyLength = window.history.length;
+
+    render(<App />);
+
+    expect(await screen.findByText('workspace-page')).toBeInTheDocument();
+    expect(screen.queryByText('ask-page')).not.toBeInTheDocument();
+    expect(window.location.pathname).toBe('/');
+    expect(window.history.length).toBe(historyLength);
+  });
+
   it.each(routeCases)('denies %s when its exact permission is absent', async (path, permission, marker) => {
     const unrelatedPermission = permission === PERMISSIONS.QUERY_SUBMIT
       ? PERMISSIONS.QUERY_HISTORY_VIEW
