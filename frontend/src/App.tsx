@@ -7,7 +7,6 @@ import './i18n';
 import './index.css';
 
 import { SignInPage } from './pages/SignInPage';
-import { AskQuestionPage } from './pages/AskQuestionPage';
 import HistoryPage from './pages/HistoryPage';
 import { WorkspacePage } from './pages/WorkspacePage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -49,7 +48,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 const protectedPageByPath: Record<ProtectedRoutePath, React.ReactNode> = {
   '/': <WorkspacePage />,
-  '/ask': <AskQuestionPage />,
   '/history': <HistoryPage />,
   '/settings': <SettingsPage />,
   '/admin/connections': <AdminConnectionsPage />,
@@ -126,6 +124,15 @@ function ApplicationRoutes() {
   );
 }
 
+function LegacyAskRedirect() {
+  return <Navigate to="/" replace />;
+}
+
+function ApplicationRouter() {
+  const { pathname } = useLocation();
+  return pathname === '/ask' ? <LegacyAskRedirect /> : <ApplicationRoutes />;
+}
+
 function App() {
   const { i18n } = useTranslation();
 
@@ -137,7 +144,7 @@ function App() {
   return (
     <BrowserRouter>
       <DocumentTitle />
-      <ApplicationRoutes />
+      <ApplicationRouter />
     </BrowserRouter>
   );
 }

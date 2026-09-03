@@ -11,7 +11,6 @@ vi.mock('../components/shell/AppShell', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 vi.mock('../pages/WorkspacePage', () => ({ WorkspacePage: () => <div>workspace-page</div> }));
-vi.mock('../pages/AskQuestionPage', () => ({ AskQuestionPage: () => <div>ask-page</div> }));
 vi.mock('../pages/HistoryPage', () => ({ default: () => <div>history-page</div> }));
 vi.mock('../pages/SettingsPage', () => ({ SettingsPage: () => <div>settings-page</div> }));
 vi.mock('../pages/AdminConnectionsPage', () => ({
@@ -30,7 +29,6 @@ vi.mock('../pages/AccessDeniedPage', () => ({
 
 const routeCases: Array<[ProtectedRoutePath, Permission, string]> = [
   ['/', PERMISSIONS.QUERY_SUBMIT, 'workspace-page'],
-  ['/ask', PERMISSIONS.QUERY_SUBMIT, 'ask-page'],
   ['/history', PERMISSIONS.QUERY_HISTORY_VIEW, 'history-page'],
   ['/settings', PERMISSIONS.ADMIN_CONNECTIONS_MANAGE, 'settings-page'],
   ['/admin/connections', PERMISSIONS.ADMIN_CONNECTIONS_MANAGE, 'connections-page'],
@@ -90,7 +88,6 @@ describe('App exact permission routes and landing', () => {
     render(<App />);
 
     expect(await screen.findByText('workspace-page')).toBeInTheDocument();
-    expect(screen.queryByText('ask-page')).not.toBeInTheDocument();
     expect(window.location.pathname).toBe('/');
     expect(window.history.length).toBe(historyLength);
   });

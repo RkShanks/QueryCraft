@@ -9,7 +9,6 @@ import {
 
 const lockedRoutePermissions: Record<ProtectedRoutePath, Permission> = {
   '/': PERMISSIONS.QUERY_SUBMIT,
-  '/ask': PERMISSIONS.QUERY_SUBMIT,
   '/history': PERMISSIONS.QUERY_HISTORY_VIEW,
   '/settings': PERMISSIONS.ADMIN_CONNECTIONS_MANAGE,
   '/admin/connections': PERMISSIONS.ADMIN_CONNECTIONS_MANAGE,

@@ -13,7 +13,6 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 export type ProtectedRoutePath =
   | '/'
-  | '/ask'
   | '/history'
   | '/settings'
   | '/admin/connections'
@@ -46,7 +45,6 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
     descriptionKey: 'admin.roles.permissions.query.submit.desc',
     routes: [
       { path: '/', landingOrder: 0, navigation: { id: 'new-chat', labelKey: 'sidebar.newChat' } },
-      { path: '/ask' },
     ],
   },
   {
