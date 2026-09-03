@@ -125,7 +125,18 @@ function ApplicationRoutes() {
 }
 
 function LegacyAskRedirect() {
-  return <Navigate to="/" replace />;
+  const { search } = useLocation();
+  const legacyAskSearchParams = new URLSearchParams(search);
+  const workspaceSearchParams = new URLSearchParams();
+
+  for (const name of ['question', 'connectionId', 'lng'] as const) {
+    for (const parameterValue of legacyAskSearchParams.getAll(name)) {
+      workspaceSearchParams.append(name, parameterValue);
+    }
+  }
+
+  const workspaceSearch = workspaceSearchParams.toString();
+  return <Navigate to={{ pathname: '/', search: workspaceSearch }} replace />;
 }
 
 function ApplicationRouter() {
