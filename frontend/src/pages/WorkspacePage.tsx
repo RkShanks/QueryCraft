@@ -231,7 +231,27 @@ function mapEvaluatorRejection(
   };
 }
 
-export const WorkspacePage: React.FC = () => {
+export interface WorkspacePrefill {
+  question: string | null;
+  connectionId: string | null;
+}
+
+function withoutWorkspacePrefillParams(searchParams: URLSearchParams): URLSearchParams {
+  const settledSearchParams = new URLSearchParams(searchParams);
+  settledSearchParams.delete('question');
+  settledSearchParams.delete('connectionId');
+  return settledSearchParams;
+}
+
+interface WorkspacePageProps {
+  prefill?: WorkspacePrefill | null;
+  onPrefillConsumed?: () => void;
+}
+
+export const WorkspacePage: React.FC<WorkspacePageProps> = ({
+  prefill = null,
+  onPrefillConsumed,
+}) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -322,36 +342,47 @@ export const WorkspacePage: React.FC = () => {
   const hasUrlConnectionId = searchParams.has('connectionId');
   const urlQuestion = searchParams.get('question');
   const urlConnectionId = searchParams.get('connectionId');
+  const hasQuestionPrefill =
+    (prefill !== null && prefill.question !== null) || hasUrlQuestion;
+  const hasConnectionPrefill =
+    (prefill !== null && prefill.connectionId !== null) || hasUrlConnectionId;
+  const questionPrefill = prefill?.question ?? urlQuestion;
+  const connectionPrefill = prefill?.connectionId ?? urlConnectionId;
+  const authorizedPrefillConnectionId = availableConnections.some(
+    (connection) => connection.id === connectionPrefill
+  ) ? connectionPrefill : null;
 
   useEffect(() => {
-    if (!hasUrlQuestion && !hasUrlConnectionId) return;
-    if (urlConnectionId && !userConnectionsQuery.isSuccess) return;
+    if (!hasQuestionPrefill && !hasConnectionPrefill) return;
+    if (connectionPrefill && !userConnectionsQuery.isSuccess) return;
 
-    const isAuthorizedConnection = availableConnections.some(
-      (connection) => connection.id === urlConnectionId
-    );
-    if (isAuthorizedConnection && urlConnectionId !== selectedConnectionId) {
-      setSelectedConnectionId(urlConnectionId);
+    if (
+      authorizedPrefillConnectionId &&
+      authorizedPrefillConnectionId !== selectedConnectionId
+    ) {
+      setSelectedConnectionId(authorizedPrefillConnectionId);
     }
-    if (hasUrlQuestion) {
+    if (hasQuestionPrefill) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoadedQuestion(urlQuestion ?? '');
+      setLoadedQuestion(questionPrefill ?? '');
     }
-    setSearchParams((currentSearchParams) => {
-      const settledSearchParams = new URLSearchParams(currentSearchParams);
-      settledSearchParams.delete('question');
-      settledSearchParams.delete('connectionId');
-      return settledSearchParams;
-    }, { replace: true });
+    if (hasUrlQuestion || hasUrlConnectionId) {
+      setSearchParams(withoutWorkspacePrefillParams, { replace: true });
+    }
+    if (prefill) onPrefillConsumed?.();
   }, [
-    availableConnections,
+    authorizedPrefillConnectionId,
+    connectionPrefill,
+    hasConnectionPrefill,
+    hasQuestionPrefill,
     hasUrlConnectionId,
     hasUrlQuestion,
+    onPrefillConsumed,
+    prefill,
+    questionPrefill,
     selectedConnectionId,
     setSearchParams,
     setSelectedConnectionId,
-    urlConnectionId,
-    urlQuestion,
     userConnectionsQuery.isSuccess,
   ]);
 

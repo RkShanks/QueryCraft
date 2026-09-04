@@ -11,7 +11,23 @@ vi.mock('../components/shell/AppShell', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 vi.mock('../pages/SignInPage', () => ({ SignInPage: () => <div>sign-in-page</div> }));
-vi.mock('../pages/WorkspacePage', () => ({ WorkspacePage: () => <div>workspace-page</div> }));
+vi.mock('../pages/WorkspacePage', () => ({
+  WorkspacePage: ({
+    prefill,
+  }: {
+    prefill?: { question: string | null; connectionId: string | null } | null;
+  }) => {
+    return (
+      <div
+        data-testid="workspace-page"
+        data-question={prefill?.question ?? ''}
+        data-connection-id={prefill?.connectionId ?? ''}
+      >
+        workspace-page
+      </div>
+    );
+  },
+}));
 vi.mock('../pages/HistoryPage', () => ({ default: () => <div>history-page</div> }));
 vi.mock('../pages/SettingsPage', () => ({ SettingsPage: () => <div>settings-page</div> }));
 vi.mock('../pages/AdminConnectionsPage', () => ({
@@ -118,11 +134,11 @@ describe('App exact permission routes and landing', () => {
 
     render(<App />);
 
-    expect(await screen.findByText('workspace-page')).toBeInTheDocument();
+    const workspace = await screen.findByTestId('workspace-page');
+    expect(workspace).toHaveAttribute('data-question', 'monthly revenue');
+    expect(workspace).toHaveAttribute('data-connection-id', 'connection-7');
     expect(window.location.pathname).toBe('/');
     expect(Object.fromEntries(new URLSearchParams(window.location.search))).toEqual({
-      question: 'monthly revenue',
-      connectionId: 'connection-7',
       lng: 'ar',
     });
     expect(window.location.hash).toBe('');
