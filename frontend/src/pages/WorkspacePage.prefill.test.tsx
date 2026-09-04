@@ -61,4 +61,26 @@ describe('Workspace legacy bookmark prefill', () => {
     });
     expect(submitRequestCount).toBe(0);
   });
+
+  it('discards an unavailable connection without retaining URL residue', async () => {
+    let submitRequestCount = 0;
+    server.use(
+      http.post('/api/v1/query/submit', () => {
+        submitRequestCount += 1;
+        return HttpResponse.json({});
+      })
+    );
+
+    renderWorkspaceAt(
+      '/?question=authorized%20prefill&connectionId=unavailable-connection&lng=en'
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Ask a question')).toHaveValue('authorized prefill');
+      expect(screen.getByText('PostgreSQL DB')).toBeInTheDocument();
+      expect(screen.getByTestId('settled-location')).toHaveTextContent('/?lng=en');
+    });
+    expect(screen.queryByText('unavailable-connection')).not.toBeInTheDocument();
+    expect(submitRequestCount).toBe(0);
+  });
 });

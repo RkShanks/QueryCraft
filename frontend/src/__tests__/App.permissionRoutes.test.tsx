@@ -1,5 +1,5 @@
 /* eslint-disable local/no-inline-user-strings */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSIONS, type Permission, type ProtectedRoutePath } from '../auth/permissions';
@@ -10,6 +10,7 @@ import App from '../App';
 vi.mock('../components/shell/AppShell', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+vi.mock('../pages/SignInPage', () => ({ SignInPage: () => <div>sign-in-page</div> }));
 vi.mock('../pages/WorkspacePage', () => ({ WorkspacePage: () => <div>workspace-page</div> }));
 vi.mock('../pages/HistoryPage', () => ({ default: () => <div>history-page</div> }));
 vi.mock('../pages/SettingsPage', () => ({ SettingsPage: () => <div>settings-page</div> }));
@@ -81,7 +82,20 @@ describe('App exact permission routes and landing', () => {
   });
 
   it('replaces the legacy /ask entry with the guarded Workspace route', async () => {
-    authorize([PERMISSIONS.QUERY_SUBMIT]);
+    let authorizationRequestCount = 0;
+    server.use(
+      http.get('/api/v1/auth/me', () => {
+        authorizationRequestCount += 1;
+        return HttpResponse.json({
+          id: 'permission-user',
+          username: 'permission-user',
+          display_name: 'Permission User',
+          role: 'admin',
+          role_name: 'admin',
+          permissions: [PERMISSIONS.QUERY_SUBMIT],
+        });
+      })
+    );
     window.history.replaceState({}, '', '/ask');
     const historyLength = window.history.length;
 
@@ -90,6 +104,8 @@ describe('App exact permission routes and landing', () => {
     expect(await screen.findByText('workspace-page')).toBeInTheDocument();
     expect(window.location.pathname).toBe('/');
     expect(window.history.length).toBe(historyLength);
+    expect(authorizationRequestCount).toBe(1);
+    expect(document.title).toBe('Workspace | QueryCraft');
   });
 
   it('preserves only supported legacy bookmark parameters for Workspace', async () => {
@@ -110,6 +126,75 @@ describe('App exact permission routes and landing', () => {
       lng: 'ar',
     });
     expect(window.location.hash).toBe('');
+  });
+
+  it('sends unauthenticated legacy bookmarks safely to sign-in', async () => {
+    server.use(
+      http.get('/api/v1/auth/me', () =>
+        HttpResponse.json(
+          { error: 'unauthorized', message_key: 'error.unauthorized' },
+          { status: 401 }
+        )
+      )
+    );
+    window.history.replaceState({}, '', '/ask?question=sensitive#legacy');
+
+    render(<App />);
+
+    expect(await screen.findByText('sign-in-page')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/sign-in');
+    const signInSearchParams = new URLSearchParams(window.location.search);
+    expect(signInSearchParams.get('error')).toBe('session_expired');
+    expect(signInSearchParams.has('question')).toBe(false);
+    expect(window.location.hash).toBe('');
+  });
+
+  it('sends legacy bookmarks without query.submit to access denied', async () => {
+    authorize([PERMISSIONS.QUERY_HISTORY_VIEW]);
+    window.history.replaceState({}, '', '/ask?question=sensitive');
+
+    render(<App />);
+
+    expect(await screen.findByText('access-denied-page')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/access-denied');
+    expect(window.location.search).toBe('');
+  });
+
+  it('makes no feature request before legacy-route authorization resolves', async () => {
+    let releaseAuthorization: (() => void) | undefined;
+    const authorizationGate = new Promise<void>((resolve) => {
+      releaseAuthorization = resolve;
+    });
+    let authorizationRequestCount = 0;
+    let featureRequestCount = 0;
+    server.use(
+      http.get('/api/v1/auth/me', async () => {
+        authorizationRequestCount += 1;
+        await authorizationGate;
+        return HttpResponse.json({
+          id: 'permission-user',
+          username: 'permission-user',
+          display_name: 'Permission User',
+          role: 'admin',
+          role_name: 'admin',
+          permissions: [PERMISSIONS.QUERY_SUBMIT],
+        });
+      }),
+      http.all('/api/v1/*', () => {
+        featureRequestCount += 1;
+        return HttpResponse.json({});
+      })
+    );
+    window.history.replaceState({}, '', '/ask');
+
+    render(<App />);
+
+    await waitFor(() => expect(authorizationRequestCount).toBe(1));
+    expect(featureRequestCount).toBe(0);
+
+    releaseAuthorization?.();
+    expect(await screen.findByText('workspace-page')).toBeInTheDocument();
+    expect(authorizationRequestCount).toBe(1);
   });
 
   it.each(routeCases)('denies %s when its exact permission is absent', async (path, permission, marker) => {
