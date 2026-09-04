@@ -83,4 +83,28 @@ describe('Workspace legacy bookmark prefill', () => {
     expect(screen.queryByText('unavailable-connection')).not.toBeInTheDocument();
     expect(submitRequestCount).toBe(0);
   });
+
+  it('preserves the question and discards the connection when authorization lookup fails', async () => {
+    let submitRequestCount = 0;
+    server.use(
+      http.get('/api/v1/connections', () =>
+        HttpResponse.json({ error: 'unavailable' }, { status: 503 })
+      ),
+      http.post('/api/v1/query/submit', () => {
+        submitRequestCount += 1;
+        return HttpResponse.json({});
+      })
+    );
+
+    renderWorkspaceAt(
+      '/?question=retained%20prefill&connectionId=unverified-connection&lng=en'
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Ask a question')).toHaveValue('retained prefill');
+      expect(screen.getByTestId('settled-location')).toHaveTextContent('/?lng=en');
+    });
+    expect(screen.queryByText('unverified-connection')).not.toBeInTheDocument();
+    expect(submitRequestCount).toBe(0);
+  });
 });
