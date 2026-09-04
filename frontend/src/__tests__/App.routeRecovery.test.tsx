@@ -59,7 +59,6 @@ vi.mock('../pages/HistoryPage', () => ({
     return <div>history-page</div>;
   },
 }));
-vi.mock('../pages/AskQuestionPage', () => ({ AskQuestionPage: () => <div>ask-page</div> }));
 vi.mock('../pages/SettingsPage', () => ({ SettingsPage: () => <div>settings-page</div> }));
 vi.mock('../pages/AdminConnectionsPage', () => ({
   AdminConnectionsPage: () => <div>connections-page</div>,

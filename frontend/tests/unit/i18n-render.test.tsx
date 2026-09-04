@@ -77,13 +77,6 @@ describe('T-183: en.json renders without missing-key placeholders', () => {
     expect(rawKeys).toEqual([]);
   });
 
-  it('AskQuestionPage has no raw key strings', async () => {
-    const { AskQuestionPage } = await import('../../src/pages/AskQuestionPage');
-    const { container } = render(<AskQuestionPage />, { wrapper: createWrapper() });
-    const rawKeys = findRawKeys(container);
-    expect(rawKeys).toEqual([]);
-  });
-
   it('HistoryPage has no raw key strings', async () => {
     const { default: HistoryPage } = await import('../../src/pages/HistoryPage');
     const { container } = render(<HistoryPage />, { wrapper: createWrapper() });
@@ -106,24 +99,6 @@ describe('F-010: error/modal/empty states render without missing keys', () => {
           { type: 'unknown_type' },
         ]}
       />,
-      { wrapper: createWrapper() }
-    );
-    expect(findRawKeys(container)).toEqual([]);
-  });
-
-  it('TimeoutBanner renders with all keys present', async () => {
-    const { TimeoutBanner } = await import('../../src/components/query/TimeoutBanner');
-    const { container } = render(
-      <TimeoutBanner timeout={true} onRetry={() => {}} />,
-      { wrapper: createWrapper() }
-    );
-    expect(findRawKeys(container)).toEqual([]);
-  });
-
-  it('RefinePromptBanner renders with all keys present', async () => {
-    const { RefinePromptBanner } = await import('../../src/components/query/RefinePromptBanner');
-    const { container } = render(
-      <RefinePromptBanner refinePrompt={{ reason: 'max_retries' }} onRefine={() => {}} />,
       { wrapper: createWrapper() }
     );
     expect(findRawKeys(container)).toEqual([]);

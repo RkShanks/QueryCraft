@@ -1,15 +1,21 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import { QueryProvider } from './providers/QueryProvider';
 import { useCurrentUser } from './hooks/useAuth';
 import './i18n';
 import './index.css';
 
 import { SignInPage } from './pages/SignInPage';
-import { AskQuestionPage } from './pages/AskQuestionPage';
 import HistoryPage from './pages/HistoryPage';
-import { WorkspacePage } from './pages/WorkspacePage';
+import { WorkspacePage, type WorkspacePrefill } from './pages/WorkspacePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminConnectionsPage } from './pages/AdminConnectionsPage';
 import { AdminSsoPage } from './pages/AdminSsoPage';
@@ -47,9 +53,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-const protectedPageByPath: Record<ProtectedRoutePath, React.ReactNode> = {
-  '/': <WorkspacePage />,
-  '/ask': <AskQuestionPage />,
+const protectedPageByPath: Record<Exclude<ProtectedRoutePath, '/'>, React.ReactNode> = {
   '/history': <HistoryPage />,
   '/settings': <SettingsPage />,
   '/admin/connections': <AdminConnectionsPage />,
@@ -95,10 +99,19 @@ function ProtectedLayout({
   );
 }
 
-function ApplicationRoutes() {
+function ApplicationRoutes({
+  workspacePrefill,
+  onWorkspacePrefillConsumed,
+}: {
+  workspacePrefill: WorkspacePrefill | null;
+  onWorkspacePrefillConsumed: () => void;
+}) {
   const location = useLocation();
+  const authorizationState = location.state as { verifiedAuthorizationKey?: string } | null;
+  const authorizationKey =
+    authorizationState?.verifiedAuthorizationKey ?? `${location.key}:${location.pathname}`;
   return (
-    <QueryProvider authorizationKey={`${location.key}:${location.pathname}`}>
+    <QueryProvider authorizationKey={authorizationKey}>
       <Routes>
           <Route path="/sign-in" element={<SignInPage />} />
           {PROTECTED_ROUTE_CATALOG.map(({ path, permission }) => (
@@ -107,7 +120,12 @@ function ApplicationRoutes() {
               path={path}
               element={
                 <ProtectedLayout permission={permission} locationKey={location.key}>
-                  {protectedPageByPath[path]}
+                  {path === '/' ? (
+                    <WorkspacePage
+                      prefill={workspacePrefill}
+                      onPrefillConsumed={onWorkspacePrefillConsumed}
+                    />
+                  ) : protectedPageByPath[path]}
                 </ProtectedLayout>
               }
             />
@@ -126,6 +144,59 @@ function ApplicationRoutes() {
   );
 }
 
+function LegacyAskRedirect({
+  onRedirect,
+}: {
+  onRedirect: (prefill: WorkspacePrefill) => void;
+}) {
+  const { search } = useLocation();
+  const navigate = useNavigate();
+  const { connectionId, question, workspaceSearch } = legacyAskHandoff(search);
+
+  useEffect(() => {
+    onRedirect({ question, connectionId });
+    navigate({ pathname: '/', search: workspaceSearch }, { replace: true });
+  }, [connectionId, navigate, onRedirect, question, workspaceSearch]);
+
+  return null;
+}
+
+function legacyAskHandoff(search: string) {
+  const legacyParams = new URLSearchParams(search);
+  const workspaceParams = new URLSearchParams();
+  for (const language of legacyParams.getAll('lng')) {
+    workspaceParams.append('lng', language);
+  }
+  return {
+    question: legacyParams.has('question') ? legacyParams.get('question') ?? '' : null,
+    connectionId: legacyParams.has('connectionId')
+      ? legacyParams.get('connectionId') ?? ''
+      : null,
+    workspaceSearch: workspaceParams.toString(),
+  };
+}
+
+function ApplicationRouter() {
+  const { pathname } = useLocation();
+  const [workspacePrefill, setWorkspacePrefill] = useState<WorkspacePrefill | null>(null);
+  const clearWorkspacePrefill = useCallback(() => setWorkspacePrefill(null), []);
+
+  useEffect(() => {
+    // Authentication/permission redirects must not retain a bookmark prefill in memory.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (pathname !== '/' && pathname !== '/ask') clearWorkspacePrefill();
+  }, [clearWorkspacePrefill, pathname]);
+
+  return pathname === '/ask' ? (
+    <LegacyAskRedirect onRedirect={setWorkspacePrefill} />
+  ) : (
+    <ApplicationRoutes
+      workspacePrefill={workspacePrefill}
+      onWorkspacePrefillConsumed={clearWorkspacePrefill}
+    />
+  );
+}
+
 function App() {
   const { i18n } = useTranslation();
 
@@ -137,7 +208,7 @@ function App() {
   return (
     <BrowserRouter>
       <DocumentTitle />
-      <ApplicationRoutes />
+      <ApplicationRouter />
     </BrowserRouter>
   );
 }

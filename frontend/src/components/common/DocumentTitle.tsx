@@ -5,7 +5,6 @@ import { useLocation } from 'react-router-dom';
 const titleKeyByPath: Readonly<Record<string, string>> = {
   '/sign-in': 'documentTitle.signIn',
   '/': 'documentTitle.workspace',
-  '/ask': 'documentTitle.ask',
   '/history': 'documentTitle.history',
   '/settings': 'documentTitle.settings',
   '/admin/connections': 'documentTitle.adminConnections',

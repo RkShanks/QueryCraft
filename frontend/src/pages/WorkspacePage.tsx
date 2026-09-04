@@ -231,7 +231,27 @@ function mapEvaluatorRejection(
   };
 }
 
-export const WorkspacePage: React.FC = () => {
+export interface WorkspacePrefill {
+  question: string | null;
+  connectionId: string | null;
+}
+
+function withoutWorkspacePrefillParams(searchParams: URLSearchParams): URLSearchParams {
+  const settledSearchParams = new URLSearchParams(searchParams);
+  settledSearchParams.delete('question');
+  settledSearchParams.delete('connectionId');
+  return settledSearchParams;
+}
+
+interface WorkspacePageProps {
+  prefill?: WorkspacePrefill | null;
+  onPrefillConsumed?: () => void;
+}
+
+export const WorkspacePage: React.FC<WorkspacePageProps> = ({
+  prefill = null,
+  onPrefillConsumed,
+}) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -318,21 +338,59 @@ export const WorkspacePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [loadedQuestion, setLoadedQuestion] = useState('');
 
+  const hasUrlQuestion = searchParams.has('question');
+  const hasUrlConnectionId = searchParams.has('connectionId');
   const urlQuestion = searchParams.get('question');
   const urlConnectionId = searchParams.get('connectionId');
+  const hasQuestionPrefill =
+    (prefill !== null && prefill.question !== null) || hasUrlQuestion;
+  const hasConnectionPrefill =
+    (prefill !== null && prefill.connectionId !== null) || hasUrlConnectionId;
+  const questionPrefill = prefill?.question ?? urlQuestion;
+  const connectionPrefill = prefill?.connectionId ?? urlConnectionId;
+  const authorizedPrefillConnectionId = availableConnections.some(
+    (connection) => connection.id === connectionPrefill
+  ) ? connectionPrefill : null;
 
   useEffect(() => {
-    if (urlQuestion || urlConnectionId) {
-      if (urlConnectionId && urlConnectionId !== selectedConnectionId) {
-        setSelectedConnectionId(urlConnectionId);
-      }
-      if (urlQuestion) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setLoadedQuestion(urlQuestion);
-      }
-      setSearchParams({}, { replace: true });
+    if (!hasQuestionPrefill) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoadedQuestion(questionPrefill ?? '');
+  }, [hasQuestionPrefill, questionPrefill]);
+
+  useEffect(() => {
+    if (!hasQuestionPrefill && !hasConnectionPrefill) return;
+    if (
+      connectionPrefill &&
+      !userConnectionsQuery.isSuccess &&
+      !userConnectionsQuery.isError
+    ) return;
+
+    if (
+      authorizedPrefillConnectionId &&
+      authorizedPrefillConnectionId !== selectedConnectionId
+    ) {
+      setSelectedConnectionId(authorizedPrefillConnectionId);
     }
-  }, [urlQuestion, urlConnectionId, selectedConnectionId, setSelectedConnectionId, setSearchParams]);
+    if (hasUrlQuestion || hasUrlConnectionId) {
+      setSearchParams(withoutWorkspacePrefillParams, { replace: true });
+    }
+    if (prefill) onPrefillConsumed?.();
+  }, [
+    authorizedPrefillConnectionId,
+    connectionPrefill,
+    hasConnectionPrefill,
+    hasQuestionPrefill,
+    hasUrlConnectionId,
+    hasUrlQuestion,
+    onPrefillConsumed,
+    prefill,
+    selectedConnectionId,
+    setSearchParams,
+    setSelectedConnectionId,
+    userConnectionsQuery.isError,
+    userConnectionsQuery.isSuccess,
+  ]);
 
   const [localTurns, setLocalTurns] = useState<ConversationTurn[]>([]);
   const [deletedSavedIds, setDeletedSavedIds] = useState<Set<string>>(new Set());

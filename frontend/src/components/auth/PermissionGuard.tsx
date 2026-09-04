@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useCurrentUser } from '../../hooks/useAuth';
 import { hasPermission } from '../../auth/permissions';
 import type { Permission } from '../../auth/permissions';
@@ -12,6 +12,7 @@ interface PermissionGuardProps {
 
 export const PermissionGuard: React.FC<PermissionGuardProps> = ({ children, permission }) => {
   const { data: response, isLoading } = useCurrentUser();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -30,7 +31,13 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({ children, perm
   }
 
   if (!hasPermission(user, permission)) {
-    return <Navigate to="/access-denied" replace />;
+    return (
+      <Navigate
+        to="/access-denied"
+        replace
+        state={{ verifiedAuthorizationKey: `${location.key}:${location.pathname}` }}
+      />
+    );
   }
 
   return <>{children}</>;

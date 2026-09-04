@@ -36,32 +36,21 @@ const GEMINI_RESULT: QueryResult = {
 };
 
 test.describe('T-178: provider-switch (Phase 1 — mocked)', () => {
-  test('submit with ollama → accept → switch mock to gemini → history persists old + new query works', async ({ page }) => {
+  test('submit with ollama → switch mock to gemini → history persists old + new query works', async ({ page }) => {
     let currentProvider = 'ollama';
+    let submittedProviderCount = 0;
 
     // Mock /query/submit with provider-aware response
     await page.route('**/query/submit', async (route: Route) => {
+      submittedProviderCount += 1;
       const body = currentProvider === 'ollama' ? OLLAMA_RESULT : GEMINI_RESULT;
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
-    });
-
-    // Mock /query/accept
-    let acceptCount = 0;
-    await page.route('**/query/accept', async (route: Route) => {
-      acceptCount++;
-      const body: AcceptedQuerySummary = {
-        id: `query-${acceptCount}`,
-        question_text: 'How many actors?',
-        generated_sql: currentProvider === 'ollama' ? OLLAMA_RESULT.generated_sql : GEMINI_RESULT.generated_sql,
-        accepted_at: new Date().toISOString(),
-      };
-      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(body) });
     });
 
     // Mock /history list
     await page.route(/\/history(?:\?.*)?$/, async (route: Route) => {
       const items: AcceptedQuerySummary[] = [];
-      if (acceptCount >= 1) {
+      if (submittedProviderCount >= 1) {
         items.push({
           id: 'query-1',
           question_text: 'How many actors?',
@@ -69,7 +58,7 @@ test.describe('T-178: provider-switch (Phase 1 — mocked)', () => {
           accepted_at: new Date().toISOString(),
         });
       }
-      if (acceptCount >= 2) {
+      if (submittedProviderCount >= 2) {
         items.push({
           id: 'query-2',
           question_text: 'How many actors?',
@@ -115,26 +104,22 @@ test.describe('T-178: provider-switch (Phase 1 — mocked)', () => {
     // Step 1: sign in and submit with ollama
     await signIn(page);
     await page.goto('/ask');
-    await expect(page).toHaveURL(/\/ask/);
+    await expect(page).toHaveURL(/\/$/);
     await expect(page.locator('textarea')).toBeEnabled({ timeout: 5_000 });
 
-    await page.getByPlaceholder(/Ask a question/i).fill('How many actors?');
-    await page.getByRole('button', { name: /ask/i }).click();
+    await page.getByLabel(/Ask a question/i).fill('How many actors?');
+    await page.getByTestId('prompt-send').click();
     await expect(page.getByRole('table')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/ollama/)).toBeVisible();
-    await page.getByRole('button', { name: /^accept$/i }).click();
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5_000 });
 
     // Step 2: switch provider to gemini (simulated by changing mock state)
     currentProvider = 'gemini';
 
     // Step 3: submit with gemini
-    await page.getByPlaceholder(/Ask a question/i).fill('How many actors?');
-    await page.getByRole('button', { name: /ask/i }).click();
-    await expect(page.getByRole('table')).toBeVisible({ timeout: 10_000 });
+    await page.getByLabel(/Ask a question/i).fill('How many actors?');
+    await page.getByTestId('prompt-send').click();
+    await expect(page.getByRole('table')).toHaveCount(2, { timeout: 10_000 });
     await expect(page.getByText(/gemini/)).toBeVisible();
-    await page.getByRole('button', { name: /^accept$/i }).click();
-    await expect(page.getByRole('alert')).toBeVisible({ timeout: 5_000 });
 
     // Step 4: navigate to history and assert both queries are present
     await page.getByTestId('sidebar-nav-history').click();
