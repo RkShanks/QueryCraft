@@ -353,18 +353,24 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
   ) ? connectionPrefill : null;
 
   useEffect(() => {
+    if (!hasQuestionPrefill) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoadedQuestion(questionPrefill ?? '');
+  }, [hasQuestionPrefill, questionPrefill]);
+
+  useEffect(() => {
     if (!hasQuestionPrefill && !hasConnectionPrefill) return;
-    if (connectionPrefill && !userConnectionsQuery.isSuccess) return;
+    if (
+      connectionPrefill &&
+      !userConnectionsQuery.isSuccess &&
+      !userConnectionsQuery.isError
+    ) return;
 
     if (
       authorizedPrefillConnectionId &&
       authorizedPrefillConnectionId !== selectedConnectionId
     ) {
       setSelectedConnectionId(authorizedPrefillConnectionId);
-    }
-    if (hasQuestionPrefill) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoadedQuestion(questionPrefill ?? '');
     }
     if (hasUrlQuestion || hasUrlConnectionId) {
       setSearchParams(withoutWorkspacePrefillParams, { replace: true });
@@ -379,10 +385,10 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
     hasUrlQuestion,
     onPrefillConsumed,
     prefill,
-    questionPrefill,
     selectedConnectionId,
     setSearchParams,
     setSelectedConnectionId,
+    userConnectionsQuery.isError,
     userConnectionsQuery.isSuccess,
   ]);
 
