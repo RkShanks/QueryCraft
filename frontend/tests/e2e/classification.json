@@ -68,10 +68,6 @@
       "category": "deterministic-provider",
       "reason": "Provider switch behavior uses deterministic provider responses."
     },
-    "tests/e2e/query-timeout.spec.ts": {
-      "category": "mocked",
-      "reason": "Deterministic timeout and empty-history response states."
-    },
     "tests/e2e/rtl-snapshots.spec.ts": {
       "category": "mocked",
       "reason": "Deterministic content for LTR and RTL component layout."
@@ -79,18 +75,6 @@
     "tests/e2e/us1-sign-in-to-accept.spec.ts": {
       "category": "mocked",
       "reason": "Deterministic sign-in, query, and history happy path."
-    },
-    "tests/e2e/us2-double-reject-refine.spec.ts": {
-      "category": "mocked",
-      "reason": "Deterministic double-rejection state machine."
-    },
-    "tests/e2e/us2-error-rendering.spec.ts": {
-      "category": "mocked",
-      "reason": "Deterministic error rendering states."
-    },
-    "tests/e2e/us2-reject-autoretry.spec.ts": {
-      "category": "mocked",
-      "reason": "Deterministic reject and automatic-retry flow."
     },
     "tests/e2e/wave_16_3_smoke.spec.ts": {
       "category": "setup-dependent",

@@ -11,7 +11,6 @@ vi.unmock('react-i18next');
 const titleCases = [
   ['/sign-in', 'Sign In', 'تسجيل الدخول'],
   ['/', 'Workspace', 'مساحة العمل'],
-  ['/ask', 'Ask a Question', 'اطرح سؤالاً'],
   ['/history', 'Query History', 'سجل الاستعلامات'],
   ['/settings', 'Settings', 'الإعدادات'],
   ['/admin/connections', 'Database Connections', 'اتصالات قواعد البيانات'],
