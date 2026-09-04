@@ -63,8 +63,8 @@
       "Needs Decision": 0
     },
     "status": {
-      "Pending": 1,
-      "Resolved": 44,
+      "Pending": 0,
+      "Resolved": 45,
       "Resolved on tested branch": 0,
       "Closed by Existing Evidence": 0,
       "Needs Decision": 0,
@@ -522,9 +522,14 @@
     },
     "CHUNK-31": {
       "gap_id": "IS-GAP-045",
-      "status": "Pending",
+      "status": "Resolved",
       "decision": "Redirect or retire /ask in favor of Workspace",
-      "implementation": "Not started"
+      "implementation": "Legacy page retired behind a client-side replace boundary to Workspace",
+      "branch": "phase-6/wave-19.31-ask-route-disposition",
+      "starting_main": "04c455584c51ae8ba40cdd252272192a564850fb",
+      "tested_product_head": "5eaa62d05d83e22a268e6107916348d7644651ed",
+      "pull_request": "https://github.com/RkShanks/QueryCraft/pull/344",
+      "evidence": "audit/full-regression/implementation-surface/evidence/chunk-31-ask-route.json"
     }
   },
   "raw_candidate_dispositions": {
@@ -2948,21 +2953,28 @@
       ],
       "owner": "Product owner/Orchestrator decision, then Frontend Implementer",
       "chunk": "CHUNK-31",
-      "status": "Pending",
+      "status": "Resolved",
       "decision": {
         "question": "Is /ask a supported compatibility route?",
         "alternatives": [
           "Redirect /ask to / and migrate tests/bookmarks",
           "Keep /ask and require full parity with Workspace"
         ],
-        "consequences": "CHUNK-31 will redirect or retire /ask in favor of Workspace.",
+        "consequences": "CHUNK-31 retires /ask behind a client-side replace boundary to Workspace.",
         "approved": "Redirect or retire /ask in favor of Workspace.",
         "recorded": "2026-09-01"
       },
+      "resolution": {
+        "starting_main": "04c455584c51ae8ba40cdd252272192a564850fb",
+        "tested_product_head": "5eaa62d05d83e22a268e6107916348d7644651ed",
+        "pull_request": "https://github.com/RkShanks/QueryCraft/pull/344",
+        "evidence": "audit/full-regression/implementation-surface/evidence/chunk-31-ask-route.json",
+        "notes": "A client-side replace boundary preserves only question, connectionId and lng before the exactly query.submit-guarded Workspace; Workspace consumes prompt and authorized usable connection prefills without automatic submission or settled URL/history residue. AskQuestionPage and the proven zero-caller Ask-exclusive graph were removed."
+      },
       "source_refs": [
-        "frontend/src/App.tsx::App",
-        "frontend/src/pages/AskQuestionPage.tsx::AskQuestionPage",
-        "frontend/src/pages/AskQuestionPage.test.tsx"
+        "frontend/src/App.tsx::LegacyAskRedirect",
+        "frontend/src/pages/WorkspacePage.tsx::WorkspacePage",
+        "frontend/tests/e2e/chunk_31_ask_route.spec.ts"
       ]
     },
     {

@@ -384,7 +384,7 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Stop conditions:** Do not dispatch before both ownership/exposure decisions are recorded; stop on conflicting duplicate headers or exposed internals.
 - **Progress:** Resolved on tested product head `bc0da9cfddbfca36d18f44e72cd5d71537bb5d11` from starting main `84c04a5eb066e670c4377fa0d4eee43e6a2b02d9`. Nginx solely owns exact deployment security headers and web caching while backend endpoint cache policy passes through unchanged; production docs are disabled with explicit development enablement and 65-operation canonical generation preserved; EN/AR titles and deterministic standalone response validators pass the exact strict CSP without runtime compilation. Static, HTTP, full frontend and production-Nginx Chromium gates passed. See [evidence](evidence/chunk-30-deployment-policy.md).
 
-## CHUNK-31 — legacy `/ask` disposition [PENDING]
+## CHUNK-31 — legacy `/ask` disposition [RESOLVED]
 
 - **IDs / role / branch / context:** `IS-GAP-045`; Product owner/Orchestrator then Frontend Implementer; provisional `phase-6/wave-19.31-ask-route-disposition`; 45–75k.
 - **Likely source:** `App.tsx`, `AskQuestionPage.tsx`, legacy route/tests and bookmark/redirect evidence.
@@ -394,8 +394,8 @@ The order puts the Critical source-continuity defect first, then security/data i
 - **Browser/live:** Required direct URL/bookmark/back-forward.
 - **Isolation/cleanup/evidence:** Disposable session only; `evidence/chunk-31-ask-route.md`.
 - **Stop conditions:** Do not dispatch before support status is decided; do not silently delete compatibility or expand parity scope.
-- **Progress:** Decision approved 2026-09-01: redirect or retire `/ask` in favor of Workspace. CHUNK-31 is unblocked but not started.
+- **Progress:** Resolved on tested product head `5eaa62d05d83e22a268e6107916348d7644651ed` from starting main `04c455584c51ae8ba40cdd252272192a564850fb` through [#344](https://github.com/RkShanks/QueryCraft/pull/344). `/ask` is now a client-side replace boundary to the exactly `query.submit`-guarded Workspace; only `question`, `connectionId`, and `lng` cross it. Workspace consumes prompt and authorized usable connection prefills without auto-submit or settled URL/history residue; unknown parameters and fragments are dropped. Auth/permission request ordering, EN/AR locale persistence, titles, strict CSP and Nginx SPA fallback passed 8/8 Chromium cases at 1440/768/375. AskQuestionPage and the proven zero-caller Ask-exclusive production/test graph were deleted, while `useQuerySubmit` and shared Workspace behavior remain. Full local gates and requested reviews passed with zero external LLM calls. See [Markdown](evidence/chunk-31-ask-route.md) and [JSON](evidence/chunk-31-ask-route.json) evidence.
 
-## First recommended implementation dispatch
+## Implementation dispatch completion
 
-`CHUNK-01` through `CHUNK-30` have completed their available implementation closure. `CHUNK-24` remains Partial with non-Gemini live smoke explicitly deferred until approved credentials/runtime exist and zero external calls made; `CHUNK-25` remains Partial pending vendor-published fixture checksums. CHUNK-31 is unblocked but not started. Accounting is Resolved 44, Pending 1, Partial 2, Needs Decision 0, Total 47. T-905 and freeze work have not started.
+`CHUNK-01` through `CHUNK-31` have completed all implementation-pending closure. `CHUNK-24` remains Partial with non-Gemini live smoke explicitly deferred until approved credentials/runtime exist and zero external calls made; `CHUNK-25` remains Partial pending vendor-published fixture checksums. No implementation-pending gap remains. Accounting is Resolved 45, Pending 0, Partial 2, Needs Decision 0, Total 47. T-905 and freeze work have not started.
