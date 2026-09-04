@@ -159,6 +159,10 @@
     "tests/e2e/chunk_30_strict_csp.spec.ts": {
       "category": "mocked",
       "reason": "Production-built SPA served by real Nginx with deterministic authentication boundaries to prove strict-CSP mounting without runtime compilation."
+    },
+    "tests/e2e/chunk_31_ask_route.spec.ts": {
+      "category": "mocked",
+      "reason": "Production-built SPA served by real Nginx with deterministic auth, permission, bookmark and history boundaries for legacy /ask retirement."
     }
   },
   "mockHelpers": [
