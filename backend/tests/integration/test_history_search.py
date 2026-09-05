@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import event, text
@@ -65,14 +66,18 @@ async def _connection_id(db_session) -> object:
 
 
 async def _seed_rows(db_session, repo, user_id, connection_id, rows):
-    for question, sql in rows:
-        await repo.create(
+    for index, (question, sql) in enumerate(rows):
+        accepted_query = await repo.create(
             user_id=user_id,
             database_connection_id=connection_id,
             question_text=question,
             generated_sql=sql,
             llm_provider="ollama",
         )
+        # PostgreSQL now() is transaction-stable; random UUIDs must not
+        # decide the chronology asserted by the cursor traversal cases.
+        accepted_query.accepted_at = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=index)
+    await db_session.flush()
 
 
 @pytest.fixture

@@ -31,7 +31,7 @@ def normalize_history_search(raw: str | None) -> str | None:
     normalized = raw.strip()
     if not normalized:
         return None
-    if len(normalized) > HISTORY_SEARCH_MAX_CODE_POINTS:
+    if "\x00" in normalized or len(normalized) > HISTORY_SEARCH_MAX_CODE_POINTS:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": "invalid_search", "message_key": "error.invalidSearch"},
