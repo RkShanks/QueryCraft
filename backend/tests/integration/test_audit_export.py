@@ -53,12 +53,14 @@ class TestAuditExportPermission:
             headers={"origin": "http://test"},
         )
         assert resp.status_code == 200, f"Sign-in failed: {resp.text}"
-        response = await app_client.post(
-            "/api/v1/admin/audit/export",
-            json={"format": "csv"},
-            headers={"origin": "http://test"},
-        )
-        assert response.status_code == 403
+        for _ in range(3):
+            response = await app_client.post(
+                "/api/v1/admin/audit/export",
+                json={"format": "csv"},
+                headers={"origin": "http://test"},
+            )
+            assert response.status_code == 403
+            assert response.json() == {"error": "forbidden", "message_key": "error.forbidden"}
 
 
 class TestAuditExportCsv:

@@ -13,6 +13,7 @@ from redis.exceptions import ResponseError
 from app.core.dependencies import require_active_user
 from app.core.exceptions import SessionRecordInvalid
 from app.core.security import SessionMiddleware
+from app.core.session_record import parse_session_record
 from app.db.models.role import Role
 from app.db.models.user import User
 from app.repositories import session_repository
@@ -60,6 +61,64 @@ def _valid_redis_session(user_id: str, *, username: str = "admin") -> dict:
 
 async def _indexed_members(redis_client, user_id: str) -> list[str]:
     return list(await redis_client.zrange(f"user_sessions:{user_id}", 0, -1))
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+@pytest.mark.parametrize("permissions", [[], ["query.submit"], {}, {"query.submit": True}])
+@pytest.mark.parametrize("compare_snapshot", [False, True])
+async def test_refresh_preserves_permission_shape_and_validation(redis_client, permissions, compare_snapshot):
+    """Freeze blocker: Lua must preserve arrays without repairing malformed objects."""
+    user_id, session_id = str(uuid.uuid4()), uuid.uuid4().hex
+    payload = json.dumps({**_valid_redis_session(user_id), "permissions": permissions})
+    await session_repository.SessionRepository.create_indexed_session(
+        redis_client,
+        session_repository.IndexedSessionCreateRequest(user_id, session_id, payload, 1000.0, 5, 3600),
+    )
+    for tick in range(3):
+        stored = await session_repository.SessionRepository.read_indexed_session(redis_client, session_id)
+        assert json.loads(stored.session_json)["permissions"] == permissions
+        refreshed = await session_repository.SessionRepository.refresh_indexed_session_state(
+            redis_client,
+            session_repository.IndexedSessionRefreshRequest(
+                session_id,
+                1001.0 + tick,
+                3600,
+                expected_session_json=stored.session_json if compare_snapshot else None,
+            ),
+        )
+        assert not refreshed.concurrent_replacement
+        assert json.loads(refreshed.session_json)["permissions"] == permissions
+        if isinstance(permissions, list):
+            assert parse_session_record(refreshed.session_json, user_id)["permissions"] == permissions
+        else:
+            with pytest.raises(SessionRecordInvalid):
+                parse_session_record(refreshed.session_json, user_id)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_permission_revocation_refresh_preserves_empty_array_and_stale_writer_loses(redis_client):
+    user_id, session_id = str(uuid.uuid4()), uuid.uuid4().hex
+    original = json.dumps(_valid_redis_session(user_id))
+    revoked = json.dumps({**_valid_redis_session(user_id), "permissions": []})
+    await session_repository.SessionRepository.create_indexed_session(
+        redis_client,
+        session_repository.IndexedSessionCreateRequest(user_id, session_id, original, 1000.0, 5, 3600),
+    )
+    first = await session_repository.SessionRepository.refresh_indexed_session_state(
+        redis_client,
+        session_repository.IndexedSessionRefreshRequest(session_id, 1001.0, 3600, original, revoked),
+    )
+    assert parse_session_record(first.session_json, user_id)["permissions"] == []
+    stale = await session_repository.SessionRepository.refresh_indexed_session_state(
+        redis_client,
+        session_repository.IndexedSessionRefreshRequest(session_id, 1002.0, 3600, original, original),
+    )
+    assert stale.concurrent_replacement
+    assert stale.session_json == first.session_json
+    stored = await session_repository.SessionRepository.read_indexed_session(redis_client, session_id)
+    assert parse_session_record(stored.session_json, user_id)["permissions"] == []
 
 
 @pytest.mark.integration
