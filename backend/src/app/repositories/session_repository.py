@@ -1,5 +1,6 @@
 """SessionRepository — data access for sessions table."""
 
+import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -381,6 +382,9 @@ end
 if ARGV[4] ~= '' and raw ~= ARGV[4] then
   return {{2, raw}}
 end
+if raw ~= ARGV[6] then
+  return {{2, raw}}
+end
 
 local decoded = cjson.decode(raw)
 local original_user_id = decoded['user_id']
@@ -481,7 +485,13 @@ end
 
 decoded['last_activity'] = now
 decoded['generation'] = tonumber(decoded['generation'] or '0') + 1
+-- Redis cjson loses the distinction between empty arrays and objects.
+-- Preserve the Python-encoded field from the compared snapshot instead.
+decoded['permissions'] = nil
 local refreshed = cjson.encode(decoded)
+if ARGV[7] ~= '' then
+  refreshed = string.sub(refreshed, 1, -2) .. ',"permissions":' .. ARGV[7] .. '}}'
+end
 redis.call('SET', KEYS[1], refreshed, 'EX', ttl_seconds)
 if type(user_id) == 'string' and user_id ~= '' then
   redis.call('SET', KEYS[2], user_id, 'EX', ttl_seconds)
@@ -706,6 +716,13 @@ class SessionRepository:
         request: IndexedSessionRefreshRequest,
     ) -> IndexedSessionRefreshResult:
         """Refresh a session while exposing compare-and-set replacement races."""
+        snapshot = request.expected_session_json
+        if snapshot is None:
+            snapshot = await redis.get(_session_key(request.session_id))
+        if snapshot is None:
+            return IndexedSessionRefreshResult(session_json=None, concurrent_replacement=False)
+        payload = json.loads(request.replacement_session_json or snapshot)
+        permissions_json = json.dumps(payload["permissions"]) if "permissions" in payload else ""
         refresh_outcome = await redis.eval(
             _REFRESH_INDEXED_SESSION_LUA,
             2,
@@ -716,6 +733,8 @@ class SessionRepository:
             request.session_id,
             request.expected_session_json or "",
             request.replacement_session_json or "",
+            snapshot,
+            permissions_json,
         )
         if isinstance(refresh_outcome, list) and len(refresh_outcome) == 2 and refresh_outcome[0] == 2:
             replacement_json = refresh_outcome[1]
