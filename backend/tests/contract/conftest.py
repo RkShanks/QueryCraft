@@ -5,7 +5,6 @@ T-124..T-126: Provides a valid session cookie for contract tests.
 
 import os
 
-import pytest
 import pytest_asyncio
 import schemathesis
 from httpx import ASGITransport, AsyncClient
@@ -34,32 +33,31 @@ os.environ.setdefault("SOURCE_DB_USER", "pagila_user")
 os.environ.setdefault("SOURCE_DB_PASSWORD", "pagila_dev_pwd")
 os.environ.setdefault("SOURCE_DB_SSL_MODE", "disable")
 
-from app.main import create_app  # noqa: E402
+from app.main import _shutdown_application, create_app  # noqa: E402
 
 
-@pytest.fixture
-def contract_request():
-    def call(case):
-        from app.core.security import SessionMiddleware
-        from app.db import base as db_base
+@pytest_asyncio.fixture
+async def contract_request(set_test_env):
+    # HTTPX ASGITransport leaves application resources on pytest's loop.
+    # Close them there before entering Schemathesis's blocking portal.
+    await _shutdown_application()
 
-        db_base._engine = None
-        db_base._session_factory = None
-        for middleware in SessionMiddleware._instances:
-            middleware._redis = None
-        return case.call_asgi(headers={"origin": "http://test"})
+    def call(case, *, cookies=None):
+        # Each call owns a complete lifespan. A shut-down app's middleware
+        # must not be reused by another portal after it was unregistered.
+        return case.call_asgi(app=create_app(), headers={"origin": "http://test"}, cookies=cookies)
 
     return call
 
 
 @pytest_asyncio.fixture
-async def contract_app():
+async def contract_app(set_test_env):
     """FastAPI app instance for contract tests."""
-    from app.db import base as db_base
-
-    db_base._engine = None
-    db_base._session_factory = None
-    return create_app()
+    await _shutdown_application()
+    try:
+        yield create_app()
+    finally:
+        await _shutdown_application()
 
 
 @pytest_asyncio.fixture
@@ -79,9 +77,5 @@ async def contract_session_cookie(contract_app):
         # ASGITransport does not run application shutdown. Release clients
         # created on pytest's event loop before Schemathesis opens the same
         # app in its per-example blocking portal event loop.
-        from app.core.dependencies import close_redis
-        from app.db.base import dispose_engine
-
-        await close_redis()
-        await dispose_engine()
+        await _shutdown_application()
         yield session_id

@@ -11,8 +11,6 @@ from hypothesis import HealthCheck, settings
 from schemathesis import checks
 from schemathesis.experimental import OPEN_API_3_1
 
-from app.main import create_app
-
 # Enable experimental OpenAPI 3.1 support (T-226)
 OPEN_API_3_1.enable()
 
@@ -21,12 +19,7 @@ schema_path = Path(__file__).resolve().parents[2] / "openapi.json"
 
 @pytest.fixture
 def api_schema():
-    from app.db import base as db_base
-
-    db_base._engine = None
-    db_base._session_factory = None
-    app = create_app()
-    return schemathesis.from_path(str(schema_path), app=app)
+    return schemathesis.from_path(str(schema_path))
 
 
 # Load the OpenAPI schema from the running app using a fixture
