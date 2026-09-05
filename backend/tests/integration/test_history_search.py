@@ -11,15 +11,39 @@ import base64
 import json
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import event, text
 
 from app.core.exceptions import InvalidCursorError
 from app.core.pagination import decode_cursor, decode_datetime_cursor
+from app.db.base import get_async_engine
 from app.repositories.accepted_query_repository import (
     HISTORY_CURSOR_NAMESPACE,
     AcceptedQueryRepository,
     search_cursor_namespace,
 )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("search", ["\x00", "before\x00after", " \x00trimmed "])
+async def test_nul_search_returns_sanitized_422_before_search_sql(authenticated_client, search):
+    """Freeze contract blocker: invalid text must not reach PostgreSQL search."""
+    search_statements = 0
+
+    def observe_search_sql(_conn, _cursor, statement, _parameters, _context, _executemany):
+        nonlocal search_statements
+        if "accepted_queries" in statement:
+            search_statements += 1
+
+    engine = get_async_engine().sync_engine
+    event.listen(engine, "before_cursor_execute", observe_search_sql)
+    try:
+        response = await authenticated_client.get("/api/v1/history", params={"search": search})
+    finally:
+        event.remove(engine, "before_cursor_execute", observe_search_sql)
+
+    assert response.status_code == 422
+    assert response.json() == {"error": "invalid_search", "message_key": "error.invalidSearch"}
+    assert search_statements == 0
 
 
 async def _connection_id(db_session) -> object:
