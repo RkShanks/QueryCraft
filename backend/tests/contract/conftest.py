@@ -5,6 +5,7 @@ T-124..T-126: Provides a valid session cookie for contract tests.
 
 import os
 
+import pytest
 import pytest_asyncio
 import schemathesis
 from httpx import ASGITransport, AsyncClient
@@ -34,6 +35,21 @@ os.environ.setdefault("SOURCE_DB_PASSWORD", "pagila_dev_pwd")
 os.environ.setdefault("SOURCE_DB_SSL_MODE", "disable")
 
 from app.main import create_app  # noqa: E402
+
+
+@pytest.fixture
+def contract_request():
+    def call(case):
+        from app.core.security import SessionMiddleware
+        from app.db import base as db_base
+
+        db_base._engine = None
+        db_base._session_factory = None
+        for middleware in SessionMiddleware._instances:
+            middleware._redis = None
+        return case.call_asgi(headers={"origin": "http://test"})
+
+    return call
 
 
 @pytest_asyncio.fixture
